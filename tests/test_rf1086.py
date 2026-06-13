@@ -9,6 +9,14 @@ from pathlib import Path
 
 from holding_core.models import FilingCase
 from holding_core.rf1086 import filing_preview, generate_rf1086, readiness_report, write_rf1086
+from holding_core.rf1086_codes import (
+    ACQUISITION_PURCHASE_CODE,
+    DISPOSAL_SALE_CODE,
+    DIVIDEND_DISTRIBUTION_CODE,
+    FORMATION_STIFTELSE_CODE,
+    production_code_blockers,
+    rf1086_code_decisions,
+)
 from holding_core.validation import run_rf1086_validation
 
 
@@ -223,6 +231,33 @@ class Rf1086SimulationTest(unittest.TestCase):
         self.assertIn("<AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">18000</AksjeAnskaffelsesverdi-datadef-17636>", founder_a_xml)
         self.assertIn("<AksjerKjopAntall-datadef-12153 orid=\"12153\">40</AksjerKjopAntall-datadef-12153>", founder_b_xml)
         self.assertIn("<AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">12000</AksjeAnskaffelsesverdi-datadef-17636>", founder_b_xml)
+
+    def test_transaction_code_registry_marks_public_label_only_values_as_production_blockers(self) -> None:
+        decisions = {decision.event: decision for decision in rf1086_code_decisions()}
+        blockers = {decision.event for decision in production_code_blockers()}
+
+        self.assertEqual(decisions["stiftelse"].code_value, FORMATION_STIFTELSE_CODE)
+        self.assertFalse(decisions["stiftelse"].production_blocker)
+        self.assertEqual(decisions["kjop"].code_value, ACQUISITION_PURCHASE_CODE)
+        self.assertEqual(decisions["salg"].code_value, DISPOSAL_SALE_CODE)
+        self.assertEqual(decisions["utbytte"].code_value, DIVIDEND_DISTRIBUTION_CODE)
+        self.assertEqual(blockers, {"kjop", "salg", "utbytte"})
+
+    def test_generated_xml_uses_central_transaction_code_registry(self) -> None:
+        sale_case = FilingCase.from_json_file(FIXTURE_DIR / "share_sale.json")
+        sale_documents = generate_rf1086(sale_case)
+        joined_sale_xml = "\n".join(sale_documents.underskjema_xml.values())
+
+        self.assertIn(f">{ACQUISITION_PURCHASE_CODE}</AksjeErvervType-datadef-17745>", joined_sale_xml)
+        self.assertIn(f">{DISPOSAL_SALE_CODE}</AksjerArvMvOmsattType-datadef-17753>", joined_sale_xml)
+
+        dividend_case = FilingCase.from_json_file(FIXTURE_DIR / "dividend.json")
+        dividend_documents = generate_rf1086(dividend_case)
+
+        self.assertIn(
+            f">{DIVIDEND_DISTRIBUTION_CODE}</AksjeUtbytteHendelsestype-datadef-36564>",
+            dividend_documents.hovedskjema_xml,
+        )
 
     def _assert_xsd_valid(self, xmllint: str, schema: Path, xml: Path) -> None:
         result = subprocess.run(

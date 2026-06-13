@@ -118,6 +118,30 @@ Positioning line candidate:
 
 **Talli: Årsrapportering for holdingselskap, uten regnskapssystemet du ikke trenger.**
 
+## 5. Launch Pricing
+
+Initial pricing should be lower than Fiken because Talli is narrower and less trusted at launch.
+
+Founder cohort:
+
+- First 100 companies.
+- `29 kr` per month.
+- `299 kr` per successful production filing package.
+
+Standard launch pricing:
+
+- `49 kr` per month.
+- `499 kr` per successful production filing package.
+
+Billing rules:
+
+- Do not charge the filing package before filing readiness passes.
+- Do not charge unsupported cases.
+- Production filing requires active subscription plus paid filing package.
+- If Talli accepts a supported case and fails because of Talli's filing logic or integration, mark the filing package refund-eligible.
+
+Implementation anchor: [founder-pricing-gate.md](./docs/billing/founder-pricing-gate.md).
+
 ## 5. Research Summary
 
 ### Norwegian AS Obligations
@@ -645,6 +669,10 @@ Every direct filing must pass its filing readiness gate:
 - User confirms authority to submit for the company.
 - User sees final filing preview.
 - Submission receipt is stored after filing.
+
+Production filing state is documented in [production-submission-state.md](./docs/filing/production-submission-state.md). No production API call may be prepared before owner authority and final preview confirmation are both recorded. API calls must store endpoint, body hash, idempotency key, response state, feedback references, and receipt id.
+
+RF-1086 transaction-code caveat: `N` for stiftelse is supported from public API examples, while current local values for `K` purchase, `S` sale, and `U` dividend remain production blockers until confirmed through official docs, a code list, or Skatteetaten test-environment acceptance. See [aksjonaerregisteroppgaven-phase-0-map.md](./docs/filing/aksjonaerregisteroppgaven-phase-0-map.md).
 
 Manual filing-field overrides should be limited and audited:
 

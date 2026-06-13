@@ -116,6 +116,13 @@ Engine implication:
 - Production submission state must store one idempotency key per API call.
 - Retry logic must reuse the same key only for the same body and same logical call.
 
+Local implementation:
+
+- `holding_core.submission.register_api_call` refuses API calls until the user has confirmed authority and final preview.
+- The local state model stores endpoint, body hash, and idempotency key for every prepared production call.
+- The same endpoint/body pair reuses its idempotency key; a changed body gets a new key.
+- API feedback, retryable failures, blocked failures, and stored receipts are represented as explicit states.
+
 ## Request Content Types
 
 Confirmed from error-code docs:
@@ -649,7 +656,7 @@ These do not block simulation but block production direct filing:
    - document response schemas.
 
 2. Code lists:
-   - exact code values for `kjøp`, `salg`, `stiftelse`, `nyemisjon`, and dividend event type.
+   - exact code values for `kjøp`, `salg`, `nyemisjon`, and dividend event type.
    - whether code lists are only in rettledning/PDF examples or available as machine-readable lists.
 
 3. Capital increase mapping:
@@ -663,6 +670,25 @@ These do not block simulation but block production direct filing:
 
 6. System-user product design:
    - whether Talli can support owner-managed filing directly or needs a system-user/access-package onboarding UX that is too complex for launch.
+
+## RF-1086 Transaction Code Decision Register
+
+Public sources verify the RF-1086 shape and several reporting positions, but the XSD fields for event types are broad text fields rather than enums. That means XSD validation alone cannot prove transaction-code correctness.
+
+Local source of truth: `holding_core.rf1086_codes`.
+
+| Event | Field | Local value | Public evidence | Production status |
+| --- | --- | ---: | --- | --- |
+| Stiftelse | `AksjerNyutstedteStiftelseMvType` / `AksjeErvervType` | `N` | Skatteetaten API example observed in public docs | Usable after test-environment validation |
+| Kjøp | `AksjeErvervType` | `K` | Skatteetaten examples state buyer post 23 uses transaction type `kjøp`; XSD does not verify `K` | Production blocker until code value is confirmed |
+| Salg | `AksjerArvMvOmsattType` | `S` | Skatteetaten examples state seller post 25 uses transaction type `salg`; XSD does not verify `S` | Production blocker until code value is confirmed |
+| Utbytte | `AksjeUtbytteHendelsestype` | `U` | Local XSD accepts free text; public sources reviewed do not verify `U` | Production blocker until code value is confirmed |
+
+Decision:
+
+- Keep generating simulation XML with the current local values so fixture coverage continues.
+- Do not allow production direct filing for cases that require `K`, `S`, or `U` until those exact values are confirmed through official docs, a code list, or Skatteetaten test-environment acceptance.
+- Keep the blocker in code, docs, and tests so it cannot be treated as merely a TODO.
 
 ## Phase 0 Conclusion
 

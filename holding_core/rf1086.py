@@ -14,6 +14,12 @@ from holding_core.models import (
     ShareholderSnapshot,
 )
 from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
+from holding_core.rf1086_codes import (
+    ACQUISITION_PURCHASE_CODE,
+    DISPOSAL_SALE_CODE,
+    DIVIDEND_DISTRIBUTION_CODE,
+    FORMATION_STIFTELSE_CODE,
+)
 
 SKATTEETATEN_ETAT_ID = "974761076"
 
@@ -175,7 +181,7 @@ def _build_hovedskjema(case: FilingCase) -> ET.Element:
             event_group = _group(dividends, "UtdeltSkatterettsligUtbytteILopetAvInntektsaret-grp-3451", "3451")
             _data(event_group, "AksjeUtbytteISINAksjetype-datadef-17665", "17665", case.company.share_type)
             _data(event_group, "AksjeUtbyttePerAksje-datadef-23946", "23946", event.per_share_amount)
-            _data(event_group, "AksjeUtbytteHendelsestype-datadef-36564", "36564", "U")
+            _data(event_group, "AksjeUtbytteHendelsestype-datadef-36564", "36564", DIVIDEND_DISTRIBUTION_CODE)
             _data(event_group, "AksjeUtbytteTidspunkt-datadef-17667", "17667", _dt(event.timestamp))
 
     formation_events = [event for event in case.events if isinstance(event, FormationEvent)]
@@ -185,7 +191,7 @@ def _build_hovedskjema(case: FilingCase) -> ET.Element:
             issue = _group(issuances, "AntallNyutstedteAksjer-grp-3453", "3453")
             _data(issue, "AksjerNyutstedteStiftelseMvAntall-datadef-17668", "17668", event.issued_share_count)
             _data(issue, "AksjerStiftelseMvAntall-datadef-17669", "17669", event.share_count_after)
-            _data(issue, "AksjerNyutstedteStiftelseMvType-datadef-17670", "17670", "N")
+            _data(issue, "AksjerNyutstedteStiftelseMvType-datadef-17670", "17670", FORMATION_STIFTELSE_CODE)
             _data(issue, "AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671", "17671", _dt(event.timestamp))
             _data(issue, "AksjerNyutstedteStiftelseMvPalydende-datadef-23947", "23947", event.nominal_value)
             _data(issue, "AksjerNyutstedteStiftelseMvOverkurs-datadef-23948", "23948", event.premium)
@@ -248,11 +254,11 @@ def _build_underskjema(case: FilingCase, snapshot: ShareholderSnapshot) -> ET.El
                 allocation = next(item for item in event.allocations if item.shareholder_id == shareholder.id)
                 amount = allocation.share_count
                 value = allocation.acquisition_value
-                event_type = "N"
+                event_type = FORMATION_STIFTELSE_CODE
             else:
                 amount = event.share_count
                 value = event.consideration
-                event_type = "K"
+                event_type = ACQUISITION_PURCHASE_CODE
             _data(acquisition, "AksjerKjopAntall-datadef-12153", "12153", amount)
             _data(acquisition, "AksjeErvervType-datadef-17745", "17745", event_type)
             _data(acquisition, "AksjerErvervsdato-datadef-17746", "17746", _dt(event.timestamp))
@@ -270,7 +276,7 @@ def _build_underskjema(case: FilingCase, snapshot: ShareholderSnapshot) -> ET.El
         for event in disposals:
             disposal = _group(sales, "AksjerIAvgang-grp-4002", "4002")
             _data(disposal, "AksjerArvMvOmsattAntall-datadef-17752", "17752", event.share_count)
-            _data(disposal, "AksjerArvMvOmsattType-datadef-17753", "17753", "S")
+            _data(disposal, "AksjerArvMvOmsattType-datadef-17753", "17753", DISPOSAL_SALE_CODE)
             _data(disposal, "AksjerArvMvOmsattTidspunkt-datadef-17754", "17754", _dt(event.timestamp))
             _data(disposal, "AksjerArvMvOmsatt-datadef-17755", "17755", event.consideration)
             buyer = next(item for item in case.shareholders if item.id == event.buyer_shareholder_id)
