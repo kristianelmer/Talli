@@ -1,0 +1,3 @@
+# Position as Holding-First, Not a Fiken Clone
+
+We will undercut broad Norwegian accounting suites by serving regular holding companies first, not by matching the full Fiken feature set at a lower price. This keeps the default product simpler and cheaper by excluding invoices, VAT, payroll, projects, time tracking, and other operating-company workflows unless they are later added as optional modules. The product must still support direct filing for the holding-company obligations it owns, because preparation-only does not create enough customer value compared with established products like Fiken.

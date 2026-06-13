@@ -1,0 +1,69 @@
+{
+  "case_id": "dividend",
+  "company": {
+    "org_number": "314259521",
+    "name": "TALLI UTBYTTE HOLDING AS",
+    "address": "Testveien 4",
+    "postal_code": "0123",
+    "city": "OSLO",
+    "income_year": 2025,
+    "contact_email": "kontakt@talli.no"
+  },
+  "share_snapshot": {
+    "previous_share_capital": 30000,
+    "current_share_capital": 30000,
+    "previous_nominal_value": 300,
+    "current_nominal_value": 300,
+    "previous_share_count": 100,
+    "current_share_count": 100,
+    "previous_paid_in_share_capital": 30000,
+    "current_paid_in_share_capital": 30000
+  },
+  "shareholders": [
+    {
+      "id": "owner_a",
+      "kind": "norwegian_person",
+      "name": "Utbytte Eier A",
+      "national_id": "26829398612"
+    },
+    {
+      "id": "owner_b",
+      "kind": "norwegian_company",
+      "name": "UTBYTTE EIER B AS",
+      "org_number": "999999999"
+    }
+  ],
+  "shareholder_snapshots": [
+    {
+      "shareholder_id": "owner_a",
+      "previous_share_count": 70,
+      "current_share_count": 70
+    },
+    {
+      "shareholder_id": "owner_b",
+      "previous_share_count": 30,
+      "current_share_count": 30
+    }
+  ],
+  "events": [
+    {
+      "type": "dividend",
+      "timestamp": "2025-05-20T12:00:00",
+      "total_amount": 100000,
+      "per_share_amount": 1000,
+      "allocations": [
+        {
+          "shareholder_id": "owner_a",
+          "amount": 70000,
+          "share_count_basis": 70
+        },
+        {
+          "shareholder_id": "owner_b",
+          "amount": 30000,
+          "share_count_basis": 30
+        }
+      ]
+    }
+  ]
+}
+

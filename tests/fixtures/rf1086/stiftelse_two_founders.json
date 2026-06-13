@@ -1,0 +1,70 @@
+{
+  "case_id": "stiftelse_two_founders",
+  "company": {
+    "org_number": "314259521",
+    "name": "TALLI TO STIFTERE AS",
+    "address": "Testveien 5",
+    "postal_code": "0123",
+    "city": "OSLO",
+    "income_year": 2025,
+    "contact_email": "kontakt@talli.no"
+  },
+  "share_snapshot": {
+    "previous_share_capital": 0,
+    "current_share_capital": 30000,
+    "previous_nominal_value": 0,
+    "current_nominal_value": 300,
+    "previous_share_count": 0,
+    "current_share_count": 100,
+    "previous_paid_in_share_capital": 0,
+    "current_paid_in_share_capital": 30000
+  },
+  "shareholders": [
+    {
+      "id": "founder_a",
+      "kind": "norwegian_person",
+      "name": "Stifter A",
+      "national_id": "26829398612"
+    },
+    {
+      "id": "founder_b",
+      "kind": "norwegian_person",
+      "name": "Stifter B",
+      "national_id": "16829398613"
+    }
+  ],
+  "shareholder_snapshots": [
+    {
+      "shareholder_id": "founder_a",
+      "previous_share_count": 0,
+      "current_share_count": 60
+    },
+    {
+      "shareholder_id": "founder_b",
+      "previous_share_count": 0,
+      "current_share_count": 40
+    }
+  ],
+  "events": [
+    {
+      "type": "formation",
+      "timestamp": "2025-01-02T12:00:00",
+      "issued_share_count": 100,
+      "share_count_after": 100,
+      "nominal_value": 300,
+      "premium": 0,
+      "allocations": [
+        {
+          "shareholder_id": "founder_a",
+          "share_count": 60,
+          "acquisition_value": 18000
+        },
+        {
+          "shareholder_id": "founder_b",
+          "share_count": 40,
+          "acquisition_value": 12000
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "case_id": "share_sale",
+  "company": {
+    "org_number": "314259521",
+    "name": "TALLI SALG HOLDING AS",
+    "address": "Testveien 3",
+    "postal_code": "0123",
+    "city": "OSLO",
+    "income_year": 2025,
+    "contact_email": "kontakt@talli.no"
+  },
+  "share_snapshot": {
+    "previous_share_capital": 30000,
+    "current_share_capital": 30000,
+    "previous_nominal_value": 300,
+    "current_nominal_value": 300,
+    "previous_share_count": 100,
+    "current_share_count": 100,
+    "previous_paid_in_share_capital": 30000,
+    "current_paid_in_share_capital": 30000
+  },
+  "shareholders": [
+    {
+      "id": "seller",
+      "kind": "norwegian_person",
+      "name": "Selger Person",
+      "national_id": "26829398612"
+    },
+    {
+      "id": "buyer",
+      "kind": "norwegian_person",
+      "name": "Kjoper Person",
+      "national_id": "16829398613"
+    }
+  ],
+  "shareholder_snapshots": [
+    {
+      "shareholder_id": "seller",
+      "previous_share_count": 100,
+      "current_share_count": 60
+    },
+    {
+      "shareholder_id": "buyer",
+      "previous_share_count": 0,
+      "current_share_count": 40
+    }
+  ],
+  "events": [
+    {
+      "type": "share_sale",
+      "timestamp": "2025-06-30T12:00:00",
+      "seller_shareholder_id": "seller",
+      "buyer_shareholder_id": "buyer",
+      "share_count": 40,
+      "consideration": 50000
+    }
+  ]
+}
+

@@ -1,0 +1,54 @@
+{
+  "case_id": "stiftelse",
+  "company": {
+    "org_number": "314259521",
+    "name": "TALLI NY HOLDING AS",
+    "address": "Testveien 2",
+    "postal_code": "0123",
+    "city": "OSLO",
+    "income_year": 2025,
+    "contact_email": "kontakt@talli.no"
+  },
+  "share_snapshot": {
+    "previous_share_capital": 0,
+    "current_share_capital": 30000,
+    "previous_nominal_value": 0,
+    "current_nominal_value": 300,
+    "previous_share_count": 0,
+    "current_share_count": 100,
+    "previous_paid_in_share_capital": 0,
+    "current_paid_in_share_capital": 30000
+  },
+  "shareholders": [
+    {
+      "id": "founder",
+      "kind": "norwegian_person",
+      "name": "Kari Nordmann",
+      "national_id": "26829398612"
+    }
+  ],
+  "shareholder_snapshots": [
+    {
+      "shareholder_id": "founder",
+      "previous_share_count": 0,
+      "current_share_count": 100
+    }
+  ],
+  "events": [
+    {
+      "type": "formation",
+      "timestamp": "2025-01-02T12:00:00",
+      "issued_share_count": 100,
+      "share_count_after": 100,
+      "nominal_value": 300,
+      "premium": 0,
+      "allocations": [
+        {
+          "shareholder_id": "founder",
+          "share_count": 100,
+          "acquisition_value": 30000
+        }
+      ]
+    }
+  ]
+}

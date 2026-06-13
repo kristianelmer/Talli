@@ -1,0 +1,39 @@
+{
+  "case_id": "no_activity",
+  "company": {
+    "org_number": "314259521",
+    "name": "TALLI TEST HOLDING AS",
+    "address": "Testveien 1",
+    "postal_code": "0123",
+    "city": "OSLO",
+    "income_year": 2025,
+    "contact_email": "kontakt@talli.no"
+  },
+  "share_snapshot": {
+    "previous_share_capital": 30000,
+    "current_share_capital": 30000,
+    "previous_nominal_value": 300,
+    "current_nominal_value": 300,
+    "previous_share_count": 100,
+    "current_share_count": 100,
+    "previous_paid_in_share_capital": 30000,
+    "current_paid_in_share_capital": 30000
+  },
+  "shareholders": [
+    {
+      "id": "owner",
+      "kind": "norwegian_person",
+      "name": "Ola Nordmann",
+      "national_id": "26829398612"
+    }
+  ],
+  "shareholder_snapshots": [
+    {
+      "shareholder_id": "owner",
+      "previous_share_count": 100,
+      "current_share_count": 100
+    }
+  ],
+  "events": []
+}
+

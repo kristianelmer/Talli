@@ -1,0 +1,13 @@
+[project]
+name = "talli"
+version = "0.1.0"
+description = "Talli filing simulation engine for Norwegian holding companies"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2"]
+
+[project.scripts]
+talli = "holding_cli.main:main"
+
+[tool.ruff]
+line-length = 110
+
