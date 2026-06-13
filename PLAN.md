@@ -1208,6 +1208,16 @@ Deliverables:
 - Filing readiness dashboard.
 - Company archive export.
 
+Initial SaaS shell status:
+
+- Placeholder Next.js app replaced with a Norwegian-first owner-managed workflow dashboard.
+- Company setup support-boundary status created for supported AS and blocked non-AS cases.
+- Filing readiness summary shown from shared workspace data.
+- Document metadata/status workflow created with company-scoped owner access checks.
+- Optional accountant/reviewer invite, comment, and owner acknowledgement workflow created.
+- Hard review/system blocks cannot be acknowledged away by owner.
+- Web logic tests and Next production build pass locally.
+
 ### Phase 5: Production Direct Filing
 
 Deliverables:

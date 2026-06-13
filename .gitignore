@@ -5,8 +5,16 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+node_modules/
+.next/
+.vercel/
+tsconfig.tsbuildinfo
 out/
 .DS_Store
 .env
 .env.*
 !.env.example
+node_modules/
+.next/
+.vercel/
+.vercel
