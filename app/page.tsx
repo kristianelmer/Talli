@@ -12,6 +12,7 @@ import {
   postManualJournal,
   recordAdminCost,
   recordDividendReceived,
+  recordSharePurchase,
   signIn,
   signOut,
   signUp,
@@ -30,6 +31,7 @@ import {
   listFilingReviewComments,
   listFilingSubmissions,
   listHoldingActions,
+  listInvestmentPositions,
   listLedgerEntries,
   listOpeningSetups,
   listPeriodLocks,
@@ -66,6 +68,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
   const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
+  const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const primaryCompanyId = companies[0]?.id;
@@ -800,6 +803,111 @@ export default async function Home({ searchParams }: HomeProps) {
                     </strong>
                     <p>3 prosent inntektsføring for skattemelding/readiness.</p>
                   </div>
+                </div>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Aksjekjøp</p>
+                  <h2>Registrer kjøp og oppdater investeringsregister.</h2>
+                </div>
+                <form className="dataPanel formPanel widePanel" action={recordSharePurchase}>
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Inntektsår
+                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                  </label>
+                  <label>
+                    Investering-ID
+                    <input name="investmentKey" defaultValue="portfolio-as" required />
+                  </label>
+                  <label>
+                    Selskap
+                    <input name="investmentName" defaultValue="Portfolio AS" required />
+                  </label>
+                  <label>
+                    Organisasjonsnummer
+                    <input name="orgNumber" inputMode="numeric" placeholder="9 sifre" />
+                  </label>
+                  <label>
+                    Investeringstype
+                    <select name="investmentKind" defaultValue="norwegian_private_company">
+                      <option value="norwegian_private_company">Norsk privat AS</option>
+                      <option value="simple_listed_security">Børsnotert/annet</option>
+                    </select>
+                  </label>
+                  <label>
+                    Skattebehandling
+                    <select name="taxTreatment" defaultValue="fritaksmetoden">
+                      <option value="fritaksmetoden">Fritaksmetoden</option>
+                      <option value="outside_fritaksmetoden">Utenfor fritaksmetoden</option>
+                      <option value="needs_accountant">Må vurderes</option>
+                    </select>
+                  </label>
+                  <label>
+                    Kjøpsdato
+                    <input name="acquisitionDate" defaultValue="2025-05-01" required />
+                  </label>
+                  <label>
+                    Antall aksjer
+                    <input name="shareCount" inputMode="decimal" defaultValue="100" required />
+                  </label>
+                  <label>
+                    Kjøpsbeløp
+                    <input name="purchaseAmount" inputMode="decimal" defaultValue="50000" required />
+                  </label>
+                  <label>
+                    Banktransaksjon
+                    <select name="bankTransactionId" defaultValue="">
+                      <option value="">Ingen bankmatch</option>
+                      {unmatchedTransactions
+                        .filter((transaction) => Number(transaction.amount) < 0)
+                        .map((transaction) => (
+                          <option key={transaction.id} value={transaction.id}>
+                            {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label>
+                    Bilag
+                    <select name="documentId" defaultValue="">
+                      <option value="">Ingen bilagskobling</option>
+                      {documents.map((document) => (
+                        <option key={document.id} value={document.id}>
+                          {document.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Dokumentstatus
+                    <select name="documentStatus" defaultValue="attached">
+                      <option value="attached">Vedlagt</option>
+                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
+                      <option value="not_required">Ikke påkrevd</option>
+                    </select>
+                  </label>
+                  <button className="secondaryButton" type="submit">
+                    Poster aksjekjøp
+                  </button>
+                </form>
+                <div className="readinessGrid">
+                  {positions.map((position) => (
+                    <div className="readinessItem" key={position.id}>
+                      <span>{position.investment_key}</span>
+                      <strong data-status="ready">{position.name}</strong>
+                      <p>{Number(position.share_count).toFixed(2)} aksjer</p>
+                      <p>Kostpris: {Number(position.cost_basis).toFixed(2)} kr</p>
+                    </div>
+                  ))}
+                  {positions.length === 0 ? (
+                    <div className="readinessItem">
+                      <span>Register</span>
+                      <strong data-status="draft">Ingen posisjoner</strong>
+                      <p>Registrer første støttede aksjekjøp for å etablere investeringsregister.</p>
+                    </div>
+                  ) : null}
                 </div>
               </section>
 

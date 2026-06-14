@@ -21,6 +21,7 @@ import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import { simulateRf1086SubmissionWithPython } from "../app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
+import { sharePurchaseLedgerLines, validateSharePurchase } from "../app/lib/share-purchase.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 
@@ -829,6 +830,163 @@ test(
       created_by: outsiderUser.id,
     });
     assert.ok(outsiderDividendActionInsertError);
+
+    assert.throws(
+      () =>
+        validateSharePurchase({
+          investmentKey: "listed",
+          investmentName: "Listed ASA",
+          investmentKind: "simple_listed_security",
+          taxTreatment: "fritaksmetoden",
+          acquisitionDate: "2025-05-01",
+          shareCount: 100,
+          purchaseAmount: 50000,
+          documentStatus: "attached",
+        }),
+      (error) => error?.code === "unsupported_investment_kind",
+    );
+    const purchaseDocumentId = randomUUID();
+    const { error: purchaseDocumentError } = await owner.from("documents").insert({
+      id: purchaseDocumentId,
+      company_id: companyId,
+      income_year: 2025,
+      document_type: "share_purchase_agreement",
+      name: "purchase.pdf",
+      linked_to: "share_purchase",
+      status: "attached",
+      storage_key: `companies/${companyId}/2025/${purchaseDocumentId}/purchase.pdf`,
+      created_by: ownerUser.id,
+    });
+    assert.ifError(purchaseDocumentError);
+    const { data: purchaseBankTransaction, error: purchaseBankTransactionError } = await owner
+      .from("bank_transactions")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        transaction_date: "2025-05-01",
+        text: "Purchase Portfolio AS",
+        amount: -50000,
+        balance: -19050,
+        source_hash: `purchase-bank-${randomUUID()}`,
+        created_by: ownerUser.id,
+      })
+      .select("id, amount")
+      .single();
+    assert.ifError(purchaseBankTransactionError);
+    const purchasePayload = validateSharePurchase({
+      investmentKey: "portfolio-as",
+      investmentName: "Portfolio AS",
+      investmentKind: "norwegian_private_company",
+      taxTreatment: "fritaksmetoden",
+      acquisitionDate: "2025-05-01",
+      shareCount: 100,
+      purchaseAmount: 50000,
+      orgNumber: "999888777",
+      bankTransactionId: purchaseBankTransaction.id,
+      documentId: purchaseDocumentId,
+      documentStatus: "attached",
+    });
+    const purchaseLines = sharePurchaseLedgerLines(purchasePayload);
+    const { data: purchaseEntry, error: purchaseEntryError } = await owner
+      .from("ledger_entries")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        entry_type: "share_purchase",
+        memo: "Share purchase: Portfolio AS",
+        lines: purchaseLines,
+        created_by: ownerUser.id,
+      })
+      .select("id, entry_type, lines")
+      .single();
+    assert.ifError(purchaseEntryError);
+    assert.equal(purchaseEntry.entry_type, "share_purchase");
+    assert.deepEqual(purchaseEntry.lines, purchaseLines);
+    const purchaseActionId = randomUUID();
+    const { data: purchaseAction, error: purchaseActionError } = await owner
+      .from("holding_actions")
+      .insert({
+        id: purchaseActionId,
+        company_id: companyId,
+        income_year: 2025,
+        action_type: "share_purchase",
+        action_date: purchasePayload.acquisition_date,
+        payload: purchasePayload,
+        ledger_entry_id: purchaseEntry.id,
+        bank_transaction_id: purchaseBankTransaction.id,
+        document_id: purchaseDocumentId,
+        risk_level: "ready",
+        created_by: ownerUser.id,
+      })
+      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
+      .single();
+    assert.ifError(purchaseActionError);
+    assert.equal(purchaseAction.action_type, "share_purchase");
+    assert.equal(purchaseAction.ledger_entry_id, purchaseEntry.id);
+    assert.equal(purchaseAction.bank_transaction_id, purchaseBankTransaction.id);
+    assert.equal(purchaseAction.document_id, purchaseDocumentId);
+    const { data: purchasePosition, error: purchasePositionError } = await owner
+      .from("investment_positions")
+      .insert({
+        company_id: companyId,
+        investment_key: purchasePayload.investment_key,
+        name: purchasePayload.investment_name,
+        kind: purchasePayload.investment_kind,
+        tax_treatment: purchasePayload.tax_treatment,
+        org_number: purchasePayload.org_number,
+        share_count: purchasePayload.share_count,
+        cost_basis: purchasePayload.purchase_amount,
+        created_by: ownerUser.id,
+      })
+      .select("id, investment_key, share_count, cost_basis")
+      .single();
+    assert.ifError(purchasePositionError);
+    assert.equal(purchasePosition.investment_key, "portfolio-as");
+    assert.equal(Number(purchasePosition.share_count), 100);
+    assert.equal(Number(purchasePosition.cost_basis), 50000);
+    const { error: purchaseBankMatchError } = await owner
+      .from("bank_transactions")
+      .update({ matched_action_id: purchaseAction.id })
+      .eq("id", purchaseBankTransaction.id);
+    assert.ifError(purchaseBankMatchError);
+    const { data: reloadedPurchasePosition, error: reloadedPurchasePositionError } = await owner
+      .from("investment_positions")
+      .select("id, share_count, cost_basis")
+      .eq("id", purchasePosition.id)
+      .single();
+    assert.ifError(reloadedPurchasePositionError);
+    assert.equal(Number(reloadedPurchasePosition.share_count), 100);
+    assert.equal(Number(reloadedPurchasePosition.cost_basis), 50000);
+    const { data: outsiderPositions, error: outsiderPositionError } = await outsider
+      .from("investment_positions")
+      .select("id")
+      .eq("id", purchasePosition.id);
+    assert.ifError(outsiderPositionError);
+    assert.deepEqual(outsiderPositions, []);
+    const { error: outsiderPurchaseActionInsertError } = await outsider.from("holding_actions").insert({
+      company_id: companyId,
+      income_year: 2025,
+      action_type: "share_purchase",
+      action_date: purchasePayload.acquisition_date,
+      payload: purchasePayload,
+      ledger_entry_id: purchaseEntry.id,
+      bank_transaction_id: purchaseBankTransaction.id,
+      document_id: purchaseDocumentId,
+      risk_level: "ready",
+      created_by: outsiderUser.id,
+    });
+    assert.ok(outsiderPurchaseActionInsertError);
+    const { error: outsiderPurchasePositionInsertError } = await outsider.from("investment_positions").insert({
+      company_id: companyId,
+      investment_key: "forbidden",
+      name: "Forbidden AS",
+      kind: "norwegian_private_company",
+      tax_treatment: "fritaksmetoden",
+      share_count: 1,
+      cost_basis: 1,
+      created_by: outsiderUser.id,
+    });
+    assert.ok(outsiderPurchasePositionInsertError);
 
     const manualJournal = validateManualJournal({
       warningAccepted: true,

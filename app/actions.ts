@@ -25,6 +25,7 @@ import {
 import { simulateRf1086SubmissionWithPython } from "./lib/rf1086-submission";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
+import { SharePurchaseValidationError, sharePurchaseLedgerLines, validateSharePurchase } from "./lib/share-purchase";
 import { createSupabaseServerClient, hasSupabaseEnv } from "./lib/supabase/server";
 
 function formString(formData: FormData, key: string) {
@@ -983,6 +984,176 @@ export async function recordDividendReceived(formData: FormData) {
     category: "ledger",
     action: "dividend_received_recorded",
     message: `Mottatt utbytte postert fra ${payload.paying_company_name} for ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function recordSharePurchase(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const bankTransactionId = formString(formData, "bankTransactionId") || null;
+  const documentId = formString(formData, "documentId") || null;
+  let payload;
+  try {
+    payload = validateSharePurchase({
+      investmentKey: formString(formData, "investmentKey"),
+      investmentName: formString(formData, "investmentName"),
+      investmentKind: formString(formData, "investmentKind") as "norwegian_private_company" | "simple_listed_security",
+      taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant",
+      acquisitionDate: formString(formData, "acquisitionDate"),
+      shareCount: Number(formString(formData, "shareCount")),
+      purchaseAmount: Number(formString(formData, "purchaseAmount")),
+      orgNumber: formString(formData, "orgNumber") || null,
+      bankTransactionId,
+      documentId,
+      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
+    });
+  } catch (error) {
+    const message =
+      error instanceof SharePurchaseValidationError
+        ? `${error.code}: ${error.message}`
+        : error instanceof Error
+          ? error.message
+          : "Ugyldig aksjekjøp";
+    redirect(`/?error=${encodeURIComponent(message)}`);
+  }
+
+  if (bankTransactionId) {
+    const { data: transaction, error: transactionError } = await supabase
+      .from("bank_transactions")
+      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
+      .eq("id", bankTransactionId)
+      .single();
+    if (transactionError || !transaction) {
+      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+    }
+    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
+      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+    }
+    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
+      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+    }
+    if (Number(transaction.amount) !== -payload.purchase_amount) {
+      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjekj%C3%B8pet");
+    }
+  }
+  if (documentId) {
+    const { data: document, error: documentError } = await supabase
+      .from("documents")
+      .select("id, company_id, income_year")
+      .eq("id", documentId)
+      .single();
+    if (documentError || !document) {
+      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+    }
+    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
+      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+    }
+  }
+
+  const lines = sharePurchaseLedgerLines(payload);
+  const { data: entry, error: entryError } = await supabase
+    .from("ledger_entries")
+    .insert({
+      company_id: companyId,
+      income_year: incomeYear,
+      entry_type: "share_purchase",
+      memo: `Share purchase: ${payload.investment_name}`,
+      lines,
+      risk_flags: [],
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (entryError || !entry) {
+    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjekjøp")}`);
+  }
+
+  const actionId = crypto.randomUUID();
+  const { error: actionError } = await supabase.from("holding_actions").insert({
+    id: actionId,
+    company_id: companyId,
+    income_year: incomeYear,
+    action_type: "share_purchase",
+    action_date: payload.acquisition_date,
+    payload,
+    ledger_entry_id: entry.id,
+    bank_transaction_id: bankTransactionId,
+    document_id: documentId,
+    risk_level: "ready",
+    created_by: user.id,
+  });
+  if (actionError) {
+    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+  }
+
+  const { data: existingPosition, error: existingPositionError } = await supabase
+    .from("investment_positions")
+    .select("id, share_count, cost_basis")
+    .eq("company_id", companyId)
+    .eq("investment_key", payload.investment_key)
+    .maybeSingle();
+  if (existingPositionError) {
+    redirect(`/?error=${encodeURIComponent(existingPositionError.message)}`);
+  }
+  if (existingPosition) {
+    const { error: positionUpdateError } = await supabase
+      .from("investment_positions")
+      .update({
+        share_count: Number(existingPosition.share_count) + payload.share_count,
+        cost_basis: Number(existingPosition.cost_basis) + payload.purchase_amount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingPosition.id);
+    if (positionUpdateError) {
+      redirect(`/?error=${encodeURIComponent(positionUpdateError.message)}`);
+    }
+  } else {
+    const { error: positionInsertError } = await supabase.from("investment_positions").insert({
+      company_id: companyId,
+      investment_key: payload.investment_key,
+      name: payload.investment_name,
+      kind: payload.investment_kind,
+      tax_treatment: payload.tax_treatment,
+      org_number: payload.org_number,
+      share_count: payload.share_count,
+      cost_basis: payload.purchase_amount,
+      created_by: user.id,
+    });
+    if (positionInsertError) {
+      redirect(`/?error=${encodeURIComponent(positionInsertError.message)}`);
+    }
+  }
+
+  if (bankTransactionId) {
+    const { error: matchError } = await supabase
+      .from("bank_transactions")
+      .update({ matched_action_id: actionId })
+      .eq("id", bankTransactionId);
+    if (matchError) {
+      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+    }
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "ledger",
+    action: "share_purchase_recorded",
+    message: `Aksjekjøp postert for ${payload.investment_name} i ${incomeYear}.`,
   });
 
   revalidatePath("/");
