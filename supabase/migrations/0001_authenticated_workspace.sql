@@ -77,6 +77,16 @@ create table if not exists public.opening_balance_setups (
   unique (company_id, income_year)
 );
 
+create table if not exists public.period_locks (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  income_year integer not null check (income_year between 2000 and 2100),
+  reason text not null check (reason <> ''),
+  locked_by uuid not null references auth.users(id) on delete restrict,
+  locked_at timestamptz not null default now(),
+  unique (company_id, income_year)
+);
+
 create table if not exists public.opening_shareholders (
   id uuid primary key default gen_random_uuid(),
   setup_id uuid not null references public.opening_balance_setups(id) on delete cascade,
@@ -196,6 +206,7 @@ create index if not exists company_memberships_user_id_idx on public.company_mem
 create index if not exists audit_events_company_id_created_at_idx on public.audit_events(company_id, created_at desc);
 create index if not exists documents_company_id_income_year_idx on public.documents(company_id, income_year);
 create index if not exists opening_balance_setups_company_id_year_idx on public.opening_balance_setups(company_id, income_year);
+create index if not exists period_locks_company_id_year_idx on public.period_locks(company_id, income_year);
 create index if not exists opening_shareholders_setup_id_idx on public.opening_shareholders(setup_id);
 create index if not exists ledger_entries_company_id_year_idx on public.ledger_entries(company_id, income_year);
 create index if not exists bank_transactions_company_id_year_idx on public.bank_transactions(company_id, income_year);
@@ -208,6 +219,7 @@ alter table public.company_memberships enable row level security;
 alter table public.audit_events enable row level security;
 alter table public.documents enable row level security;
 alter table public.opening_balance_setups enable row level security;
+alter table public.period_locks enable row level security;
 alter table public.opening_shareholders enable row level security;
 alter table public.ledger_entries enable row level security;
 alter table public.bank_transactions enable row level security;
@@ -221,6 +233,7 @@ grant select, insert, update on public.company_memberships to authenticated;
 grant select, insert on public.audit_events to authenticated;
 grant select, insert on public.documents to authenticated;
 grant select, insert on public.opening_balance_setups to authenticated;
+grant select, insert on public.period_locks to authenticated;
 grant select, insert on public.opening_shareholders to authenticated;
 grant select, insert on public.ledger_entries to authenticated;
 grant select, insert, update on public.bank_transactions to authenticated;
@@ -414,10 +427,44 @@ on public.opening_balance_setups for insert
 to authenticated
 with check (
   created_by = (select auth.uid())
+  and not exists (
+    select 1
+    from public.period_locks pl
+    where pl.company_id = opening_balance_setups.company_id
+      and pl.income_year = opening_balance_setups.income_year
+  )
   and exists (
     select 1
     from public.company_memberships m
     where m.company_id = opening_balance_setups.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+);
+
+drop policy if exists "company members can read period locks" on public.period_locks;
+create policy "company members can read period locks"
+on public.period_locks for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = period_locks.company_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "owners can create period locks" on public.period_locks;
+create policy "owners can create period locks"
+on public.period_locks for insert
+to authenticated
+with check (
+  locked_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = period_locks.company_id
       and m.user_id = (select auth.uid())
       and m.role = 'owner'
   )
@@ -470,6 +517,12 @@ on public.ledger_entries for insert
 to authenticated
 with check (
   created_by = (select auth.uid())
+  and not exists (
+    select 1
+    from public.period_locks pl
+    where pl.company_id = ledger_entries.company_id
+      and pl.income_year = ledger_entries.income_year
+  )
   and exists (
     select 1
     from public.company_memberships m
@@ -498,6 +551,12 @@ on public.bank_transactions for insert
 to authenticated
 with check (
   created_by = (select auth.uid())
+  and not exists (
+    select 1
+    from public.period_locks pl
+    where pl.company_id = bank_transactions.company_id
+      and pl.income_year = bank_transactions.income_year
+  )
   and exists (
     select 1
     from public.company_memberships m
@@ -522,6 +581,12 @@ using (
 )
 with check (
   created_by = (select auth.uid())
+  and not exists (
+    select 1
+    from public.period_locks pl
+    where pl.company_id = bank_transactions.company_id
+      and pl.income_year = bank_transactions.income_year
+  )
   and exists (
     select 1
     from public.company_memberships m

@@ -50,6 +50,15 @@ export type OpeningBalanceSetupRow = {
   created_by: string;
 };
 
+export type PeriodLockRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  reason: string;
+  locked_by: string;
+  locked_at: string;
+};
+
 export type OpeningShareholderRow = {
   id: string;
   setup_id: string;
@@ -225,6 +234,23 @@ export async function listOpeningSetups(companyIds: string[]) {
     setups: (setups ?? []) as OpeningBalanceSetupRow[],
     shareholders: (shareholders ?? []) as OpeningShareholderRow[],
     error: error?.message ?? shareholderError?.message ?? null,
+  };
+}
+
+export async function listPeriodLocks(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { locks: [] as PeriodLockRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("period_locks")
+    .select("id, company_id, income_year, reason, locked_by, locked_at")
+    .in("company_id", companyIds)
+    .order("locked_at", { ascending: false });
+
+  return {
+    locks: (data ?? []) as PeriodLockRow[],
+    error: error?.message ?? null,
   };
 }
 

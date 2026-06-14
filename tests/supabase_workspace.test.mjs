@@ -631,6 +631,120 @@ test(
     });
     assert.ok(outsiderManualEntryError);
 
+    const { data: periodLock, error: periodLockError } = await owner
+      .from("period_locks")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        reason: "Filing fullført og arkivert.",
+        locked_by: ownerUser.id,
+      })
+      .select("id, company_id, income_year, reason, locked_by, locked_at")
+      .single();
+    assert.ifError(periodLockError);
+    assert.equal(periodLock.company_id, companyId);
+    assert.equal(periodLock.income_year, 2025);
+    assert.equal(periodLock.locked_by, ownerUser.id);
+
+    const { error: periodLockAuditError } = await owner.from("audit_events").insert({
+      company_id: companyId,
+      actor_id: ownerUser.id,
+      category: "filing",
+      action: "period_locked",
+      message: "Inntektsår 2025 låst: Filing fullført og arkivert.",
+    });
+    assert.ifError(periodLockAuditError);
+
+    const { data: reloadedPeriodLocks, error: reloadedPeriodLockError } = await owner
+      .from("period_locks")
+      .select("id, income_year, reason")
+      .eq("company_id", companyId);
+    assert.ifError(reloadedPeriodLockError);
+    assert.deepEqual(reloadedPeriodLocks, [
+      {
+        id: periodLock.id,
+        income_year: 2025,
+        reason: "Filing fullført og arkivert.",
+      },
+    ]);
+
+    const { data: outsiderPeriodLocks, error: outsiderPeriodLockError } = await outsider
+      .from("period_locks")
+      .select("id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderPeriodLockError);
+    assert.deepEqual(outsiderPeriodLocks, []);
+
+    const { error: readOnlyPeriodLockError } = await readOnly.from("period_locks").insert({
+      company_id: companyId,
+      income_year: 2027,
+      reason: "Read-only should not lock.",
+      locked_by: readOnlyUser.id,
+    });
+    assert.ok(readOnlyPeriodLockError);
+
+    const { error: lockedBankImportError } = await owner.from("bank_transactions").insert({
+      company_id: companyId,
+      income_year: 2025,
+      transaction_date: "2025-12-31",
+      text: "Late locked import",
+      amount: -10,
+      balance: 29940,
+      source_hash: `locked-bank-${randomUUID()}`,
+      created_by: ownerUser.id,
+    });
+    assert.ok(lockedBankImportError);
+
+    const openTransaction = importedBankTransactions.find((transaction) => Number(transaction.amount) === 30000);
+    assert.ok(openTransaction);
+    const { data: lockedBankMatchRows, error: lockedBankMatchError } = await owner
+      .from("bank_transactions")
+      .update({ accepted_warning: true })
+      .eq("id", openTransaction.id)
+      .select("id");
+    assert.ok(lockedBankMatchError || lockedBankMatchRows.length === 0);
+
+    const { error: lockedAdminCostError } = await owner.from("ledger_entries").insert({
+      company_id: companyId,
+      income_year: 2025,
+      entry_type: "admin_cost",
+      memo: "Locked admin cost",
+      lines: adminCostLines,
+      created_by: ownerUser.id,
+    });
+    assert.ok(lockedAdminCostError);
+
+    const { error: lockedManualJournalError } = await owner.from("ledger_entries").insert({
+      company_id: companyId,
+      income_year: 2025,
+      entry_type: "manual_journal",
+      memo: "Locked manual journal",
+      lines: manualJournal.lines,
+      risk_flags: manualJournal.riskFlags,
+      warning_accepted_by: ownerUser.id,
+      warning_accepted_at: new Date().toISOString(),
+      created_by: ownerUser.id,
+    });
+    assert.ok(lockedManualJournalError);
+
+    const { error: periodLock2026Error } = await owner.from("period_locks").insert({
+      company_id: companyId,
+      income_year: 2026,
+      reason: "Approved prior-year migration boundary.",
+      locked_by: ownerUser.id,
+    });
+    assert.ifError(periodLock2026Error);
+    const { error: lockedOpeningSetupError } = await owner.from("opening_balance_setups").insert({
+      company_id: companyId,
+      income_year: 2026,
+      bank_balance: 30000,
+      share_capital: 30000,
+      share_count: 100,
+      nominal_value: 300,
+      created_by: ownerUser.id,
+    });
+    assert.ok(lockedOpeningSetupError);
+
     const documentId = randomUUID();
     const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
     const { error: uploadError } = await owner.storage

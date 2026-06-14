@@ -283,6 +283,50 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   redirect("/");
 }
 
+export async function lockCompanyYear(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const reason = formString(formData, "reason");
+  if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
+    redirect("/?error=Ugyldig%20inntekts%C3%A5r");
+  }
+  if (!reason) {
+    redirect("/?error=L%C3%A5se%C3%A5rsak%20mangler");
+  }
+
+  const { error } = await supabase.from("period_locks").insert({
+    company_id: companyId,
+    income_year: incomeYear,
+    reason,
+    locked_by: user.id,
+  });
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "filing",
+    action: "period_locked",
+    message: `Inntektsår ${incomeYear} låst: ${reason}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 export async function generateRf1086Preview(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/?error=Supabase%20env%20mangler");

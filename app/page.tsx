@@ -7,6 +7,7 @@ import {
   generateRf1086Preview,
   importBankCsv,
   inviteWorkspaceReviewer,
+  lockCompanyYear,
   postManualJournal,
   recordAdminCost,
   signIn,
@@ -26,6 +27,7 @@ import {
   listFilingSubmissions,
   listLedgerEntries,
   listOpeningSetups,
+  listPeriodLocks,
 } from "./lib/supabase/server";
 
 type HomeProps = {
@@ -58,6 +60,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
+  const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const primaryCompanyId = companies[0]?.id;
   const unmatchedTransactions = transactions.filter(
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
@@ -71,6 +74,7 @@ export default async function Home({ searchParams }: HomeProps) {
       ...previews.map((preview) => preview.income_year),
       ...submissions.map((submission) => submission.income_year),
       ...transactions.map((transaction) => transaction.income_year),
+      ...locks.map((lock) => lock.income_year),
     ]),
   ).sort((a, b) => b - a);
   const deadlines = incomeYears.flatMap((incomeYear) => buildDeadlineDashboard({ incomeYear, submissions }));
@@ -299,6 +303,44 @@ export default async function Home({ searchParams }: HomeProps) {
                       </form>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Periodelås</p>
+                  <h2>Steng inntektsår etter filing eller godkjenning.</h2>
+                </div>
+                <form className="dataPanel formPanel widePanel" action={lockCompanyYear}>
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Inntektsår
+                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                  </label>
+                  <label>
+                    Årsak
+                    <input name="reason" defaultValue="Filing fullført og arkivert" required />
+                  </label>
+                  <button className="primaryButton" type="submit">
+                    Lås inntektsår
+                  </button>
+                </form>
+                <div className="readinessGrid">
+                  {locks.map((lock) => (
+                    <div className="readinessItem" key={lock.id}>
+                      <span>{lock.income_year}</span>
+                      <strong data-status="ready">Låst</strong>
+                      <p>{lock.reason}</p>
+                      <p>Låst {new Date(lock.locked_at).toLocaleString("nb-NO")}</p>
+                    </div>
+                  ))}
+                  {locks.length === 0 ? (
+                    <div className="readinessItem">
+                      <span>Periode</span>
+                      <strong data-status="draft">Ingen lås</strong>
+                      <p>Lås et inntektsår når filinggrunnlaget ikke lenger skal endres.</p>
+                    </div>
+                  ) : null}
                 </div>
               </section>
 
