@@ -9,6 +9,7 @@
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
     "test:bank": "node --experimental-strip-types --test tests/bank_workflow.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
+    "test:deadlines": "node --experimental-strip-types --test tests/deadlines.test.mjs",
     "test:documents": "node --experimental-strip-types --test tests/documents.test.mjs",
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
     "test:rf1086:persisted": "node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs",

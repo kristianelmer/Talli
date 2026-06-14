@@ -10,6 +10,7 @@ import {
   signUp,
   uploadDocument,
 } from "./actions";
+import { buildDeadlineDashboard, deadlineStatusLabel } from "./lib/deadlines";
 import {
   getCurrentUser,
   hasSupabaseEnv,
@@ -56,6 +57,15 @@ export default async function Home({ searchParams }: HomeProps) {
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
   );
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
+  const incomeYears = Array.from(
+    new Set([
+      ...setups.map((setup) => setup.income_year),
+      ...previews.map((preview) => preview.income_year),
+      ...submissions.map((submission) => submission.income_year),
+      ...transactions.map((transaction) => transaction.income_year),
+    ]),
+  ).sort((a, b) => b - a);
+  const deadlines = incomeYears.flatMap((incomeYear) => buildDeadlineDashboard({ incomeYear, submissions }));
 
   return (
     <main className="shell">
@@ -348,6 +358,32 @@ export default async function Home({ searchParams }: HomeProps) {
                       <span>Kvittering</span>
                       <strong data-status="draft">Ikke arkivert</strong>
                       <p>Generer klar RF-1086 og bekreft simulert innsending.</p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Frister</p>
+                  <h2>Persistert filingstatus per inntektsår.</h2>
+                </div>
+                <div className="readinessGrid">
+                  {deadlines.map((deadline) => (
+                    <div className="readinessItem" key={`${deadline.incomeYear}-${deadline.filing}`}>
+                      <span>{deadline.deadline}</span>
+                      <strong data-status={deadline.status}>{deadlineStatusLabel(deadline.status)}</strong>
+                      <p>
+                        {deadline.filing} {deadline.incomeYear}
+                      </p>
+                      <p>{deadline.message}</p>
+                    </div>
+                  ))}
+                  {deadlines.length === 0 ? (
+                    <div className="readinessItem">
+                      <span>Frister</span>
+                      <strong data-status="draft">Ingen år</strong>
+                      <p>Lås åpningsbalanse for å beregne filingfrister.</p>
                     </div>
                   ) : null}
                 </div>
