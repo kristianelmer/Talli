@@ -1,4 +1,4 @@
-import { createCompanyWorkspace, demoWorkspace, readinessSummary } from "./lib/workspace.mjs";
+import { createCompanyWorkspace, demoWorkspace, readinessSummary, statusLabel } from "./lib/workspace.mjs";
 
 type Filing = {
   name: string;
@@ -54,9 +54,9 @@ export default function Home() {
         </div>
         <div className="navLinks">
           <a href="#oppsett">Oppsett</a>
-          <a href="#readiness">Readiness</a>
+          <a href="#filingstatus">Filingstatus</a>
           <a href="#dokumenter">Dokumenter</a>
-          <a href="#review">Review</a>
+          <a href="#gjennomgang">Gjennomgang</a>
         </div>
       </nav>
 
@@ -65,11 +65,11 @@ export default function Home() {
           <p className="eyebrow">Eierstyrt filing</p>
           <h1>{workspace.company.companyName}</h1>
           <p className="lede">
-            Årsloop for enkel holding AS: selskapsoppsett, holding actions, dokumenter,
-            readiness-gates og filing previews.
+            Årsloop for enkel holding AS: selskapsoppsett, holdinghandlinger, dokumenter,
+            filingstatus og filingforhåndsvisning.
           </p>
           <div className="actions">
-            <a className="primaryButton" href="#readiness">
+            <a className="primaryButton" href="#filingstatus">
               Se filing-status
             </a>
             <a className="secondaryButton" href="#oppsett">
@@ -119,16 +119,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="readiness" className="band mutedBand">
+      <section id="filingstatus" className="band mutedBand">
         <div className="sectionHeader">
-          <p className="eyebrow">Filing readiness</p>
+          <p className="eyebrow">Filingstatus</p>
           <h2>Separate gates, delt årsdata.</h2>
         </div>
         <div className="readinessGrid">
           {workspace.filings.map((filing) => (
             <div className="readinessItem" key={filing.name}>
               <span>{filing.name}</span>
-              <strong data-status={filing.status}>{filing.status}</strong>
+              <strong data-status={filing.status}>{statusLabel(filing.status)}</strong>
               {filing.issues.map((issue) => (
                 <p key={issue}>{issue}</p>
               ))}
@@ -139,11 +139,11 @@ export default function Home() {
 
       <section className="split">
         <div>
-          <p className="eyebrow">Owner workflow</p>
+          <p className="eyebrow">Eierløype</p>
           <h2>Ingen VAT, payroll eller faktura i første flate.</h2>
           <p>
             Webskallet holder seg til domenemotoren: enkel holding AS, strukturert årsdata,
-            dokumentstatus og review før eier sender inn.
+            dokumentstatus og gjennomgang før eier sender inn.
           </p>
         </div>
         <ol className="actionList">
@@ -163,21 +163,21 @@ export default function Home() {
             <div className="tableRow" key={document.id}>
               <span>{document.name}</span>
               <span>{document.linkedTo}</span>
-              <strong data-status="warning">{document.status}</strong>
+              <strong data-status="warning">{statusLabel(document.status)}</strong>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="review" className="archive">
-        <p className="eyebrow">Regnskapsfører-review</p>
+      <section id="gjennomgang" className="archive">
+        <p className="eyebrow">Regnskapsførergjennomgang</p>
         <h2>Kommentarer er rådgivende. Hard systemblokk stopper fortsatt filing.</h2>
         <div className="reviewList">
           {workspace.reviewComments.map((comment) => (
             <div className="reviewItem" key={comment.id}>
               <span>{comment.target}</span>
               <p>{comment.body}</p>
-              <strong>{comment.severity}</strong>
+              <strong>{statusLabel(comment.severity)}</strong>
             </div>
           ))}
         </div>

@@ -41,9 +41,9 @@ export function createCompanyWorkspace({ orgNumber, companyName, entityType }) {
     workflowSteps: [
       "Selskapsoppsett",
       "Åpningsbalanse",
-      "Holding actions",
+      "Holdinghandlinger",
       "Årsavslutning",
-      "Filing preview",
+      "Filingforhåndsvisning",
     ],
     documents: [],
     reviewers: [],
@@ -56,6 +56,23 @@ export function readinessSummary(workspace) {
   const warnings = workspace.filings.filter((filing) => filing.status === "warning").length;
   const ready = workspace.filings.filter((filing) => filing.status === "ready").length;
   return { blocked, warnings, ready, total: workspace.filings.length };
+}
+
+export function statusLabel(status) {
+  return (
+    {
+      ready: "Klar",
+      warning: "Advarsel",
+      blocked: "Blokkert",
+      draft: "Utkast",
+      filed: "Innsendt",
+      overdue: "Forfalt",
+      advisory: "Rådgivende",
+      hard_block: "Systemblokk",
+      missing_accepted_warning: "Mangler, akseptert med advarsel",
+      attached: "Vedlagt",
+    }[status] ?? status
+  );
 }
 
 export function attachDocument(workspace, actor, document) {

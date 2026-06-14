@@ -9,6 +9,7 @@ import {
   inviteReviewer,
   readinessSummary,
   roles,
+  statusLabel,
 } from "../app/lib/workspace.mjs";
 
 const owner = { id: "owner", role: roles.owner, companyOrgNumbers: ["314259521"] };
@@ -44,6 +45,9 @@ test("readiness summary counts filing states", () => {
     ready: 1,
     total: 3,
   });
+  assert.equal(statusLabel("blocked"), "Blokkert");
+  assert.equal(statusLabel("ready"), "Klar");
+  assert.equal(workspace.workflowSteps.includes("Holdinghandlinger"), true);
 });
 
 test("document workflow scopes upload to company owner", () => {
