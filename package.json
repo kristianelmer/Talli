@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:web": "node --test tests/web_workspace.test.mjs",
     "test:supabase": "node --test tests/supabase_workspace.test.mjs",
     "typecheck": "tsc --noEmit"

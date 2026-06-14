@@ -5,6 +5,9 @@ create table if not exists public.companies (
   org_number text not null unique check (org_number ~ '^[0-9]{9}$'),
   name text not null,
   entity_type text not null check (entity_type <> ''),
+  address text not null default '',
+  postal_code text not null default '',
+  city text not null default '',
   status_text text not null default '',
   source text not null default 'manual',
   created_by uuid not null references auth.users(id) on delete restrict,
@@ -14,6 +17,9 @@ create table if not exists public.companies (
 );
 
 alter table public.companies add column if not exists status_text text not null default '';
+alter table public.companies add column if not exists address text not null default '';
+alter table public.companies add column if not exists postal_code text not null default '';
+alter table public.companies add column if not exists city text not null default '';
 alter table public.companies add column if not exists source text not null default 'manual';
 alter table public.companies add column if not exists created_by uuid references auth.users(id) on delete restrict;
 alter table public.companies add column if not exists identity_confirmed_at timestamptz;

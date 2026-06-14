@@ -130,17 +130,13 @@ export default async function Home({ searchParams }: HomeProps) {
                 Organisasjonsnummer
                 <input name="orgNumber" inputMode="numeric" pattern="[0-9]{9}" required />
               </label>
-              <label>
-                Selskapsnavn
-                <input name="name" required />
-              </label>
-              <label>
-                Selskapsform
-                <input name="entityType" defaultValue="AS" required />
-              </label>
               <button className="primaryButton" type="submit">
-                Opprett arbeidsflate
+                Hent fra Brønnøysund og opprett
               </button>
+              <p>
+                Kun AS går videre. ENK, NUF, ASA og andre selskapsformer stoppes før
+                arbeidsflate opprettes.
+              </p>
             </form>
           </section>
 
@@ -157,7 +153,11 @@ export default async function Home({ searchParams }: HomeProps) {
                     <span>{company.org_number}</span>
                     <strong data-status={boundary.status}>{company.name}</strong>
                     <p>{boundary.message}</p>
-                    <p>Kilde: {company.source}</p>
+                    <p>
+                      {company.address ? `${company.address}, ` : ""}
+                      {company.postal_code} {company.city}
+                    </p>
+                    <p>Kilde: {company.source}. Innsendingsrett må fortsatt bekreftes i relevant myndighetsflyt.</p>
                   </div>
                 );
               })}

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { fetchBrregEntity } from "./lib/brreg";
 import { createSupabaseServerClient, hasSupabaseEnv } from "./lib/supabase/server";
 
 function formString(formData: FormData, key: string) {
@@ -62,23 +63,33 @@ export async function createWorkspace(formData: FormData) {
   }
 
   const orgNumber = formString(formData, "orgNumber");
-  const name = formString(formData, "name");
-  const entityType = formString(formData, "entityType").toUpperCase();
   if (!/^\d{9}$/.test(orgNumber)) {
     redirect("/?error=Organisasjonsnummer%20m%C3%A5%20ha%209%20sifre");
+  }
+  let identity;
+  try {
+    identity = await fetchBrregEntity(orgNumber);
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Brønnøysund-oppslag feilet")}`);
+  }
+  if (identity.entityType !== "AS") {
+    redirect(`/?error=${encodeURIComponent(`Talli støtter kun AS i første versjon. ${identity.name} er ${identity.entityType || "ukjent selskapsform"}.`)}`);
   }
 
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .insert({
-      org_number: orgNumber,
-      name,
-      entity_type: entityType,
-      status_text: entityType === "AS" ? "aktiv" : "blokkeres",
-      source: "manual",
+      org_number: identity.orgNumber,
+      name: identity.name,
+      entity_type: identity.entityType,
+      address: identity.address,
+      postal_code: identity.postalCode,
+      city: identity.city,
+      status_text: identity.statusText,
+      source: identity.source,
       created_by: user.id,
-      identity_confirmed_at: entityType === "AS" ? new Date().toISOString() : null,
-      identity_locked_at: entityType === "AS" ? new Date().toISOString() : null,
+      identity_confirmed_at: new Date().toISOString(),
+      identity_locked_at: new Date().toISOString(),
     })
     .select("id")
     .single();

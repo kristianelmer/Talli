@@ -6,6 +6,9 @@ export type CompanyWorkspaceRow = {
   org_number: string;
   name: string;
   entity_type: string;
+  address: string;
+  postal_code: string;
+  city: string;
   status_text: string;
   source: string;
   created_by: string;
@@ -61,7 +64,7 @@ export async function listCompanyWorkspaces() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("companies")
-    .select("id, org_number, name, entity_type, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
     .order("created_at", { ascending: false });
 
   return {
