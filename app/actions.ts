@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { fetchBrregEntity } from "./lib/brreg";
+import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
 import { createSupabaseServerClient, hasSupabaseEnv } from "./lib/supabase/server";
 
@@ -73,8 +73,10 @@ export async function createWorkspace(formData: FormData) {
   } catch (error) {
     redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Brønnøysund-oppslag feilet")}`);
   }
-  if (identity.entityType !== "AS") {
-    redirect(`/?error=${encodeURIComponent(`Talli støtter kun AS i første versjon. ${identity.name} er ${identity.entityType || "ukjent selskapsform"}.`)}`);
+  try {
+    assertSupportedBrregIdentity(identity);
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Selskapsform støttes ikke")}`);
   }
 
   const { data: company, error: companyError } = await supabase

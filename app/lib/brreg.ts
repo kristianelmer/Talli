@@ -67,3 +67,11 @@ export async function fetchBrregEntity(orgNumber: string, fetcher: typeof fetch 
   }
   return mapBrregEntity((await response.json()) as BrregEntityPayload);
 }
+
+export function assertSupportedBrregIdentity(identity: BrregCompanyIdentity) {
+  if (identity.entityType !== "AS") {
+    throw new Error(
+      `Talli støtter kun AS i første versjon. ${identity.name} er ${identity.entityType || "ukjent selskapsform"}.`,
+    );
+  }
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { fetchBrregEntity, mapBrregEntity } from "../app/lib/brreg.ts";
+import { assertSupportedBrregIdentity, fetchBrregEntity, mapBrregEntity } from "../app/lib/brreg.ts";
 
 test("maps Brønnøysund entity payload to locked company identity", () => {
   const identity = mapBrregEntity({
@@ -62,4 +62,21 @@ test("fetchBrregEntity accepts mocked AS payload", async () => {
 
   assert.equal(identity.entityType, "AS");
   assert.equal(identity.statusText, "under avvikling");
+});
+
+test("support boundary rejects non-AS Brønnøysund identity before workspace creation", () => {
+  assert.throws(
+    () =>
+      assertSupportedBrregIdentity({
+        orgNumber: "123456789",
+        name: "Demo ENK",
+        entityType: "ENK",
+        address: "",
+        postalCode: "",
+        city: "",
+        statusText: "aktiv",
+        source: "brreg",
+      }),
+    /kun AS/,
+  );
 });
