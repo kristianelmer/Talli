@@ -10,6 +10,7 @@ import pg from "pg";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../app/lib/documents.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+import { simulateRf1086SubmissionWithPython } from "../app/lib/rf1086-submission.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 
@@ -321,11 +322,93 @@ test(
         source: "python_rf1086_engine",
         created_by: ownerUser.id,
       })
-      .select("id, status, source")
+      .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
       .single();
     assert.ifError(filingPreviewError);
     assert.equal(filingPreview.status, "ready");
     assert.equal(filingPreview.source, "python_rf1086_engine");
+
+    const simulatedSubmission = simulateRf1086SubmissionWithPython(filingPreview, ownerUser.id, {
+      authorityConfirmed: true,
+      previewConfirmed: true,
+    });
+    assert.equal(simulatedSubmission.status, "receipt_stored");
+    const { data: filingSubmission, error: filingSubmissionError } = await owner
+      .from("filing_submissions")
+      .upsert(
+        {
+          preview_id: filingPreview.id,
+          company_id: companyId,
+          setup_id: setup.id,
+          income_year: 2025,
+          filing: filingPreview.filing,
+          mode: "simulation",
+          status: simulatedSubmission.status,
+          authority_confirmed_by: simulatedSubmission.authority_confirmed_by,
+          authority_confirmed_at: simulatedSubmission.authority_confirmed_at,
+          preview_confirmed_by: simulatedSubmission.preview_confirmed_by,
+          preview_confirmed_at: simulatedSubmission.preview_confirmed_at,
+          calls: simulatedSubmission.calls,
+          receipt_id: simulatedSubmission.receipt_id,
+          feedback_document_ids: simulatedSubmission.feedback_document_ids,
+          failure_code: simulatedSubmission.failure_code,
+          failure_message: simulatedSubmission.failure_message,
+          created_by: ownerUser.id,
+        },
+        { onConflict: "preview_id" },
+      )
+      .select("id, status, receipt_id, calls")
+      .single();
+    assert.ifError(filingSubmissionError);
+    assert.equal(filingSubmission.status, "receipt_stored");
+    assert.equal(filingSubmission.calls.length, 4);
+
+    const retrySubmission = simulateRf1086SubmissionWithPython(filingPreview, ownerUser.id, {
+      authorityConfirmed: true,
+      previewConfirmed: true,
+    });
+    const { error: retryError } = await owner.from("filing_submissions").upsert(
+      {
+        preview_id: filingPreview.id,
+        company_id: companyId,
+        setup_id: setup.id,
+        income_year: 2025,
+        filing: filingPreview.filing,
+        mode: "simulation",
+        status: retrySubmission.status,
+        authority_confirmed_by: retrySubmission.authority_confirmed_by,
+        authority_confirmed_at: retrySubmission.authority_confirmed_at,
+        preview_confirmed_by: retrySubmission.preview_confirmed_by,
+        preview_confirmed_at: retrySubmission.preview_confirmed_at,
+        calls: retrySubmission.calls,
+        receipt_id: retrySubmission.receipt_id,
+        feedback_document_ids: retrySubmission.feedback_document_ids,
+        failure_code: retrySubmission.failure_code,
+        failure_message: retrySubmission.failure_message,
+        created_by: ownerUser.id,
+      },
+      { onConflict: "preview_id" },
+    );
+    assert.ifError(retryError);
+    assert.deepEqual(
+      retrySubmission.calls.map((call) => call.idempotency_key),
+      simulatedSubmission.calls.map((call) => call.idempotency_key),
+    );
+
+    const { data: reloadedSubmissions, error: reloadSubmissionError } = await owner
+      .from("filing_submissions")
+      .select("id, receipt_id")
+      .eq("preview_id", filingPreview.id);
+    assert.ifError(reloadSubmissionError);
+    assert.equal(reloadedSubmissions.length, 1);
+    assert.equal(reloadedSubmissions[0].receipt_id, simulatedSubmission.receipt_id);
+
+    const { data: outsiderSubmissions, error: outsiderSubmissionError } = await outsider
+      .from("filing_submissions")
+      .select("id")
+      .eq("id", filingSubmission.id);
+    assert.ifError(outsiderSubmissionError);
+    assert.deepEqual(outsiderSubmissions, []);
 
     const { data: outsiderPreviews, error: outsiderPreviewError } = await outsider
       .from("filing_previews")

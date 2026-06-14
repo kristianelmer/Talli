@@ -70,8 +70,27 @@ export type FilingPreviewRow = {
   status: "ready" | "blocked" | "warning";
   issues: { level: string; code: string; message: string }[];
   preview: string;
+  hovedskjema_xml: string | null;
+  underskjema_xml: Record<string, string>;
   source: string;
   created_at: string;
+};
+
+export type FilingSubmissionRow = {
+  id: string;
+  preview_id: string;
+  company_id: string;
+  income_year: number;
+  filing: string;
+  mode: "simulation";
+  status: string;
+  calls: { endpoint: string; body_hash: string; idempotency_key: string; status: string; created_at: string }[];
+  receipt_id: string | null;
+  feedback_document_ids: string[];
+  authority_confirmed_at: string | null;
+  preview_confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export function hasSupabaseEnv() {
@@ -172,12 +191,29 @@ export async function listFilingPreviews(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("filing_previews")
-    .select("id, company_id, setup_id, income_year, filing, status, issues, preview, source, created_at")
+    .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
     .in("company_id", companyIds)
     .order("created_at", { ascending: false });
 
   return {
     previews: (data ?? []) as FilingPreviewRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listFilingSubmissions(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { submissions: [] as FilingSubmissionRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("filing_submissions")
+    .select("id, preview_id, company_id, income_year, filing, mode, status, calls, receipt_id, feedback_document_ids, authority_confirmed_at, preview_confirmed_at, created_at, updated_at")
+    .in("company_id", companyIds)
+    .order("updated_at", { ascending: false });
+
+  return {
+    submissions: (data ?? []) as FilingSubmissionRow[],
     error: error?.message ?? null,
   };
 }

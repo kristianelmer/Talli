@@ -270,6 +270,24 @@ h2 {
   white-space: pre-wrap;
 }
 
+.confirmationPanel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.confirmationPanel label {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin: 0;
+}
+
+.confirmationPanel input {
+  width: auto;
+}
+
 .formPanel {
   display: grid;
   gap: 14px;

@@ -9,6 +9,7 @@ import {
   openingBalanceLedgerLines,
   validateOpeningBalanceInput,
 } from "./lib/opening-balance";
+import { simulateRf1086SubmissionWithPython } from "./lib/rf1086-submission";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
 import { createSupabaseServerClient, hasSupabaseEnv } from "./lib/supabase/server";
 
@@ -343,6 +344,77 @@ export async function generateRf1086Preview(formData: FormData) {
     category: "filing",
     action: "rf1086_preview_generated",
     message: `RF-1086 forhåndsvisning generert for ${setup.income_year}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function confirmSimulatedRf1086Submission(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const previewId = formString(formData, "previewId");
+  const { data: preview, error: previewError } = await supabase
+    .from("filing_previews")
+    .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
+    .eq("id", previewId)
+    .single();
+  if (previewError || !preview) {
+    redirect(`/?error=${encodeURIComponent(previewError?.message ?? "Fant ikke RF-1086 forhåndsvisning")}`);
+  }
+
+  let simulated;
+  try {
+    simulated = simulateRf1086SubmissionWithPython(preview, user.id, {
+      authorityConfirmed: formData.get("authorityConfirmed") === "on",
+      previewConfirmed: formData.get("previewConfirmed") === "on",
+    });
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Simulert innsending feilet")}`);
+  }
+
+  const { error: upsertError } = await supabase.from("filing_submissions").upsert(
+    {
+      preview_id: preview.id,
+      company_id: preview.company_id,
+      setup_id: preview.setup_id,
+      income_year: preview.income_year,
+      filing: preview.filing,
+      mode: "simulation",
+      status: simulated.status,
+      authority_confirmed_by: simulated.authority_confirmed_by,
+      authority_confirmed_at: simulated.authority_confirmed_at,
+      preview_confirmed_by: simulated.preview_confirmed_by,
+      preview_confirmed_at: simulated.preview_confirmed_at,
+      calls: simulated.calls,
+      receipt_id: simulated.receipt_id,
+      feedback_document_ids: simulated.feedback_document_ids,
+      failure_code: simulated.failure_code,
+      failure_message: simulated.failure_message,
+      created_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "preview_id" },
+  );
+  if (upsertError) {
+    redirect(`/?error=${encodeURIComponent(upsertError.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: preview.company_id,
+    actor_id: user.id,
+    category: "filing",
+    action: "rf1086_simulated_receipt_archived",
+    message: `Simulert RF-1086-kvittering arkivert for ${preview.income_year}.`,
   });
 
   revalidatePath("/");

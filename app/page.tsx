@@ -1,4 +1,5 @@
 import {
+  confirmSimulatedRf1086Submission,
   createOpeningBalanceSetup,
   createWorkspace,
   generateRf1086Preview,
@@ -13,6 +14,7 @@ import {
   listCompanyWorkspaces,
   listDocumentsForCompanies,
   listFilingPreviews,
+  listFilingSubmissions,
   listOpeningSetups,
 } from "./lib/supabase/server";
 
@@ -42,6 +44,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
   const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
+  const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
 
   return (
     <main className="shell">
@@ -285,6 +288,22 @@ export default async function Home({ searchParams }: HomeProps) {
                         <p key={issue.code}>{issue.message}</p>
                       ))}
                       <pre>{preview.preview}</pre>
+                      {preview.status === "ready" ? (
+                        <form className="confirmationPanel" action={confirmSimulatedRf1086Submission}>
+                          <input name="previewId" type="hidden" value={preview.id} />
+                          <label>
+                            <input name="authorityConfirmed" type="checkbox" required />
+                            Jeg bekrefter rett til å sende inn for selskapet.
+                          </label>
+                          <label>
+                            <input name="previewConfirmed" type="checkbox" required />
+                            Jeg har kontrollert endelig forhåndsvisning.
+                          </label>
+                          <button className="secondaryButton" type="submit">
+                            Arkiver simulert kvittering
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   ))}
                   {previews.length === 0 ? (
@@ -292,6 +311,31 @@ export default async function Home({ searchParams }: HomeProps) {
                       <span>RF-1086</span>
                       <strong data-status="draft">Ikke generert</strong>
                       <p>Generer fra låst åpningsbalanse for å se filingstatus.</p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="band">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Simulert innsending</p>
+                  <h2>Arkivert kvittering uten live Altinn-innsending.</h2>
+                </div>
+                <div className="readinessGrid">
+                  {submissions.map((submission) => (
+                    <div className="readinessItem" key={submission.id}>
+                      <span>{submission.income_year}</span>
+                      <strong data-status={submission.status}>{submission.receipt_id ?? "Ingen kvittering"}</strong>
+                      <p>Kun simulering. Ingen live innsending er gjort.</p>
+                      <p>{submission.calls.length} simulerte API-kall forberedt.</p>
+                      <p>Bekreftet: {submission.preview_confirmed_at ? new Date(submission.preview_confirmed_at).toLocaleString("nb-NO") : "Nei"}</p>
+                    </div>
+                  ))}
+                  {submissions.length === 0 ? (
+                    <div className="readinessItem">
+                      <span>Kvittering</span>
+                      <strong data-status="draft">Ikke arkivert</strong>
+                      <p>Generer klar RF-1086 og bekreft simulert innsending.</p>
                     </div>
                   ) : null}
                 </div>

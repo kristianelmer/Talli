@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from holding_core.models import FilingCase
 from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
 from holding_core.rf1086 import filing_preview, generate_rf1086, write_rf1086
+from holding_core.submission import confirm_authority, confirm_preview, mark_submitted, prepare_submission, register_api_call, store_receipt
 from holding_core.validation import run_annual_compliance_validation, run_rf1086_validation
 
 
@@ -57,6 +58,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     render_rf1086.add_argument("--stdin-json", action="store_true", required=True)
 
+    simulate_rf1086_submission = subparsers.add_parser(
+        "simulate-rf1086-submission",
+        help="Prepare confirmed simulated RF-1086 submission and receipt from preview JSON on stdin",
+    )
+    simulate_rf1086_submission.add_argument("--stdin-json", action="store_true", required=True)
+
     args = parser.parse_args(argv)
     if args.command == "simulate-aksjonaerregister":
         return _simulate(args.case, args.out, args.preview)
@@ -70,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         return _validate_annual_public_data(args.case, args.json)
     if args.command == "render-rf1086-preview":
         return _render_rf1086_preview()
+    if args.command == "simulate-rf1086-submission":
+        return _simulate_rf1086_submission()
     return 2
 
 
@@ -193,6 +202,69 @@ def _render_rf1086_preview() -> int:
         payload["underskjemaXml"] = documents.underskjema_xml
     print(json.dumps(payload, ensure_ascii=False))
     return 0 if readiness.is_ready else 1
+
+
+def _simulate_rf1086_submission() -> int:
+    try:
+        payload = json.loads(sys.stdin.read())
+        if not payload.get("authority_confirmed"):
+            raise ValueError("authority confirmation is required before simulated submission")
+        if not payload.get("preview_confirmed"):
+            raise ValueError("final preview confirmation is required before simulated submission")
+        underskjema_xml = payload.get("underskjema_xml") or {}
+        if not isinstance(underskjema_xml, dict):
+            raise ValueError("underskjema_xml must be an object")
+
+        submission = prepare_submission(
+            filing=str(payload["filing"]),
+            company_id=str(payload["company_id"]),
+            income_year=int(payload["income_year"]),
+        )
+        submission = confirm_authority(submission, user_id=str(payload["user_id"]))
+        submission = confirm_preview(submission, user_id=str(payload["user_id"]))
+
+        preview_id = str(payload["preview_id"])
+        base_endpoint = f"/api/aksjonaerregister/v1/{submission.income_year}"
+        hovedskjema_id = f"simulated-{preview_id}"
+        submission = register_api_call(
+            submission,
+            endpoint=f"{base_endpoint}/1086H",
+            body={"content_type": "application/xml", "xml": str(payload["hovedskjema_xml"])},
+        )
+        for shareholder_id, xml in sorted(underskjema_xml.items()):
+            submission = register_api_call(
+                submission,
+                endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U/{shareholder_id}",
+                body={"content_type": "application/xml", "xml": str(xml)},
+            )
+        submission = register_api_call(
+            submission,
+            endpoint=f"{base_endpoint}/{hovedskjema_id}/bekreft",
+            body={"antall_underskjema": len(underskjema_xml)},
+        )
+        submission = register_api_call(
+            submission,
+            endpoint=f"{base_endpoint}/{hovedskjema_id}/dokumenter",
+            body={"page": 1, "max_forms": 50},
+        )
+        receipt_id = f"sim-rf1086-{submission.company_id}-{submission.income_year}-{preview_id[:8]}"
+        submission = store_receipt(
+            mark_submitted(submission, feedback_document_ids=(f"sim-feedback-{preview_id[:8]}",)),
+            receipt_id=receipt_id,
+        )
+        print(submission.model_dump_json())
+        return 0
+    except (KeyError, TypeError, ValueError) as error:
+        print(
+            json.dumps(
+                {
+                    "status": "failed_blocked",
+                    "failure_code": "simulation_input_blocked",
+                    "failure_message": str(error),
+                }
+            )
+        )
+        return 1
 
 
 def _load_case(case_path: str) -> FilingCase | None:
