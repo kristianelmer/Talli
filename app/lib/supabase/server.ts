@@ -93,6 +93,34 @@ export type FilingSubmissionRow = {
   updated_at: string;
 };
 
+export type LedgerEntryRow = {
+  id: string;
+  company_id: string;
+  setup_id: string | null;
+  income_year: number;
+  entry_type: string;
+  memo: string;
+  lines: unknown[];
+  created_by: string;
+  created_at: string;
+};
+
+export type BankTransactionRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  transaction_date: string;
+  text: string;
+  amount: number;
+  balance: number | null;
+  source_hash: string;
+  matched_entry_id: string | null;
+  matched_action_id: string | null;
+  accepted_warning: boolean;
+  created_by: string;
+  created_at: string;
+};
+
 export function hasSupabaseEnv() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
 }
@@ -214,6 +242,40 @@ export async function listFilingSubmissions(companyIds: string[]) {
 
   return {
     submissions: (data ?? []) as FilingSubmissionRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listBankTransactions(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { transactions: [] as BankTransactionRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("bank_transactions")
+    .select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("transaction_date", { ascending: false });
+
+  return {
+    transactions: (data ?? []) as BankTransactionRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listLedgerEntries(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { entries: [] as LedgerEntryRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("ledger_entries")
+    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: false });
+
+  return {
+    entries: (data ?? []) as LedgerEntryRow[],
     error: error?.message ?? null,
   };
 }

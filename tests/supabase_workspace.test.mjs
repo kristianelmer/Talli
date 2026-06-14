@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
+import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../app/lib/documents.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
@@ -417,6 +418,78 @@ test(
       .eq("id", filingPreview.id);
     assert.ifError(outsiderPreviewError);
     assert.deepEqual(outsiderPreviews, []);
+
+    const bankCsv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";
+    const parsedBank = parseBankCsv(bankCsv);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { error: bankImportError } = await owner.from("bank_transactions").upsert(
+        parsedBank.map((transaction) => ({
+          company_id: companyId,
+          income_year: 2025,
+          transaction_date: transaction.transactionDate,
+          text: transaction.text,
+          amount: transaction.amount,
+          balance: transaction.balance,
+          source_hash: transaction.sourceHash,
+          created_by: ownerUser.id,
+        })),
+        { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
+      );
+      assert.ifError(bankImportError);
+    }
+    const { data: importedBankTransactions, error: importedBankError } = await owner
+      .from("bank_transactions")
+      .select("id, amount, matched_entry_id, matched_action_id, accepted_warning")
+      .eq("company_id", companyId)
+      .eq("income_year", 2025)
+      .order("transaction_date", { ascending: true });
+    assert.ifError(importedBankError);
+    assert.equal(importedBankTransactions.length, 2);
+
+    const feeTransaction = importedBankTransactions.find((transaction) => Number(transaction.amount) === -50);
+    assert.ok(feeTransaction);
+    assertBankTransactionMatchesCost(Number(feeTransaction.amount), 50);
+    const adminCostLines = buildAdminCostLedgerLines({ category: "bank_fee", payee: "Bank", amount: 50 });
+    const { data: adminCostEntry, error: adminCostEntryError } = await owner
+      .from("ledger_entries")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        entry_type: "admin_cost",
+        memo: "Admin cost paid to Bank on 2025-01-03",
+        lines: adminCostLines,
+        created_by: ownerUser.id,
+      })
+      .select("id, entry_type, lines")
+      .single();
+    assert.ifError(adminCostEntryError);
+    assert.equal(adminCostEntry.entry_type, "admin_cost");
+    assert.deepEqual(adminCostEntry.lines, adminCostLines);
+
+    const { error: bankMatchError } = await owner
+      .from("bank_transactions")
+      .update({ matched_entry_id: adminCostEntry.id })
+      .eq("id", feeTransaction.id);
+    assert.ifError(bankMatchError);
+    const { data: reloadedBankTransactions, error: reloadedBankError } = await owner
+      .from("bank_transactions")
+      .select("id, matched_entry_id, matched_action_id, accepted_warning")
+      .eq("company_id", companyId)
+      .eq("income_year", 2025);
+    assert.ifError(reloadedBankError);
+    assert.equal(
+      reloadedBankTransactions.filter(
+        (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
+      ).length,
+      1,
+    );
+
+    const { data: outsiderBankTransactions, error: outsiderBankError } = await outsider
+      .from("bank_transactions")
+      .select("id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderBankError);
+    assert.deepEqual(outsiderBankTransactions, []);
 
     const documentId = randomUUID();
     const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");

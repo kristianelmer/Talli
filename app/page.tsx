@@ -3,6 +3,8 @@ import {
   createOpeningBalanceSetup,
   createWorkspace,
   generateRf1086Preview,
+  importBankCsv,
+  recordAdminCost,
   signIn,
   signOut,
   signUp,
@@ -11,10 +13,12 @@ import {
 import {
   getCurrentUser,
   hasSupabaseEnv,
+  listBankTransactions,
   listCompanyWorkspaces,
   listDocumentsForCompanies,
   listFilingPreviews,
   listFilingSubmissions,
+  listLedgerEntries,
   listOpeningSetups,
 } from "./lib/supabase/server";
 
@@ -45,6 +49,13 @@ export default async function Home({ searchParams }: HomeProps) {
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
   const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
+  const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
+  const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
+  const primaryCompanyId = companies[0]?.id;
+  const unmatchedTransactions = transactions.filter(
+    (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
+  );
+  const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
 
   return (
     <main className="shell">
@@ -377,6 +388,109 @@ export default async function Home({ searchParams }: HomeProps) {
                       <a href={`/documents/${document.id}/download`}>Signert nedlasting</a>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Bank og kostnader</p>
+                  <h2>Importer bank og avstem enkel administrasjonskostnad.</h2>
+                </div>
+                <div className="setupGrid">
+                  <form className="dataPanel formPanel" action={importBankCsv}>
+                    <span className="panelLabel">Bank CSV</span>
+                    <input name="companyId" type="hidden" value={primaryCompanyId} />
+                    <label>
+                      Inntektsår
+                      <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    </label>
+                    <label>
+                      CSV
+                      <textarea
+                        name="csvText"
+                        defaultValue={"date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950"}
+                        required
+                      />
+                    </label>
+                    <button className="primaryButton" type="submit">
+                      Importer bank
+                    </button>
+                  </form>
+
+                  <form className="dataPanel formPanel" action={recordAdminCost}>
+                    <span className="panelLabel">Administrasjonskostnad</span>
+                    <input name="companyId" type="hidden" value={primaryCompanyId} />
+                    <label>
+                      Inntektsår
+                      <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    </label>
+                    <label>
+                      Banktransaksjon
+                      <select name="bankTransactionId" required>
+                        <option value="">Velg uavstemt utbetaling</option>
+                        {unmatchedTransactions
+                          .filter((transaction) => Number(transaction.amount) < 0)
+                          .map((transaction) => (
+                            <option key={transaction.id} value={transaction.id}>
+                              {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label>
+                      Kategori
+                      <select name="category" defaultValue="bank_fee">
+                        <option value="bank_fee">Bankgebyr</option>
+                        <option value="accounting_fee">Regnskap</option>
+                        <option value="software">Programvare</option>
+                        <option value="public_fee">Offentlig gebyr</option>
+                        <option value="legal_advisory">Juridisk rådgivning</option>
+                        <option value="other_admin_cost">Annen administrasjon</option>
+                      </select>
+                    </label>
+                    <label>
+                      Mottaker
+                      <input name="payee" defaultValue="Bank" required />
+                    </label>
+                    <label>
+                      Betalt dato
+                      <input name="paidDate" defaultValue="2025-01-03" required />
+                    </label>
+                    <label>
+                      Beløp
+                      <input name="amount" inputMode="decimal" defaultValue="50" required />
+                    </label>
+                    <label>
+                      Bilag
+                      <select name="documentId" defaultValue="">
+                        <option value="">Ingen bilagskobling</option>
+                        {documents.map((document) => (
+                          <option key={document.id} value={document.id}>
+                            {document.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button className="secondaryButton" type="submit">
+                      Poster og avstem
+                    </button>
+                  </form>
+                </div>
+                <div className="readinessGrid">
+                  <div className="readinessItem">
+                    <span>Bank</span>
+                    <strong data-status={unmatchedTransactions.length ? "warning" : "ready"}>
+                      {unmatchedTransactions.length} uavstemt
+                    </strong>
+                    <p>{transactions.length} transaksjoner importert.</p>
+                  </div>
+                  <div className="readinessItem">
+                    <span>Kostnader</span>
+                    <strong data-status={adminCostEntries.length ? "ready" : "draft"}>
+                      {adminCostEntries.length} postert
+                    </strong>
+                    <p>Posterte administrasjonskostnader påvirker årsavslutning og arkivgrunnlag.</p>
+                  </div>
                 </div>
               </section>
             </>

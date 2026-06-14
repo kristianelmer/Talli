@@ -103,6 +103,23 @@ create table if not exists public.ledger_entries (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.bank_transactions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  income_year integer not null check (income_year between 2000 and 2100),
+  transaction_date date not null,
+  text text not null,
+  amount numeric not null,
+  balance numeric,
+  source_hash text not null,
+  matched_entry_id uuid references public.ledger_entries(id) on delete set null,
+  matched_action_id text,
+  accepted_warning boolean not null default false,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  unique (company_id, income_year, source_hash)
+);
+
 create table if not exists public.filing_previews (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -161,6 +178,7 @@ create index if not exists documents_company_id_income_year_idx on public.docume
 create index if not exists opening_balance_setups_company_id_year_idx on public.opening_balance_setups(company_id, income_year);
 create index if not exists opening_shareholders_setup_id_idx on public.opening_shareholders(setup_id);
 create index if not exists ledger_entries_company_id_year_idx on public.ledger_entries(company_id, income_year);
+create index if not exists bank_transactions_company_id_year_idx on public.bank_transactions(company_id, income_year);
 create index if not exists filing_previews_company_id_year_idx on public.filing_previews(company_id, income_year);
 create index if not exists filing_submissions_company_id_year_idx on public.filing_submissions(company_id, income_year);
 
@@ -171,6 +189,7 @@ alter table public.documents enable row level security;
 alter table public.opening_balance_setups enable row level security;
 alter table public.opening_shareholders enable row level security;
 alter table public.ledger_entries enable row level security;
+alter table public.bank_transactions enable row level security;
 alter table public.filing_previews enable row level security;
 alter table public.filing_submissions enable row level security;
 
@@ -182,6 +201,7 @@ grant select, insert on public.documents to authenticated;
 grant select, insert on public.opening_balance_setups to authenticated;
 grant select, insert on public.opening_shareholders to authenticated;
 grant select, insert on public.ledger_entries to authenticated;
+grant select, insert, update on public.bank_transactions to authenticated;
 grant select, insert on public.filing_previews to authenticated;
 grant select, insert, update on public.filing_submissions to authenticated;
 
@@ -416,6 +436,58 @@ with check (
     select 1
     from public.company_memberships m
     where m.company_id = ledger_entries.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+);
+
+drop policy if exists "company members can read bank transactions" on public.bank_transactions;
+create policy "company members can read bank transactions"
+on public.bank_transactions for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = bank_transactions.company_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "owners can create bank transactions" on public.bank_transactions;
+create policy "owners can create bank transactions"
+on public.bank_transactions for insert
+to authenticated
+with check (
+  created_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = bank_transactions.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+);
+
+drop policy if exists "owners can update bank transactions" on public.bank_transactions;
+create policy "owners can update bank transactions"
+on public.bank_transactions for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = bank_transactions.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+)
+with check (
+  created_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = bank_transactions.company_id
       and m.user_id = (select auth.uid())
       and m.role = 'owner'
   )

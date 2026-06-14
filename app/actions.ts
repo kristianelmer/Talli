@@ -2,6 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  AdminCostCategory,
+  assertBankTransactionMatchesCost,
+  buildAdminCostLedgerLines,
+  parseBankCsv,
+} from "./lib/bank";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
 import {
@@ -415,6 +421,144 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     category: "filing",
     action: "rf1086_simulated_receipt_archived",
     message: `Simulert RF-1086-kvittering arkivert for ${preview.income_year}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function importBankCsv(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const csvText = formString(formData, "csvText");
+  let transactions;
+  try {
+    transactions = parseBankCsv(csvText);
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Bank CSV kunne ikke leses")}`);
+  }
+  if (transactions.length === 0) {
+    redirect("/?error=Bank%20CSV%20mangler%20transaksjoner");
+  }
+
+  const { error: insertError } = await supabase.from("bank_transactions").upsert(
+    transactions.map((transaction) => ({
+      company_id: companyId,
+      income_year: incomeYear,
+      transaction_date: transaction.transactionDate,
+      text: transaction.text,
+      amount: transaction.amount,
+      balance: transaction.balance,
+      source_hash: transaction.sourceHash,
+      created_by: user.id,
+    })),
+    { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
+  );
+  if (insertError) {
+    redirect(`/?error=${encodeURIComponent(insertError.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "bank",
+    action: "bank_csv_imported",
+    message: `Bank CSV importert for ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function recordAdminCost(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const bankTransactionId = formString(formData, "bankTransactionId");
+  const category = formString(formData, "category") as AdminCostCategory;
+  const payee = formString(formData, "payee");
+  const amount = Number(formString(formData, "amount"));
+  const paidDate = formString(formData, "paidDate");
+  const documentId = formString(formData, "documentId");
+
+  const { data: transaction, error: transactionError } = await supabase
+    .from("bank_transactions")
+    .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
+    .eq("id", bankTransactionId)
+    .single();
+  if (transactionError || !transaction) {
+    redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+  }
+  if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
+    redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+  }
+  if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
+    redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+  }
+  try {
+    assertBankTransactionMatchesCost(Number(transaction.amount), amount);
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Bankmatch feilet")}`);
+  }
+
+  let lines;
+  try {
+    lines = buildAdminCostLedgerLines({ category, payee, amount });
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig administrasjonskostnad")}`);
+  }
+
+  const { data: entry, error: entryError } = await supabase
+    .from("ledger_entries")
+    .insert({
+      company_id: companyId,
+      income_year: incomeYear,
+      entry_type: "admin_cost",
+      memo: `Admin cost paid to ${payee} on ${paidDate || "unknown date"}${documentId ? ` (document ${documentId})` : ""}`,
+      lines,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (entryError || !entry) {
+    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere administrasjonskostnad")}`);
+  }
+
+  const { error: matchError } = await supabase
+    .from("bank_transactions")
+    .update({ matched_entry_id: entry.id })
+    .eq("id", bankTransactionId);
+  if (matchError) {
+    redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "bank",
+    action: "admin_cost_posted_and_matched",
+    message: `Administrasjonskostnad postert og avstemt for ${incomeYear}.`,
   });
 
   revalidatePath("/");
