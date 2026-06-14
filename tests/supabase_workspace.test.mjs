@@ -10,6 +10,7 @@ import pg from "pg";
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
 import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../app/lib/documents.ts";
+import { validateManualJournal } from "../app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import { simulateRf1086SubmissionWithPython } from "../app/lib/rf1086-submission.ts";
@@ -590,6 +591,46 @@ test(
     assert.ifError(outsiderBankError);
     assert.deepEqual(outsiderBankTransactions, []);
 
+    const manualJournal = validateManualJournal({
+      warningAccepted: true,
+      lines: [
+        { account: "1800", description: "Manual investment correction", debit: 100, credit: 0 },
+        { account: "1920", description: "Bank", debit: 0, credit: 100 },
+      ],
+    });
+    const { data: manualEntry, error: manualEntryError } = await owner
+      .from("ledger_entries")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        entry_type: "manual_journal",
+        memo: "Manual sensitive correction",
+        lines: manualJournal.lines,
+        risk_flags: manualJournal.riskFlags,
+        warning_accepted_by: ownerUser.id,
+        warning_accepted_at: new Date().toISOString(),
+        created_by: ownerUser.id,
+      })
+      .select("id, entry_type, risk_flags, warning_accepted_by")
+      .single();
+    assert.ifError(manualEntryError);
+    assert.equal(manualEntry.entry_type, "manual_journal");
+    assert.equal(manualEntry.risk_flags[0].account, "1800");
+    assert.equal(manualEntry.warning_accepted_by, ownerUser.id);
+
+    const { error: outsiderManualEntryError } = await outsider.from("ledger_entries").insert({
+      company_id: companyId,
+      income_year: 2025,
+      entry_type: "manual_journal",
+      memo: "Forbidden manual entry",
+      lines: manualJournal.lines,
+      risk_flags: manualJournal.riskFlags,
+      warning_accepted_by: outsiderUser.id,
+      warning_accepted_at: new Date().toISOString(),
+      created_by: outsiderUser.id,
+    });
+    assert.ok(outsiderManualEntryError);
+
     const documentId = randomUUID();
     const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
     const { error: uploadError } = await owner.storage
@@ -621,7 +662,7 @@ test(
 
     const { data: persistedLedgerEntries, error: persistedLedgerError } = await owner
       .from("ledger_entries")
-      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
+      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
       .eq("company_id", companyId)
       .eq("income_year", 2025);
     assert.ifError(persistedLedgerError);

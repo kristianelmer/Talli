@@ -98,10 +98,17 @@ create table if not exists public.ledger_entries (
   entry_type text not null,
   memo text not null,
   lines jsonb not null,
+  risk_flags jsonb not null default '[]'::jsonb,
+  warning_accepted_by uuid references auth.users(id) on delete restrict,
+  warning_accepted_at timestamptz,
   posted_at timestamptz not null default now(),
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now()
 );
+
+alter table public.ledger_entries add column if not exists risk_flags jsonb not null default '[]'::jsonb;
+alter table public.ledger_entries add column if not exists warning_accepted_by uuid references auth.users(id) on delete restrict;
+alter table public.ledger_entries add column if not exists warning_accepted_at timestamptz;
 
 create table if not exists public.bank_transactions (
   id uuid primary key default gen_random_uuid(),

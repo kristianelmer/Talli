@@ -101,6 +101,9 @@ export type LedgerEntryRow = {
   entry_type: string;
   memo: string;
   lines: unknown[];
+  risk_flags: { code: string; account?: string; message: string }[];
+  warning_accepted_by: string | null;
+  warning_accepted_at: string | null;
   created_by: string;
   created_at: string;
 };
@@ -283,7 +286,7 @@ export async function listLedgerEntries(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("ledger_entries")
-    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
+    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
     .in("company_id", companyIds)
     .order("created_at", { ascending: false });
 

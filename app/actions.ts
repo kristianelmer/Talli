@@ -10,6 +10,7 @@ import {
 } from "./lib/bank";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
+import { validateManualJournal } from "./lib/manual-journal";
 import {
   OpeningShareholderInput,
   openingBalanceLedgerLines,
@@ -718,6 +719,64 @@ export async function recordAdminCost(formData: FormData) {
     category: "bank",
     action: "admin_cost_posted_and_matched",
     message: `Administrasjonskostnad postert og avstemt for ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function postManualJournal(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const memo = formString(formData, "memo") || "Manuell journal";
+  let journal;
+  try {
+    journal = validateManualJournal({
+      warningAccepted: formData.get("warningAccepted") === "on",
+      lines: [0, 1].map((index) => ({
+        account: formString(formData, `account${index}`),
+        description: formString(formData, `description${index}`),
+        debit: Number(formString(formData, `debit${index}`) || "0"),
+        credit: Number(formString(formData, `credit${index}`) || "0"),
+      })),
+    });
+  } catch (error) {
+    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
+  }
+
+  const warningAcceptedAt = journal.riskFlags.length > 0 ? new Date().toISOString() : null;
+  const { error } = await supabase.from("ledger_entries").insert({
+    company_id: companyId,
+    income_year: incomeYear,
+    entry_type: "manual_journal",
+    memo,
+    lines: journal.lines,
+    risk_flags: journal.riskFlags,
+    warning_accepted_by: warningAcceptedAt ? user.id : null,
+    warning_accepted_at: warningAcceptedAt,
+    created_by: user.id,
+  });
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "ledger",
+    action: "manual_journal_posted",
+    message: `Manuell journal postert for ${incomeYear}.`,
   });
 
   revalidatePath("/");

@@ -11,6 +11,7 @@
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:deadlines": "node --experimental-strip-types --test tests/deadlines.test.mjs",
     "test:documents": "node --experimental-strip-types --test tests/documents.test.mjs",
+    "test:manual-journal": "node --experimental-strip-types --test tests/manual_journal.test.mjs",
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
     "test:review": "node --experimental-strip-types --test tests/review_workflow.test.mjs",
     "test:rf1086:persisted": "node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs",

@@ -7,6 +7,7 @@ import {
   generateRf1086Preview,
   importBankCsv,
   inviteWorkspaceReviewer,
+  postManualJournal,
   recordAdminCost,
   signIn,
   signOut,
@@ -62,6 +63,8 @@ export default async function Home({ searchParams }: HomeProps) {
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
   );
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
+  const manualJournalEntries = entries.filter((entry) => entry.entry_type === "manual_journal");
+  const manualJournalWarnings = manualJournalEntries.flatMap((entry) => entry.risk_flags ?? []);
   const incomeYears = Array.from(
     new Set([
       ...setups.map((setup) => setup.income_year),
@@ -585,6 +588,66 @@ export default async function Home({ searchParams }: HomeProps) {
                       {adminCostEntries.length} postert
                     </strong>
                     <p>Posterte administrasjonskostnader påvirker årsavslutning og arkivgrunnlag.</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="band">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Manuell journal</p>
+                  <h2>Escape hatch for sjeldne justeringer.</h2>
+                </div>
+                <form className="dataPanel formPanel widePanel" action={postManualJournal}>
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Inntektsår
+                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                  </label>
+                  <label>
+                    Memo
+                    <input name="memo" defaultValue="Manuell justering" required />
+                  </label>
+                  <label>
+                    Konto debet
+                    <input name="account0" defaultValue="7795" inputMode="numeric" required />
+                  </label>
+                  <label>
+                    Beskrivelse debet
+                    <input name="description0" defaultValue="Manuell kostnad" required />
+                  </label>
+                  <label>
+                    Debet
+                    <input name="debit0" inputMode="decimal" defaultValue="100" required />
+                  </label>
+                  <input name="credit0" type="hidden" value="0" />
+                  <label>
+                    Konto kredit
+                    <input name="account1" defaultValue="1920" inputMode="numeric" required />
+                  </label>
+                  <label>
+                    Beskrivelse kredit
+                    <input name="description1" defaultValue="Bank" required />
+                  </label>
+                  <input name="debit1" type="hidden" value="0" />
+                  <label>
+                    Kredit
+                    <input name="credit1" inputMode="decimal" defaultValue="100" required />
+                  </label>
+                  <label>
+                    <input name="warningAccepted" type="checkbox" />
+                    Jeg aksepterer at filing-sensitive kontoer kan redusere filing-tillit.
+                  </label>
+                  <button className="secondaryButton" type="submit">
+                    Poster manuell journal
+                  </button>
+                </form>
+                <div className="readinessGrid">
+                  <div className="readinessItem">
+                    <span>Unstructured</span>
+                    <strong data-status={manualJournalWarnings.length ? "warning" : "draft"}>
+                      {manualJournalEntries.length} journaler
+                    </strong>
+                    <p>{manualJournalWarnings.length} filing-sensitive advarsler.</p>
                   </div>
                 </div>
               </section>
