@@ -22,6 +22,12 @@ import {
   openingBalanceLedgerLines,
   validateOpeningBalanceInput,
 } from "./lib/opening-balance";
+import {
+  OwnerDividendValidationError,
+  ownerDividendCorporateDocumentRecords,
+  ownerDividendLedgerLines,
+  validateOwnerDividend,
+} from "./lib/owner-dividend";
 import { simulateRf1086SubmissionWithPython } from "./lib/rf1086-submission";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
@@ -1325,6 +1331,114 @@ export async function recordShareSale(formData: FormData) {
     category: "ledger",
     action: "share_sale_recorded",
     message: `Aksjesalg postert for ${payload.investment_name} i ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function recordOwnerDividend(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const shareholderId = formString(formData, "shareholderId");
+  const { data: shareholder, error: shareholderError } = await supabase
+    .from("opening_shareholders")
+    .select("id, company_id, name, share_count")
+    .eq("id", shareholderId)
+    .single();
+  if (shareholderError || !shareholder) {
+    redirect(`/?error=${encodeURIComponent(shareholderError?.message ?? "Fant ikke aksjonær")}`);
+  }
+  if (shareholder.company_id !== companyId) {
+    redirect("/?error=Aksjon%C3%A6ren%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+  }
+
+  let payload;
+  try {
+    payload = validateOwnerDividend({
+      decisionDate: formString(formData, "decisionDate"),
+      paymentDate: formString(formData, "paymentDate"),
+      totalAmount: Number(formString(formData, "totalAmount")),
+      distributableEquity: Number(formString(formData, "distributableEquity")),
+      liquidityAfterPayment: Number(formString(formData, "liquidityAfterPayment")),
+      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
+      allocations: [
+        {
+          shareholderId: shareholder.id,
+          shareholderName: shareholder.name,
+          shareCount: Number(shareholder.share_count),
+          amount: Number(formString(formData, "allocationAmount")),
+        },
+      ],
+    });
+  } catch (error) {
+    const message =
+      error instanceof OwnerDividendValidationError
+        ? `${error.code}: ${error.message}`
+        : error instanceof Error
+          ? error.message
+          : "Ugyldig eierutbytte";
+    redirect(`/?error=${encodeURIComponent(message)}`);
+  }
+
+  const lines = ownerDividendLedgerLines(payload);
+  const { data: entry, error: entryError } = await supabase
+    .from("ledger_entries")
+    .insert({
+      company_id: companyId,
+      income_year: incomeYear,
+      entry_type: "dividend_to_owner",
+      memo: "Cash dividend paid to shareholders",
+      lines,
+      risk_flags: [],
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (entryError || !entry) {
+    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere eierutbytte")}`);
+  }
+
+  const actionId = crypto.randomUUID();
+  const { error: actionError } = await supabase.from("holding_actions").insert({
+    id: actionId,
+    company_id: companyId,
+    income_year: incomeYear,
+    action_type: "dividend_to_owner",
+    action_date: payload.payment_date,
+    payload,
+    ledger_entry_id: entry.id,
+    risk_level: "ready",
+    created_by: user.id,
+  });
+  if (actionError) {
+    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+  }
+
+  const { error: documentError } = await supabase
+    .from("documents")
+    .insert(ownerDividendCorporateDocumentRecords(companyId, incomeYear, actionId, user.id));
+  if (documentError) {
+    redirect(`/?error=${encodeURIComponent(documentError.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "ledger",
+    action: "dividend_to_owner_recorded",
+    message: `Eierutbytte postert for ${incomeYear}.`,
   });
 
   revalidatePath("/");

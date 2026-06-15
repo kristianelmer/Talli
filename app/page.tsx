@@ -12,6 +12,7 @@ import {
   postManualJournal,
   recordAdminCost,
   recordDividendReceived,
+  recordOwnerDividend,
   recordSharePurchase,
   recordShareSale,
   signIn,
@@ -77,6 +78,7 @@ export default async function Home({ searchParams }: HomeProps) {
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
   );
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
+  const primaryShareholders = shareholders.filter((shareholder) => shareholder.company_id === primaryCompanyId);
   const dividendReceivedActions = actions.filter((action) => action.action_type === "dividend_received");
   const dividendAnnualImpact = summarizeDividendReceivedAnnualImpact(
     dividendReceivedActions.map((action) => ({
@@ -985,6 +987,75 @@ export default async function Home({ searchParams }: HomeProps) {
                     Poster aksjesalg
                   </button>
                 </form>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Eierutbytte</p>
+                  <h2>Poster utbytte til aksjonær og opprett selskapsdokumenter.</h2>
+                </div>
+                <form className="dataPanel formPanel widePanel" action={recordOwnerDividend}>
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Inntektsår
+                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                  </label>
+                  <label>
+                    Aksjonær
+                    <select name="shareholderId" required>
+                      <option value="">Velg aksjonær</option>
+                      {primaryShareholders.map((shareholder) => (
+                        <option key={shareholder.id} value={shareholder.id}>
+                          {shareholder.name} ({shareholder.share_count} aksjer)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Beslutningsdato
+                    <input name="decisionDate" defaultValue="2025-06-01" required />
+                  </label>
+                  <label>
+                    Betalingsdato
+                    <input name="paymentDate" defaultValue="2025-06-15" required />
+                  </label>
+                  <label>
+                    Totalutbytte
+                    <input name="totalAmount" inputMode="decimal" defaultValue="1000" required />
+                  </label>
+                  <label>
+                    Allokert beløp
+                    <input name="allocationAmount" inputMode="decimal" defaultValue="1000" required />
+                  </label>
+                  <label>
+                    Fri egenkapital
+                    <input name="distributableEquity" inputMode="decimal" defaultValue="5000" required />
+                  </label>
+                  <label>
+                    Likviditet etter betaling
+                    <input name="liquidityAfterPayment" inputMode="decimal" defaultValue="1000" required />
+                  </label>
+                  <label>
+                    Dokumentstatus
+                    <select name="documentStatus" defaultValue="missing_accepted_warning">
+                      <option value="attached">Vedlagt</option>
+                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
+                      <option value="not_required">Ikke påkrevd</option>
+                    </select>
+                  </label>
+                  <button className="secondaryButton" type="submit">
+                    Poster eierutbytte
+                  </button>
+                </form>
+                <div className="readinessGrid">
+                  <div className="readinessItem">
+                    <span>Selskapsdokumenter</span>
+                    <strong data-status={documents.some((document) => document.linked_to && document.document_type === "corporate_document") ? "warning" : "draft"}>
+                      {documents.filter((document) => document.document_type === "corporate_document").length}
+                    </strong>
+                    <p>Styreforslag og generalforsamlingsprotokoll opprettes som arkivklare placeholders.</p>
+                  </div>
+                </div>
               </section>
 
               <section className="band">

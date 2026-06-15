@@ -141,7 +141,7 @@ create table if not exists public.holding_actions (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   income_year integer not null check (income_year between 2000 and 2100),
-  action_type text not null check (action_type in ('dividend_received', 'share_purchase', 'share_sale')),
+  action_type text not null check (action_type in ('dividend_received', 'share_purchase', 'share_sale', 'dividend_to_owner')),
   action_date date not null,
   payload jsonb not null default '{}'::jsonb,
   ledger_entry_id uuid references public.ledger_entries(id) on delete restrict,
@@ -155,7 +155,7 @@ create table if not exists public.holding_actions (
 
 alter table public.holding_actions drop constraint if exists holding_actions_action_type_check;
 alter table public.holding_actions
-  add constraint holding_actions_action_type_check check (action_type in ('dividend_received', 'share_purchase', 'share_sale'));
+  add constraint holding_actions_action_type_check check (action_type in ('dividend_received', 'share_purchase', 'share_sale', 'dividend_to_owner'));
 
 create table if not exists public.investment_positions (
   id uuid primary key default gen_random_uuid(),

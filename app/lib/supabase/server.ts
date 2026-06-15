@@ -154,7 +154,7 @@ export type HoldingActionRow = {
   id: string;
   company_id: string;
   income_year: number;
-  action_type: "dividend_received" | "share_purchase" | "share_sale";
+  action_type: "dividend_received" | "share_purchase" | "share_sale" | "dividend_to_owner";
   action_date: string;
   payload: Record<string, unknown>;
   ledger_entry_id: string | null;
