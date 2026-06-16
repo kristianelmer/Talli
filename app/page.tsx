@@ -908,6 +908,17 @@ export default async function Home({ searchParams }: HomeProps) {
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
+                  <label>
+                    Årsverk
+                    <input
+                      name="annualFullTimeEquivalents"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      defaultValue={primaryAnnualData?.annual_full_time_equivalents ?? 0}
+                      required
+                    />
+                  </label>
                   {[
                     ["shares_owned_at_year_end", "Selskapet eide aksjer ved årsslutt"],
                     ["bought_or_sold_shares", "Kjøpte eller solgte aksjer"],

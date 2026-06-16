@@ -2161,6 +2161,10 @@ export async function saveYearEndInterview(formData: FormData) {
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const annualFullTimeEquivalents = Number(formString(formData, "annualFullTimeEquivalents") || "0");
+  if (!Number.isFinite(annualFullTimeEquivalents) || annualFullTimeEquivalents < 0) {
+    redirect("/?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
+  }
   const answers = buildYearEndInterviewAnswers(
     Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
   );
@@ -2180,6 +2184,7 @@ export async function saveYearEndInterview(formData: FormData) {
       answers,
       confirmations,
       no_activity_confirmed: noActivity,
+      annual_full_time_equivalents: annualFullTimeEquivalents,
       completed_by: user.id,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
@@ -2246,7 +2251,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
+    supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
     supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),

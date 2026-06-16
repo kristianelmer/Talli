@@ -1,5 +1,6 @@
 import type { AuthorityObligation, AuthorityPermission } from "./authority-permission.ts";
 import { productionAuthorityGate } from "./authority-permission.ts";
+import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
 import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
 import type {
@@ -232,6 +233,13 @@ function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[]
   }
   if (input.annualData && !input.annualData.answers.general_meeting_approved) {
     issues.push(block("general_meeting_not_approved", "Generalforsamling må godkjenne årsregnskapet.", "annual_data"));
+  }
+  for (const feedback of annualAccountsPayloadFeedback(input.annualData)) {
+    if (feedback.level === "block") {
+      issues.push(block(feedback.code, feedback.message, feedback.source));
+    } else {
+      issues.push(warning(feedback.code, feedback.message, feedback.source, false));
+    }
   }
   const unacceptedManualWarnings = input.ledgerEntries.filter(
     (entry) =>

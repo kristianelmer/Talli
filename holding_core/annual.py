@@ -63,6 +63,14 @@ class AnnualData(BaseModel):
     posted_entries: tuple[PostedEntry, ...]
     documents: tuple[DocumentRecord, ...] = ()
     confirmations: tuple[str, ...] = ()
+    annual_full_time_equivalents: float | None = 0
+    audit_required: bool = False
+    small_enterprise: bool = True
+    annual_report_required: bool = False
+    cash_flow_statement_required: bool = False
+    sustainability_reporting_required: bool = False
+    fiscal_year_is_calendar_year: bool = True
+    prior_year_figures_confirmed: bool = True
 
     def account_balance(self, account: str) -> float:
         debit = sum(line.debit for entry in self.posted_entries for line in entry.lines if line.account == account)
@@ -130,6 +138,45 @@ class FilingSimulation(BaseModel):
     preview: str
     readiness: AnnualReadinessResult
     simulated_receipt_id: str | None = None
+    payload: dict | None = None
+
+
+class Rr0002Field(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tag: str
+    orid: str
+    value: str | float | int
+    source: str
+
+
+class AnnualAccountsNotePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    annual_full_time_equivalents: float
+    confirmations: tuple[str, ...]
+
+
+class AnnualAccountsAttachmentDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    required: bool
+    code: str
+    message: str
+
+
+class AnnualAccountsPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_type: str
+    hovedskjema_data_format_id: str
+    hovedskjema_data_format_version: str
+    selskapsregnskap_data_format_id: str
+    selskapsregnskap_data_format_version: str
+    fields: tuple[Rr0002Field, ...]
+    notes: AnnualAccountsNotePayload
+    attachment_decisions: tuple[AnnualAccountsAttachmentDecision, ...]
+    feedback_items: tuple[AnnualReadinessIssue, ...]
 
 
 class CompanyArchive(BaseModel):
@@ -154,6 +201,14 @@ def build_annual_data(
     posted_entries: tuple[PostedEntry, ...],
     documents: tuple[DocumentRecord, ...] = (),
     confirmations: tuple[str, ...] = (),
+    annual_full_time_equivalents: float | None = 0,
+    audit_required: bool = False,
+    small_enterprise: bool = True,
+    annual_report_required: bool = False,
+    cash_flow_statement_required: bool = False,
+    sustainability_reporting_required: bool = False,
+    fiscal_year_is_calendar_year: bool = True,
+    prior_year_figures_confirmed: bool = True,
 ) -> AnnualData:
     return AnnualData(
         company_id=company_id,
@@ -162,6 +217,14 @@ def build_annual_data(
         posted_entries=posted_entries,
         documents=documents,
         confirmations=confirmations,
+        annual_full_time_equivalents=annual_full_time_equivalents,
+        audit_required=audit_required,
+        small_enterprise=small_enterprise,
+        annual_report_required=annual_report_required,
+        cash_flow_statement_required=cash_flow_statement_required,
+        sustainability_reporting_required=sustainability_reporting_required,
+        fiscal_year_is_calendar_year=fiscal_year_is_calendar_year,
+        prior_year_figures_confirmed=prior_year_figures_confirmed,
     )
 
 
@@ -171,6 +234,7 @@ def assess_annual_accounts_readiness(data: AnnualData) -> AnnualReadinessResult:
         issues.append(_error("general_meeting_not_approved", "Generalforsamling må godkjenne årsregnskapet før filing."))
     if data.bank_balance < 0:
         issues.append(_error("negative_bank_balance", "Bankbalanse kan ikke være negativ i enkel holdingselskapssimulering."))
+    issues.extend(_annual_accounts_payload_issues(data))
     return _result("årsregnskap", issues)
 
 
@@ -183,10 +247,12 @@ def assess_tax_return_readiness(data: AnnualData) -> AnnualReadinessResult:
 
 def simulate_annual_accounts(data: AnnualData) -> FilingSimulation:
     readiness = assess_annual_accounts_readiness(data)
+    payload = build_annual_accounts_payload(data)
     preview = "\n".join(
         [
             f"Årsregnskap {data.income_year}",
             f"Selskap: {data.company_id}",
+            f"Schema: {payload.schema_type}",
             "",
             "Balanse:",
             f"- Bank: {_money(data.bank_balance)}",
@@ -199,6 +265,10 @@ def simulate_annual_accounts(data: AnnualData) -> FilingSimulation:
             f"- Utbytte/gevinster: {_money(data.dividend_income)}",
             f"- Administrasjonskostnader: {_money(data.admin_costs)}",
             f"- Resultat før skatt: {_money(data.result_before_tax)}",
+            "",
+            "Noter/vedlegg:",
+            f"- Årsverk: {payload.notes.annual_full_time_equivalents:g}",
+            f"- Vedleggsbeslutninger: {len(payload.attachment_decisions)}",
         ]
     )
     return FilingSimulation(
@@ -206,6 +276,25 @@ def simulate_annual_accounts(data: AnnualData) -> FilingSimulation:
         preview=preview + "\n",
         readiness=readiness,
         simulated_receipt_id=f"sim-arsregnskap-{data.company_id}-{data.income_year}" if readiness.is_ready else None,
+        payload=payload.model_dump(mode="json"),
+    )
+
+
+def build_annual_accounts_payload(data: AnnualData) -> AnnualAccountsPayload:
+    feedback_items = tuple(_annual_accounts_payload_issues(data))
+    return AnnualAccountsPayload(
+        schema_type="aarsregnskap-vanlig-202406",
+        hovedskjema_data_format_id="1266",
+        hovedskjema_data_format_version="51820",
+        selskapsregnskap_data_format_id="758",
+        selskapsregnskap_data_format_version="51980",
+        fields=tuple(_rr0002_fields(data)),
+        notes=AnnualAccountsNotePayload(
+            annual_full_time_equivalents=float(data.annual_full_time_equivalents or 0),
+            confirmations=tuple(data.confirmations),
+        ),
+        attachment_decisions=tuple(_annual_accounts_attachment_decisions(data)),
+        feedback_items=feedback_items,
     )
 
 
@@ -273,6 +362,106 @@ def _common_issues(data: AnnualData) -> list[AnnualReadinessIssue]:
     if any(document.status.startswith("missing") for document in data.documents):
         issues.append(_warning("missing_documents", "Ett eller flere dokumenter mangler eller er akseptert med advarsel."))
     return issues
+
+
+def _annual_accounts_payload_issues(data: AnnualData) -> list[AnnualReadinessIssue]:
+    issues: list[AnnualReadinessIssue] = []
+    if data.annual_full_time_equivalents is None:
+        issues.append(_error("annual_accounts_aarsverk_missing", "Årsverk må oppgis i årsregnskapsnoten."))
+    elif data.annual_full_time_equivalents < 0:
+        issues.append(_error("annual_accounts_aarsverk_negative", "Årsverk kan ikke være negativt."))
+    if data.audit_required:
+        issues.append(_error("annual_accounts_audit_required", "Revisjonsplikt er utenfor enkel holding-AS-løype."))
+    if not data.small_enterprise:
+        issues.append(_error("annual_accounts_not_small_enterprise", "Ikke-små foretak krever utvidet årsregnskapsmodell."))
+    if data.annual_report_required:
+        issues.append(_error("annual_accounts_annual_report_required", "Årsberetning er ikke støttet i første årsregnskapsløype."))
+    if data.cash_flow_statement_required:
+        issues.append(_error("annual_accounts_cash_flow_required", "Kontantstrømoppstilling er ikke støttet i første årsregnskapsløype."))
+    if data.sustainability_reporting_required:
+        issues.append(_error("annual_accounts_sustainability_required", "Bærekraftsrapportering er ikke støttet i første årsregnskapsløype."))
+    if not data.fiscal_year_is_calendar_year:
+        issues.append(_error("annual_accounts_non_calendar_year", "Avvikende regnskapsår er ikke støttet i første årsregnskapsløype."))
+    if not data.prior_year_figures_confirmed:
+        issues.append(_error("annual_accounts_prior_year_missing", "Fjorårstall må bekreftes før RR-0002 payload kan bygges."))
+    return issues
+
+
+def _annual_accounts_attachment_decisions(data: AnnualData) -> list[AnnualAccountsAttachmentDecision]:
+    decisions = [
+        AnnualAccountsAttachmentDecision(
+            required=data.audit_required,
+            code="auditor_report",
+            message="Revisjonsberetning kreves ved revisjonsplikt.",
+        ),
+        AnnualAccountsAttachmentDecision(
+            required=data.annual_report_required,
+            code="annual_report",
+            message="Årsberetning kreves utenfor småforetaksløypen.",
+        ),
+        AnnualAccountsAttachmentDecision(
+            required=data.cash_flow_statement_required,
+            code="cash_flow_statement",
+            message="Kontantstrømoppstilling kreves utenfor enkel småforetaksløype.",
+        ),
+        AnnualAccountsAttachmentDecision(
+            required=data.sustainability_reporting_required,
+            code="sustainability_report",
+            message="Bærekraftsrapportering er utenfor launch-scope.",
+        ),
+    ]
+    if not any(decision.required for decision in decisions):
+        decisions.append(
+            AnnualAccountsAttachmentDecision(
+                required=False,
+                code="small_holding_no_extra_attachment",
+                message="Ingen ekstra vedlegg kreves for støttet små holding-AS før TT02-validering sier noe annet.",
+            )
+        )
+    return decisions
+
+
+def _rr0002_fields(data: AnnualData) -> list[Rr0002Field]:
+    result_before_tax = data.result_before_tax
+    annual_result = result_before_tax
+    sum_financial_assets = data.investment_balance
+    sum_current_assets = data.bank_balance
+    sum_assets = round(sum_financial_assets + sum_current_assets, 2)
+    sum_paid_in_equity = data.share_capital
+    retained = round(data.retained_earnings + annual_result, 2)
+    sum_equity = round(sum_paid_in_equity + retained, 2)
+    short_term_debt = data.shareholder_loan_payable
+    sum_debt = short_term_debt
+    return [
+        _field("regnskapsaar", "17102", data.income_year, "company.income_year"),
+        _field("regnskapsstart", "17103", f"{data.income_year}-01-01", "calendar_year"),
+        _field("regnskapsslutt", "17104", f"{data.income_year}-12-31", "calendar_year"),
+        _field("aarsregnskapIkkeRevideres", "34669", "ja" if not data.audit_required else "nei", "annual_accounts.audit_required"),
+        _field("valuta", "34984", "NOK", "launch_currency"),
+        _field("sumDriftskostnad/aarets", "17126", data.admin_costs, "ledger.expense_accounts"),
+        _field("sumFinansinntekter/aarets", "153", data.dividend_income, "ledger.8070"),
+        _field("sumFinanskostnader/aarets", "17130", 0, "launch_scope"),
+        _field("resultatFoerSkattekostnad/aarets", "167", result_before_tax, "derived"),
+        _field("aarsresultat/aarets", "172", annual_result, "derived"),
+        _field("investeringAksjerAndeler/aarets", "7100", data.investment_balance, "ledger.1800"),
+        _field("sumFinansielleAnleggsmidler/aarets", "5267", sum_financial_assets, "derived"),
+        _field("sumBankinnskuddKontanter/aarets", "29042", data.bank_balance, "ledger.1920"),
+        _field("sumOmloepsmidler/aarets", "194", sum_current_assets, "derived"),
+        _field("sumEiendeler/aarets", "219", sum_assets, "derived"),
+        _field("sumInnskuttEgenkapital/aarets", "3730", sum_paid_in_equity, "ledger.2000"),
+        _field("annenEgenkapital/aarets", "3274", retained, "ledger.2050_and_result"),
+        _field("sumOpptjentEgenkapital/aarets", "9702", retained, "derived"),
+        _field("sumEgenkapital/aarets", "250", sum_equity, "derived"),
+        _field("sumKortsiktigGjeld/aarets", "85", short_term_debt, "ledger.2255"),
+        _field("sumGjeld/aarets", "1119", sum_debt, "derived"),
+        _field("antallAarsverk", "37467", data.annual_full_time_equivalents or 0, "annual_accounts.notes"),
+    ]
+
+
+def _field(tag: str, orid: str, value: str | float | int, source: str) -> Rr0002Field:
+    if isinstance(value, float):
+        value = round(value, 2)
+    return Rr0002Field(tag=tag, orid=orid, value=value, source=source)
 
 
 def _result(filing: str, issues: list[AnnualReadinessIssue]) -> AnnualReadinessResult:

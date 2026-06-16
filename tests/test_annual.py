@@ -10,6 +10,7 @@ from holding_core.annual import (
     DocumentRecord,
     YearEndInterviewAnswers,
     assess_annual_accounts_readiness,
+    build_annual_accounts_payload,
     assess_tax_return_readiness,
     build_annual_data,
     build_company_archive,
@@ -53,10 +54,68 @@ class AnnualSimulationTest(unittest.TestCase):
 
         self.assertEqual(simulation.filing, "årsregnskap")
         self.assertIn("Årsregnskap 2025", simulation.preview)
+        self.assertIn("Schema: aarsregnskap-vanlig-202406", simulation.preview)
         self.assertIn("Bank: 128510.00 kr", simulation.preview)
         self.assertIn("Resultat før skatt: 98510.00 kr", simulation.preview)
+        self.assertIn("Årsverk: 0", simulation.preview)
         self.assertEqual(simulation.readiness.status, "ready")
         self.assertEqual(simulation.simulated_receipt_id, "sim-arsregnskap-314259521-2025")
+        self.assertEqual(simulation.payload["schema_type"], "aarsregnskap-vanlig-202406")
+
+    def test_annual_accounts_payload_maps_verified_rr0002_fields(self) -> None:
+        payload = build_annual_accounts_payload(_simple_annual_data())
+        fields = {field.tag: field for field in payload.fields}
+
+        self.assertEqual(payload.hovedskjema_data_format_id, "1266")
+        self.assertEqual(payload.hovedskjema_data_format_version, "51820")
+        self.assertEqual(payload.selskapsregnskap_data_format_id, "758")
+        self.assertEqual(payload.selskapsregnskap_data_format_version, "51980")
+        self.assertEqual(fields["valuta"].orid, "34984")
+        self.assertEqual(fields["valuta"].value, "NOK")
+        self.assertEqual(fields["sumDriftskostnad/aarets"].orid, "17126")
+        self.assertEqual(fields["sumDriftskostnad/aarets"].value, 1490)
+        self.assertEqual(fields["sumFinansinntekter/aarets"].orid, "153")
+        self.assertEqual(fields["sumFinansinntekter/aarets"].value, 100000)
+        self.assertEqual(fields["resultatFoerSkattekostnad/aarets"].orid, "167")
+        self.assertEqual(fields["sumBankinnskuddKontanter/aarets"].orid, "29042")
+        self.assertEqual(fields["sumBankinnskuddKontanter/aarets"].value, 128510)
+        self.assertEqual(fields["sumInnskuttEgenkapital/aarets"].orid, "3730")
+        self.assertEqual(fields["sumEgenkapital/aarets"].orid, "250")
+        self.assertEqual(fields["sumEgenkapital/aarets"].value, 128510)
+        self.assertEqual(fields["antallAarsverk"].orid, "37467")
+        self.assertEqual(fields["antallAarsverk"].value, 0)
+        self.assertEqual(payload.notes.annual_full_time_equivalents, 0)
+        self.assertTrue(any(decision.code == "small_holding_no_extra_attachment" for decision in payload.attachment_decisions))
+        self.assertEqual(payload.feedback_items, ())
+
+    def test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments(self) -> None:
+        data = _simple_annual_data(interview=_interview(received_dividends=False, paid_costs=False))
+        payload = build_annual_accounts_payload(data)
+
+        self.assertEqual(payload.notes.annual_full_time_equivalents, 0)
+        self.assertFalse(any(decision.required for decision in payload.attachment_decisions))
+
+    def test_annual_accounts_blocks_missing_note_data(self) -> None:
+        data = _simple_annual_data(annual_full_time_equivalents=None)
+
+        readiness = assess_annual_accounts_readiness(data)
+        payload = build_annual_accounts_payload(data)
+
+        self.assertEqual(readiness.status, "blocked")
+        self.assertIn("annual_accounts_aarsverk_missing", [issue.code for issue in readiness.issues])
+        self.assertIn("annual_accounts_aarsverk_missing", [issue.code for issue in payload.feedback_items])
+
+    def test_annual_accounts_blocks_audit_and_non_small_cases(self) -> None:
+        data = _simple_annual_data(audit_required=True, small_enterprise=False, annual_report_required=True)
+
+        readiness = assess_annual_accounts_readiness(data)
+        payload = build_annual_accounts_payload(data)
+
+        codes = {issue.code for issue in readiness.issues}
+        self.assertIn("annual_accounts_audit_required", codes)
+        self.assertIn("annual_accounts_not_small_enterprise", codes)
+        self.assertIn("annual_accounts_annual_report_required", codes)
+        self.assertTrue(any(decision.required and decision.code == "auditor_report" for decision in payload.attachment_decisions))
 
     def test_annual_accounts_blocks_unapproved_general_meeting(self) -> None:
         data = _simple_annual_data(
@@ -137,6 +196,10 @@ def _simple_annual_data(
     *,
     interview: YearEndInterviewAnswers | None = None,
     documents: tuple[DocumentRecord, ...] = (),
+    annual_full_time_equivalents: float | None = 0,
+    audit_required: bool = False,
+    small_enterprise: bool = True,
+    annual_report_required: bool = False,
 ):
     ledger = NarrowLedger()
     for draft in (
@@ -182,6 +245,10 @@ def _simple_annual_data(
         posted_entries=ledger.posted_entries,
         documents=documents,
         confirmations=("authority_confirmed",),
+        annual_full_time_equivalents=annual_full_time_equivalents,
+        audit_required=audit_required,
+        small_enterprise=small_enterprise,
+        annual_report_required=annual_report_required,
     )
 
 
@@ -189,14 +256,16 @@ def _interview(
     *,
     shareholder_loans: bool = False,
     general_meeting_approved: bool = True,
+    received_dividends: bool = True,
+    paid_costs: bool = True,
 ) -> YearEndInterviewAnswers:
     return YearEndInterviewAnswers(
         shares_owned_at_year_end=True,
         bought_or_sold_shares=False,
-        received_dividends=True,
+        received_dividends=received_dividends,
         declared_owner_dividends=False,
         shareholder_loans=shareholder_loans,
-        paid_costs=True,
+        paid_costs=paid_costs,
         bank_balance_confirmed=True,
         has_unpaid_items=False,
         general_meeting_approved=general_meeting_approved,

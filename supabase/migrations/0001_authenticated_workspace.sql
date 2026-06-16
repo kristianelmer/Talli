@@ -154,6 +154,7 @@ create table if not exists public.annual_data (
   answers jsonb not null,
   confirmations jsonb not null default '[]'::jsonb,
   no_activity_confirmed boolean not null default false,
+  annual_full_time_equivalents numeric not null default 0 check (annual_full_time_equivalents >= 0),
   completed_by uuid not null references auth.users(id) on delete restrict,
   completed_at timestamptz not null default now(),
   updated_by uuid not null references auth.users(id) on delete restrict,

@@ -79,6 +79,7 @@ export type AnnualDataRow = {
   answers: YearEndInterviewAnswers;
   confirmations: string[];
   no_activity_confirmed: boolean;
+  annual_full_time_equivalents: number | null;
   completed_by: string;
   completed_at: string;
   updated_by: string;
@@ -423,7 +424,7 @@ export async function listAnnualData(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("annual_data")
-    .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+    .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
