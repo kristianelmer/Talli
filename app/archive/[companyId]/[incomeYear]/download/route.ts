@@ -1,4 +1,5 @@
 import { buildPersistedCompanyArchive } from "../../../../lib/archive";
+import { requireStepUpForAction, SensitiveActionStepUpError } from "../../../../lib/security";
 import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
@@ -9,6 +10,13 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   }
 
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return new Response("Innlogging kreves", { status: 401 });
+  }
+
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
@@ -16,6 +24,20 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     .single();
   if (companyError || !company) {
     return new Response("Archive not found", { status: 404 });
+  }
+  try {
+    await requireStepUpForAction({
+      supabase,
+      userId: user.id,
+      companyId,
+      action: "archive_export",
+    });
+  } catch (stepUpError) {
+    const message =
+      stepUpError instanceof SensitiveActionStepUpError
+        ? stepUpError.userMessage
+        : "Arkiveksport stoppet: MFA/step-up kunne ikke kontrolleres.";
+    return new Response(message, { status: 403 });
   }
 
   const { data: submissions, error: submissionError } = await supabase

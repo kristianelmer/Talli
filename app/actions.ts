@@ -48,6 +48,7 @@ import {
 } from "./lib/rf1086-submission";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
+import { requireStepUpForAction, SensitiveAction, SensitiveActionStepUpError } from "./lib/security";
 import { SharePurchaseValidationError, sharePurchaseLedgerLines, validateSharePurchase } from "./lib/share-purchase";
 import { ShareSaleValidationError, shareSaleLedgerLines, validateShareSale } from "./lib/share-sale";
 import {
@@ -66,6 +67,25 @@ import {
 function formString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+async function requireSensitiveActionStepUp(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  companyId: string,
+  action: SensitiveAction,
+) {
+  try {
+    await requireStepUpForAction({ supabase, userId, companyId, action });
+  } catch (error) {
+    const message =
+      error instanceof SensitiveActionStepUpError
+        ? error.userMessage
+        : error instanceof Error
+          ? error.message
+          : "Sensitiv handling stoppet: MFA/step-up kreves.";
+    redirect(`/?error=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function signIn(formData: FormData) {
@@ -662,6 +682,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   if (!["reviewer", "read_only"].includes(role)) {
     redirect("/?error=Ugyldig%20reviewer-rolle");
   }
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "invite_reviewer");
 
   const { error } = await supabase.from("company_memberships").insert({
     company_id: companyId,
@@ -1779,6 +1800,7 @@ export async function saveBillingAccount(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   let account;
   try {
     account = buildBillingAccount({
@@ -1833,6 +1855,7 @@ export async function activateBillingSubscription(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const { error } = await supabase
     .from("billing_accounts")
     .update({ subscription_active: true, updated_by: user.id, updated_at: new Date().toISOString() })
@@ -1867,6 +1890,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const { data: account, error: accountError } = await supabase
     .from("billing_accounts")
     .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
@@ -2094,6 +2118,7 @@ export async function markBillingUnsupported(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const reason = formString(formData, "reason") || "Saken er utenfor støttet enkel holding-AS.";
   const { error } = await supabase
     .from("billing_accounts")
@@ -2134,6 +2159,7 @@ export async function markBillingRefundEligible(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const { data: account, error: accountError } = await supabase
     .from("billing_accounts")
     .select("filing_package_paid, supported_case")
@@ -2179,6 +2205,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "confirm_authority");
   let obligation;
   try {
     obligation = validateAuthorityObligation(formString(formData, "obligation"));

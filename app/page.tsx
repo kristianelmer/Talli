@@ -726,6 +726,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 <div className="sectionHeader">
                   <p className="eyebrow">Billing</p>
                   <h2>Persistert abonnement og filingpakke uten betalingsleverandør.</h2>
+                  <p>Billing-admin krever fersk MFA/step-up før server action får endre status.</p>
                 </div>
                 <div className="setupGrid">
                   <form className="dataPanel formPanel" action={saveBillingAccount}>
@@ -1552,18 +1553,20 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <section id="sikkerhet" className="split">
         <div>
-          <p className="eyebrow">Prototype-grense</p>
-          <h2>JSON/demo state er ikke produktstien.</h2>
+          <p className="eyebrow">Sikkerhet</p>
+          <h2>Sensitive handlinger feiler lukket uten fersk MFA/step-up.</h2>
           <p>
-            Denne siden bruker Supabase Auth, RLS-beskyttede tabeller og persistente
-            medlemskap for selskap. Neste slice bygger Brønnøysund-oppslag på samme sti.
+            Produksjonsfiling, innsendingsrett, reviewer-invitasjon, rolleendring,
+            arkiveksport, billing-admin og sletting krever server-side step-up-kontroll.
+            Blokkerte og tillatte forsøk logges som audit events uten hemmeligheter.
           </p>
         </div>
         <ol className="actionList">
           <li>Supabase Auth-session</li>
           <li>Company membership med owner-rolle</li>
           <li>RLS-basert tenant-isolasjon</li>
-          <li>Audit event for opprettet arbeidsflate</li>
+          <li>Fersk MFA/step-up innen 15 minutter for sensitive handlinger</li>
+          <li>Audit event for tillatt og blokkert sensitiv handling</li>
         </ol>
       </section>
     </main>

@@ -23,6 +23,7 @@
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
     "test:owner-dividend": "node --experimental-strip-types --test tests/owner_dividend.test.mjs",
     "test:review": "node --experimental-strip-types --test tests/review_workflow.test.mjs",
+    "test:security": "node --experimental-strip-types --test tests/security_step_up.test.mjs",
     "test:rf1086:persisted": "node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs",
     "test:rf1086:submission": "node --experimental-strip-types --test tests/rf1086_submission_persisted.test.mjs",
     "test:share-purchase": "node --experimental-strip-types --test tests/share_purchase.test.mjs",

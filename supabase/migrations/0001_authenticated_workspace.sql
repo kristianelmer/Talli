@@ -49,6 +49,16 @@ create table if not exists public.audit_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.step_up_events (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid not null references auth.users(id) on delete cascade,
+  method text not null default 'mfa' check (method in ('mfa', 'webauthn', 'totp', 'recovery')),
+  mfa_verified_at timestamptz not null default now(),
+  security_review_approved boolean not null default false,
+  production_credentials_enabled boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.documents (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -339,6 +349,7 @@ create table if not exists public.authority_permissions (
 create index if not exists companies_created_by_idx on public.companies(created_by);
 create index if not exists company_memberships_user_id_idx on public.company_memberships(user_id);
 create index if not exists audit_events_company_id_created_at_idx on public.audit_events(company_id, created_at desc);
+create index if not exists step_up_events_actor_verified_idx on public.step_up_events(actor_id, mfa_verified_at desc);
 create index if not exists documents_company_id_income_year_idx on public.documents(company_id, income_year);
 create index if not exists opening_balance_setups_company_id_year_idx on public.opening_balance_setups(company_id, income_year);
 create index if not exists period_locks_company_id_year_idx on public.period_locks(company_id, income_year);
@@ -361,6 +372,7 @@ create index if not exists authority_permissions_company_obligation_idx on publi
 alter table public.companies enable row level security;
 alter table public.company_memberships enable row level security;
 alter table public.audit_events enable row level security;
+alter table public.step_up_events enable row level security;
 alter table public.documents enable row level security;
 alter table public.opening_balance_setups enable row level security;
 alter table public.period_locks enable row level security;
@@ -382,6 +394,7 @@ grant usage on schema public to authenticated;
 grant select, insert, update on public.companies to authenticated;
 grant select, insert, update on public.company_memberships to authenticated;
 grant select, insert on public.audit_events to authenticated;
+grant select, insert on public.step_up_events to authenticated;
 grant select, insert on public.documents to authenticated;
 grant select, insert on public.opening_balance_setups to authenticated;
 grant select, insert on public.period_locks to authenticated;
@@ -495,6 +508,18 @@ with check (
     )
   )
 );
+
+drop policy if exists "users can read their own step up events" on public.step_up_events;
+create policy "users can read their own step up events"
+on public.step_up_events for select
+to authenticated
+using (actor_id = (select auth.uid()));
+
+drop policy if exists "users can create their own step up events" on public.step_up_events;
+create policy "users can create their own step up events"
+on public.step_up_events for insert
+to authenticated
+with check (actor_id = (select auth.uid()));
 
 drop policy if exists "company members can read document metadata" on public.documents;
 create policy "company members can read document metadata"
