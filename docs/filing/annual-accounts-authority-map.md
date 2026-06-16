@@ -1,6 +1,6 @@
 # Årsregnskap Authority Map
 
-Status: source-backed map for simulation and validation  
+Status: source-backed map plus RR0002 evidence register  
 Research date: 2026-06-16  
 Target filing: `årsregnskap` / RR-0002  
 
@@ -14,7 +14,10 @@ Primary sources:
 - Brønnøysundregistrene annual accounts page: https://www.brreg.no/en/submission-of-annual-accounts/
 - Altinn annual accounts guidance: https://info.altinn.no/en/start-and-run-business/accounts-and-auditing/accounting/annual-accounts/
 - Brønnøysund API documentation index for Regnskapsregisteret: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/
+- Brønnøysund system-submission docs: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/hvordan-sende-inn/
+- Brønnøysund official Postman examples: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Digdir/Altinn 3 update for annual accounts system submission: https://samarbeid.digdir.no/altinn/nytt-fra-programmet-nye-altinn/2723
+- RR0002 evidence register: [annual-accounts-rr0002-evidence-register.md](./annual-accounts-rr0002-evidence-register.md)
 
 ## Public Filing Surface
 
@@ -46,8 +49,8 @@ Brønnøysund documentation links Regnskapsregisteret machine reporting document
 Production implications:
 
 - Talli can model annual-account data and readiness from public sources.
-- Talli cannot claim production RR-0002 filing until the exact Altinn 3/Regnskapsregisteret API contract, payload schemas, signing flow, attachment rules, and receipt/feedback behavior are validated in the appropriate test environment.
-- Signering may require a person through ID-porten depending on the annual-accounts app choice; this remains a production blocker until tested for Talli's owner-managed model.
+- Talli now has a narrow RR0002 field evidence pack for a simple holding AS, but cannot claim production RR-0002 filing until generated payloads, attachment rules, signing flow, feedback, and receipt behavior are validated in TT02 or equivalent test environment.
+- Brønnøysund docs state system user can fill/upload/lock, but signature requires ID-porten; owner-managed filing therefore needs an ID-porten-only or hybrid system-user/person signing flow.
 
 ## Talli Launch Subset
 
@@ -78,11 +81,11 @@ These decisions are the source-backed launch schema for a simple holding AS. A r
 | Authority requirement | Source evidence | Talli source data | Launch decision |
 | --- | --- | --- | --- |
 | Reporting obligation and deadline | Brønnøysund states reporting-obligated enterprises must submit a complete annual-account set by 31 July, and the tax return is a separate obligation. | `companies`, `annual_data`, `filing_readiness_snapshots` | Supported as readiness/deadline data. |
-| RR-0002 main form | Altinn identifies RR-0002 as the annual-accounts form and states AS must enter audit/accounting-firm information in the main form. | `companies`, `authority_permissions`, future accountant/auditor metadata | Partially supported; exact RR-0002 payload fields are blocked. |
-| Accounting currency and scale | Altinn says the accounting form requires currency and amount scale. | Ledger amounts currently stored as NOK numeric values. | Supported for NOK/whole-kroner validation only; other currencies/scales blocked. |
-| Income statement figures | Altinn says accounting figures are entered in result/income statement. | `ledger_entries.lines`, annual preview totals | Partial. Current preview totals are insufficient until RR-0002 field ids are mapped. |
-| Balance-sheet figures | Altinn says accounting figures are entered in balance sheet. | `ledger_entries.lines`, opening balance, investment register | Partial. Current preview totals are insufficient until RR-0002 field ids are mapped. |
-| Small-enterprise notes | Altinn states small enterprises fill notes in the form and at minimum annual full-time equivalents. | `annual_data`, future note records | Blocked. Talli has no note payload model or årsverk field yet. |
+| RR-0002 main form | Brønnøysund official Postman example exposes `dataFormatId=1266`, `dataFormatVersion=51820`, and key hovedskjema orids. | `companies`, `annual_data`, `authority_permissions`, future accountant/auditor metadata | Evidence mapped for simple holding AS; production still blocked until TT02 validation. |
+| Accounting currency and scale | Official Postman example exposes `valuta` orid `34984`. | Ledger amounts currently stored as NOK numeric values. | Supported for NOK/whole-kroner launch only; other currencies/scales blocked. |
+| Income statement figures | Official Postman example exposes result tags/orids including `sumDriftskostnad`, `sumFinansinntekter`, `resultatFoerSkattekostnad`, and `aarsresultat`. | `ledger_entries.lines`, annual preview totals | Evidence mapped for aggregate launch fields; implementation slice needed. |
+| Balance-sheet figures | Official Postman example exposes balance tags/orids for investments, bank/cash, equity, and debt. | `ledger_entries.lines`, opening balance, investment register | Evidence mapped for simple holding AS fields; implementation slice needed. |
+| Small-enterprise notes | Official Postman example exposes `antallAarsverk` orid `37467`. | `annual_data`, future note records | Evidence mapped; implementation needs annual full-time equivalents field, default `0` for no employees/payroll. |
 | Attachments | Altinn says small enterprises with no audit obligation generally do not need annual report/cash-flow attachments, while non-small cases require notes, annual report, cash-flow statement and usually auditor report as file attachments. | `documents` metadata/object references | Supported only as readiness metadata; production attachment payload is blocked. |
 | Confirmation/signing | Altinn says sender confirms the annual accounts are approved by the competent body; it then goes to signing/submission. | `annual_data.general_meeting_approved`, `authority_permissions` | Readiness supported; production signing flow blocked until Altinn 3/Regnskapsregisteret flow is tested. |
 | Receipt/decision | Altinn/Brønnøysund state the enterprise receives electronic feedback/decision in Altinn inbox after processing. | `filing_submissions`, archive receipt state | Simulation only; official receipt retrieval/storage is blocked. |
@@ -99,9 +102,9 @@ Current engine coverage:
 
 Missing before production:
 
-- RR-0002 payload schema.
-- Accounting-form field mapping.
-- Note field mapping.
+- Payload builder using `aarsregnskap-vanlig-202406`.
+- TT02 validation of mapped fields.
+- Annual-account note model.
 - Attachment payload handling.
 - Signing model.
 - Altinn/Regnskapsregisteret validation feedback.
