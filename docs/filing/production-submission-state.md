@@ -32,7 +32,7 @@ Production API calls require:
 - User has confirmed authority to submit for the company.
 - User has reviewed and confirmed the final filing preview.
 - Billing gate has passed.
-- Any filing-specific production blockers are clear, including RF-1086 transaction-code blockers.
+- Any filing-specific production blockers are clear, including RF-1086 live-scope exclusions.
 
 ## Idempotency Policy
 
@@ -56,7 +56,7 @@ Blocked:
 - Unsupported tax/accounting case.
 - Missing user authority.
 - Missing final preview confirmation.
-- Production-blocked RF-1086 code value.
+- RF-1086 event type excluded from live scope.
 
 ## Receipt Archive
 
