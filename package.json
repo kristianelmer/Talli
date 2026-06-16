@@ -16,6 +16,7 @@
     "test:browser-owner": "node tests/browser_owner_annual_loop.mjs",
     "test:billing": "node --experimental-strip-types --test tests/billing_persisted.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
+    "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs",
     "test:deadlines": "node --experimental-strip-types --test tests/deadlines.test.mjs",
     "test:dividend-received": "node --experimental-strip-types --test tests/dividend_received.test.mjs",
     "test:documents": "node --experimental-strip-types --test tests/documents.test.mjs",

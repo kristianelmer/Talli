@@ -3,6 +3,7 @@ import { productionAuthorityGate } from "./authority-permission.ts";
 import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
 import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
+import { companyTaxReturnPayloadFeedback } from "./company-tax-return.ts";
 import type {
   BankTransactionRow,
   AnnualDataRow,
@@ -219,6 +220,13 @@ function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[
   );
   if (!hasTaxSettlement && !input.annualData?.no_activity_confirmed) {
     issues.push(warning("tax_settlement_missing", "Skatteoppgjør er ikke registrert for året.", "tax_settlement", false));
+  }
+  for (const feedback of companyTaxReturnPayloadFeedback(input)) {
+    if (feedback.level === "block") {
+      issues.push(block(feedback.code, feedback.message, feedback.source));
+    } else if (feedback.level === "warning") {
+      issues.push(warning(feedback.code, feedback.message, feedback.source, false));
+    }
   }
   return issues;
 }
