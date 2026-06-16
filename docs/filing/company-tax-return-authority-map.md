@@ -6,6 +6,8 @@ Target filing: `skattemelding for AS` / company tax return
 
 This map defines what Talli can validate from public sources before production company-tax-return filing. It is not a complete production integration spec.
 
+Detailed schema/code-list evidence for the 2025 income-year launch path is now recorded in `docs/filing/company-tax-return-schema-evidence-register.md`. That register is authoritative for issue #86 payload work: 2025 must use `skattemeldingUpersonlig_v5_ekstern.xsd`, `naeringsspesifikasjon_v6_ekstern.xsd`, and 2025 code lists.
+
 ## Sources
 
 Primary sources:
@@ -14,6 +16,7 @@ Primary sources:
 - Skatteetaten `skattemelding upersonlig` API docs: https://skatteetaten.github.io/api-dokumentasjon/api/skattemeldingupersonlig
 - Raw Skatteetaten API docs: https://raw.githubusercontent.com/Skatteetaten/api-dokumentasjon/main/docs/api/skattemeldingupersonlig.md
 - Skatteetaten `skattemeldingen` specification repository: https://github.com/Skatteetaten/skattemeldingen
+- Talli schema evidence register: `docs/filing/company-tax-return-schema-evidence-register.md`
 - Altinn legacy/company tax return overview: https://info.altinn.no/skjemaoversikt/skatteetaten/skattemelding-for-formues-og-inntektsskatt-aksjeselskap-mv/
 
 ## Public Filing Surface
