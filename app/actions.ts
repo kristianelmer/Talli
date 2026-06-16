@@ -8,6 +8,11 @@ import {
   buildAdminCostLedgerLines,
   parseBankCsv,
 } from "./lib/bank";
+import {
+  BillingValidationError,
+  buildBillingAccount,
+  productionBillingGate,
+} from "./lib/billing";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
 import {
@@ -1711,6 +1716,235 @@ export async function recordTaxSettlement(formData: FormData) {
     category: "ledger",
     action: "tax_settlement_recorded",
     message: `Skatteoppgjør postert for ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function saveBillingAccount(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  let account;
+  try {
+    account = buildBillingAccount({
+      companyId,
+      pricingPlan: formString(formData, "pricingPlan") as "founder" | "standard",
+      founderCohortNumber: Number(formString(formData, "founderCohortNumber") || "0") || null,
+    });
+  } catch (error) {
+    const message =
+      error instanceof BillingValidationError
+        ? `${error.code}: ${error.message}`
+        : error instanceof Error
+          ? error.message
+          : "Ugyldig billingkonto";
+    redirect(`/?error=${encodeURIComponent(message)}`);
+  }
+
+  const { error } = await supabase.from("billing_accounts").upsert(
+    {
+      ...account,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "company_id" },
+  );
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "billing",
+    action: "billing_account_saved",
+    message: `Billingkonto lagret med ${account.pricing_plan}-prising.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function activateBillingSubscription(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const { error } = await supabase
+    .from("billing_accounts")
+    .update({ subscription_active: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .eq("company_id", companyId);
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "billing",
+    action: "billing_subscription_activated",
+    message: "Abonnement markert aktivt.",
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function requestFilingPackagePayment(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const { data: account, error: accountError } = await supabase
+    .from("billing_accounts")
+    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+    .eq("company_id", companyId)
+    .single();
+  if (accountError || !account) {
+    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+  }
+  const { data: readyPreviews, error: previewError } = await supabase
+    .from("filing_previews")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("income_year", incomeYear)
+    .eq("status", "ready")
+    .limit(1);
+  if (previewError) {
+    redirect(`/?error=${encodeURIComponent(previewError.message)}`);
+  }
+  const gate = productionBillingGate(account, Boolean(readyPreviews?.length));
+  if (!gate.chargeAllowed) {
+    redirect(`/?error=${encodeURIComponent(gate.message)}`);
+  }
+
+  const { error } = await supabase
+    .from("billing_accounts")
+    .update({ filing_package_paid: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .eq("company_id", companyId);
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "billing",
+    action: "filing_package_paid",
+    message: `Filingpakke markert betalt for ${incomeYear}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function markBillingUnsupported(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const reason = formString(formData, "reason") || "Saken er utenfor støttet enkel holding-AS.";
+  const { error } = await supabase
+    .from("billing_accounts")
+    .update({
+      supported_case: false,
+      filing_package_paid: false,
+      no_charge_reason: reason,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("company_id", companyId);
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "billing",
+    action: "billing_unsupported_no_charge",
+    message: reason,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+export async function markBillingRefundEligible(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const { data: account, error: accountError } = await supabase
+    .from("billing_accounts")
+    .select("filing_package_paid, supported_case")
+    .eq("company_id", companyId)
+    .single();
+  if (accountError || !account) {
+    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+  }
+  if (!account.supported_case || !account.filing_package_paid) {
+    redirect("/?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
+  }
+
+  const { error } = await supabase
+    .from("billing_accounts")
+    .update({ refund_eligible: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .eq("company_id", companyId);
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "billing",
+    action: "billing_refund_eligible",
+    message: "Filingpakke markert refusjonsberettiget etter støttet feil.",
   });
 
   revalidatePath("/");

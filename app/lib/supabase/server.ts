@@ -201,6 +201,22 @@ export type FilingReviewCommentRow = {
   created_at: string;
 };
 
+export type BillingAccountRow = {
+  company_id: string;
+  pricing_plan: "founder" | "standard";
+  monthly_nok: number;
+  filing_package_nok: number;
+  founder_cohort_number: number | null;
+  subscription_active: boolean;
+  filing_package_paid: boolean;
+  supported_case: boolean;
+  refund_eligible: boolean;
+  no_charge_reason: string | null;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export function hasSupabaseEnv() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
 }
@@ -441,6 +457,25 @@ export async function listFilingReviewComments(companyIds: string[]) {
 
   return {
     comments: (data ?? []) as FilingReviewCommentRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listBillingAccounts(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { billingAccounts: [] as BillingAccountRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("billing_accounts")
+    .select(
+      "company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason, updated_by, created_at, updated_at",
+    )
+    .in("company_id", companyIds)
+    .order("updated_at", { ascending: false });
+
+  return {
+    billingAccounts: (data ?? []) as BillingAccountRow[],
     error: error?.message ?? null,
   };
 }

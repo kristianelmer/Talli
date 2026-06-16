@@ -1,5 +1,6 @@
 import {
   acknowledgeFilingReviewComment,
+  activateBillingSubscription,
   addFilingOverride,
   addFilingReviewComment,
   confirmSimulatedRf1086Submission,
@@ -9,6 +10,8 @@ import {
   importBankCsv,
   inviteWorkspaceReviewer,
   lockCompanyYear,
+  markBillingRefundEligible,
+  markBillingUnsupported,
   postManualJournal,
   recordAdminCost,
   recordDividendReceived,
@@ -17,11 +20,14 @@ import {
   recordShareSale,
   recordShareholderLoan,
   recordTaxSettlement,
+  requestFilingPackagePayment,
+  saveBillingAccount,
   signIn,
   signOut,
   signUp,
   uploadDocument,
 } from "./actions";
+import { productionBillingGate } from "./lib/billing";
 import { buildDeadlineDashboard, deadlineStatusLabel } from "./lib/deadlines";
 import { summarizeDividendReceivedAnnualImpact } from "./lib/dividend-received";
 import { estimateAnnualTax } from "./lib/tax-settlement";
@@ -29,6 +35,7 @@ import {
   getCurrentUser,
   hasSupabaseEnv,
   listBankTransactions,
+  listBillingAccounts,
   listCompanyWorkspaces,
   listDocumentsForCompanies,
   listFilingPreviews,
@@ -71,6 +78,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
   const { overrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
+  const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
   const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
   const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
@@ -105,6 +113,12 @@ export default async function Home({ searchParams }: HomeProps) {
       ...locks.map((lock) => lock.income_year),
     ]),
   ).sort((a, b) => b - a);
+  const primaryIncomeYear = incomeYears[0] ?? 2025;
+  const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
+  const primaryFilingReady = previews.some(
+    (preview) => preview.company_id === primaryCompanyId && preview.income_year === primaryIncomeYear && preview.status === "ready",
+  );
+  const primaryBillingGate = primaryBillingAccount ? productionBillingGate(primaryBillingAccount, primaryFilingReady) : null;
   const deadlines = incomeYears.flatMap((incomeYear) => buildDeadlineDashboard({ incomeYear, submissions }));
 
   return (
@@ -683,6 +697,108 @@ export default async function Home({ searchParams }: HomeProps) {
                     </strong>
                     <p>{taxSettlementEntries.length} skatteoppgjørsposteringer i ledger.</p>
                     <p>Arkivet inkluderer skatteoppgjør med bilag og ledger-lenke.</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="band">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Billing</p>
+                  <h2>Persistert abonnement og filingpakke uten betalingsleverandør.</h2>
+                </div>
+                <div className="setupGrid">
+                  <form className="dataPanel formPanel" action={saveBillingAccount}>
+                    <span className="panelLabel">Prisplan</span>
+                    <input name="companyId" type="hidden" value={primaryCompanyId} />
+                    <label>
+                      Plan
+                      <select name="pricingPlan" defaultValue={primaryBillingAccount?.pricing_plan ?? "standard"}>
+                        <option value="standard">Standard 49 kr / 499 kr</option>
+                        <option value="founder">Founder 29 kr / 299 kr</option>
+                      </select>
+                    </label>
+                    <label>
+                      Founder-kull
+                      <input
+                        name="founderCohortNumber"
+                        inputMode="numeric"
+                        defaultValue={primaryBillingAccount?.founder_cohort_number ?? 1}
+                      />
+                    </label>
+                    <button className="secondaryButton" type="submit">
+                      Lagre billingkonto
+                    </button>
+                  </form>
+
+                  <form className="dataPanel formPanel" action={requestFilingPackagePayment}>
+                    <span className="panelLabel">Filingpakke</span>
+                    <input name="companyId" type="hidden" value={primaryCompanyId} />
+                    <label>
+                      Inntektsår
+                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
+                    </label>
+                    <button className="primaryButton" type="submit">
+                      Marker filingpakke betalt
+                    </button>
+                    <p>Kan bare lagres når readiness er klar og abonnementet er aktivt.</p>
+                  </form>
+
+                  <form className="dataPanel formPanel" action={markBillingUnsupported}>
+                    <span className="panelLabel">No charge</span>
+                    <input name="companyId" type="hidden" value={primaryCompanyId} />
+                    <label>
+                      Årsak
+                      <input name="reason" defaultValue="Utenfor enkel holding-AS-løype" required />
+                    </label>
+                    <button className="secondaryButton" type="submit">
+                      Marker utenfor støtte
+                    </button>
+                  </form>
+                </div>
+                <div className="readinessGrid">
+                  <div className="readinessItem">
+                    <span>Pris</span>
+                    <strong data-status={primaryBillingAccount ? "ready" : "draft"}>
+                      {primaryBillingAccount
+                        ? `${primaryBillingAccount.monthly_nok} kr/mnd + ${primaryBillingAccount.filing_package_nok} kr`
+                        : "Ikke satt"}
+                    </strong>
+                    <p>
+                      {primaryBillingAccount?.pricing_plan === "founder"
+                        ? `Founder-kull ${primaryBillingAccount.founder_cohort_number}`
+                        : "Standard eller ikke opprettet."}
+                    </p>
+                  </div>
+                  <div className="readinessItem">
+                    <span>Gate</span>
+                    <strong data-status={primaryBillingGate?.allowed ? "ready" : primaryBillingGate?.chargeAllowed ? "warning" : "draft"}>
+                      {primaryBillingGate?.status ?? "billing_account_missing"}
+                    </strong>
+                    <p>{primaryBillingGate?.message ?? "Opprett billingkonto før filingpakke."}</p>
+                    <p>Readiness {primaryFilingReady ? "klar" : "ikke klar"} for {primaryIncomeYear}.</p>
+                    {primaryBillingAccount && !primaryBillingAccount.subscription_active ? (
+                      <form action={activateBillingSubscription}>
+                        <input name="companyId" type="hidden" value={primaryCompanyId} />
+                        <button className="secondaryButton" type="submit">
+                          Marker abonnement aktivt
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                  <div className="readinessItem">
+                    <span>Refusjon</span>
+                    <strong data-status={primaryBillingAccount?.refund_eligible ? "warning" : "draft"}>
+                      {primaryBillingAccount?.refund_eligible ? "Refusjonsberettiget" : "Ingen refusjon"}
+                    </strong>
+                    <p>{primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan markeres refusjonsberettiget etter Talli-feil."}</p>
+                    {primaryBillingAccount?.filing_package_paid && primaryBillingAccount.supported_case ? (
+                      <form action={markBillingRefundEligible}>
+                        <input name="companyId" type="hidden" value={primaryCompanyId} />
+                        <button className="secondaryButton" type="submit">
+                          Marker refusjonsberettiget
+                        </button>
+                      </form>
+                    ) : null}
                   </div>
                 </div>
               </section>

@@ -9,6 +9,7 @@ import pg from "pg";
 
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
 import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
+import { buildBillingAccount, productionBillingGate } from "../app/lib/billing.ts";
 import {
   dividendReceivedLedgerLines,
   summarizeDividendReceivedAnnualImpact,
@@ -385,6 +386,95 @@ test(
       .single();
     assert.ifError(filingPreviewError);
     assert.equal(filingPreview.status, "ready");
+
+    assert.throws(() => buildBillingAccount({ companyId, pricingPlan: "founder", founderCohortNumber: 101 }), /Founder-kull/);
+    const billingAccount = buildBillingAccount({
+      companyId,
+      pricingPlan: "founder",
+      founderCohortNumber: 1,
+      subscriptionActive: true,
+    });
+    const { error: billingInsertError } = await owner.from("billing_accounts").insert({
+      ...billingAccount,
+      updated_by: ownerUser.id,
+    });
+    assert.ifError(billingInsertError);
+    const { data: reloadedBilling, error: reloadedBillingError } = await owner
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+      .eq("company_id", companyId)
+      .single();
+    assert.ifError(reloadedBillingError);
+    assert.equal(reloadedBilling.pricing_plan, "founder");
+    assert.equal(reloadedBilling.monthly_nok, 29);
+    assert.equal(productionBillingGate(reloadedBilling, false).chargeAllowed, false);
+    assert.equal(productionBillingGate(reloadedBilling, true).chargeAllowed, true);
+
+    const { error: billingUnsupportedError } = await owner
+      .from("billing_accounts")
+      .update({
+        supported_case: false,
+        filing_package_paid: false,
+        no_charge_reason: "Utenfor enkel holding-AS-løype",
+        updated_by: ownerUser.id,
+      })
+      .eq("company_id", companyId);
+    assert.ifError(billingUnsupportedError);
+    const { data: unsupportedBilling, error: unsupportedBillingError } = await owner
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+      .eq("company_id", companyId)
+      .single();
+    assert.ifError(unsupportedBillingError);
+    assert.equal(productionBillingGate(unsupportedBilling, true).status, "unsupported_case");
+    assert.equal(productionBillingGate(unsupportedBilling, true).chargeAllowed, false);
+
+    const { error: billingPaidError } = await owner
+      .from("billing_accounts")
+      .update({
+        supported_case: true,
+        no_charge_reason: null,
+        filing_package_paid: true,
+        refund_eligible: false,
+        updated_by: ownerUser.id,
+      })
+      .eq("company_id", companyId);
+    assert.ifError(billingPaidError);
+    const { data: paidBilling, error: paidBillingError } = await owner
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+      .eq("company_id", companyId)
+      .single();
+    assert.ifError(paidBillingError);
+    assert.equal(productionBillingGate(paidBilling, true).allowed, true);
+    const { error: billingRefundError } = await owner
+      .from("billing_accounts")
+      .update({ refund_eligible: true, updated_by: ownerUser.id })
+      .eq("company_id", companyId);
+    assert.ifError(billingRefundError);
+    const { data: refundBilling, error: refundBillingError } = await owner
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+      .eq("company_id", companyId)
+      .single();
+    assert.ifError(refundBillingError);
+    assert.equal(productionBillingGate(refundBilling, true).status, "refund_eligible");
+    const { error: outsiderBillingError } = await outsider.from("billing_accounts").update({ filing_package_paid: false }).eq("company_id", companyId);
+    assert.ifError(outsiderBillingError);
+    const { data: outsiderBillingRows, error: outsiderBillingRowsError } = await outsider
+      .from("billing_accounts")
+      .select("company_id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderBillingRowsError);
+    assert.equal(outsiderBillingRows.length, 0);
+    const { data: billingAfterOutsiderUpdate, error: billingAfterOutsiderUpdateError } = await owner
+      .from("billing_accounts")
+      .select("filing_package_paid, refund_eligible")
+      .eq("company_id", companyId)
+      .single();
+    assert.ifError(billingAfterOutsiderUpdateError);
+    assert.equal(billingAfterOutsiderUpdate.filing_package_paid, true);
+    assert.equal(billingAfterOutsiderUpdate.refund_eligible, true);
     assert.equal(filingPreview.source, "python_rf1086_engine");
 
     const advisoryOverride = validateFilingOverride({
@@ -1704,6 +1794,11 @@ test(
       .eq("company_id", companyId)
       .eq("income_year", 2025);
     assert.ifError(persistedHoldingActionsError);
+    const { data: persistedBillingAccounts, error: persistedBillingError } = await owner
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason, updated_by, created_at, updated_at")
+      .eq("company_id", companyId);
+    assert.ifError(persistedBillingError);
     const archive = buildPersistedCompanyArchive({
       company: persistedCompany,
       incomeYear: 2025,
@@ -1712,6 +1807,7 @@ test(
       ledgerEntries: persistedLedgerEntries,
       documents: ownerDocuments,
       holdingActions: persistedHoldingActions,
+      billingAccounts: persistedBillingAccounts,
       filingPreviews: [filingPreview],
       filingSubmissions: [filingSubmission],
     });
@@ -1724,6 +1820,7 @@ test(
     assert.equal(archive.taxSettlements[0].ledgerEntryId, taxEntry.id);
     assert.equal(archive.taxSettlements[0].documentId, taxDocumentId);
     assert.equal(archive.taxSettlements[0].document.id, taxDocumentId);
+    assert.equal(archive.billingAccounts[0].refund_eligible, true);
 
     const { data: outsiderArchiveCompany, error: outsiderArchiveCompanyError } = await outsider
       .from("companies")

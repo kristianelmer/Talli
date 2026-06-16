@@ -125,6 +125,23 @@ test("builds company-year archive from persisted workspace rows", () => {
         created_at: "2026-01-02T00:00:00Z",
       },
     ],
+    billingAccounts: [
+      {
+        company_id: "company-id",
+        pricing_plan: "founder",
+        monthly_nok: 29,
+        filing_package_nok: 299,
+        founder_cohort_number: 1,
+        subscription_active: true,
+        filing_package_paid: true,
+        supported_case: true,
+        refund_eligible: false,
+        no_charge_reason: null,
+        updated_by: "owner",
+        created_at: "2026-01-02T00:00:00Z",
+        updated_at: "2026-01-02T00:00:00Z",
+      },
+    ],
     filingPreviews: [
       {
         id: "preview-id",
@@ -172,4 +189,5 @@ test("builds company-year archive from persisted workspace rows", () => {
   assert.equal(archive.taxSettlements[0].ledgerEntryId, "tax-ledger-id");
   assert.equal(archive.taxSettlements[0].document.id, "tax-document-id");
   assert.equal(archive.taxSettlementLedgerEntries[0].entry_type, "tax_settlement");
+  assert.equal(archive.billingAccounts[0].pricing_plan, "founder");
 });

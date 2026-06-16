@@ -258,6 +258,24 @@ create table if not exists public.filing_review_comments (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.billing_accounts (
+  company_id uuid primary key references public.companies(id) on delete cascade,
+  pricing_plan text not null check (pricing_plan in ('founder', 'standard')),
+  monthly_nok integer not null check (monthly_nok > 0),
+  filing_package_nok integer not null check (filing_package_nok > 0),
+  founder_cohort_number integer check (founder_cohort_number is null or founder_cohort_number between 1 and 100),
+  subscription_active boolean not null default false,
+  filing_package_paid boolean not null default false,
+  supported_case boolean not null default true,
+  refund_eligible boolean not null default false,
+  no_charge_reason text,
+  updated_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (pricing_plan = 'founder' or founder_cohort_number is null),
+  check (supported_case or filing_package_paid = false)
+);
+
 create index if not exists companies_created_by_idx on public.companies(created_by);
 create index if not exists company_memberships_user_id_idx on public.company_memberships(user_id);
 create index if not exists audit_events_company_id_created_at_idx on public.audit_events(company_id, created_at desc);
@@ -275,6 +293,7 @@ create index if not exists filing_submissions_company_id_year_idx on public.fili
 create index if not exists filing_overrides_company_id_year_idx on public.filing_overrides(company_id, income_year);
 create index if not exists filing_overrides_preview_id_idx on public.filing_overrides(preview_id);
 create index if not exists filing_review_comments_preview_id_idx on public.filing_review_comments(preview_id, created_at);
+create index if not exists billing_accounts_updated_at_idx on public.billing_accounts(updated_at desc);
 
 alter table public.companies enable row level security;
 alter table public.company_memberships enable row level security;
@@ -291,6 +310,7 @@ alter table public.filing_previews enable row level security;
 alter table public.filing_submissions enable row level security;
 alter table public.filing_overrides enable row level security;
 alter table public.filing_review_comments enable row level security;
+alter table public.billing_accounts enable row level security;
 
 grant usage on schema public to authenticated;
 grant select, insert, update on public.companies to authenticated;
@@ -308,6 +328,7 @@ grant select, insert on public.filing_previews to authenticated;
 grant select, insert, update on public.filing_submissions to authenticated;
 grant select, insert on public.filing_overrides to authenticated;
 grant select, insert, update on public.filing_review_comments to authenticated;
+grant select, insert, update on public.billing_accounts to authenticated;
 
 drop policy if exists "owners can create companies" on public.companies;
 create policy "owners can create companies"
@@ -884,6 +905,58 @@ using (
     from public.company_memberships m
     where m.company_id = filing_review_comments.company_id
       and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "company members can read billing accounts" on public.billing_accounts;
+create policy "company members can read billing accounts"
+on public.billing_accounts for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_accounts.company_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "owners can create billing accounts" on public.billing_accounts;
+create policy "owners can create billing accounts"
+on public.billing_accounts for insert
+to authenticated
+with check (
+  updated_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_accounts.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+);
+
+drop policy if exists "owners can update billing accounts" on public.billing_accounts;
+create policy "owners can update billing accounts"
+on public.billing_accounts for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_accounts.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+)
+with check (
+  updated_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_accounts.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
   )
 );
 

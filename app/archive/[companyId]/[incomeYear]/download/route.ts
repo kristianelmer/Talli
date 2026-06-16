@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Archive requires simulated receipt first", { status: 409 });
   }
 
-  const [{ data: setups }, { data: ledgerEntries }, { data: documents }, { data: previews }, { data: holdingActions }] =
+  const [{ data: setups }, { data: ledgerEntries }, { data: documents }, { data: previews }, { data: holdingActions }, { data: billingAccounts }] =
     await Promise.all([
       supabase
         .from("opening_balance_setups")
@@ -57,6 +57,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
+      supabase
+        .from("billing_accounts")
+        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason, updated_by, created_at, updated_at")
+        .eq("company_id", companyId),
     ]);
 
   const setupIds = (setups ?? []).map((setup) => setup.id);
@@ -75,6 +79,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
     holdingActions: holdingActions ?? [],
+    billingAccounts: billingAccounts ?? [],
     filingPreviews: previews ?? [],
     filingSubmissions: submissions ?? [],
   });
