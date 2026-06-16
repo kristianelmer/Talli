@@ -39,6 +39,7 @@ import {
   runRf1086SubmissionAdapter,
 } from "../app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
+import { assertStepUpAllowed, stepUpContextFromEvent } from "../app/lib/security.ts";
 import { sharePurchaseLedgerLines, validateSharePurchase } from "../app/lib/share-purchase.ts";
 import { shareSaleLedgerLines, validateShareSale } from "../app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
@@ -271,6 +272,34 @@ test(
       auditRows.map((row) => row.action),
       ["workspace_created"],
     );
+
+    const { data: stepUpEvent, error: stepUpError } = await owner
+      .from("step_up_events")
+      .insert({
+        actor_id: ownerUser.id,
+        method: "totp",
+        mfa_verified_at: new Date().toISOString(),
+      })
+      .select("actor_id, mfa_verified_at, security_review_approved, production_credentials_enabled")
+      .single();
+    assert.ifError(stepUpError);
+    assert.doesNotThrow(() =>
+      assertStepUpAllowed("billing_admin", stepUpContextFromEvent(ownerUser.id, stepUpEvent), new Date()),
+    );
+
+    const { data: outsiderStepUps, error: outsiderStepUpReadError } = await outsider
+      .from("step_up_events")
+      .select("id")
+      .eq("actor_id", ownerUser.id);
+    assert.ifError(outsiderStepUpReadError);
+    assert.deepEqual(outsiderStepUps, []);
+
+    const { error: outsiderStepUpWriteError } = await outsider.from("step_up_events").insert({
+      actor_id: ownerUser.id,
+      method: "totp",
+      mfa_verified_at: new Date().toISOString(),
+    });
+    assert.ok(outsiderStepUpWriteError);
 
     const { data: outsiderCompanies, error: outsiderCompanyError } = await outsider
       .from("companies")
@@ -2142,11 +2171,41 @@ test(
     assert.ifError(outsiderDocumentError);
     assert.deepEqual(outsiderDocuments, []);
 
+    const { data: reviewerDocuments, error: reviewerDocumentError } = await reviewer
+      .from("documents")
+      .select("id")
+      .eq("id", documentId);
+    assert.ifError(reviewerDocumentError);
+    assert.deepEqual(reviewerDocuments, [{ id: documentId }]);
+
+    const { data: readOnlyDocuments, error: readOnlyDocumentError } = await readOnly
+      .from("documents")
+      .select("id")
+      .eq("id", documentId);
+    assert.ifError(readOnlyDocumentError);
+    assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
+
     const { data: outsiderSigned, error: outsiderSignedError } = await outsider.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
       .createSignedUrl(storageKey, 60);
     assert.equal(outsiderSigned, null);
     assert.ok(outsiderSignedError);
+
+    const reviewerStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "reviewer.pdf");
+    const { error: reviewerUploadError } = await reviewer.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .upload(reviewerStorageKey, new Blob(["reviewer"], { type: "application/pdf" }), {
+        contentType: "application/pdf",
+      });
+    assert.ok(reviewerUploadError);
+
+    const readOnlyStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "readonly.pdf");
+    const { error: readOnlyUploadError } = await readOnly.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .upload(readOnlyStorageKey, new Blob(["readonly"], { type: "application/pdf" }), {
+        contentType: "application/pdf",
+      });
+    assert.ok(readOnlyUploadError);
 
     await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
   } finally {
