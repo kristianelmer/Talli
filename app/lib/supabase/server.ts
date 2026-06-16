@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import type {
+  YearEndInterviewAnswers,
+} from "../annual-data";
+import type {
   AnnualReadinessIssue,
   AnnualReadinessStatus,
 } from "../annual-readiness";
@@ -67,6 +70,19 @@ export type PeriodLockRow = {
   reason: string;
   locked_by: string;
   locked_at: string;
+};
+
+export type AnnualDataRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  answers: YearEndInterviewAnswers;
+  confirmations: string[];
+  no_activity_confirmed: boolean;
+  completed_by: string;
+  completed_at: string;
+  updated_by: string;
+  updated_at: string;
 };
 
 export type OpeningShareholderRow = {
@@ -365,6 +381,23 @@ export async function listPeriodLocks(companyIds: string[]) {
 
   return {
     locks: (data ?? []) as PeriodLockRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listAnnualData(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { annualData: [] as AnnualDataRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("annual_data")
+    .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+    .in("company_id", companyIds)
+    .order("updated_at", { ascending: false });
+
+  return {
+    annualData: (data ?? []) as AnnualDataRow[],
     error: error?.message ?? null,
   };
 }

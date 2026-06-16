@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
+import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../app/lib/authority-permission.ts";
 import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
@@ -371,6 +372,78 @@ test(
       .eq("id", companyId)
       .single();
     assert.ifError(persistedCompanyError);
+    const annualAnswers = buildYearEndInterviewAnswers({
+      shares_owned_at_year_end: true,
+      bank_balance_confirmed: true,
+      general_meeting_approved: true,
+      authority_to_submit_confirmed: true,
+    });
+    const { data: annualData, error: annualDataError } = await owner
+      .from("annual_data")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        answers: annualAnswers,
+        confirmations: annualConfirmations(annualAnswers),
+        no_activity_confirmed: noActivityConfirmed(annualAnswers),
+        completed_by: ownerUser.id,
+        updated_by: ownerUser.id,
+      })
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+      .single();
+    assert.ifError(annualDataError);
+    assert.equal(annualData.answers.bank_balance_confirmed, true);
+    assert.equal(annualData.no_activity_confirmed, false);
+    const noActivityAnswers = buildYearEndInterviewAnswers({
+      bank_balance_confirmed: true,
+      general_meeting_approved: true,
+      authority_to_submit_confirmed: true,
+    });
+    const { data: updatedAnnualData, error: updatedAnnualDataError } = await owner
+      .from("annual_data")
+      .update({
+        answers: noActivityAnswers,
+        confirmations: annualConfirmations(noActivityAnswers),
+        no_activity_confirmed: noActivityConfirmed(noActivityAnswers),
+        updated_by: ownerUser.id,
+      })
+      .eq("id", annualData.id)
+      .select("id, answers, confirmations, no_activity_confirmed")
+      .single();
+    assert.ifError(updatedAnnualDataError);
+    assert.equal(updatedAnnualData.no_activity_confirmed, true);
+    const { error: annualDataAuditError } = await owner.from("audit_events").insert({
+      company_id: companyId,
+      actor_id: ownerUser.id,
+      category: "filing",
+      action: "year_end_interview_updated",
+      message: "Year-end interview oppdatert for 2025.",
+    });
+    assert.ifError(annualDataAuditError);
+    const { data: reloadedAnnualData, error: reloadedAnnualDataError } = await owner
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+      .eq("company_id", companyId)
+      .eq("income_year", 2025)
+      .single();
+    assert.ifError(reloadedAnnualDataError);
+    assert.equal(reloadedAnnualData.confirmations.includes("no_activity_confirmed"), true);
+    const { error: outsiderAnnualDataError } = await outsider.from("annual_data").insert({
+      company_id: companyId,
+      income_year: 2025,
+      answers: noActivityAnswers,
+      confirmations: annualConfirmations(noActivityAnswers),
+      no_activity_confirmed: true,
+      completed_by: outsiderUser.id,
+      updated_by: outsiderUser.id,
+    });
+    assert.ok(outsiderAnnualDataError);
+    const { data: outsiderAnnualDataRows, error: outsiderAnnualDataRowsError } = await outsider
+      .from("annual_data")
+      .select("id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderAnnualDataRowsError);
+    assert.equal(outsiderAnnualDataRows.length, 0);
     const { data: persistedShareholders, error: persistedShareholdersError } = await owner
       .from("opening_shareholders")
       .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
@@ -556,6 +629,7 @@ test(
       documents: [],
       overrides: [],
       locks: [],
+      annualData: reloadedAnnualData,
       billingAccount: paidBilling,
       authorityPermissions: annualAuthorityPermissions,
       filingPreviews: [filingPreview],

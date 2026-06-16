@@ -23,6 +23,7 @@ import {
   recordTaxSettlement,
   refreshAnnualReadinessSnapshots,
   requestFilingPackagePayment,
+  saveYearEndInterview,
   saveBillingAccount,
   signIn,
   signOut,
@@ -42,6 +43,7 @@ import {
   getCurrentUser,
   hasSupabaseEnv,
   listAuthorityPermissions,
+  listAnnualData,
   listBankTransactions,
   listBillingAccounts,
   listCompanyWorkspaces,
@@ -82,6 +84,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const user = await getCurrentUser();
   const { companies, error } = user ? await listCompanyWorkspaces() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
+  const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
   const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
@@ -128,6 +131,9 @@ export default async function Home({ searchParams }: HomeProps) {
   const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
   const primaryReadinessSnapshots = readinessSnapshots.filter(
     (snapshot) => snapshot.company_id === primaryCompanyId && snapshot.income_year === primaryIncomeYear,
+  );
+  const primaryAnnualData = annualData.find(
+    (item) => item.company_id === primaryCompanyId && item.income_year === primaryIncomeYear,
   );
   const primaryFilingReady = primaryReadinessSnapshots.some(
     (snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven" && snapshot.ready,
@@ -814,6 +820,54 @@ export default async function Home({ searchParams }: HomeProps) {
                         </button>
                       </form>
                     ) : null}
+                  </div>
+                </div>
+              </section>
+
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Year-end interview</p>
+                  <h2>Strukturerte annual data for alle filingløp.</h2>
+                </div>
+                <form className="dataPanel formPanel widePanel" action={saveYearEndInterview}>
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Inntektsår
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
+                  </label>
+                  {[
+                    ["shares_owned_at_year_end", "Selskapet eide aksjer ved årsslutt"],
+                    ["bought_or_sold_shares", "Kjøpte eller solgte aksjer"],
+                    ["received_dividends", "Mottok utbytte"],
+                    ["declared_owner_dividends", "Besluttet utbytte til eier"],
+                    ["shareholder_loans", "Har aksjonær- eller konsernlån"],
+                    ["paid_costs", "Betalte kostnader"],
+                    ["bank_balance_confirmed", "Bankbalanse er kontrollert"],
+                    ["has_unpaid_items", "Har ubetalte poster"],
+                    ["general_meeting_approved", "Generalforsamling har godkjent årsregnskap"],
+                    ["authority_to_submit_confirmed", "Eier bekrefter innsendingsrett"],
+                  ].map(([name, label]) => (
+                    <label className="checkboxLabel" key={name}>
+                      <input
+                        name={name}
+                        type="checkbox"
+                        defaultChecked={Boolean(primaryAnnualData?.answers?.[name as keyof typeof primaryAnnualData.answers])}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                  <button className="primaryButton" type="submit">
+                    Lagre year-end answers
+                  </button>
+                </form>
+                <div className="readinessGrid">
+                  <div className="readinessItem">
+                    <span>Annual data</span>
+                    <strong data-status={primaryAnnualData ? "ready" : "draft"}>
+                      {primaryAnnualData ? "Lagret" : "Ikke lagret"}
+                    </strong>
+                    <p>No-activity: {primaryAnnualData?.no_activity_confirmed ? "Bekreftet" : "Ikke bekreftet"}</p>
+                    <p>{primaryAnnualData?.confirmations.length ?? 0} strukturerte bekreftelser.</p>
                   </div>
                 </div>
               </section>

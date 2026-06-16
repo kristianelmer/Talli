@@ -16,6 +16,7 @@ import {
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { validateAuthorityObligation } from "./lib/authority-permission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
+import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
 import {
   DividendReceivedValidationError,
@@ -1909,6 +1910,61 @@ export async function requestFilingPackagePayment(formData: FormData) {
   redirect("/");
 }
 
+export async function saveYearEndInterview(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const answers = buildYearEndInterviewAnswers(
+    Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
+  );
+  const confirmations = annualConfirmations(answers);
+  const noActivity = noActivityConfirmed(answers);
+
+  const { data: existing } = await supabase
+    .from("annual_data")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("income_year", incomeYear)
+    .maybeSingle();
+  const { error } = await supabase.from("annual_data").upsert(
+    {
+      company_id: companyId,
+      income_year: incomeYear,
+      answers,
+      confirmations,
+      no_activity_confirmed: noActivity,
+      completed_by: user.id,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "company_id,income_year" },
+  );
+  if (error) {
+    redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "filing",
+    action: existing ? "year_end_interview_updated" : "year_end_interview_completed",
+    message: `Year-end interview lagret for ${incomeYear}${noActivity ? " som no-activity." : "."}`,
+  });
+
+  revalidatePath("/");
+  redirect("/");
+}
+
 export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/?error=Supabase%20env%20mangler");
@@ -1940,6 +1996,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: documents, error: documentsError },
     { data: overrides, error: overridesError },
     { data: locks, error: locksError },
+    { data: annualData, error: annualDataError },
     { data: billingAccount, error: billingError },
     { data: authorityPermissions, error: authorityError },
     { data: filingPreviews, error: previewsError },
@@ -1952,6 +2009,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
     supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
@@ -1965,6 +2023,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     documentsError ||
     overridesError ||
     locksError ||
+    (annualDataError?.code === "PGRST116" ? null : annualDataError) ||
     (billingError?.code === "PGRST116" ? null : billingError) ||
     authorityError ||
     previewsError ||
@@ -1983,6 +2042,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     documents: documents ?? [],
     overrides: overrides ?? [],
     locks: locks ?? [],
+    annualData: annualData ?? null,
     billingAccount: billingAccount ?? null,
     authorityPermissions: authorityPermissions ?? [],
     filingPreviews: filingPreviews ?? [],

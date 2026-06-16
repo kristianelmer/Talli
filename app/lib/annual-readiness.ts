@@ -4,6 +4,7 @@ import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
 import type {
   BankTransactionRow,
+  AnnualDataRow,
   CompanyWorkspaceRow,
   DocumentRow,
   FilingOverrideRow,
@@ -47,6 +48,7 @@ export type AnnualReadinessInput = {
   documents: DocumentRow[];
   overrides: FilingOverrideRow[];
   locks: PeriodLockRow[];
+  annualData: AnnualDataRow | null;
   billingAccount: BillingAccount | null;
   authorityPermissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[];
   filingPreviews: FilingPreviewRow[];
@@ -95,6 +97,21 @@ function commonReadinessIssues(input: AnnualReadinessInput, obligation: Authorit
   }
   if (!input.locks.some((lock) => lock.company_id === input.company.id && lock.income_year === input.incomeYear)) {
     issues.push(warning("period_not_locked", "Inntektsåret er ikke periode-låst.", "period_lock", false));
+  }
+  if (!input.annualData) {
+    issues.push(obligation === "aksjonaerregisteroppgaven"
+      ? warning("annual_data_missing", "Year-end interview er ikke fullført.", "annual_data", false)
+      : block("annual_data_missing", "Year-end interview må fullføres før årsfiling.", "annual_data"));
+  } else {
+    if (!input.annualData.answers.bank_balance_confirmed) {
+      issues.push(warning("bank_balance_not_confirmed", "Bankbalanse er ikke bekreftet i year-end interview.", "annual_data", false));
+    }
+    if (input.annualData.answers.has_unpaid_items) {
+      issues.push(block("unpaid_items_not_supported", "Ubetalte poster er ikke støttet i enkel annual loop.", "annual_data"));
+    }
+    if (!input.annualData.answers.authority_to_submit_confirmed) {
+      issues.push(block("annual_authority_not_confirmed", "Innsendingsrett er ikke bekreftet i year-end interview.", "annual_data"));
+    }
   }
   const unmatchedBankTransactions = input.bankTransactions.filter(
     (transaction) =>
@@ -199,7 +216,7 @@ function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[
       action.income_year === input.incomeYear &&
       action.action_type === "tax_settlement",
   );
-  if (!hasTaxSettlement) {
+  if (!hasTaxSettlement && !input.annualData?.no_activity_confirmed) {
     issues.push(warning("tax_settlement_missing", "Skatteoppgjør er ikke registrert for året.", "tax_settlement", false));
   }
   return issues;
@@ -212,6 +229,9 @@ function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[]
   );
   if (!hasLedger) {
     issues.push(block("ledger_missing", "Årsregnskap krever postert åpningsbalanse eller holdinghandlinger.", "ledger"));
+  }
+  if (input.annualData && !input.annualData.answers.general_meeting_approved) {
+    issues.push(block("general_meeting_not_approved", "Generalforsamling må godkjenne årsregnskapet.", "annual_data"));
   }
   const unacceptedManualWarnings = input.ledgerEntries.filter(
     (entry) =>

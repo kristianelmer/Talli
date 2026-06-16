@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
+    "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
     "test:authority": "node --experimental-strip-types --test tests/authority_permission.test.mjs",
     "test:bank": "node --experimental-strip-types --test tests/bank_workflow.test.mjs",

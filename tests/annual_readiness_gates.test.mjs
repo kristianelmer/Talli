@@ -73,6 +73,29 @@ function baseInput(overrides = {}) {
     documents: [],
     overrides: [],
     locks: [{ id: "lock-id", company_id: company.id, income_year: 2025, reason: "Annual close", locked_by: "owner", locked_at: "2026-01-01T00:00:00Z" }],
+    annualData: {
+      id: "annual-data-id",
+      company_id: company.id,
+      income_year: 2025,
+      answers: {
+        shares_owned_at_year_end: true,
+        bought_or_sold_shares: false,
+        received_dividends: false,
+        declared_owner_dividends: false,
+        shareholder_loans: false,
+        paid_costs: false,
+        bank_balance_confirmed: true,
+        has_unpaid_items: false,
+        general_meeting_approved: true,
+        authority_to_submit_confirmed: true,
+      },
+      confirmations: ["bank_balance_confirmed", "general_meeting_approved", "authority_to_submit_confirmed"],
+      no_activity_confirmed: false,
+      completed_by: "owner",
+      completed_at: "2026-01-01T00:00:00Z",
+      updated_by: "owner",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
     billingAccount: {
       company_id: company.id,
       pricing_plan: "founder",
@@ -132,6 +155,32 @@ test("returns hard blocks for missing permission and billing", () => {
   assert.equal(rf1086.ready, false);
   assert.ok(rf1086.hard_blocks.some((issue) => issue.code === "missing_authority_confirmation"));
   assert.ok(rf1086.hard_blocks.some((issue) => issue.code === "billing_account_missing"));
+});
+
+test("uses no-activity annual data to avoid unrelated tax-settlement clutter", () => {
+  const noActivityAnnualData = {
+    ...baseInput().annualData,
+    answers: {
+      shares_owned_at_year_end: false,
+      bought_or_sold_shares: false,
+      received_dividends: false,
+      declared_owner_dividends: false,
+      shareholder_loans: false,
+      paid_costs: false,
+      bank_balance_confirmed: true,
+      has_unpaid_items: false,
+      general_meeting_approved: true,
+      authority_to_submit_confirmed: true,
+    },
+    confirmations: ["bank_balance_confirmed", "general_meeting_approved", "authority_to_submit_confirmed", "no_activity_confirmed"],
+    no_activity_confirmed: true,
+  };
+  const tax = evaluateAnnualReadinessGates(baseInput({ annualData: noActivityAnnualData, holdingActions: [] })).find(
+    (snapshot) => snapshot.obligation === "skattemelding",
+  );
+
+  assert.equal(tax.status, "ready");
+  assert.equal(tax.warnings.some((issue) => issue.code === "tax_settlement_missing"), false);
 });
 
 test("keeps accepted warnings separate from open warnings", () => {
