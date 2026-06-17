@@ -36,6 +36,13 @@ create table if not exists public.company_memberships (
   primary key (company_id, user_id)
 );
 
+create table if not exists public.support_operators (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'support' check (role in ('support', 'admin')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 alter table public.company_memberships add column if not exists accepted_at timestamptz;
 alter table public.company_memberships add column if not exists created_at timestamptz not null default now();
 
@@ -451,6 +458,7 @@ create table if not exists public.authority_permissions (
 
 create index if not exists companies_created_by_idx on public.companies(created_by);
 create index if not exists company_memberships_user_id_idx on public.company_memberships(user_id);
+create index if not exists support_operators_active_idx on public.support_operators(active);
 create index if not exists company_invitations_company_status_idx on public.company_invitations(company_id, status, updated_at desc);
 create index if not exists company_invitations_invited_email_idx on public.company_invitations(invited_email, status);
 create index if not exists notification_outbox_company_created_idx on public.notification_outbox(company_id, created_at desc);
@@ -479,6 +487,7 @@ create index if not exists company_cancellations_company_updated_idx on public.c
 
 alter table public.companies enable row level security;
 alter table public.company_memberships enable row level security;
+alter table public.support_operators enable row level security;
 alter table public.company_invitations enable row level security;
 alter table public.notification_outbox enable row level security;
 alter table public.audit_events enable row level security;
@@ -505,6 +514,7 @@ alter table public.authority_permissions enable row level security;
 grant usage on schema public to authenticated;
 grant select, insert, update on public.companies to authenticated;
 grant select, insert, update on public.company_memberships to authenticated;
+grant select on public.support_operators to authenticated;
 grant select, insert, update on public.company_invitations to authenticated;
 grant select, insert, update on public.notification_outbox to authenticated;
 grant select, insert on public.audit_events to authenticated;
@@ -542,12 +552,24 @@ using (
   created_by = (select auth.uid())
   or exists (
     select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+  or exists (
+    select 1
     from public.company_memberships m
     where m.company_id = companies.id
       and m.user_id = (select auth.uid())
       and m.accepted_at is not null
   )
 );
+
+drop policy if exists "active operators can read own operator grant" on public.support_operators;
+create policy "active operators can read own operator grant"
+on public.support_operators for select
+to authenticated
+using (user_id = (select auth.uid()) and active);
 
 drop policy if exists "owners can lock their new company identity" on public.companies;
 create policy "owners can lock their new company identity"
@@ -716,6 +738,19 @@ using (
   )
 );
 
+drop policy if exists "support operators can read audit events" on public.audit_events;
+create policy "support operators can read audit events"
+on public.audit_events for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+);
+
 drop policy if exists "company members can create audit events for themselves" on public.audit_events;
 create policy "company members can create audit events for themselves"
 on public.audit_events for insert
@@ -749,6 +784,19 @@ using (
     where m.company_id = company_cancellations.company_id
       and m.user_id = (select auth.uid())
       and m.accepted_at is not null
+  )
+);
+
+drop policy if exists "support operators can read cancellation state" on public.company_cancellations;
+create policy "support operators can read cancellation state"
+on public.company_cancellations for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
   )
 );
 
@@ -1240,6 +1288,19 @@ using (
   )
 );
 
+drop policy if exists "support operators can read filing submissions" on public.filing_submissions;
+create policy "support operators can read filing submissions"
+on public.filing_submissions for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+);
+
 drop policy if exists "owners can create filing submissions" on public.filing_submissions;
 create policy "owners can create filing submissions"
 on public.filing_submissions for insert
@@ -1335,6 +1396,19 @@ using (
   )
 );
 
+drop policy if exists "support operators can read filing readiness snapshots" on public.filing_readiness_snapshots;
+create policy "support operators can read filing readiness snapshots"
+on public.filing_readiness_snapshots for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+);
+
 drop policy if exists "owners can create filing readiness snapshots" on public.filing_readiness_snapshots;
 create policy "owners can create filing readiness snapshots"
 on public.filing_readiness_snapshots for insert
@@ -1400,6 +1474,19 @@ using (
   )
 );
 
+drop policy if exists "support operators can read billing accounts" on public.billing_accounts;
+create policy "support operators can read billing accounts"
+on public.billing_accounts for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+);
+
 drop policy if exists "owners can create billing accounts" on public.billing_accounts;
 create policy "owners can create billing accounts"
 on public.billing_accounts for insert
@@ -1452,6 +1539,19 @@ using (
   )
 );
 
+drop policy if exists "support operators can read billing payment events" on public.billing_payment_events;
+create policy "support operators can read billing payment events"
+on public.billing_payment_events for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
+  )
+);
+
 drop policy if exists "owners can create billing payment events" on public.billing_payment_events;
 create policy "owners can create billing payment events"
 on public.billing_payment_events for insert
@@ -1477,6 +1577,19 @@ using (
     from public.company_memberships m
     where m.company_id = authority_permissions.company_id
       and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "support operators can read authority permissions" on public.authority_permissions;
+create policy "support operators can read authority permissions"
+on public.authority_permissions for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.support_operators o
+    where o.user_id = (select auth.uid())
+      and o.active
   )
 );
 

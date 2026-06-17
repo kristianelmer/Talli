@@ -8,6 +8,7 @@ import type {
   AnnualReadinessStatus,
 } from "../annual-readiness";
 import type { CancellationEvidence, CancellationStatus } from "../cancellation";
+import { assertOperatorSearchAllowed, buildOperatorSupportSummaries } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
   Rf1086SubmissionFeedbackItem,
@@ -724,5 +725,110 @@ export async function listCompanyCancellations(companyIds: string[]) {
   return {
     cancellations: (data ?? []) as CompanyCancellationRow[],
     error: error?.message ?? null,
+  };
+}
+
+export async function searchOperatorSupportDashboard(query: string, actorId?: string | null) {
+  if (!hasSupabaseEnv() || !actorId) {
+    return { summaries: [], isOperator: false, error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: operator } = await supabase
+    .from("support_operators")
+    .select("user_id")
+    .eq("user_id", actorId)
+    .eq("active", true)
+    .maybeSingle();
+  const isOperator = Boolean(operator);
+  try {
+    assertOperatorSearchAllowed({ isOperator, query });
+  } catch (error) {
+    return {
+      summaries: [],
+      isOperator,
+      error: error instanceof Error ? error.message : "operator_search_failed",
+    };
+  }
+
+  const normalized = query.trim();
+  const { data: companies, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .or(`org_number.ilike.%${normalized}%,name.ilike.%${normalized}%`)
+    .limit(10);
+  if (companyError) {
+    return { summaries: [], isOperator, error: companyError.message };
+  }
+  const companyRows = (companies ?? []) as CompanyWorkspaceRow[];
+  const companyIds = companyRows.map((company) => company.id);
+  if (!companyIds.length) {
+    return { summaries: [], isOperator, error: null };
+  }
+
+  const [
+    { data: readinessSnapshots },
+    { data: submissions },
+    { data: authorityPermissions },
+    { data: billingAccounts },
+    { data: billingPaymentEvents },
+    { data: cancellations },
+    { data: auditEvents },
+  ] = await Promise.all([
+    supabase
+      .from("filing_readiness_snapshots")
+      .select("id, company_id, income_year, obligation, status, ready, hard_blocks, warnings, accepted_warnings, evaluated_at, created_by, updated_at")
+      .in("company_id", companyIds),
+    supabase
+      .from("filing_submissions")
+      .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("authority_permissions")
+      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
+      .in("company_id", companyIds),
+    supabase
+      .from("billing_accounts")
+      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at")
+      .in("company_id", companyIds),
+    supabase
+      .from("billing_payment_events")
+      .select("id, company_id, provider, provider_reference, idempotency_key, kind, status, amount_nok, income_year, payload, created_by, created_at")
+      .in("company_id", companyIds),
+    supabase
+      .from("company_cancellations")
+      .select("id, company_id, status, reason, evidence, requested_by, requested_at, reviewed_by, reviewed_at, deleted_by, deleted_at, updated_at")
+      .in("company_id", companyIds),
+    supabase
+      .from("audit_events")
+      .select("id, company_id, actor_id, category, action, message, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ]);
+
+  await supabase.from("audit_events").insert(
+    companyIds.map((companyId) => ({
+      company_id: companyId,
+      actor_id: actorId,
+      category: "support",
+      action: "operator_dashboard_viewed",
+      message: `Operator dashboard searched for ${normalized}.`,
+    })),
+  );
+
+  return {
+    summaries: buildOperatorSupportSummaries({
+      companies: companyRows,
+      readinessSnapshots: (readinessSnapshots ?? []) as FilingReadinessSnapshotRow[],
+      submissions: (submissions ?? []) as FilingSubmissionRow[],
+      authorityPermissions: (authorityPermissions ?? []) as AuthorityPermissionRow[],
+      billingAccounts: (billingAccounts ?? []) as BillingAccountRow[],
+      billingPaymentEvents: (billingPaymentEvents ?? []) as BillingPaymentEventRow[],
+      cancellations: (cancellations ?? []) as CompanyCancellationRow[],
+      auditEvents: auditEvents ?? [],
+    }),
+    isOperator,
+    error: null,
   };
 }

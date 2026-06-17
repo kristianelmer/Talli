@@ -26,6 +26,7 @@
     "test:legal-policy": "node --test tests/legal_policy_pack.test.mjs",
     "test:manual-journal": "node --experimental-strip-types --test tests/manual_journal.test.mjs",
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
+    "test:operator-support": "node --experimental-strip-types --test tests/operator_support.test.mjs",
     "test:owner-dividend": "node --experimental-strip-types --test tests/owner_dividend.test.mjs",
     "test:review": "node --experimental-strip-types --test tests/review_workflow.test.mjs",
     "test:security": "node --experimental-strip-types --test tests/security_step_up.test.mjs",

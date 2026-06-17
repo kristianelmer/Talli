@@ -69,11 +69,12 @@ import {
   listNotificationOutbox,
   listOpeningSetups,
   listPeriodLocks,
+  searchOperatorSupportDashboard,
   listWorkspaceInvitations,
 } from "./lib/supabase/server";
 
 type HomeProps = {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; operatorOrg?: string }>;
 };
 
 function supportBoundary(entityType: string) {
@@ -114,6 +115,10 @@ export default async function Home({ searchParams }: HomeProps) {
   const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
+  const operatorSearch = params?.operatorOrg ?? "";
+  const operatorDashboard = operatorSearch
+    ? await searchOperatorSupportDashboard(operatorSearch, user?.id)
+    : { summaries: [], isOperator: false, error: null };
   const primaryCompanyId = companies[0]?.id;
   const unmatchedTransactions = transactions.filter(
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
@@ -1774,6 +1779,47 @@ export default async function Home({ searchParams }: HomeProps) {
           ) : null}
         </>
       )}
+
+      <section className="band">
+        <div className="sectionHeader">
+          <p className="eyebrow">Operator</p>
+          <h2>Supportstatus uten muterende snarveier.</h2>
+        </div>
+        <form className="dataPanel formPanel widePanel" method="get">
+          <label>
+            Org.nr eller navn
+            <input name="operatorOrg" defaultValue={operatorSearch} placeholder="314259521" />
+          </label>
+          <button className="secondaryButton" type="submit">
+            Søk
+          </button>
+        </form>
+        {operatorDashboard.error ? <p className="errorText">{operatorDashboard.error}</p> : null}
+        <div className="readinessGrid">
+          {operatorDashboard.summaries.map((summary) => (
+            <div className="readinessItem" key={summary.companyId}>
+              <span>{summary.orgNumber}</span>
+              <strong data-status={summary.refundStatus !== "none" || summary.restoreStatus !== "ok" ? "warning" : "ready"}>
+                {summary.companyName}
+              </strong>
+              <p>Filing: {summary.filingStatus}</p>
+              <p>Readiness blockers: {summary.readinessBlockCount}</p>
+              <p>Authority prod gates: {summary.authorityProductionEnabled}</p>
+              <p>Billing: {summary.billingStatus}</p>
+              <p>Refund: {summary.refundStatus}</p>
+              <p>Restore/archive: {summary.restoreStatus}</p>
+              <p>Audit: {summary.recentAuditActions.join(", ") || "Ingen"}</p>
+            </div>
+          ))}
+          {operatorSearch && operatorDashboard.isOperator && operatorDashboard.summaries.length === 0 ? (
+            <div className="readinessItem">
+              <span>Operator</span>
+              <strong data-status="draft">Ingen treff</strong>
+              <p>Ingen selskap matchet søket.</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <section id="sikkerhet" className="split">
         <div>
