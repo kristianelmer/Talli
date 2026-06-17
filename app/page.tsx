@@ -54,6 +54,7 @@ import {
   listAnnualData,
   listBankTransactions,
   listBillingAccounts,
+  listBillingPaymentEvents,
   listCompanyCancellations,
   listCompanyWorkspaces,
   listDocumentsForCompanies,
@@ -107,6 +108,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const { notifications } = user ? await listNotificationOutbox(companies.map((company) => company.id)) : { notifications: [] };
   const { cancellations } = user ? await listCompanyCancellations(companies.map((company) => company.id)) : { cancellations: [] };
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
+  const { billingPaymentEvents } = user ? await listBillingPaymentEvents(companies.map((company) => company.id)) : { billingPaymentEvents: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
   const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
   const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
@@ -143,6 +145,7 @@ export default async function Home({ searchParams }: HomeProps) {
   ).sort((a, b) => b - a);
   const primaryIncomeYear = incomeYears[0] ?? 2025;
   const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
+  const primaryBillingEvents = billingPaymentEvents.filter((event) => event.company_id === primaryCompanyId);
   const primaryReadinessSnapshots = readinessSnapshots.filter(
     (snapshot) => snapshot.company_id === primaryCompanyId && snapshot.income_year === primaryIncomeYear,
   );
@@ -950,6 +953,8 @@ export default async function Home({ searchParams }: HomeProps) {
                         ? `Founder-kull ${primaryBillingAccount.founder_cohort_number}`
                         : "Standard eller ikke opprettet."}
                     </p>
+                    <p>Kunde: {primaryBillingAccount?.provider_customer_ref ?? "Ikke opprettet"}</p>
+                    <p>Abonnement: {primaryBillingAccount?.subscription_provider_ref ?? "Ikke betalt"}</p>
                   </div>
                   <div className="readinessItem">
                     <span>Gate</span>
@@ -958,6 +963,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     </strong>
                     <p>{primaryBillingGate?.message ?? "Opprett billingkonto før filingpakke."}</p>
                     <p>Readiness {primaryFilingReady ? "klar" : "ikke klar"} for {primaryIncomeYear}.</p>
+                    <p>Filingpakke ref: {primaryBillingAccount?.filing_package_payment_ref ?? "Ikke betalt"}</p>
                     {primaryBillingAccount && !primaryBillingAccount.subscription_active ? (
                       <form action={activateBillingSubscription}>
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
@@ -969,18 +975,34 @@ export default async function Home({ searchParams }: HomeProps) {
                   </div>
                   <div className="readinessItem">
                     <span>Refusjon</span>
-                    <strong data-status={primaryBillingAccount?.refund_eligible ? "warning" : "draft"}>
-                      {primaryBillingAccount?.refund_eligible ? "Refusjonsberettiget" : "Ingen refusjon"}
+                    <strong data-status={primaryBillingAccount?.refund_completed ? "ready" : primaryBillingAccount?.refund_eligible ? "warning" : "draft"}>
+                      {primaryBillingAccount?.refund_completed
+                        ? "Refundert"
+                        : primaryBillingAccount?.refund_eligible
+                          ? "Refusjonsberettiget"
+                          : "Ingen refusjon"}
                     </strong>
-                    <p>{primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan markeres refusjonsberettiget etter Talli-feil."}</p>
+                    <p>{primaryBillingAccount?.refund_provider_ref ?? primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan refunderes etter Talli-feil."}</p>
                     {primaryBillingAccount?.filing_package_paid && primaryBillingAccount.supported_case ? (
                       <form action={markBillingRefundEligible}>
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
+                        <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
                         <button className="secondaryButton" type="submit">
-                          Marker refusjonsberettiget
+                          Refunder filingpakke
                         </button>
                       </form>
                     ) : null}
+                  </div>
+                  <div className="readinessItem">
+                    <span>Betalingshendelser</span>
+                    <strong data-status={primaryBillingEvents.length ? "ready" : "draft"}>
+                      {primaryBillingEvents.length} eventer
+                    </strong>
+                    <p>
+                      {primaryBillingEvents[0]
+                        ? `${primaryBillingEvents[0].kind}: ${primaryBillingEvents[0].status} (${primaryBillingEvents[0].provider_reference})`
+                        : "Ingen providerhendelser lagret."}
+                    </p>
                   </div>
                 </div>
               </section>

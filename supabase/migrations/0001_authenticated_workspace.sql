@@ -402,12 +402,38 @@ create table if not exists public.billing_accounts (
   filing_package_paid boolean not null default false,
   supported_case boolean not null default true,
   refund_eligible boolean not null default false,
+  refund_completed boolean not null default false,
   no_charge_reason text,
+  provider_customer_ref text,
+  subscription_provider_ref text,
+  filing_package_payment_ref text,
+  refund_provider_ref text,
   updated_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (pricing_plan = 'founder' or founder_cohort_number is null),
   check (supported_case or filing_package_paid = false)
+);
+
+alter table public.billing_accounts add column if not exists refund_completed boolean not null default false;
+alter table public.billing_accounts add column if not exists provider_customer_ref text;
+alter table public.billing_accounts add column if not exists subscription_provider_ref text;
+alter table public.billing_accounts add column if not exists filing_package_payment_ref text;
+alter table public.billing_accounts add column if not exists refund_provider_ref text;
+
+create table if not exists public.billing_payment_events (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  provider text not null default 'simulation',
+  provider_reference text not null check (provider_reference <> ''),
+  idempotency_key text not null unique check (idempotency_key <> ''),
+  kind text not null check (kind in ('subscription', 'filing_package', 'refund')),
+  status text not null check (status in ('created', 'succeeded', 'failed', 'refunded')),
+  amount_nok integer not null check (amount_nok >= 0),
+  income_year integer check (income_year is null or income_year between 2000 and 2100),
+  payload jsonb not null default '{}'::jsonb,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.authority_permissions (
@@ -447,6 +473,7 @@ create index if not exists filing_overrides_preview_id_idx on public.filing_over
 create index if not exists filing_readiness_snapshots_company_year_idx on public.filing_readiness_snapshots(company_id, income_year);
 create index if not exists filing_review_comments_preview_id_idx on public.filing_review_comments(preview_id, created_at);
 create index if not exists billing_accounts_updated_at_idx on public.billing_accounts(updated_at desc);
+create index if not exists billing_payment_events_company_created_idx on public.billing_payment_events(company_id, created_at desc);
 create index if not exists authority_permissions_company_obligation_idx on public.authority_permissions(company_id, obligation);
 create index if not exists company_cancellations_company_updated_idx on public.company_cancellations(company_id, updated_at desc);
 
@@ -472,6 +499,7 @@ alter table public.filing_overrides enable row level security;
 alter table public.filing_readiness_snapshots enable row level security;
 alter table public.filing_review_comments enable row level security;
 alter table public.billing_accounts enable row level security;
+alter table public.billing_payment_events enable row level security;
 alter table public.authority_permissions enable row level security;
 
 grant usage on schema public to authenticated;
@@ -497,6 +525,7 @@ grant select, insert on public.filing_overrides to authenticated;
 grant select, insert, update on public.filing_readiness_snapshots to authenticated;
 grant select, insert, update on public.filing_review_comments to authenticated;
 grant select, insert, update on public.billing_accounts to authenticated;
+grant select, insert on public.billing_payment_events to authenticated;
 grant select, insert, update on public.authority_permissions to authenticated;
 
 drop policy if exists "owners can create companies" on public.companies;
@@ -1405,6 +1434,34 @@ with check (
     select 1
     from public.company_memberships m
     where m.company_id = billing_accounts.company_id
+      and m.user_id = (select auth.uid())
+      and m.role = 'owner'
+  )
+);
+
+drop policy if exists "company members can read billing payment events" on public.billing_payment_events;
+create policy "company members can read billing payment events"
+on public.billing_payment_events for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_payment_events.company_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "owners can create billing payment events" on public.billing_payment_events;
+create policy "owners can create billing payment events"
+on public.billing_payment_events for insert
+to authenticated
+with check (
+  created_by = (select auth.uid())
+  and exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = billing_payment_events.company_id
       and m.user_id = (select auth.uid())
       and m.role = 'owner'
   )

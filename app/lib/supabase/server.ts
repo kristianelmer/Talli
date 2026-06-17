@@ -262,10 +262,30 @@ export type BillingAccountRow = {
   filing_package_paid: boolean;
   supported_case: boolean;
   refund_eligible: boolean;
+  refund_completed: boolean;
   no_charge_reason: string | null;
+  provider_customer_ref: string | null;
+  subscription_provider_ref: string | null;
+  filing_package_payment_ref: string | null;
+  refund_provider_ref: string | null;
   updated_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type BillingPaymentEventRow = {
+  id: string;
+  company_id: string;
+  provider: string;
+  provider_reference: string;
+  idempotency_key: string;
+  kind: "subscription" | "filing_package" | "refund";
+  status: "created" | "succeeded" | "failed" | "refunded";
+  amount_nok: number;
+  income_year: number | null;
+  payload: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
 };
 
 export type AuthorityPermissionRow = {
@@ -611,13 +631,30 @@ export async function listBillingAccounts(companyIds: string[]) {
   const { data, error } = await supabase
     .from("billing_accounts")
     .select(
-      "company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason, updated_by, created_at, updated_at",
+      "company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at",
     )
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
   return {
     billingAccounts: (data ?? []) as BillingAccountRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listBillingPaymentEvents(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { billingPaymentEvents: [] as BillingPaymentEventRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("billing_payment_events")
+    .select("id, company_id, provider, provider_reference, idempotency_key, kind, status, amount_nok, income_year, payload, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: false });
+
+  return {
+    billingPaymentEvents: (data ?? []) as BillingPaymentEventRow[],
     error: error?.message ?? null,
   };
 }

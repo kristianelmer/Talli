@@ -18,6 +18,23 @@ export type BillingAccount = {
   supported_case: boolean;
   refund_eligible: boolean;
   no_charge_reason: string | null;
+  provider_customer_ref?: string | null;
+  subscription_provider_ref?: string | null;
+  filing_package_payment_ref?: string | null;
+  refund_provider_ref?: string | null;
+  refund_completed?: boolean;
+};
+
+export type BillingPaymentKind = "subscription" | "filing_package" | "refund";
+export type BillingPaymentStatus = "created" | "succeeded" | "failed" | "refunded";
+
+export type BillingProviderEvent = {
+  provider: "simulation";
+  providerReference: string;
+  idempotencyKey: string;
+  kind: BillingPaymentKind;
+  status: BillingPaymentStatus;
+  amountNok: number;
 };
 
 export type BillingGateResult = {
@@ -128,5 +145,67 @@ export function productionBillingGate(account: BillingAccount, filingReady: bool
     allowed: true,
     chargeAllowed: false,
     message: "Billing og filing readiness er klare.",
+  };
+}
+
+export function billingIdempotencyKey(input: {
+  companyId: string;
+  kind: BillingPaymentKind;
+  incomeYear?: number | null;
+}) {
+  const yearPart = input.incomeYear ? `-${input.incomeYear}` : "";
+  return `billing-${input.companyId}-${input.kind}${yearPart}`;
+}
+
+export function simulateBillingProviderEvent(input: {
+  companyId: string;
+  kind: BillingPaymentKind;
+  amountNok: number;
+  incomeYear?: number | null;
+  status?: BillingPaymentStatus;
+}): BillingProviderEvent {
+  const idempotencyKey = billingIdempotencyKey({
+    companyId: input.companyId,
+    kind: input.kind,
+    incomeYear: input.incomeYear,
+  });
+  return {
+    provider: "simulation",
+    providerReference: `sim_${input.kind}_${input.companyId}${input.incomeYear ? `_${input.incomeYear}` : ""}`,
+    idempotencyKey,
+    kind: input.kind,
+    status: input.status ?? "succeeded",
+    amountNok: input.amountNok,
+  };
+}
+
+export function applyBillingProviderEvent(account: BillingAccount, event: BillingProviderEvent): BillingAccount {
+  if (event.kind === "subscription") {
+    return {
+      ...account,
+      provider_customer_ref: account.provider_customer_ref ?? `sim_customer_${account.company_id}`,
+      subscription_provider_ref: event.providerReference,
+      subscription_active: event.status === "succeeded",
+    };
+  }
+  if (event.kind === "filing_package") {
+    if (event.status !== "succeeded") {
+      return { ...account, filing_package_paid: false };
+    }
+    return {
+      ...account,
+      filing_package_payment_ref: event.providerReference,
+      filing_package_paid: true,
+      refund_eligible: false,
+    };
+  }
+  if (event.status !== "refunded" && event.status !== "succeeded") {
+    return account;
+  }
+  return {
+    ...account,
+    refund_provider_ref: event.providerReference,
+    refund_completed: true,
+    refund_eligible: false,
   };
 }

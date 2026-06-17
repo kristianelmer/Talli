@@ -91,7 +91,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .eq("income_year", incomeYear),
       supabase
         .from("billing_accounts")
-        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason, updated_by, created_at, updated_at")
+        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at")
         .eq("company_id", companyId),
       supabase
         .from("authority_permissions")

@@ -9,9 +9,11 @@ import {
   parseBankCsv,
 } from "./lib/bank";
 import {
+  applyBillingProviderEvent,
   BillingValidationError,
   buildBillingAccount,
   productionBillingGate,
+  simulateBillingProviderEvent,
 } from "./lib/billing";
 import { buildCancellationEvidence, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
@@ -2262,9 +2264,43 @@ export async function activateBillingSubscription(formData: FormData) {
 
   const companyId = formString(formData, "companyId");
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
+  const { data: account, error: accountError } = await supabase
+    .from("billing_accounts")
+    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
+    .eq("company_id", companyId)
+    .single();
+  if (accountError || !account) {
+    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+  }
+  const event = simulateBillingProviderEvent({
+    companyId,
+    kind: "subscription",
+    amountNok: Number(account.monthly_nok),
+  });
+  const updated = applyBillingProviderEvent(account, event);
+  const { error: eventError } = await supabase.from("billing_payment_events").insert({
+    company_id: companyId,
+    provider: event.provider,
+    provider_reference: event.providerReference,
+    idempotency_key: event.idempotencyKey,
+    kind: event.kind,
+    status: event.status,
+    amount_nok: event.amountNok,
+    payload: event,
+    created_by: user.id,
+  });
+  if (eventError && eventError.code !== "23505") {
+    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+  }
   const { error } = await supabase
     .from("billing_accounts")
-    .update({ subscription_active: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .update({
+      subscription_active: updated.subscription_active,
+      provider_customer_ref: updated.provider_customer_ref,
+      subscription_provider_ref: updated.subscription_provider_ref,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("company_id", companyId);
   if (error) {
     redirect(`/?error=${encodeURIComponent(error.message)}`);
@@ -2275,7 +2311,7 @@ export async function activateBillingSubscription(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "billing_subscription_activated",
-    message: "Abonnement markert aktivt.",
+    message: `Abonnement aktivert via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
@@ -2299,7 +2335,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const { data: account, error: accountError } = await supabase
     .from("billing_accounts")
-    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
@@ -2319,10 +2355,38 @@ export async function requestFilingPackagePayment(formData: FormData) {
   if (!gate.chargeAllowed) {
     redirect(`/?error=${encodeURIComponent(gate.message)}`);
   }
+  const event = simulateBillingProviderEvent({
+    companyId,
+    kind: "filing_package",
+    amountNok: Number(account.filing_package_nok),
+    incomeYear,
+  });
+  const updated = applyBillingProviderEvent(account, event);
+  const { error: eventError } = await supabase.from("billing_payment_events").insert({
+    company_id: companyId,
+    provider: event.provider,
+    provider_reference: event.providerReference,
+    idempotency_key: event.idempotencyKey,
+    kind: event.kind,
+    status: event.status,
+    amount_nok: event.amountNok,
+    income_year: incomeYear,
+    payload: event,
+    created_by: user.id,
+  });
+  if (eventError && eventError.code !== "23505") {
+    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+  }
 
   const { error } = await supabase
     .from("billing_accounts")
-    .update({ filing_package_paid: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .update({
+      filing_package_paid: updated.filing_package_paid,
+      filing_package_payment_ref: updated.filing_package_payment_ref,
+      refund_eligible: updated.refund_eligible,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("company_id", companyId);
   if (error) {
     redirect(`/?error=${encodeURIComponent(error.message)}`);
@@ -2333,7 +2397,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "filing_package_paid",
-    message: `Filingpakke markert betalt for ${incomeYear}.`,
+    message: `Filingpakke betalt for ${incomeYear} via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
@@ -2445,7 +2509,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
-    supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason").eq("company_id", companyId).maybeSingle(),
+    supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_submissions").select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
@@ -2536,6 +2600,7 @@ export async function markBillingUnsupported(formData: FormData) {
     .update({
       supported_case: false,
       filing_package_paid: false,
+      filing_package_payment_ref: null,
       no_charge_reason: reason,
       updated_by: user.id,
       updated_at: new Date().toISOString(),
@@ -2570,10 +2635,11 @@ export async function markBillingRefundEligible(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const { data: account, error: accountError } = await supabase
     .from("billing_accounts")
-    .select("filing_package_paid, supported_case")
+    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
@@ -2582,10 +2648,39 @@ export async function markBillingRefundEligible(formData: FormData) {
   if (!account.supported_case || !account.filing_package_paid) {
     redirect("/?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
   }
+  const event = simulateBillingProviderEvent({
+    companyId,
+    kind: "refund",
+    amountNok: Number(account.filing_package_nok),
+    incomeYear,
+    status: "refunded",
+  });
+  const updated = applyBillingProviderEvent({ ...account, refund_eligible: true }, event);
+  const { error: eventError } = await supabase.from("billing_payment_events").insert({
+    company_id: companyId,
+    provider: event.provider,
+    provider_reference: event.providerReference,
+    idempotency_key: event.idempotencyKey,
+    kind: event.kind,
+    status: event.status,
+    amount_nok: event.amountNok,
+    income_year: incomeYear,
+    payload: event,
+    created_by: user.id,
+  });
+  if (eventError && eventError.code !== "23505") {
+    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+  }
 
   const { error } = await supabase
     .from("billing_accounts")
-    .update({ refund_eligible: true, updated_by: user.id, updated_at: new Date().toISOString() })
+    .update({
+      refund_eligible: updated.refund_eligible,
+      refund_completed: updated.refund_completed,
+      refund_provider_ref: updated.refund_provider_ref,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
     .eq("company_id", companyId);
   if (error) {
     redirect(`/?error=${encodeURIComponent(error.message)}`);
@@ -2595,8 +2690,8 @@ export async function markBillingRefundEligible(formData: FormData) {
     company_id: companyId,
     actor_id: user.id,
     category: "billing",
-    action: "billing_refund_eligible",
-    message: "Filingpakke markert refusjonsberettiget etter støttet feil.",
+    action: "billing_refund_completed",
+    message: `Filingpakke refundert via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
