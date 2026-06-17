@@ -37,7 +37,7 @@ import {
   uploadDocument,
 } from "./actions";
 import { productionBillingGate } from "./lib/billing";
-import { cancellationStatusLabel } from "./lib/cancellation";
+import { buildCancellationLifecycle, cancellationStatusLabel } from "./lib/cancellation";
 import {
   authorityObligationLabel,
   authorityObligations,
@@ -166,6 +166,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const primaryInvitations = invitations.filter((invitation) => invitation.company_id === primaryCompanyId);
   const primaryNotifications = notifications.filter((notification) => notification.company_id === primaryCompanyId);
   const primaryCancellation = cancellations.find((cancellation) => cancellation.company_id === primaryCompanyId);
+  const cancellationLifecycle = buildCancellationLifecycle(primaryCancellation);
   const reviewChecklist = reviewChecklistStatus(
     comments
       .filter((comment) => comment.company_id === primaryCompanyId)
@@ -465,6 +466,15 @@ export default async function Home({ searchParams }: HomeProps) {
                         "Dokumenter, ledger, filingkvitteringer, billing og audit kan måtte beholdes."}
                     </p>
                   </div>
+                  {cancellationLifecycle.map((item) => (
+                    <div className="readinessItem" key={item.key}>
+                      <span>{item.label}</span>
+                      <strong data-status={item.state === "done" ? "ready" : item.state === "current" ? "warning" : "draft"}>
+                        {item.state}
+                      </strong>
+                      <p>{item.message}</p>
+                    </div>
+                  ))}
                 </div>
                 {primaryCompanyId ? (
                   <form className="dataPanel formPanel widePanel" action={requestCompanyCancellation}>

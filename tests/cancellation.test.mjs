@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildCancellationEvidence,
+  buildCancellationLifecycle,
   cancellationStatusLabel,
   nextCancellationStatus,
   retentionClasses,
@@ -34,4 +35,34 @@ test("builds archive and retention evidence for launch-critical records", () => 
   assert.ok(retentionClasses.includes("accounting_documents"));
   assert.ok(retentionClasses.includes("filing_payloads_feedback_receipts"));
   assert.ok(retentionClasses.includes("audit_security_logs"));
+});
+
+test("shows explicit export, soft-delete, retention, and final deletion lifecycle states", () => {
+  const before = buildCancellationLifecycle(null);
+  assert.deepEqual(before.map((item) => item.state), ["current", "blocked", "blocked", "blocked"]);
+
+  const hold = buildCancellationLifecycle({
+    status: "retention_hold",
+    reviewed_at: null,
+    deleted_at: null,
+    evidence: buildCancellationEvidence({
+      companyId: "company-id",
+      incomeYear: 2025,
+      archiveExportedAt: "2026-06-17T10:00:00.000Z",
+    }),
+  });
+  assert.deepEqual(hold.map((item) => item.key), ["archive_export", "soft_delete", "retention_hold", "final_deletion"]);
+  assert.deepEqual(hold.map((item) => item.state), ["done", "current", "done", "blocked"]);
+
+  const deleted = buildCancellationLifecycle({
+    status: "deleted",
+    reviewed_at: "2026-06-17T10:30:00.000Z",
+    deleted_at: "2026-06-17T11:00:00.000Z",
+    evidence: buildCancellationEvidence({
+      companyId: "company-id",
+      incomeYear: 2025,
+      archiveExportedAt: "2026-06-17T10:00:00.000Z",
+    }),
+  });
+  assert.deepEqual(deleted.map((item) => item.state), ["done", "done", "done", "done"]);
 });
