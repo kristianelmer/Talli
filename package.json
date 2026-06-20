@@ -25,6 +25,7 @@
     "test:filing-release-gate": "node --experimental-strip-types --test tests/filing_release_gate.test.mjs",
     "test:launch-copy": "node --experimental-strip-types --test tests/launch_copy.test.mjs",
     "test:legal-policy": "node --test tests/legal_policy_pack.test.mjs",
+    "test:launch-rehearsal": "npm run test:opening && npm run test:documents && npm run test:bank && npm run test:manual-journal && npm run test:share-purchase && npm run test:share-sale && npm run test:dividend-received && npm run test:owner-dividend && npm run test:shareholder-loan && npm run test:annual-data && npm run test:annual-readiness && npm run test:rf1086:persisted && npm run test:rf1086:submission && npm run test:annual-accounts && npm run test:company-tax-return && npm run test:review && npm run test:billing && npm run test:cancellation && npm run test:operator-support && npm run test:deadlines && npm run test:archive && npm run test:backup-restore && npm run test:security && npm run test:filing-release-gate && npm run test:launch-copy && npm run test:legal-policy",
     "test:manual-journal": "node --experimental-strip-types --test tests/manual_journal.test.mjs",
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
     "test:operator-support": "node --experimental-strip-types --test tests/operator_support.test.mjs",
