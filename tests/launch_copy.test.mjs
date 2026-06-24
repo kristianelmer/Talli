@@ -9,10 +9,21 @@ import {
 } from "../app/lib/launch-copy.ts";
 
 test("requires non-affiliation and pre-production gate language in public app copy", () => {
-  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  // The canonical launch strings are wired into the central owner copy module
+  // (see app/lib/copy.ts -> ownerCopy.filing) since the UX rebuild (#89/#93).
+  const copy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
 
-  assert.match(page, /requiredNonAffiliationCopy/);
-  assert.match(page, /preProductionDirectFilingCopy/);
+  assert.match(copy, /requiredNonAffiliationCopy/);
+  assert.match(copy, /preProductionDirectFilingCopy/);
+
+  // ...and that copy is surfaced on the owner dashboard (the public app home).
+  const dashboard = readFileSync(
+    new URL("../app/(owner)/dashboard/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dashboard, /ownerCopy\.filing\.notAffiliated/);
+  assert.match(dashboard, /ownerCopy\.filing\.preProductionGate/);
 
   const result = validateLaunchCopy(`${requiredNonAffiliationCopy}\n${preProductionDirectFilingCopy}`);
 

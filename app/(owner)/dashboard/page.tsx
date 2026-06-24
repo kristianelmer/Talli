@@ -73,7 +73,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       eyebrow: nba.setupEyebrow,
       title: nba.setupTitle,
       body: nba.setupBody,
-      href: "/workspace#opprett",
+      href: "/onboarding",
       cta: nba.setupCta,
     };
   } else if (pendingObligations.length > 0) {
@@ -135,7 +135,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
           icon={<FileText size={22} aria-hidden="true" />}
           title={dash.empty.title}
           action={
-            <LinkButton variant="primary" href="/workspace#opprett">
+            <LinkButton variant="primary" href="/onboarding">
               {dash.empty.cta}
             </LinkButton>
           }

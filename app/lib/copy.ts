@@ -154,6 +154,71 @@ export const ownerCopy = {
       ],
     },
   },
+
+  onboarding: {
+    title: "Kom i gang",
+    intro:
+      "Vi setter opp holdingselskapet ditt for årsoppgjøret — steg for steg.",
+    steps: {
+      company: "Selskap",
+      balances: "Åpningsbalanse",
+      bank: "Bank (valgfritt)",
+    },
+    lookup: {
+      title: "Finn selskapet ditt",
+      intro: "Vi henter selskapsdetaljene fra Brønnøysundregistrene.",
+      orgLabel: "Organisasjonsnummer",
+      orgHelp: "9 sifre. Vi henter navn og adresse automatisk.",
+      orgInvalid: "Organisasjonsnummer må ha 9 sifre.",
+      boundaryTitle: "Kun for enkle holding-AS",
+      boundaryBody:
+        "Talli støtter aksjeselskap (AS). Andre selskapsformer som ENK, NUF og ASA, eller selskaper som trenger regnskapsfører, stoppes her.",
+      cta: "Hent fra Brønnøysund",
+      pending: "Henter …",
+    },
+    balances: {
+      title: "Åpningsbalanse",
+      intro: "Registrer aksjekapital, aksjonærer og bankinnskudd ved oppstart.",
+      yearLabel: "Regnskapsår",
+      bankLabel: "Bankinnskudd (kr)",
+      shareCapitalLabel: "Aksjekapital (kr)",
+      shareCountLabel: "Antall aksjer",
+      nominalLabel: "Pålydende per aksje (kr)",
+      shareholdersTitle: "Aksjonærer",
+      addShareholder: "Legg til aksjonær",
+      removeShareholder: "Fjern",
+      nameLabel: "Navn",
+      kindLabel: "Type",
+      kindPerson: "Person",
+      kindCompany: "Selskap",
+      nationalIdLabel: "Fødselsnummer (11 sifre)",
+      orgNumberLabel: "Organisasjonsnummer (9 sifre)",
+      sharesLabel: "Aksjer",
+      reconcileTitle: "Avstemming",
+      checkCapital: "Aksjekapital = antall aksjer × pålydende",
+      checkShares: "Sum aksjer per aksjonær = antall aksjer",
+      checkShareholders: "Hver aksjonær har gyldig navn og ID",
+      ok: "Stemmer",
+      mismatch: "Avvik",
+      blockedHint: "Rett opp avvikene før du kan fortsette.",
+      cta: "Lagre og fortsett",
+      pending: "Lagrer …",
+    },
+    bank: {
+      title: "Importer banktransaksjoner",
+      intro:
+        "Valgfritt: lim inn bankutskrift (CSV) for året, så avstemmer vi senere. Du kan hoppe over og gjøre dette når som helst.",
+      csvLabel: "Bank CSV",
+      csvHelp: "Lim inn rader fra nettbanken: dato, tekst, beløp, saldo.",
+      importedTitle: "Importert",
+      importedBody: (count: number) =>
+        `${count} banktransaksjoner er registrert.`,
+      cta: "Importer",
+      pending: "Importerer …",
+      finish: "Fullfør og gå til oversikt",
+      skip: "Hopp over",
+    },
+  },
 } as const;
 
 export type OwnerCopy = typeof ownerCopy;

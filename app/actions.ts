@@ -84,6 +84,21 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/**
+ * Post-action redirect target. Owner setup forms can pass a hidden `returnTo`
+ * so the guided onboarding wizard (#95) keeps control of the flow; everything
+ * else defaults to the transitional /workspace surface. Only known internal
+ * owner paths are allowed.
+ */
+function returnTarget(formData: FormData): string {
+  const raw = formString(formData, "returnTo");
+  return raw === "/onboarding" ? raw : "/workspace";
+}
+
+function failTo(returnTo: string, message: string): never {
+  redirect(`${returnTo}?error=${encodeURIComponent(message)}`);
+}
+
 async function requireSensitiveActionStepUp(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
@@ -143,8 +158,9 @@ export async function signOut() {
 }
 
 export async function createWorkspace(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
@@ -152,23 +168,23 @@ export async function createWorkspace(formData: FormData) {
     error: userError,
   } = await supabase.auth.getUser();
   if (userError || !user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const orgNumber = formString(formData, "orgNumber");
   if (!/^\d{9}$/.test(orgNumber)) {
-    redirect("/workspace?error=Organisasjonsnummer%20m%C3%A5%20ha%209%20sifre");
+    failTo(returnTo, "Organisasjonsnummer må ha 9 sifre.");
   }
   let identity;
   try {
     identity = await fetchBrregEntity(orgNumber);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Brønnøysund-oppslag feilet")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Brønnøysund-oppslag feilet");
   }
   try {
     assertSupportedBrregIdentity(identity);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Selskapsform støttes ikke")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Selskapsform støttes ikke");
   }
 
   const { data: company, error: companyError } = await supabase
@@ -190,7 +206,7 @@ export async function createWorkspace(formData: FormData) {
     .single();
 
   if (companyError || !company) {
-    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Kunne ikke opprette selskap")}`);
+    failTo(returnTo, companyError?.message ?? "Kunne ikke opprette selskap");
   }
 
   const { error: membershipError } = await supabase.from("company_memberships").insert({
@@ -200,7 +216,7 @@ export async function createWorkspace(formData: FormData) {
     accepted_at: new Date().toISOString(),
   });
   if (membershipError) {
-    redirect(`/workspace?error=${encodeURIComponent(membershipError.message)}`);
+    failTo(returnTo, membershipError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -212,7 +228,7 @@ export async function createWorkspace(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTo);
 }
 
 export async function uploadDocument(formData: FormData) {
@@ -275,15 +291,16 @@ export async function uploadDocument(formData: FormData) {
 }
 
 export async function createOpeningBalanceSetup(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
@@ -299,7 +316,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   try {
     validateOpeningBalanceInput(input);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig åpningsbalanse")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Ugyldig åpningsbalanse");
   }
 
   const { data: setup, error: setupError } = await supabase
@@ -316,7 +333,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     .select("id")
     .single();
   if (setupError || !setup) {
-    redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Kunne ikke lagre åpningsbalanse")}`);
+    failTo(returnTo, setupError?.message ?? "Kunne ikke lagre åpningsbalanse");
   }
 
   const { error: shareholderError } = await supabase.from("opening_shareholders").insert(
@@ -332,7 +349,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     })),
   );
   if (shareholderError) {
-    redirect(`/workspace?error=${encodeURIComponent(shareholderError.message)}`);
+    failTo(returnTo, shareholderError.message);
   }
 
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
@@ -345,7 +362,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     created_by: user.id,
   });
   if (ledgerError) {
-    redirect(`/workspace?error=${encodeURIComponent(ledgerError.message)}`);
+    failTo(returnTo, ledgerError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -357,7 +374,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTo);
 }
 
 export async function lockCompanyYear(formData: FormData) {
@@ -1127,15 +1144,16 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
 }
 
 export async function importBankCsv(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1145,10 +1163,10 @@ export async function importBankCsv(formData: FormData) {
   try {
     transactions = parseBankCsv(csvText);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Bank CSV kunne ikke leses")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Bank CSV kunne ikke leses");
   }
   if (transactions.length === 0) {
-    redirect("/workspace?error=Bank%20CSV%20mangler%20transaksjoner");
+    failTo(returnTo, "Bank CSV mangler transaksjoner.");
   }
 
   const { error: insertError } = await supabase.from("bank_transactions").upsert(
@@ -1165,7 +1183,7 @@ export async function importBankCsv(formData: FormData) {
     { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
   );
   if (insertError) {
-    redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
+    failTo(returnTo, insertError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -1177,7 +1195,7 @@ export async function importBankCsv(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTo);
 }
 
 export async function recordAdminCost(formData: FormData) {
