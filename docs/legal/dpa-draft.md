@@ -1,7 +1,7 @@
 # Talli Data Processing Agreement Draft
 
 Status: draft for founder/legal review  
-Last updated: 2026-06-16  
+Last updated: 2026-06-24  
 Blocks: #72 remains open until human/legal signoff
 
 ## Parties and Roles
@@ -10,6 +10,11 @@ For business customers, the customer company is expected to be controller for
 company accounting data, documents, and filing content. Talli is expected to be
 processor for hosting, processing, validating, and submitting data according to
 customer instructions.
+
+Talli is currently operated by Kristian Elmer (founder) as a natural person,
+pre-incorporation, acting as processor. On registration of a Talli AS, the
+processor of record will migrate to that company and this agreement updated with
+the company name and organization number.
 
 This role model must be reviewed before production launch.
 
@@ -43,15 +48,16 @@ Minimum controls:
 
 ## Subprocessors
 
-Draft subprocessors:
+| Subprocessor | Purpose | Location / transfer basis |
+| --- | --- | --- |
+| Supabase | Database, auth, RLS, document storage | EU region (EEA) |
+| Vercel | App hosting and runtime logs | US-incorporated; EEA data under SCCs/DPF |
+| Vipps MobilePay | Payment processing (when paid billing enabled) | EEA |
+| Resend | Transactional/notification email | US-incorporated; under SCCs/DPF |
+| Norwegian public authority systems | Filing and access flows (Maskinporten/Altinn/Skatteetaten) | Norway (EEA) |
 
-- Supabase
-- Vercel
-- payment provider, once selected
-- email provider, once selected
-- public authority systems used for filing/access flows
-
-Final DPA must name subprocessors, purpose, location, and update notice process.
+Subprocessor changes require advance notice to customers. The list above must be
+re-confirmed on incorporation and before any provider change.
 
 ## Deletion and Return
 
@@ -68,7 +74,7 @@ process must distinguish:
 
 ## Required Human Review Before Publication
 
-- Legal reviewer confirms controller/processor role.
-- Processor/subprocessor table completed.
-- Security reviewer confirms technical measures are true in production.
-- Founder approves customer-facing deletion/return obligations.
+- [ ] Legal reviewer confirms controller/processor role (incl. pre-incorporation operator).
+- [x] Processor/subprocessor table completed — Supabase, Vercel, Vipps MobilePay, Resend, authority systems.
+- [ ] Security reviewer confirms technical measures are true in production.
+- [ ] Founder approves customer-facing deletion/return obligations.

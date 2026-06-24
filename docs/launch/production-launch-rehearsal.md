@@ -86,6 +86,30 @@ gate state in the app operator section.
 | Skattemelding authority filing | Pending | Pending | `docs/filing/company-tax-return-authority-map.md` | Pending |
 | Support/rollback | Pending | Pending | Operator dashboard and backup/restore evidence | Pending |
 
+## Founder Pre-Launch Attestations (2026-06-24, Kristian Elmer)
+
+Scope: private/limited pre-launch with direct filing in preview/simulation mode
+(`production_disabled`). The three authority filing signoffs (RF-1086,
+årsregnskap, skattemelding) are intentionally NOT addressed here; they remain
+blocked on official authority test-environment onboarding and are required only
+for live direct filing (full public launch).
+
+Operational signoffs attested by the founder for the pre-launch:
+
+- `billing_refund` — approved; see `docs/billing/founder-pricing-gate.md`
+  (live charging OFF, Vipps MobilePay test mode).
+- `support_rollback` — approved; support boundary per
+  `docs/legal/terms-of-service-draft.md` (no legal/tax advice; needs-accountant
+  cases blocked/escalated/exported); rollback via Vercel previous-deployment
+  rollback for releases and the backup/restore runbook for data.
+- `security_restore` — PENDING a real restore test against the deployed Supabase,
+  recorded with date/target/operator/result (must be 30 days old or newer). See
+  `docs/security/backup-restore-runbook.md`.
+
+Remaining step for each: an admin operator records the signoff in
+`launch_signoffs` via the app operator form. These attestations are the
+version-controlled evidence; the machine gate flips only when recorded at runtime.
+
 ## Stop Conditions
 
 Stop rehearsal and keep public copy restricted if:

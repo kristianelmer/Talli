@@ -1,8 +1,8 @@
 # Talli Clearance Evidence Register
 
-Status: prepared for founder/legal review  
-Last updated: 2026-06-17  
-Blocks: #71 remains open until human/legal signoff
+Status: brand + public-copy clearance complete (2026-06-24); pending only the in-app `launch_legal_name_public_copy` signoff  
+Last updated: 2026-06-24  
+Blocks: #71 remains open until the in-app launch signoff (`launch_legal_name_public_copy`) is recorded by an admin operator
 
 This register turns `docs/launch/clearance-checklist.md` into a reviewable
 evidence log. It is not trademark clearance.
@@ -50,13 +50,13 @@ search sources above and, if doubt remains, trademark counsel.
 
 | Gate | Evidence needed | Current evidence | Decision | Reviewer/date |
 | --- | --- | --- | --- | --- |
-| Trademark search | Patentstyret search for `Talli`, close variants, similar accounting/finance software marks, relevant Nice classes | Not completed in official UI. Supplemental searches on 2026-06-16 and 2026-06-17 show apparently unrelated uses that require review. | Pending | Pending |
-| Company-name conflict | Brønnøysund search for `Talli`, variants, confusingly similar accounting/finance company names | Not completed in official UI. Supplemental 2026-06-17 search found unrelated `Bassam Talli` sewing/repair entities. | Pending | Pending |
-| Domain ownership | Registrar/account evidence for `talli.no` | Founder stated `talli.no` secured. Need registrar screenshot/account evidence. | Pending | Pending |
-| Fallback name | Written fallback if `Talli` conflicts | None selected. | Pending | Pending |
-| Public copy | Homepage/app/pricing/legal copy reviewed against non-affiliation and no-production-claim rules | Current app copy says production filing remains gated. Legal policy drafts exist in `docs/legal/`. | Pending | Pending |
+| Trademark search | Patentstyret search for `Talli`, close variants, similar accounting/finance software marks, relevant Nice classes | Official Patentstyret search completed 2026-06-24 for `Talli` and close variants across Nice classes 9/35/36/42; no confusingly similar accounting/finance mark found. Prior supplemental hit `Flli Talli SpA` confirmed out-of-scope. | Approved — no conflict | Kristian Elmer (founder), 2026-06-24 |
+| Company-name conflict | Brønnøysund search for `Talli`, variants, confusingly similar accounting/finance company names | Official Brønnøysund register search completed 2026-06-24; no active confusingly similar accounting/software/finance company found. `Bassam Talli Skredder og Systue` confirmed unrelated (sewing/repair). | Approved — no conflict | Kristian Elmer (founder), 2026-06-24 |
+| Domain ownership | Registrar/account evidence for `talli.no` | Founder confirmed `talli.no` is owned/controlled by the founder/company (2026-06-24). Registrar/Norid evidence to be attached to the launch signoff record. | Approved — ownership confirmed | Kristian Elmer (founder), 2026-06-24 |
+| Fallback name | Written fallback if `Talli` conflicts | Not required — `Talli` cleared on both official trademark and company-name searches (2026-06-24). | Approved — not required | Kristian Elmer (founder), 2026-06-24 |
+| Public copy | Homepage/app/pricing/legal copy reviewed against non-affiliation and no-production-claim rules | Pre-production public-copy baseline approved for public use 2026-06-24; production direct-filing claims ("direkte innsending", "ferdig innsendt", "godkjent av") remain blocked until filing gates pass. Enforced by `npm run test:launch-copy`. | Approved — pre-production baseline | Kristian Elmer (founder), 2026-06-24 |
 | Pricing/refund/support boundary | Pricing and refund wording reviewed against founder pricing gate | `docs/billing/founder-pricing-gate.md` and `docs/legal/terms-of-service-draft.md` exist. | Pending | Pending |
-| Authority wording | No implication of endorsement by Fiken, Altinn, Skatteetaten, or Brønnøysundregistrene | Required wording exists in checklist; final public copy review pending. | Pending | Pending |
+| Authority wording | No implication of endorsement by Fiken, Altinn, Skatteetaten, or Brønnøysundregistrene | Required non-affiliation wording approved for public use 2026-06-24: "Talli er ikke tilknyttet, godkjent av eller drevet av Fiken, Altinn, Skatteetaten eller Brønnøysundregistrene." No endorsement implied. | Approved — no endorsement implied | Kristian Elmer (founder), 2026-06-24 |
 | Security/restore | Backup/restore, security baseline, RLS/storage audit evidence | Security docs and RLS audit exist; production restore signoff still pending. | Pending | Pending |
 
 ## Approved Public Copy Baseline
@@ -81,6 +81,8 @@ Required non-affiliation wording:
 - Claims that Talli covers all AS companies.
 
 ## Required Human Signoff
+
+Evidence status (2026-06-24): trademark/name, `talli.no` ownership, fallback (not required), public copy, and authority wording all **approved** by Kristian Elmer (founder). Remaining to close #71: record the `launch_legal_name_public_copy` signoff in the app operator section. (Legal drafts are approved separately under #72 / `legal_policy_pack`.)
 
 Issue #71 can close only when:
 

@@ -1,8 +1,19 @@
 # Talli Privacy Policy Draft
 
 Status: draft for founder/legal review  
-Last updated: 2026-06-16  
+Last updated: 2026-06-24  
 Blocks: #72 remains open until human/legal signoff
+
+## Controller
+
+Talli is currently operated by Kristian Elmer (founder) as a natural person,
+pre-incorporation. Kristian Elmer is the data controller for account and service
+data. Once a Talli holding/operating AS is registered, the controller of record
+will be migrated to that company and this policy updated with the company name
+and organization number.
+
+For business customers, the customer company is controller for its own company
+accounting data, documents, and filing content (see `dpa-draft.md`).
 
 ## Data Talli Processes
 
@@ -44,20 +55,33 @@ reviewed before production launch.
 
 ## Processors and External Services
 
-Expected processors/services:
+Named processors/services:
 
-- Supabase/Postgres/Auth/Storage for data, auth, RLS, and documents;
-- Vercel for app hosting and runtime logs;
-- payment provider when real payment collection is enabled;
-- email provider when notification delivery is enabled;
+- Supabase (Postgres/Auth/Storage) for data, auth, RLS, and documents — EU region;
+- Vercel for app hosting and runtime logs (US-incorporated; EEA data covered by SCCs);
+- Vipps MobilePay for payment processing when paid billing is enabled — EEA;
+- Resend for transactional/notification email (US-incorporated; covered by SCCs);
 - Norwegian public authority systems when direct filing is enabled.
 
-Final processor list must be updated before public launch.
+This list reflects the providers chosen at draft time and must be re-confirmed on
+incorporation and before any provider change.
+
+## Data Location and International Transfers
+
+Personal and company data is stored in the EEA (Supabase EU region; Vipps
+MobilePay operates within the EEA). Some processors are US-incorporated
+(Vercel for hosting, Resend for email). Where data is processed by a
+US-incorporated supplier, the transfer is covered by EU Standard Contractual
+Clauses (SCCs) and/or the EU-US Data Privacy Framework as set out in that
+supplier's data processing terms. Talli does not transfer data outside the EEA
+except as described here.
 
 ## Retention
 
 Accounting documentation, filing receipts, and audit trails may need retention
-even after cancellation. Deletion requests must be evaluated against accounting
+even after cancellation. Primary accounting material is retained for a minimum of
+5 years after the end of the accounting year, per the Norwegian Bookkeeping Act
+(bokføringsloven § 13). Deletion requests must be evaluated against accounting
 documentation requirements and legal retention duties. See
 `docs/legal/retention-delete-export-policy-draft.md`.
 
@@ -70,8 +94,9 @@ retention obligations.
 
 ## Required Human Review Before Publication
 
-- Identify controller/legal entity.
-- Confirm processor list and subprocessors.
-- Confirm data transfer basis if any data leaves EEA/Norway.
-- Confirm support/operator access model.
-- Legal/privacy reviewer approves final wording.
+- [x] Controller identified — Kristian Elmer (natural person), pre-incorporation;
+  re-confirm and migrate to the AS name + org number on incorporation.
+- [x] Processor list confirmed — Supabase, Vercel, Vipps MobilePay, Resend.
+- [x] Data transfer basis confirmed — EEA residency; US suppliers under SCCs/DPF.
+- [ ] Confirm support/operator access model.
+- [ ] Legal/privacy reviewer approves final wording.

@@ -1,8 +1,14 @@
 # Talli Terms of Service Draft
 
 Status: draft for founder/legal review  
-Last updated: 2026-06-16  
+Last updated: 2026-06-24  
 Blocks: #72 remains open until human/legal signoff
+
+## Operator
+
+Talli is currently operated by Kristian Elmer (founder) as a natural person,
+pre-incorporation. On registration of a Talli AS, these terms will be updated to
+name the company and its organization number as the operator/provider.
 
 ## Product Scope
 
@@ -56,6 +62,8 @@ Billing follows the founder pricing gate:
 Refund eligibility does not cover user-provided incorrect data, missing authority
 access, unsupported cases, missed deadlines outside Talli control, or authority
 outages unless Talli has made a separate written commitment.
+
+Payments, when paid billing is enabled, are processed by Vipps MobilePay.
 
 ## Support Boundary
 

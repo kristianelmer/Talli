@@ -1,7 +1,7 @@
 # Incident Response Policy Draft
 
 Status: draft for founder/security/legal review  
-Last updated: 2026-06-16  
+Last updated: 2026-06-24  
 Blocks: #72 remains open until human/legal signoff
 
 ## Incident Categories
@@ -21,8 +21,11 @@ Blocks: #72 remains open until human/legal signoff
 3. Contain access, credential, deployment, or data-flow risk.
 4. Preserve logs, audit events, affected ids, and timeline.
 5. Assess affected customers, companies, documents, filings, and authority references.
-6. Notify customers when required or operationally necessary.
-7. Notify authority/regulator if legally required after legal review.
+6. Notify affected customers/users without undue delay where a personal-data breach
+   is likely to result in high risk to their rights and freedoms (GDPR art. 34).
+7. Notify Datatilsynet (Norwegian DPA) within 72 hours of becoming aware of a
+   personal-data breach, unless it is unlikely to result in risk to individuals
+   (GDPR art. 33); record the assessment and reasoning in either case.
 8. Remediate root cause.
 9. Run postmortem and add regression test or operational guard.
 
@@ -58,7 +61,8 @@ old idempotency keys.
 
 ## Required Human Review Before Publication
 
-- Founder names incident roles.
-- Security reviewer approves severity model and evidence checklist.
-- Legal/privacy reviewer defines notification thresholds and timing.
-- Support owner approves customer-message templates.
+- [ ] Founder names incident roles.
+- [ ] Security reviewer approves severity model and evidence checklist.
+- [x] Notification thresholds/timing defined — Datatilsynet within 72h (GDPR art. 33);
+  high-risk user notice without undue delay (art. 34). Legal to confirm wording.
+- [ ] Support owner approves customer-message templates.
