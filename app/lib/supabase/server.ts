@@ -407,6 +407,26 @@ export async function getCurrentUser() {
   return user;
 }
 
+/**
+ * Resolves the current user's support-operator role. Used to server-side guard
+ * the (operator) route group and to conditionally surface operator navigation.
+ */
+export async function getOperatorContext() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { user: null, isOperator: false, isAdminOperator: false };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: operator } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .maybeSingle();
+  const isOperator = Boolean(operator);
+  return { user, isOperator, isAdminOperator: operator?.role === "admin" };
+}
+
 export async function listCompanyWorkspaces() {
   if (!hasSupabaseEnv()) {
     return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };

@@ -99,38 +99,38 @@ async function requireSensitiveActionStepUp(
         : error instanceof Error
           ? error.message
           : "Sensitiv handling stoppet: MFA/step-up kreves.";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 }
 
 export async function signIn(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/login?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
 
 export async function signUp(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/signup?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
   }
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
 
 export async function signOut() {
@@ -138,13 +138,13 @@ export async function signOut() {
     const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
   }
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/login");
+  redirect("/login");
 }
 
 export async function createWorkspace(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
@@ -152,23 +152,23 @@ export async function createWorkspace(formData: FormData) {
     error: userError,
   } = await supabase.auth.getUser();
   if (userError || !user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const orgNumber = formString(formData, "orgNumber");
   if (!/^\d{9}$/.test(orgNumber)) {
-    redirect("/?error=Organisasjonsnummer%20m%C3%A5%20ha%209%20sifre");
+    redirect("/workspace?error=Organisasjonsnummer%20m%C3%A5%20ha%209%20sifre");
   }
   let identity;
   try {
     identity = await fetchBrregEntity(orgNumber);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Brønnøysund-oppslag feilet")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Brønnøysund-oppslag feilet")}`);
   }
   try {
     assertSupportedBrregIdentity(identity);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Selskapsform støttes ikke")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Selskapsform støttes ikke")}`);
   }
 
   const { data: company, error: companyError } = await supabase
@@ -190,7 +190,7 @@ export async function createWorkspace(formData: FormData) {
     .single();
 
   if (companyError || !company) {
-    redirect(`/?error=${encodeURIComponent(companyError?.message ?? "Kunne ikke opprette selskap")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Kunne ikke opprette selskap")}`);
   }
 
   const { error: membershipError } = await supabase.from("company_memberships").insert({
@@ -200,7 +200,7 @@ export async function createWorkspace(formData: FormData) {
     accepted_at: new Date().toISOString(),
   });
   if (membershipError) {
-    redirect(`/?error=${encodeURIComponent(membershipError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(membershipError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -212,19 +212,19 @@ export async function createWorkspace(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function uploadDocument(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -233,7 +233,7 @@ export async function uploadDocument(formData: FormData) {
   const linkedTo = formString(formData, "linkedTo") || "workspace";
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    redirect("/?error=Velg%20dokument%20for%20opplasting");
+    redirect("/workspace?error=Velg%20dokument%20for%20opplasting");
   }
 
   const documentId = crypto.randomUUID();
@@ -243,7 +243,7 @@ export async function uploadDocument(formData: FormData) {
     upsert: false,
   });
   if (uploadError) {
-    redirect(`/?error=${encodeURIComponent(uploadError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(uploadError.message)}`);
   }
 
   const { error: metadataError } = await supabase.from("documents").insert({
@@ -259,7 +259,7 @@ export async function uploadDocument(formData: FormData) {
     created_by: user.id,
   });
   if (metadataError) {
-    redirect(`/?error=${encodeURIComponent(metadataError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(metadataError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -271,19 +271,19 @@ export async function uploadDocument(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function createOpeningBalanceSetup(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -299,7 +299,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   try {
     validateOpeningBalanceInput(input);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig åpningsbalanse")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig åpningsbalanse")}`);
   }
 
   const { data: setup, error: setupError } = await supabase
@@ -316,7 +316,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     .select("id")
     .single();
   if (setupError || !setup) {
-    redirect(`/?error=${encodeURIComponent(setupError?.message ?? "Kunne ikke lagre åpningsbalanse")}`);
+    redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Kunne ikke lagre åpningsbalanse")}`);
   }
 
   const { error: shareholderError } = await supabase.from("opening_shareholders").insert(
@@ -332,7 +332,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     })),
   );
   if (shareholderError) {
-    redirect(`/?error=${encodeURIComponent(shareholderError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(shareholderError.message)}`);
   }
 
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
@@ -345,7 +345,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     created_by: user.id,
   });
   if (ledgerError) {
-    redirect(`/?error=${encodeURIComponent(ledgerError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(ledgerError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -357,29 +357,29 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function lockCompanyYear(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const reason = formString(formData, "reason");
   if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
-    redirect("/?error=Ugyldig%20inntekts%C3%A5r");
+    redirect("/workspace?error=Ugyldig%20inntekts%C3%A5r");
   }
   if (!reason) {
-    redirect("/?error=L%C3%A5se%C3%A5rsak%20mangler");
+    redirect("/workspace?error=L%C3%A5se%C3%A5rsak%20mangler");
   }
 
   const { error } = await supabase.from("period_locks").insert({
@@ -389,7 +389,7 @@ export async function lockCompanyYear(formData: FormData) {
     locked_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -401,19 +401,19 @@ export async function lockCompanyYear(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function queueDeadlineReminders(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -437,7 +437,7 @@ export async function queueDeadlineReminders(formData: FormData) {
     .eq("role", "owner")
     .maybeSingle();
   if (membershipError || !membership) {
-    redirect(`/?error=${encodeURIComponent(membershipError?.message ?? "Kun eier kan køe fristvarsler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(membershipError?.message ?? "Kun eier kan køe fristvarsler")}`);
   }
 
   const [
@@ -451,7 +451,7 @@ export async function queueDeadlineReminders(formData: FormData) {
   ]);
   const firstError = submissionsError || readinessError || notificationsError;
   if (firstError) {
-    redirect(`/?error=${encodeURIComponent(firstError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
   const plan = buildDeadlineReminderPlan({
@@ -484,7 +484,7 @@ export async function queueDeadlineReminders(formData: FormData) {
       })),
     );
     if (insertError) {
-      redirect(`/?error=${encodeURIComponent(insertError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
     }
   }
 
@@ -497,19 +497,19 @@ export async function queueDeadlineReminders(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function generateRf1086Preview(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const setupId = formString(formData, "setupId");
@@ -519,7 +519,7 @@ export async function generateRf1086Preview(formData: FormData) {
     .eq("id", setupId)
     .single();
   if (setupError || !setup) {
-    redirect(`/?error=${encodeURIComponent(setupError?.message ?? "Fant ikke åpningsbalanse")}`);
+    redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Fant ikke åpningsbalanse")}`);
   }
 
   const { data: company, error: companyError } = await supabase
@@ -528,7 +528,7 @@ export async function generateRf1086Preview(formData: FormData) {
     .eq("id", setup.company_id)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
   }
 
   const { data: shareholders, error: shareholdersError } = await supabase
@@ -536,14 +536,14 @@ export async function generateRf1086Preview(formData: FormData) {
     .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
     .eq("setup_id", setupId);
   if (shareholdersError || !shareholders) {
-    redirect(`/?error=${encodeURIComponent(shareholdersError?.message ?? "Fant ikke aksjonærer")}`);
+    redirect(`/workspace?error=${encodeURIComponent(shareholdersError?.message ?? "Fant ikke aksjonærer")}`);
   }
 
   let rendered;
   try {
     rendered = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
   }
 
   const { error: insertError } = await supabase.from("filing_previews").insert({
@@ -560,7 +560,7 @@ export async function generateRf1086Preview(formData: FormData) {
     created_by: user.id,
   });
   if (insertError) {
-    redirect(`/?error=${encodeURIComponent(insertError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -572,19 +572,19 @@ export async function generateRf1086Preview(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function confirmSimulatedRf1086Submission(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
@@ -594,7 +594,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeURIComponent(previewError?.message ?? "Fant ikke RF-1086 forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke RF-1086 forhåndsvisning")}`);
   }
   const { data: readinessSnapshot, error: readinessSnapshotError } = await supabase
     .from("filing_readiness_snapshots")
@@ -604,10 +604,10 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("obligation", "aksjonaerregisteroppgaven")
     .maybeSingle();
   if (readinessSnapshotError) {
-    redirect(`/?error=${encodeURIComponent(readinessSnapshotError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(readinessSnapshotError.message)}`);
   }
   if (!readinessSnapshot?.ready) {
-    redirect(`/?error=${encodeURIComponent("Aksjonærregisteroppgaven readiness må være lagret og klar før innsending.")}`);
+    redirect(`/workspace?error=${encodeURIComponent("Aksjonærregisteroppgaven readiness må være lagret og klar før innsending.")}`);
   }
   const { data: blockingComments, error: blockingCommentError } = await supabase
     .from("filing_review_comments")
@@ -615,12 +615,12 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("preview_id", preview.id)
     .eq("severity", "hard_block");
   if (blockingCommentError) {
-    redirect(`/?error=${encodeURIComponent(blockingCommentError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(blockingCommentError.message)}`);
   }
   try {
     assertNoHardReviewBlocks((blockingComments ?? []).map(() => ({ severity: "hard_block" })));
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
   }
   const { data: blockingOverrides, error: blockingOverrideError } = await supabase
     .from("filing_overrides")
@@ -630,12 +630,12 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("filing", preview.filing)
     .eq("risk_level", "block");
   if (blockingOverrideError) {
-    redirect(`/?error=${encodeURIComponent(blockingOverrideError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(blockingOverrideError.message)}`);
   }
   try {
     assertNoBlockingFilingOverrides(blockingOverrides ?? []);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Blokkerende filing-overstyring")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Blokkerende filing-overstyring")}`);
   }
 
   let simulated;
@@ -656,7 +656,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Simulert innsending feilet";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   const { error: upsertError } = await supabase.from("filing_submissions").upsert(
@@ -691,7 +691,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     { onConflict: "preview_id" },
   );
   if (upsertError) {
-    redirect(`/?error=${encodeURIComponent(upsertError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(upsertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -703,19 +703,19 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function addFilingOverride(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
@@ -725,10 +725,10 @@ export async function addFilingOverride(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
   }
   if (formData.get("ownerConfirmed") !== "on") {
-    redirect("/?error=Overstyring%20m%C3%A5%20bekreftes%20av%20eier");
+    redirect("/workspace?error=Overstyring%20m%C3%A5%20bekreftes%20av%20eier");
   }
 
   let override;
@@ -741,7 +741,7 @@ export async function addFilingOverride(formData: FormData) {
       riskLevel: formString(formData, "riskLevel") as "advisory" | "warning" | "block",
     });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig filing-overstyring")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig filing-overstyring")}`);
   }
 
   const confirmedAt = new Date().toISOString();
@@ -760,7 +760,7 @@ export async function addFilingOverride(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -772,19 +772,19 @@ export async function addFilingOverride(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function inviteWorkspaceReviewer(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -795,7 +795,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     invitedEmail = normalizeInvitationEmail(rawEmail);
     role = validateInvitationRole(formString(formData, "role") || "reviewer");
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig invitasjon")}`);
   }
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "invite_reviewer");
 
@@ -805,7 +805,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     .eq("id", companyId)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap for invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap for invitasjon")}`);
   }
 
   const token = crypto.randomUUID();
@@ -827,7 +827,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     .select("id")
     .single();
   if (error || !invitation) {
-    redirect(`/?error=${encodeURIComponent(error?.message ?? "Kunne ikke opprette invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error?.message ?? "Kunne ikke opprette invitasjon")}`);
   }
 
   const email = buildInvitationEmail({
@@ -845,7 +845,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     created_by: user.id,
   });
   if (outboxError) {
-    redirect(`/?error=${encodeURIComponent(outboxError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -857,19 +857,19 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function acceptWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) {
-    redirect("/?error=Innlogging%20med%20e-post%20kreves");
+    redirect("/workspace?error=Innlogging%20med%20e-post%20kreves");
   }
 
   const token = formString(formData, "token");
@@ -880,13 +880,13 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     .eq("token_hash", tokenHash)
     .single();
   if (error || !invitation) {
-    redirect(`/?error=${encodeURIComponent(error?.message ?? "Fant ikke invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error?.message ?? "Fant ikke invitasjon")}`);
   }
   if (invitation.invited_email !== user.email.toLowerCase()) {
-    redirect("/?error=Invitasjonen%20tilh%C3%B8rer%20en%20annen%20e-postadresse");
+    redirect("/workspace?error=Invitasjonen%20tilh%C3%B8rer%20en%20annen%20e-postadresse");
   }
   if (invitation.status !== "pending" || new Date(invitation.expires_at).getTime() < Date.now()) {
-    redirect("/?error=Invitasjonen%20er%20utl%C3%B8pt%20eller%20ikke%20lenger%20aktiv");
+    redirect("/workspace?error=Invitasjonen%20er%20utl%C3%B8pt%20eller%20ikke%20lenger%20aktiv");
   }
 
   const acceptedAt = new Date().toISOString();
@@ -898,7 +898,7 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     accepted_at: acceptedAt,
   });
   if (membershipError) {
-    redirect(`/?error=${encodeURIComponent(membershipError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(membershipError.message)}`);
   }
   const { error: updateError } = await supabase
     .from("company_invitations")
@@ -911,7 +911,7 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     })
     .eq("id", invitation.id);
   if (updateError) {
-    redirect(`/?error=${encodeURIComponent(updateError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(updateError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -923,19 +923,19 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function revokeWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
@@ -947,7 +947,7 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
     .eq("id", invitationId)
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
   await supabase.from("audit_events").insert({
     company_id: companyId,
@@ -957,19 +957,19 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
     message: "Reviewer/read-only invitasjon tilbakekalt.",
   });
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function resendWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
@@ -981,7 +981,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (invitationError || !invitation) {
-    redirect(`/?error=${encodeURIComponent(invitationError?.message ?? "Fant ikke invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(invitationError?.message ?? "Fant ikke invitasjon")}`);
   }
   const token = crypto.randomUUID();
   const tokenHash = await invitationTokenHash(token);
@@ -999,7 +999,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     })
     .eq("id", invitation.id);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
   const { error: outboxError } = await supabase.from("notification_outbox").insert({
     company_id: companyId,
@@ -1010,7 +1010,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     created_by: user.id,
   });
   if (outboxError) {
-    redirect(`/?error=${encodeURIComponent(outboxError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
   }
   await supabase.from("audit_events").insert({
     company_id: companyId,
@@ -1020,29 +1020,29 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     message: "Reviewer/read-only invitasjon sendt på nytt.",
   });
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function addFilingReviewComment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
   const severity = formString(formData, "severity") || "advisory";
   const body = formString(formData, "body");
   if (!["advisory", "hard_block"].includes(severity)) {
-    redirect("/?error=Ugyldig%20kommentaralvorlighet");
+    redirect("/workspace?error=Ugyldig%20kommentaralvorlighet");
   }
   if (!body) {
-    redirect("/?error=Kommentar%20mangler");
+    redirect("/workspace?error=Kommentar%20mangler");
   }
 
   const { data: preview, error: previewError } = await supabase
@@ -1051,7 +1051,7 @@ export async function addFilingReviewComment(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
   }
 
   const { error } = await supabase.from("filing_review_comments").insert({
@@ -1063,7 +1063,7 @@ export async function addFilingReviewComment(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1075,19 +1075,19 @@ export async function addFilingReviewComment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function acknowledgeFilingReviewComment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const commentId = formString(formData, "commentId");
@@ -1097,12 +1097,12 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     .eq("id", commentId)
     .single();
   if (commentError || !comment) {
-    redirect(`/?error=${encodeURIComponent(commentError?.message ?? "Fant ikke review-kommentar")}`);
+    redirect(`/workspace?error=${encodeURIComponent(commentError?.message ?? "Fant ikke review-kommentar")}`);
   }
   try {
     assertAdvisoryCanBeAcknowledged({ severity: comment.severity });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
   }
 
   const acknowledgedAt = new Date().toISOString();
@@ -1111,7 +1111,7 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     .update({ acknowledged_by: user.id, acknowledged_at: acknowledgedAt })
     .eq("id", comment.id);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1123,19 +1123,19 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function importBankCsv(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1145,10 +1145,10 @@ export async function importBankCsv(formData: FormData) {
   try {
     transactions = parseBankCsv(csvText);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Bank CSV kunne ikke leses")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Bank CSV kunne ikke leses")}`);
   }
   if (transactions.length === 0) {
-    redirect("/?error=Bank%20CSV%20mangler%20transaksjoner");
+    redirect("/workspace?error=Bank%20CSV%20mangler%20transaksjoner");
   }
 
   const { error: insertError } = await supabase.from("bank_transactions").upsert(
@@ -1165,7 +1165,7 @@ export async function importBankCsv(formData: FormData) {
     { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
   );
   if (insertError) {
-    redirect(`/?error=${encodeURIComponent(insertError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1177,19 +1177,19 @@ export async function importBankCsv(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordAdminCost(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1207,25 +1207,25 @@ export async function recordAdminCost(formData: FormData) {
     .eq("id", bankTransactionId)
     .single();
   if (transactionError || !transaction) {
-    redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
   }
   if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-    redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+    redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
   }
   if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-    redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+    redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
   }
   try {
     assertBankTransactionMatchesCost(Number(transaction.amount), amount);
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Bankmatch feilet")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Bankmatch feilet")}`);
   }
 
   let lines;
   try {
     lines = buildAdminCostLedgerLines({ category, payee, amount });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig administrasjonskostnad")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig administrasjonskostnad")}`);
   }
 
   const { data: entry, error: entryError } = await supabase
@@ -1241,7 +1241,7 @@ export async function recordAdminCost(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere administrasjonskostnad")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere administrasjonskostnad")}`);
   }
 
   const { error: matchError } = await supabase
@@ -1249,7 +1249,7 @@ export async function recordAdminCost(formData: FormData) {
     .update({ matched_entry_id: entry.id })
     .eq("id", bankTransactionId);
   if (matchError) {
-    redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1261,19 +1261,19 @@ export async function recordAdminCost(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordDividendReceived(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1300,7 +1300,7 @@ export async function recordDividendReceived(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig mottatt utbytte";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   if (bankTransactionId) {
@@ -1310,16 +1310,16 @@ export async function recordDividendReceived(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     if (Number(transaction.amount) !== payload.gross_amount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20brutto%20utbytte");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20brutto%20utbytte");
     }
   }
   if (documentId) {
@@ -1329,10 +1329,10 @@ export async function recordDividendReceived(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -1351,7 +1351,7 @@ export async function recordDividendReceived(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere mottatt utbytte")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere mottatt utbytte")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1369,7 +1369,7 @@ export async function recordDividendReceived(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -1378,7 +1378,7 @@ export async function recordDividendReceived(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -1391,19 +1391,19 @@ export async function recordDividendReceived(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordSharePurchase(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1432,7 +1432,7 @@ export async function recordSharePurchase(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjekjøp";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   if (bankTransactionId) {
@@ -1442,16 +1442,16 @@ export async function recordSharePurchase(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     if (Number(transaction.amount) !== -payload.purchase_amount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjekj%C3%B8pet");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjekj%C3%B8pet");
     }
   }
   if (documentId) {
@@ -1461,10 +1461,10 @@ export async function recordSharePurchase(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -1483,7 +1483,7 @@ export async function recordSharePurchase(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjekjøp")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjekjøp")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1501,7 +1501,7 @@ export async function recordSharePurchase(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   const { data: existingPosition, error: existingPositionError } = await supabase
@@ -1511,7 +1511,7 @@ export async function recordSharePurchase(formData: FormData) {
     .eq("investment_key", payload.investment_key)
     .maybeSingle();
   if (existingPositionError) {
-    redirect(`/?error=${encodeURIComponent(existingPositionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(existingPositionError.message)}`);
   }
   if (existingPosition) {
     const { error: positionUpdateError } = await supabase
@@ -1523,7 +1523,7 @@ export async function recordSharePurchase(formData: FormData) {
       })
       .eq("id", existingPosition.id);
     if (positionUpdateError) {
-      redirect(`/?error=${encodeURIComponent(positionUpdateError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(positionUpdateError.message)}`);
     }
   } else {
     const { error: positionInsertError } = await supabase.from("investment_positions").insert({
@@ -1538,7 +1538,7 @@ export async function recordSharePurchase(formData: FormData) {
       created_by: user.id,
     });
     if (positionInsertError) {
-      redirect(`/?error=${encodeURIComponent(positionInsertError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(positionInsertError.message)}`);
     }
   }
 
@@ -1548,7 +1548,7 @@ export async function recordSharePurchase(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -1561,19 +1561,19 @@ export async function recordSharePurchase(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordShareSale(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1587,10 +1587,10 @@ export async function recordShareSale(formData: FormData) {
     .eq("id", positionId)
     .single();
   if (positionError || !position) {
-    redirect(`/?error=${encodeURIComponent(positionError?.message ?? "Fant ikke investeringsposisjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(positionError?.message ?? "Fant ikke investeringsposisjon")}`);
   }
   if (position.company_id !== companyId) {
-    redirect("/?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+    redirect("/workspace?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
   }
 
   let payload;
@@ -1615,7 +1615,7 @@ export async function recordShareSale(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjesalg";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   if (bankTransactionId) {
@@ -1625,16 +1625,16 @@ export async function recordShareSale(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     if (Number(transaction.amount) !== payload.proceeds) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20salgsproveny");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20salgsproveny");
     }
   }
   if (documentId) {
@@ -1644,10 +1644,10 @@ export async function recordShareSale(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -1666,7 +1666,7 @@ export async function recordShareSale(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjesalg")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjesalg")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1684,7 +1684,7 @@ export async function recordShareSale(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   const movements = Array.isArray(position.movements) ? position.movements : [];
@@ -1709,7 +1709,7 @@ export async function recordShareSale(formData: FormData) {
     })
     .eq("id", position.id);
   if (positionUpdateError) {
-    redirect(`/?error=${encodeURIComponent(positionUpdateError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(positionUpdateError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -1718,7 +1718,7 @@ export async function recordShareSale(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -1731,19 +1731,19 @@ export async function recordShareSale(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordOwnerDividend(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1755,10 +1755,10 @@ export async function recordOwnerDividend(formData: FormData) {
     .eq("id", shareholderId)
     .single();
   if (shareholderError || !shareholder) {
-    redirect(`/?error=${encodeURIComponent(shareholderError?.message ?? "Fant ikke aksjonær")}`);
+    redirect(`/workspace?error=${encodeURIComponent(shareholderError?.message ?? "Fant ikke aksjonær")}`);
   }
   if (shareholder.company_id !== companyId) {
-    redirect("/?error=Aksjon%C3%A6ren%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+    redirect("/workspace?error=Aksjon%C3%A6ren%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
   }
 
   let payload;
@@ -1786,7 +1786,7 @@ export async function recordOwnerDividend(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig eierutbytte";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   const lines = ownerDividendLedgerLines(payload);
@@ -1804,7 +1804,7 @@ export async function recordOwnerDividend(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere eierutbytte")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere eierutbytte")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1820,14 +1820,14 @@ export async function recordOwnerDividend(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   const { error: documentError } = await supabase
     .from("documents")
     .insert(ownerDividendCorporateDocumentRecords(companyId, incomeYear, actionId, user.id));
   if (documentError) {
-    redirect(`/?error=${encodeURIComponent(documentError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(documentError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1839,19 +1839,19 @@ export async function recordOwnerDividend(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordShareholderLoan(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1881,7 +1881,7 @@ export async function recordShareholderLoan(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjonærlån";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   if (bankTransactionId) {
@@ -1891,17 +1891,17 @@ export async function recordShareholderLoan(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     const expectedAmount = payload.direction === "shareholder_to_company" ? payload.amount : -payload.amount;
     if (Number(transaction.amount) !== expectedAmount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjon%C3%A6rl%C3%A5net");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjon%C3%A6rl%C3%A5net");
     }
   }
   if (documentId) {
@@ -1911,10 +1911,10 @@ export async function recordShareholderLoan(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -1933,7 +1933,7 @@ export async function recordShareholderLoan(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjonærlån")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjonærlån")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1951,7 +1951,7 @@ export async function recordShareholderLoan(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -1960,7 +1960,7 @@ export async function recordShareholderLoan(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -1973,19 +1973,19 @@ export async function recordShareholderLoan(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordTaxSettlement(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2009,7 +2009,7 @@ export async function recordTaxSettlement(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig skatteoppgjør";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   if (bankTransactionId) {
@@ -2019,17 +2019,17 @@ export async function recordTaxSettlement(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     const expectedAmount = expectedBankAmountForTaxSettlement(payload);
     if (expectedAmount === null || Number(transaction.amount) !== expectedAmount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20skatteoppgj%C3%B8ret");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20skatteoppgj%C3%B8ret");
     }
   }
   if (documentId) {
@@ -2039,10 +2039,10 @@ export async function recordTaxSettlement(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -2060,7 +2060,7 @@ export async function recordTaxSettlement(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere skatteoppgjør")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere skatteoppgjør")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -2078,7 +2078,7 @@ export async function recordTaxSettlement(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeURIComponent(actionError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -2087,7 +2087,7 @@ export async function recordTaxSettlement(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeURIComponent(matchError.message)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -2100,19 +2100,19 @@ export async function recordTaxSettlement(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function saveBillingAccount(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2131,7 +2131,7 @@ export async function saveBillingAccount(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig billingkonto";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   const { error } = await supabase.from("billing_accounts").upsert(
@@ -2143,7 +2143,7 @@ export async function saveBillingAccount(formData: FormData) {
     { onConflict: "company_id" },
   );
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2155,19 +2155,19 @@ export async function saveBillingAccount(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function requestCompanyCancellation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2184,7 +2184,7 @@ export async function requestCompanyCancellation(formData: FormData) {
     .eq("role", "owner")
     .maybeSingle();
   if (!membership) {
-    redirect("/?error=Kun%20eier%20kan%20be%20om%20kansellering");
+    redirect("/workspace?error=Kun%20eier%20kan%20be%20om%20kansellering");
   }
 
   const { data: documents, error: documentError } = await supabase
@@ -2193,7 +2193,7 @@ export async function requestCompanyCancellation(formData: FormData) {
     .eq("company_id", companyId)
     .eq("income_year", incomeYear);
   if (documentError) {
-    redirect(`/?error=${encodeURIComponent(documentError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(documentError.message)}`);
   }
 
   const archiveExportedAt = new Date().toISOString();
@@ -2229,7 +2229,7 @@ export async function requestCompanyCancellation(formData: FormData) {
     ? await supabase.from("company_cancellations").update(payload).eq("id", existing.id)
     : await supabase.from("company_cancellations").insert(payload);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert([
@@ -2250,26 +2250,26 @@ export async function requestCompanyCancellation(formData: FormData) {
   ]);
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function completeCompanyDeletionRecord(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const cancellationId = formString(formData, "cancellationId");
   const legalRetentionConfirmed = formData.get("legalRetentionConfirmed") === "on";
   if (!legalRetentionConfirmed) {
-    redirect("/?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
+    redirect("/workspace?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
   }
 
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "company_delete");
@@ -2281,13 +2281,13 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (cancellationError || !cancellation) {
-    redirect(`/?error=${encodeURIComponent(cancellationError?.message ?? "Kanselleringssak mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(cancellationError?.message ?? "Kanselleringssak mangler")}`);
   }
   if (!cancellation.evidence?.archiveExportedAt) {
-    redirect("/?error=Arkiv%20m%C3%A5%20registreres%20f%C3%B8r%20sletting");
+    redirect("/workspace?error=Arkiv%20m%C3%A5%20registreres%20f%C3%B8r%20sletting");
   }
   if (cancellation.status === "deleted") {
-    redirect("/?error=Selskapet%20er%20allerede%20markert%20slettet");
+    redirect("/workspace?error=Selskapet%20er%20allerede%20markert%20slettet");
   }
 
   const now = new Date().toISOString();
@@ -2302,7 +2302,7 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
     .eq("id", cancellationId)
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase
@@ -2328,19 +2328,19 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   ]);
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function activateBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2351,7 +2351,7 @@ export async function activateBillingSubscription(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2371,7 +2371,7 @@ export async function activateBillingSubscription(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
   const { error } = await supabase
     .from("billing_accounts")
@@ -2384,7 +2384,7 @@ export async function activateBillingSubscription(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2396,19 +2396,19 @@ export async function activateBillingSubscription(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function requestFilingPackagePayment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2420,7 +2420,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   const { data: readinessSnapshot, error: readinessError } = await supabase
     .from("filing_readiness_snapshots")
@@ -2430,11 +2430,11 @@ export async function requestFilingPackagePayment(formData: FormData) {
     .eq("obligation", "aksjonaerregisteroppgaven")
     .maybeSingle();
   if (readinessError) {
-    redirect(`/?error=${encodeURIComponent(readinessError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(readinessError.message)}`);
   }
   const gate = productionBillingGate(account, Boolean(readinessSnapshot?.ready));
   if (!gate.chargeAllowed) {
-    redirect(`/?error=${encodeURIComponent(gate.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(gate.message)}`);
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2456,7 +2456,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2470,7 +2470,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2482,19 +2482,19 @@ export async function requestFilingPackagePayment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function cancelBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2505,7 +2505,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
 
   const event = simulateBillingProviderEvent({
@@ -2527,7 +2527,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2540,7 +2540,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2552,26 +2552,26 @@ export async function cancelBillingSubscription(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function saveYearEndInterview(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const annualFullTimeEquivalents = Number(formString(formData, "annualFullTimeEquivalents") || "0");
   if (!Number.isFinite(annualFullTimeEquivalents) || annualFullTimeEquivalents < 0) {
-    redirect("/?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
+    redirect("/workspace?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
   }
   const answers = buildYearEndInterviewAnswers(
     Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
@@ -2600,7 +2600,7 @@ export async function saveYearEndInterview(formData: FormData) {
     { onConflict: "company_id,income_year" },
   );
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2612,19 +2612,19 @@ export async function saveYearEndInterview(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2635,7 +2635,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     .eq("id", companyId)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
   }
 
   const [
@@ -2679,7 +2679,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     previewsError ||
     submissionsError;
   if (firstError) {
-    redirect(`/?error=${encodeURIComponent(firstError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
   const snapshots = evaluateAnnualReadinessGates({
@@ -2716,7 +2716,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { onConflict: "company_id,income_year,obligation" },
   );
   if (upsertError) {
-    redirect(`/?error=${encodeURIComponent(upsertError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(upsertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2728,19 +2728,19 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function markBillingUnsupported(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2758,7 +2758,7 @@ export async function markBillingUnsupported(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2770,19 +2770,19 @@ export async function markBillingUnsupported(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function markBillingRefundEligible(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2794,10 +2794,10 @@ export async function markBillingRefundEligible(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   if (!account.supported_case || !account.filing_package_paid) {
-    redirect("/?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
+    redirect("/workspace?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2820,7 +2820,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeURIComponent(eventError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2834,7 +2834,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2846,19 +2846,19 @@ export async function markBillingRefundEligible(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function confirmAuthorityPermission(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2867,7 +2867,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
   try {
     obligation = validateAuthorityObligation(formString(formData, "obligation"));
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
   }
   const now = new Date().toISOString();
   const productionEnabled = formData.get("productionEnabled") === "on";
@@ -2884,7 +2884,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
     { onConflict: "company_id,obligation" },
   );
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2896,19 +2896,19 @@ export async function confirmAuthorityPermission(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordAuthorityTestEvidence(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2917,12 +2917,12 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
   try {
     obligation = validateAuthorityObligation(formString(formData, "obligation"));
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
   }
 
   const environment = formString(formData, "environment") as AuthorityTestRunEnvironment;
   if (!["test", "manual_evidence"].includes(environment)) {
-    redirect("/?error=Ugyldig%20testmilj%C3%B8");
+    redirect("/workspace?error=Ugyldig%20testmilj%C3%B8");
   }
   const status = formString(formData, "status") as AuthorityTestRunStatus;
   let record;
@@ -2941,12 +2941,12 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
       recordedBy: user.id,
     });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig test-evidens")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig test-evidens")}`);
   }
 
   const { error } = await supabase.from("authority_test_runs").insert(record);
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2958,19 +2958,19 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function recordLaunchSignoff(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const { data: operator, error: operatorError } = await supabase
@@ -2981,10 +2981,10 @@ export async function recordLaunchSignoff(formData: FormData) {
     .eq("active", true)
     .maybeSingle();
   if (operatorError) {
-    redirect(`/?error=${encodeURIComponent(operatorError.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(operatorError.message)}`);
   }
   if (!operator) {
-    redirect("/?error=Admin%20operator%20kreves%20for%20launch%20signoff");
+    redirect("/workspace?error=Admin%20operator%20kreves%20for%20launch%20signoff");
   }
 
   let record;
@@ -2999,28 +2999,28 @@ export async function recordLaunchSignoff(formData: FormData) {
       recordedBy: user.id,
     });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig launch signoff")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig launch signoff")}`);
   }
 
   const { error } = await supabase.from("launch_signoffs").upsert(record, { onConflict: "key" });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function postManualJournal(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -3038,7 +3038,7 @@ export async function postManualJournal(formData: FormData) {
       })),
     });
   } catch (error) {
-    redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
   }
 
   const warningAcceptedAt = journal.riskFlags.length > 0 ? new Date().toISOString() : null;
@@ -3054,7 +3054,7 @@ export async function postManualJournal(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeURIComponent(error.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -3066,7 +3066,7 @@ export async function postManualJournal(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 function parseShareholders(formData: FormData): OpeningShareholderInput[] {

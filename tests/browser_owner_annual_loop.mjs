@@ -65,6 +65,10 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await expectText(page, "Talli Browser Holding AS");
   await expectText(page, "Ikke vurdert");
 
+  // The owner workflow tools now live under the /workspace route group (#90).
+  await page.goto(`${baseUrl}/workspace`);
+  await page.waitForLoadState("networkidle");
+
   await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
   await page.waitForLoadState("networkidle");
   await expectText(page, "Filing readiness må være klar før filingpakke kan betales.");

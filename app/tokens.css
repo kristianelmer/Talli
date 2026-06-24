@@ -1,0 +1,102 @@
+/*
+ * Talli design tokens — "Calm Nordic"
+ * Canonical source of truth for the component library (issue #92).
+ * Implement by importing these custom properties; do not hard-code raw values
+ * in components. See docs/design/README.md for the full spec and rationale.
+ */
+
+:root {
+  /* ----- Surfaces & neutrals (warm) ----- */
+  --color-bg: #f6f3ee;            /* app canvas */
+  --color-surface: #ffffff;       /* cards, panels, inputs */
+  --color-surface-sunken: #f7f5f0;/* insets, code/receipt blocks, metric tiles */
+  --color-surface-muted: #eee9df; /* muted bands, disabled fills */
+  --color-border: #d8d2c7;        /* hairline borders */
+  --color-border-strong: #c7bfb0; /* hover/active borders */
+
+  /* ----- Text ----- */
+  --color-text: #16201b;          /* primary ink */
+  --color-text-muted: #5a685f;    /* secondary (AA on --color-bg at >=14px) */
+  --color-text-subtle: #7e8b82;   /* tertiary, placeholders */
+  --color-text-inverse: #ffffff;
+
+  /* ----- Brand (primary action) ----- */
+  --color-brand: #0d6b57;         /* primary actions, links, active */
+  --color-brand-strong: #084838;  /* hover / pressed */
+  --color-brand-soft: #e3efe9;    /* selected rows, tints, step "done" fill */
+  --color-brand-contrast: #ffffff;
+
+  /* ----- Gold (sparing secondary accent only — never a primary action) ----- */
+  --color-gold: #a8762a;
+
+  /* ----- Semantic status (paired: base / soft bg / readable text) ----- */
+  --color-success: #1f7a4d;
+  --color-success-soft: #e2f1e8;
+  --color-success-text: #0f4e30;
+
+  --color-warning: #b66b1d;
+  --color-warning-soft: #f6ebda;
+  --color-warning-text: #7a440f;
+
+  --color-danger: #a73a34;        /* blocked / error / destructive */
+  --color-danger-soft: #f6e3e1;
+  --color-danger-text: #7a221d;
+
+  --color-draft: #5a685f;         /* draft / neutral */
+  --color-draft-soft: #eceae3;
+  --color-draft-text: #3c463f;
+
+  --color-info: #2f6f8f;          /* informational / needs-accountant */
+  --color-info-soft: #e2eef3;
+  --color-info-text: #1c4456;
+
+  /* ----- Typography ----- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --font-display: 32px;  /* in-app page hero (NOT the 84px marketing display) */
+  --text-2xl: 28px;      /* section titles */
+  --text-xl: 22px;
+  --text-lg: 18px;
+  --text-md: 16px;       /* body default */
+  --text-sm: 14px;       /* labels, secondary */
+  --text-xs: 13px;       /* eyebrows, badges, captions */
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;    /* in-app emphasis caps here; 800 is marketing-only */
+
+  /* ----- Spacing scale (4px base) ----- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* ----- Radii ----- */
+  --radius-sm: 8px;      /* inputs, badges, small buttons */
+  --radius-md: 12px;     /* cards, panels */
+  --radius-lg: 16px;     /* modals, hero cards */
+  --radius-pill: 999px;
+
+  /* ----- Elevation (soft, diffuse — no gradients) ----- */
+  --shadow-sm: 0 1px 2px rgba(22, 32, 27, 0.06);
+  --shadow-md: 0 4px 16px rgba(22, 32, 27, 0.08);
+  --shadow-lg: 0 24px 80px rgba(22, 32, 27, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(13, 107, 87, 0.25);
+
+  /* ----- Layout ----- */
+  --content-max: 1100px; /* app content max-width (marketing pages may be wider) */
+  --reading-max: 560px;  /* forms / single-column reading width */
+  --control-height: 44px;/* min touch target for inputs and buttons */
+}
