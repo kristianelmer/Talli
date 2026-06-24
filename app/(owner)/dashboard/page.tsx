@@ -1,38 +1,35 @@
-import Link from "next/link";
-
 import {
   authorityObligationLabel,
   authorityObligations,
 } from "../../lib/authority-permission";
 import { deadlineStatusLabel } from "../../lib/deadlines";
-import {
-  preProductionDirectFilingCopy,
-  requiredNonAffiliationCopy,
-} from "../../lib/launch-copy";
 import { loadWorkspaceData } from "../../lib/workspace-data";
+import { ownerCopy } from "../../lib/copy";
+import {
+  Banner,
+  EmptyState,
+  FileText,
+  LinkButton,
+  Panel,
+  StatCard,
+  StatusBadge,
+} from "../../components/ui";
+import type { DomainStatus } from "../../components/ui";
 
 type DashboardProps = {
   searchParams?: Promise<{ error?: string }>;
 };
 
-function statusVariant(status?: string, ready?: boolean): string {
-  if (ready) {
-    return "badge badge--success";
-  }
-  switch (status) {
-    case "ready":
-    case "met":
-    case "filed":
-      return "badge badge--success";
-    case "blocked":
-    case "overdue":
-      return "badge badge--danger";
-    case "warning":
-    case "due_soon":
-      return "badge badge--warning";
-    default:
-      return "badge badge--draft";
-  }
+type ReadinessStatus = "ready" | "warning" | "blocked";
+
+const READINESS_BADGE: Record<ReadinessStatus, DomainStatus> = {
+  ready: "klar",
+  warning: "trenger_gjennomgang",
+  blocked: "blokkert",
+};
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export default async function DashboardPage({ searchParams }: DashboardProps) {
@@ -56,42 +53,52 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const pendingObligations = primaryCompany
     ? authorityObligations.filter(
         (obligation) =>
-          !primaryReadinessSnapshots.find((item) => item.obligation === obligation)?.ready,
+          !primaryReadinessSnapshots.find((item) => item.obligation === obligation)
+            ?.ready,
       )
     : authorityObligations;
 
-  let nextAction: { kicker: string; title: string; body: string; href: string; cta: string };
+  const dash = ownerCopy.dashboard;
+  const nba = dash.nextAction;
+
+  let nextAction: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    href: string;
+    cta: string;
+  };
   if (!primaryCompany) {
     nextAction = {
-      kicker: "Kom i gang",
-      title: "Opprett holdingselskapet ditt",
-      body: "Hent selskapet fra Brønnøysund og opprett arbeidsflaten på under ett minutt.",
-      href: "/workspace",
-      cta: "Opprett selskap",
+      eyebrow: nba.setupEyebrow,
+      title: nba.setupTitle,
+      body: nba.setupBody,
+      href: "/workspace#opprett",
+      cta: nba.setupCta,
     };
   } else if (pendingObligations.length > 0) {
     nextAction = {
-      kicker: `Årsoppgjør ${primaryIncomeYear}`,
-      title: "Gjør klar årsoppgjøret",
-      body: `${pendingObligations.length} av ${authorityObligations.length} plikter gjenstår før du kan sende inn.`,
-      href: "/workspace",
-      cta: "Fortsett",
+      eyebrow: nba.pendingEyebrow(primaryIncomeYear),
+      title: nba.pendingTitle,
+      body: nba.pendingBody(pendingObligations.length, authorityObligations.length),
+      href: "/workspace#arbeidsflate",
+      cta: nba.pendingCta,
     };
   } else if (unmatchedTransactions.length > 0) {
     nextAction = {
-      kicker: "Avstemming",
-      title: "Avstem banktransaksjoner",
-      body: `${unmatchedTransactions.length} transaksjoner mangler kobling mot regnskapet.`,
-      href: "/workspace",
-      cta: "Avstem nå",
+      eyebrow: nba.reconcileEyebrow,
+      title: nba.reconcileTitle,
+      body: nba.reconcileBody(unmatchedTransactions.length),
+      href: "/workspace#arbeidsflate",
+      cta: nba.reconcileCta,
     };
   } else {
     nextAction = {
-      kicker: "Status",
-      title: "Alt ser klart ut",
-      body: "Forhåndsvis og send inn når du er klar. Talli holder deg i forhåndsvisning til alt er trygt.",
-      href: "/workspace",
-      cta: "Se innsending",
+      eyebrow: nba.readyEyebrow,
+      title: nba.readyTitle,
+      body: nba.readyBody,
+      href: "/workspace#arbeidsflate",
+      cta: nba.readyCta,
     };
   }
 
@@ -101,74 +108,100 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     <div>
       <div className="pageHead">
         <h1 className="pageTitle">
-          {primaryCompany ? primaryCompany.name : "Velkommen til Talli"}
+          {primaryCompany ? primaryCompany.name : dash.welcomeTitle}
         </h1>
         <p className="pageLede">
           {primaryCompany
-            ? `Org.nr ${primaryCompany.org_number} · Inntektsår ${primaryIncomeYear}`
-            : "Holding-først årsrapportering for enkle norske AS."}
+            ? dash.orgLine(primaryCompany.org_number, primaryIncomeYear)
+            : ownerCopy.tagline}
         </p>
       </div>
 
-      {params?.error ? <p className="bannerError">{params.error}</p> : null}
+      {params?.error ? <Banner variant="danger">{params.error}</Banner> : null}
 
-      <section className="nbaCard" aria-label="Neste steg">
-        <span className="nbaKicker">{nextAction.kicker}</span>
-        <h2 className="nbaTitle">{nextAction.title}</h2>
-        <p className="cardNote">{nextAction.body}</p>
-        <div>
-          <Link className="btn btn--primary" href={nextAction.href}>
-            {nextAction.cta}
-          </Link>
-        </div>
-      </section>
+      {primaryCompany ? (
+        <section className="nbaCard" aria-label={dash.nextStepEyebrow}>
+          <span className="nbaKicker">{nextAction.eyebrow}</span>
+          <h2 className="nbaTitle">{nextAction.title}</h2>
+          <p className="cardNote">{nextAction.body}</p>
+          <div>
+            <LinkButton variant="primary" href={nextAction.href}>
+              {nextAction.cta}
+            </LinkButton>
+          </div>
+        </section>
+      ) : (
+        <EmptyState
+          icon={<FileText size={22} aria-hidden="true" />}
+          title={dash.empty.title}
+          action={
+            <LinkButton variant="primary" href="/workspace#opprett">
+              {dash.empty.cta}
+            </LinkButton>
+          }
+        >
+          {dash.empty.body}
+        </EmptyState>
+      )}
 
       {primaryCompany ? (
         <>
-          <h2 className="sectionTitle">Årsoppgjør {primaryIncomeYear}</h2>
-          <div className="statusList">
-            {authorityObligations.map((obligation) => {
-              const snapshot = primaryReadinessSnapshots.find(
-                (item) => item.obligation === obligation,
-              );
-              return (
-                <div className="statusRow" key={obligation}>
-                  <span>{authorityObligationLabel(obligation)}</span>
-                  <span className={statusVariant(snapshot?.status, snapshot?.ready)}>
-                    {snapshot?.ready
-                      ? "Klar"
-                      : snapshot?.status
-                        ? snapshot.status
-                        : "Ikke vurdert"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <Panel
+            title={dash.complianceTitle(primaryIncomeYear)}
+            className="dashboardSection"
+          >
+            <div className="statusList">
+              {authorityObligations.map((obligation) => {
+                const snapshot = primaryReadinessSnapshots.find(
+                  (item) => item.obligation === obligation,
+                );
+                const blockers = snapshot?.hard_blocks ?? [];
+                return (
+                  <div className="statusRow statusRow--stacked" key={obligation}>
+                    <div className="statusRowHead">
+                      <span>{authorityObligationLabel(obligation)}</span>
+                      {snapshot ? (
+                        <StatusBadge status={READINESS_BADGE[snapshot.status]} />
+                      ) : (
+                        <StatusBadge
+                          variant="draft"
+                          label={ownerCopy.status.notAssessed}
+                        />
+                      )}
+                    </div>
+                    {blockers.length > 0 ? (
+                      <div className="statusRowDetail">
+                        <span className="cardLabel">{dash.blockersLabel}</span>
+                        <ul className="blockerList">
+                          {blockers.map((issue) => (
+                            <li key={issue.code}>{issue.message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
 
-          <h2 className="sectionTitle">Oversikt</h2>
-          <div className="cardGrid">
-            <div className="card">
-              <span className="cardLabel">Dokumenter</span>
-              <span className="cardValue">{documents.length}</span>
+          <Panel title={dash.overviewTitle} className="dashboardSection">
+            <div className="cardGrid">
+              <StatCard label={dash.metrics.documents} value={documents.length} />
+              <StatCard
+                label={dash.metrics.transactions}
+                value={transactions.length}
+              />
+              <StatCard
+                label={dash.metrics.unmatched}
+                value={unmatchedTransactions.length}
+              />
+              <StatCard label={dash.metrics.actions} value={actions.length} />
             </div>
-            <div className="card">
-              <span className="cardLabel">Transaksjoner</span>
-              <span className="cardValue">{transactions.length}</span>
-            </div>
-            <div className="card">
-              <span className="cardLabel">Uavstemte</span>
-              <span className="cardValue">{unmatchedTransactions.length}</span>
-            </div>
-            <div className="card">
-              <span className="cardLabel">Holdinghandlinger</span>
-              <span className="cardValue">{actions.length}</span>
-            </div>
-          </div>
+          </Panel>
 
           {upcomingDeadlines.length > 0 ? (
-            <>
-              <h2 className="sectionTitle">Frister</h2>
+            <Panel title={dash.deadlinesTitle} className="dashboardSection">
               <div className="statusList">
                 {upcomingDeadlines.map((deadline) => (
                   <div
@@ -176,29 +209,32 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                     key={`${deadline.incomeYear}-${deadline.filing}`}
                   >
                     <span>
-                      {deadline.filing} {deadline.incomeYear} · {deadline.deadline}
+                      {capitalize(deadline.filing)} {deadline.incomeYear} ·{" "}
+                      {deadline.deadline}
                     </span>
-                    <span className={statusVariant(deadline.status)}>
-                      {deadlineStatusLabel(deadline.status)}
-                    </span>
+                    <StatusBadge
+                      variant={
+                        deadline.status === "overdue" ||
+                        deadline.status === "late_simulated"
+                          ? "danger"
+                          : deadline.status === "due"
+                            ? "warning"
+                            : "info"
+                      }
+                      label={deadlineStatusLabel(deadline.status)}
+                    />
                   </div>
                 ))}
               </div>
-            </>
+            </Panel>
           ) : null}
         </>
       ) : null}
 
-      <h2 className="sectionTitle">Innsending</h2>
-      <div className="card">
-        <span className="cardLabel">Forhåndsvisning</span>
-        <p className="cardNote">{preProductionDirectFilingCopy}</p>
-        <p className="cardNote">{requiredNonAffiliationCopy}</p>
-      </div>
-
-      <p className="authAlt" style={{ marginTop: "var(--space-6)" }}>
-        Trenger du alle verktøyene? <Link href="/workspace">Åpne full arbeidsflate</Link>
-      </p>
+      <Panel title={ownerCopy.filing.title} className="dashboardSection">
+        <p className="cardNote">{ownerCopy.filing.preProductionGate}</p>
+        <p className="cardNote">{ownerCopy.filing.notAffiliated}</p>
+      </Panel>
     </div>
   );
 }
