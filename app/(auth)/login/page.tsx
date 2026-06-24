@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { signIn } from "../../actions";
 import { hasSupabaseEnv } from "../../lib/supabase/server";
 
@@ -17,28 +18,31 @@ export default async function LoginPage({ searchParams }: LoginProps) {
       </div>
       <h1 className="authTitle">Logg inn</h1>
       <p className="authIntro">Holding-først årsrapportering for enkle AS.</p>
-      {params?.error ? <p className="bannerError">{params.error}</p> : null}
+      {params?.error ? <Banner variant="danger">{params.error}</Banner> : null}
       {!hasSupabaseEnv() ? (
-        <p className="bannerError">Supabase-miljøvariabler mangler.</p>
+        <Banner variant="danger" title="Konfigurasjon mangler">
+          Supabase-miljøvariabler mangler.
+        </Banner>
       ) : null}
       <form className="authForm" action={signIn}>
-        <label className="field">
-          E-post
-          <input name="email" type="email" autoComplete="email" required />
-        </label>
-        <label className="field">
-          Passord
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            minLength={6}
-            required
-          />
-        </label>
-        <button className="btn btn--primary" type="submit">
+        <FormField
+          label="E-post"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+        />
+        <FormField
+          label="Passord"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          minLength={6}
+          required
+        />
+        <SubmitButton block pendingLabel="Logger inn …">
           Logg inn
-        </button>
+        </SubmitButton>
       </form>
       <p className="authAlt">
         Ny her? <Link href="/signup">Opprett bruker</Link>
