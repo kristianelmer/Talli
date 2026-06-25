@@ -860,6 +860,25 @@ h2 {
   margin: 0;
 }
 
+.authDivider {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--text-xs);
+  gap: var(--space-3);
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.authDivider::before,
+.authDivider::after {
+  background: var(--color-border);
+  content: "";
+  flex: 1;
+  height: 1px;
+}
+
 .authAlt a {
   color: var(--color-brand);
   font-weight: var(--weight-semibold);

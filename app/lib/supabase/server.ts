@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import type {
   YearEndInterviewAnswers,
 } from "../annual-data";
@@ -405,6 +406,22 @@ export async function getCurrentUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
+}
+
+/**
+ * True when an owner must still confirm their email before entering the app.
+ * OAuth sign-ins (e.g. Google) arrive with a verified identity, so they are
+ * never gated even if `email_confirmed_at` is momentarily absent.
+ */
+export function needsEmailVerification(user: User): boolean {
+  if (user.email_confirmed_at) {
+    return false;
+  }
+  const providers =
+    user.app_metadata?.providers ??
+    (user.app_metadata?.provider ? [user.app_metadata.provider] : []);
+  const hasOAuthIdentity = providers.some((provider) => provider && provider !== "email");
+  return !hasOAuthIdentity;
 }
 
 /**

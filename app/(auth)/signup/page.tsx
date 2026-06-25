@@ -4,6 +4,7 @@ import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { signUp } from "../../actions";
 import { hasSupabaseEnv } from "../../lib/supabase/server";
 import { ownerCopy } from "../../lib/copy";
+import { GoogleSignInButton } from "../GoogleSignInButton";
 
 type SignupProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -46,6 +47,8 @@ export default async function SignupPage({ searchParams }: SignupProps) {
           {ownerCopy.auth.signUpCta}
         </SubmitButton>
       </form>
+      <p className="authDivider">{ownerCopy.auth.orDivider}</p>
+      <GoogleSignInButton />
       <p className="authAlt">
         {ownerCopy.auth.haveAccount}{" "}
         <Link href="/login">{ownerCopy.auth.toSignIn}</Link>

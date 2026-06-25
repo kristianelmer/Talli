@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUser, hasSupabaseEnv } from "../lib/supabase/server";
+import { getCurrentUser, hasSupabaseEnv, needsEmailVerification } from "../lib/supabase/server";
 
 export default async function AuthLayout({
   children,
@@ -10,7 +10,7 @@ export default async function AuthLayout({
     if (user) {
       // A signed-in but unconfirmed owner belongs at the verification gate,
       // not in the app.
-      if (!user.email_confirmed_at) {
+      if (needsEmailVerification(user)) {
         redirect("/verify-email");
       }
       redirect("/dashboard");

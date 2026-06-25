@@ -205,6 +205,22 @@ export async function resendConfirmation(formData: FormData) {
   redirect(`/verify-email?email=${encodeURIComponent(email)}&resent=1`);
 }
 
+export async function signInWithGoogle() {
+  if (!hasSupabaseEnv()) {
+    redirect("/login?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const siteUrl = await getSiteUrl();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${siteUrl}/auth/confirm?next=/dashboard` },
+  });
+  if (error || !data.url) {
+    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}`);
+  }
+  redirect(data.url);
+}
+
 export async function signOut() {
   if (hasSupabaseEnv()) {
     const supabase = await createSupabaseServerClient();

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { signOut } from "../actions";
-import { getOperatorContext } from "../lib/supabase/server";
+import { getOperatorContext, needsEmailVerification } from "../lib/supabase/server";
 import { ownerCopy } from "../lib/copy";
 import { AppNav } from "./AppNav";
 
@@ -12,7 +12,7 @@ export default async function OwnerLayout({
   if (!user) {
     redirect("/login");
   }
-  if (!user.email_confirmed_at) {
+  if (needsEmailVerification(user)) {
     redirect("/verify-email");
   }
   return (
