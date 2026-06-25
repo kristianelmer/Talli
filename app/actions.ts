@@ -96,6 +96,9 @@ const RETURN_TO_ALLOWLIST = new Set([
   "/onboarding?step=bank",
   "/actions",
   "/dashboard",
+  "/filing/aksjonaerregisteroppgaven",
+  "/filing/skattemelding",
+  "/filing/aarsregnskap",
 ]);
 
 function returnTarget(formData: FormData): string {
@@ -607,7 +610,7 @@ export async function generateRf1086Preview(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function confirmSimulatedRf1086Submission(formData: FormData) {
@@ -738,7 +741,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function addFilingOverride(formData: FormData) {
@@ -2764,7 +2767,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function markBillingUnsupported(formData: FormData) {
@@ -2932,7 +2935,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function recordAuthorityTestEvidence(formData: FormData) {

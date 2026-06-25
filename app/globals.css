@@ -1509,6 +1509,159 @@ h2 {
   font-size: var(--text-sm);
 }
 
+/* ----- Self-serve filing (#98) ----- */
+.backLink {
+  color: var(--color-text-muted);
+  display: inline-block;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--color-brand);
+}
+
+.filingCardHead {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.filingStepper {
+  margin-bottom: var(--space-5);
+}
+
+.filingFlow {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.filingStep {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.filingStepHead {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.filingStepTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  margin: 0;
+}
+
+.filingStepBody {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.filingPreview {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-4);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.blockerList {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.blockerItem {
+  align-items: center;
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-danger);
+  color: var(--color-danger-text);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.blockerItem--warn {
+  background: var(--color-warning-soft);
+  border-left-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.blockerMessage {
+  font-size: var(--text-sm);
+}
+
+.blockerFix {
+  color: inherit;
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.filingLockNote {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.filingConfirmForm {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.filingCheck {
+  align-items: flex-start;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: var(--text-sm);
+  gap: var(--space-2);
+}
+
+.filingReceipt {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.filingReceiptRow {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.filingReceiptRow dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.filingReceiptRow dd {
+  font-weight: var(--weight-medium);
+  margin: 0;
+}
+
 /* ----- Banner / Alert ----- */
 .banner {
   align-items: flex-start;

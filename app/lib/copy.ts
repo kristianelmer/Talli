@@ -19,6 +19,7 @@ export const ownerCopy = {
     overview: "Oversikt",
     actions: "Handlinger",
     yearEnd: "Årsavslutning",
+    filing: "Innsending",
     workspace: "Arbeidsflate",
     operator: "Operatør",
     signOut: "Logg ut",
@@ -102,13 +103,6 @@ export const ownerCopy = {
     },
     blockersLabel: "Dette gjenstår:",
     openFilingCta: "Åpne",
-  },
-
-  filing: {
-    title: "Innsending",
-    previewLabel: "Forhåndsvisning",
-    notAffiliated: requiredNonAffiliationCopy,
-    preProductionGate: preProductionDirectFilingCopy,
   },
 
   workspace: {
@@ -517,6 +511,213 @@ export const ownerCopy = {
       shareholder_loans: "Aksjonær- eller konsernlån",
       paid_costs: "Betalte kostnader",
     } as Record<string, string>,
+  },
+
+  filing: {
+    title: "Innsending",
+    previewLabel: "Forhåndsvisning",
+    notAffiliated: requiredNonAffiliationCopy,
+    preProductionGate: preProductionDirectFilingCopy,
+    hubTitle: "Innsending",
+    hubLede:
+      "Når året er ferdig ryddet, sender du inn herfra. Talli sjekker at alt er klart før noe går ut, og arkiverer en kvittering.",
+    needsCompanyTitle: "Sett opp selskapet først",
+    needsCompanyBody: "Du må sette opp holdingselskapet før du kan sende inn.",
+    needsCompanyCta: "Kom i gang",
+    yearLabel: (year: number) => `Inntektsår ${year}`,
+    openCta: "Åpne",
+    backToHub: "Til innsending",
+    status: {
+      ready: "Klar til innsending",
+      blocked: "Noe gjenstår",
+      warning: "Klar – med merknader",
+      submitted: "Sendt (simulert)",
+      preparing: "Under arbeid",
+    },
+    obligations: {
+      aksjonaerregisteroppgaven: {
+        label: "Aksjonærregisteroppgaven",
+        short: "RF-1086",
+        summary: "Hvem som eier selskapet, og endringer i året.",
+        lede:
+          "Vi setter sammen aksjonærregisteroppgaven fra åpningsbalansen og handlingene dine. Til slutt arkiverer vi en simulert kvittering.",
+      },
+      skattemelding: {
+        label: "Skattemelding for AS",
+        short: "Skattemelding",
+        summary: "Selskapets skatt for året.",
+        lede:
+          "Talli rydder grunnlaget for skattemeldingen. Selve forhåndsvisningen og innsendingen er under arbeid.",
+      },
+      aarsregnskap: {
+        label: "Årsregnskap",
+        short: "Årsregnskap",
+        summary: "Resultat og balanse for året.",
+        lede:
+          "Talli rydder grunnlaget for årsregnskapet. Selve forhåndsvisningen og innsendingen er under arbeid.",
+      },
+    } as Record<
+      string,
+      { label: string; short: string; summary: string; lede: string }
+    >,
+    steps: {
+      check: "Sjekk",
+      preview: "Forhåndsvisning",
+      authority: "Innsendingsrett",
+      confirm: "Bekreft",
+      receipt: "Kvittering",
+    },
+    check: {
+      title: "Er alt klart?",
+      readyBody: "Alt ser bra ut. Gå videre til forhåndsvisningen.",
+      blockedBody: "Dette må på plass før du kan sende inn:",
+      warningBody: "Du kan gå videre, men se over disse merknadene:",
+      refreshCta: "Oppdater status",
+      refreshPending: "Oppdaterer …",
+      fixCta: "Løs",
+    },
+    preview: {
+      title: "Forhåndsvisning",
+      intro:
+        "Slik ser oppgaven ut. Kontroller at tallene stemmer før du bekrefter.",
+      generateIntro:
+        "Vi lager forhåndsvisningen fra den låste åpningsbalansen og handlingene dine.",
+      generateCta: "Lag forhåndsvisning",
+      generatePending: "Lager …",
+      notReady:
+        "Forhåndsvisningen er ikke klar ennå. Løs punktene over og lag den på nytt.",
+      regenerateCta: "Lag på nytt",
+      preparing:
+        "Forhåndsvisning og innsending for denne oppgaven er under arbeid. Du kan allerede nå rydde alt som må på plass via sjekklisten over.",
+      lockedNote: "Fullfør sjekken over for å lage forhåndsvisningen.",
+    },
+    authority: {
+      title: "Innsendingsrett",
+      intro:
+        "Bekreft at du har rett til å sende inn denne oppgaven på vegne av selskapet.",
+      confirmLabel:
+        "Jeg bekrefter at jeg har rett til å sende inn for selskapet.",
+      cta: "Bekreft innsendingsrett",
+      pending: "Bekrefter …",
+      confirmed: "Innsendingsrett er bekreftet.",
+      lockedNote: "Lag forhåndsvisningen først.",
+    },
+    confirm: {
+      title: "Bekreft og arkiver",
+      intro:
+        "Dette arkiverer en simulert kvittering. Ingen live innsending til myndighetene gjøres nå.",
+      authorityCheck: "Jeg bekrefter retten til å sende inn for selskapet.",
+      previewCheck: "Jeg har kontrollert forhåndsvisningen.",
+      cta: "Arkiver simulert kvittering",
+      pending: "Arkiverer …",
+      lockedNote: "Fullfør stegene over for å kunne arkivere kvitteringen.",
+    },
+    receipt: {
+      title: "Kvittering",
+      simulatedNote: "Kun simulering. Ingen live innsending er gjort.",
+      receiptLabel: "Kvitteringsnummer",
+      statusLabel: "Status",
+      none: "Ingen kvittering ennå.",
+      exportCta: "Eksporter arkiv",
+    },
+    posted: "Simulert kvittering er arkivert.",
+    blockers: {
+      unsupported_entity: {
+        message: "Talli støtter foreløpig bare aksjeselskap (AS).",
+      },
+      opening_balance_missing: {
+        message: "Åpningsbalansen må være satt opp og låst for året.",
+        fixHref: "/onboarding",
+        fixLabel: "Til oppsett",
+      },
+      period_not_locked: { message: "Inntektsåret er ikke låst ennå." },
+      annual_data_missing: {
+        message: "Årsavslutningen er ikke fullført.",
+        fixHref: "/year-end",
+        fixLabel: "Til årsavslutning",
+      },
+      bank_balance_not_confirmed: {
+        message: "Bankbalansen er ikke bekreftet i årsavslutningen.",
+        fixHref: "/year-end",
+        fixLabel: "Til årsavslutning",
+      },
+      unpaid_items_not_supported: {
+        message:
+          "Ubetalte poster støttes ikke i den enkle innsendingen. Ta kontakt med regnskapsfører.",
+      },
+      annual_authority_not_confirmed: {
+        message: "Innsendingsrett er ikke bekreftet i årsavslutningen.",
+        fixHref: "/year-end",
+        fixLabel: "Til årsavslutning",
+      },
+      unmatched_bank_transactions: {
+        message: "Alle banktransaksjoner må kontrolleres først.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+      missing_documents: {
+        message: "Det mangler dokumenter for oppgaven.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+      blocking_filing_override: {
+        message: "En manuell overstyring må løses.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+      missing_authority_confirmation: {
+        message: "Bekreft innsendingsrett i steget nedenfor.",
+      },
+      production_disabled: {
+        message: "Bekreft innsendingsrett i steget nedenfor for å gå videre.",
+      },
+      billing_account_missing: {
+        message: "Faktureringen er ikke satt opp ennå.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+      subscription_required: {
+        message: "Abonnementet må aktiveres før innsending.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+      unsupported_case: {
+        message:
+          "Denne saken må håndteres manuelt. Ta kontakt med regnskapsfører.",
+      },
+      rf1086_preview_not_ready: {
+        message: "Forhåndsvisningen er ikke klar ennå.",
+      },
+      blocking_holding_action: {
+        message: "En registrert handling må ryddes først.",
+        fixHref: "/actions",
+        fixLabel: "Til handlinger",
+      },
+      tax_settlement_missing: {
+        message: "Skatteoppgjør er ikke registrert for året.",
+        fixHref: "/actions/tax-settlement",
+        fixLabel: "Registrer skatteoppgjør",
+      },
+      ledger_missing: {
+        message: "Det må være bokført åpningsbalanse eller handlinger.",
+        fixHref: "/actions",
+        fixLabel: "Til handlinger",
+      },
+      general_meeting_not_approved: {
+        message: "Generalforsamlingen må godkjenne årsregnskapet.",
+        fixHref: "/year-end",
+        fixLabel: "Til årsavslutning",
+      },
+      manual_journal_warning_unaccepted: {
+        message: "En manuell postering med merknad må gjennomgås.",
+        fixHref: "/workspace",
+        fixLabel: "Til arbeidsflate",
+      },
+    } as Record<
+      string,
+      { message: string; fixHref?: string; fixLabel?: string }
+    >,
+    blockerFallback: "Et punkt gjenstår før innsending.",
   },
 } as const;
 
