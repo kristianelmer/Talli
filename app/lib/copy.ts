@@ -50,6 +50,8 @@ export const ownerCopy = {
     toSignUp: "Opprett bruker",
     unavailableTitle: "Tjenesten er ikke klar",
     unavailable: "Innlogging er midlertidig utilgjengelig. Prøv igjen om litt.",
+    termsLink: "Vilkår",
+    privacyLink: "Personvern",
   },
 
   verifyEmail: {
@@ -69,6 +71,212 @@ export const ownerCopy = {
     title: "E-posten er bekreftet",
     body: "Takk! Kontoen din er aktivert, og du er logget inn. Da setter vi i gang.",
     cta: "Gå til Talli",
+  },
+
+  legal: {
+    lastUpdatedLabel: "Sist oppdatert",
+    lastUpdated: "25. juni 2026",
+    backCta: "Tilbake til innlogging",
+    backHref: "/login",
+
+    privacy: {
+      title: "Personvernerklæring",
+      intro:
+        "Denne personvernerklæringen forklarer hvilke personopplysninger Talli behandler når du bruker tjenesten på talli.no, hvorfor vi behandler dem, og hvilke rettigheter du har.",
+      sections: [
+        {
+          heading: "Behandlingsansvarlig",
+          body: [
+            "Talli (heretter «vi», «oss» eller «Talli») er behandlingsansvarlig for personopplysningene som behandles gjennom tjenesten. Talli drives av [Talli AS, org.nr XXX XXX XXX, postadresse].",
+            "Har du spørsmål om personvern, kan du kontakte oss på personvern@talli.no.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Hvilke opplysninger vi behandler",
+          body: ["Vi behandler følgende kategorier av opplysninger:"],
+          bullets: [
+            "Kontoopplysninger: e-postadresse, navn hvis du oppgir det, og innloggingsinformasjon. Logger du inn med Google, mottar vi e-postadresse og navn fra Google-kontoen din.",
+            "Selskapsopplysninger: organisasjonsnummeret du oppgir, og offentlig registerinformasjon vi henter fra Brønnøysundregistrene.",
+            "Regnskaps- og innsendingsdata: tall, transaksjoner og dokumenter du legger inn for å forberede årsoppgjør og lovpålagt rapportering.",
+            "Teknisk informasjon: innloggings- og øktinformasjon (informasjonskapsler) og enkel loggdata som er nødvendig for drift og sikkerhet.",
+          ],
+        },
+        {
+          heading: "Hvorfor vi behandler opplysningene",
+          body: ["Vi behandler personopplysninger for å:"],
+          bullets: [
+            "levere og drifte tjenesten du har bedt om (rettslig grunnlag: avtale, personvernforordningen artikkel 6 nr. 1 bokstav b),",
+            "oppfylle rettslige forpliktelser, for eksempel bokførings- og oppbevaringskrav (artikkel 6 nr. 1 bokstav c),",
+            "gjøre det mulig å logge inn med Google når du velger det (avtale/samtykke),",
+            "ivareta sikkerhet, feilretting og forbedring av tjenesten (berettiget interesse, artikkel 6 nr. 1 bokstav f).",
+          ],
+        },
+        {
+          heading: "Databehandlere og deling",
+          body: [
+            "Vi selger aldri personopplysningene dine. For å levere tjenesten bruker vi enkelte underleverandører (databehandlere) som behandler opplysninger på våre vegne under databehandleravtale:",
+          ],
+          bullets: [
+            "Supabase – autentisering og database.",
+            "Vercel – drift og hosting av nettjenesten.",
+            "Google – valgfri innlogging hvis du bruker «Fortsett med Google».",
+          ],
+        },
+        {
+          heading: "Overføring utenfor EU/EØS",
+          body: [
+            "Noen av underleverandørene våre kan behandle opplysninger utenfor EU/EØS. Når det skjer, sikrer vi overføringen med EU-kommisjonens standard personvernbestemmelser (SCC) eller et annet gyldig overføringsgrunnlag.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Hvor lenge vi lagrer opplysningene",
+          body: [
+            "Vi lagrer kontoopplysninger så lenge du har en aktiv konto hos oss. Regnskaps- og innsendingsdata oppbevares så lenge det er nødvendig for å levere tjenesten og for å oppfylle lovpålagte oppbevaringskrav, blant annet bokføringslovens krav. Når et behandlingsgrunnlag faller bort, sletter eller anonymiserer vi opplysningene.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Dine rettigheter",
+          body: ["Etter personvernregelverket har du rett til å:"],
+          bullets: [
+            "få innsyn i hvilke opplysninger vi behandler om deg,",
+            "få rettet uriktige opplysninger,",
+            "få slettet opplysninger («retten til å bli glemt») når vilkårene er oppfylt,",
+            "be om begrensning av behandlingen eller protestere mot den,",
+            "få utlevert opplysningene dine i et maskinlesbart format (dataportabilitet).",
+          ],
+        },
+        {
+          heading: "Klage til tilsynsmyndighet",
+          body: [
+            "Mener du at vi behandler personopplysninger i strid med regelverket, kan du klage til Datatilsynet. Vi setter pris på om du tar kontakt med oss først, slik at vi kan rette opp i forholdet.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Informasjonskapsler (cookies)",
+          body: [
+            "Vi bruker kun nødvendige informasjonskapsler som holder deg innlogget og sikrer økten din. Vi bruker ikke informasjonskapsler til markedsføring eller sporing på tvers av nettsteder.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Sikkerhet",
+          body: [
+            "Vi bruker tekniske og organisatoriske tiltak for å beskytte opplysningene dine, blant annet kryptert overføring og tilgangsstyring. Ingen tjeneste er likevel helt uten risiko, og vi oppfordrer deg til å bruke et sterkt, unikt passord.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Endringer i personvernerklæringen",
+          body: [
+            "Vi kan oppdatere denne erklæringen ved endringer i tjenesten eller regelverket. Gjeldende versjon ligger alltid på denne siden, med oppdatert dato øverst.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Kontakt",
+          body: [
+            "Har du spørsmål om personvern eller ønsker å bruke rettighetene dine, kontakt oss på personvern@talli.no.",
+          ],
+          bullets: [],
+        },
+      ],
+    },
+
+    terms: {
+      title: "Brukervilkår",
+      intro:
+        "Disse vilkårene gjelder for bruk av Talli på talli.no. Ved å opprette en konto eller bruke tjenesten godtar du vilkårene.",
+      sections: [
+        {
+          heading: "Om tjenesten",
+          body: [
+            "Talli er et digitalt verktøy som hjelper enkle norske aksjeselskaper (AS), særlig holdingselskaper, med å forberede årsoppgjør og lovpålagt rapportering. Talli leveres av [Talli AS, org.nr XXX XXX XXX].",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Ikke profesjonell rådgivning",
+          body: [
+            "Talli er et hjelpemiddel og erstatter ikke regnskapsfører, revisor eller juridisk rådgivning. Du er selv ansvarlig for at opplysningene du legger inn, og innsendingene du godkjenner, er fullstendige og riktige. Talli gir ingen garanti for at en innsending blir godkjent av offentlige myndigheter.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Konto og tilgang",
+          body: [
+            "For å bruke tjenesten må du opprette en konto med korrekte opplysninger og holde innloggingsinformasjonen din konfidensiell. Du må ha nødvendig fullmakt til å handle på vegne av selskapet du registrerer. Du er ansvarlig for all bruk som skjer via kontoen din.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Ditt ansvar ved innsending",
+          body: [
+            "Innsending til offentlige myndigheter skjer på ditt ansvar. Du må gjennomgå og bekrefte opplysningene før de sendes inn. Talli kan stoppe saker som er for sammensatte for den enkle flyten; da må de håndteres manuelt eller av en regnskapsfører.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Abonnement og betaling",
+          body: [
+            "Deler av tjenesten kan kreve et abonnement eller en betalt innsendingspakke. Gjeldende priser og betingelser vises i tjenesten før du forplikter deg. Du blir ikke belastet før du aktivt har bekreftet et kjøp.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Akseptabel bruk",
+          body: ["Du forplikter deg til ikke å:"],
+          bullets: [
+            "bruke tjenesten til ulovlige formål eller i strid med disse vilkårene,",
+            "forsøke å skaffe deg uautorisert tilgang til tjenesten eller andre brukeres data,",
+            "forstyrre eller forsøke å omgå sikkerheten i tjenesten.",
+          ],
+        },
+        {
+          heading: "Immaterielle rettigheter",
+          body: [
+            "Talli, inkludert programvare, design og varemerke, eies av oss. Du beholder alle rettigheter til dataene og dokumentene du selv legger inn, og gir oss en begrenset rett til å behandle disse for å levere tjenesten til deg.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Ansvarsbegrensning",
+          body: [
+            "Tjenesten leveres «som den er». Så langt loven tillater, er vi ikke ansvarlige for indirekte tap, følgetap eller tap som skyldes uriktige opplysninger du har lagt inn, eller bruk i strid med vilkårene. Ingenting i disse vilkårene begrenser ansvar som ikke kan fraskrives etter ufravikelig lov.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Oppsigelse",
+          body: [
+            "Du kan når som helst slutte å bruke tjenesten og avslutte kontoen din. Vi kan suspendere eller avslutte tilgangen ved vesentlig brudd på vilkårene. Ved avslutning behandler vi dataene dine i tråd med personvernerklæringen.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Endringer i vilkårene",
+          body: [
+            "Vi kan endre vilkårene ved utvikling av tjenesten eller endringer i regelverket. Vesentlige endringer varsler vi om i tjenesten eller på e-post. Gjeldende versjon ligger alltid på denne siden.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Lovvalg og verneting",
+          body: [
+            "Vilkårene reguleres av norsk rett. Tvister skal søkes løst i minnelighet. Fører ikke det frem, kan tvisten bringes inn for de ordinære domstolene med [Oslo tingrett] som verneting, med mindre annet følger av ufravikelig lov.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Kontakt",
+          body: ["Har du spørsmål om vilkårene, kontakt oss på kontakt@talli.no."],
+          bullets: [],
+        },
+      ],
+    },
   },
 
   obligations: {

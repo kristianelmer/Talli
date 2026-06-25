@@ -53,6 +53,11 @@ export default async function SignupPage({ searchParams }: SignupProps) {
         {ownerCopy.auth.haveAccount}{" "}
         <Link href="/login">{ownerCopy.auth.toSignIn}</Link>
       </p>
+      <p className="authLegal">
+        <Link href="/vilkar">{ownerCopy.auth.termsLink}</Link>
+        {" · "}
+        <Link href="/personvern">{ownerCopy.auth.privacyLink}</Link>
+      </p>
     </div>
   );
 }
