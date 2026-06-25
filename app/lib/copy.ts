@@ -49,6 +49,25 @@ export const ownerCopy = {
     unavailable: "Innlogging er midlertidig utilgjengelig. Prøv igjen om litt.",
   },
 
+  verifyEmail: {
+    title: "Bekreft e-posten din",
+    intro:
+      "Vi har sendt en bekreftelseslenke. Åpne e-posten og klikk lenken for å aktivere kontoen.",
+    sentTo: "Sendt til",
+    hintTitle: "Finner du den ikke?",
+    hint: "Sjekk søppelpost og reklame. Lenken er gyldig en stund – du kan sende en ny under.",
+    resendCta: "Send bekreftelseslenken på nytt",
+    resendPending: "Sender …",
+    resent: "Vi har sendt en ny bekreftelseslenke.",
+    backToLogin: "Tilbake til innlogging",
+  },
+
+  emailConfirmed: {
+    title: "E-posten er bekreftet",
+    body: "Takk! Kontoen din er aktivert, og du er logget inn. Da setter vi i gang.",
+    cta: "Gå til Talli",
+  },
+
   obligations: {
     aksjonaerregisteroppgaven: "Aksjonærregisteroppgaven",
     skattemelding: "Skattemelding for AS",

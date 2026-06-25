@@ -12,6 +12,9 @@ export default async function OwnerLayout({
   if (!user) {
     redirect("/login");
   }
+  if (!user.email_confirmed_at) {
+    redirect("/verify-email");
+  }
   return (
     <div className="appShell">
       <header className="appTopbar">

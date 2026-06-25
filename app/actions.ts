@@ -18,6 +18,7 @@ import {
 } from "./lib/billing";
 import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
+import { getSiteUrl } from "./lib/site-url";
 import { buildAuthorityTestRun, type AuthorityTestRunEnvironment, type AuthorityTestRunStatus } from "./lib/authority-test-evidence";
 import { validateAuthorityObligation } from "./lib/authority-permission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
@@ -150,6 +151,11 @@ export async function signIn(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    // Unconfirmed accounts are parked at the verification gate rather than
+    // shown a dead-end error — they keep going without re-entering anything.
+    if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
+      redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+    }
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
   revalidatePath("/dashboard");
@@ -163,12 +169,40 @@ export async function signUp(formData: FormData) {
   const email = formString(formData, "email");
   const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const siteUrl = await getSiteUrl();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+  });
   if (error) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`);
   }
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  // With email confirmation off, Supabase returns an active, confirmed session
+  // immediately — go straight in. Otherwise send them to the verification gate.
+  if (data.session && data.user?.email_confirmed_at) {
+    revalidatePath("/dashboard");
+    redirect("/dashboard");
+  }
+  redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+}
+
+export async function resendConfirmation(formData: FormData) {
+  const email = formString(formData, "email");
+  if (!hasSupabaseEnv()) {
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=Tjenesten%20er%20midlertidig%20utilgjengelig.`);
+  }
+  const supabase = await createSupabaseServerClient();
+  const siteUrl = await getSiteUrl();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+  });
+  if (error) {
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(`/verify-email?email=${encodeURIComponent(email)}&resent=1`);
 }
 
 export async function signOut() {

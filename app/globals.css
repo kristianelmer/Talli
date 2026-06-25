@@ -811,6 +811,16 @@ h2 {
   margin: 0;
 }
 
+.authEmail {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  margin: 0;
+  padding: var(--space-3);
+  word-break: break-word;
+}
+
 .authForm {
   display: grid;
   gap: var(--space-4);
