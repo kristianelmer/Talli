@@ -47,13 +47,16 @@ sufficient for the Maskinporten / Altinn / virksomhetssertifikat integration. (T
       and no founding document required for an ENK.
 - [ ] Submit **Samordnet registermelding** (Altinn form **BR-1010 / "Registrer ny verksemd"**) to
       register the ENK in **Enhetsregisteret**. Issues the **organisasjonsnummer** (ENK is usually
-      faster than an AS — often days). Registration in Enhetsregisteret is free.
+      faster than an AS — often days). **Fee (current Brønnøysund table): NOK 2 181 digital /
+      2 746 paper** for an ENK in Enhetsregisteret — choose **Digitalt** for the lower fee.
+      (For comparison: an AS is 6 825 digital; adding Foretaksregisteret later is 3 185.)
 - [ ] **Foretaksregisteret is not required** for Talli. An ENK only needs Foretaksregisteret if
       it resells purchased goods, has >5 employees, operates as statsautorisert regnskapsfører/
       revisor, or takes pant i varelager — none apply to Talli (a software service, not an
       accountant/auditor firm). Verified: Buypass/Commfides issue a virksomhetssertifikat, and
       Maskinporten works, on the **Enhetsregisteret** org number alone. You *may* still opt in
-      (it's a right, not a duty) for foretaksnavn protection + a firmaattest, for a one-time fee.
+      (it's a right, not a duty) for foretaksnavn protection + a firmaattest, for a one-time fee
+      (tilleggsregistrering: NOK 3 185 digital).
 - [ ] **Næringskode (NACE)**: pick the closest main activity — **62.010 Programmeringstjenester**
       ("Programvareutvikling") fits a filing-assistant SaaS. It only feeds SSB statistics, has
       **no effect** on the virksomhetssertifikat / Maskinporten / Altinn (those bind to the org
