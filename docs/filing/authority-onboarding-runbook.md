@@ -54,6 +54,11 @@ sufficient for the Maskinporten / Altinn / virksomhetssertifikat integration. (T
       accountant/auditor firm). Verified: Buypass/Commfides issue a virksomhetssertifikat, and
       Maskinporten works, on the **Enhetsregisteret** org number alone. You *may* still opt in
       (it's a right, not a duty) for foretaksnavn protection + a firmaattest, for a one-time fee.
+- [ ] **Næringskode (NACE)**: pick the closest main activity — **62.010 Programmeringstjenester**
+      ("Programvareutvikling") fits a filing-assistant SaaS. It only feeds SSB statistics, has
+      **no effect** on the virksomhetssertifikat / Maskinporten / Altinn (those bind to the org
+      number), and can be changed later for free. Alternatives if preferred: 63.110
+      (databehandling/datalagring) or 58.290 (utgivelse av annen programvare). Don't overthink it.
 - [ ] Confirm you hold the **Tilgangsstyrar (Access manager)** role on the new org in Altinn —
       required later to delegate access packages to the system user. Getting this now avoids a
       round-trip at Step 4.
