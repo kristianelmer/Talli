@@ -90,14 +90,20 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
 
 ### Step 3 — Maskinporten client (Samarbeidsportalen)
 
-- [ ] **Test access:** go to **samarbeid.digdir.no**, accept Digdir's bruksvilkår, and
-      **self-register a user** for the org using an email on the org's **registered email domain**
-      (snag for ENKs with only a personal email — register a domain email / update org contact, or
-      use ID-porten). Production uses ID-porten login with an authorised person approving access.
+- [ ] **Test access:** go to **samarbeid.digdir.no**, log in with **ID-porten as the org's
+      authorised person** (innehaver for an ENK) to start registration + accept Digdir's
+      bruksvilkår. A brand-new org may get *"Din virksomhet er ikke registrert som bruker av
+      denne tjenesten enda"* — if so, email **servicedesk@digdir.no** with org number, contact
+      person, purpose, and a screenshot to be enrolled as a Maskinporten customer (a few business
+      days). Self-registration by email requires the org's **registered email domain**, which is a
+      snag for ENKs with only a personal email.
 - [ ] Register a Maskinporten **integration (oauth2 client)** with: `integration_type=maskinporten`,
       `token_endpoint_auth_method=private_key_jwt`, `grant_types=jwt-bearer`, a clear `description`,
       and **upload your own public key/JWK** (the self-generated key from Step 2; `kid` must be
-      globally unique). One client per scope is recommended.
+      globally unique). One client per scope is recommended. **As a supplier using Altinn
+      delegation, create the integration as belonging to yourself — do NOT pick "på vegne av en
+      kunde".** At token time pass the customer's org as the `consumer_org` claim; Maskinporten
+      then checks Altinn for a valid delegation.
 - [ ] Add the per-obligation scope (table below). Altinn-delegated scopes appear under **"Scopes
       tilgjengelig for alle"**; some scopes still require **API-owner grant** (Skatteetaten /
       Brønnøysund) before they activate. Record the auto-assigned **client_id**.
