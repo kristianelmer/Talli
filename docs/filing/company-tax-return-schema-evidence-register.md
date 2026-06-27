@@ -1,8 +1,10 @@
 # Skattemelding/Næringsspesifikasjon Schema Evidence Register
 
-Status: source-backed evidence pack, not a production filing implementation  
+Status: payload builder + validation feedback loop implemented (#86, closed); evidence ready for Skatteetaten/Altinn3 test flow  
 Research date: 2026-06-16  
+Last updated: 2026-06-27  
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
+Target issue: #86 (payload + validation, closed) / #87 (test-environment submission flow)  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
 
 ## Official Sources
@@ -89,11 +91,28 @@ Warn/escalate before submission:
 
 ## Next Implementation Slice
 
-Issue #86 should build:
+Issue #86 built (closed):
 
 1. A 2025-only payload builder using `skattemeldingUpersonlig_v5_ekstern.xsd` and `naeringsspesifikasjon_v6_ekstern.xsd`.
 2. XML fixture generation for no-activity and ordinary holding activity.
 3. Local XSD validation against the official XSDs.
 4. A disabled Skatteetaten validation adapter that persists validation feedback into `filing_submissions.feedback_items`.
 5. Readiness blocks for every unsupported case listed above.
+
+## Code Gate Verification (2026-06-27)
+
+Latest run of the skattemelding/tax-return code-side evidence (all green):
+
+| Suite | Result |
+| --- | --- |
+| `npm run test:company-tax-return` | 5 passed |
+| `node --experimental-strip-types --test tests/tax_settlement.test.mjs` | 4 passed |
+| `uv run python -m unittest tests.test_annual tests.test_annual_validation` (tax settlement + validation) | 12 passed |
+
+This proves the deterministic 2025 payload, tax-settlement, and validation-feedback
+logic is ready for the Skatteetaten/Altinn3 test flow. It does not substitute for the
+remaining external work for #87: running the official test flow with Talli credentials,
+delegated rights, and a supported AS test subject; persisting official feedback/receipt/
+archive references; and the approved `tax_return_authority` launch signoff. Those keep
+`buildFilingReleaseGates` fail-closed for `skattemelding`.
 
