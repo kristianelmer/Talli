@@ -80,6 +80,30 @@ Required non-affiliation wording:
 - `Erstatter regnskapsfører`.
 - Claims that Talli covers all AS companies.
 
+## Launch Signoff Record To Apply
+
+All brand/name/domain/public-copy/authority/pricing clearance evidence above is
+recorded as **approved**. To close the in-app gate, an admin operator records the
+`launch_legal_name_public_copy` signoff in the app operator section
+(`recordLaunchSignoff`) with the values below. These values are validated against
+`buildLaunchSignoffRecord` by `npm run test:launch-signoff` (test: "documented
+launch_legal_name_public_copy entry is a valid approved record"), so they can be
+entered into the operator form verbatim.
+
+| Field | Value |
+| --- | --- |
+| key | `launch_legal_name_public_copy` |
+| status | `approved` |
+| reviewer | `Kristian Elmer (founder)` |
+| reviewedAt | `2026-06-24T00:00:00Z` |
+| evidenceLink | `docs/launch/talli-clearance-evidence-register.md` (or its GitHub blob URL) |
+| decision | `Trademark (Patentstyret), company-name (Brønnøysund), talli.no ownership, fallback (not required), public copy, and authority wording all approved 2026-06-24; pre-production public-copy baseline enforced by test:launch-copy.` |
+| recordedBy | (filled automatically with the admin operator's user id) |
+
+Recording this one key closes #71's in-app requirement. The overall launch gate
+(`buildLaunchSignoffGate`) stays blocked until the other keys (e.g.
+`security_restore`, filing-authority keys) are also approved and fresh.
+
 ## Required Human Signoff
 
 Evidence status (2026-06-27): trademark/name, `talli.no` ownership, fallback (not

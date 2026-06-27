@@ -119,3 +119,29 @@ test("builds persisted launch signoff record and validates approved evidence", (
     /Ugyldig/,
   );
 });
+
+test("documented launch_legal_name_public_copy entry is a valid approved record", () => {
+  // Mirrors the "Launch Signoff Record To Apply" entry in
+  // docs/launch/talli-clearance-evidence-register.md so the documented operator-form
+  // values cannot drift from the validation rules in buildLaunchSignoffRecord.
+  const record = buildLaunchSignoffRecord(
+    {
+      key: "launch_legal_name_public_copy",
+      status: "approved",
+      reviewer: "Kristian Elmer (founder)",
+      reviewedAt: "2026-06-24T00:00:00Z",
+      evidenceLink: "docs/launch/talli-clearance-evidence-register.md",
+      decision:
+        "Trademark (Patentstyret), company-name (Brønnøysund), talli.no ownership, " +
+        "fallback (not required), public copy, and authority wording all approved " +
+        "2026-06-24; pre-production public-copy baseline enforced by test:launch-copy.",
+      recordedBy: "admin-operator",
+    },
+    new Date("2026-06-27T00:00:00Z"),
+  );
+
+  assert.equal(record.key, "launch_legal_name_public_copy");
+  assert.equal(record.status, "approved");
+  assert.equal(record.reviewer, "Kristian Elmer (founder)");
+  assert.equal(record.reviewed_at, "2026-06-24T00:00:00Z");
+});
