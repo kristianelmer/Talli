@@ -1,7 +1,7 @@
 # Talli Terms of Service Draft
 
 Status: draft for founder/legal review  
-Last updated: 2026-06-24  
+Last updated: 2026-06-27  
 Blocks: #72 remains open until human/legal signoff
 
 ## Operator
@@ -73,6 +73,42 @@ workflows, export files, receipts, and known product limits.
 Support must not provide bespoke legal advice, investment advice, tax planning,
 or accountant approval for unsupported cases. Needs-accountant cases should be
 blocked, escalated, or exported for external review.
+
+## Limitation of Liability
+
+To the maximum extent permitted by applicable law, and without limiting any mandatory
+consumer rights, Talli is not liable for indirect or consequential loss, for losses
+arising from user-provided incorrect data, missing authority access, unsupported cases,
+or authority/third-party outages. Talli's liability for a supported case that fails
+because of Talli filing logic or integration is addressed through the refund mechanism in
+the Billing and Refunds section. Final liability and cap wording is subject to legal
+review.
+
+## Governing Law and Jurisdiction
+
+These terms are intended to be governed by Norwegian law, with disputes subject to the
+Norwegian courts, without prejudice to mandatory consumer-protection rules. The exact
+governing-law and venue wording is to be confirmed by the legal reviewer before
+publication.
+
+## Changes to These Terms
+
+Talli may update these terms. Material changes will be communicated to active users
+(for example, by email via Resend or in-app notice) before they take effect, with a
+reasonable opportunity to review. Continued use after the effective date of an update
+constitutes acceptance of the updated terms.
+
+## Termination
+
+A user may stop using Talli and cancel at any time; export the company archive before
+cancellation (see `retention-delete-export-policy-draft.md`). Talli may suspend or
+terminate access for non-payment, misuse, security risk, or unsupported/abusive use,
+with notice where practical, and subject to statutory retention of accounting material.
+
+## Effective Date
+
+These terms take effect on their published effective date. This draft is not yet
+published and has no binding effect until founder/legal signoff and publication.
 
 ## Required Human Review Before Publication
 

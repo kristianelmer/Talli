@@ -1,7 +1,7 @@
 # Talli Privacy Policy Draft
 
 Status: draft for founder/legal review  
-Last updated: 2026-06-24  
+Last updated: 2026-06-27  
 Blocks: #72 remains open until human/legal signoff
 
 ## Controller
@@ -50,8 +50,26 @@ Access is role-scoped:
 - read-only can read authorized data but cannot mutate company resources;
 - non-members are denied by RLS and storage policies.
 
-Support/operator access must be limited to operational need, audited, and
-reviewed before production launch.
+Support/operator access is read-only by default and follows a least-privilege model:
+it is time-boxed, granted only on the user's request or for a documented incident, and
+every access is recorded in the audit log. Standing or unaudited operator access to
+company data is not permitted, and the access model is reviewed before production launch.
+
+## Legal Basis for Processing
+
+Talli processes personal data under the following GDPR article 6 bases:
+
+- **Contract (art. 6(1)(b))** — account, company workspace, accounting, filing, and
+  billing data processed to provide the service the user has signed up for.
+- **Legal obligation (art. 6(1)(c))** — retention of accounting material and filing
+  evidence required by Norwegian law (bokføringsloven § 13).
+- **Legitimate interests (art. 6(1)(f))** — security monitoring, audit logging, fraud/
+  abuse prevention, and service improvement, balanced against user rights.
+- **Consent (art. 6(1)(a))** — any optional processing that is not covered above; consent
+  can be withdrawn at any time.
+
+The legal basis for each processing purpose must be confirmed by the legal/privacy
+reviewer before publication.
 
 ## Processors and External Services
 
@@ -92,11 +110,15 @@ applicable. Talli should provide company archive export before cancellation and
 explain any data that cannot be deleted immediately because of statutory
 retention obligations.
 
+Users also have the right to lodge a complaint with the Norwegian Data Protection
+Authority (Datatilsynet) if they believe their data is processed unlawfully.
+
 ## Required Human Review Before Publication
 
 - [x] Controller identified — Kristian Elmer (natural person), pre-incorporation;
   re-confirm and migrate to the AS name + org number on incorporation.
 - [x] Processor list confirmed — Supabase, Vercel, Vipps MobilePay, Resend.
 - [x] Data transfer basis confirmed — EEA residency; US suppliers under SCCs/DPF.
-- [ ] Confirm support/operator access model.
-- [ ] Legal/privacy reviewer approves final wording.
+- [x] Support/operator access model confirmed — read-only, time-boxed, request/incident-
+  gated, fully audited; no standing operator access to company data.
+- [ ] Legal/privacy reviewer approves final wording and per-purpose legal basis.

@@ -52,3 +52,31 @@ test("incident policy covers detection, containment, notification, filing incide
   assert.match(docs.incident, /Filing-Specific Incidents/i);
   assert.match(docs.incident, /postmortem/i);
 });
+
+test("incident policy names pre-incorporation roles and a customer notification approach", () => {
+  assert.match(docs.incident, /Incident Roles/i);
+  assert.match(docs.incident, /holds all incident\s+roles/i);
+  assert.match(docs.incident, /Customer Notification Approach/i);
+  assert.match(docs.incident, /Resend/);
+});
+
+test("retention policy fixes archive responsibility and audit-id pseudonymization", () => {
+  assert.match(docs.retention, /Archive Responsibility After Export/i);
+  assert.match(docs.retention, /customer.*is\s+responsible for safekeeping/i);
+  assert.match(docs.retention, /User Identifiers in Retained Audit Records/i);
+  assert.match(docs.retention, /pseudonymized/i);
+});
+
+test("privacy policy states a GDPR art. 6 legal basis and a least-privilege operator access model", () => {
+  assert.match(docs.privacy, /Legal Basis for Processing/i);
+  assert.match(docs.privacy, /art\.\s*6/i);
+  assert.match(docs.privacy, /read-only by default/i);
+  assert.match(docs.privacy, /Datatilsynet/i);
+});
+
+test("DPA covers breach notification to the controller, audit rights, and duration", () => {
+  assert.match(docs.dpa, /Personal Data Breach Notification/i);
+  assert.match(docs.dpa, /notifies the affected customer \(controller\) without undue delay/i);
+  assert.match(docs.dpa, /Audit and Compliance/i);
+  assert.match(docs.dpa, /Duration and Termination/i);
+});

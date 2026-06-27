@@ -1,7 +1,7 @@
 # Legal and Operational Policy Drafts
 
 Status: draft pack for #72  
-Last updated: 2026-06-24
+Last updated: 2026-06-27
 
 Files:
 
@@ -31,10 +31,30 @@ drafts above:
 5. Breach notification — Datatilsynet within 72 hours (GDPR art. 33); high-risk
    user notice without undue delay (art. 34).
 
+## Founder decisions recorded (2026-06-27, Kristian Elmer)
+
+Further founder-decidable items resolved and written into the drafts:
+
+6. Archive responsibility after export — the customer is responsible for safekeeping
+   the exported archive; Talli's copy is deleted after the retention hold expires.
+7. User identifiers in retained audit records — pseudonymized with a stable opaque
+   token (audit trail preserved, no longer directly identifying).
+8. Support/operator access model — read-only, time-boxed, request/incident-gated, and
+   fully audited; no standing operator access to company data.
+9. Incident roles — founder holds all incident roles solely pre-incorporation;
+   reassign on incorporation.
+10. Customer breach notification — content defined (nature, data/companies affected,
+    consequences, remediation, user steps) and delivered by Resend email; polished
+    templates deferred to the support owner before broad public launch.
+11. Processor breach notification — Talli notifies the controller without undue delay so
+    the controller can meet its own art. 33/34 duties.
+12. Legal basis (GDPR art. 6) — contract, legal obligation, legitimate interests, and
+    consent mapped per processing purpose (final per-purpose confirmation pending legal).
+
 Still required before the `legal_policy_pack` signoff can be recorded as approved:
 
-- Legal reviewer approves liability/jurisdiction, controller/processor role, and
-  final privacy/DPA wording.
+- Legal reviewer approves liability/jurisdiction, controller/processor role, per-purpose
+  legal basis, and final privacy/DPA wording.
 - Security reviewer confirms technical measures and support/operator access model.
 - Founder approves customer-facing deletion/return obligations and refund wording.
 - On incorporation, replace the pre-incorporation operator with the AS entity.
