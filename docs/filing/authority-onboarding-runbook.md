@@ -37,6 +37,12 @@ Talli's operating entity holds the Maskinporten client and acts as the system su
 sufficient for the Maskinporten / Altinn / virksomhetssertifikat integration. (Talli's
 *customers* must still be AS — that is the product's scope; this step is only about Talli itself.)
 
+> Already have an active ENK? **Reuse it** — an existing, still-registered ENK's org number
+> satisfies every downstream step, so you skip the NOK 2 181 registration fee. Just bring its
+> details up to date via a **free endringsmelding** (Samordnet registermelding → "endre" in
+> Altinn): update the næringskode to 62.010 if needed, and confirm no outstanding tax/MVA from
+> prior activity. Verify it is still **aktiv** (not slettet/under avvikling) at brreg.no first.
+
 > Liability note: an ENK gives **no liability shield** — the innehaver is personally liable. Since
 > Talli submits statutory filings on behalf of customers and processes their financial data
 > (see the DPA / ToS in `docs/legal/`), revisit the AS question before onboarding live customers.
