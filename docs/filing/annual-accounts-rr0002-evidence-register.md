@@ -1,8 +1,8 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: implementation-ready evidence for simple holding AS payload slice  
-Last updated: 2026-06-16  
-Target issue: #82
+Status: payload builder implemented; evidence ready for TT02 test-environment submission  
+Last updated: 2026-06-27  
+Target issue: #82 (payload map, closed) / #84 (test-environment submission flow)
 
 This register records the public evidence Talli can use to build a narrow
 `aarsregnskap-vanlig-202406` payload for a simple holding AS. It does not enable
@@ -135,8 +135,27 @@ Block or escalate:
 
 ## Remaining Before Production
 
-- Implement payload builder using this map.
+- Implement payload builder using this map. — Done in #83 (`holding_core.annual` +
+  `app/lib`; covered by the code-gate verification below).
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.
 - Complete human release signoff.
+
+## Code Gate Verification (2026-06-27)
+
+Latest run of the annual-accounts code-side evidence (all green):
+
+| Suite | Result |
+| --- | --- |
+| `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 12 passed |
+| `npm run test:annual-accounts` | 3 passed |
+| `npm run test:annual-data` | 2 passed |
+| `npm run test:annual-readiness` | 5 passed |
+| `npm run test:authority-evidence` | 4 passed |
+
+This proves the deterministic payload/readiness/evidence logic is ready for TT02
+submission. It does not substitute for the remaining external rows above
+(TT02 acceptance, signing, official receipt/archive, human release signoff), which
+keep `buildFilingReleaseGates` fail-closed for `aarsregnskap` (requires accepted
+`authority_test_runs` evidence + approved `annual_accounts_authority` signoff).
