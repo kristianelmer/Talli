@@ -114,11 +114,46 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
 
 ### Step 4 — Altinn system user + access packages (systembruker + tilgangspakker)
 
-- [ ] Register Talli's **system** in Altinn's system register with the required **access
-      packages** (tilgangspakker — the 2025 granular replacement for the old Altinn roles).
-- [ ] For each customer company (and for synthetic test subjects), the company's **Access
-      manager** delegates the relevant access package(s) to the system user in Altinn.
-      Suppliers cannot self-delegate; the company always approves.
+This step has **two sides**: Talli (the *sluttbrukersystemleverandør* / SBSL) registers its **system**
+once; then **each customer company** creates a **systembruker** that points at that system and approves
+the access packages. A systembruker is "a template's instance" — the system in the systemregister is the
+template, the systembruker is the per-company grant. Source:
+https://docs.altinn.studio/nb/authorization/guides/system-vendor/system-user/
+
+Talli's model is **"systembruker for eget system"**, *not* klientsystem: every customer holding-AS files
+its **own** årsregnskap/skattemelding through Talli (Talli is **not** a regnskapsfører/revisor). So the
+required access packages must be `isAssignable=false` and `isDelegable=true`, and creation can be either
+user-initiated or vendor-initiated.
+
+**4a — Supplier side (Talli, once): register the system in the Systemregister.** This is an **API call,
+not a portal click** —
+`POST https://platform.tt02.altinn.no/authentication/api/v1/systemregister/vendor` (prod:
+`platform.altinn.no`), with a **Maskinporten token** that carries the scope
+`altinn:authentication/systemregister.write` (this scope must be added to the Step-3 client). JSON payload
+fields (see systemregistration guide):
+  - `id`: `{orgnr}_{name}`, e.g. `930835978_talli`.
+  - `vendor.ID`: `0192:930835978` (Enhetsregisteret ref). **Must match the org number in the token.**
+  - `name` / `description`: texts for `nb`, `nn`, `en`.
+  - `accessPackages` / `rights`: the packages the system needs (e.g. Regnskapsregisteret innsending for
+    årsregnskap). **Must be defined before any systembruker can be created.**
+  - `clientId`: list of Maskinporten client UUIDs from Step 3.
+  - `isVisible: true` so customers can self-select Talli in the Altinn portal (user-initiated creation).
+  - `allowedredirecturls`: optional, for vendor-initiated `confirmUrl` redirects.
+  - **PUT overwrites the whole definition** — to edit, GET the current def, modify, PUT the full payload.
+  - ⚠️ **TT02 caveat:** to use a real org number in TT02 you may need to have it enabled there —
+    email **servicedesk@altinn.no** to get the ENK org registered in TT02 if the call rejects the org.
+
+**4b — Customer side (per company): create the systembruker.** Two ways:
+  - **User-initiated (portal):** the company logs into Altinn (**tt02.altinn.no**), selects the org, then
+    **Profil → Tilgangsstyring → Systemtilgang / Systembrukere → "Opprett ny systembruker"**, picks
+    **Talli** from the list, and approves the pre-defined access packages. (The company must hold the
+    authority to delegate every package requested — it's an all-or-nothing "OG-forhold".)
+  - **Vendor-initiated (Talli's preferred, from the app):**
+    `POST .../authentication/api/v1/systemuser/request/vendor` with `systemId`, the customer's
+    `partyOrgNo`, and `accessPackages` → returns a `confirmUrl` deeplink → Talli hands the link to the
+    customer → customer approves → request status flips to `Accepted`.
+- [ ] For the TT02 rehearsal, register Talli's system (4a), then have the **Tenor test AS** (Step 5)
+      create the systembruker (4b, user-initiated is simplest for a first pass).
 
 ### Step 5 — Synthetic test subjects (Tenor)
 
@@ -139,9 +174,10 @@ Trace any payload fields to the maps/evidence registers in `docs/filing/` — do
 the token protocol is identical. What differs is the **authorization / access-grant model** on top:
 - **RF-1086** — Maskinporten token; Skatteetaten (API-tilbyder) grants the scope, Altinn-delegated
   per customer (scope appears under "Scopes tilgjengelig for alle").
-- **Årsregnskap** — Maskinporten token via an **Altinn systembruker** (Profil → Avanserte
-  innstillinger → Programmer og systembrukere, **TT02**) with the **Regnskapsregisteret – innsending
-  av årsregnskap** access package; signing needs **ID-porten**.
+- **Årsregnskap** — Maskinporten token via an **Altinn systembruker** (customer creates it at
+  Profil → Tilgangsstyring → Systemtilgang/Systembrukere, **TT02**, selecting Talli's registered
+  system per Step 4) with the **Regnskapsregisteret – innsending av årsregnskap** access package;
+  signing needs **ID-porten**.
 - **Skattemelding** — Maskinporten token. Use the **submission/validation flow**
   (`skd/formueinntekt-skattemelding-v2`) where the **company files its *own* return** via Talli
   (Altinn delegation). ⚠️ Do **NOT** use the `skatteetaten:skattemeldingupersonlig` near-time data
