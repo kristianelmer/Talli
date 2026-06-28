@@ -131,7 +131,7 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
 |---|---|---|---|---|
 | Aksjonærregisteroppgaven (RF-1086) | #81 | `aksjonaerregisteroppgaven` | `skatteetaten:innrapporteringaksjonaerregisteroppgave` | Skatteetaten test env; POST 1086H / 1086U / bekreft, GET dokumenter |
 | Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
-| Skattemelding for AS | #87 | `skattemelding` | `skatteetaten:skattemeldingupersonlig` (the documented scope for the AS/"upersonlig" tax return; + `altinn:instances.*`) | Skatteetaten external test env; system-supplier submission. ⚠️ Scope requires **Skatteetaten approval + DPA + legal basis** (confidential data) and the upersonlig API is **not adapted for system-user/end-user display** — confirm the supported owner-managed path with Skatteetaten first. Altinn3 app `skd/formueinntekt-skattemelding-v2`; 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
+| Skattemelding for AS | #87 | `skattemelding` | submission/validation flow (`skd/formueinntekt-skattemelding-v2`, + `altinn:instances.*`). **NOT** `skatteetaten:skattemeldingupersonlig` — see note. | Skatteetaten external test env; owner-managed **system-supplier submission** of the company's *own* return (company = data subject + submitter, Talli = its system via Altinn delegation). 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
 
 Trace any payload fields to the maps/evidence registers in `docs/filing/` — do not invent fields.
 
@@ -142,10 +142,16 @@ the token protocol is identical. What differs is the **authorization / access-gr
 - **Årsregnskap** — Maskinporten token via an **Altinn systembruker** (Profil → Avanserte
   innstillinger → Programmer og systembrukere, **TT02**) with the **Regnskapsregisteret – innsending
   av årsregnskap** access package; signing needs **ID-porten**.
-- **Skattemelding** — Maskinporten token, but Skatteetaten grants
-  `skatteetaten:skattemeldingupersonlig` only after **systemleverandør** registration, a
-  **databehandleravtale**, and a documented **legal basis**. Start this first — it is the
-  slowest-lead gate.
+- **Skattemelding** — Maskinporten token. Use the **submission/validation flow**
+  (`skd/formueinntekt-skattemelding-v2`) where the **company files its *own* return** via Talli
+  (Altinn delegation). ⚠️ Do **NOT** use the `skatteetaten:skattemeldingupersonlig` near-time data
+  API: per Skatteetaten it serves confidential data about *other* taxpayers and requires a
+  statutory **hjemmel i lov (not consent)** plus a basis lifting Skatteetaten's taushetsplikt, and
+  is "ikke tilrettelagt for systembrukerløsningen og visning i sluttbrukersystem" — Talli cannot
+  meet that and does not need it for owner-managed filing. In the Skatteetaten **systemleverandør**
+  dialogue, request the submission/validation API and confirm (a) owner-managed AS filing of its
+  own return and (b) that displaying the company's own return in Talli's UI is permitted. This is
+  the slowest-lead, least-certain gate — reasonable to let RF-1086 + årsregnskap lead.
 
 > RF-1086 live scope is intentionally narrow: only `stiftelse` / no-activity (event code `N`).
 > K/S/U (kjøp/salg/utbytte) stay excluded (`RF1086_EVENT_UNSUPPORTED`) until Skatteetaten
