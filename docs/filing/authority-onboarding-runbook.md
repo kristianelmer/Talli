@@ -135,14 +135,17 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
 
 Trace any payload fields to the maps/evidence registers in `docs/filing/` — do not invent fields.
 
-**The access process differs per obligation** — they are not three identical scope clicks:
-- **RF-1086** — a plain Maskinporten scope requested in Samarbeidsportalen (Altinn-delegated).
-- **Årsregnskap** — **not** a Maskinporten scope: set up an **Altinn systembruker** (Profil →
-  Avanserte innstillinger → Programmer og systembrukere) in **TT02** and attach the
-  **Regnskapsregisteret – innsending av årsregnskap** access package; signing needs **ID-porten**.
-- **Skattemelding** — Skatteetaten grants `skatteetaten:skattemeldingupersonlig` explicitly:
-  register as **systemleverandør**, sign a **databehandleravtale**, document a **legal basis**,
-  then request the scope/rettighetspakke. Start this first — it is the slowest-lead gate.
+**All three authenticate via Maskinporten** (Skatteetaten APIs and the Altinn systembruker alike) —
+the token protocol is identical. What differs is the **authorization / access-grant model** on top:
+- **RF-1086** — Maskinporten token; Skatteetaten (API-tilbyder) grants the scope, Altinn-delegated
+  per customer (scope appears under "Scopes tilgjengelig for alle").
+- **Årsregnskap** — Maskinporten token via an **Altinn systembruker** (Profil → Avanserte
+  innstillinger → Programmer og systembrukere, **TT02**) with the **Regnskapsregisteret – innsending
+  av årsregnskap** access package; signing needs **ID-porten**.
+- **Skattemelding** — Maskinporten token, but Skatteetaten grants
+  `skatteetaten:skattemeldingupersonlig` only after **systemleverandør** registration, a
+  **databehandleravtale**, and a documented **legal basis**. Start this first — it is the
+  slowest-lead gate.
 
 > RF-1086 live scope is intentionally narrow: only `stiftelse` / no-activity (event code `N`).
 > K/S/U (kjøp/salg/utbytte) stay excluded (`RF1086_EVENT_UNSUPPORTED`) until Skatteetaten
