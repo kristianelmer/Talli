@@ -97,6 +97,11 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
       person, purpose, and a screenshot to be enrolled as a Maskinporten customer (a few business
       days). Self-registration by email requires the org's **registered email domain**, which is a
       snag for ENKs with only a personal email.
+- [ ] **Sign the supplier terms (bruksvilkår):** once Digdir enrols the org, the **authorised
+      signer** registers as a user with the org's **@-domain email** at
+      **https://minside-samarbeid.digdir.no/**, opens **"Virksomhetens bruksvilkår"** →
+      **"Bruksvilkår for leverandører"**, reads and signs. ⚠️ Sign **only** that one — not the other
+      terms. This must be done before the Maskinporten client can be created.
 - [ ] Register a Maskinporten **integration (oauth2 client)** with: `integration_type=maskinporten`,
       `token_endpoint_auth_method=private_key_jwt`, `grant_types=jwt-bearer`, a clear `description`,
       and **upload your own public key/JWK** (the self-generated key from Step 2; `kid` must be
