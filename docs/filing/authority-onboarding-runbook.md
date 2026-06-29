@@ -102,13 +102,22 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
       **https://minside-samarbeid.digdir.no/**, opens **"Virksomhetens bruksvilkår"** →
       **"Bruksvilkår for leverandører"**, reads and signs. ⚠️ Sign **only** that one — not the other
       terms. This must be done before the Maskinporten client can be created.
+- [ ] **Delegate the test self-service right (Altinn, prerequisite):** TT02 access in
+      Samarbeidsportalen is Ansattporten-gated. As ENK innehaver, in **Altinn → Tilgangsstyring →
+      Brukere → + Ny bruker** (add yourself), grant **"Selvbetjening for testing i
+      ID-porten/Maskinporten"** (test-only) or **"Selvbetjening av klienter i ID-porten/Maskinporten"**
+      (test + prod). Without this, the test environment does not appear in the portal.
 - [ ] Register a Maskinporten **integration (oauth2 client)** with: `integration_type=maskinporten`,
       `token_endpoint_auth_method=private_key_jwt`, `grant_types=jwt-bearer`, a clear `description`,
       and **upload your own public key/JWK** (the self-generated key from Step 2; `kid` must be
-      globally unique). One client per scope is recommended. **As a supplier using Altinn
-      delegation, create the integration as belonging to yourself — do NOT pick "på vegne av en
-      kunde".** At token time pass the customer's org as the `consumer_org` claim; Maskinporten
-      then checks Altinn for a valid delegation.
+      globally unique). One client per scope is recommended (for a test rehearsal one client with all
+      scopes is fine). **As a supplier using Altinn delegation, create the integration as belonging to
+      yourself — do NOT pick "på vegne av en kunde".** At token time pass the customer's org as the
+      `consumer_org` claim; Maskinporten then checks Altinn for a valid delegation.
+      Navigation: **samarbeid.digdir.no → Virksomhetens tjenester → Administrasjon av tjenester →
+      "Integrasjoner" in the *test* environment → Ny integrasjon → Difi-tjeneste = Maskinporten**.
+      Add the public key under **"Egne public nøkler"** at the bottom of the client page (PEM must be
+      converted to JWK first — see the `node` one-liner in the team notes).
 - [ ] Add the per-obligation scope (table below). Altinn-delegated scopes appear under **"Scopes
       tilgjengelig for alle"**; some scopes still require **API-owner grant** (Skatteetaten /
       Brønnøysund) before they activate. Record the auto-assigned **client_id**.
