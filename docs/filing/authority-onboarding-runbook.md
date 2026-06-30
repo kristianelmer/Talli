@@ -169,7 +169,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 |---|---|---|---|---|---|
 | 2026-06-30 | #81 RF-1086 | Skatteetaten | email `altinnreetablering@skatteetaten.no` (overgangsfase; eksternjira brukerstøtte requires a brukerkonto we don't yet have) | Test access to scopes `skatteetaten:innrapporteringaksjonaerregisteroppgave` + `…filopplasting` for org 930835978 / client_id `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` | ⏳ sent, awaiting grant |
 | 2026-06-30 | #87 skattemelding | Skatteetaten | same thread (`altinnreetablering@skatteetaten.no`) | scope `skatteetaten:formueinntekt/skattemelding` (test) — verified 2026-06-30 from Skatteetaten api-dokumentasjon; Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ⏳ sent, awaiting grant |
-| _pending_ | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | grant `altinn:authentication/systemregister.write` (TT02) for org 930835978 / client_id above | ☐ not sent |
+| _drafted_ | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | (1) grant `altinn:authentication/systemregister.write` (TT02) + (2) enable real org 930835978 in TT02 systemregister, for client_id above | 📋 drafted, ready to send |
 
 Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
 (`eksternjira.sits.no`), which needs a per-virksomhet brukerkonto. Until that account exists, the
