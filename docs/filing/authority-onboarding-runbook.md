@@ -160,6 +160,19 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   (2) email `servicedesk@altinn.no` for `systemregister.write`. Note: RF-1086 also "krever systemtilgang
   med systembruker", so Step 4 (systembruker on a Tenor test AS) is on #81's path too, not only #84/#87.
 
+#### Access-request log
+
+| Date | Obligation | Authority | Channel | Request | Status |
+|---|---|---|---|---|---|
+| 2026-06-30 | #81 RF-1086 | Skatteetaten | email `altinnreetablering@skatteetaten.no` (overgangsfase; eksternjira brukerstøtte requires a brukerkonto we don't yet have) | Test access to scopes `skatteetaten:innrapporteringaksjonaerregisteroppgave` + `…filopplasting` for org 930835978 / client_id `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` | ⏳ sent, awaiting grant |
+| _pending_ | #87 skattemelding | Skatteetaten | same Skatteetaten thread (consolidate) | submission-flow scope (formueinntekt-skattemelding-v2) — exact scope being confirmed; `skatteetaten:skattemeldingupersonlig` is the wrong/restricted one | ☐ not sent (scope unverified) |
+| _pending_ | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | grant `altinn:authentication/systemregister.write` (TT02) for org 930835978 / client_id above | ☐ not sent |
+
+Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
+(`eksternjira.sits.no`), which needs a per-virksomhet brukerkonto. Until that account exists, the
+overgangsfase email `altinnreetablering@skatteetaten.no` is the sanctioned channel for the reetablerte
+tjenester (RF-1086 is one).
+
 ### Step 4 — Altinn system user + access packages (systembruker + tilgangspakker)
 
 This step has **two sides**: Talli (the *sluttbrukersystemleverandør* / SBSL) registers its **system**
