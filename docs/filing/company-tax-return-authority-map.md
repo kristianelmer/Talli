@@ -53,6 +53,37 @@ Production implication:
 - Talli's current tax return preview cannot be treated as a production filing payload.
 - The `skattemelding upersonlig` API is useful for model/validation research but does not by itself prove direct filing capability.
 - Production filing must use the current Skatteetaten system-supplier submission flow and current schemas, not the simplified preview model.
+
+## Submission flow and scope (confirmed 2026-06-30)
+
+The correct submission service is **"Innrapportering skattemelding"** (`Tjeneste for innsending av
+skattemelding`), distinct from the restricted `skattemelding upersonlig` data API.
+
+- **Maskinporten scope:** `skatteetaten:formueinntekt/skattemelding`
+  (source: Skatteetaten/api-dokumentasjon `docs/api/innrapportering-skattemelding.md`,
+  verified 2026-06-30). There is **no separate validering vs. innsending scope** — this one scope
+  covers hent/forhåndsutfylt, valider, and the Altinn3 instance upload. A `…/skattemelding/eiendom`
+  variant exists but is not needed for a simple holding AS.
+- **Submission is two-legged (Skatteetaten API + Altinn3 app).** The Maskinporten grant additionally
+  requests `altinn:instances.read altinn:instances.write` and a systembruker
+  `authorization_details` (`type=urn:altinn:systemuser`), then exchanges the Maskinporten token for an
+  Altinn token. The Altinn3 app is **`skd/formueinntekt-skattemelding-v2`**.
+- **Systembruker resource (Altinn authorization):** `app_skd_formueinntekt-skattemelding-v2`
+  (source: Skatteetaten/skattemeldingen `docs/api-v2/README.md`). No named delegatable "tilgangspakke"
+  is documented for this service; it uses the systembruker resource directly.
+- **Test endpoints:** Maskinporten test `api-test.sits.no`; Altinn3 test `platform.tt02.altinn.no`
+  and `skd.apps.tt02.altinn.no` (instance: `…/skd/formueinntekt-skattemelding-v2/instances`);
+  Maskinporten test token `https://test.maskinporten.no/token`.
+- **Why not `skatteetaten:skattemeldingupersonlig`:** its docs state it is taushetsbelagt, "krever
+  eksplisitt lovregulering for tilgang … behandlingsgrunnlag … bygget på hjemmel i lov, ikke samtykke"
+  and is "ikke tilrettelagt for systembrukerløsningen" — a data-read API, not a submission path.
+- **Owner-managed signing caveat:** the final confirmation/signing step (`process/next` →
+  BankID) cannot be performed by the systembruker; a person (daglig leder/styreleder) must sign in the
+  Altinn UI. This shapes Talli's owner-managed UX (systembruker fills/locks, owner signs).
+- **Order test access:** SKD brukerstøtte (`eksternjira.sits.no`) under Innrapportering → Skattemelding,
+  or the overgangsfase email `altinnreetablering@skatteetaten.no`, for scope
+  `skatteetaten:formueinntekt/skattemelding` in test for the org. After SKD grants it, the scope must be
+  **explicitly added to the Maskinporten client** in the Digdir self-service portal.
 - `buildFilingReleaseGates` must remain `production_disabled` until accepted
   `authority_test_runs` evidence for `skattemelding` has receipt and archive
   refs, and the persisted `launch_signoffs` key `tax_return_authority` is
@@ -130,7 +161,7 @@ Current tax preview field decisions:
 
 ## Production Blockers
 
-- Identify the exact current submission API/flow for company tax return, separate from the `skattemelding upersonlig` data API.
+- Identify the exact current submission API/flow for company tax return, separate from the `skattemelding upersonlig` data API. **(Resolved 2026-06-30 — see "Submission flow and scope" above: service "Innrapportering skattemelding", scope `skatteetaten:formueinntekt/skattemelding`, Altinn3 app `skd/formueinntekt-skattemelding-v2`.)**
 - Confirm the current XSD/JSON schemas and code lists for the relevant income year.
 - Map Talli ledger/tax concepts to `skattemelding` and `næringsspesifikasjon` fields.
 - Validate generated payloads against official schemas and test environment.

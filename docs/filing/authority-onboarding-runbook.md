@@ -165,7 +165,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | Date | Obligation | Authority | Channel | Request | Status |
 |---|---|---|---|---|---|
 | 2026-06-30 | #81 RF-1086 | Skatteetaten | email `altinnreetablering@skatteetaten.no` (overgangsfase; eksternjira brukerstøtte requires a brukerkonto we don't yet have) | Test access to scopes `skatteetaten:innrapporteringaksjonaerregisteroppgave` + `…filopplasting` for org 930835978 / client_id `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` | ⏳ sent, awaiting grant |
-| _pending_ | #87 skattemelding | Skatteetaten | same Skatteetaten thread (consolidate) | submission-flow scope (formueinntekt-skattemelding-v2) — exact scope being confirmed; `skatteetaten:skattemeldingupersonlig` is the wrong/restricted one | ☐ not sent (scope unverified) |
+| _pending_ | #87 skattemelding | Skatteetaten | same Skatteetaten thread (consolidate) | scope `skatteetaten:formueinntekt/skattemelding` (test) — verified 2026-06-30 from Skatteetaten api-dokumentasjon; Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ☐ not sent (ready to send) |
 | _pending_ | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | grant `altinn:authentication/systemregister.write` (TT02) for org 930835978 / client_id above | ☐ not sent |
 
 Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
@@ -227,7 +227,7 @@ fields (see systemregistration guide):
 |---|---|---|---|---|
 | Aksjonærregisteroppgaven (RF-1086) | #81 | `aksjonaerregisteroppgaven` | `skatteetaten:innrapporteringaksjonaerregisteroppgave` | Skatteetaten test env; POST 1086H / 1086U / bekreft, GET dokumenter |
 | Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
-| Skattemelding for AS | #87 | `skattemelding` | submission/validation flow (`skd/formueinntekt-skattemelding-v2`, + `altinn:instances.*`). **NOT** `skatteetaten:skattemeldingupersonlig` — see note. | Skatteetaten external test env; owner-managed **system-supplier submission** of the company's *own* return (company = data subject + submitter, Talli = its system via Altinn delegation). 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
+| Skattemelding for AS | #87 | `skattemelding` | `skatteetaten:formueinntekt/skattemelding` (+ `altinn:instances.read`, `altinn:instances.write` for the Altinn3 app `skd/formueinntekt-skattemelding-v2`). **NOT** `skatteetaten:skattemeldingupersonlig` — see note. | Skatteetaten external test env (`api-test.sits.no`) + Altinn3 `skd.apps.tt02.altinn.no`; systembruker resource `app_skd_formueinntekt-skattemelding-v2`; owner-managed **system-supplier submission** of the company's *own* return (company = data subject + submitter, Talli = its system via Altinn delegation); final BankID sign done by a person in Altinn UI. 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
 
 Trace any payload fields to the maps/evidence registers in `docs/filing/` — do not invent fields.
 
