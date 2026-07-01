@@ -332,6 +332,10 @@ system that bundles all three across fullmaktsområder.
       (provisioned for Skatteetaten test-innsending) — used as the RF-1086 rehearsal customer in Step 4b.
       Still need its **role-holder** (daglig leder / hovedadministrator) fødselsnummer from the
       **Relasjoner** tab to log in via TestID and approve the systembruker `confirmUrl`.
+      **Approver (from Kildedata roller, 2026-07-01):** person **fnr `09856297192`** — *Styrets leder*
+      (and kontaktperson) of 311093363; styrets leder has access-management rights in Altinn TT02, so
+      this synthetic person approves the systembruker request via TestID. (Regnskapsfører is org
+      314280032 — not used; Talli is "eget system", not a regnskapsfører.)
 - [ ] Never use real customer data in TT02 / Skatteetaten test env.
 
 ## Per-obligation scopes and test surfaces
