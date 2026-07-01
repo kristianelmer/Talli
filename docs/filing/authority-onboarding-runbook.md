@@ -154,13 +154,11 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   - ⏭️ **Not yet attached:** `skatteetaten:formueinntekt/skattemelding` (#87). SKD grants don't
     auto-activate on the client — once granted, **add this scope to the client** in the Digdir
     self-service portal (and `altinn:instances.read` / `altinn:instances.write` for the Altinn3 app).
-  - ⚠️ **Needed for vendor-initiated Step 4b — granted to org, NOT yet added to the client:**
+  - ✅ **Active for vendor-initiated Step 4b (2026-07-01):**
     `altinn:authentication/systemuser.request.write` + `altinn:authentication/systemuser.request.read`.
-    Altinn granted these to org 930835978 on 2026-07-01, but a token request currently returns
-    **MP-200 `invalid_scope` ("invalid scopes for client")** — the scopes are not in the client's
-    registered scope list. **Fix: add both scopes to the client** in the Digdir self-service portal
-    (`sjolvbetjening.test.samarbeid.digdir.no` → client → Scopes → add), same as was done for the
-    other scopes in Step 3. (The user-initiated portal 4b path does **not** need these.)
+    Altinn granted these to org 930835978, and after **adding both to the client** in the Digdir
+    self-service portal, token requests return **HTTP 200**. (Before adding to the client they returned
+    MP-200 "invalid scopes for client" even though the org had the grant.)
 - **Signing smoke-test PASSED:** `POST https://test.maskinporten.no/token` with a `private_key_jwt`
   assertion (`aud=https://test.maskinporten.no/`, `iss=client_id`, `exp−iat=30 s`) returned
   **HTTP 400 `invalid_scope` (MP-250)** — i.e. Maskinporten authenticated the client/key/kid
@@ -179,7 +177,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | 2026-06-30 | #81 RF-1086 | Skatteetaten | email `altinnreetablering@skatteetaten.no` (overgangsfase; eksternjira brukerstøtte requires a brukerkonto we don't yet have) | Test access to scopes `skatteetaten:innrapporteringaksjonaerregisteroppgave` + `…filopplasting` for org 930835978 / client_id `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` | ⏳ sent, awaiting grant |
 | 2026-06-30 | #87 skattemelding | Skatteetaten | same thread (`altinnreetablering@skatteetaten.no`) | scope `skatteetaten:formueinntekt/skattemelding` (test) — verified 2026-06-30 from Skatteetaten api-dokumentasjon; Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ⏳ sent, awaiting grant |
 | 2026-06-30 | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | (1) grant `altinn:authentication/systemregister.write` (TT02) + (2) enable real org 930835978 in TT02 systemregister, for client_id above | ✅ **granted 2026-07-01** — `systemregister.write` active (token 200); org 930835978 accepted (Step 4a POST succeeded, no separate enablement needed) |
-| 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **granted to org 2026-07-01** — but ⚠️ still returns MP-200 (scopes not on the client yet); **add both to the client in the Digdir portal** |
+| 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **active 2026-07-01** — granted to org, added to the client in the Digdir portal, token requests return HTTP 200 |
 
 Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
 (`eksternjira.sits.no`), which needs a per-virksomhet brukerkonto. Until that account exists, the
@@ -488,7 +486,7 @@ credentials and the admin/step-up flow, so they are performed in the running app
 | 1. Operating entity registered (ENK, org nr) | ☑ | ☑ | ☑ |
 | 2. Virksomhetssertifikat (test self-signed) | ☑ | ☑ | ☑ |
 | 3. Maskinporten client + scope | ◑ client+key done; scope `Tilgang mangler` | ◑ | ◑ |
-| 4. Altinn system user + access pkg | ◑ **4a DONE** (system `930835978_talli` registered in TT02); 4b vendor flow drafted, needs `systemuser.request.*` added to client + a Tenor test AS | ◑ 4a done (shared system); 4b + årsregnskap pkg pending | ◑ 4a done (shared system); 4b + skattemelding resource pending |
+| 4. Altinn system user + access pkg | ◑ **4a DONE** (system `930835978_talli` registered); all 3 Altinn scopes active on client; 4b needs a Tenor test AS | ◑ 4a done (shared system); 4b + årsregnskap pkg pending | ◑ 4a done (shared system); 4b + skattemelding resource pending |
 | 5. Tenor test subjects | ☐ | ☐ | ☐ |
 | 6. Accepted test submission | ☐ | ☐ | ☐ |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
