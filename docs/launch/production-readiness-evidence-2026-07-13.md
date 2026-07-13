@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `a8d7f75`
+Evidence baseline: commits through `03f8687`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,13 +11,14 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `a8d7f75`, including the guarded RF-1086 and company-tax TT02 runners, authority contract/orchestration/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `03f8687`, including the guarded RF-1086 and company-tax TT02 runners, annual-accounts TT02 contract boundary, authority contract/orchestration/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
 | RF-1086 crash-safe orchestration | 7 tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
 | RF-1086 Dialogporten/archive boundary | 6 focused tests pass: fixed Dialogporten hosts, exact party/resource checks, bounded token-free responses, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
 | Company-tax 2025 contract and TT02 boundary | 31 focused tests pass: exact 2025 XSD/source pins, local no-activity fixture generation, calculation-only enforcement, current-draft inspection, private atomic evidence journal, forbidden sensitive fields, crash-window handling, CLI journal requirement, and non-2025 rejection before token issuance |
+| Annual-accounts RR-0002 and TT02 boundary | 12 focused tests pass: narrow source-backed field map plus a fixed-host TT02-only client covering system-user token exchange, draft creation, XML replacement, bounded validation feedback, validation-revision invalidation, `confirm` locking, exact signing-task boundary, redirect/response limits, endpoint override rejection, and token/provider-body redaction; all transport evidence is injected and no Altinn instance was created |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -64,6 +65,14 @@ to launch publicly or submit live authority filings. It is not a release approva
   free-text diagnostics, symlinks, permissive files, conflicting revisions,
   and oversized checkpoints. `validertest` remains calculation-only and cannot
   create an Altinn instance or submission.
+- The annual-accounts client is fixed to TT02 and the current
+  `brg/aarsregnskap-vanlig-202406` app. It rejects endpoint/environment
+  overrides, exchanges the system-user token without exposing either bearer
+  token, invalidates validation after XML changes, refuses to lock an invalid or
+  unvalidated revision, and accepts `confirm` only when Altinn enters a personal
+  `signing` task. It has no sign/submit method. Complete XML rendering,
+  crash-safe orchestration/journaling, live TT02 evidence, and the personal
+  ID-porten step remain open.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
@@ -128,8 +137,11 @@ required for `security_restore` signoff.
   provider submission, receipts, and archive evidence are still pending.
 - The separate RF-1086 file-upload scope still reports `Tilgang mangler`; do not
   request it in a token unless Skatteetaten confirms it is required and grants it.
-- RF-1086 production journal persistence/web wiring, årsregnskap, and
-  skattemelding production adapters are not implemented.
+- RF-1086 production journal persistence/web wiring and the årsregnskap and
+  skattemelding production adapters are not implemented. Årsregnskap now has a
+  local TT02-only contract boundary, but its required instance scopes,
+  `app_brg_aarsregnskap` system right, separate customer approval, full XML
+  renderer, live hybrid signing evidence, and archive receipt remain pending.
 - Billing uses a simulation provider; real charge/refund evidence is pending.
 - Trademark/name, legal policy, security/restore, billing/refund, filing-specific,
   corporate-template wording, and support/rollback decisions require named
