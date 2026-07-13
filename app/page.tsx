@@ -251,11 +251,16 @@ export default async function Home({ searchParams }: HomeProps) {
           {!hasSupabaseEnv() ? (
             <p className="errorText">Supabase-miljøvariabler mangler.</p>
           ) : user ? (
-            <form action={signOut}>
-              <button className="secondaryButton" type="submit">
-                Logg ut
-              </button>
-            </form>
+            <div className="inlineActions">
+              <a className="secondaryButton" href="/security/mfa">
+                MFA / step-up
+              </a>
+              <form action={signOut}>
+                <button className="secondaryButton" type="submit">
+                  Logg ut
+                </button>
+              </form>
+            </div>
           ) : null}
         </div>
 
@@ -292,11 +297,11 @@ export default async function Home({ searchParams }: HomeProps) {
               <span className="panelLabel">Logg inn</span>
               <label>
                 E-post
-                <input name="email" type="email" required />
+                <input name="email" type="email" autoComplete="email" required />
               </label>
               <label>
                 Passord
-                <input name="password" type="password" minLength={6} required />
+                <input name="password" type="password" autoComplete="current-password" minLength={6} required />
               </label>
               <button className="primaryButton" type="submit">
                 Logg inn
@@ -306,11 +311,11 @@ export default async function Home({ searchParams }: HomeProps) {
               <span className="panelLabel">Ny bruker</span>
               <label>
                 E-post
-                <input name="email" type="email" required />
+                <input name="email" type="email" autoComplete="email" required />
               </label>
               <label>
                 Passord
-                <input name="password" type="password" minLength={6} required />
+                <input name="password" type="password" autoComplete="new-password" minLength={6} required />
               </label>
               <button className="secondaryButton" type="submit">
                 Opprett bruker
@@ -2028,6 +2033,7 @@ export default async function Home({ searchParams }: HomeProps) {
           <li>Company membership med owner-rolle</li>
           <li>RLS-basert tenant-isolasjon</li>
           <li>Fersk MFA/step-up innen 15 minutter for sensitive handlinger</li>
+          <li><a href="/security/mfa">Administrer TOTP og gjennomfør step-up</a></li>
           <li>Audit event for tillatt og blokkert sensitiv handling</li>
         </ol>
       </section>

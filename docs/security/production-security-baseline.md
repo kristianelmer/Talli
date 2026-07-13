@@ -29,8 +29,9 @@ Migration `20260713121355_secure_step_up_attestation.sql` closes a previously id
 - Human security review and production-credential enablement live in a separate, expiring `production_security_grants` record.
 - Only an active support admin can create/update a grant, and the approver cannot approve themselves.
 - Legacy privilege flags on `step_up_events` are cleared and ignored by application code.
+- `/security/mfa` provides authenticated TOTP enrollment and re-verification through Supabase `challengeAndVerify`; the resulting AAL2 JWT is recorded through the RLS-controlled `record_mfa_step_up` RPC.
 
-The migration contract and application gate have automated tests. Execution against a real local/staging Postgres RLS layer remains required before the human security signoff.
+The migration contract, MFA input boundary, application gate, production build, and unauthenticated browser redirect have automated or browser evidence. Enrollment and RPC execution against a real local/staging Supabase Auth/RLS layer remain required before the human security signoff.
 
 ## Tenant Isolation and Authorization
 
