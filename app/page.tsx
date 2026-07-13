@@ -516,7 +516,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     </button>
                   </form>
                 ) : null}
-                {primaryCancellation && primaryCancellation.status !== "deleted" ? (
+                {primaryCancellation && primaryCancellation.status !== "deleted" && launchSignoffState.isAdminOperator ? (
                   <form className="dataPanel formPanel widePanel" action={completeCompanyDeletionRecord}>
                     <input name="companyId" type="hidden" value={primaryCancellation.company_id} />
                     <input name="cancellationId" type="hidden" value={primaryCancellation.id} />

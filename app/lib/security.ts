@@ -267,13 +267,20 @@ export async function requireStepUpForAction(input: {
   try {
     const context = await loadLatestStepUpContext(input.supabase, input.userId, input.now);
     assertStepUpAllowed(input.action, context, input.now);
-    await input.supabase.from("audit_events").insert({
+    const { error: auditError } = await input.supabase.from("audit_events").insert({
       company_id: input.companyId,
       actor_id: input.userId,
       category: "security",
       action: "sensitive_action_allowed",
       message: `${requirement.label} tillatt etter MFA/step-up-kontroll.`,
     });
+    if (auditError) {
+      throw new SensitiveActionStepUpError(
+        `Kunne ikke registrere sikkerhetshendelse: ${auditError.message}`,
+        "security_audit_write_failed",
+        "Sensitiv handling stoppet: sikkerhetshendelsen kunne ikke registreres.",
+      );
+    }
   } catch (error) {
     const stepUpError =
       error instanceof SensitiveActionStepUpError

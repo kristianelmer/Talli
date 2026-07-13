@@ -70,12 +70,17 @@ test("shows explicit export, soft-delete, retention, and final deletion lifecycl
 
 test("builds retained deletion completion update with reviewer and actor", () => {
   assert.throws(
-    () => buildDeletionCompletionUpdate({ actorId: "", reviewedAt: "2026-06-17T10:00:00.000Z", deletedAt: "2026-06-17T11:00:00.000Z" }),
+    () => buildDeletionCompletionUpdate({ actorId: "", requestedBy: "owner-id", reviewedAt: "2026-06-17T10:00:00.000Z", deletedAt: "2026-06-17T11:00:00.000Z" }),
     /missing_deletion_actor/,
+  );
+  assert.throws(
+    () => buildDeletionCompletionUpdate({ actorId: "owner-id", requestedBy: "owner-id", reviewedAt: "2026-06-17T10:00:00.000Z", deletedAt: "2026-06-17T11:00:00.000Z" }),
+    /independent_deletion_reviewer_required/,
   );
   assert.deepEqual(
     buildDeletionCompletionUpdate({
       actorId: "owner-id",
+      requestedBy: "requester-id",
       reviewedAt: "2026-06-17T10:00:00.000Z",
       deletedAt: "2026-06-17T11:00:00.000Z",
     }),

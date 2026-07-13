@@ -159,12 +159,48 @@ test("server gate records allowed and blocked sensitive action audit events", as
   assert.match(auditEvents.at(-1).message, /expired_mfa_step_up/);
 });
 
-function fakeSupabase(stepUpRows, grants, auditEvents) {
+test("server gate fails closed when the allowed-action audit event cannot be stored", async () => {
+  const stepUpRows = [
+    {
+      actor_id: "owner",
+      mfa_verified_at: "2026-06-16T09:59:00.000Z",
+      security_review_approved: false,
+      production_credentials_enabled: false,
+    },
+  ];
+  const grants = [{
+    actor_id: "owner",
+    security_review_approved: false,
+    production_credentials_enabled: false,
+    expires_at: "2026-06-17T10:00:00.000Z",
+    revoked_at: null,
+  }];
+  const supabase = fakeSupabase(stepUpRows, grants, [], {
+    auditError: { message: "audit storage unavailable" },
+  });
+
+  await assert.rejects(
+    () =>
+      requireStepUpForAction({
+        supabase,
+        userId: "owner",
+        companyId: "company-id",
+        action: "billing_admin",
+        now,
+      }),
+    (error) => error?.code === "security_audit_write_failed",
+  );
+});
+
+function fakeSupabase(stepUpRows, grants, auditEvents, options = {}) {
   return {
     from(table) {
       if (table === "audit_events") {
         return {
           async insert(row) {
+            if (options.auditError) {
+              return { data: null, error: options.auditError };
+            }
             auditEvents.push(row);
             return { data: row, error: null };
           },

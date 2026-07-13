@@ -129,11 +129,15 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
 
 export function buildDeletionCompletionUpdate(input: {
   actorId: string;
+  requestedBy: string;
   reviewedAt: string;
   deletedAt: string;
 }) {
   if (!input.actorId) {
     throw new Error("missing_deletion_actor");
+  }
+  if (!input.requestedBy || input.requestedBy === input.actorId) {
+    throw new Error("independent_deletion_reviewer_required");
   }
   return {
     status: "deleted" as const,

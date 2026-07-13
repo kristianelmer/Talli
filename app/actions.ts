@@ -2272,11 +2272,22 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
     redirect("/?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
   }
 
+  const { data: operator } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (!operator) {
+    redirect("/?error=Endelig%20slettestatus%20krever%20en%20uavhengig%20admin-operator");
+  }
+
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "company_delete");
 
   const { data: cancellation, error: cancellationError } = await supabase
     .from("company_cancellations")
-    .select("id, company_id, status, evidence")
+    .select("id, company_id, status, evidence, requested_by")
     .eq("id", cancellationId)
     .eq("company_id", companyId)
     .single();
@@ -2293,6 +2304,7 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   const now = new Date().toISOString();
   const deletionUpdate = buildDeletionCompletionUpdate({
     actorId: user.id,
+    requestedBy: cancellation.requested_by,
     reviewedAt: now,
     deletedAt: now,
   });
@@ -2304,11 +2316,6 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   if (error) {
     redirect(`/?error=${encodeURIComponent(error.message)}`);
   }
-
-  await supabase
-    .from("companies")
-    .update({ status_text: "deleted_retention_record" })
-    .eq("id", companyId);
 
   await supabase.from("audit_events").insert([
     {

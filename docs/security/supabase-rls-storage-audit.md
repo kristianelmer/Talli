@@ -42,6 +42,9 @@ review. It should be run against staging after every schema/RLS change.
   membership acceptance is invitation-backed insert-only.
 - Confirmed Brreg company identity is not mutable by authenticated Data API
   clients after creation.
+- Owners can request cancellation/retention hold but cannot self-approve final
+  deletion; final state requires a different active admin operator, fresh
+  security step-up, archive evidence, and immutable request identity.
 - Outsider cannot read company rows, memberships, documents, filings, billing,
   authority permissions, readiness snapshots, ledger/action rows, period locks,
   audit events, or storage objects.

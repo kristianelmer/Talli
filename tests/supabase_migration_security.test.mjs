@@ -4,6 +4,7 @@ import test from "node:test";
 
 const migrationPath = "supabase/migrations/20260713121355_secure_step_up_attestation.sql";
 const identityMigrationPath = "supabase/migrations/20260713122759_lock_membership_and_company_identity.sql";
+const cancellationMigrationPath = "supabase/migrations/20260713122955_secure_cancellation_transitions.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -14,6 +15,16 @@ test("step-up migration derives freshness from signed Supabase MFA claims", asyn
   assert.match(sql, /not security_review_approved/u);
   assert.match(sql, /not production_credentials_enabled/u);
   assert.match(sql, /drop policy if exists "users can create their own step up events"/u);
+});
+
+test("final deletion requires an independent admin and immutable cancellation identity", async () => {
+  const sql = await readFile(cancellationMigrationPath, "utf8");
+
+  assert.match(sql, /requested_by <> \(select auth\.uid\(\)\)/u);
+  assert.match(sql, /operator\.role = 'admin'/u);
+  assert.match(sql, /old\.evidence ->> 'archiveExportedAt'/u);
+  assert.match(sql, /new\.company_id is distinct from old\.company_id/u);
+  assert.match(sql, /support operators can create audit events for themselves/u);
 });
 
 test("membership roles and confirmed company identity are not client-updatable", async () => {
