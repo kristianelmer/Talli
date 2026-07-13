@@ -9,6 +9,7 @@ import {
   type AnnualAccountsAltinnTransport,
 } from "./annual-accounts-altinn-client.ts";
 import { verifyAnnualAccountsSignedInstance } from "./annual-accounts-completion.ts";
+import type { AnnualAccountsCompletionFileStore } from "./annual-accounts-completion-file-store.ts";
 import {
   inspectAnnualAccountsProgress,
   runNextAnnualAccountsStep,
@@ -246,6 +247,7 @@ export async function runAnnualAccountsTt02Step(input: {
 export async function verifyAnnualAccountsTt02SignedInstance(input: {
   loaded: LoadedAnnualAccountsTt02Input;
   journal: AnnualAccountsJournal;
+  completionStore: Pick<AnnualAccountsCompletionFileStore, "save">;
   clientId: string;
   keyId: string;
   customerOrgNumber: string;
@@ -293,5 +295,6 @@ export async function verifyAnnualAccountsTt02SignedInstance(input: {
     journal: input.journal,
     client,
   });
-  return { summary, evidence };
+  const stored = await input.completionStore.save(evidence);
+  return { summary, evidence, stored };
 }

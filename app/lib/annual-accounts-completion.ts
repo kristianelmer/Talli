@@ -48,6 +48,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function exactKeys(value: Record<string, unknown>, expected: readonly string[]) {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return actual.length === sortedExpected.length && actual.every((key, index) => key === sortedExpected[index]);
+}
+
+function hasValidOrganizationNumberChecksum(value: string) {
+  const weights = [3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = weights.reduce((total, weight, index) => total + weight * Number(value[index]), 0);
+  const remainder = 11 - (sum % 11);
+  const checksum = remainder === 11 ? 0 : remainder;
+  return checksum !== 10 && checksum === Number(value[8]);
+}
+
 function sameInstance(value: unknown, expected: AnnualAccountsInstanceRef): boolean {
   return (
     isRecord(value) &&
@@ -76,6 +90,61 @@ function completionEvidenceInvalid(): never {
     "annual_accounts_completion_evidence_invalid",
     "Annual-accounts post-signature evidence does not match the locked instance.",
   );
+}
+
+export function assertAnnualAccountsCompletionEvidence(
+  value: unknown,
+): asserts value is AnnualAccountsCompletionEvidence {
+  if (
+    !isRecord(value) ||
+    !exactKeys(value, [
+      "schemaVersion",
+      "environment",
+      "operationId",
+      "organizationNumber",
+      "incomeYear",
+      "instance",
+      "completedAt",
+      "mainFormId",
+      "accountsFormId",
+      "signatureDataElementId",
+      "mainFormHash",
+      "accountsFormHash",
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.environment !== "test" ||
+    typeof value.operationId !== "string" ||
+    !UUID_PATTERN.test(value.operationId) ||
+    typeof value.organizationNumber !== "string" ||
+    !ORG_NUMBER_PATTERN.test(value.organizationNumber) ||
+    !hasValidOrganizationNumberChecksum(value.organizationNumber) ||
+    !Number.isInteger(value.incomeYear) ||
+    Number(value.incomeYear) < 2000 ||
+    Number(value.incomeYear) > 2100 ||
+    !isRecord(value.instance) ||
+    !exactKeys(value.instance, ["ownerPartyId", "instanceGuid"]) ||
+    typeof value.instance.ownerPartyId !== "string" ||
+    !PARTY_ID_PATTERN.test(value.instance.ownerPartyId) ||
+    typeof value.instance.instanceGuid !== "string" ||
+    !UUID_PATTERN.test(value.instance.instanceGuid) ||
+    typeof value.completedAt !== "string" ||
+    value.completedAt.length > 40 ||
+    !TIMESTAMP_PATTERN.test(value.completedAt) ||
+    !Number.isFinite(Date.parse(value.completedAt)) ||
+    typeof value.mainFormId !== "string" ||
+    !UUID_PATTERN.test(value.mainFormId) ||
+    typeof value.accountsFormId !== "string" ||
+    !UUID_PATTERN.test(value.accountsFormId) ||
+    typeof value.signatureDataElementId !== "string" ||
+    !UUID_PATTERN.test(value.signatureDataElementId) ||
+    new Set([value.mainFormId, value.accountsFormId, value.signatureDataElementId]).size !== 3 ||
+    typeof value.mainFormHash !== "string" ||
+    !SHA256_PATTERN.test(value.mainFormHash) ||
+    typeof value.accountsFormHash !== "string" ||
+    !SHA256_PATTERN.test(value.accountsFormHash)
+  ) {
+    completionEvidenceInvalid();
+  }
 }
 
 export async function verifyAnnualAccountsSignedInstance(input: {

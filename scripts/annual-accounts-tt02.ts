@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { createAnnualAccountsFileJournal } from "../app/lib/annual-accounts-file-journal.ts";
+import { createAnnualAccountsCompletionFileStore } from "../app/lib/annual-accounts-completion-file-store.ts";
 import { inspectAnnualAccountsProgress } from "../app/lib/annual-accounts-orchestration.ts";
 import {
   loadPrivateAnnualAccountsMaskinportenKey,
@@ -90,7 +91,10 @@ async function main() {
     ),
   };
   const output = action === "verify-signed"
-    ? await verifyAnnualAccountsTt02SignedInstance(credentials)
+    ? await verifyAnnualAccountsTt02SignedInstance({
+      ...credentials,
+      completionStore: createAnnualAccountsCompletionFileStore(journalPath),
+    })
     : await runAnnualAccountsTt02Step({
       ...credentials,
       allowLock: options.get("--lock") === true,

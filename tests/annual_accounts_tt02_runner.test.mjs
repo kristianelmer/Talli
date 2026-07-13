@@ -89,6 +89,19 @@ function memoryJournal() {
   };
 }
 
+function memoryCompletionStore() {
+  let saved = null;
+  return {
+    async load() {
+      return saved === null ? null : structuredClone(saved);
+    },
+    async save(evidence) {
+      saved = structuredClone(evidence);
+      return { evidenceSha256: "c".repeat(64), alreadyStored: false };
+    },
+  };
+}
+
 async function privateInputFixture(overrides = {}) {
   const parent = await mkdtemp(path.join(os.tmpdir(), "annual-accounts-tt02-input-"));
   const directory = path.join(parent, "private");
@@ -355,6 +368,7 @@ test("verifies a personally completed instance with read scope only", async () =
   const output = await verifyAnnualAccountsTt02SignedInstance({
     loaded,
     journal,
+    completionStore: memoryCompletionStore(),
     clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
     keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
     customerOrgNumber: "310279617",
@@ -370,6 +384,7 @@ test("verifies a personally completed instance with read scope only", async () =
   assert.equal(grantPayload.scope, "altinn:instances.read");
   assert.equal(output.summary.organizationNumber, "310279617");
   assert.equal(output.evidence.signatureDataElementId, signatureId);
+  assert.deepEqual(output.stored, { evidenceSha256: "c".repeat(64), alreadyStored: false });
   assert.equal(requests[1].method, "GET");
   assert.match(requests[1].url, new RegExp(`/instances/500700/${instanceGuid}$`, "u"));
   assert.doesNotMatch(JSON.stringify(output), /short-lived|BEGIN PRIVATE KEY|<melding>|post@example/iu);
@@ -383,6 +398,7 @@ test("checks the locked checkpoint before issuing a post-signature read token", 
     verifyAnnualAccountsTt02SignedInstance({
       loaded,
       journal: memoryJournal(),
+      completionStore: memoryCompletionStore(),
       clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
       keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
       customerOrgNumber: "310279617",
