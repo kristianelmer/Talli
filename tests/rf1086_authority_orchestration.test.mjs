@@ -321,3 +321,33 @@ test("rejects a tampered persisted operation before transport", async () => {
   );
   assert.equal(transports, 1);
 });
+
+test("rejects over-specified checkpoint fields before transport", async () => {
+  for (const tamper of [
+    (checkpoint) => ({ ...checkpoint, accessToken: "must-not-be-accepted" }),
+    (checkpoint) => {
+      checkpoint.calls[0].providerBody = "must-not-be-accepted";
+      return checkpoint;
+    },
+  ]) {
+    let transports = 0;
+    const client = createRf1086AuthorityClient({
+      environment: "test",
+      accessToken: "short-lived-system-user-token",
+      transport: async () => {
+        transports += 1;
+        return jsonResponse({ hovedskjemaId });
+      },
+    });
+    const journal = memoryJournal([]);
+    await runNextRf1086AuthorityStep({ preview, client, journal });
+    journal.tamper(tamper);
+
+    await assert.rejects(
+      runNextRf1086AuthorityStep({ preview, client, journal }),
+      (error) =>
+        error instanceof Rf1086AuthorityOrchestrationError && error.code === "rf1086_checkpoint_invalid",
+    );
+    assert.equal(transports, 1);
+  }
+});

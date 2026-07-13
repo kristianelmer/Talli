@@ -108,7 +108,24 @@ function checkpointInvalid(): never {
   throw orchestrationError("rf1086_checkpoint_invalid", "Stored RF-1086 authority checkpoint is invalid.");
 }
 
-function assertCheckpoint(value: Rf1086AuthorityCheckpoint, preview: FilingPreviewRow) {
+function exactKeys(value: Record<string, unknown>, expected: readonly string[]) {
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+}
+
+function isFailureCode(value: unknown): value is string {
+  return typeof value === "string" && /^[a-z0-9_]{1,100}$/u.test(value);
+}
+
+function isFailureMessage(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 1 && value.length <= 500 && !/[\r\n]/u.test(value);
+}
+
+export function assertRf1086AuthorityCheckpoint(
+  value: Rf1086AuthorityCheckpoint,
+  preview: FilingPreviewRow,
+) {
   const checkpointStatuses: readonly Rf1086AuthorityCheckpointStatus[] = [
     "submitting",
     "confirmed",
@@ -117,24 +134,47 @@ function assertCheckpoint(value: Rf1086AuthorityCheckpoint, preview: FilingPrevi
   ];
   if (
     !value ||
+    typeof value !== "object" ||
+    !exactKeys(value as unknown as Record<string, unknown>, [
+      "schemaVersion",
+      "revision",
+      "previewId",
+      "companyId",
+      "incomeYear",
+      "environment",
+      "payloadHash",
+      "status",
+      "hovedskjemaId",
+      "confirmation",
+      "calls",
+      "failureCode",
+      "failureMessage",
+    ]) ||
     value.schemaVersion !== 1 ||
     !Number.isSafeInteger(value.revision) ||
     value.revision < 1 ||
-    typeof value.previewId !== "string" ||
-    typeof value.companyId !== "string" ||
-    !Number.isInteger(value.incomeYear) ||
+    value.previewId !== preview.id ||
+    value.companyId !== preview.company_id ||
+    value.incomeYear !== preview.income_year ||
     (value.environment !== "test" && value.environment !== "production") ||
     !/^[0-9a-f]{64}$/u.test(value.payloadHash) ||
     !checkpointStatuses.includes(value.status) ||
     !Array.isArray(value.calls) ||
-    value.calls.length > 100_002
+    value.calls.length > 100_002 ||
+    (value.failureCode !== null && !isFailureCode(value.failureCode)) ||
+    (value.failureMessage !== null && !isFailureMessage(value.failureMessage))
   ) {
     checkpointInvalid();
   }
   if (value.hovedskjemaId !== null && !UUID_PATTERN.test(value.hovedskjemaId)) checkpointInvalid();
   if (
     value.confirmation !== null &&
-    (!value.confirmation.oppgavegiversLeveranseReferanse ||
+    (!exactKeys(value.confirmation as unknown as Record<string, unknown>, [
+      "oppgavegiversLeveranseReferanse",
+      "dialogId",
+      "forsendelseId",
+    ]) ||
+      !value.confirmation.oppgavegiversLeveranseReferanse ||
       value.confirmation.oppgavegiversLeveranseReferanse.length > 100 ||
       !UUID_PATTERN.test(value.confirmation.dialogId) ||
       !UUID_PATTERN.test(value.confirmation.forsendelseId))
@@ -161,6 +201,20 @@ function assertCheckpoint(value: Rf1086AuthorityCheckpoint, preview: FilingPrevi
   value.calls.forEach((call, index) => {
     if (
       !call ||
+      typeof call !== "object" ||
+      !exactKeys(call as unknown as Record<string, unknown>, [
+        "operation",
+        "method",
+        "url",
+        "bodyHash",
+        "idempotencyKey",
+        "documentKey",
+        "status",
+        "preparedAt",
+        "acceptedAt",
+        "failureCode",
+        "failureMessage",
+      ]) ||
       call.operation !== expectedOperations[index] ||
       call.method !== "POST" ||
       !/^[0-9a-f]{64}$/u.test(call.bodyHash) ||
@@ -168,6 +222,15 @@ function assertCheckpoint(value: Rf1086AuthorityCheckpoint, preview: FilingPrevi
       typeof call.preparedAt !== "string" ||
       !Number.isFinite(Date.parse(call.preparedAt)) ||
       (call.acceptedAt !== null && !Number.isFinite(Date.parse(call.acceptedAt))) ||
+      (call.acceptedAt !== null && Date.parse(call.acceptedAt) < Date.parse(call.preparedAt)) ||
+      (call.failureCode !== null && !isFailureCode(call.failureCode)) ||
+      (call.failureMessage !== null && !isFailureMessage(call.failureMessage)) ||
+      (call.status === "accepted" && (call.acceptedAt === null || call.failureCode !== null || call.failureMessage !== null)) ||
+      (call.status !== "accepted" && call.acceptedAt !== null) ||
+      (["failed_retryable", "failed_blocked"].includes(call.status) &&
+        (call.failureCode === null || call.failureMessage === null)) ||
+      (!["failed_retryable", "failed_blocked"].includes(call.status) &&
+        (call.failureCode !== null || call.failureMessage !== null)) ||
       (index < value.calls.length - 1 && call.status !== "accepted")
     ) {
       checkpointInvalid();
@@ -216,11 +279,23 @@ function assertCheckpoint(value: Rf1086AuthorityCheckpoint, preview: FilingPrevi
   });
 
   if (
+    (value.calls[0]?.status === "accepted" && value.hovedskjemaId === null) ||
+    (value.calls[0]?.status !== "accepted" && value.hovedskjemaId !== null) ||
     (value.status === "confirmed" &&
       (value.calls.length !== expectedOperations.length ||
         value.calls.some((call) => call.status !== "accepted") ||
-        !value.confirmation)) ||
-    (value.confirmation && value.status !== "confirmed")
+        !value.confirmation ||
+        value.failureCode !== null ||
+        value.failureMessage !== null)) ||
+    (value.confirmation !== null && value.status !== "confirmed") ||
+    (["failed_retryable", "failed_blocked"].includes(value.status) &&
+      (value.failureCode === null ||
+        value.failureMessage === null ||
+        value.calls.at(-1)?.status !== value.status ||
+        value.calls.at(-1)?.failureCode !== value.failureCode ||
+        value.calls.at(-1)?.failureMessage !== value.failureMessage)) ||
+    (!["failed_retryable", "failed_blocked"].includes(value.status) &&
+      (value.failureCode !== null || value.failureMessage !== null))
   ) {
     checkpointInvalid();
   }
@@ -404,7 +479,7 @@ export async function inspectRf1086AuthorityProgress(input: {
   if (checkpoint.payloadHash !== canonicalPayloadHash(input.preview)) {
     throw orchestrationError("rf1086_preview_changed", "RF-1086 preview cannot change during a submission.");
   }
-  assertCheckpoint(checkpoint, input.preview);
+  assertRf1086AuthorityCheckpoint(checkpoint, input.preview);
   if (checkpoint.status === "confirmed") {
     return { checkpoint, nextOperation: null, complete: true, blocked: false };
   }
@@ -533,7 +608,7 @@ export async function runNextRf1086AuthorityStep(input: {
     if (loaded.payloadHash !== canonicalPayloadHash(input.preview)) {
       throw orchestrationError("rf1086_preview_changed", "RF-1086 preview cannot change during a submission.");
     }
-    assertCheckpoint(loaded, input.preview);
+    assertRf1086AuthorityCheckpoint(loaded, input.preview);
     if (loaded.status === "confirmed") return { checkpoint: loaded, complete: true };
     if (loaded.status === "failed_blocked") {
       throw orchestrationError("rf1086_checkpoint_blocked", "RF-1086 authority checkpoint requires operator resolution.");
