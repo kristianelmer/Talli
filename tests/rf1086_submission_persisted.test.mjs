@@ -147,6 +147,28 @@ test("builds stable request payload hash and idempotency key", async () => {
   assert.match(rf1086SubmissionIdempotencyKey(preview), /^rf1086:company-id:2025:/);
 });
 
+test("keeps payload identity stable when underskjema map insertion order changes", async () => {
+  const preview = await readyPreview();
+  const secondXml = preview.underskjema_xml["shareholder-id"].replace("shareholder-id", "shareholder-two");
+  const ordered = {
+    ...preview,
+    underskjema_xml: {
+      "shareholder-id": preview.underskjema_xml["shareholder-id"],
+      "shareholder-two": secondXml,
+    },
+  };
+  const reordered = {
+    ...preview,
+    underskjema_xml: {
+      "shareholder-two": secondXml,
+      "shareholder-id": preview.underskjema_xml["shareholder-id"],
+    },
+  };
+
+  assert.equal(rf1086PayloadHash(ordered), rf1086PayloadHash(reordered));
+  assert.equal(rf1086SubmissionIdempotencyKey(ordered), rf1086SubmissionIdempotencyKey(reordered));
+});
+
 test("builds accepted receipt metadata and immutable submitted payload references", async () => {
   const preview = await readyPreview();
   const result = await simulateRf1086SubmissionWithPython(preview, "owner-user", {

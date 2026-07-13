@@ -98,6 +98,9 @@ export function assertRf1086SimulationConfirmations(confirmations: Rf1086Submiss
 }
 
 export function rf1086PayloadHash(preview: FilingPreviewRow) {
+  const underskjemaXml = Object.fromEntries(
+    Object.entries(preview.underskjema_xml).sort(([left], [right]) => left.localeCompare(right, "en")),
+  );
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -105,7 +108,7 @@ export function rf1086PayloadHash(preview: FilingPreviewRow) {
         company_id: preview.company_id,
         income_year: preview.income_year,
         hovedskjema_xml: preview.hovedskjema_xml,
-        underskjema_xml: preview.underskjema_xml,
+        underskjema_xml: underskjemaXml,
       }),
     )
     .digest("hex");
@@ -160,7 +163,9 @@ export function rf1086SubmittedPayloadReference(
     payloadHash: rf1086PayloadHash(preview),
     hovedskjemaHash: hashXml(preview.hovedskjema_xml),
     underskjemaHashes: Object.fromEntries(
-      Object.entries(preview.underskjema_xml).map(([key, xml]) => [key, createHash("sha256").update(xml).digest("hex")]),
+      Object.entries(preview.underskjema_xml)
+        .sort(([left], [right]) => left.localeCompare(right, "en"))
+        .map(([key, xml]) => [key, createHash("sha256").update(xml).digest("hex")]),
     ),
     callCount: result.calls.length,
     storedAt: new Date().toISOString(),
