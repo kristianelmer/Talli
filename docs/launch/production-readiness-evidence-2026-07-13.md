@@ -130,7 +130,7 @@ to launch publicly or submit live authority filings. It is not a release approva
   near-misses remain generic. Server actions retain structured errors only to
   make that allowlist decision. Explicitly trusted domain-validation messages
   remain actionable and all redirect messages are bounded. This behavior is
-  covered by the focused action-error tests and commit `9cb501e`.
+  covered by the focused action-error tests through commit `6b07c22`.
 - Sign-up preserves password bytes exactly and enforces a 12–128 character
   passphrase boundary; provider-side rate limits, CAPTCHA, SMTP, email
   confirmation, and leaked-password settings remain deployment checks.
