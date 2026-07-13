@@ -5,13 +5,14 @@ import {
   inspectCurrentCompanyTaxReturnTt02,
   runNoActivityCompanyTaxReturnTt02Calculation,
 } from "../app/lib/company-tax-return-tt02-runner.ts";
+import { createCompanyTaxReturnTt02FileJournal } from "../app/lib/company-tax-return-tt02-journal.ts";
 import { loadPrivateMaskinportenKey } from "../app/lib/rf1086-tt02-runner.ts";
 
 const MAX_FIXTURE_BYTES = 10 * 1024 * 1024;
 
 function usage(): never {
   throw new Error(
-    "Usage: company-tax-return-tt02.ts <inspect-current|calculate-no-activity> [--tax-return <xml>] --customer-org <9 digits> --income-year 2025 --client-id <uuid> --key-id <uuid> --private-key <pem> --execute-test",
+    "Usage: company-tax-return-tt02.ts <inspect-current|calculate-no-activity> [--tax-return <xml>] --customer-org <9 digits> --income-year 2025 --client-id <uuid> --key-id <uuid> --private-key <pem> --journal <private-directory> --execute-test",
   );
 }
 
@@ -37,6 +38,7 @@ function parseArguments(values: string[]) {
     "--client-id",
     "--key-id",
     "--private-key",
+    "--journal",
     "--execute-test",
   ]);
   if ([...options.keys()].some((key) => !allowed.has(key))) usage();
@@ -65,12 +67,14 @@ async function main() {
     throw new Error("TT02 external calculation is disabled unless --execute-test is supplied.");
   }
   const incomeYear = Number(required(options, "--income-year"));
+  const journal = createCompanyTaxReturnTt02FileJournal(path.resolve(required(options, "--journal")));
   const credentials = {
     clientId: required(options, "--client-id"),
     keyId: required(options, "--key-id"),
     customerOrgNumber: required(options, "--customer-org"),
     incomeYear,
     privateKeyPem: await loadPrivateMaskinportenKey(path.resolve(required(options, "--private-key"))),
+    journal,
   };
   const output = action === "inspect-current"
     ? await inspectCurrentCompanyTaxReturnTt02(credentials)

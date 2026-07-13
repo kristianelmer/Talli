@@ -19,7 +19,7 @@
     "test:browser-owner": "node tests/browser_owner_annual_loop.mjs",
     "test:billing": "node --experimental-strip-types --test tests/billing_persisted.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
-    "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs tests/company_tax_return_authority_client.test.mjs tests/company_tax_return_xml.test.mjs tests/company_tax_return_tt02_runner.test.mjs",
+    "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs tests/company_tax_return_authority_client.test.mjs tests/company_tax_return_xml.test.mjs tests/company_tax_return_tt02_runner.test.mjs tests/company_tax_return_tt02_journal.test.mjs tests/company_tax_return_tt02_cli.test.mjs",
     "test:container": "node scripts/container-smoke.mjs",
     "test:container-contract": "node --test tests/container_contract.test.mjs",
     "test:cancellation": "node --experimental-strip-types --test tests/cancellation.test.mjs",

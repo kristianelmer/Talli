@@ -135,3 +135,173 @@ test("inspects current TT02 documents without returning authority XML or locked 
   assert.equal(JSON.stringify(output).includes("secret-value"), false);
   assert.equal(JSON.stringify(output).includes("<skattemelding"), false);
 });
+
+test("journals minimized calculation evidence before and after the TT02 provider call", async () => {
+  const operationId = "d9275fc1-fd60-4b8b-a615-da0cedce08be";
+  const saved = [];
+  const journal = {
+    async load() {
+      return null;
+    },
+    async save(value, expectedRevision) {
+      saved.push({ value: structuredClone(value), expectedRevision });
+    },
+  };
+
+  const output = await runNoActivityCompanyTaxReturnTt02Calculation({
+    clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+    keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+    customerOrgNumber: "310279617",
+    incomeYear: 2025,
+    contractTaxReturnXml: currentTaxReturnXml,
+    privateKeyPem,
+    operationId,
+    journal,
+    now: () => new Date("2026-07-13T12:00:00.000Z"),
+    tokenFetchImplementation: async () => {
+      assert.equal(saved.length, 1);
+      assert.equal(saved[0].value.status, "prepared");
+      return new Response(
+        JSON.stringify({
+          access_token: "short-lived-test-token",
+          token_type: "Bearer",
+          expires_in: 120,
+          scope: "skatteetaten:formueinntekt/skattemelding",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    },
+    authorityTransport: async () => ({
+      status: 200,
+      headers: { "content-type": "application/xml" },
+      body: new TextEncoder().encode(authorityXml("validertMedFeil").replace(
+        "</skattemeldingOgNaeringsspesifikasjonResponse>",
+        "<avvikVedValidering><avvik><avvikstype>UP_MANGLER_SKATTEMELDING</avvikstype><oevrigInformasjon>Sensitive provider text</oevrigInformasjon></avvik></avvikVedValidering><aarsakTilValidertMedFeil>Sensitive reason</aarsakTilValidertMedFeil></skattemeldingOgNaeringsspesifikasjonResponse>",
+      )),
+    }),
+  });
+
+  assert.equal(saved.length, 2);
+  assert.equal(saved[0].expectedRevision, null);
+  assert.equal(saved[1].expectedRevision, 1);
+  assert.equal(saved[1].value.status, "completed");
+  assert.equal(saved[1].value.validation.feedbackCodes[0].code, "UP_MANGLER_SKATTEMELDING");
+  assert.match(saved[1].value.validation.reasonHashes[0], /^[a-f0-9]{64}$/u);
+  assert.equal(JSON.stringify(saved).includes("Sensitive provider text"), false);
+  assert.equal(JSON.stringify(saved).includes("Sensitive reason"), false);
+  assert.equal(JSON.stringify(saved).includes("short-lived-test-token"), false);
+  assert.deepEqual(output.journal, { operationId, revision: 2, status: "completed" });
+});
+
+test("journals only a stable failure code when a TT02 provider call fails", async () => {
+  const operationId = "e4be8baa-660c-42f2-9587-b726845f047c";
+  const saved = [];
+  const journal = {
+    async load() {
+      return null;
+    },
+    async save(value, expectedRevision) {
+      saved.push({ value: structuredClone(value), expectedRevision });
+    },
+  };
+
+  await assert.rejects(
+    runNoActivityCompanyTaxReturnTt02Calculation({
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2025,
+      contractTaxReturnXml: currentTaxReturnXml,
+      privateKeyPem,
+      operationId,
+      journal,
+      now: () => new Date("2026-07-13T12:00:00.000Z"),
+      tokenFetchImplementation: async () =>
+        new Response(
+          JSON.stringify({
+            access_token: "short-lived-test-token",
+            token_type: "Bearer",
+            expires_in: 120,
+            scope: "skatteetaten:formueinntekt/skattemelding",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      authorityTransport: async () => ({
+        status: 503,
+        headers: { "content-type": "application/xml" },
+        body: new TextEncoder().encode("<provider>secret diagnostic</provider>"),
+      }),
+    }),
+  );
+
+  assert.equal(saved.length, 2);
+  assert.equal(saved[1].value.status, "failed");
+  assert.equal(saved[1].value.failureCode, "company_tax_return_provider_failed");
+  assert.equal(JSON.stringify(saved).includes("secret diagnostic"), false);
+  assert.equal(JSON.stringify(saved).includes("short-lived-test-token"), false);
+});
+
+test("does not overwrite a completed-but-unpersisted TT02 outcome with a provider-failure checkpoint", async () => {
+  let saveCalls = 0;
+  const journal = {
+    async load() {
+      return null;
+    },
+    async save() {
+      saveCalls += 1;
+      if (saveCalls === 2) throw new Error("completed checkpoint persistence failed");
+    },
+  };
+
+  await assert.rejects(
+    runNoActivityCompanyTaxReturnTt02Calculation({
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2025,
+      contractTaxReturnXml: currentTaxReturnXml,
+      privateKeyPem,
+      operationId: "0e3f8c43-b604-4910-8037-1f07fd0b8136",
+      journal,
+      tokenFetchImplementation: async () =>
+        new Response(
+          JSON.stringify({
+            access_token: "short-lived-test-token",
+            token_type: "Bearer",
+            expires_in: 120,
+            scope: "skatteetaten:formueinntekt/skattemelding",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      authorityTransport: async () => ({
+        status: 200,
+        headers: { "content-type": "application/xml" },
+        body: new TextEncoder().encode(authorityXml()),
+      }),
+    }),
+    /completed checkpoint persistence failed/u,
+  );
+
+  assert.equal(saveCalls, 2);
+});
+
+test("rejects non-2025 current-draft inspection before requesting a Maskinporten token", async () => {
+  let tokenCalls = 0;
+  await assert.rejects(
+    inspectCurrentCompanyTaxReturnTt02({
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2026,
+      privateKeyPem,
+      tokenFetchImplementation: async () => {
+        tokenCalls += 1;
+        throw new Error("must not run");
+      },
+    }),
+    (error) =>
+      error instanceof CompanyTaxReturnTt02RunnerError &&
+      error.code === "company_tax_return_tt02_year_unsupported",
+  );
+  assert.equal(tokenCalls, 0);
+});

@@ -55,6 +55,12 @@ Implementation consequence:
   calculation-only, maps bounded structured feedback, and returns calculated
   authority XML with content hashes. It is not connected to a production
   submission action.
+- TT02 inspection/calculation runs are wrapped by a private atomic journal in
+  `app/lib/company-tax-return-tt02-journal.ts`. It records a prepared checkpoint
+  before external transport and a minimized revision-2 outcome afterward. The
+  journal schema forbids tokens, assertions, XML, provider values, and free-text
+  diagnostics. Operator procedure is pinned in
+  `company-tax-return-tt02-validation-runbook.md`.
 - Exact request, validation-response, and current-draft-response XSDs are
   pinned with hashes and their upstream Apache-2.0 license in
   `docs/filing/authority-contract/`.
@@ -119,12 +125,10 @@ Warn/escalate before submission:
    `naeringsspesifikasjon_v6_ekstern.xsd`.
 2. Generate no-activity and ordinary holding-activity fixtures and validate
    them locally against the complete official XSD import graph.
-3. Persist the guarded adapter's validation result, calculated-document hashes,
-   and structured feedback in an operator-scoped crash-safe journal.
-4. Run current-draft retrieval and filing validation in TT02 for the delegated
+3. Run current-draft retrieval and filing validation in TT02 for a delegated
    test company; archive the response and require `validertOK` before any
    Altinn instance can be created.
-5. Implement the separate Altinn3 submission/receipt adapter only after the
+4. Implement the separate Altinn3 submission/receipt adapter only after the
    validation fixture has been accepted.
 
 ## Local 2025 No-Activity Contract Fixture
@@ -171,3 +175,7 @@ and calculation-only boundary are reachable. It does not prove that
 valid RF-1086 candidate, but company-tax-return testing requires a separate
 Tenor organization with an actual 2025 Skatteetaten tax-return draft and a
 separately accepted system-user request.
+
+Subsequent operator executions must use the journaled CLI described in
+`company-tax-return-tt02-validation-runbook.md`; unjournaled external runs are
+rejected before the signing key is opened.
