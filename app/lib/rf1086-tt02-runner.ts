@@ -5,6 +5,12 @@ import path from "node:path";
 
 import { createRf1086AuthorityClient, type Rf1086AuthorityTransport } from "./rf1086-authority-client.ts";
 import {
+  DIALOGPORTEN_MASKINPORTEN_SCOPE,
+  createDialogportenClient,
+  type DialogportenTransport,
+} from "./dialogporten-client.ts";
+import { archiveConfirmedRf1086AuthoritySubmission } from "./rf1086-authority-archive.ts";
+import {
   inspectRf1086AuthorityProgress,
   runNextRf1086AuthorityStep,
   type Rf1086AuthorityJournal,
@@ -174,4 +180,56 @@ export async function runRf1086Tt02Step(input: {
   });
   const result = await runNextRf1086AuthorityStep({ preview: input.preview, client, journal: input.journal });
   return { summary, before, result };
+}
+
+export async function runRf1086Tt02Archive(input: {
+  preview: FilingPreviewRow;
+  journal: Rf1086AuthorityJournal;
+  clientId: string;
+  keyId: string;
+  customerOrgNumber: string;
+  privateKeyPem: string;
+  archiveDirectory: string;
+  tokenFetchImplementation?: typeof fetch;
+  authorityTransport?: Rf1086AuthorityTransport;
+  dialogportenTransport?: DialogportenTransport;
+}) {
+  validateRf1086Tt02PreviewTarget(input.preview, input.customerOrgNumber);
+  if (!path.isAbsolute(input.archiveDirectory)) {
+    throw runnerError("rf1086_tt02_path_invalid", "TT02 archive path must be absolute.");
+  }
+  const progress = await inspectRf1086AuthorityProgress({
+    preview: input.preview,
+    environment: "test",
+    journal: input.journal,
+  });
+  if (!progress.complete || !progress.checkpoint?.confirmation) {
+    throw runnerError("rf1086_tt02_not_confirmed", "TT02 archive requires a confirmed RF-1086 checkpoint.");
+  }
+
+  const token = await issueMaskinportenTestSystemUserToken({
+    clientId: input.clientId,
+    keyId: input.keyId,
+    customerOrgNumber: input.customerOrgNumber,
+    scopes: [RF1086_MASKINPORTEN_SCOPE, DIALOGPORTEN_MASKINPORTEN_SCOPE],
+    privateKeyPem: input.privateKeyPem,
+    ...(input.tokenFetchImplementation ? { fetchImplementation: input.tokenFetchImplementation } : {}),
+  });
+  const authorityClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken: token.accessToken,
+    ...(input.authorityTransport ? { transport: input.authorityTransport } : {}),
+  });
+  const dialogportenClient = createDialogportenClient({
+    environment: "test",
+    accessToken: token.accessToken,
+    ...(input.dialogportenTransport ? { transport: input.dialogportenTransport } : {}),
+  });
+  return archiveConfirmedRf1086AuthoritySubmission({
+    checkpoint: progress.checkpoint,
+    customerOrgNumber: input.customerOrgNumber,
+    authorityClient,
+    dialogportenClient,
+    directory: input.archiveDirectory,
+  });
 }

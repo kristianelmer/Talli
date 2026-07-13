@@ -32,6 +32,12 @@ state. Do not create or approve another request.
   https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_jwtgrant
 - Digdir token endpoint:
   https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_token.html
+- Dialogporten authentication:
+  https://docs.altinn.studio/en/dialogporten/user-guides/authenticating/
+- Dialogporten dialog details and attachment discovery:
+  https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
+- Dialogporten environment-specific OpenAPI:
+  https://docs.altinn.studio/en/dialogporten/reference/openapi/
 
 Skatteetaten's test recipe says to use a real vendor organization for the
 Maskinporten test client, a synthetic organization and role-holder from Tenor
@@ -53,6 +59,11 @@ The local runner is `npm run rf1086:tt02`.
 - The non-idempotent `bekreft` call requires `--confirm` and is never
   automatically replayed after an uncertain result.
 - Preview-only inspection does not read the private key or request a token.
+- Receipt retrieval accepts only Dialogporten API attachment URLs that exactly
+  match the fixed Skatteetaten host, confirmed shipment, and selected year.
+- Submitted XML is content-addressed; provider documents are immutable by
+  document id and content type; every Dialogporten revision receives a separate
+  private manifest.
 
 ## Synthetic fixture under review
 
@@ -128,9 +139,35 @@ token into a command, file, terminal history, issue, or documentation.
      --confirm
    ```
 
-6. Record the returned main-form, dialog, and shipment references. Use the
-   published document endpoints to retrieve feedback and receipt artifacts.
-   Do not claim success until those artifacts are stored and reviewed.
+6. Record the returned main-form, dialog, and shipment references. Create a
+   private archive directory, then retrieve submitted XML plus currently
+   authorized feedback/receipt attachments:
+
+   ```sh
+   mkdir -m 700 <absolute-archive-directory>
+   npm run rf1086:tt02 -- archive \
+     --preview <absolute-preview-json> \
+     --journal <absolute-journal-directory> \
+     --archive <absolute-archive-directory> \
+     --customer-org 310279617 \
+     --client-id 7166e743-978e-4a60-8a2d-0a5c00fe6ad0 \
+     --key-id 2d275f93-10a2-4839-993e-b14da2b84ad8 \
+     --private-key <absolute-private-key-pem> \
+     --execute-test
+   ```
+
+   This read-only action requires both
+   `skatteetaten:innrapporteringaksjonaerregisteroppgave` and
+   `digdir:dialogporten` on the short-lived system-user token. If the latter
+   scope is unavailable, stop and establish the client scope before retrying.
+   The command never follows a caller-controlled URL; attachment metadata is
+   converted back into the fixed Skatteetaten document operation.
+
+7. Review the newest manifest under `manifests/`. If Dialogporten has not yet
+   exposed an authorized receipt or feedback attachment, retain that snapshot
+   and run `archive` again later. A new Dialogporten revision creates a new
+   manifest without overwriting the earlier one. Do not claim success until the
+   expected artifacts are stored and reviewed.
 
 ## Stop conditions
 
@@ -140,5 +177,7 @@ Stop and reconcile without automatic replay if:
 - the journal reports `failed_blocked` or `reconcile`;
 - `bekreft` times out or returns an uncertain result;
 - the provider response is malformed or uses an unexpected content type;
+- Dialogporten returns another party/resource, or an attachment URL does not
+  match the confirmed Skatteetaten shipment;
+- an existing provider document changes under the same immutable identity;
 - the company or shareholder assumption is no longer accepted for the test.
-

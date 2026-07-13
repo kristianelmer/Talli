@@ -64,8 +64,9 @@ other secrets must never be recorded in this register.
 | 2026-07-13 | TT02 approval troubleshooting | Chrome repeatedly redirected through `reportee/changeandredirect` and remained on `Laster forespørsel`; disabling the site-specific content blocker did not resolve the loop. Safari with high-assurance TestID and the direct confirmation URL loaded the correct company context without creating a duplicate request. |
 | 2026-07-13 | TT02 system-user approval | The approval UI confirmed Talli, `LOGISK ØDE TIGER AS` (`310279617`), and both requested services. A vendor API read returned HTTP 200 and status `Accepted` for request `3d0a9681-87fc-4cd0-967d-cc736d93a686`. |
 | 2026-07-13 | System-user-bound Maskinporten grant | HTTP 200; one 120-second token carried both Skatteetaten scopes plus `urn:altinn:systemuser` details for customer `0192:310279617`, system `930835978_talli`, and the accepted system-user id. No access token or assertion was retained. |
-| 2026-07-13 | Guarded local TT02 operator boundary | Added test-only 120-second token issuance, private atomic checkpoint journal, exact customer/year validation, one-call progression, token redaction, and an explicit gate for `bekreft`; 8 dedicated tests pass. |
+| 2026-07-13 | Guarded local TT02 operator boundary | Added test-only 120-second token issuance, private atomic checkpoint journal, exact customer/year validation, one-call progression, token redaction, an explicit gate for `bekreft`, and confirmed-journal-only archiving; 9 dedicated tests pass. |
 | 2026-07-13 | Synthetic 2025 RF-1086 preview for `310279617` | Generated outside the repository with private permissions. The no-activity preview is ready with no issues; both main and sub-form validate against the pinned official XSDs. No provider call has been made. The constructed sole-shareholder allocation remains subject to explicit test-fixture review. |
+| 2026-07-13 | Dialogporten scope isolation | RF-1086-only system-user token issuance still succeeded with a 119-second lifetime. `digdir:dialogporten` alone and the combined request were rejected with HTTP 400, proving the client scope is not yet attached. Digdir self-service exposes the exact read-only scope; it remains uncommitted pending action-time permission confirmation. No filing API was called. |
 
 ## Current Scope State
 
@@ -74,6 +75,7 @@ other secrets must never be recorded in this register.
 | `skatteetaten:innrapporteringaksjonaerregisteroppgave` | Attached; ordinary and system-user-bound tokens issued successfully on 2026-07-13 | Test authentication and delegated system-user authorization proven; provider API flow still pending |
 | `skatteetaten:formueinntekt/skattemelding` | Attached; ordinary and system-user-bound tokens issued successfully on 2026-07-13 | Test authentication and delegated system-user authorization proven; validation and submission flow still pending |
 | `skatteetaten:innrapporteringaksjonaerregisteroppgavefilopplasting` | Attached; `Tilgang mangler` | Do not request in a token until Skatteetaten confirms whether it is current and grants access if required |
+| `digdir:dialogporten` | Not attached: isolated token request rejected with HTTP 400; the exact read-content scope is available in self-service but not saved | Attach with explicit permission-change confirmation, then verify a combined system-user token; this scope does not authorize a filing write |
 | `altinn:authentication/systemregister.write` | Attached | Runtime proven through system update and read-back |
 | `altinn:authentication/systemuser.request.read` | Attached | Runtime proven through request read-back before and after approval |
 | `altinn:authentication/systemuser.request.write` | Attached | Runtime proven through HTTP 201 request creation |
@@ -142,8 +144,10 @@ rejects the company for reasons intrinsic to its test-data setup.
    treated as source evidence of ownership.
 2. Execute the journaled TT02 RF-1086 main form, sub-form, and explicit
    confirmation flow described in `rf1086-tt02-submission-runbook.md`.
-3. Validate a minimal 2025 skattemelding payload without final submission.
-4. Execute synthetic RF-1086 and skattemelding submission flows and
+3. Verify a system-user-bound token can include `digdir:dialogporten`, then use
+   the revisioned archive action to retrieve official RF-1086 artifacts.
+4. Validate a minimal 2025 skattemelding payload without final submission.
+5. Execute synthetic RF-1086 and skattemelding submission flows and
    persist feedback, receipt, and archive references.
-5. Keep production submission disabled until the filing-specific release gates and
+6. Keep production submission disabled until the filing-specific release gates and
    human signoffs pass.

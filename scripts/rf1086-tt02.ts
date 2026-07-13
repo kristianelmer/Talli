@@ -5,19 +5,20 @@ import { inspectRf1086AuthorityProgress } from "../app/lib/rf1086-authority-orch
 import {
   loadPrivateMaskinportenKey,
   loadPrivateRf1086Tt02Preview,
+  runRf1086Tt02Archive,
   runRf1086Tt02Step,
   validateRf1086Tt02PreviewTarget,
 } from "../app/lib/rf1086-tt02-runner.ts";
 
 function usage(): never {
   throw new Error(
-    "Usage: rf1086-tt02.ts <inspect|step> --preview <private-json> --journal <private-dir> --customer-org <9 digits> [--client-id <uuid> --key-id <uuid> --private-key <pem> --execute-test] [--confirm]",
+    "Usage: rf1086-tt02.ts <inspect|step|archive> --preview <private-json> --journal <private-dir> --customer-org <9 digits> [--client-id <uuid> --key-id <uuid> --private-key <pem> --execute-test] [--confirm] [--archive <private-dir>]",
   );
 }
 
 function parseArguments(values: string[]) {
   const action = values.shift();
-  if (action !== "inspect" && action !== "step") usage();
+  if (action !== "inspect" && action !== "step" && action !== "archive") usage();
   const options = new Map<string, string | true>();
   const booleanFlags = new Set(["--execute-test", "--confirm"]);
   while (values.length) {
@@ -40,8 +41,10 @@ function parseArguments(values: string[]) {
     "--private-key",
     "--execute-test",
     "--confirm",
+    "--archive",
   ]);
   if ([...options.keys()].some((key) => !allowed.has(key))) usage();
+  if ((action !== "archive" && options.has("--archive")) || (action !== "step" && options.has("--confirm"))) usage();
   return { action, options };
 }
 
@@ -66,9 +69,23 @@ async function main() {
     return;
   }
   if (options.get("--execute-test") !== true) {
-    throw new Error("TT02 write is disabled unless --execute-test is supplied.");
+    throw new Error("TT02 external access is disabled unless --execute-test is supplied.");
   }
   const privateKeyPem = await loadPrivateMaskinportenKey(path.resolve(required(options, "--private-key")));
+  if (action === "archive") {
+    if (options.get("--confirm") === true) usage();
+    const output = await runRf1086Tt02Archive({
+      preview,
+      journal,
+      clientId: required(options, "--client-id"),
+      keyId: required(options, "--key-id"),
+      customerOrgNumber,
+      privateKeyPem,
+      archiveDirectory: path.resolve(required(options, "--archive")),
+    });
+    process.stdout.write(`${JSON.stringify({ environment: "test", archived: output }, null, 2)}\n`);
+    return;
+  }
   const output = await runRf1086Tt02Step({
     preview,
     journal,

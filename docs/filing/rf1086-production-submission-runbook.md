@@ -14,6 +14,8 @@ This runbook defines the path from local RF-1086 simulation to live submission. 
 - Skatteetaten end-user-system transition note: https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/
 - Skatteetaten setup guidance for re-established services: https://www.skatteetaten.no/samarbeidspartnere/reetablering-altinn/systemleverandor/oppkobling/
 - Altinn system-user guide: https://docs.altinn.studio/en/authorization/guides/resource-owner/system-user/
+- Dialogporten authentication: https://docs.altinn.studio/en/dialogporten/user-guides/authenticating/
+- Dialogporten dialog details: https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 - RF-1086 phase 0 map: [aksjonaerregisteroppgaven-phase-0-map.md](./aksjonaerregisteroppgaven-phase-0-map.md)
 - RF-1086 authority contract evidence: [rf1086-authority-api-contract.md](./rf1086-authority-api-contract.md)
 
@@ -43,8 +45,13 @@ The local integration seam in `holding_core.rf1086_submission` models the produc
    - `POST /{inntektsaar}/{hovedskjemaid}/1086U` per underskjema.
    - `POST /{inntektsaar}/{hovedskjemaid}/bekreft?antall_underskjema={count}`.
    - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter?page=0&size=50`.
-   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter/{dokumentid}` for one feedback artifact.
-8. Store feedback document references and official receipt/reference ids in submission state.
+   - Dialogporten `GET /api/v1/enduser/dialogs/{dialogid}` to discover
+     authorized API attachments for the confirmed party and resource.
+   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter/{dokumentid}`
+     for each allowlisted provider artifact discovered from a URL that exactly
+     matches the fixed authority host and confirmed shipment.
+8. Store content-addressed submitted XML, immutable provider artifacts, and a
+   separate manifest for each Dialogporten revision.
 
 ## Idempotency Policy
 
@@ -71,6 +78,12 @@ activation. The local TT02-only operator boundary is implemented by
 `app/lib/rf1086-tt02-runner.ts`, and `scripts/rf1086-tt02.ts`; see
 `rf1086-tt02-submission-runbook.md`. TT02 feedback/receipt evidence is still
 pending.
+
+The Dialogporten/read-archive boundary is implemented in
+`app/lib/dialogporten-client.ts` and
+`app/lib/rf1086-authority-archive.ts`. It is covered by
+`npm run test:rf1086:archive`. Production persistence and web wiring remain
+disabled.
 
 ## Failure Handling
 

@@ -43,7 +43,7 @@ Excluded live scope:
 | Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested through `2d0822a`; production journal binding remains pending |
 | Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, and checkpoint integrity | State machine and non-mutating progress inspection implemented through `2d0822a`; production persistence adapter and live wiring pending |
 | TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; synthetic payload reviewed locally and official provider write still pending |
-| Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | Simulation seam implemented; official evidence pending |
+| Feedback/receipt archive | Official references, submitted XML, authorized Dialogporten attachment ids, receipt/feedback files, and revisioned private manifest persisted | Fixed-host Dialogporten client and immutable local archive implemented/tested; `digdir:dialogporten` test scope and official artifacts pending |
 | Human signoff | Named reviewer signs production release decision | Pending |
 
 Code gate anchors:
@@ -62,6 +62,7 @@ uv run python -m unittest tests.test_rf1086 tests.test_rf1086_submission tests.t
 npm run test:rf1086:submission
 npm run test:rf1086:authority
 npm run test:rf1086:orchestration
+npm run test:rf1086:archive
 npm run test:security
 npm run test:supabase
 npm run test:backup-restore
