@@ -77,6 +77,10 @@ Current implementation:
 
 ## Browser and Artifact Boundary
 
+- Dynamic Auth, Supabase, Storage, provider, and unexpected server-action
+  diagnostics are replaced by a bounded generic message in production before
+  they enter a redirect URL. Only explicitly classified domain-validation
+  messages remain user-visible; development retains bounded diagnostics.
 - All routes receive CSP, frame-ancestor/clickjacking protection, MIME-sniffing
   protection, a restrictive permissions policy, and a strict referrer policy.
 - Production responses include one-year HSTS. `includeSubDomains` and preload
