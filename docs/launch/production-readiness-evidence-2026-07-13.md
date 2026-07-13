@@ -124,8 +124,13 @@ to launch publicly or submit live authority filings. It is not a release approva
   transaction writes the ledger entry, action, and `generated_unsigned`
   metadata; upload or persistence failures clean up unreferenced objects.
 - Dynamic provider/database diagnostics are redacted before production redirect
-  URLs. Explicitly trusted domain-validation messages remain actionable and all
-  redirect messages are bounded.
+  URLs. The only database diagnostic with a public production mapping is the
+  exact RF-1086 release-seal pair (SQLSTATE `55000` plus the fixed trigger
+  message); it becomes a fixed Norwegian retry message while code/message
+  near-misses remain generic. Server actions retain structured errors only to
+  make that allowlist decision. Explicitly trusted domain-validation messages
+  remain actionable and all redirect messages are bounded. This behavior is
+  covered by the focused action-error tests and commit `9cb501e`.
 - Sign-up preserves password bytes exactly and enforces a 12–128 character
   passphrase boundary; provider-side rate limits, CAPTCHA, SMTP, email
   confirmation, and leaked-password settings remain deployment checks.

@@ -133,6 +133,13 @@ Blocked failures:
 
 Every failure must preserve the submission state and be visible to the user/operator without silently resubmitting.
 
+While the short-lived production lease is active, ordinary workspace writes
+that would alter the sealed release state fail with SQLSTATE `55000`. The server
+redirect boundary recognizes only that exact database code/message pair and
+returns a fixed Norwegian retry message. Other database/provider diagnostics,
+including near-matches, remain redacted in production. The user can retry after
+the operation completes or the 120-second lease expires.
+
 Release state must be reloaded immediately around token acquisition and before
 transport. A cached `filing_readiness_snapshots` row is not authority to send.
 Open readiness warnings, hard review comments, blocking overrides, stale MFA,
