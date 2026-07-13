@@ -56,8 +56,8 @@ const shareholders = [
   },
 ];
 
-function readyPreview() {
-  const rendered = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+async function readyPreview() {
+  const rendered = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
   return {
     id: "12345678-1234-1234-1234-123456789abc",
     company_id: company.id,
@@ -88,12 +88,13 @@ test("blocks simulated submission without final preview confirmation", () => {
   );
 });
 
-test("prepares deterministic simulated submission calls and receipt from persisted preview", () => {
-  const first = simulateRf1086SubmissionWithPython(readyPreview(), "owner-user", {
+test("prepares deterministic simulated submission calls and receipt from persisted preview", async () => {
+  const preview = await readyPreview();
+  const first = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });
-  const retry = simulateRf1086SubmissionWithPython(readyPreview(), "owner-user", {
+  const retry = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });
@@ -108,12 +109,12 @@ test("prepares deterministic simulated submission calls and receipt from persist
   assert.deepEqual(retry.feedback_document_ids, ["sim-feedback-12345678"]);
 });
 
-test("blocks production adapter unless explicit environment gate is enabled", () => {
-  assert.throws(
-    () =>
+test("blocks production adapter unless explicit environment gate is enabled", async () => {
+  await assert.rejects(
+    async () =>
       runRf1086SubmissionAdapter({
         mode: "production",
-        preview: readyPreview(),
+        preview: await readyPreview(),
         userId: "owner-user",
         confirmations: { authorityConfirmed: true, previewConfirmed: true },
       }),
@@ -121,17 +122,18 @@ test("blocks production adapter unless explicit environment gate is enabled", ()
   );
 });
 
-test("builds stable request payload hash and idempotency key", () => {
-  const preview = readyPreview();
+test("builds stable request payload hash and idempotency key", async () => {
+  const preview = await readyPreview();
+  const comparison = await readyPreview();
 
-  assert.equal(rf1086PayloadHash(preview), rf1086PayloadHash(readyPreview()));
-  assert.equal(rf1086SubmissionIdempotencyKey(preview), rf1086SubmissionIdempotencyKey(readyPreview()));
+  assert.equal(rf1086PayloadHash(preview), rf1086PayloadHash(comparison));
+  assert.equal(rf1086SubmissionIdempotencyKey(preview), rf1086SubmissionIdempotencyKey(comparison));
   assert.match(rf1086SubmissionIdempotencyKey(preview), /^rf1086:company-id:2025:/);
 });
 
-test("builds accepted receipt metadata and immutable submitted payload references", () => {
-  const preview = readyPreview();
-  const result = simulateRf1086SubmissionWithPython(preview, "owner-user", {
+test("builds accepted receipt metadata and immutable submitted payload references", async () => {
+  const preview = await readyPreview();
+  const result = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });

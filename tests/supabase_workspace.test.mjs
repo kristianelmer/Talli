@@ -929,8 +929,8 @@ test(
     assert.ok(readOnlyOverrideError);
     assertNoBlockingFilingOverrides([persistedAdvisoryOverride]);
 
-    assert.throws(
-      () =>
+    await assert.rejects(
+      async () =>
         runRf1086SubmissionAdapter({
           mode: "production",
           preview: filingPreview,
@@ -939,7 +939,7 @@ test(
         }),
       (error) => error instanceof Rf1086ProductionAdapterDisabledError,
     );
-    const simulatedSubmission = runRf1086SubmissionAdapter({
+    const simulatedSubmission = await runRf1086SubmissionAdapter({
       mode: "simulation",
       preview: filingPreview,
       userId: ownerUser.id,
@@ -1000,7 +1000,7 @@ test(
     assert.equal(filingSubmission.submitted_payload_ref.payloadHash, submissionPayloadHash);
     assert.equal(filingSubmission.submitted_payload.hovedskjemaXml, filingPreview.hovedskjema_xml);
 
-    const retrySubmission = runRf1086SubmissionAdapter({
+    const retrySubmission = await runRf1086SubmissionAdapter({
       mode: "simulation",
       preview: filingPreview,
       userId: ownerUser.id,

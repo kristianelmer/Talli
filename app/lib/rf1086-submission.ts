@@ -1,5 +1,5 @@
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { runPythonCli } from "./python-engine.ts";
 import type { FilingPreviewRow } from "./supabase/server";
 
 export type Rf1086SubmissionResult = {
@@ -182,18 +182,18 @@ export function productionRf1086AdapterEnabled() {
   return process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER === "true";
 }
 
-export function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterRequest): Rf1086SubmissionResult {
+export async function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterRequest): Promise<Rf1086SubmissionResult> {
   if (request.mode === "production" && !productionRf1086AdapterEnabled()) {
     throw new Rf1086ProductionAdapterDisabledError();
   }
   return simulateRf1086SubmissionWithPython(request.preview, request.userId, request.confirmations);
 }
 
-export function simulateRf1086SubmissionWithPython(
+export async function simulateRf1086SubmissionWithPython(
   preview: FilingPreviewRow,
   userId: string,
   confirmations: Rf1086SubmissionConfirmations,
-): Rf1086SubmissionResult {
+): Promise<Rf1086SubmissionResult> {
   assertRf1086SimulationConfirmations(confirmations);
   if (preview.status !== "ready") {
     throw new Error("RF-1086 må være klar før simulert innsending kan arkiveres.");
@@ -202,9 +202,9 @@ export function simulateRf1086SubmissionWithPython(
     throw new Error("RF-1086 forhåndsvisning mangler hovedskjema XML.");
   }
 
-  const python = process.env.TALLI_PYTHON_BIN || "python3";
-  const result = spawnSync(python, ["-m", "holding_cli.main", "simulate-rf1086-submission", "--stdin-json"], {
-    input: JSON.stringify({
+  const result = await runPythonCli(
+    ["simulate-rf1086-submission", "--stdin-json"],
+    {
       preview_id: preview.id,
       company_id: preview.company_id,
       income_year: preview.income_year,
@@ -214,13 +214,8 @@ export function simulateRf1086SubmissionWithPython(
       user_id: userId,
       authority_confirmed: confirmations.authorityConfirmed,
       preview_confirmed: confirmations.previewConfirmed,
-    }),
-    encoding: "utf8",
-    env: process.env,
-  });
-  if (result.error) {
-    throw result.error;
-  }
+    },
+  );
   const stdout = result.stdout.trim();
   if (!stdout) {
     throw new Error(result.stderr.trim() || "RF-1086 submission simulation produced no output.");

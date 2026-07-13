@@ -640,7 +640,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
 
   let simulated;
   try {
-    simulated = runRf1086SubmissionAdapter({
+    simulated = await runRf1086SubmissionAdapter({
       mode: "simulation",
       preview,
       userId: user.id,
