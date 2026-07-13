@@ -18,6 +18,8 @@ const ownerDividendSetupFixMigrationPath =
   "supabase/migrations/20260713142000_fix_owner_dividend_setup_reference.sql";
 const rf1086CheckpointMigrationPath =
   "supabase/migrations/20260713192808_persist_rf1086_authority_checkpoints.sql";
+const rf1086ProductionLeaseMigrationPath =
+  "supabase/migrations/20260713201500_guard_rf1086_production_lease.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -171,4 +173,25 @@ test("RF-1086 authority checkpoints use service-only atomic writes and tenant-sc
   assert.match(sql, /grant execute on function public\.save_rf1086_authority_checkpoint[\s\S]*to service_role/u);
   assert.match(sql, /raise sqlstate 'PT409'/u);
   assert.doesNotMatch(sql, /grant (insert|update|delete)[^;]*to authenticated/iu);
+});
+
+test("RF-1086 production leases are service-only and freeze every release-gate source", async () => {
+  const sql = await readFile(rf1086ProductionLeaseMigrationPath, "utf8");
+
+  assert.match(sql, /create table public\.rf1086_production_leases/u);
+  assert.match(sql, /expires_at timestamptz not null/u);
+  assert.match(sql, /interval '120 seconds'/u);
+  assert.match(sql, /alter table public\.rf1086_production_leases enable row level security/u);
+  assert.match(sql, /revoke all on public\.rf1086_production_leases from public, anon, authenticated, service_role/u);
+  assert.match(sql, /create or replace function private\.acquire_rf1086_production_lease/u);
+  assert.match(sql, /create or replace function private\.release_rf1086_production_lease/u);
+  assert.match(sql, /raise sqlstate 'PT409'/u);
+  assert.match(sql, /grant execute on function public\.acquire_rf1086_production_lease[\s\S]*to service_role/u);
+  assert.match(sql, /grant execute on function public\.release_rf1086_production_lease[\s\S]*to service_role/u);
+  assert.match(sql, /opening_balance_setups/u);
+  assert.match(sql, /filing_review_comments/u);
+  assert.match(sql, /production_security_grants/u);
+  assert.match(sql, /launch_signoffs/u);
+  assert.match(sql, /RF-1086 production release is temporarily sealed/u);
+  assert.doesNotMatch(sql, /grant (select|insert|update|delete)[^;]*rf1086_production_leases[^;]*to authenticated/iu);
 });

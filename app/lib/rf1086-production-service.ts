@@ -5,6 +5,7 @@ import {
   Rf1086ProductionRunnerError,
   runRf1086ProductionStep,
 } from "./rf1086-production-runner.ts";
+import { withRf1086ProductionLease } from "./rf1086-production-lease.ts";
 import {
   loadRf1086ProductionState,
   type Rf1086ProductionStateDatabaseClient,
@@ -73,6 +74,49 @@ async function recordAuthorizedAttempt(input: {
   });
 }
 
+async function loadAuthorizedState(input: {
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
+  controlClient: Rf1086ProductionStateDatabaseClient;
+  actorId: string;
+  previewId: string;
+  confirmations: Rf1086SubmissionConfirmations;
+  now?: Date;
+}) {
+  const state = await loadRf1086ProductionState(input);
+  assertRf1086ProductionRelease(state.preview, state.release);
+  return state;
+}
+
+async function runSealedProductionStep(input: {
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
+  controlClient: Rf1086ProductionStateDatabaseClient;
+  journalClient: Rf1086SupabaseJournalClient;
+  actorId: string;
+  previewId: string;
+  confirmations: Rf1086SubmissionConfirmations;
+  accessToken: string;
+  allowConfirm?: boolean;
+  now?: Date;
+  authorityTransport?: Rf1086AuthorityTransport;
+}) {
+  const state = await loadAuthorizedState({
+    workspaceClient: input.workspaceClient,
+    controlClient: input.controlClient,
+    actorId: input.actorId,
+    previewId: input.previewId,
+    confirmations: input.confirmations,
+    ...(input.now ? { now: input.now } : {}),
+  });
+  return runRf1086ProductionStep({
+    preview: state.preview,
+    databaseClient: input.journalClient,
+    accessToken: input.accessToken,
+    release: state.release,
+    ...(input.allowConfirm === true ? { allowConfirm: true } : {}),
+    ...(input.authorityTransport ? { authorityTransport: input.authorityTransport } : {}),
+  });
+}
+
 export async function runPersistedRf1086ProductionStep(input: {
   workspaceClient: Rf1086ProductionStateDatabaseClient;
   controlClient: Rf1086ProductionStateDatabaseClient;
@@ -86,7 +130,7 @@ export async function runPersistedRf1086ProductionStep(input: {
   authorityTransport?: Rf1086AuthorityTransport;
 }) {
   assertAccessToken(input.accessToken);
-  const state = await loadRf1086ProductionState({
+  const state = await loadAuthorizedState({
     workspaceClient: input.workspaceClient,
     controlClient: input.controlClient,
     actorId: input.actorId,
@@ -94,7 +138,6 @@ export async function runPersistedRf1086ProductionStep(input: {
     confirmations: input.confirmations,
     ...(input.now ? { now: input.now } : {}),
   });
-  assertRf1086ProductionRelease(state.preview, state.release);
   await recordAuthorizedAttempt({
     workspaceClient: input.workspaceClient,
     companyId: state.preview.company_id,
@@ -102,13 +145,11 @@ export async function runPersistedRf1086ProductionStep(input: {
     previewId: state.preview.id,
     allowConfirm: input.allowConfirm === true,
   });
-  return runRf1086ProductionStep({
-    preview: state.preview,
-    databaseClient: input.journalClient,
-    accessToken: input.accessToken,
-    release: state.release,
-    ...(input.allowConfirm === true ? { allowConfirm: true } : {}),
-    ...(input.authorityTransport ? { authorityTransport: input.authorityTransport } : {}),
+  return withRf1086ProductionLease({
+    client: input.journalClient,
+    previewId: state.preview.id,
+    actorId: input.actorId,
+    operation: () => runSealedProductionStep(input),
   });
 }
 
@@ -130,7 +171,7 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
   now?: Date;
   authorityTransport?: Rf1086AuthorityTransport;
 }) {
-  const state = await loadRf1086ProductionState({
+  const state = await loadAuthorizedState({
     workspaceClient: input.workspaceClient,
     controlClient: input.controlClient,
     actorId: input.actorId,
@@ -138,7 +179,6 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
     confirmations: input.confirmations,
     ...(input.now ? { now: input.now } : {}),
   });
-  assertRf1086ProductionRelease(state.preview, state.release);
   await recordSecurityAudit({
     workspaceClient: input.workspaceClient,
     companyId: state.company.id,
@@ -146,29 +186,51 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
     action: "rf1086_production_token_authorized",
     message: `RF-1086 production token request authorized for preview ${state.preview.id}.`,
   });
-  const token = await issueMaskinportenSystemUserToken({
-    environment: "production",
-    clientId: input.maskinporten.clientId,
-    keyId: input.maskinporten.keyId,
-    customerOrgNumber: state.company.org_number,
-    scopes: [RF1086_PRODUCTION_SCOPE],
-    privateKeyPem: input.maskinporten.privateKeyPem,
-    ...(input.now ? { nowSeconds: Math.floor(input.now.getTime() / 1_000) } : {}),
-    ...(input.maskinporten.fetchImplementation
-      ? { fetchImplementation: input.maskinporten.fetchImplementation }
-      : {}),
-    ...(input.maskinporten.timeoutMs ? { timeoutMs: input.maskinporten.timeoutMs } : {}),
-  });
-  return runPersistedRf1086ProductionStep({
-    workspaceClient: input.workspaceClient,
-    controlClient: input.controlClient,
-    journalClient: input.journalClient,
+  return withRf1086ProductionLease({
+    client: input.journalClient,
+    previewId: state.preview.id,
     actorId: input.actorId,
-    previewId: input.previewId,
-    confirmations: input.confirmations,
-    accessToken: token.accessToken,
-    ...(input.allowConfirm === true ? { allowConfirm: true } : {}),
-    ...(input.now ? { now: input.now } : {}),
-    ...(input.authorityTransport ? { authorityTransport: input.authorityTransport } : {}),
+    operation: async () => {
+      const sealedState = await loadAuthorizedState({
+        workspaceClient: input.workspaceClient,
+        controlClient: input.controlClient,
+        actorId: input.actorId,
+        previewId: input.previewId,
+        confirmations: input.confirmations,
+        ...(input.now ? { now: input.now } : {}),
+      });
+      const token = await issueMaskinportenSystemUserToken({
+        environment: "production",
+        clientId: input.maskinporten.clientId,
+        keyId: input.maskinporten.keyId,
+        customerOrgNumber: sealedState.company.org_number,
+        scopes: [RF1086_PRODUCTION_SCOPE],
+        privateKeyPem: input.maskinporten.privateKeyPem,
+        ...(input.now ? { nowSeconds: Math.floor(input.now.getTime() / 1_000) } : {}),
+        ...(input.maskinporten.fetchImplementation
+          ? { fetchImplementation: input.maskinporten.fetchImplementation }
+          : {}),
+        ...(input.maskinporten.timeoutMs ? { timeoutMs: input.maskinporten.timeoutMs } : {}),
+      });
+      await recordAuthorizedAttempt({
+        workspaceClient: input.workspaceClient,
+        companyId: sealedState.preview.company_id,
+        actorId: input.actorId,
+        previewId: sealedState.preview.id,
+        allowConfirm: input.allowConfirm === true,
+      });
+      return runSealedProductionStep({
+        workspaceClient: input.workspaceClient,
+        controlClient: input.controlClient,
+        journalClient: input.journalClient,
+        actorId: input.actorId,
+        previewId: input.previewId,
+        confirmations: input.confirmations,
+        accessToken: token.accessToken,
+        ...(input.allowConfirm === true ? { allowConfirm: true } : {}),
+        ...(input.now ? { now: input.now } : {}),
+        ...(input.authorityTransport ? { authorityTransport: input.authorityTransport } : {}),
+      });
+    },
   });
 }

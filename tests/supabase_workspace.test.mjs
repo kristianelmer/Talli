@@ -32,6 +32,7 @@ import {
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import { createRf1086AuthorityClient } from "../app/lib/rf1086-authority-client.ts";
 import { runNextRf1086AuthorityStep } from "../app/lib/rf1086-authority-orchestration.ts";
+import { withRf1086ProductionLease } from "../app/lib/rf1086-production-lease.ts";
 import { loadRf1086ProductionState } from "../app/lib/rf1086-production-state.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
@@ -192,6 +193,7 @@ test(
   const grantAdmin = await signIn(grantAdminUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
   const launchSignoffKey = "support_rollback";
+  const rf1086LaunchSignoffKey = "rf1086_authority";
   let companyId;
   const storageKeysToCleanup = [];
 
@@ -853,6 +855,76 @@ test(
         error instanceof Rf1086SupabaseJournalError &&
         error.code === "rf1086_supabase_journal_revision_conflict",
     );
+
+    await admin.from("launch_signoff_events").delete().eq("signoff_key", rf1086LaunchSignoffKey);
+    await admin.from("launch_signoffs").delete().eq("key", rf1086LaunchSignoffKey);
+    const { error: ownerLeaseRpcError } = await owner.rpc("acquire_rf1086_production_lease", {
+      p_preview_id: filingPreview.id,
+      p_actor_id: ownerUser.id,
+    });
+    assert.ok(ownerLeaseRpcError);
+
+    await withRf1086ProductionLease({
+      client: admin,
+      previewId: filingPreview.id,
+      actorId: ownerUser.id,
+      operation: async () => {
+        const { error: concurrentLeaseError } = await admin.rpc("acquire_rf1086_production_lease", {
+          p_preview_id: filingPreview.id,
+          p_actor_id: ownerUser.id,
+        });
+        assert.equal(concurrentLeaseError?.code, "PT409");
+
+        const { data: ownerLeaseRows, error: ownerLeaseReadError } = await owner
+          .from("rf1086_production_leases")
+          .select("preview_id")
+          .eq("preview_id", filingPreview.id);
+        assert.equal(ownerLeaseRows, null);
+        assert.ok(ownerLeaseReadError);
+
+        const { error: sealedAnnualDataError } = await owner
+          .from("annual_data")
+          .update({
+            no_activity_confirmed: true,
+            updated_by: ownerUser.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", annualData.id);
+        assert.equal(sealedAnnualDataError?.code, "55000");
+
+        const { error: sealedReviewError } = await owner.from("filing_review_comments").insert({
+          preview_id: filingPreview.id,
+          company_id: companyId,
+          target: "rf1086_preview",
+          severity: "hard_block",
+          body: "Must not race a provider call.",
+          created_by: ownerUser.id,
+        });
+        assert.equal(sealedReviewError?.code, "55000");
+
+        const { error: sealedSignoffError } = await grantAdmin.from("launch_signoffs").insert({
+          key: rf1086LaunchSignoffKey,
+          status: "pending",
+          reviewer: "",
+          reviewed_at: new Date().toISOString(),
+          evidence_link: "",
+          decision: "",
+          recorded_by: grantAdminUser.id,
+          updated_at: new Date().toISOString(),
+        });
+        assert.equal(sealedSignoffError?.code, "55000");
+      },
+    });
+
+    const { error: unsealedAnnualDataError } = await owner
+      .from("annual_data")
+      .update({
+        no_activity_confirmed: true,
+        updated_by: ownerUser.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", annualData.id);
+    assert.ifError(unsealedAnnualDataError);
 
     assert.equal(productionAuthorityGate([], "aksjonaerregisteroppgaven").status, "missing_authority_confirmation");
     const { data: authorityPermission, error: authorityPermissionError } = await owner
@@ -2647,6 +2719,8 @@ test(
       });
     assert.ok(readOnlyUploadError);
   } finally {
+    await admin.from("launch_signoff_events").delete().eq("signoff_key", rf1086LaunchSignoffKey);
+    await admin.from("launch_signoffs").delete().eq("key", rf1086LaunchSignoffKey);
     await admin.from("launch_signoff_events").delete().eq("signoff_key", launchSignoffKey);
     await admin.from("launch_signoffs").delete().eq("key", launchSignoffKey);
     if (storageKeysToCleanup.length) {

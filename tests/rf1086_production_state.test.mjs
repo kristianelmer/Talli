@@ -266,6 +266,7 @@ function memorySupabase(seed, errors = {}, operationEvents = []) {
   const tables = [];
   const auditRows = [];
   let checkpointRow = null;
+  let activeLeaseId = null;
   class Query {
     constructor(table) {
       this.table = table;
@@ -318,6 +319,19 @@ function memorySupabase(seed, errors = {}, operationEvents = []) {
     },
     async rpc(name, parameters) {
       operationEvents.push(`rpc:${name}`);
+      if (name === "acquire_rf1086_production_lease") {
+        assert.equal(parameters.p_preview_id, preview.id);
+        assert.equal(parameters.p_actor_id, actorId);
+        if (activeLeaseId) return { data: null, error: { code: "PT409" } };
+        activeLeaseId = "a2345678-1234-4234-9234-123456789abc";
+        return { data: activeLeaseId, error: null };
+      }
+      if (name === "release_rf1086_production_lease") {
+        assert.equal(parameters.p_preview_id, preview.id);
+        assert.equal(parameters.p_lease_id, activeLeaseId);
+        activeLeaseId = null;
+        return { data: true, error: null };
+      }
       assert.equal(name, "save_rf1086_authority_checkpoint");
       const currentRevision = checkpointRow?.revision ?? null;
       if (currentRevision !== parameters.p_expected_revision) {
@@ -548,8 +562,19 @@ test("derives the production token customer and fixed scope from authoritative s
   assert.equal(grantPayload.aud, "https://maskinporten.no/");
   assert.equal(grantPayload.scope, "skatteetaten:innrapporteringaksjonaerregisteroppgave");
   assert.equal(grantPayload.authorization_details[0].systemuser_org.ID, "0192:310279617");
+  for (const event of [
+    "rpc:acquire_rf1086_production_lease",
+    "maskinporten-transport",
+    "authority-transport",
+    "rpc:release_rf1086_production_lease",
+  ]) {
+    assert.notEqual(operationEvents.indexOf(event), -1);
+  }
   assert.ok(operationEvents.indexOf("insert:audit_events") < operationEvents.indexOf("maskinporten-transport"));
   assert.ok(operationEvents.lastIndexOf("insert:audit_events") < operationEvents.indexOf("authority-transport"));
+  assert.ok(operationEvents.indexOf("rpc:acquire_rf1086_production_lease") < operationEvents.indexOf("maskinporten-transport"));
+  assert.ok(operationEvents.indexOf("maskinporten-transport") < operationEvents.indexOf("authority-transport"));
+  assert.ok(operationEvents.indexOf("authority-transport") < operationEvents.indexOf("rpc:release_rf1086_production_lease"));
   assert.deepEqual(databaseClient.auditRows().map((row) => row.action), [
     "rf1086_production_token_authorized",
     "rf1086_production_step_authorized",
