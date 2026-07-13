@@ -8,8 +8,17 @@ import {
   createAnnualAccountsAltinnTestClient,
   type AnnualAccountsAltinnTransport,
 } from "./annual-accounts-altinn-client.ts";
-import { verifyAnnualAccountsSignedInstance } from "./annual-accounts-completion.ts";
+import {
+  assertAnnualAccountsCompletionEvidence,
+  verifyAnnualAccountsSignedInstance,
+} from "./annual-accounts-completion.ts";
 import type { AnnualAccountsCompletionFileStore } from "./annual-accounts-completion-file-store.ts";
+import { verifyAnnualAccountsDialogEvidence } from "./annual-accounts-dialog-evidence.ts";
+import {
+  DIALOGPORTEN_MASKINPORTEN_SCOPE,
+  createDialogportenClient,
+  type DialogportenTransport,
+} from "./dialogporten-client.ts";
 import {
   inspectAnnualAccountsProgress,
   runNextAnnualAccountsStep,
@@ -296,5 +305,61 @@ export async function verifyAnnualAccountsTt02SignedInstance(input: {
     client,
   });
   const stored = await input.completionStore.save(evidence);
+  return { summary, evidence, stored };
+}
+
+export async function verifyAnnualAccountsTt02DialogEvidence(input: {
+  loaded: LoadedAnnualAccountsTt02Input;
+  completionStore: Pick<AnnualAccountsCompletionFileStore, "load" | "saveDialog">;
+  clientId: string;
+  keyId: string;
+  customerOrgNumber: string;
+  incomeYear: number;
+  privateKeyPem: string;
+  tokenFetchImplementation?: typeof fetch;
+  dialogportenTransport?: DialogportenTransport;
+}) {
+  const summary = validateAnnualAccountsTt02Target(
+    input.loaded,
+    input.customerOrgNumber,
+    input.incomeYear,
+  );
+  const completionEvidence = await input.completionStore.load(input.loaded.documents.operationId);
+  if (completionEvidence) assertAnnualAccountsCompletionEvidence(completionEvidence);
+  if (
+    !completionEvidence ||
+    completionEvidence.environment !== "test" ||
+    completionEvidence.operationId !== input.loaded.documents.operationId ||
+    completionEvidence.organizationNumber !== summary.organizationNumber ||
+    completionEvidence.incomeYear !== summary.incomeYear ||
+    completionEvidence.mainFormHash !== summary.mainFormHash ||
+    completionEvidence.accountsFormHash !== summary.accountsFormHash
+  ) {
+    throw runnerError(
+      "annual_accounts_tt02_dialog_not_ready",
+      "Annual-accounts Dialogporten verification requires matching stored signed-instance evidence.",
+    );
+  }
+
+  const token = await issueMaskinportenTestSystemUserToken({
+    clientId: input.clientId,
+    keyId: input.keyId,
+    customerOrgNumber: input.customerOrgNumber,
+    scopes: [DIALOGPORTEN_MASKINPORTEN_SCOPE],
+    privateKeyPem: input.privateKeyPem,
+    ...(input.tokenFetchImplementation
+      ? { fetchImplementation: input.tokenFetchImplementation }
+      : {}),
+  });
+  const client = createDialogportenClient({
+    environment: "test",
+    accessToken: token.accessToken,
+    ...(input.dialogportenTransport ? { transport: input.dialogportenTransport } : {}),
+  });
+  const evidence = await verifyAnnualAccountsDialogEvidence({
+    completionEvidence,
+    client,
+  });
+  const stored = await input.completionStore.saveDialog(evidence);
   return { summary, evidence, stored };
 }

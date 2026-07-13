@@ -11,7 +11,9 @@ const dialogId = "0193d51a-ec30-7d58-b727-6ce65964d3d4";
 const transmissionId = "0193d51a-ec30-7d58-b727-6ce65964d3d5";
 const attachmentId = "0193d51a-ec30-7d58-b727-6ce65964d3d6";
 const urlId = "0193d51a-ec30-7d58-b727-6ce65964d3d7";
+const annualInstanceGuid = "232c5390-9479-4506-a266-9890d7287bfb";
 const resource = "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave";
+const annualResourceId = "app_brg_aarsregnskap";
 
 function response(value, status = 200, contentType = "application/json") {
   return {
@@ -81,6 +83,129 @@ test("uses the fixed TT02 dialog endpoint and returns bounded archive metadata",
   assert.equal(result.id, dialogId);
   assert.equal(result.transmissions[0].attachments[0].urls[0].consumerType, "Api");
   assert.doesNotMatch(JSON.stringify(result), /must-not-be-returned|short-lived-system-user-token/u);
+});
+
+test("resolves an Altinn app instance to its dialog without retaining localized or authorization data", async () => {
+  let request;
+  const instanceRef = `urn:altinn:instance-id:500700/${annualInstanceGuid}`;
+  const client = createDialogportenClient({
+    environment: "test",
+    accessToken: "short-lived-system-user-token",
+    transport: async (value) => {
+      request = value;
+      return response({
+        dialogId,
+        instanceRef,
+        party: "urn:altinn:organization:identifier-no:310279617",
+        title: [{ languageCode: "nb", value: "Confidential provider title" }],
+        serviceResource: {
+          id: annualResourceId,
+          name: [{ languageCode: "nb", value: "Årsregnskap" }],
+          minimumAuthenticationLevel: 3,
+          isDelegable: true,
+        },
+        serviceOwner: {
+          code: "brg",
+          orgNumber: "974760673",
+          name: [{ languageCode: "nb", value: "Brønnøysundregistrene" }],
+        },
+        authorizationEvidence: {
+          currentAuthenticationLevel: 3,
+          viaResourceDelegation: true,
+          evidence: [{ grantType: "Resource", subject: "private authorization path" }],
+        },
+      });
+    },
+  });
+
+  const result = await client.lookupDialogByInstance({
+    instance: { ownerPartyId: "500700", instanceGuid: annualInstanceGuid },
+    expectedPartyOrgNumber: "310279617",
+    expectedServiceResourceId: annualResourceId,
+  });
+
+  assert.equal(request.method, "GET");
+  assert.equal(
+    request.url,
+    `${DIALOGPORTEN_BASE_URLS.test}/dialoglookup?instanceRef=${encodeURIComponent(instanceRef)}`,
+  );
+  assert.deepEqual(result, {
+    dialogId,
+    instanceRef,
+    party: "urn:altinn:organization:identifier-no:310279617",
+    serviceResourceId: annualResourceId,
+    serviceOwnerCode: "brg",
+  });
+  assert.doesNotMatch(JSON.stringify(result), /Confidential|private authorization|Brønnøysundregistrene/u);
+});
+
+test("rejects instance lookup responses for another instance, party, or service resource", async () => {
+  const instanceRef = `urn:altinn:instance-id:500700/${annualInstanceGuid}`;
+  const base = {
+    dialogId,
+    instanceRef,
+    party: "urn:altinn:organization:identifier-no:310279617",
+    serviceResource: { id: annualResourceId },
+    serviceOwner: { code: "brg" },
+  };
+  const variants = [
+    { ...base, instanceRef: `urn:altinn:instance-id:500701/${annualInstanceGuid}` },
+    { ...base, party: "urn:altinn:organization:identifier-no:930835978" },
+    { ...base, serviceResource: { id: "other-resource" } },
+    { ...base, dialogId: "not-a-uuid" },
+  ];
+
+  for (const value of variants) {
+    const client = createDialogportenClient({
+      environment: "test",
+      accessToken: "short-lived-system-user-token",
+      transport: async () => response(value),
+    });
+    await assert.rejects(
+      client.lookupDialogByInstance({
+        instance: { ownerPartyId: "500700", instanceGuid: annualInstanceGuid },
+        expectedPartyOrgNumber: "310279617",
+        expectedServiceResourceId: annualResourceId,
+      }),
+      (error) => error instanceof DialogportenClientError && error.code === "dialogporten_response_invalid",
+    );
+  }
+});
+
+test("rejects invalid instance lookup input before transport", async () => {
+  let calls = 0;
+  const client = createDialogportenClient({
+    environment: "test",
+    accessToken: "short-lived-system-user-token",
+    transport: async () => {
+      calls += 1;
+      return response({});
+    },
+  });
+
+  for (const input of [
+    {
+      instance: { ownerPartyId: "party", instanceGuid: annualInstanceGuid },
+      expectedPartyOrgNumber: "310279617",
+      expectedServiceResourceId: annualResourceId,
+    },
+    {
+      instance: { ownerPartyId: "500700", instanceGuid: "not-a-uuid" },
+      expectedPartyOrgNumber: "310279617",
+      expectedServiceResourceId: annualResourceId,
+    },
+    {
+      instance: { ownerPartyId: "500700", instanceGuid: annualInstanceGuid },
+      expectedPartyOrgNumber: "310279617",
+      expectedServiceResourceId: "urn:altinn:resource:app_brg_aarsregnskap",
+    },
+  ]) {
+    await assert.rejects(
+      client.lookupDialogByInstance(input),
+      (error) => error instanceof DialogportenClientError && error.code === "dialogporten_input_invalid",
+    );
+  }
+  assert.equal(calls, 0);
 });
 
 test("rejects cross-party, cross-resource, malformed, and oversized dialog responses", async () => {

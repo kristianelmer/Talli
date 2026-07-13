@@ -10,6 +10,7 @@ import {
   loadPrivateAnnualAccountsTt02Input,
   runAnnualAccountsTt02Step,
   validateAnnualAccountsTt02Target,
+  verifyAnnualAccountsTt02DialogEvidence,
   verifyAnnualAccountsTt02SignedInstance,
 } from "../app/lib/annual-accounts-tt02-runner.ts";
 
@@ -91,6 +92,7 @@ function memoryJournal() {
 
 function memoryCompletionStore() {
   let saved = null;
+  let dialogSaved = null;
   return {
     async load() {
       return saved === null ? null : structuredClone(saved);
@@ -98,6 +100,13 @@ function memoryCompletionStore() {
     async save(evidence) {
       saved = structuredClone(evidence);
       return { evidenceSha256: "c".repeat(64), alreadyStored: false };
+    },
+    async loadDialog() {
+      return dialogSaved === null ? null : structuredClone(dialogSaved);
+    },
+    async saveDialog(evidence) {
+      dialogSaved = structuredClone(evidence);
+      return { evidenceSha256: "d".repeat(64), alreadyStored: false };
     },
   };
 }
@@ -410,6 +419,153 @@ test("checks the locked checkpoint before issuing a post-signature read token", 
       },
     }),
     /locked for personal signing/u,
+  );
+  assert.equal(tokenCalls, 0);
+});
+
+test("resolves and stores the completed annual-account dialog with Dialogporten scope only", async () => {
+  const { filePath } = await privateInputFixture();
+  const loaded = await loadPrivateAnnualAccountsTt02Input(filePath);
+  const completionStore = memoryCompletionStore();
+  await completionStore.save({
+    schemaVersion: 1,
+    environment: "test",
+    operationId,
+    organizationNumber: "310279617",
+    incomeYear: 2025,
+    instance: { ownerPartyId: "500700", instanceGuid },
+    completedAt: "2026-07-13T12:42:31.123Z",
+    mainFormId,
+    accountsFormId,
+    signatureDataElementId: signatureId,
+    mainFormHash: loaded.summary.mainFormHash,
+    accountsFormHash: loaded.summary.accountsFormHash,
+  });
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  let grantPayload;
+  const tokenFetchImplementation = async (_url, init) => {
+    const assertion = new URLSearchParams(init.body).get("assertion");
+    grantPayload = JSON.parse(Buffer.from(assertion.split(".")[1], "base64url").toString("utf8"));
+    return new Response(
+      JSON.stringify({
+        access_token: "short-lived-maskinporten-token",
+        token_type: "Bearer",
+        expires_in: 120,
+        scope: "digdir:dialogporten",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+  const dialogId = "0193d51a-ec30-7d58-b727-6ce65964d3d4";
+  const requests = [];
+  const responses = [
+    {
+      dialogId,
+      instanceRef: `urn:altinn:instance-id:500700/${instanceGuid}`,
+      party: "urn:altinn:organization:identifier-no:310279617",
+      serviceResource: { id: "app_brg_aarsregnskap" },
+      serviceOwner: { code: "brg" },
+    },
+    {
+      id: dialogId,
+      revision: "12345678-1234-4234-9234-123456789abd",
+      org: "brg",
+      serviceResource: "urn:altinn:resource:app_brg_aarsregnskap",
+      party: "urn:altinn:organization:identifier-no:310279617",
+      status: "Completed",
+      createdAt: "2026-07-13T12:00:00Z",
+      updatedAt: "2026-07-13T12:43:00Z",
+      transmissions: [],
+    },
+  ];
+
+  const output = await verifyAnnualAccountsTt02DialogEvidence({
+    loaded,
+    completionStore,
+    clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+    keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+    customerOrgNumber: "310279617",
+    incomeYear: 2025,
+    privateKeyPem,
+    tokenFetchImplementation,
+    dialogportenTransport: async (request) => {
+      requests.push(request);
+      return {
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: new TextEncoder().encode(JSON.stringify(responses.shift())),
+      };
+    },
+  });
+
+  assert.equal(grantPayload.scope, "digdir:dialogporten");
+  assert.equal(output.evidence.dialogId, dialogId);
+  assert.deepEqual(output.stored, { evidenceSha256: "d".repeat(64), alreadyStored: false });
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every((request) => request.method === "GET"));
+  assert.doesNotMatch(JSON.stringify(output), /short-lived|BEGIN PRIVATE KEY|<melding>|post@example/iu);
+});
+
+test("requires stored signed-instance evidence before issuing a Dialogporten token", async () => {
+  const { filePath } = await privateInputFixture();
+  const loaded = await loadPrivateAnnualAccountsTt02Input(filePath);
+  let tokenCalls = 0;
+  await assert.rejects(
+    verifyAnnualAccountsTt02DialogEvidence({
+      loaded,
+      completionStore: memoryCompletionStore(),
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2025,
+      privateKeyPem: "not-opened-before-evidence-check",
+      tokenFetchImplementation: async () => {
+        tokenCalls += 1;
+        throw new Error("must not issue token");
+      },
+    }),
+    /signed-instance evidence/u,
+  );
+  assert.equal(tokenCalls, 0);
+});
+
+test("rejects over-specified signed-instance evidence before issuing a Dialogporten token", async () => {
+  const { filePath } = await privateInputFixture();
+  const loaded = await loadPrivateAnnualAccountsTt02Input(filePath);
+  let tokenCalls = 0;
+  const completionStore = memoryCompletionStore();
+  completionStore.load = async () => ({
+    schemaVersion: 1,
+    environment: "test",
+    operationId,
+    organizationNumber: "310279617",
+    incomeYear: 2025,
+    instance: { ownerPartyId: "500700", instanceGuid },
+    completedAt: "2026-07-13T12:42:31.123Z",
+    mainFormId,
+    accountsFormId,
+    signatureDataElementId: signatureId,
+    mainFormHash: loaded.summary.mainFormHash,
+    accountsFormHash: loaded.summary.accountsFormHash,
+    accessToken: "must-not-be-accepted",
+  });
+
+  await assert.rejects(
+    verifyAnnualAccountsTt02DialogEvidence({
+      loaded,
+      completionStore,
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2025,
+      privateKeyPem: "not-opened-before-evidence-check",
+      tokenFetchImplementation: async () => {
+        tokenCalls += 1;
+        throw new Error("must not issue token");
+      },
+    }),
+    /does not match the locked instance/iu,
   );
   assert.equal(tokenCalls, 0);
 });

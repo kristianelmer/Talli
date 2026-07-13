@@ -8,18 +8,24 @@ import {
   loadPrivateAnnualAccountsTt02Input,
   runAnnualAccountsTt02Step,
   validateAnnualAccountsTt02Target,
+  verifyAnnualAccountsTt02DialogEvidence,
   verifyAnnualAccountsTt02SignedInstance,
 } from "../app/lib/annual-accounts-tt02-runner.ts";
 
 function usage(): never {
   throw new Error(
-    "Usage: annual-accounts-tt02.ts <inspect|step|verify-signed> --input <private-json> --journal <private-dir> --customer-org <9 digits> --income-year <year> [--client-id <uuid> --key-id <uuid> --private-key <pem> --execute-test] [--lock for step only]",
+    "Usage: annual-accounts-tt02.ts <inspect|step|verify-signed|verify-dialog> --input <private-json> --journal <private-dir> --customer-org <9 digits> --income-year <year> [--client-id <uuid> --key-id <uuid> --private-key <pem> --execute-test] [--lock for step only]",
   );
 }
 
 function parseArguments(values: string[]) {
   const action = values.shift();
-  if (action !== "inspect" && action !== "step" && action !== "verify-signed") usage();
+  if (
+    action !== "inspect" &&
+    action !== "step" &&
+    action !== "verify-signed" &&
+    action !== "verify-dialog"
+  ) usage();
   const options = new Map<string, string | true>();
   const booleanFlags = new Set(["--execute-test", "--lock"]);
   while (values.length) {
@@ -90,15 +96,15 @@ async function main() {
       path.resolve(required(options, "--private-key")),
     ),
   };
+  const completionStore = createAnnualAccountsCompletionFileStore(journalPath);
   const output = action === "verify-signed"
-    ? await verifyAnnualAccountsTt02SignedInstance({
-      ...credentials,
-      completionStore: createAnnualAccountsCompletionFileStore(journalPath),
-    })
-    : await runAnnualAccountsTt02Step({
-      ...credentials,
-      allowLock: options.get("--lock") === true,
-    });
+    ? await verifyAnnualAccountsTt02SignedInstance({ ...credentials, completionStore })
+    : action === "verify-dialog"
+      ? await verifyAnnualAccountsTt02DialogEvidence({ ...credentials, completionStore })
+      : await runAnnualAccountsTt02Step({
+        ...credentials,
+        allowLock: options.get("--lock") === true,
+      });
   process.stdout.write(`${JSON.stringify({ environment: "test", ...output }, null, 2)}\n`);
 }
 

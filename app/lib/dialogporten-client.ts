@@ -1,5 +1,8 @@
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const ORG_NUMBER_PATTERN = /^\d{9}$/u;
+const PARTY_ID_PATTERN = /^\d{1,20}$/u;
+const RESOURCE_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,199}$/u;
+const RESOURCE_URN_PATTERN = /^urn:altinn:resource:[a-z0-9][a-z0-9._-]{0,199}$/u;
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_TRANSMISSIONS = 10_000;
@@ -77,6 +80,17 @@ export type DialogportenTransport = (request: DialogportenTransportRequest) => P
 
 export type DialogportenClient = {
   readonly environment: DialogportenEnvironment;
+  lookupDialogByInstance(input: {
+    instance: { ownerPartyId: string; instanceGuid: string };
+    expectedPartyOrgNumber: string;
+    expectedServiceResourceId: string;
+  }): Promise<{
+    dialogId: string;
+    instanceRef: string;
+    party: string;
+    serviceResourceId: string;
+    serviceOwnerCode: string;
+  }>;
   getDialog(input: {
     dialogId: string;
     expectedPartyOrgNumber: string;
@@ -217,6 +231,39 @@ function parseDialog(
   }
 }
 
+function parseDialogLookup(
+  value: unknown,
+  expected: {
+    instanceRef: string;
+    party: string;
+    serviceResourceId: string;
+  },
+) {
+  try {
+    const item = assertRecord(value);
+    const serviceResource = assertRecord(item.serviceResource);
+    const serviceOwner = assertRecord(item.serviceOwner);
+    const serviceOwnerCode = assertBoundedString(serviceOwner.code, 100);
+    if (
+      item.instanceRef !== expected.instanceRef ||
+      item.party !== expected.party ||
+      serviceResource.id !== expected.serviceResourceId ||
+      !/^[a-z0-9][a-z0-9._-]{0,99}$/u.test(serviceOwnerCode)
+    ) {
+      throw new Error("invalid");
+    }
+    return {
+      dialogId: assertUuid(item.dialogId, "Dialogporten dialog ID"),
+      instanceRef: expected.instanceRef,
+      party: expected.party,
+      serviceResourceId: expected.serviceResourceId,
+      serviceOwnerCode,
+    };
+  } catch {
+    throw clientError("dialogporten_response_invalid", "Dialogporten returned an invalid dialog lookup response.");
+  }
+}
+
 async function readBoundedBody(response: Response, maximum: number) {
   if (!response.body) return new Uint8Array();
   const reader = response.body.getReader();
@@ -295,8 +342,80 @@ export function createDialogportenClient(options: {
   const transport = options.transport ?? createFetchDialogportenTransport();
   const baseUrl = DIALOGPORTEN_BASE_URLS[options.environment];
 
+  async function requestJson(url: string) {
+    let response: DialogportenTransportResponse;
+    try {
+      response = await transport({
+        method: "GET",
+        url,
+        headers: {
+          Authorization: `Bearer ${options.accessToken}`,
+          Accept: "application/json",
+          "Accept-Language": "nb",
+        },
+        timeoutMs,
+        maxResponseBytes,
+      });
+    } catch (error) {
+      if (error instanceof DialogportenClientError) throw error;
+      throw clientError("dialogporten_transport_failed", "Dialogporten request failed before a response was received.", true);
+    }
+    if (
+      !response ||
+      !Number.isSafeInteger(response.status) ||
+      !response.headers ||
+      !(response.body instanceof Uint8Array)
+    ) {
+      throw clientError("dialogporten_transport_invalid", "Dialogporten transport returned an invalid response.", true);
+    }
+    if (response.body.byteLength > maxResponseBytes) {
+      throw clientError("dialogporten_response_too_large", "Dialogporten response exceeded the configured limit.", true);
+    }
+    if (response.status !== 200) {
+      const retryable = [401, 408, 425, 429, 503].includes(response.status) || response.status >= 500;
+      throw clientError(
+        `dialogporten_http_${response.status}`,
+        `Dialogporten request failed (${response.status}).`,
+        retryable,
+        response.status,
+      );
+    }
+    const contentType = Object.entries(response.headers).find(([key]) => key.toLowerCase() === "content-type")?.[1]
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (contentType !== "application/json") {
+      throw clientError("dialogporten_response_invalid", "Dialogporten returned an invalid JSON response.");
+    }
+    try {
+      return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(response.body)) as unknown;
+    } catch {
+      throw clientError("dialogporten_response_invalid", "Dialogporten returned an invalid JSON response.");
+    }
+  }
+
   return {
     environment: options.environment,
+    async lookupDialogByInstance(input) {
+      if (
+        !input?.instance ||
+        typeof input.instance !== "object" ||
+        !PARTY_ID_PATTERN.test(input.instance.ownerPartyId) ||
+        !UUID_PATTERN.test(input.instance.instanceGuid) ||
+        !ORG_NUMBER_PATTERN.test(input.expectedPartyOrgNumber) ||
+        !RESOURCE_ID_PATTERN.test(input.expectedServiceResourceId)
+      ) {
+        throw clientError("dialogporten_input_invalid", "Dialogporten instance lookup input is invalid.");
+      }
+      const instanceRef = `urn:altinn:instance-id:${input.instance.ownerPartyId}/${input.instance.instanceGuid}`;
+      const party = `urn:altinn:organization:identifier-no:${input.expectedPartyOrgNumber}`;
+      const value = await requestJson(`${baseUrl}/dialoglookup?instanceRef=${encodeURIComponent(instanceRef)}`);
+      return parseDialogLookup(value, {
+        instanceRef,
+        party,
+        serviceResourceId: input.expectedServiceResourceId,
+      });
+    },
     async getDialog(input: { dialogId: string; expectedPartyOrgNumber: string; expectedServiceResource: string }) {
       const dialogId = assertUuid(input.dialogId, "Dialogporten dialog ID");
       if (!ORG_NUMBER_PATTERN.test(input.expectedPartyOrgNumber)) {
@@ -304,60 +423,11 @@ export function createDialogportenClient(options: {
       }
       if (
         typeof input.expectedServiceResource !== "string" ||
-        !/^urn:altinn:resource:[a-z0-9][a-z0-9._-]{0,199}$/u.test(input.expectedServiceResource)
+        !RESOURCE_URN_PATTERN.test(input.expectedServiceResource)
       ) {
         throw clientError("dialogporten_input_invalid", "Dialogporten expected service resource is invalid.");
       }
-      let response: DialogportenTransportResponse;
-      try {
-        response = await transport({
-          method: "GET",
-          url: `${baseUrl}/dialogs/${dialogId}`,
-          headers: {
-            Authorization: `Bearer ${options.accessToken}`,
-            Accept: "application/json",
-            "Accept-Language": "nb",
-          },
-          timeoutMs,
-          maxResponseBytes,
-        });
-      } catch (error) {
-        if (error instanceof DialogportenClientError) throw error;
-        throw clientError("dialogporten_transport_failed", "Dialogporten request failed before a response was received.", true);
-      }
-      if (
-        !response ||
-        !Number.isSafeInteger(response.status) ||
-        !response.headers ||
-        !(response.body instanceof Uint8Array)
-      ) {
-        throw clientError("dialogporten_transport_invalid", "Dialogporten transport returned an invalid response.", true);
-      }
-      if (response.body.byteLength > maxResponseBytes) {
-        throw clientError("dialogporten_response_too_large", "Dialogporten response exceeded the configured limit.", true);
-      }
-      if (response.status !== 200) {
-        const retryable = [401, 408, 425, 429, 503].includes(response.status) || response.status >= 500;
-        throw clientError(
-          `dialogporten_http_${response.status}`,
-          `Dialogporten request failed (${response.status}).`,
-          retryable,
-          response.status,
-        );
-      }
-      const contentType = Object.entries(response.headers).find(([key]) => key.toLowerCase() === "content-type")?.[1]
-        ?.split(";", 1)[0]
-        ?.trim()
-        .toLowerCase();
-      if (contentType !== "application/json") {
-        throw clientError("dialogporten_response_invalid", "Dialogporten returned an invalid dialog response.");
-      }
-      let value: unknown;
-      try {
-        value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(response.body));
-      } catch {
-        throw clientError("dialogporten_response_invalid", "Dialogporten returned an invalid dialog response.");
-      }
+      const value = await requestJson(`${baseUrl}/dialogs/${dialogId}`);
       return parseDialog(value, input);
     },
   };
