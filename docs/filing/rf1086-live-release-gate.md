@@ -1,7 +1,7 @@
 # RF-1086 Live Release Gate
 
 Status: HITL release checklist  
-Last updated: 2026-06-16  
+Last updated: 2026-07-13
 Target issue: #81  
 Blocked by: #76 real payment collection, #80 code evidence decision
 
@@ -32,7 +32,7 @@ Excluded live scope:
 
 | Gate | Evidence required | Current status |
 | --- | --- | --- |
-| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | Pending |
+| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | Pass in Test: DM-8 access, system registration, customer approval, request status `Accepted`, and a system-user-bound token for company `310279617` were confirmed on 2026-07-13. Production access is not implied. See `authority-access-evidence-register.md`. |
 | Test submission | Test-environment RF-1086 hovedskjema, underskjema, bekreft, dokumenter/feedback retrieval recorded | Pending |
 | Live scope | K/S/U excluded, stiftelse/no-activity only | Done in #80 |
 | Billing | Real subscription/payment/filing-package gate implemented and test charged/refunded | Pending #76 |

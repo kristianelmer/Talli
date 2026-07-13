@@ -1,12 +1,24 @@
 # Skattemelding for AS Authority Map
 
 Status: source-backed map for simulation and validation  
-Research date: 2026-06-16  
+Research date: 2026-07-13
 Target filing: `skattemelding for AS` / company tax return
 
 This map defines what Talli can validate from public sources before production company-tax-return filing. It is not a complete production integration spec.
 
 Detailed schema/code-list evidence for the 2025 income-year launch path is now recorded in `docs/filing/company-tax-return-schema-evidence-register.md`. That register is authoritative for issue #86 payload work: 2025 must use `skattemeldingUpersonlig_v5_ekstern.xsd`, `naeringsspesifikasjon_v6_ekstern.xsd`, and 2025 code lists.
+
+Test-access evidence is recorded separately in
+`docs/filing/authority-access-evidence-register.md`. Skatteetaten granted
+`Innrapportering skattemelding (DM-30)` in Test to ELMER WELFIS on 2026-07-13,
+and `skatteetaten:formueinntekt/skattemelding` is attached to the TT02 client.
+A Maskinporten test token for that scope was issued successfully on 2026-07-13.
+The documented skattemelding resource was also added to Altinn TT02 system
+`930835978_talli` and verified by read-back. Test company `310279617` approved
+both requested resources, the request API returned `Accepted`, and Maskinporten
+issued a system-user-bound token containing the skattemelding scope and matching
+Altinn authorization details. Payload validation, submission, receipt, and archive
+evidence remain pending.
 
 ## Sources
 
