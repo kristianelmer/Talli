@@ -22,6 +22,7 @@ import { buildAuthorityTestRun, type AuthorityTestRunEnvironment, type Authority
 import { validateAuthorityObligation } from "./lib/authority-permission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { encodeActionError, encodePublicActionError } from "./lib/action-errors";
+import { AuthInputError, validateSignupPassword } from "./lib/auth-input";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
@@ -90,6 +91,11 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function formRawString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
 async function requireSensitiveActionStepUp(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
@@ -112,7 +118,7 @@ export async function signIn(formData: FormData) {
     redirect("/?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
-  const password = formString(formData, "password");
+  const password = formRawString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -127,7 +133,13 @@ export async function signUp(formData: FormData) {
     redirect("/?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
-  const password = formString(formData, "password");
+  let password: string;
+  try {
+    password = validateSignupPassword(formRawString(formData, "password"));
+  } catch (error) {
+    const message = error instanceof AuthInputError ? error.message : "Passordet er ugyldig.";
+    redirect(`/?error=${encodePublicActionError(message)}`);
+  }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) {

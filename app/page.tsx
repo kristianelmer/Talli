@@ -315,7 +315,8 @@ export default async function Home({ searchParams }: HomeProps) {
               </label>
               <label>
                 Passord
-                <input name="password" type="password" autoComplete="new-password" minLength={6} required />
+                <input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required />
+                <small>Bruk minst 12 tegn, gjerne en unik passfrase lagret i en passordbehandler.</small>
               </label>
               <button className="secondaryButton" type="submit">
                 Opprett bruker

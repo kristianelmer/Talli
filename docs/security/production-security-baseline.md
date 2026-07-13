@@ -34,6 +34,15 @@ Migration `20260713121355_secure_step_up_attestation.sql` closes a previously id
 
 The migration contract, MFA input boundary, application gate, production build, and unauthenticated browser redirect have automated or browser evidence. Enrollment and RPC execution against a real local/staging Supabase Auth/RLS layer remain required before the human security signoff.
 
+Password sign-up preserves the submitted secret exactly and enforces a bounded
+12–128 character passphrase policy in the application. Before production,
+configure the same or stronger minimum in Supabase Auth, enable confirmed email,
+review Auth rate limits, configure CAPTCHA/bot protection, use production SMTP,
+and enable leaked-password protection when the selected plan supports it. See
+the official [password security](https://supabase.com/docs/guides/auth/password-security),
+[CAPTCHA](https://supabase.com/docs/guides/auth/auth-captcha), and
+[production checklist](https://supabase.com/docs/guides/deployment/going-into-prod).
+
 ## Tenant Isolation and Authorization
 
 Minimum required behavior:
