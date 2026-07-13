@@ -14,10 +14,11 @@ Run against a non-production Supabase project:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DIRECT_DATABASE_URL` or `DATABASE_URL`
 
-The test applies every SQL file in `supabase/migrations` in lexical order, creates
-temporary confirmed users, signs in through the anon client, exercises RLS as
+Apply every SQL file in `supabase/migrations` through the controlled migration
+workflow before running this audit. The audit intentionally has no direct
+database credential: it consumes the deployed schema, creates temporary
+confirmed users, signs in through the anon client, exercises RLS as
 owner/reviewer/read-only/outsider, then removes the created company and users.
 
 ## Command
@@ -49,18 +50,35 @@ review. It should be run against staging after every schema/RLS change.
   authority permissions, readiness snapshots, ledger/action rows, period locks,
   audit events, or storage objects.
 - Signed document URL generation is denied for non-members by Storage RLS.
+- Orphan cleanup is verified by subsequent download failure, while a delete
+  attempt against a retained object is verified by successfully downloading the
+  unchanged bytes; the audit does not mistake Storage's zero-row success for a
+  completed deletion.
 - The private document bucket enforces a 6 MB limit and PDF/PNG/JPEG/CSV MIME
   allowlist aligned with server-side byte-signature validation.
 - The simple owner-dividend RPC requires the complete registered shareholder
   set at an equal amount per share, verifies both bounded PDF objects already
   exist under the company/year path, then atomically inserts the ledger entry,
   action, and unsigned document metadata.
+- Its PostgreSQL 17 implementation uses an unambiguous opening-register
+  identifier so shareholder validation executes rather than failing during
+  PL/pgSQL name resolution.
 - `step_up_events` are user-scoped and can be created only from a signed,
   recent Supabase AAL2/TOTP claim; user-supplied privilege flags are denied.
+- The executable audit enrolls a real local TOTP factor, completes the Auth
+  challenge/verification flow to AAL2, and records step-up only through the
+  signed-claim RPC; it does not seed trusted attestations with the service key.
 - Production security grants are separate, expiring, admin-controlled, append-only, and
   enforce separation of duties between the subject and approver.
+- Attempts to reinstate a revoked production grant reach the immutable-row
+  trigger and fail explicitly instead of returning a misleading zero-row update.
 - Security-definer membership helpers live outside the exposed `public` schema
   with explicit execute grants.
+- The executable audit does not receive a direct database password and cannot
+  bypass the Data API and Storage authorization boundaries it is testing.
+- The service-role key has explicit public-table grants only for support-operator
+  provisioning and isolated rehearsal cleanup; it does not receive blanket
+  access to all customer tables.
 
 The migration-contract checks run without an external project:
 
@@ -68,8 +86,23 @@ The migration-contract checks run without an external project:
 npm run test:supabase-migrations
 ```
 
-That static check does not replace `npm run test:supabase`; the latter is the
-required executable RLS/storage proof against a non-production project.
+For a disposable executable rehearsal on a developer machine with Docker (the
+project's lockfile supplies the pinned Supabase CLI):
+
+```bash
+npm run test:supabase:local
+```
+
+The helper binds the temporary stack to `127.0.0.1`, starts only Postgres, Auth,
+PostgREST, Storage, and the API gateway, obtains generated local credentials in
+memory, runs the same executable audit, and deletes all local rehearsal data.
+Neither the static migration check nor the local stack replaces
+`npm run test:supabase` against the confirmed isolated hosted-staging project.
+
+Supabase references: [local development](https://supabase.com/docs/guides/local-development),
+[schema migrations](https://supabase.com/docs/guides/local-development/overview),
+[`status`](https://supabase.com/docs/reference/cli/supabase-status), and
+[`stop`](https://supabase.com/docs/reference/cli/supabase-stop).
 
 ## Interpretation
 

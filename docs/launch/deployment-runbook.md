@@ -9,7 +9,9 @@ The production image contains:
 - the Next.js standalone server and static assets;
 - the `holding_cli` and `holding_core` Python packages;
 - the two RF-1086 XSD files used for validation;
-- a locked Python virtual environment built from `uv.lock`.
+- the deterministic unsigned corporate-document PDF engine;
+- a locked Python virtual environment, including ReportLab, built from
+  `uv.lock` without development dependencies.
 
 The image does not contain local `.env` files, test files, repository evidence Markdown, Supabase migrations, or Python bytecode caches. `npm run build` sanitizes the standalone output and `npm run test:packaging` verifies this boundary.
 
@@ -27,7 +29,8 @@ npm run test:container
 The smoke test builds `talli:smoke`, starts it as the non-root `node` user with
 a read-only root filesystem, all Linux capabilities dropped, and
 `no-new-privileges`; verifies `/api/health` and `/api/ready`; imports the filing
-runtime inside the image; and confirms that local environment files are absent.
+and corporate-PDF runtimes inside the image; and confirms that local environment
+files are absent.
 
 For a release image, use an immutable source revision as the tag:
 
@@ -60,7 +63,18 @@ and the RF-1086 authority, official test-submission, security, billing, and name
 human release gates are complete. A deployable application image is not
 permission to make a live filing.
 
-Apply `supabase/migrations/0001_authenticated_workspace.sql` through the controlled Supabase migration workflow before routing customer traffic. Run the documented RLS/storage audit against the deployed schema and record its evidence separately.
+Apply every file in `supabase/migrations` in lexical order through the controlled
+Supabase migration workflow before routing customer traffic. Running only the
+initial workspace migration omits later security controls and is not a valid
+deployment. Run the documented RLS/storage audit against the deployed schema
+and record its evidence separately.
+
+`npm run test:supabase:local` provides a destructive, disposable local rehearsal.
+It binds the temporary Supabase stack to loopback, applies/exercises the complete
+migration set, keeps generated local credentials in process memory, and removes
+its containers, network, and data volume on completion. It does not replace the
+isolated hosted-staging rehearsal because local Supabase is not the hosted
+platform and cannot prove deployed configuration or version parity.
 
 ## Operational probes
 

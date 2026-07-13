@@ -11,6 +11,11 @@ const grantImmutabilityMigrationPath =
 const orphanCleanupMigrationPath = "supabase/migrations/20260713130403_allow_orphan_document_cleanup.sql";
 const launchHistoryMigrationPath = "supabase/migrations/20260713130731_preserve_launch_signoff_history.sql";
 const ownerDividendMigrationPath = "supabase/migrations/20260713133300_record_owner_dividend_atomically.sql";
+const serviceOperationsMigrationPath = "supabase/migrations/20260713140500_allow_scoped_service_operations.sql";
+const revokedGrantRewriteMigrationPath =
+  "supabase/migrations/20260713141000_surface_revoked_grant_rewrites.sql";
+const ownerDividendSetupFixMigrationPath =
+  "supabase/migrations/20260713142000_fix_owner_dividend_setup_reference.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -116,4 +121,32 @@ test("security-definer RLS helpers are moved out of the exposed schema", async (
   assert.match(sql, /function private\.can_accept_company_invitation/u);
   assert.match(sql, /drop function if exists public\.is_company_creator/u);
   assert.match(sql, /drop function if exists public\.can_accept_company_invitation/u);
+});
+
+test("service-role operations are explicitly scoped to provisioning and rehearsal cleanup", async () => {
+  const sql = await readFile(serviceOperationsMigrationPath, "utf8");
+
+  assert.match(sql, /grant select, insert, update, delete\s+on public\.support_operators\s+to service_role/iu);
+  assert.match(
+    sql,
+    /grant select, delete\s+on public\.launch_signoffs, public\.launch_signoff_events, public\.companies\s+to service_role/iu,
+  );
+  assert.doesNotMatch(sql, /grant all|on all tables/iu);
+});
+
+test("revoked production grants reach the immutable-row trigger instead of silently matching zero rows", async () => {
+  const sql = await readFile(revokedGrantRewriteMigrationPath, "utf8");
+  const usingClause = sql.match(/using \(([\s\S]*?)\)\s*with check/iu)?.[1] ?? "";
+
+  assert.match(usingClause, /operator\.role = 'admin'/u);
+  assert.doesNotMatch(usingClause, /revoked_at is null/u);
+  assert.match(sql, /with check \([\s\S]*revoked_at is not null/u);
+});
+
+test("owner-dividend RPC uses an unambiguous opening-setup identifier", async () => {
+  const sql = await readFile(ownerDividendSetupFixMigrationPath, "utf8");
+
+  assert.match(sql, /opening_setup_id uuid/u);
+  assert.match(sql, /shareholder\.setup_id = opening_setup_id/u);
+  assert.doesNotMatch(sql, /\bsetup_id uuid;/u);
 });

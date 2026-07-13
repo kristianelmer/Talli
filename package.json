@@ -52,14 +52,14 @@
     "test:tax-settlement": "node --experimental-strip-types --test tests/tax_settlement.test.mjs",
     "test:web": "node --test tests/web_workspace.test.mjs",
     "test:supabase": "node --test tests/supabase_workspace.test.mjs",
-    "test:supabase-migrations": "node --test tests/supabase_migration_security.test.mjs",
+    "test:supabase:local": "node scripts/local-supabase-rehearsal.mjs",
+    "test:supabase-migrations": "node --test tests/supabase_migration_security.test.mjs tests/supabase_config.test.mjs tests/local_supabase_rehearsal_contract.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "next": "16.2.9",
-    "pg": "^8.21.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
@@ -68,7 +68,11 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "playwright": "^1.61.0",
+    "supabase": "2.109.1",
     "typescript": "6.0.3"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
   },
   "overrides": {
     "postcss": "8.5.10"

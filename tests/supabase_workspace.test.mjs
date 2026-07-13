@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
+import { createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
-import pg from "pg";
 
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../app/lib/annual-data.ts";
@@ -74,68 +72,7 @@ function loadDotenv() {
 loadDotenv();
 
 function hasRequiredEnv() {
-  return requiredEnv.every((key) => Boolean(process.env[key])) && Boolean(getDatabaseConfig());
-}
-
-async function applyMigration() {
-  const migrations = (await readdir("supabase/migrations"))
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-  const client = new pg.Client({
-    ...getDatabaseConfig(),
-    ssl: { rejectUnauthorized: false },
-  });
-  await client.connect();
-  try {
-    for (const migration of migrations) {
-      await client.query(await readFile(`supabase/migrations/${migration}`, "utf8"));
-    }
-  } finally {
-    await client.end();
-  }
-}
-
-function getDatabaseConfig() {
-  for (const candidate of [process.env.DIRECT_DATABASE_URL, process.env.DATABASE_URL]) {
-    if (!candidate) {
-      continue;
-    }
-    if (candidate.includes("<") || candidate.includes("your-project-ref") || candidate.includes("your-password")) {
-      continue;
-    }
-    const parsed = parsePostgresUrl(candidate);
-    if (parsed) {
-      return parsed;
-    }
-  }
-  return null;
-}
-
-function parsePostgresUrl(raw) {
-  raw = raw.trim();
-  const schemeEnd = raw.indexOf("://");
-  const at = raw.lastIndexOf("@");
-  const credentialColon = raw.indexOf(":", schemeEnd + 3);
-  if (schemeEnd === -1 || at === -1 || credentialColon === -1 || credentialColon > at) {
-    return null;
-  }
-  const user = raw.slice(schemeEnd + 3, credentialColon);
-  const password = raw.slice(credentialColon + 1, at);
-  const rest = raw.slice(at + 1);
-  const slash = rest.indexOf("/");
-  if (slash === -1) {
-    return null;
-  }
-  const hostPort = rest.slice(0, slash);
-  const databaseAndParams = rest.slice(slash + 1);
-  const database = databaseAndParams.split("?", 1)[0] || "postgres";
-  const portColon = hostPort.lastIndexOf(":");
-  const host = portColon === -1 ? hostPort : hostPort.slice(0, portColon);
-  const port = portColon === -1 ? 5432 : Number(hostPort.slice(portColon + 1));
-  if (!host || !Number.isFinite(port)) {
-    return null;
-  }
-  return { host, port, database, user, password };
+  return requiredEnv.every((key) => Boolean(process.env[key]));
 }
 
 function serviceClient() {
@@ -174,11 +111,65 @@ async function signIn(user) {
   return client;
 }
 
+function decodeBase32(value) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = [];
+  let buffer = 0;
+  let bitCount = 0;
+  for (const character of value.toUpperCase().replace(/=+$/u, "")) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) throw new Error("Unexpected TOTP secret encoding");
+    buffer = (buffer << 5) | index;
+    bitCount += 5;
+    if (bitCount >= 8) {
+      bitCount -= 8;
+      bytes.push((buffer >> bitCount) & 0xff);
+      buffer &= (1 << bitCount) - 1;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function currentTotp(secret, now = Date.now()) {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
+  const digest = createHmac("sha1", decodeBase32(secret)).update(counter).digest();
+  const offset = digest.at(-1) & 0x0f;
+  const binary = digest.readUInt32BE(offset) & 0x7fffffff;
+  return String(binary % 1_000_000).padStart(6, "0");
+}
+
+async function recordSignedTotpStepUp(client) {
+  const { data: enrollment, error: enrollmentError } = await client.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: `talli-rehearsal-${randomUUID()}`,
+  });
+  assert.ifError(enrollmentError);
+  assert.ok(enrollment?.id);
+  assert.ok(enrollment?.totp?.secret);
+
+  const { data: challenge, error: challengeError } = await client.auth.mfa.challenge({
+    factorId: enrollment.id,
+  });
+  assert.ifError(challengeError);
+  assert.ok(challenge?.id);
+
+  const { error: verificationError } = await client.auth.mfa.verify({
+    factorId: enrollment.id,
+    challengeId: challenge.id,
+    code: currentTotp(enrollment.totp.secret),
+  });
+  assert.ifError(verificationError);
+
+  const { data, error } = await client.rpc("record_mfa_step_up").single();
+  assert.ifError(error);
+  return data;
+}
+
 test(
   "Supabase authenticated workspace persists owner data and denies outsider",
-  { skip: hasRequiredEnv() ? false : "Supabase URL/keys or usable DATABASE_URL missing" },
+  { skip: hasRequiredEnv() ? false : "Supabase URL/keys missing" },
   async () => {
-  await applyMigration();
   const admin = serviceClient();
   const ownerUser = await createConfirmedUser("owner");
   const outsiderUser = await createConfirmedUser("outsider");
@@ -364,11 +355,17 @@ test(
 
     await acceptInvitedMembership(reviewer, reviewerUser, "reviewer");
     await acceptInvitedMembership(readOnly, readOnlyUser, "read_only");
-    const { data: persistedRoles, error: persistedRolesError } = await admin
-      .from("company_memberships")
-      .select("user_id, role")
-      .eq("company_id", companyId);
-    assert.ifError(persistedRolesError);
+    const persistedRoles = await Promise.all(
+      [owner, reviewer, readOnly].map(async (member) => {
+        const { data, error } = await member
+          .from("company_memberships")
+          .select("user_id, role")
+          .eq("company_id", companyId)
+          .single();
+        assert.ifError(error);
+        return data;
+      }),
+    );
     assert.deepEqual(
       persistedRoles
         .map((membership) => [membership.user_id, membership.role])
@@ -563,18 +560,7 @@ test(
       .eq("id", cancellation.id);
     assert.ok(selfApprovedDeletionError);
 
-    const { data: stepUpEvent, error: stepUpError } = await admin
-      .from("step_up_events")
-      .insert({
-        actor_id: ownerUser.id,
-        method: "totp",
-        mfa_verified_at: new Date().toISOString(),
-        security_review_approved: false,
-        production_credentials_enabled: false,
-      })
-      .select("actor_id, mfa_verified_at, security_review_approved, production_credentials_enabled")
-      .single();
-    assert.ifError(stepUpError);
+    const stepUpEvent = await recordSignedTotpStepUp(owner);
     assert.doesNotThrow(() =>
       assertStepUpAllowed("billing_admin", stepUpContextFromEvent(ownerUser.id, stepUpEvent), new Date()),
     );
@@ -2424,6 +2410,11 @@ test(
       .from(COMPANY_DOCUMENTS_BUCKET)
       .remove([orphanStorageKey]);
     assert.ifError(orphanCleanupError);
+    const { data: removedOrphan, error: removedOrphanError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .download(orphanStorageKey);
+    assert.equal(removedOrphan, null);
+    assert.ok(removedOrphanError);
 
     const { error: uploadError } = await owner.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
@@ -2446,10 +2437,12 @@ test(
     });
     assert.ifError(documentInsertError);
 
-    const { error: retainedObjectDeleteError } = await owner.storage
+    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+    const { data: retainedObject, error: retainedObjectError } = await owner.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
-      .remove([storageKey]);
-    assert.ok(retainedObjectDeleteError);
+      .download(storageKey);
+    assert.ifError(retainedObjectError);
+    assert.equal(await retainedObject.text(), "test");
 
     const { data: ownerDocuments, error: ownerDocumentError } = await owner
       .from("documents")

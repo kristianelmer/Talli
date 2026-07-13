@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("container build is reproducible and excludes local development state", async () => {
-  const [dockerfile, dockerignore] = await Promise.all([
+  const [dockerfile, dockerignore, packageJsonText] = await Promise.all([
     readFile("Dockerfile", "utf8"),
     readFile(".dockerignore", "utf8"),
+    readFile("package.json", "utf8"),
   ]);
+  const packageJson = JSON.parse(packageJsonText);
 
   assert.match(dockerfile, /node:24-trixie-slim@sha256:[a-f0-9]{64}/u);
   assert.match(dockerfile, /ghcr\.io\/astral-sh\/uv:0\.10\.2@sha256:[a-f0-9]{64}/u);
@@ -15,6 +17,7 @@ test("container build is reproducible and excludes local development state", asy
   assert.match(dockerfile, /USER node/u);
   assert.match(dockerfile, /PYTHONDONTWRITEBYTECODE=1/u);
   assert.doesNotMatch(dockerfile, /TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER/u);
+  assert.deepEqual(packageJson.allowScripts, { "sharp@0.34.5": true });
 
   const exclusions = new Set(dockerignore.split(/\r?\n/u));
   for (const excluded of [
@@ -46,6 +49,8 @@ test("container smoke test exercises hardened runtime and readiness", async () =
   assert.match(smoke, /id -u/u);
   assert.match(smoke, /holding_cli\.main/u);
   assert.match(smoke, /holding_core\.corporate_documents/u);
+  assert.match(smoke, /generate_owner_dividend_documents/u);
+  assert.match(smoke, /document\.content\.startsWith|document\.content\.startswith/u);
   assert.match(smoke, /reportlab/u);
   assert.match(smoke, /test ! -e \/app\/\.env/u);
 });

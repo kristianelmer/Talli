@@ -78,7 +78,13 @@ try {
     container,
     "/app/.venv/bin/python",
     "-c",
-    "import pydantic, reportlab, holding_cli.main, holding_core.corporate_documents, holding_core.rf1086",
+    [
+      "import pydantic, reportlab, holding_cli.main, holding_core.rf1086",
+      "from holding_core.corporate_documents import DividendDocumentInput, generate_owner_dividend_documents",
+      "data = DividendDocumentInput.model_validate({'company_name':'Talli Smoke AS','org_number':'310279617','income_year':2025,'decision_date':'2025-06-01','payment_date':'2025-06-15','total_amount':1000,'distributable_equity':5000,'liquidity_after_payment':1000,'allocations':[{'shareholder_id':'owner','shareholder_name':'Smoke Owner','share_count':100,'amount':1000}]})",
+      "documents = generate_owner_dividend_documents(data)",
+      "assert len(documents) == 2 and all(document.content.startswith(b'%PDF-') for document in documents)",
+    ].join("; "),
   ]);
   await run("docker", [
     "exec",
