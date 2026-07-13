@@ -341,6 +341,14 @@ function memorySupabase(seed, errors = {}, operationEvents = []) {
   };
 }
 
+function splitClients(databaseClient) {
+  return {
+    workspaceClient: databaseClient,
+    controlClient: databaseClient,
+    journalClient: databaseClient,
+  };
+}
+
 test("loads fresh release state only after accepted owner membership", async () => {
   const input = readyInput();
   input.bankTransactions.push({
@@ -361,7 +369,7 @@ test("loads fresh release state only after accepted owner membership", async () 
   const databaseClient = memorySupabase(rowsFor(input));
 
   const state = await loadRf1086ProductionState({
-    databaseClient,
+    ...splitClients(databaseClient),
     actorId,
     previewId: preview.id,
     confirmations: input.confirmations,
@@ -373,13 +381,32 @@ test("loads fresh release state only after accepted owner membership", async () 
   assert.equal(databaseClient.tables().includes("filing_readiness_snapshots"), false);
 });
 
+test("keeps tenant reads on the owner client and global signoff reads on the control client", async () => {
+  const input = readyInput();
+  const workspaceClient = memorySupabase(rowsFor(input));
+  const controlClient = memorySupabase({ launch_signoffs: input.launchSignoffRows });
+
+  const state = await loadRf1086ProductionState({
+    workspaceClient,
+    controlClient,
+    actorId,
+    previewId: preview.id,
+    confirmations: input.confirmations,
+    now: input.now,
+  });
+
+  assert.equal(state.release.launchSignoffs.length, 1);
+  assert.equal(workspaceClient.tables().includes("launch_signoffs"), false);
+  assert.deepEqual(controlClient.tables(), ["launch_signoffs"]);
+});
+
 test("rejects a non-owner before reading tenant accounting state", async () => {
   const input = readyInput({ membership: { ...readyInput().membership, role: "reviewer" } });
   const databaseClient = memorySupabase(rowsFor(input));
 
   await assert.rejects(
     loadRf1086ProductionState({
-      databaseClient,
+      ...splitClients(databaseClient),
       actorId,
       previewId: preview.id,
       confirmations: input.confirmations,
@@ -400,7 +427,7 @@ test("maps database failures without reflecting provider diagnostics", async () 
 
   await assert.rejects(
     loadRf1086ProductionState({
-      databaseClient,
+      ...splitClients(databaseClient),
       actorId,
       previewId: preview.id,
       confirmations: input.confirmations,
@@ -430,7 +457,7 @@ test("audits an authoritative release before making one production transport cal
   const accessToken = "short-lived-production-system-user-token";
 
   const result = await runPersistedRf1086ProductionStep({
-    databaseClient,
+    ...splitClients(databaseClient),
     actorId,
     previewId: preview.id,
     confirmations: input.confirmations,
@@ -459,7 +486,7 @@ test("fails closed before journal or transport when the audit write fails", asyn
 
   await assert.rejects(
     runPersistedRf1086ProductionStep({
-      databaseClient,
+      ...splitClients(databaseClient),
       actorId,
       previewId: preview.id,
       confirmations: input.confirmations,
@@ -488,7 +515,7 @@ test("derives the production token customer and fixed scope from authoritative s
   let grantPayload;
 
   const result = await runPersistedRf1086ProductionStepWithSystemUser({
-    databaseClient,
+    ...splitClients(databaseClient),
     actorId,
     previewId: preview.id,
     confirmations: input.confirmations,
@@ -541,7 +568,7 @@ test("does not sign or request a production token when the pre-token audit fails
 
   await assert.rejects(
     runPersistedRf1086ProductionStepWithSystemUser({
-      databaseClient,
+      ...splitClients(databaseClient),
       actorId,
       previewId: preview.id,
       confirmations: input.confirmations,

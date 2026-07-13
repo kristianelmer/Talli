@@ -32,6 +32,7 @@ import {
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import { createRf1086AuthorityClient } from "../app/lib/rf1086-authority-client.ts";
 import { runNextRf1086AuthorityStep } from "../app/lib/rf1086-authority-orchestration.ts";
+import { loadRf1086ProductionState } from "../app/lib/rf1086-production-state.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   rf1086PayloadHash,
@@ -1398,6 +1399,20 @@ test(
       () => assertNoHardReviewBlocks([{ severity: "advisory" }, { severity: hardBlockComment.severity }]),
       /simulert innsending/,
     );
+
+    const authoritativeRf1086State = await loadRf1086ProductionState({
+      workspaceClient: owner,
+      controlClient: admin,
+      actorId: ownerUser.id,
+      previewId: filingPreview.id,
+      confirmations: { authorityConfirmed: true, previewConfirmed: true },
+      now: new Date(),
+    });
+    assert.equal(authoritativeRf1086State.company.id, companyId);
+    assert.equal(authoritativeRf1086State.release.membership?.role, "owner");
+    assert.equal(authoritativeRf1086State.release.filingReady, false);
+    assert.equal(authoritativeRf1086State.release.hardReviewBlockCount, 1);
+    assert.equal(authoritativeRf1086State.release.blockingOverrideCount, 1);
 
     const bankCsv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";
     const parsedBank = parseBankCsv(bankCsv);

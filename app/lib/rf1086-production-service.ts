@@ -9,11 +9,8 @@ import {
   loadRf1086ProductionState,
   type Rf1086ProductionStateDatabaseClient,
 } from "./rf1086-production-state.ts";
+import type { Rf1086SupabaseJournalClient } from "./rf1086-supabase-journal.ts";
 import type { Rf1086SubmissionConfirmations } from "./rf1086-submission.ts";
-
-export type Rf1086ProductionServiceDatabaseClient = Rf1086ProductionStateDatabaseClient & {
-  rpc(name: string, parameters: Record<string, unknown>): any;
-};
 
 export const RF1086_PRODUCTION_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave";
 
@@ -34,7 +31,7 @@ function assertAccessToken(value: unknown): asserts value is string {
 }
 
 async function recordSecurityAudit(input: {
-  databaseClient: Rf1086ProductionServiceDatabaseClient;
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
   companyId: string;
   actorId: string;
   action:
@@ -44,7 +41,7 @@ async function recordSecurityAudit(input: {
   message: string;
 }) {
   try {
-    const result = await input.databaseClient.from("audit_events").insert({
+    const result = await input.workspaceClient.from("audit_events").insert({
       company_id: input.companyId,
       actor_id: input.actorId,
       category: "security",
@@ -59,14 +56,14 @@ async function recordSecurityAudit(input: {
 }
 
 async function recordAuthorizedAttempt(input: {
-  databaseClient: Rf1086ProductionServiceDatabaseClient;
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
   companyId: string;
   actorId: string;
   previewId: string;
   allowConfirm: boolean;
 }) {
   return recordSecurityAudit({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
     companyId: input.companyId,
     actorId: input.actorId,
     action: input.allowConfirm
@@ -77,7 +74,9 @@ async function recordAuthorizedAttempt(input: {
 }
 
 export async function runPersistedRf1086ProductionStep(input: {
-  databaseClient: Rf1086ProductionServiceDatabaseClient;
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
+  controlClient: Rf1086ProductionStateDatabaseClient;
+  journalClient: Rf1086SupabaseJournalClient;
   actorId: string;
   previewId: string;
   confirmations: Rf1086SubmissionConfirmations;
@@ -88,7 +87,8 @@ export async function runPersistedRf1086ProductionStep(input: {
 }) {
   assertAccessToken(input.accessToken);
   const state = await loadRf1086ProductionState({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
+    controlClient: input.controlClient,
     actorId: input.actorId,
     previewId: input.previewId,
     confirmations: input.confirmations,
@@ -96,7 +96,7 @@ export async function runPersistedRf1086ProductionStep(input: {
   });
   assertRf1086ProductionRelease(state.preview, state.release);
   await recordAuthorizedAttempt({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
     companyId: state.preview.company_id,
     actorId: input.actorId,
     previewId: state.preview.id,
@@ -104,7 +104,7 @@ export async function runPersistedRf1086ProductionStep(input: {
   });
   return runRf1086ProductionStep({
     preview: state.preview,
-    databaseClient: input.databaseClient,
+    databaseClient: input.journalClient,
     accessToken: input.accessToken,
     release: state.release,
     ...(input.allowConfirm === true ? { allowConfirm: true } : {}),
@@ -113,7 +113,9 @@ export async function runPersistedRf1086ProductionStep(input: {
 }
 
 export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
-  databaseClient: Rf1086ProductionServiceDatabaseClient;
+  workspaceClient: Rf1086ProductionStateDatabaseClient;
+  controlClient: Rf1086ProductionStateDatabaseClient;
+  journalClient: Rf1086SupabaseJournalClient;
   actorId: string;
   previewId: string;
   confirmations: Rf1086SubmissionConfirmations;
@@ -129,7 +131,8 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
   authorityTransport?: Rf1086AuthorityTransport;
 }) {
   const state = await loadRf1086ProductionState({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
+    controlClient: input.controlClient,
     actorId: input.actorId,
     previewId: input.previewId,
     confirmations: input.confirmations,
@@ -137,7 +140,7 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
   });
   assertRf1086ProductionRelease(state.preview, state.release);
   await recordSecurityAudit({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
     companyId: state.company.id,
     actorId: input.actorId,
     action: "rf1086_production_token_authorized",
@@ -157,7 +160,9 @@ export async function runPersistedRf1086ProductionStepWithSystemUser(input: {
     ...(input.maskinporten.timeoutMs ? { timeoutMs: input.maskinporten.timeoutMs } : {}),
   });
   return runPersistedRf1086ProductionStep({
-    databaseClient: input.databaseClient,
+    workspaceClient: input.workspaceClient,
+    controlClient: input.controlClient,
+    journalClient: input.journalClient,
     actorId: input.actorId,
     previewId: input.previewId,
     confirmations: input.confirmations,
