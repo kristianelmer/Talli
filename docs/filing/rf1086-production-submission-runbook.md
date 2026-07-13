@@ -14,6 +14,8 @@ This runbook defines the path from local RF-1086 simulation to live submission. 
 - Skatteetaten end-user-system transition note: https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/
 - Skatteetaten setup guidance for re-established services: https://www.skatteetaten.no/samarbeidspartnere/reetablering-altinn/systemleverandor/oppkobling/
 - Altinn system-user guide: https://docs.altinn.studio/en/authorization/guides/resource-owner/system-user/
+- Digdir system-user RAR contract: https://docs.digdir.no/docs/Maskinporten/maskinporten_func_systembruker.html
+- Digdir Maskinporten token endpoint: https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_token.html
 - Dialogporten authentication: https://docs.altinn.studio/en/dialogporten/user-guides/authenticating/
 - Dialogporten dialog details: https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 - RF-1086 phase 0 map: [aksjonaerregisteroppgaven-phase-0-map.md](./aksjonaerregisteroppgaven-phase-0-map.md)
@@ -72,9 +74,24 @@ The exact authority HTTP boundary is implemented in
 in `app/lib/rf1086-authority-orchestration.ts` and covered by
 `npm run test:rf1086:orchestration`. It requires prepared, sent, and accepted
 journal revisions and blocks replay of an uncertain `bekreft`. A reviewed
-Supabase production journal adapter with service-role-only atomic writes is now
-implemented and tested on a disposable real stack. Hosted migration deployment
-and production worker/web wiring remain required before activation. The local TT02-only operator boundary is implemented by
+Supabase production journal adapter with service-role-only atomic writes is
+implemented and tested on a disposable real stack.
+
+The guarded server-only worker boundary is implemented in
+`app/lib/rf1086-production-state.ts`, `app/lib/rf1086-production-runner.ts`, and
+`app/lib/rf1086-production-service.ts`. It does not trust cached filing
+readiness. It first loads the preview and accepted owner through the
+owner-authenticated workspace client, then loads current tenant rows through
+RLS, reads the global signoff through a separate narrow control client, and
+uses the service-role client only for journal compare-and-swap operations. It
+audits before token issuance, requests only the RF-1086 scope from the fixed
+Maskinporten production issuer, reloads and audits the release state again, and
+advances at most one provider operation. It never returns or persists the
+bearer token. Final `bekreft` remains a separate explicit flag.
+
+Hosted migration deployment and an authenticated operational trigger remain
+required before production activation. No browser/web route invokes this
+worker. The local TT02-only operator boundary is implemented by
 `app/lib/maskinporten-system-user.ts`, `app/lib/rf1086-file-journal.ts`,
 `app/lib/rf1086-tt02-runner.ts`, and `scripts/rf1086-tt02.ts`; see
 `rf1086-tt02-submission-runbook.md`. TT02 feedback/receipt evidence is still
@@ -104,6 +121,12 @@ Blocked failures:
 - Production security gate missing.
 
 Every failure must preserve the submission state and be visible to the user/operator without silently resubmitting.
+
+Release state must be reloaded immediately around token acquisition and before
+transport. A cached `filing_readiness_snapshots` row is not authority to send.
+Open readiness warnings, hard review comments, blocking overrides, stale MFA,
+missing billing, missing authority evidence, or missing signoff all stop the
+worker before the provider call.
 
 ## Current RF-1086 Production Scope
 

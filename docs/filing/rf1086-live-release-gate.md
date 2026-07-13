@@ -40,9 +40,9 @@ Excluded live scope:
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
 | Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
-| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested; durable database journal added at `18dccaa`; live wiring remains disabled |
-| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, and checkpoint integrity | State machine, non-mutating inspection, and service-role-only Supabase compare-and-swap persistence implemented/tested through `18dccaa`; hosted deployment and live wiring pending |
-| TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; synthetic payload reviewed locally and official provider write still pending |
+| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested; durable database journal and guarded server-only production worker are implemented through `5178717`; no hosted operator trigger or web route is enabled |
+| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, checkpoint integrity, and fresh release-state loading | Implemented/tested through `5178717`; the owner-authenticated workspace client, narrow control client, and service-role journal client remain separated. Hosted migration deployment and operational wiring are pending |
+| TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; the candidate preview was inspected locally on 2026-07-13 with `nextOperation` equal to `hovedskjema`. No provider write has occurred because the synthetic shareholder allocation still requires explicit acceptance |
 | Feedback/receipt archive | Official references, submitted XML, authorized Dialogporten attachment ids, receipt/feedback files, and revisioned private manifest persisted | Fixed-host Dialogporten client and immutable local archive implemented/tested; `digdir:dialogporten` test scope and official artifacts pending |
 | Human signoff | Named reviewer signs production release decision | Pending |
 
@@ -52,6 +52,26 @@ Code gate anchors:
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
 - `buildFilingReleaseGates` requires approved `launch_signoffs` key
   `rf1086_authority` with reviewer, date, evidence link, and decision.
+
+The production worker never trusts the cached readiness snapshot. It reloads
+the current tenant rows through the authenticated owner's RLS context, reads the
+global launch signoff through a separate narrow control client, audits before
+token issuance, reloads and audits again before transport, and limits each
+invocation to one authority call. The service role is reserved for the atomic
+checkpoint journal.
+
+## First TT02 Write Gate
+
+The approved system request does not itself authorize the synthetic filing
+contents. Before the first provider write, the operator must record this exact
+acceptance in the controlled session:
+
+```text
+Approve RF-1086 TT02: one synthetic shareholder owns all 500 shares, no 2025 transactions.
+```
+
+That acceptance authorizes only the first guarded TT02 progression. When the
+journal later reports `bekreft`, confirmation must be authorized separately.
 
 ## Required Test Run
 

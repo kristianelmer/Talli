@@ -1,6 +1,6 @@
 # RF-1086 Authority API Contract Evidence
 
-Status: authority client and durable journal implemented; live orchestration remains disabled
+Status: authority client, durable journal, and guarded server-only worker implemented; hosted/live activation remains disabled
 Verified: 2026-07-13
 OpenAPI contract: `innrapportering-aksjonaerregister-api` `1.0.0`
 
@@ -18,6 +18,10 @@ a live filing.
   https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api/1.0.0/swagger.json
 - Altinn system-user token guide:
   https://docs.altinn.studio/en/authorization/guides/system-vendor/system-user/usetoken/
+- Digdir Maskinporten token endpoint:
+  https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_token.html
+- Digdir system-user RAR contract:
+  https://docs.digdir.no/docs/Maskinporten/maskinporten_func_systembruker.html
 - Dialogporten authentication:
   https://docs.altinn.studio/en/dialogporten/user-guides/authenticating/
 - Dialogporten dialog details:
@@ -58,6 +62,9 @@ authority bearer token from being redirected to an arbitrary host.
 - Token acquisition, signing-key access, and token refresh are intentionally not
   part of the web-facing API client. Tokens are injected in memory and are not
   logged or returned in errors.
+- The worker accepts only the symbolic Maskinporten environment and therefore
+  fixes production grants and token exchange to `https://maskinporten.no/`.
+  It requests only the RF-1086 scope for the authority step.
 
 ## Operations
 
@@ -115,6 +122,11 @@ malformed JSON/UUID/content types fail closed.
   `supabase/migrations/20260713192808_persist_rf1086_authority_checkpoints.sql`
 - Journal tests: `tests/rf1086_supabase_journal.test.mjs` and the disposable
   local Supabase workspace rehearsal
+- Fresh production-state loader: `app/lib/rf1086-production-state.ts`
+- Guarded production runner/service: `app/lib/rf1086-production-runner.ts` and
+  `app/lib/rf1086-production-service.ts`
+- Production release tests: `tests/rf1086_production_runner.test.mjs` and
+  `tests/rf1086_production_state.test.mjs`
 - Command: `npm run test:rf1086:authority`
 - Command: `npm run test:rf1086:orchestration`
 - Dialog/immutable archive:
@@ -132,27 +144,33 @@ outcome could be unknown. The database journal enforces exact bounded JSON,
 payload/preview binding on every read, service-role-only atomic mutation,
 optimistic revisions with immediate HTTP 409 conflicts, accepted-membership RLS,
 and no browser-role insert, update, or delete grant. The isolated real-stack test
-also proves outsider denial and that the injected bearer token is never stored.
+also proves outsider denial, the owner/control/journal client split, and that a
+fresh hard review comment and blocking override disable release even when an
+older readiness snapshot remains ready. The production-service tests prove
+pre-token and pre-transport audit ordering, a second fresh release-state load
+after token issuance, exact RF scope selection, one provider call per
+invocation, and bearer-token absence from results, audits, and checkpoints.
 
 Archive tests additionally prove exact Dialogporten hosts, strict party and
 resource binding, bounded/token-free responses, consistent provider pagination,
 cross-host/cross-shipment URL rejection before retrieval, private atomic files,
 immutable document identities, and revisioned manifests.
 
-## Remaining Before TT02 Submission
+## Remaining Before First TT02 Provider Write
 
-1. Apply the reviewed journal migration to a confirmed hosted staging project
-   and bind the service-role journal to a controlled server-side worker. The
-   adapter and optimistic revision checks are implemented locally, but the web
-   production runner remains intentionally unwired.
-2. Acquire a fresh system-user-bound token outside the browser process and inject
-   it only for the controlled run.
-3. Execute hovedskjema, every underskjema, and bekreft with synthetic data for
-   company `310279617` in TT02.
-4. Verify `digdir:dialogporten` can be issued on the existing test client and
-   record the provider-observed timing for feedback availability.
-5. Retrieve feedback/receipt artifacts through the implemented revisioned
-   archive, store immutable references and hashes,
-   and record an accepted `authority_test_run`.
-6. Keep the web production adapter and production filing release gate disabled
-   until the filing, security, restore, billing, and named-reviewer gates pass.
+1. Record explicit acceptance of the synthetic assumption: one synthetic
+   shareholder owns all 500 shares and there are no 2025 transactions.
+2. Run one guarded TT02 step. The current offline inspection is clean and reports
+   `nextOperation: hovedskjema`; no provider write or journal checkpoint exists.
+3. Inspect after every call and progress only through the remaining XML steps.
+   When the journal reports `bekreft`, obtain a separate explicit confirmation.
+4. With separate permission-change approval, attach `digdir:dialogporten` to the
+   test client, verify it can be issued on the system-user token, and record the
+   provider-observed feedback timing.
+5. Retrieve feedback/receipt artifacts through the revisioned archive, store
+   immutable references and hashes, and record an accepted
+   `authority_test_run`.
+6. Separately apply the reviewed journal migration to a confirmed hosted staging
+   project before exercising the server-only production worker. Keep every web
+   route and the production filing release gate disabled until filing, security,
+   restore, billing, and named-reviewer gates pass.

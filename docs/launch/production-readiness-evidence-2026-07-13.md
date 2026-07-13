@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `18dccaa`
+Evidence baseline: implementation commits through `5178717`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,10 +11,10 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `18dccaa`, including the guarded RF-1086 and company-tax TT02 runners, annual-accounts TT02 contract/signature/Dialogporten-evidence boundary, authority contract/orchestration/Supabase-journal/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `5178717`, including the guarded RF-1086 TT02 and server-only production runners, fresh-state release derivation, company-tax TT02 runner, annual-accounts TT02 contract/signature/Dialogporten-evidence boundary, authority contract/orchestration/Supabase-journal/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
-| RF-1086 crash-safe orchestration | 12 tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, exact checkpoint validation, Supabase persistence, optimistic revision conflicts, database-diagnostic redaction, and checkpoint tamper rejection |
+| RF-1086 crash-safe orchestration and production release | 26 focused tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, exact checkpoint validation, Supabase persistence, optimistic revision conflicts, database-diagnostic redaction, checkpoint tamper rejection, fresh authoritative release-state derivation, least-privilege split clients, pre-token/pre-transport audit ordering, and bearer-token non-disclosure |
 | RF-1086 Supabase journal | Disposable local Supabase rehearsal passes with the real migration and API: only the service role can call the atomic compare-and-swap function; authenticated accepted company members can read; outsiders and direct client writes are denied; token material is absent; invalid rows and stale revisions fail closed |
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
 | RF-1086 Dialogporten/archive boundary | 9 focused tests pass: fixed Dialogporten hosts, exact Altinn-instance lookup, party/resource checks, bounded token-free responses, invalid lookup rejection before transport, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
@@ -24,7 +24,7 @@ to launch publicly or submit live authority filings. It is not a release approva
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
 | Supabase migration security contracts | 16 pass, including RF-1086 journal grants/RLS/RPC controls, service-role scope, explicit revoked-grant rejection, local-config isolation, and PostgreSQL 17 owner-dividend name resolution |
-| `npm run test:supabase:local` | Pass on 2026-07-13 at `18dccaa`; pinned CLI applied every migration to a disposable loopback stack, then Auth, real TOTP/AAL2, invitations, tenant RLS, Storage retention/orphan cleanup, RF-1086 atomic checkpoint writes and isolation, atomic dividend PDFs, filing/billing/cancellation state, and outsider denial all passed; containers, network, and volume were removed |
+| `npm run test:supabase:local` | Pass on 2026-07-13 at `5178717`; pinned CLI applied every migration to a disposable loopback stack, then Auth, real TOTP/AAL2, invitations, tenant RLS, Storage retention/orphan cleanup, RF-1086 atomic checkpoint writes and isolation, fresh production-state loading through owner/control/journal client separation, atomic dividend PDFs, filing/billing/cancellation state, and outsider denial all passed; containers, network, and volume were removed |
 | TypeScript | Pass |
 | Next.js production build | Pass |
 | Standalone artifact inspection | Pass; required Node/Python/XSD runtime present and local secrets/development evidence absent |
@@ -43,15 +43,21 @@ to launch publicly or submit live authority filings. It is not a release approva
   environment variable is set to `true`.
 - The RF-1086 authority client accepts only fixed test/production hosts, rejects
   redirects and oversized/malformed responses, and permits an idempotency UUID
-  retry only for the identical URL and XML body. It is not wired to the web
-  production adapter.
+  retry only for the identical URL and XML body. It is not exposed through a web
+  production route.
 - RF-1086 authority orchestration advances at most one call at a time and requires
   optimistic journal saves before send and after response. XML calls retain their
   UUID across an uncertain retry; a sent `bekreft` cannot replay automatically.
-  A production-shaped Supabase journal now stores exact, size-bounded checkpoints
+  A production-shaped Supabase journal stores exact, size-bounded checkpoints
   behind a service-role-only compare-and-swap RPC. Accepted company members have
-  tenant-scoped read access; browser roles have no mutation grant. The hosted
-  migration and production worker/web runner remain intentionally unwired.
+  tenant-scoped read access; browser roles have no mutation grant. A server-only
+  worker boundary now derives every release gate from fresh RLS-protected rows,
+  reads the global signoff through a separate narrow control client, and uses the
+  service role only for the journal. It records an audit before token issuance,
+  reloads and audits the state again before one provider call, requests only the
+  RF-1086 scope, never returns or persists the bearer token, and requires a
+  separate flag before `bekreft`. Hosted migration deployment and any operator
+  trigger/web route remain intentionally disabled.
 - The local TT02 runner is hard-coded to test, requires private non-symlinked
   key/preview files and a private journal, validates every XML document against
   the approved customer/year, and refuses `bekreft` without a separate flag.
@@ -150,12 +156,15 @@ required for `security_restore` signoff.
   selected BRREG holding company has no usable 2025 tax-return draft: the
   provider returned `UP_HAR_NÆRINGSSPESIFIKASJON_MANGLER_SKATTEMELDING`, and a
   current-draft GET returned HTTP 403. No Altinn instance was created. A separate
-  tax-data-enabled Tenor company and delegated approval are required. RF-1086
-  provider submission, receipts, and archive evidence are still pending.
+  tax-data-enabled Tenor company and delegated approval are required. The first
+  RF-1086 preview has been inspected locally and is ready to start at
+  `hovedskjema`, but provider submission, receipts, and archive evidence remain
+  pending explicit acceptance of the synthetic sole-shareholder assumption.
 - The separate RF-1086 file-upload scope still reports `Tilgang mangler`; do not
   request it in a token unless Skatteetaten confirms it is required and grants it.
-- RF-1086 durable journal persistence is implemented and locally migration-tested,
-  but hosted deployment and production worker/web wiring remain disabled. The
+- RF-1086 durable journal persistence and a least-privilege server-only production
+  worker boundary are implemented and locally migration-tested, but hosted
+  deployment and any operator trigger/web route remain disabled. The
   årsregnskap and skattemelding production adapters are not implemented.
   Årsregnskap now has a local TT02-only contract boundary and a guarded narrow
   XML renderer, but its
