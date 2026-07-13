@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveRf1086ProductionState } from "../app/lib/rf1086-production-state.ts";
+import {
+  deriveRf1086ProductionState,
+  loadRf1086ProductionState,
+} from "../app/lib/rf1086-production-state.ts";
+import { Rf1086ProductionRunnerError } from "../app/lib/rf1086-production-runner.ts";
 
 const actorId = "12345678-1234-4234-9234-123456789abc";
 const companyId = "22345678-1234-4234-9234-123456789abc";
@@ -214,4 +218,163 @@ test("open warnings, hard review comments, and blocking overrides remain product
   assert.equal(state.release.filingReady, false);
   assert.equal(state.release.hardReviewBlockCount, 1);
   assert.equal(state.release.blockingOverrideCount, 1);
+});
+
+function rowsFor(input) {
+  return {
+    filing_previews: input.filingPreviews,
+    company_memberships: [input.membership],
+    companies: [input.company],
+    opening_balance_setups: input.setups,
+    ledger_entries: input.ledgerEntries,
+    holding_actions: input.holdingActions,
+    bank_transactions: input.bankTransactions,
+    documents: input.documents,
+    filing_overrides: input.overrides,
+    period_locks: input.locks,
+    annual_data: input.annualData ? [input.annualData] : [],
+    billing_accounts: input.billingAccount ? [input.billingAccount] : [],
+    authority_permissions: input.authorityPermissions,
+    filing_submissions: input.filingSubmissions,
+    authority_test_runs: input.authorityTestRuns,
+    step_up_events: [{ actor_id: actorId, mfa_verified_at: input.stepUpContext.mfaVerifiedAt }],
+    production_security_grants: [{
+      actor_id: actorId,
+      security_review_approved: input.stepUpContext.securityReviewApproved,
+      production_credentials_enabled: input.stepUpContext.productionCredentialsEnabled,
+      expires_at: "2026-07-14T18:00:00.000Z",
+      revoked_at: null,
+    }],
+    launch_signoffs: input.launchSignoffRows,
+    filing_review_comments: input.reviewComments,
+    filing_readiness_snapshots: [{
+      company_id: companyId,
+      income_year: 2025,
+      obligation: "aksjonaerregisteroppgaven",
+      ready: true,
+      status: "ready",
+    }],
+  };
+}
+
+function memorySupabase(seed, errors = {}) {
+  const tables = [];
+  class Query {
+    constructor(table) {
+      this.table = table;
+      this.filters = [];
+      this.limitCount = null;
+    }
+    select() {
+      return this;
+    }
+    eq(column, value) {
+      this.filters.push([column, value]);
+      return this;
+    }
+    order() {
+      return this;
+    }
+    limit(value) {
+      this.limitCount = value;
+      return this;
+    }
+    result(single) {
+      if (errors[this.table]) return { data: null, error: errors[this.table] };
+      let data = (seed[this.table] ?? []).filter((row) =>
+        this.filters.every(([column, value]) => row?.[column] === value),
+      );
+      if (this.limitCount !== null) data = data.slice(0, this.limitCount);
+      return { data: structuredClone(single ? (data[0] ?? null) : data), error: null };
+    }
+    maybeSingle() {
+      return Promise.resolve(this.result(true));
+    }
+    then(resolve, reject) {
+      return Promise.resolve(this.result(false)).then(resolve, reject);
+    }
+  }
+  return {
+    from(table) {
+      tables.push(table);
+      return new Query(table);
+    },
+    tables() {
+      return [...tables];
+    },
+  };
+}
+
+test("loads fresh release state only after accepted owner membership", async () => {
+  const input = readyInput();
+  input.bankTransactions.push({
+    id: "92345678-1234-4234-9234-123456789abc",
+    company_id: companyId,
+    income_year: 2025,
+    transaction_date: "2025-12-31",
+    text: "Fresh unmatched transaction",
+    amount: 100,
+    balance: null,
+    source_hash: "fresh-source-hash",
+    matched_entry_id: null,
+    matched_action_id: null,
+    accepted_warning: false,
+    created_by: actorId,
+    created_at: "2026-07-13T17:59:00.000Z",
+  });
+  const databaseClient = memorySupabase(rowsFor(input));
+
+  const state = await loadRf1086ProductionState({
+    databaseClient,
+    actorId,
+    previewId: preview.id,
+    confirmations: input.confirmations,
+    now: input.now,
+  });
+
+  assert.equal(state.release.filingReady, false);
+  assert.deepEqual(databaseClient.tables().slice(0, 2), ["filing_previews", "company_memberships"]);
+  assert.equal(databaseClient.tables().includes("filing_readiness_snapshots"), false);
+});
+
+test("rejects a non-owner before reading tenant accounting state", async () => {
+  const input = readyInput({ membership: { ...readyInput().membership, role: "reviewer" } });
+  const databaseClient = memorySupabase(rowsFor(input));
+
+  await assert.rejects(
+    loadRf1086ProductionState({
+      databaseClient,
+      actorId,
+      previewId: preview.id,
+      confirmations: input.confirmations,
+      now: input.now,
+    }),
+    (error) =>
+      error instanceof Rf1086ProductionRunnerError &&
+      error.code === "rf1086_production_owner_required",
+  );
+  assert.deepEqual(databaseClient.tables(), ["filing_previews", "company_memberships"]);
+});
+
+test("maps database failures without reflecting provider diagnostics", async () => {
+  const input = readyInput();
+  const databaseClient = memorySupabase(rowsFor(input), {
+    companies: { message: "postgres password and internal host must remain private" },
+  });
+
+  await assert.rejects(
+    loadRf1086ProductionState({
+      databaseClient,
+      actorId,
+      previewId: preview.id,
+      confirmations: input.confirmations,
+      now: input.now,
+    }),
+    (error) =>
+      error instanceof Rf1086ProductionRunnerError &&
+      error.code === "rf1086_production_state_load_failed" &&
+      !error.message.includes("postgres") &&
+      !error.message.includes("password") &&
+      !error.message.includes("host"),
+  );
 });
