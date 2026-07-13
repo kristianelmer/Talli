@@ -1,7 +1,7 @@
 # RF-1086 Production Submission Runbook
 
-Status: production blocked until human review and official validation  
-Last updated: 2026-06-16  
+Status: production blocked until human review and official validation
+Last updated: 2026-07-13
 Target filing: `aksjonærregisteroppgaven` / RF-1086
 
 This runbook defines the path from local RF-1086 simulation to live submission. It is not permission to enable production filing. Live filing remains disabled until authority access, test-environment evidence, RF-1086 code decisions, billing, security, and human review gates are complete.
@@ -9,11 +9,13 @@ This runbook defines the path from local RF-1086 simulation to live submission. 
 ## Official Anchors
 
 - Skatteetaten RF-1086 API docs: https://skatteetaten.github.io/api-dokumentasjon/api/innrapportering-aksjonaerregisteroppgave
+- Published OpenAPI 1.0.0: https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api/1.0.0/swagger.json
 - Skatteetaten RF-1086 page: https://www.skatteetaten.no/skjema/rf-1086-aksjonarregisteroppgaven/
 - Skatteetaten end-user-system transition note: https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/
 - Skatteetaten setup guidance for re-established services: https://www.skatteetaten.no/samarbeidspartnere/reetablering-altinn/systemleverandor/oppkobling/
 - Altinn system-user guide: https://docs.altinn.studio/en/authorization/guides/resource-owner/system-user/
 - RF-1086 phase 0 map: [aksjonaerregisteroppgaven-phase-0-map.md](./aksjonaerregisteroppgaven-phase-0-map.md)
+- RF-1086 authority contract evidence: [rf1086-authority-api-contract.md](./rf1086-authority-api-contract.md)
 
 ## Required Authority Access
 
@@ -37,23 +39,31 @@ The local integration seam in `holding_core.rf1086_submission` models the produc
 5. In production mode, require fresh MFA, human security review, and explicit production credentials gate.
 6. Require owner authority confirmation and final preview confirmation.
 7. Prepare API calls for:
-   - `POST 1086H` hovedskjema.
-   - `POST 1086U` underskjema per shareholder.
-   - `POST bekreft` with underskjema count.
-   - `GET dokumenter` / feedback retrieval seam.
+   - `POST /{inntektsaar}/1086H` hovedskjema.
+   - `POST /{inntektsaar}/{hovedskjemaid}/1086U` per underskjema.
+   - `POST /{inntektsaar}/{hovedskjemaid}/bekreft?antall_underskjema={count}`.
+   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter?page=0&size=50`.
+   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter/{dokumentid}` for one feedback artifact.
 8. Store feedback document references and official receipt/reference ids in submission state.
 
 ## Idempotency Policy
 
-Skatteetaten requires an `idempotencyKey` UUID and repeated POSTs with the same body/key must reuse the first response. Talli policy:
+Skatteetaten requires an `idempotencyKey` UUID on the hovedskjema and underskjema XML POST operations. Repeated POSTs with the same body/key reuse the first response. Talli policy:
 
 - Store endpoint, body hash, and idempotency key for each logical authority call.
 - Reuse the same key only for the same endpoint and same body hash.
 - Generate a new key if the endpoint or body changes.
 - Never retry a changed body under an old key.
 - Never create duplicate logical submissions for the same confirmed preview.
+- Do not add an idempotency header to `bekreft` unless a later published contract requires it.
 
 This is covered by `holding_core.submission.register_api_call` and RF-1086 submission tests.
+
+The exact authority HTTP boundary is implemented in
+`app/lib/rf1086-authority-client.ts` and covered by
+`npm run test:rf1086:authority`. It is not wired to the web production adapter.
+Durable per-call checkpointing and TT02 feedback/receipt evidence remain required
+before activation.
 
 ## Failure Handling
 

@@ -40,6 +40,7 @@ Excluded live scope:
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
 | Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
+| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested through `35ce9f9`; durable orchestration remains pending |
 | Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | Simulation seam implemented; official evidence pending |
 | Human signoff | Named reviewer signs production release decision | Pending |
 
@@ -57,6 +58,7 @@ Before release signoff:
 ```bash
 uv run python -m unittest tests.test_rf1086 tests.test_rf1086_submission tests.test_submission_and_billing
 npm run test:rf1086:submission
+npm run test:rf1086:authority
 npm run test:security
 npm run test:supabase
 npm run test:backup-restore
