@@ -135,10 +135,13 @@ rejects the company for reasons intrinsic to its test-data setup.
 
 ## Next Evidence Required
 
-1. Run non-mutating provider connectivity checks with short-lived system-user
-   tokens.
-2. Validate a minimal 2025 skattemelding payload without final submission.
-3. Execute synthetic RF-1086 and skattemelding submission flows and
+1. Review the constructed synthetic 2025 RF-1086 no-activity fixture and its
+   explicit single-shareholder test assumption. BRREG role data is not being
+   treated as source evidence of ownership.
+2. Execute the journaled TT02 RF-1086 main form, sub-form, and explicit
+   confirmation flow described in `rf1086-tt02-submission-runbook.md`.
+3. Validate a minimal 2025 skattemelding payload without final submission.
+4. Execute synthetic RF-1086 and skattemelding submission flows and
    persist feedback, receipt, and archive references.
-4. Keep production submission disabled until the filing-specific release gates and
+5. Keep production submission disabled until the filing-specific release gates and
    human signoffs pass.
