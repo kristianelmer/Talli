@@ -75,6 +75,7 @@ function normalizeLaunchSignoff(row: LaunchSignoffRow): LaunchSignoff {
 }
 
 export function deriveRf1086ProductionState(input: Rf1086ProductionStateInput): {
+  company: Rf1086ProductionStateInput["company"];
   preview: FilingPreviewRow;
   release: Rf1086ProductionReleaseContext;
 } {
@@ -111,6 +112,7 @@ export function deriveRf1086ProductionState(input: Rf1086ProductionStateInput): 
   }).find((snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven");
 
   return {
+    company,
     preview,
     release: {
       actorId: input.actorId,

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -6,7 +7,10 @@ import {
   loadRf1086ProductionState,
 } from "../app/lib/rf1086-production-state.ts";
 import { Rf1086ProductionRunnerError } from "../app/lib/rf1086-production-runner.ts";
-import { runPersistedRf1086ProductionStep } from "../app/lib/rf1086-production-service.ts";
+import {
+  runPersistedRf1086ProductionStep,
+  runPersistedRf1086ProductionStepWithSystemUser,
+} from "../app/lib/rf1086-production-service.ts";
 
 const actorId = "12345678-1234-4234-9234-123456789abc";
 const companyId = "22345678-1234-4234-9234-123456789abc";
@@ -473,4 +477,94 @@ test("fails closed before journal or transport when the audit write fails", asyn
   );
   assert.equal(transports, 0);
   assert.equal(operationEvents.some((event) => event.startsWith("rpc:")), false);
+});
+
+test("derives the production token customer and fixed scope from authoritative state", async () => {
+  const input = readyInput();
+  const operationEvents = [];
+  const databaseClient = memorySupabase(rowsFor(input), {}, operationEvents);
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  let grantPayload;
+
+  const result = await runPersistedRf1086ProductionStepWithSystemUser({
+    databaseClient,
+    actorId,
+    previewId: preview.id,
+    confirmations: input.confirmations,
+    now: input.now,
+    maskinporten: {
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      privateKeyPem,
+      fetchImplementation: async (url, init) => {
+        operationEvents.push("maskinporten-transport");
+        assert.equal(url, "https://maskinporten.no/token");
+        const assertion = new URLSearchParams(init.body).get("assertion");
+        grantPayload = JSON.parse(Buffer.from(assertion.split(".")[1], "base64url").toString("utf8"));
+        return new Response(JSON.stringify({
+          access_token: "short-lived-production-system-user-token",
+          token_type: "Bearer",
+          expires_in: 120,
+          scope: "skatteetaten:innrapporteringaksjonaerregisteroppgave",
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      },
+    },
+    authorityTransport: async (request) => {
+      operationEvents.push("authority-transport");
+      assert.equal(request.headers.Authorization, "Bearer short-lived-production-system-user-token");
+      return jsonResponse({ hovedskjemaId: "a2345678-1234-4234-9234-123456789abc" });
+    },
+  });
+
+  assert.equal(result.complete, false);
+  assert.equal(grantPayload.aud, "https://maskinporten.no/");
+  assert.equal(grantPayload.scope, "skatteetaten:innrapporteringaksjonaerregisteroppgave");
+  assert.equal(grantPayload.authorization_details[0].systemuser_org.ID, "0192:310279617");
+  assert.ok(operationEvents.indexOf("insert:audit_events") < operationEvents.indexOf("maskinporten-transport"));
+  assert.ok(operationEvents.lastIndexOf("insert:audit_events") < operationEvents.indexOf("authority-transport"));
+  assert.deepEqual(databaseClient.auditRows().map((row) => row.action), [
+    "rf1086_production_token_authorized",
+    "rf1086_production_step_authorized",
+  ]);
+  assert.doesNotMatch(JSON.stringify(result), /short-lived-production-system-user-token/u);
+  assert.doesNotMatch(JSON.stringify(databaseClient.auditRows()), /short-lived-production-system-user-token/u);
+});
+
+test("does not sign or request a production token when the pre-token audit fails", async () => {
+  const input = readyInput();
+  const databaseClient = memorySupabase(rowsFor(input), {
+    audit_events: { message: "private audit backend detail" },
+  });
+  let tokenRequests = 0;
+  let authorityRequests = 0;
+
+  await assert.rejects(
+    runPersistedRf1086ProductionStepWithSystemUser({
+      databaseClient,
+      actorId,
+      previewId: preview.id,
+      confirmations: input.confirmations,
+      now: input.now,
+      maskinporten: {
+        clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+        keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+        privateKeyPem: "not opened before the audit succeeds",
+        fetchImplementation: async () => {
+          tokenRequests += 1;
+          throw new Error("must not be called");
+        },
+      },
+      authorityTransport: async () => {
+        authorityRequests += 1;
+        throw new Error("must not be called");
+      },
+    }),
+    (error) =>
+      error instanceof Rf1086ProductionRunnerError &&
+      error.code === "rf1086_production_audit_failed" &&
+      !error.message.includes("backend"),
+  );
+  assert.equal(tokenRequests, 0);
+  assert.equal(authorityRequests, 0);
 });
