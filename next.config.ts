@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
     "/*": [
       "**/__pycache__/**",
       "**/*.pyc",
+      ".env*",
       "CONTEXT.md",
       "PLAN.md",
       "docs/**/*.md",

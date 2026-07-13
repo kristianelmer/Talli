@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/sanitize-standalone.mjs",
     "start": "next start",
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
@@ -31,6 +31,7 @@
     "test:manual-journal": "node --experimental-strip-types --test tests/manual_journal.test.mjs",
     "test:opening": "node --experimental-strip-types --test tests/opening_balance.test.mjs",
     "test:operator-support": "node --experimental-strip-types --test tests/operator_support.test.mjs",
+    "test:packaging": "node --test tests/standalone_packaging.test.mjs",
     "test:owner-dividend": "node --experimental-strip-types --test tests/owner_dividend.test.mjs",
     "test:review": "node --experimental-strip-types --test tests/review_workflow.test.mjs",
     "test:security": "node --experimental-strip-types --test tests/security_step_up.test.mjs",
