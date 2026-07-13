@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `33ad2ca`
+Evidence baseline: commits through `07a36dd`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,10 +11,11 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 after the browser/upload hardening commit |
+| `npm run test:release` | Pass on 2026-07-13 at `07a36dd`, including the added auth, error-disclosure, and migration security contracts |
 | Python domain suite | 56 tests pass |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
+| Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
 | Supabase migration security contracts | Pass |
 | TypeScript | Pass |
 | Next.js production build | Pass |
@@ -33,14 +34,24 @@ to launch publicly or submit live authority filings. It is not a release approva
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
   privilege flags require a separate expiring admin grant with separation of
-  duties.
+  duties. Approval metadata is append-only; only a one-way, operator-attributed
+  revocation is permitted.
+- Launch signoff current state remains updateable, while every transition is
+  copied into append-only operator-readable history.
 - Membership roles and confirmed company identity are not client-updatable.
 - Final deletion requires a different active admin operator, archive evidence,
   fresh step-up, and an immutable request identity.
 - Sensitive actions fail closed when the security audit event cannot be stored.
 - Document uploads are capped at 6 MB, byte-signature checked, assigned a
   canonical MIME type, and restricted to PDF/PNG/JPEG/UTF-8 CSV in the private
-  bucket.
+  bucket. A failed metadata insert can delete only its still-unreferenced orphan
+  object; retained document objects remain protected.
+- Dynamic provider/database diagnostics are redacted before production redirect
+  URLs. Explicitly trusted domain-validation messages remain actionable and all
+  redirect messages are bounded.
+- Sign-up preserves password bytes exactly and enforces a 12–128 character
+  passphrase boundary; provider-side rate limits, CAPTCHA, SMTP, email
+  confirmation, and leaked-password settings remain deployment checks.
 - The container is designed to run non-root with read-only root filesystem,
   all capabilities dropped, and `no-new-privileges`.
 
