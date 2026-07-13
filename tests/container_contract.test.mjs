@@ -45,5 +45,7 @@ test("container smoke test exercises hardened runtime and readiness", async () =
   assert.match(smoke, /\/api\/ready/u);
   assert.match(smoke, /id -u/u);
   assert.match(smoke, /holding_cli\.main/u);
+  assert.match(smoke, /holding_core\.corporate_documents/u);
+  assert.match(smoke, /reportlab/u);
   assert.match(smoke, /test ! -e \/app\/\.env/u);
 });

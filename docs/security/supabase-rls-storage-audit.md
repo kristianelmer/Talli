@@ -51,6 +51,10 @@ review. It should be run against staging after every schema/RLS change.
 - Signed document URL generation is denied for non-members by Storage RLS.
 - The private document bucket enforces a 6 MB limit and PDF/PNG/JPEG/CSV MIME
   allowlist aligned with server-side byte-signature validation.
+- The simple owner-dividend RPC requires the complete registered shareholder
+  set at an equal amount per share, verifies both bounded PDF objects already
+  exist under the company/year path, then atomically inserts the ledger entry,
+  action, and unsigned document metadata.
 - `step_up_events` are user-scoped and can be created only from a signed,
   recent Supabase AAL2/TOTP claim; user-supplied privilege flags are denied.
 - Production security grants are separate, expiring, admin-controlled, append-only, and

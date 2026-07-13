@@ -24,10 +24,13 @@ import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "
 import { validateManualJournal } from "../app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
 import {
-  ownerDividendCorporateDocumentRecords,
   ownerDividendLedgerLines,
   validateOwnerDividend,
 } from "../app/lib/owner-dividend.ts";
+import {
+  generateOwnerDividendCorporateDocuments,
+  prepareOwnerDividendCorporateDocuments,
+} from "../app/lib/owner-dividend-documents.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
@@ -1901,48 +1904,65 @@ test(
       totalAmount: 1000,
       distributableEquity: 5000,
       liquidityAfterPayment: 1000,
-      documentStatus: "missing_accepted_warning",
+      documentStatus: "attached",
       allocations: [{ shareholderId: persistedShareholders[0].id, shareholderName: persistedShareholders[0].name, shareCount: 100, amount: 1000 }],
     });
-    const ownerDividendLines = ownerDividendLedgerLines(ownerDividendPayload);
+    const ownerDividendActionId = randomUUID();
+    const ownerDividendLedgerEntryId = randomUUID();
+    const generatedDividendDocuments = await generateOwnerDividendCorporateDocuments({
+      companyName: persistedCompany.name,
+      orgNumber: persistedCompany.org_number,
+      incomeYear: 2025,
+      payload: ownerDividendPayload,
+    });
+    const preparedDividendDocuments = prepareOwnerDividendCorporateDocuments({
+      companyId,
+      incomeYear: 2025,
+      actionId: ownerDividendActionId,
+      createdBy: ownerUser.id,
+      documents: generatedDividendDocuments,
+    });
+    for (const document of preparedDividendDocuments) {
+      const { error: uploadError } = await owner.storage
+        .from(COMPANY_DOCUMENTS_BUCKET)
+        .upload(
+          document.storageKey,
+          new Blob([new Uint8Array(document.content)], { type: document.contentType }),
+          { contentType: document.contentType },
+        );
+      assert.ifError(uploadError);
+      storageKeysToCleanup.push(document.storageKey);
+    }
+    const { error: ownerDividendRpcError } = await owner.rpc("record_owner_dividend_action", {
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_ledger_entry_id: ownerDividendLedgerEntryId,
+      p_action_id: ownerDividendActionId,
+      p_payload: ownerDividendPayload,
+      p_documents: preparedDividendDocuments.map((document) => ({
+        id: document.id,
+        name: document.fileName,
+        storage_key: document.storageKey,
+      })),
+    });
+    assert.ifError(ownerDividendRpcError);
     const { data: ownerDividendEntry, error: ownerDividendEntryError } = await owner
       .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "dividend_to_owner",
-        memo: "Cash dividend paid to shareholders",
-        lines: ownerDividendLines,
-        created_by: ownerUser.id,
-      })
       .select("id, entry_type, lines")
+      .eq("id", ownerDividendLedgerEntryId)
       .single();
     assert.ifError(ownerDividendEntryError);
+    const ownerDividendLines = ownerDividendLedgerLines(ownerDividendPayload);
     assert.equal(ownerDividendEntry.entry_type, "dividend_to_owner");
     assert.deepEqual(ownerDividendEntry.lines, ownerDividendLines);
-    const ownerDividendActionId = randomUUID();
     const { data: ownerDividendAction, error: ownerDividendActionError } = await owner
       .from("holding_actions")
-      .insert({
-        id: ownerDividendActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "dividend_to_owner",
-        action_date: ownerDividendPayload.payment_date,
-        payload: ownerDividendPayload,
-        ledger_entry_id: ownerDividendEntry.id,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
       .select("id, action_type, ledger_entry_id, payload")
+      .eq("id", ownerDividendActionId)
       .single();
     assert.ifError(ownerDividendActionError);
     assert.equal(ownerDividendAction.action_type, "dividend_to_owner");
     assert.equal(ownerDividendAction.ledger_entry_id, ownerDividendEntry.id);
-    const { error: ownerDividendDocumentError } = await owner
-      .from("documents")
-      .insert(ownerDividendCorporateDocumentRecords(companyId, 2025, ownerDividendAction.id, ownerUser.id));
-    assert.ifError(ownerDividendDocumentError);
     const { data: corporateDocuments, error: corporateDocumentReloadError } = await owner
       .from("documents")
       .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
@@ -1954,7 +1974,38 @@ test(
       corporateDocuments.map((document) => document.document_type),
       ["corporate_document", "corporate_document"],
     );
-    assert.ok(corporateDocuments.every((document) => document.status === "missing_placeholder"));
+    assert.ok(corporateDocuments.every((document) => document.status === "generated_unsigned"));
+    assert.ok(corporateDocuments.every((document) => document.name.endsWith(".pdf")));
+    for (const document of corporateDocuments) {
+      const { data: signedDocument, error: signedDocumentError } = await owner.storage
+        .from(COMPANY_DOCUMENTS_BUCKET)
+        .createSignedUrl(document.storage_key, 60);
+      assert.ifError(signedDocumentError);
+      assert.ok(signedDocument.signedUrl);
+    }
+    const invalidDividendLedgerId = randomUUID();
+    const invalidDividendActionId = randomUUID();
+    const { error: incompleteDividendError } = await owner.rpc("record_owner_dividend_action", {
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_ledger_entry_id: invalidDividendLedgerId,
+      p_action_id: invalidDividendActionId,
+      p_payload: ownerDividendPayload,
+      p_documents: [
+        {
+          id: preparedDividendDocuments[0].id,
+          name: preparedDividendDocuments[0].fileName,
+          storage_key: preparedDividendDocuments[0].storageKey,
+        },
+      ],
+    });
+    assert.ok(incompleteDividendError);
+    const { data: incompleteDividendEntries, error: incompleteDividendEntriesError } = await owner
+      .from("ledger_entries")
+      .select("id")
+      .eq("id", invalidDividendLedgerId);
+    assert.ifError(incompleteDividendEntriesError);
+    assert.deepEqual(incompleteDividendEntries, []);
     const dividendArchive = buildPersistedCompanyArchive({
       company: persistedCompany,
       incomeYear: 2025,

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from holding_core.corporate_documents import DividendDocumentInput, generate_owner_dividend_documents
 from holding_core.models import FilingCase
 from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
 from holding_core.rf1086 import filing_preview, generate_rf1086, write_rf1086
@@ -64,6 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     simulate_rf1086_submission.add_argument("--stdin-json", action="store_true", required=True)
 
+    generate_dividend_documents = subparsers.add_parser(
+        "generate-owner-dividend-documents",
+        help="Generate unsigned board and general-meeting PDF drafts from JSON on stdin",
+    )
+    generate_dividend_documents.add_argument("--stdin-json", action="store_true", required=True)
+
     args = parser.parse_args(argv)
     if args.command == "simulate-aksjonaerregister":
         return _simulate(args.case, args.out, args.preview)
@@ -79,6 +86,8 @@ def main(argv: list[str] | None = None) -> int:
         return _render_rf1086_preview()
     if args.command == "simulate-rf1086-submission":
         return _simulate_rf1086_submission()
+    if args.command == "generate-owner-dividend-documents":
+        return _generate_owner_dividend_documents()
     return 2
 
 
@@ -264,6 +273,18 @@ def _simulate_rf1086_submission() -> int:
                 }
             )
         )
+        return 1
+
+
+def _generate_owner_dividend_documents() -> int:
+    try:
+        data = DividendDocumentInput.model_validate_json(sys.stdin.read())
+        documents = generate_owner_dividend_documents(data)
+        print(json.dumps({"documents": [document.json_record() for document in documents]}))
+        return 0
+    except (ValueError, ValidationError) as error:
+        print(json.dumps({"status": "blocked", "failure_code": "invalid_dividend_document_input"}))
+        print(f"Dividend document generation blocked: {error}", file=sys.stderr)
         return 1
 
 

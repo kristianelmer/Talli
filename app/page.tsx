@@ -138,7 +138,6 @@ export default async function Home({ searchParams }: HomeProps) {
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
   const taxSettlementEntries = entries.filter((entry) => entry.entry_type === "tax_settlement");
   const taxSettlementActions = actions.filter((action) => action.action_type === "tax_settlement");
-  const primaryShareholders = shareholders.filter((shareholder) => shareholder.company_id === primaryCompanyId);
   const dividendReceivedActions = actions.filter((action) => action.action_type === "dividend_received");
   const dividendAnnualImpact = summarizeDividendReceivedAnnualImpact(
     dividendReceivedActions.map((action) => ({
@@ -1782,24 +1781,13 @@ export default async function Home({ searchParams }: HomeProps) {
               <section className="band mutedBand">
                 <div className="sectionHeader">
                   <p className="eyebrow">Eierutbytte</p>
-                  <h2>Poster utbytte til aksjonær og opprett selskapsdokumenter.</h2>
+                  <h2>Poster utbytte og opprett kontrollerbare PDF-utkast.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordOwnerDividend}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
-                  </label>
-                  <label>
-                    Aksjonær
-                    <select name="shareholderId" required>
-                      <option value="">Velg aksjonær</option>
-                      {primaryShareholders.map((shareholder) => (
-                        <option key={shareholder.id} value={shareholder.id}>
-                          {shareholder.name} ({shareholder.share_count} aksjer)
-                        </option>
-                      ))}
-                    </select>
                   </label>
                   <label>
                     Beslutningsdato
@@ -1814,10 +1802,6 @@ export default async function Home({ searchParams }: HomeProps) {
                     <input name="totalAmount" inputMode="decimal" defaultValue="1000" required />
                   </label>
                   <label>
-                    Allokert beløp
-                    <input name="allocationAmount" inputMode="decimal" defaultValue="1000" required />
-                  </label>
-                  <label>
                     Fri egenkapital
                     <input name="distributableEquity" inputMode="decimal" defaultValue="5000" required />
                   </label>
@@ -1825,25 +1809,35 @@ export default async function Home({ searchParams }: HomeProps) {
                     Likviditet etter betaling
                     <input name="liquidityAfterPayment" inputMode="decimal" defaultValue="1000" required />
                   </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="missing_accepted_warning">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
-                  </label>
                   <button className="secondaryButton" type="submit">
-                    Poster eierutbytte
+                    Poster eierutbytte og lag PDF-utkast
                   </button>
+                  <p className="formHint">
+                    Beløpet fordeles automatisk likt per aksje på alle registrerte aksjeeiere. Totalen må kunne
+                    fordeles i hele øre.
+                  </p>
                 </form>
                 <div className="readinessGrid">
                   <div className="readinessItem">
                     <span>Selskapsdokumenter</span>
-                    <strong data-status={documents.some((document) => document.linked_to && document.document_type === "corporate_document") ? "warning" : "draft"}>
+                    <strong
+                      data-status={
+                        documents.some(
+                          (document) =>
+                            document.linked_to &&
+                            document.document_type === "corporate_document" &&
+                            document.status === "generated_unsigned",
+                        )
+                          ? "warning"
+                          : "draft"
+                      }
+                    >
                       {documents.filter((document) => document.document_type === "corporate_document").length}
                     </strong>
-                    <p>Styreforslag og generalforsamlingsprotokoll opprettes som arkivklare placeholders.</p>
+                    <p>
+                      Styreprotokoll og generalforsamlingsprotokoll lagres som usignerte PDF-utkast. De må
+                      kontrolleres, kompletteres og signeres før bruk.
+                    </p>
                   </div>
                 </div>
               </section>

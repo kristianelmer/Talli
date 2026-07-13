@@ -7,6 +7,12 @@ export type OwnerDividendAllocation = {
   amount: number;
 };
 
+export type OwnerDividendShareholder = {
+  shareholderId: string;
+  shareholderName: string;
+  shareCount: number;
+};
+
 export type OwnerDividendInput = {
   decisionDate: string;
   paymentDate: string;
@@ -38,12 +44,27 @@ export class OwnerDividendValidationError extends Error {
 }
 
 export function validateOwnerDividend(input: OwnerDividendInput): OwnerDividendActionPayload {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.decisionDate) || !/^\d{4}-\d{2}-\d{2}$/.test(input.paymentDate)) {
+  if (!isIsoDate(input.decisionDate) || !isIsoDate(input.paymentDate)) {
     throw new OwnerDividendValidationError("Dato må være YYYY-MM-DD.", "invalid_date");
+  }
+  if (input.paymentDate < input.decisionDate) {
+    throw new OwnerDividendValidationError(
+      "Betalingsdato kan ikke være før beslutningsdato.",
+      "payment_before_decision",
+    );
   }
   if (!Number.isFinite(input.totalAmount) || input.totalAmount <= 0) {
     throw new OwnerDividendValidationError("Utbyttebeløp må være større enn 0.", "invalid_amount");
   }
+  if (!Number.isFinite(input.distributableEquity) || input.distributableEquity < 0) {
+    throw new OwnerDividendValidationError("Fri egenkapital må være et gyldig beløp.", "invalid_distributable_equity");
+  }
+  if (!Number.isFinite(input.liquidityAfterPayment)) {
+    throw new OwnerDividendValidationError("Likviditet må være et gyldig beløp.", "invalid_liquidity");
+  }
+  moneyToCents(input.totalAmount);
+  moneyToCents(input.distributableEquity);
+  moneyToCents(input.liquidityAfterPayment);
   if (input.totalAmount > input.distributableEquity) {
     throw new OwnerDividendValidationError("Utbytte overstiger fri egenkapital.", "dividend_exceeds_distributable_equity");
   }
@@ -59,15 +80,40 @@ export function validateOwnerDividend(input: OwnerDividendInput): OwnerDividendA
   const allocations = input.allocations.map((allocation) => ({
     shareholderId: allocation.shareholderId.trim(),
     shareholderName: allocation.shareholderName.trim(),
-    shareCount: roundMoney(allocation.shareCount),
-    amount: roundMoney(allocation.amount),
+    shareCount: allocation.shareCount,
+    amount: moneyToCents(allocation.amount) / 100,
   }));
-  if (allocations.some((allocation) => !allocation.shareholderId || !allocation.shareholderName || allocation.amount <= 0)) {
+  if (
+    allocations.some(
+      (allocation) =>
+        !allocation.shareholderId ||
+        !allocation.shareholderName ||
+        !Number.isFinite(allocation.amount) ||
+        allocation.amount <= 0 ||
+        !Number.isInteger(allocation.shareCount) ||
+        allocation.shareCount <= 0,
+    )
+  ) {
     throw new OwnerDividendValidationError("Aksjonærallokering er ugyldig.", "invalid_allocation");
+  }
+  if (new Set(allocations.map((allocation) => allocation.shareholderId)).size !== allocations.length) {
+    throw new OwnerDividendValidationError("Aksjonær kan ikke forekomme flere ganger.", "duplicate_shareholder");
   }
   const allocated = roundMoney(allocations.reduce((sum, allocation) => sum + allocation.amount, 0));
   if (allocated !== roundMoney(input.totalAmount)) {
     throw new OwnerDividendValidationError("Aksjonærallokeringer må summere til totalutbytte.", "allocation_mismatch");
+  }
+  const totalShares = allocations.reduce((sum, allocation) => sum + allocation.shareCount, 0);
+  const totalCents = moneyToCents(input.totalAmount);
+  if (
+    allocations.some(
+      (allocation) => moneyToCents(allocation.amount) * totalShares !== totalCents * allocation.shareCount,
+    )
+  ) {
+    throw new OwnerDividendValidationError(
+      "Enkelt utbytte må fordeles likt per aksje.",
+      "unequal_per_share_allocation",
+    );
   }
   return {
     decision_date: input.decisionDate,
@@ -80,6 +126,45 @@ export function validateOwnerDividend(input: OwnerDividendInput): OwnerDividendA
   };
 }
 
+export function allocateOwnerDividend(
+  totalAmount: number,
+  shareholders: OwnerDividendShareholder[],
+): OwnerDividendAllocation[] {
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    throw new OwnerDividendValidationError("Utbyttebeløp må være større enn 0.", "invalid_amount");
+  }
+  if (
+    shareholders.length === 0 ||
+    shareholders.some(
+      (shareholder) =>
+        !shareholder.shareholderId.trim() ||
+        !shareholder.shareholderName.trim() ||
+        !Number.isInteger(shareholder.shareCount) ||
+        shareholder.shareCount <= 0,
+    )
+  ) {
+    throw new OwnerDividendValidationError("Aksjeeierboken er ugyldig.", "invalid_shareholder_register");
+  }
+  if (new Set(shareholders.map((shareholder) => shareholder.shareholderId)).size !== shareholders.length) {
+    throw new OwnerDividendValidationError("Aksjeeierboken inneholder duplikater.", "duplicate_shareholder");
+  }
+  const totalCents = moneyToCents(totalAmount);
+  const totalShares = shareholders.reduce((sum, shareholder) => sum + shareholder.shareCount, 0);
+  if (totalCents % totalShares !== 0) {
+    throw new OwnerDividendValidationError(
+      "Totalutbyttet kan ikke fordeles likt per aksje med hele øre.",
+      "indivisible_per_share_amount",
+    );
+  }
+  const centsPerShare = totalCents / totalShares;
+  return shareholders.map((shareholder) => ({
+    shareholderId: shareholder.shareholderId.trim(),
+    shareholderName: shareholder.shareholderName.trim(),
+    shareCount: shareholder.shareCount,
+    amount: (shareholder.shareCount * centsPerShare) / 100,
+  }));
+}
+
 export function ownerDividendLedgerLines(payload: OwnerDividendActionPayload) {
   return [
     { account: "2050", description: "Dividend to shareholders", debit: payload.total_amount, credit: 0 },
@@ -87,31 +172,23 @@ export function ownerDividendLedgerLines(payload: OwnerDividendActionPayload) {
   ];
 }
 
-export function ownerDividendCorporateDocumentRecords(companyId: string, incomeYear: number, actionId: string, createdBy: string) {
-  return [
-    {
-      company_id: companyId,
-      income_year: incomeYear,
-      document_type: "corporate_document",
-      name: "Styreforslag utbytte.txt",
-      linked_to: actionId,
-      status: "missing_placeholder",
-      storage_key: `generated/${companyId}/${incomeYear}/${actionId}/styreforslag-utbytte.txt`,
-      created_by: createdBy,
-    },
-    {
-      company_id: companyId,
-      income_year: incomeYear,
-      document_type: "corporate_document",
-      name: "Generalforsamlingsprotokoll utbytte.txt",
-      linked_to: actionId,
-      status: "missing_placeholder",
-      storage_key: `generated/${companyId}/${incomeYear}/${actionId}/generalforsamlingsprotokoll-utbytte.txt`,
-      created_by: createdBy,
-    },
-  ];
-}
-
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function moneyToCents(value: number) {
+  if (!Number.isFinite(value)) {
+    throw new OwnerDividendValidationError("Beløpet er ugyldig.", "invalid_amount");
+  }
+  const cents = Math.round(value * 100);
+  if (Math.abs(value * 100 - cents) > 1e-7) {
+    throw new OwnerDividendValidationError("Beløp kan ha maksimalt to desimaler.", "invalid_money_precision");
+  }
+  return cents;
+}
+
+function isIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }

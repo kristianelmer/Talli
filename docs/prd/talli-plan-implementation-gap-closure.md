@@ -112,9 +112,10 @@ These are the current gaps between implementation and plan.
     - Plan requires investment positions, cost basis, ownership percentage, dividend events, disposal events, and clear tax treatment.
     - Current implementation creates an `InvestmentPosition` in share purchase and updates it in share sale, but there is no durable register, position history, reconciliation to ledger, organization lookup, or securities-specific support boundary.
 
-16. Dividend-to-owner corporate documents are placeholders.
-    - Plan requires board proposal and general meeting templates.
-    - Current result returns only template titles, not generated documents, content, approval flow, or archive linkage.
+16. Dividend-to-owner corporate document generation is implemented; controlled rehearsal remains.
+    - The web workflow generates real unsigned board/protocol and general-meeting PDF drafts, stores bytes privately, and links metadata to the owner-dividend action.
+    - The simple flow derives a complete equal-per-share allocation from the shareholder register and persists ledger, action, and both document records atomically after both objects exist.
+    - Remaining evidence: execute the migration/storage rehearsal against confirmed disposable staging and obtain named legal review of the draft wording.
 
 17. Tax settlement workflow is missing.
     - Plan requires estimated tax payable/refundable, payment/refund tracking, and prior-year tax settlement difference.
@@ -250,7 +251,7 @@ These are the current gaps between implementation and plan.
 - Expand audit logs beyond the current ledger-only events. Audit should record security, role, company identity, document, bank import, structured action, posting, readiness, override, billing, submission, and receipt events.
 - Convert holding-action builders into persisted workflows. Each action should produce structured business record, draft entry, document requirements, bank-match requirements, support-boundary status, and filing implications.
 - Build an investment register with position history. Share purchases and sales should update durable positions and reconcile to ledger accounts.
-- Generate actual corporate document artifacts for simple dividends, not only titles.
+- Keep actual simple-dividend corporate artifacts fail-closed: unsigned PDF status, complete equal-per-share allocation, private object storage, atomic metadata linkage, and named legal review.
 - Add tax settlement actions for estimated tax, payments/refunds, and prior-year differences.
 - Create a filing override model with field target, old value, new value, reason, risk level, approver, audit event, and readiness impact.
 - Build deadline status as data, not hardcoded UI text. Deadline rules should generate upcoming, due, overdue, and filed states.

@@ -20,6 +20,7 @@ test("standalone artifact includes the web and RF-1086 runtimes without local se
   assert.equal((await stat(path.join(standaloneRoot, "server.js"))).isFile(), true);
   assert.equal((await stat(path.join(standaloneRoot, "holding_cli", "main.py"))).isFile(), true);
   assert.equal((await stat(path.join(standaloneRoot, "holding_core", "rf1086.py"))).isFile(), true);
+  assert.equal((await stat(path.join(standaloneRoot, "holding_core", "corporate_documents.py"))).isFile(), true);
   assert.equal(
     (await stat(path.join(standaloneRoot, "docs", "filing", "aksjonaerregisteroppgaveHovedskjema.xsd"))).isFile(),
     true,

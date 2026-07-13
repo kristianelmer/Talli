@@ -1,7 +1,7 @@
 # Legal and Operational Policy Drafts
 
 Status: draft pack for #72  
-Last updated: 2026-06-16
+Last updated: 2026-07-13
 
 Files:
 
@@ -10,6 +10,8 @@ Files:
 - `dpa-draft.md`
 - `retention-delete-export-policy-draft.md`
 - `incident-response-policy-draft.md`
+- `corporate-document-drafts.md` (implementation boundary and source register;
+  separate template-wording approval required)
 
 These drafts convert product decisions into reviewable policy text. They are not
 legal signoff. Issue #72 should remain open until founder/legal/security review

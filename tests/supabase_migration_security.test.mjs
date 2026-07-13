@@ -10,6 +10,7 @@ const grantImmutabilityMigrationPath =
   "supabase/migrations/20260713125515_make_production_security_grants_append_only.sql";
 const orphanCleanupMigrationPath = "supabase/migrations/20260713130403_allow_orphan_document_cleanup.sql";
 const launchHistoryMigrationPath = "supabase/migrations/20260713130731_preserve_launch_signoff_history.sql";
+const ownerDividendMigrationPath = "supabase/migrations/20260713133300_record_owner_dividend_atomically.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -90,6 +91,21 @@ test("launch signoff transitions are preserved in append-only history", async ()
   assert.match(sql, /security definer/u);
   assert.match(sql, /after insert or update on public\.launch_signoffs/u);
   assert.match(sql, /lower\(tg_op\)/u);
+});
+
+test("owner dividend ledger, action, and generated PDF metadata persist atomically", async () => {
+  const sql = await readFile(ownerDividendMigrationPath, "utf8");
+
+  assert.match(sql, /create or replace function public\.record_owner_dividend_action/u);
+  assert.match(sql, /security invoker/u);
+  assert.match(sql, /p_payload ->> 'document_status' <> 'attached'/u);
+  assert.match(sql, /owner dividend requires two valid PDF records/u);
+  assert.match(sql, /owner dividend must include the complete register at an equal amount per share/u);
+  assert.match(sql, /from storage\.objects object/u);
+  assert.match(sql, /'generated_unsigned'/u);
+  assert.match(sql, /insert into public\.ledger_entries[\s\S]*insert into public\.holding_actions[\s\S]*insert into public\.documents/u);
+  assert.match(sql, /revoke all on function public\.record_owner_dividend_action/u);
+  assert.match(sql, /grant execute on function public\.record_owner_dividend_action[\s\S]*to authenticated/u);
 });
 
 test("security-definer RLS helpers are moved out of the exposed schema", async () => {

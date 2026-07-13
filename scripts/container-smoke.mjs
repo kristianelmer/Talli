@@ -78,7 +78,7 @@ try {
     container,
     "/app/.venv/bin/python",
     "-c",
-    "import pydantic, holding_cli.main, holding_core.rf1086",
+    "import pydantic, reportlab, holding_cli.main, holding_core.corporate_documents, holding_core.rf1086",
   ]);
   await run("docker", [
     "exec",

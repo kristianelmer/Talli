@@ -45,7 +45,7 @@ The rehearsal command covers:
 | Company setup | `npm run test:opening` | Automated |
 | Documents | `npm run test:documents`, `npm run test:archive` | Automated metadata/archive coverage |
 | Bank/import/manual entries | `npm run test:bank`, `npm run test:manual-journal` | Automated |
-| Holding actions | share/dividend/loan/tax-settlement tests | Automated |
+| Holding actions | share/dividend/loan/tax-settlement tests, including rendered unsigned dividend PDFs and equal-per-share allocation | Automated |
 | Annual data/readiness | `npm run test:annual-data`, `npm run test:annual-readiness` | Automated |
 | Filing previews/submissions | RF-1086 simulation, annual accounts payload, company tax return payload | Automated simulation/payload only |
 | Review | `npm run test:review` | Automated |
