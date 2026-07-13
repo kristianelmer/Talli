@@ -221,22 +221,47 @@ test(
     });
     assert.ifError(membershipError);
 
-    const { error: reviewerInviteError } = await owner.from("company_memberships").insert({
-      company_id: companyId,
-      user_id: reviewerUser.id,
-      role: "reviewer",
-      invited_by: ownerUser.id,
-      accepted_at: new Date().toISOString(),
-    });
-    assert.ifError(reviewerInviteError);
-    const { error: readOnlyInviteError } = await owner.from("company_memberships").insert({
-      company_id: companyId,
-      user_id: readOnlyUser.id,
-      role: "read_only",
-      invited_by: ownerUser.id,
-      accepted_at: new Date().toISOString(),
-    });
-    assert.ifError(readOnlyInviteError);
+    async function acceptInvitedMembership(member, memberUser, role) {
+      const acceptedAt = new Date().toISOString();
+      const { data: invitation, error: invitationError } = await owner
+        .from("company_invitations")
+        .insert({
+          company_id: companyId,
+          invited_email: memberUser.email,
+          role,
+          token_hash: await invitationTokenHash(randomUUID()),
+          status: "pending",
+          expires_at: invitationExpiry(),
+          invited_by: ownerUser.id,
+          delivery_events: [invitationDeliveryEvent({ recipientEmail: memberUser.email })],
+        })
+        .select("id")
+        .single();
+      assert.ifError(invitationError);
+
+      const { error: membershipError } = await member.from("company_memberships").insert({
+        company_id: companyId,
+        user_id: memberUser.id,
+        role,
+        invited_by: ownerUser.id,
+        accepted_at: acceptedAt,
+      });
+      assert.ifError(membershipError);
+
+      const { error: acceptanceError } = await member
+        .from("company_invitations")
+        .update({
+          invited_user_id: memberUser.id,
+          status: "accepted",
+          accepted_by: memberUser.id,
+          accepted_at: acceptedAt,
+        })
+        .eq("id", invitation.id);
+      assert.ifError(acceptanceError);
+    }
+
+    await acceptInvitedMembership(reviewer, reviewerUser, "reviewer");
+    await acceptInvitedMembership(readOnly, readOnlyUser, "read_only");
     const { data: persistedRoles, error: persistedRolesError } = await admin
       .from("company_memberships")
       .select("user_id, role")
@@ -411,6 +436,30 @@ test(
         production_credentials_enabled: true,
       });
     assert.ok(selfAssertedStepUpError);
+
+    const { data: cancellation, error: cancellationRequestError } = await owner
+      .from("company_cancellations")
+      .insert({
+        company_id: companyId,
+        status: "retention_hold",
+        reason: "Integration-test cancellation request",
+        evidence: { archiveExportedAt: new Date().toISOString() },
+        requested_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(cancellationRequestError);
+    const { error: selfApprovedDeletionError } = await owner
+      .from("company_cancellations")
+      .update({
+        status: "deleted",
+        reviewed_by: ownerUser.id,
+        reviewed_at: new Date().toISOString(),
+        deleted_by: ownerUser.id,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq("id", cancellation.id);
+    assert.ok(selfApprovedDeletionError);
 
     const { data: stepUpEvent, error: stepUpError } = await admin
       .from("step_up_events")
