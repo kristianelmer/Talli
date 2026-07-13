@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `0e35d3b`
+Evidence baseline: commits through `a8d7f75`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,12 +11,13 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `0e35d3b`, including the guarded TT02 runner, RF-1086 authority contract/orchestration/archive, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `a8d7f75`, including the guarded RF-1086 and company-tax TT02 runners, authority contract/orchestration/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
 | RF-1086 crash-safe orchestration | 7 tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
 | RF-1086 Dialogporten/archive boundary | 6 focused tests pass: fixed Dialogporten hosts, exact party/resource checks, bounded token-free responses, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
+| Company-tax 2025 contract and TT02 boundary | 31 focused tests pass: exact 2025 XSD/source pins, local no-activity fixture generation, calculation-only enforcement, current-draft inspection, private atomic evidence journal, forbidden sensitive fields, crash-window handling, CLI journal requirement, and non-2025 rejection before token issuance |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -55,6 +56,14 @@ to launch publicly or submit live authority filings. It is not a release approva
   both the RF-1086 and Dialogporten scopes. It does not follow attachment URLs;
   it validates and converts them into fixed-host authority-client calls, writes
   private immutable artifacts, and preserves each Dialogporten revision.
+- Company-tax TT02 inspection/calculation is pinned to 2025 and requires an
+  operator-supplied private journal directory before the signing key is opened.
+  Revision 1 is persisted before transport; revision 2 stores only bounded
+  hashes, result/feedback codes, document metadata, or a stable failure code.
+  The exact journal schema rejects tokens, assertions, XML, provider values,
+  free-text diagnostics, symlinks, permissive files, conflicting revisions,
+  and oversized checkpoints. `validertest` remains calculation-only and cannot
+  create an Altinn instance or submission.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
@@ -111,8 +120,12 @@ required for `security_restore` signoff.
 
 - RF-1086 and skattemelding test access, system registration, customer approval,
   system-user request status `Accepted`, and system-user-bound token issuance are
-  proven in TT02. Synthetic provider validation/submission, feedback retrieval,
-  receipts, and archive evidence are still pending.
+  proven in TT02. The company-tax calculation-only endpoint was reached, but the
+  selected BRREG holding company has no usable 2025 tax-return draft: the
+  provider returned `UP_HAR_NÆRINGSSPESIFIKASJON_MANGLER_SKATTEMELDING`, and a
+  current-draft GET returned HTTP 403. No Altinn instance was created. A separate
+  tax-data-enabled Tenor company and delegated approval are required. RF-1086
+  provider submission, receipts, and archive evidence are still pending.
 - The separate RF-1086 file-upload scope still reports `Tilgang mangler`; do not
   request it in a token unless Skatteetaten confirms it is required and grants it.
 - RF-1086 production journal persistence/web wiring, årsregnskap, and
