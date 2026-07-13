@@ -72,8 +72,9 @@ The exact authority HTTP boundary is implemented in
 in `app/lib/rf1086-authority-orchestration.ts` and covered by
 `npm run test:rf1086:orchestration`. It requires prepared, sent, and accepted
 journal revisions and blocks replay of an uncertain `bekreft`. A reviewed
-production journal adapter and web production wiring remain required before
-activation. The local TT02-only operator boundary is implemented by
+Supabase production journal adapter with service-role-only atomic writes is now
+implemented and tested on a disposable real stack. Hosted migration deployment
+and production worker/web wiring remain required before activation. The local TT02-only operator boundary is implemented by
 `app/lib/maskinporten-system-user.ts`, `app/lib/rf1086-file-journal.ts`,
 `app/lib/rf1086-tt02-runner.ts`, and `scripts/rf1086-tt02.ts`; see
 `rf1086-tt02-submission-runbook.md`. TT02 feedback/receipt evidence is still

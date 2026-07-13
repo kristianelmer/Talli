@@ -1,6 +1,6 @@
 # RF-1086 Authority API Contract Evidence
 
-Status: authority client implemented; live orchestration remains disabled
+Status: authority client and durable journal implemented; live orchestration remains disabled
 Verified: 2026-07-13
 OpenAPI contract: `innrapportering-aksjonaerregister-api` `1.0.0`
 
@@ -24,6 +24,12 @@ a live filing.
   https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 - Dialogporten OpenAPI environments:
   https://docs.altinn.studio/en/dialogporten/reference/openapi/
+- Supabase Row Level Security:
+  https://supabase.com/docs/guides/database/postgres/row-level-security
+- Supabase database functions and function privileges:
+  https://supabase.com/docs/guides/database/functions
+- Supabase Data API hardening and explicit grants:
+  https://supabase.com/docs/guides/api/securing-your-api
 
 The SwaggerHub registry reported `1.0.0` as the default, published version. The
 OpenAPI document identifies itself as OpenAPI `3.0.3` and API version `1.0.0`.
@@ -104,6 +110,11 @@ malformed JSON/UUID/content types fail closed.
 - Contract/security tests: `tests/rf1086_authority_client.test.mjs`
 - Crash-safe orchestration: `app/lib/rf1086-authority-orchestration.ts`
 - Orchestration tests: `tests/rf1086_authority_orchestration.test.mjs`
+- Durable Supabase journal: `app/lib/rf1086-supabase-journal.ts`
+- Journal migration:
+  `supabase/migrations/20260713192808_persist_rf1086_authority_checkpoints.sql`
+- Journal tests: `tests/rf1086_supabase_journal.test.mjs` and the disposable
+  local Supabase workspace rehearsal
 - Command: `npm run test:rf1086:authority`
 - Command: `npm run test:rf1086:orchestration`
 - Dialog/immutable archive:
@@ -117,7 +128,11 @@ response parsing, bounded responses, no bearer-token disclosure, invalid-input
 rejection before transport, safe UUID retries, write-before-send journal order,
 crash recovery, environment/payload locking, and persisted-checkpoint tamper
 rejection. A durable `sent` state prevents automatic `bekreft` replay when its
-outcome could be unknown.
+outcome could be unknown. The database journal enforces exact bounded JSON,
+payload/preview binding on every read, service-role-only atomic mutation,
+optimistic revisions with immediate HTTP 409 conflicts, accepted-membership RLS,
+and no browser-role insert, update, or delete grant. The isolated real-stack test
+also proves outsider denial and that the injected bearer token is never stored.
 
 Archive tests additionally prove exact Dialogporten hosts, strict party and
 resource binding, bounded/token-free responses, consistent provider pagination,
@@ -126,10 +141,10 @@ immutable document identities, and revisioned manifests.
 
 ## Remaining Before TT02 Submission
 
-1. Bind the implemented journal interface to a reviewed production persistence
-   adapter with optimistic revision checks. The state machine already requires
-   prepared/sent/accepted saves around every call, but the web production runner
-   remains intentionally unwired.
+1. Apply the reviewed journal migration to a confirmed hosted staging project
+   and bind the service-role journal to a controlled server-side worker. The
+   adapter and optimistic revision checks are implemented locally, but the web
+   production runner remains intentionally unwired.
 2. Acquire a fresh system-user-bound token outside the browser process and inject
    it only for the controlled run.
 3. Execute hovedskjema, every underskjema, and bekreft with synthetic data for
