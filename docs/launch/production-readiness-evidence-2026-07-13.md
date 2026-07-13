@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `94b40ac`
+Evidence baseline: commits through `4ad2261`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,20 +11,22 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `94b40ac`, including auth, error-disclosure, dividend-PDF, and migration security contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `4ad2261`, including auth, error-disclosure, dividend-PDF, and migration security contracts |
 | Python domain suite | 60 tests pass |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
-| Supabase migration security contracts | Pass |
+| Supabase migration security contracts | 15 pass, including service-role scope, explicit revoked-grant rejection, local-config isolation, and PostgreSQL 17 owner-dividend name resolution |
+| `npm run test:supabase:local` | Pass on 2026-07-13; pinned CLI applied every migration to a disposable loopback stack, then Auth, real TOTP/AAL2, invitations, tenant RLS, Storage retention/orphan cleanup, atomic dividend PDFs, filing/billing/cancellation state, and outsider denial all passed; containers, network, and volume were removed |
 | TypeScript | Pass |
 | Next.js production build | Pass |
 | Standalone artifact inspection | Pass; required Node/Python/XSD runtime present and local secrets/development evidence absent |
 | Dividend corporate-document runtime | Pass; two deterministic A4 PDFs generated, text-extracted, rendered to PNG, and visually inspected without clipping or broken Norwegian characters |
 | Container contract inspection | Pass; pinned images, locked installs, non-root runtime, key/env exclusions, and hardened smoke command |
+| `npm run test:container` | Pass on 2026-07-13; pinned Linux image built without pending install-script warnings, started read-only as non-root with all capabilities dropped, health/readiness passed, secrets were absent, and both corporate PDFs were generated successfully inside the container |
 | Browser CSP smoke | Pass in headless Chromium against the production server; no console or page errors |
 | Runtime response headers | CSP, Permissions-Policy, Referrer-Policy, `nosniff`, frame denial, and production HSTS confirmed on `/api/health` |
-| Dependency vulnerability audit | `npm audit --omit=dev --audit-level=high`: zero vulnerabilities |
+| Dependency vulnerability audit | `npm audit --audit-level=high`: zero vulnerabilities after adding the pinned Supabase CLI; Sharp `0.34.5` is the only explicitly reviewed install-script approval |
 | Python dependency vulnerability audit | `uvx pip-audit --local`: no known vulnerabilities found |
 | Repository credential scan | No tracked private-key file or private-key header found; common key formats are ignored and excluded from Docker context |
 
@@ -37,7 +39,8 @@ to launch publicly or submit live authority filings. It is not a release approva
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
   privilege flags require a separate expiring admin grant with separation of
   duties. Approval metadata is append-only; only a one-way, operator-attributed
-  revocation is permitted.
+  revocation is permitted, and attempted reinstatement fails explicitly instead
+  of returning a misleading zero-row update.
 - Launch signoff current state remains updateable, while every transition is
   copied into append-only operator-readable history.
 - Membership roles and confirmed company identity are not client-updatable.
@@ -60,26 +63,22 @@ to launch publicly or submit live authority filings. It is not a release approva
   confirmation, and leaked-password settings remain deployment checks.
 - The container is designed to run non-root with read-only root filesystem,
   all capabilities dropped, and `no-new-privileges`.
+- The executable Supabase audit does not receive a direct database password.
+  Service-role public-table grants are explicitly limited to support-operator
+  provisioning and disposable rehearsal cleanup.
 
 ## Environment-Dependent Evidence Not Yet Run
 
-### Container smoke
-
-Command: `npm run test:container`
-
-Current blocker: Docker Desktop is waiting for the macOS administrator approval
-needed to configure its privileged networking/socket helper. Static container
-contract checks pass, but this does not substitute for building and running the
-Linux image.
-
-### Supabase staging RLS/storage rehearsal
+### Hosted Supabase staging RLS/storage rehearsal
 
 Command: `npm run test:supabase`
 
 Current blocker: the configured remote project has not been explicitly confirmed
-as the disposable/non-production staging target for a test that applies every
-migration and creates/deletes temporary Auth users and tenant data. The test must
-not be run against an unconfirmed project.
+as the disposable/non-production staging target. Apply all migrations there
+through the controlled migration workflow first; the test then creates/deletes
+temporary Auth users and tenant data. It must not run against an unconfirmed
+project. The passing local stack is strong executable evidence but does not
+prove hosted configuration/version parity or absence of remote policy drift.
 
 ### Restore rehearsal
 
