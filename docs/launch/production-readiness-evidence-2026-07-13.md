@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `972c0f3`
+Evidence baseline: commits through `31f08d3`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -18,7 +18,7 @@ to launch publicly or submit live authority filings. It is not a release approva
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
 | RF-1086 Dialogporten/archive boundary | 6 focused tests pass: fixed Dialogporten hosts, exact party/resource checks, bounded token-free responses, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
 | Company-tax 2025 contract and TT02 boundary | 31 focused tests pass: exact 2025 XSD/source pins, local no-activity fixture generation, calculation-only enforcement, current-draft inspection, private atomic evidence journal, forbidden sensitive fields, crash-window handling, CLI journal requirement, and non-2025 rejection before token issuance |
-| Annual-accounts RR-0002 and TT02 boundary | 16 focused tests pass: deterministic current-contract Hovedskjema/Underskjema rendering with current/prior whole-kroner reconciliation, XML escaping and schema fingerprints; a narrow source-backed field map; and a fixed-host TT02-only client covering system-user token exchange, draft creation, XML replacement, bounded validation feedback, validation-revision invalidation, `confirm` locking, exact signing-task boundary, redirect/response limits, endpoint override rejection, and token/provider-body redaction; all transport evidence is injected and no Altinn instance was created |
+| Annual-accounts RR-0002 and TT02 boundary | 27 focused tests pass: deterministic current-contract Hovedskjema/Underskjema rendering with current/prior whole-kroner reconciliation, XML escaping and schema fingerprints; a narrow source-backed field map; a fixed-host TT02-only client; and crash-safe orchestration/private journaling covering prepared/sent/accepted ordering, no replay of uncertain draft/lock calls, fixed-ID upload retry, lock preflight revalidation, identity/hash drift detection, atomic `0700`/`0600` evidence, symlink/revision defenses, and token/assertion/XML/provider-field rejection; all transport evidence is injected and no Altinn instance was created |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -73,9 +73,11 @@ to launch publicly or submit live authority filings. It is not a release approva
   `signing` task. It has no sign/submit method. Its separate renderer pins the
   live Hovedskjema/Underskjema schema fingerprints, requires explicit current and
   prior whole-kroner figures, rejects unsupported entity/audit/IFRS cases, and
-  verifies both result and balance identities before emitting hashed XML.
-  Provider validation, crash-safe orchestration/journaling, live TT02 evidence,
-  and the personal ID-porten step remain open.
+  verifies both result and balance identities before emitting hashed XML. The
+  orchestration journal writes prepared/sent/accepted checkpoints around every
+  operation, never replays uncertain create/lock transitions, and stores no XML,
+  bearer material, provider paths, or provider values. Provider validation, live
+  TT02 evidence, and the personal ID-porten step remain open.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
