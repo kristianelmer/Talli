@@ -10,12 +10,14 @@ import {
   loadPrivateAnnualAccountsTt02Input,
   runAnnualAccountsTt02Step,
   validateAnnualAccountsTt02Target,
+  verifyAnnualAccountsTt02SignedInstance,
 } from "../app/lib/annual-accounts-tt02-runner.ts";
 
 const operationId = "12345678-1234-4234-9234-123456789abc";
 const instanceGuid = "232c5390-9479-4506-a266-9890d7287bfb";
 const mainFormId = "ce8665c1-01c3-49f7-960f-196b250a2266";
 const accountsFormId = "0445d618-28b8-4af5-95e0-c8c989487e7a";
+const signatureId = "7b8b2632-5b85-4d31-86cc-0c8766e4e079";
 const annualAccounts = {
   organization: {
     number: "310279617",
@@ -264,4 +266,134 @@ test("requires a separate flag before the lock-for-signature transition", async 
       error instanceof AnnualAccountsTt02RunnerError &&
       error.code === "annual_accounts_tt02_lock_confirmation_required",
   );
+});
+
+async function lockedJournal(loaded) {
+  const journal = memoryJournal();
+  const client = {
+    environment: "test",
+    async createDraft() {
+      return {
+        instance: { ownerPartyId: "500700", instanceGuid },
+        organizationNumber: "310279617",
+        currentTask: { elementId: "Task_1", altinnTaskType: "data" },
+        dataElements: [
+          { id: mainFormId, instanceGuid, dataType: "Hovedskjema", contentType: "application/xml", filename: null },
+          { id: accountsFormId, instanceGuid, dataType: "Underskjema", contentType: "application/xml", filename: null },
+        ],
+      };
+    },
+    async replaceXmlDataElement({ dataElementId }) {
+      return {
+        id: dataElementId,
+        instanceGuid,
+        dataType: dataElementId === mainFormId ? "Hovedskjema" : "Underskjema",
+        contentType: "application/xml",
+        filename: null,
+      };
+    },
+    async validateDraft() {
+      return { valid: true, issues: [] };
+    },
+    async lockForPersonalSignature() {
+      return {
+        state: "awaiting-person-signature",
+        currentTask: { elementId: "Task_2", altinnTaskType: "signing" },
+      };
+    },
+  };
+  const { runNextAnnualAccountsStep } = await import("../app/lib/annual-accounts-orchestration.ts");
+  for (let step = 0; step < 5; step += 1) {
+    await runNextAnnualAccountsStep({ documents: loaded.documents, client, journal });
+  }
+  return journal;
+}
+
+test("verifies a personally completed instance with read scope only", async () => {
+  const { filePath } = await privateInputFixture();
+  const loaded = await loadPrivateAnnualAccountsTt02Input(filePath);
+  const journal = await lockedJournal(loaded);
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  let grantPayload;
+  const tokenFetchImplementation = async (_url, init) => {
+    const assertion = new URLSearchParams(init.body).get("assertion");
+    grantPayload = JSON.parse(Buffer.from(assertion.split(".")[1], "base64url").toString("utf8"));
+    return new Response(
+      JSON.stringify({
+        access_token: "short-lived-maskinporten-token",
+        token_type: "Bearer",
+        expires_in: 120,
+        scope: "altinn:instances.read",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+  const requests = [];
+  const responses = [
+    {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+      body: new TextEncoder().encode("short-lived-altinn-token"),
+    },
+    {
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: new TextEncoder().encode(JSON.stringify({
+        id: `500700/${instanceGuid}`,
+        instanceOwner: { partyId: "500700", organisationNumber: "310279617" },
+        process: { currentTask: null, ended: "2026-07-13T12:42:31.123Z" },
+        data: [
+          { id: mainFormId, instanceGuid, dataType: "Hovedskjema", contentType: "application/xml", filename: null },
+          { id: accountsFormId, instanceGuid, dataType: "Underskjema", contentType: "application/xml", filename: null },
+          { id: signatureId, instanceGuid, dataType: "signature", contentType: "application/json", filename: "signature.json" },
+        ],
+      })),
+    },
+  ];
+
+  const output = await verifyAnnualAccountsTt02SignedInstance({
+    loaded,
+    journal,
+    clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+    keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+    customerOrgNumber: "310279617",
+    incomeYear: 2025,
+    privateKeyPem,
+    tokenFetchImplementation,
+    altinnTransport: async (request) => {
+      requests.push(request);
+      return responses.shift();
+    },
+  });
+
+  assert.equal(grantPayload.scope, "altinn:instances.read");
+  assert.equal(output.summary.organizationNumber, "310279617");
+  assert.equal(output.evidence.signatureDataElementId, signatureId);
+  assert.equal(requests[1].method, "GET");
+  assert.match(requests[1].url, new RegExp(`/instances/500700/${instanceGuid}$`, "u"));
+  assert.doesNotMatch(JSON.stringify(output), /short-lived|BEGIN PRIVATE KEY|<melding>|post@example/iu);
+});
+
+test("checks the locked checkpoint before issuing a post-signature read token", async () => {
+  const { filePath } = await privateInputFixture();
+  const loaded = await loadPrivateAnnualAccountsTt02Input(filePath);
+  let tokenCalls = 0;
+  await assert.rejects(
+    verifyAnnualAccountsTt02SignedInstance({
+      loaded,
+      journal: memoryJournal(),
+      clientId: "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+      keyId: "2d275f93-10a2-4839-993e-b14da2b84ad8",
+      customerOrgNumber: "310279617",
+      incomeYear: 2025,
+      privateKeyPem: "not-opened-before-checkpoint-check",
+      tokenFetchImplementation: async () => {
+        tokenCalls += 1;
+        throw new Error("must not issue token");
+      },
+    }),
+    /locked for personal signing/u,
+  );
+  assert.equal(tokenCalls, 0);
 });

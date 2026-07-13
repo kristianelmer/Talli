@@ -3,10 +3,12 @@ import { lstat, open } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  ANNUAL_ACCOUNTS_ALTINN_READ_SCOPES,
   ANNUAL_ACCOUNTS_ALTINN_SCOPES,
   createAnnualAccountsAltinnTestClient,
   type AnnualAccountsAltinnTransport,
 } from "./annual-accounts-altinn-client.ts";
+import { verifyAnnualAccountsSignedInstance } from "./annual-accounts-completion.ts";
 import {
   inspectAnnualAccountsProgress,
   runNextAnnualAccountsStep,
@@ -239,4 +241,57 @@ export async function runAnnualAccountsTt02Step(input: {
     journal: input.journal,
   });
   return { summary, before, result };
+}
+
+export async function verifyAnnualAccountsTt02SignedInstance(input: {
+  loaded: LoadedAnnualAccountsTt02Input;
+  journal: AnnualAccountsJournal;
+  clientId: string;
+  keyId: string;
+  customerOrgNumber: string;
+  incomeYear: number;
+  privateKeyPem: string;
+  tokenFetchImplementation?: typeof fetch;
+  altinnTransport?: AnnualAccountsAltinnTransport;
+}) {
+  const summary = validateAnnualAccountsTt02Target(
+    input.loaded,
+    input.customerOrgNumber,
+    input.incomeYear,
+  );
+  const progress = await inspectAnnualAccountsProgress({
+    documents: input.loaded.documents,
+    journal: input.journal,
+  });
+  if (
+    !progress.complete ||
+    progress.blocked ||
+    progress.checkpoint?.status !== "awaiting-person-signature"
+  ) {
+    throw runnerError(
+      "annual_accounts_tt02_completion_not_ready",
+      "Annual-accounts completion cannot be checked before the exact draft is locked for personal signing.",
+    );
+  }
+
+  const token = await issueMaskinportenTestSystemUserToken({
+    clientId: input.clientId,
+    keyId: input.keyId,
+    customerOrgNumber: input.customerOrgNumber,
+    scopes: [...ANNUAL_ACCOUNTS_ALTINN_READ_SCOPES],
+    privateKeyPem: input.privateKeyPem,
+    ...(input.tokenFetchImplementation
+      ? { fetchImplementation: input.tokenFetchImplementation }
+      : {}),
+  });
+  const client = createAnnualAccountsAltinnTestClient({
+    maskinportenAccessToken: token.accessToken,
+    ...(input.altinnTransport ? { transport: input.altinnTransport } : {}),
+  });
+  const evidence = await verifyAnnualAccountsSignedInstance({
+    documents: input.loaded.documents,
+    journal: input.journal,
+    client,
+  });
+  return { summary, evidence };
 }

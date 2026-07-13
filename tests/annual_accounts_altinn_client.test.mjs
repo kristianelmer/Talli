@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ANNUAL_ACCOUNTS_ALTINN_ENDPOINTS,
+  ANNUAL_ACCOUNTS_ALTINN_READ_SCOPES,
   ANNUAL_ACCOUNTS_ALTINN_SCOPES,
   AnnualAccountsAltinnError,
   createAnnualAccountsAltinnTestClient,
@@ -14,6 +15,7 @@ const altinnToken = "short-lived-altinn-token";
 const instanceGuid = "232c5390-9479-4506-a266-9890d7287bfb";
 const hovedskjemaId = "ce8665c1-01c3-49f7-960f-196b250a2266";
 const underskjemaId = "0445d618-28b8-4af5-95e0-c8c989487e7a";
+const signatureId = "7b8b2632-5b85-4d31-86cc-0c8766e4e079";
 
 function bytes(value) {
   return new TextEncoder().encode(value);
@@ -71,6 +73,7 @@ function draftResponse() {
 
 test("pins the current official TT02 annual-accounts contract and scopes", () => {
   assert.deepEqual(ANNUAL_ACCOUNTS_ALTINN_SCOPES, ["altinn:instances.read", "altinn:instances.write"]);
+  assert.deepEqual(ANNUAL_ACCOUNTS_ALTINN_READ_SCOPES, ["altinn:instances.read"]);
   assert.deepEqual(ANNUAL_ACCOUNTS_ALTINN_ENDPOINTS, {
     exchange: "https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten",
     app: "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406",
@@ -183,6 +186,102 @@ test("returns bounded structured validation issues without provider descriptions
     ],
   });
   assert.doesNotMatch(JSON.stringify(result), /Confidential/u);
+});
+
+test("reads a completed instance and returns only bounded post-signature evidence", async () => {
+  const requests = [];
+  const completedAt = "2026-07-13T12:42:31.123Z";
+  const completed = draftResponse();
+  completed.process = { currentTask: null, ended: completedAt };
+  completed.data.push({
+    id: signatureId,
+    instanceGuid,
+    dataType: "signature",
+    contentType: "application/json",
+    filename: "signature.json",
+    providerSecret: "must not be retained",
+  });
+  completed.providerSecret = "must not be retained";
+  const client = createAnnualAccountsAltinnTestClient({
+    maskinportenAccessToken: maskinportenToken,
+    transport: async (request) => {
+      requests.push(request);
+      return requests.length === 1 ? textResponse(altinnToken) : jsonResponse(completed);
+    },
+  });
+
+  const result = await client.inspectInstance({
+    instance: { ownerPartyId: "500700", instanceGuid },
+    organizationNumber: "310279617",
+  });
+
+  assert.deepEqual(result, {
+    instance: { ownerPartyId: "500700", instanceGuid },
+    organizationNumber: "310279617",
+    process: { endedAt: completedAt, currentTask: null },
+    dataElements: [
+      { id: hovedskjemaId, instanceGuid, dataType: "Hovedskjema", contentType: "application/xml", filename: null },
+      { id: underskjemaId, instanceGuid, dataType: "Underskjema", contentType: "application/xml", filename: null },
+      { id: signatureId, instanceGuid, dataType: "signature", contentType: "application/json", filename: "signature.json" },
+    ],
+  });
+  assert.deepEqual(
+    requests.map(({ method, url }) => ({ method, url })),
+    [
+      { method: "GET", url: ANNUAL_ACCOUNTS_ALTINN_ENDPOINTS.exchange },
+      { method: "GET", url: `${ANNUAL_ACCOUNTS_ALTINN_ENDPOINTS.app}/instances/500700/${instanceGuid}` },
+    ],
+  );
+  assert.doesNotMatch(JSON.stringify(result), /providerSecret|must not be retained/u);
+});
+
+test("reads an unfinished instance without claiming completion", async () => {
+  const responses = [textResponse(altinnToken), jsonResponse(draftResponse())];
+  const client = createAnnualAccountsAltinnTestClient({
+    maskinportenAccessToken: maskinportenToken,
+    transport: async () => responses.shift(),
+  });
+
+  const result = await client.inspectInstance({
+    instance: { ownerPartyId: "500700", instanceGuid },
+    organizationNumber: "310279617",
+  });
+
+  assert.deepEqual(result.process, {
+    endedAt: null,
+    currentTask: { elementId: "Task_1", altinnTaskType: "data" },
+  });
+});
+
+test("rejects post-signature inspection responses for another owner, instance, or inconsistent process", async () => {
+  const variants = [
+    { ...draftResponse(), instanceOwner: { partyId: "500700", organisationNumber: "930835978" } },
+    { ...draftResponse(), id: "500701/232c5390-9479-4506-a266-9890d7287bfb" },
+    {
+      ...draftResponse(),
+      process: {
+        currentTask: { elementId: "Task_2", altinnTaskType: "signing" },
+        ended: "2026-07-13T12:42:31.123Z",
+      },
+    },
+  ];
+
+  for (const response of variants) {
+    const responses = [textResponse(altinnToken), jsonResponse(response)];
+    const client = createAnnualAccountsAltinnTestClient({
+      maskinportenAccessToken: maskinportenToken,
+      transport: async () => responses.shift(),
+    });
+    await assert.rejects(
+      client.inspectInstance({
+        instance: { ownerPartyId: "500700", instanceGuid },
+        organizationNumber: "310279617",
+      }),
+      (error) =>
+        error instanceof AnnualAccountsAltinnError &&
+        error.code === "annual_accounts_altinn_response_invalid",
+    );
+  }
 });
 
 test("refuses to lock unless the current draft revision passed validation", async () => {

@@ -11,6 +11,7 @@ const MAX_DATA_ELEMENTS = 64;
 const MAX_VALIDATION_ISSUES = 2_000;
 
 export const ANNUAL_ACCOUNTS_ALTINN_SCOPES = ["altinn:instances.read", "altinn:instances.write"] as const;
+export const ANNUAL_ACCOUNTS_ALTINN_READ_SCOPES = ["altinn:instances.read"] as const;
 
 export const ANNUAL_ACCOUNTS_ALTINN_ENDPOINTS = {
   exchange: "https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten",
@@ -49,6 +50,16 @@ export type AnnualAccountsDataElement = {
   filename: string | null;
 };
 
+export type AnnualAccountsInstanceSnapshot = {
+  instance: AnnualAccountsInstanceRef;
+  organizationNumber: string;
+  process: {
+    endedAt: string | null;
+    currentTask: { elementId: string; altinnTaskType: string } | null;
+  };
+  dataElements: AnnualAccountsDataElement[];
+};
+
 export type AnnualAccountsValidationIssue = {
   severity: "Error" | "Warning" | "Informational";
   code: string;
@@ -59,6 +70,10 @@ export type AnnualAccountsValidationIssue = {
 
 export type AnnualAccountsAltinnTestClient = {
   readonly environment: "test";
+  inspectInstance(input: {
+    instance: AnnualAccountsInstanceRef;
+    organizationNumber: string;
+  }): Promise<AnnualAccountsInstanceSnapshot>;
   createDraft(input: { organizationNumber: string }): Promise<{
     instance: AnnualAccountsInstanceRef;
     organizationNumber: string;
@@ -268,27 +283,59 @@ function parseDataElement(value: unknown, expectedInstanceGuid?: string): Annual
   return { id, instanceGuid, dataType, contentType, filename };
 }
 
-function parseDraft(value: unknown) {
-  const draft = ensureObject(value);
-  const owner = ensureObject(draft.instanceOwner);
+function parseEndedAt(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (
+    typeof value !== "string" ||
+    value.length > 40 ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/u.test(value) ||
+    !Number.isFinite(Date.parse(value))
+  ) {
+    throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned an invalid process end time.");
+  }
+  return value;
+}
+
+function parseInstanceSnapshot(value: unknown): AnnualAccountsInstanceSnapshot {
+  const response = ensureObject(value);
+  const owner = ensureObject(response.instanceOwner);
   const ownerPartyId = assertPartyId(owner.partyId);
   const organizationNumber = assertOrganizationNumber(owner.organisationNumber);
-  const id = typeof draft.id === "string" ? draft.id : "";
+  const id = typeof response.id === "string" ? response.id : "";
   const [idParty, instanceGuidCandidate, extra] = id.split("/");
   const instanceGuid = assertUuid(instanceGuidCandidate);
   if (extra !== undefined || idParty !== ownerPartyId) {
     throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned an inconsistent instance ID.");
   }
-  const process = ensureObject(draft.process);
-  const currentTask = parseCurrentTask(process.currentTask);
-  if (!Array.isArray(draft.data) || draft.data.length > MAX_DATA_ELEMENTS) {
+  const process = ensureObject(response.process);
+  const endedAt = parseEndedAt(process.ended);
+  const currentTask = process.currentTask === null || process.currentTask === undefined
+    ? null
+    : parseCurrentTask(process.currentTask);
+  if ((endedAt === null) === (currentTask === null)) {
+    throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned an inconsistent process state.");
+  }
+  if (!Array.isArray(response.data) || response.data.length > MAX_DATA_ELEMENTS) {
     throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned invalid data elements.");
   }
   return {
     instance: { ownerPartyId, instanceGuid },
     organizationNumber,
-    currentTask,
-    dataElements: draft.data.map((element) => parseDataElement(element, instanceGuid)),
+    process: { endedAt, currentTask },
+    dataElements: response.data.map((element) => parseDataElement(element, instanceGuid)),
+  };
+}
+
+function parseDraft(value: unknown) {
+  const snapshot = parseInstanceSnapshot(value);
+  if (snapshot.process.endedAt !== null || snapshot.process.currentTask === null) {
+    throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned an ended draft.");
+  }
+  return {
+    instance: snapshot.instance,
+    organizationNumber: snapshot.organizationNumber,
+    currentTask: snapshot.process.currentTask,
+    dataElements: snapshot.dataElements,
   };
 }
 
@@ -487,6 +534,20 @@ export function createAnnualAccountsAltinnTestClient(options: ClientOptions): An
 
   return {
     environment: "test",
+    async inspectInstance(input) {
+      const { instance, url } = instanceBase(input?.instance);
+      const organizationNumber = assertOrganizationNumber(input?.organizationNumber);
+      const response = await appRequest({ method: "GET", url }, [200]);
+      const snapshot = parseInstanceSnapshot(decodeJson(response));
+      if (
+        snapshot.instance.ownerPartyId !== instance.ownerPartyId ||
+        snapshot.instance.instanceGuid !== instance.instanceGuid ||
+        snapshot.organizationNumber !== organizationNumber
+      ) {
+        throw altinnError("annual_accounts_altinn_response_invalid", "Annual-accounts Altinn returned the wrong instance owner.");
+      }
+      return snapshot;
+    },
     async createDraft(input) {
       const organizationNumber = assertOrganizationNumber(input?.organizationNumber);
       const response = await appRequest(
