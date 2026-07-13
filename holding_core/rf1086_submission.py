@@ -83,6 +83,7 @@ def prepare_rf1086_api_calls(
     case: FilingCase,
     *,
     hovedskjema_id: str = "simulated-hovedskjema-id",
+    forsendelse_id: str = "simulated-forsendelse-id",
 ) -> FilingSubmission:
     documents = generate_rf1086(case)
     base_endpoint = f"/api/aksjonaerregister/v1/{case.company.income_year}"
@@ -91,21 +92,27 @@ def prepare_rf1086_api_calls(
         endpoint=f"{base_endpoint}/1086H",
         body={"content_type": "application/xml", "xml": documents.hovedskjema_xml},
     )
-    for shareholder_id, xml in sorted(documents.underskjema_xml.items()):
+    for _, xml in sorted(documents.underskjema_xml.items()):
         submission = register_api_call(
             submission,
-            endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U/{shareholder_id}",
+            endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U",
             body={"content_type": "application/xml", "xml": xml},
         )
     submission = register_api_call(
         submission,
-        endpoint=f"{base_endpoint}/{hovedskjema_id}/bekreft",
+        endpoint=(
+            f"{base_endpoint}/{hovedskjema_id}/bekreft"
+            f"?antall_underskjema={len(documents.underskjema_xml)}"
+        ),
         body={"antall_underskjema": len(documents.underskjema_xml)},
     )
     return register_api_call(
         submission,
-        endpoint=f"{base_endpoint}/{hovedskjema_id}/dokumenter",
-        body={"page": 1, "max_forms": 50},
+        endpoint=(
+            f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter"
+            "?page=0&size=50"
+        ),
+        body={"page": 0, "size": 50},
     )
 
 

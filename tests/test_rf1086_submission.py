@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID
 
 from holding_core.billing import assign_standard_pricing
 from holding_core.models import FilingCase
@@ -78,10 +79,18 @@ class Rf1086ProductionSubmissionTest(unittest.TestCase):
         self.assertEqual(first.status, SubmissionStatus.SUBMITTING)
         self.assertEqual(len(first.calls), 4)
         self.assertEqual(len(second.calls), 4)
-        self.assertTrue(any(call.endpoint.endswith("/1086H") for call in first.calls))
-        self.assertTrue(any("/1086U/" in call.endpoint for call in first.calls))
-        self.assertTrue(any(call.endpoint.endswith("/bekreft") for call in first.calls))
-        self.assertTrue(any(call.endpoint.endswith("/dokumenter") for call in first.calls))
+        endpoints = [call.endpoint for call in first.calls]
+        self.assertEqual(
+            endpoints,
+            [
+                "/api/aksjonaerregister/v1/2025/1086H",
+                "/api/aksjonaerregister/v1/2025/simulated-hovedskjema-id/1086U",
+                "/api/aksjonaerregister/v1/2025/simulated-hovedskjema-id/bekreft?antall_underskjema=1",
+                "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-id/dokumenter?page=0&size=50",
+            ],
+        )
+        for call in first.calls:
+            self.assertEqual(str(UUID(call.idempotency_key)), call.idempotency_key)
 
     def test_feedback_receipt_and_retryable_failures_are_recorded(self) -> None:
         case = FilingCase.from_json_file(FIXTURE_DIR / "stiftelse.json")
