@@ -1,6 +1,6 @@
 # Skattemelding/Næringsspesifikasjon Schema Evidence Register
 
-Status: source-backed evidence pack, not a production filing implementation  
+Status: source-backed evidence pack with guarded API v2 validation adapter; payload and TT02 acceptance remain incomplete
 Research date: 2026-06-16  
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
@@ -49,6 +49,15 @@ Implementation consequence:
 
 - Talli direct filing cannot be a single Skatteetaten POST. It needs a validation adapter and an Altinn3 submission adapter.
 - Production release remains blocked until we run the official test flow with Talli credentials, delegated rights, and a supported AS test subject.
+- The guarded validation boundary is implemented in
+  `app/lib/company-tax-return-authority-client.ts`. It retrieves the current
+  company draft, constructs the official v2 envelope, keeps `validertest`
+  calculation-only, maps bounded structured feedback, and returns calculated
+  authority XML with content hashes. It is not connected to a production
+  submission action.
+- Exact request, validation-response, and current-draft-response XSDs are
+  pinned with hashes and their upstream Apache-2.0 license in
+  `docs/filing/authority-contract/`.
 
 ## Candidate Mapping for Simple Holding AS
 
@@ -89,11 +98,15 @@ Warn/escalate before submission:
 
 ## Next Implementation Slice
 
-Issue #86 should build:
-
-1. A 2025-only payload builder using `skattemeldingUpersonlig_v5_ekstern.xsd` and `naeringsspesifikasjon_v6_ekstern.xsd`.
-2. XML fixture generation for no-activity and ordinary holding activity.
-3. Local XSD validation against the official XSDs.
-4. A disabled Skatteetaten validation adapter that persists validation feedback into `filing_submissions.feedback_items`.
-5. Readiness blocks for every unsupported case listed above.
-
+1. Replace the current field-candidate model with 2025-only XML builders using
+   `skattemeldingUpersonlig_v5_ekstern.xsd` and
+   `naeringsspesifikasjon_v6_ekstern.xsd`.
+2. Generate no-activity and ordinary holding-activity fixtures and validate
+   them locally against the complete official XSD import graph.
+3. Persist the guarded adapter's validation result, calculated-document hashes,
+   and structured feedback in an operator-scoped crash-safe journal.
+4. Run current-draft retrieval and filing validation in TT02 for the delegated
+   test company; archive the response and require `validertOK` before any
+   Altinn instance can be created.
+5. Implement the separate Altinn3 submission/receipt adapter only after the
+   validation fixture has been accepted.

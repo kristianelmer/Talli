@@ -103,7 +103,7 @@ These decisions are the source-backed launch schema for simple holding AS tax re
 | Deadline | Skatteetaten states the ordinary deadline is 31 May each year. | `deadlines`, `filing_readiness_snapshots` | Supported as deadline/readiness data. |
 | No-activity companies | Skatteetaten states the tax return must be filed even if the company has had no turnover. | `annual_data.no_activity_confirmed` | Supported for readiness; payload remains blocked. |
 | Tax return plus business specification | Skatteetaten states the company must retrieve and submit the tax return with `næringsspesifikasjon` through the system. | `ledger_entries`, `holding_actions`, `annual_data` | Blocked until current schema/code-list field mapping exists. |
-| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | future validation adapter, `filing_submissions.feedback_items` | Blocked until validation service integration and feedback mapping exist. |
+| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | guarded `company-tax-return-authority-client.ts`; future `filing_submissions.feedback_items` persistence | Adapter and feedback mapping implemented; production remains blocked until payload XSD validation, TT02 `validertOK`, and crash-safe persistence exist. |
 | Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | `filing_submissions`, archive export | Simulation only; official receipt/archive retrieval is blocked. |
 | Access packages/roles | Skatteetaten lists supported access packages and roles and notes transition from old Altinn roles to access packages. | `authority_permissions` | Readiness supported; production access package/delegation flow blocked. |
 | `skattemelding upersonlig` API | Skatteetaten API docs state this service delivers information appearing in a company's tax return. | potential import/pre-fill adapter | Data-reading candidate only; not evidence of production submission. |
@@ -123,8 +123,8 @@ Missing before production:
 - Current Skatteetaten submission payload/schema mapping.
 - Næringsspesifikasjon field mapping.
 - Attachment/vedlegg handling.
-- Validation service integration.
-- Skatteetaten feedback mapping.
+- Production wiring and crash-safe persistence for the guarded validation adapter.
+- TT02 `validertOK` evidence for an XSD-valid supported fixture.
 - Official receipt/status storage.
 - Official test-environment acceptance.
 
