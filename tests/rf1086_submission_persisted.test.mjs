@@ -106,6 +106,15 @@ test("prepares deterministic simulated submission calls and receipt from persist
     retry.calls.map((call) => call.idempotency_key),
     first.calls.map((call) => call.idempotency_key),
   );
+  assert.deepEqual(
+    first.calls.map((call) => call.endpoint),
+    [
+      "/api/aksjonaerregister/v1/2025/1086H",
+      "/api/aksjonaerregister/v1/2025/simulated-12345678-1234-1234-1234-123456789abc/1086U",
+      "/api/aksjonaerregister/v1/2025/simulated-12345678-1234-1234-1234-123456789abc/bekreft?antall_underskjema=1",
+      "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-12345678-1234-1234-1234-123456789abc/dokumenter?page=0&size=50",
+    ],
+  );
   assert.deepEqual(retry.feedback_document_ids, ["sim-feedback-12345678"]);
 });
 
