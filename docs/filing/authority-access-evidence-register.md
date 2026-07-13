@@ -67,6 +67,8 @@ other secrets must never be recorded in this register.
 | 2026-07-13 | Guarded local TT02 operator boundary | Added test-only 120-second token issuance, private atomic checkpoint journal, exact customer/year validation, one-call progression, token redaction, an explicit gate for `bekreft`, and confirmed-journal-only archiving; 9 dedicated tests pass. |
 | 2026-07-13 | Synthetic 2025 RF-1086 preview for `310279617` | Generated outside the repository with private permissions. The no-activity preview is ready with no issues; both main and sub-form validate against the pinned official XSDs. No provider call has been made. The constructed sole-shareholder allocation remains subject to explicit test-fixture review. |
 | 2026-07-13 | Dialogporten scope isolation | RF-1086-only system-user token issuance still succeeded with a 119-second lifetime. `digdir:dialogporten` alone and the combined request were rejected with HTTP 400, proving the client scope is not yet attached. Digdir self-service exposes the exact read-only scope; it remains uncommitted pending action-time permission confirmation. No filing API was called. |
+| 2026-07-13 | Company-tax-return calculation-only probe | The delegated token reached Skatteetaten's `validertest` endpoint, which returned `validertMedFeil` and `UP_HAR_NÆRINGSSPESIFIKASJON_MANGLER_SKATTEMELDING`. A separate current-draft GET returned HTTP 403. No Altinn instance or filing was created. |
+| 2026-07-13 | Tenor API scope isolation | An ordinary Maskinporten request for `skatteetaten:testnorge/testdata.read` returned HTTP 400, proving the current client lacks the optional Tenor read scope. No permission was changed. |
 
 ## Current Scope State
 
@@ -130,12 +132,13 @@ not recorded here.
 | Capital structure | NOK 1,000,000 fully paid share capital; 500 shares at NOK 2,000 | Pass, though larger than a minimal holding company |
 | Authorized test roles | Synthetic managing director and synthetic chairperson are present | Pass; the chairperson approved the request with high-assurance TestID in TT02 |
 | Filing-data freshness | Latest annual accounts shown by the organization dataset are from 2019 | Historical register data is old, but this is not itself a blocker for synthetic submission testing |
-| Skatteetaten submission environment | Tenor shows five `testinnsendingSkattEnhet` records covering income years 2022–2026 | Pass for environment presence; 2025 is available as a clean submission target |
-| Existing 2025 return state | No draft or assessed skattemelding/selskapsmelding is shown; selected categories of source data are marked missing | Suitable clean starting point, but successful API validation/submission is still unproven |
+| Skatteetaten submission environment | The supplied Tenor/BRREG source document contains no `testinnsendingSkattEnhet` or other tax-data object | Not proven; BRREG presence must not be treated as tax-return test-data presence |
+| Existing 2025 return state | `validertest` reports that the company lacks a tax return; current-draft GET returns HTTP 403 | Fail for company-tax-return testing; no filing was created |
 
-The candidate passed the initial delegated-authorization test and remains selected
-for the clean submission test. It must be replaced only if either filing API
-rejects the company for reasons intrinsic to its test-data setup.
+The candidate passed delegated authorization and remains selected for the
+RF-1086 test. It is not selected for the company-tax-return test. A separate
+synthetic organization with an actual 2025 tax-return draft must be found in
+Tenor and separately approved before another provider calculation is attempted.
 
 ## Next Evidence Required
 
@@ -146,7 +149,9 @@ rejects the company for reasons intrinsic to its test-data setup.
    confirmation flow described in `rf1086-tt02-submission-runbook.md`.
 3. Verify a system-user-bound token can include `digdir:dialogporten`, then use
    the revisioned archive action to retrieve official RF-1086 artifacts.
-4. Validate a minimal 2025 skattemelding payload without final submission.
+4. Find a separate Tenor organization with an actual 2025 Skatteetaten
+   company-tax-return draft, verify its BRREG profile, and obtain a separately
+   accepted system-user request before repeating calculation-only validation.
 5. Execute synthetic RF-1086 and skattemelding submission flows and
    persist feedback, receipt, and archive references.
 6. Keep production submission disabled until the filing-specific release gates and

@@ -1,6 +1,6 @@
 # Skattemelding/Næringsspesifikasjon Schema Evidence Register
 
-Status: source-backed evidence pack with guarded API v2 validation adapter; payload and TT02 acceptance remain incomplete
+Status: source-backed evidence pack with guarded API v2 validation adapter; local XSD validation passed, TT02 provider acceptance blocked by test-data state
 Research date: 2026-06-16  
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
@@ -126,3 +126,48 @@ Warn/escalate before submission:
    Altinn instance can be created.
 5. Implement the separate Altinn3 submission/receipt adapter only after the
    validation fixture has been accepted.
+
+## Local 2025 No-Activity Contract Fixture
+
+Validation date: 2026-07-13.
+
+The fixture pair under `tests/fixtures/company_tax_return/` is a deliberately
+minimal local schema-contract fixture for synthetic organization `310279617`.
+It does not claim to be a current Skatteetaten draft. The document builder
+preserves the local tax-return fixture byte-for-byte. The generated business specification is
+limited to the XSD-required company/year, accounting period, business type,
+accounting rules, and auditor-confirmation flag.
+
+Local validation used `xmllint --noout --schema` against the exact XSD files
+from upstream commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`:
+
+| Document | Fixture SHA-256 | XSD SHA-256 | Result |
+| --- | --- | --- | --- |
+| `2025-no-activity-current-tax-return.xml` | `c4f6250087c40a85c75af3ebcf152045d9a3332f462726b75c4c1d0afe0377f3` | `d8e74eda092540a974efa63cc4608fdf36754dea27f9349b3293f874f9907d52` | Valid |
+| `2025-no-activity-business-specification.xml` | `8e3c283aa7fe9868789b76bbceddc40d38c16812b7ca9dc7c9d05cb98ec88610` | `6300d00b31f4cb1ccd45582cef041fb78400a6d9c2d351f6f320872dbb39f8ef` | Valid |
+
+This is not filing-readiness evidence. XSD validity does not prove that a
+dormant holding company's opening/closing balances, shares, equity, or
+prefilled tax facts are complete. Until the authority validation returns
+`validertOK` for a reviewed fixture, the fixture may be used only with the
+calculation-only `validertest` boundary. It must never create an Altinn
+instance or be treated as a submission candidate.
+
+## TT02 Calculation-Only Evidence
+
+Execution date: 2026-07-13.
+
+The guarded runner obtained a system-user-bound token for only
+`skatteetaten:formueinntekt/skattemelding` and posted the locally XSD-valid
+fixture pair to the test-only `validertest` endpoint for organization
+`310279617`. The provider returned `validertMedFeil` with
+`UP_HAR_NÆRINGSSPESIFIKASJON_MANGLER_SKATTEMELDING` (the company lacks a tax
+return). A separate read-only request for the current 2025 draft returned HTTP
+403. No Altinn instance, submission, or receipt was created.
+
+This proves the client, delegated token, provider endpoint, request envelope,
+and calculation-only boundary are reachable. It does not prove that
+`310279617` is a usable tax-return test subject. The organization remains a
+valid RF-1086 candidate, but company-tax-return testing requires a separate
+Tenor organization with an actual 2025 Skatteetaten tax-return draft and a
+separately accepted system-user request.
