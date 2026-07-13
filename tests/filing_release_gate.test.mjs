@@ -43,6 +43,7 @@ test("keeps all production filing gates disabled without authority, billing, ste
     filingReadyByObligation: {},
     stepUpContext: { actorId: "owner", mfaVerifiedAt: null },
     launchSignoffs: [],
+    productionAdapters: {},
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
@@ -51,6 +52,7 @@ test("keeps all production filing gates disabled without authority, billing, ste
   assert.ok(gates.every((gate) => gate.disabledReasons.includes("missing_authority_confirmation")));
   assert.ok(gates.every((gate) => gate.disabledReasons.includes("billing_account_missing")));
   assert.ok(gates.every((gate) => gate.disabledReasons.includes("test_evidence_missing")));
+  assert.ok(gates.every((gate) => gate.disabledReasons.includes("production_adapter_unavailable")));
   assert.ok(gates.every((gate) => gate.disabledReasons.some((reason) => reason.endsWith("_signoff_missing"))));
   assert.match(gates[0].publicCopyRestriction, /forhåndsvisning\/simulering/);
 });
@@ -72,6 +74,11 @@ test("blocks production when authority evidence or filing-specific signoff is mi
       productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs.filter((item) => item.key !== "rf1086_authority"),
+    productionAdapters: {
+      aksjonaerregisteroppgaven: true,
+      skattemelding: true,
+      aarsregnskap: true,
+    },
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
@@ -103,6 +110,11 @@ test("marks production ready only when every release gate passes", () => {
       productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs,
+    productionAdapters: {
+      aksjonaerregisteroppgaven: true,
+      skattemelding: true,
+      aarsregnskap: true,
+    },
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 

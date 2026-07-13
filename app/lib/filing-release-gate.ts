@@ -42,10 +42,14 @@ export function buildFilingReleaseGates(input: {
   filingReadyByObligation: Partial<Record<AuthorityObligation, boolean>>;
   stepUpContext: StepUpContext;
   launchSignoffs: LaunchSignoff[];
+  productionAdapters: Partial<Record<AuthorityObligation, boolean>>;
   now?: Date;
 }): FilingReleaseGate[] {
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
+    if (!input.productionAdapters[obligation]) {
+      disabledReasons.push("production_adapter_unavailable");
+    }
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
     if (!authorityGate.allowed) {
       disabledReasons.push(authorityGate.status);

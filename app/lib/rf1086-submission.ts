@@ -178,12 +178,11 @@ export function rf1086SubmittedPayloadSnapshot(preview: FilingPreviewRow): Rf108
   };
 }
 
-export function productionRf1086AdapterEnabled() {
-  return process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER === "true";
-}
-
 export async function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterRequest): Promise<Rf1086SubmissionResult> {
-  if (request.mode === "production" && !productionRf1086AdapterEnabled()) {
+  // Production must never fall through to the simulator. Enabling a live
+  // adapter requires a separate implementation that talks to the authority,
+  // persists its real response, and passes the filing-specific release gates.
+  if (request.mode === "production") {
     throw new Rf1086ProductionAdapterDisabledError();
   }
   return simulateRf1086SubmissionWithPython(request.preview, request.userId, request.confirmations);

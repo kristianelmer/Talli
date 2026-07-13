@@ -109,17 +109,24 @@ test("prepares deterministic simulated submission calls and receipt from persist
   assert.deepEqual(retry.feedback_document_ids, ["sim-feedback-12345678"]);
 });
 
-test("blocks production adapter unless explicit environment gate is enabled", async () => {
-  await assert.rejects(
-    async () =>
-      runRf1086SubmissionAdapter({
-        mode: "production",
-        preview: await readyPreview(),
-        userId: "owner-user",
-        confirmations: { authorityConfirmed: true, previewConfirmed: true },
-      }),
-    (error) => error instanceof Rf1086ProductionAdapterDisabledError && error.code === "rf1086_production_adapter_disabled",
-  );
+test("production mode cannot fall through to simulation through configuration", async () => {
+  const previous = process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER;
+  process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER = "true";
+  try {
+    await assert.rejects(
+      async () =>
+        runRf1086SubmissionAdapter({
+          mode: "production",
+          preview: await readyPreview(),
+          userId: "owner-user",
+          confirmations: { authorityConfirmed: true, previewConfirmed: true },
+        }),
+      (error) => error instanceof Rf1086ProductionAdapterDisabledError && error.code === "rf1086_production_adapter_disabled",
+    );
+  } finally {
+    if (previous === undefined) delete process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER;
+    else process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER = previous;
+  }
 });
 
 test("builds stable request payload hash and idempotency key", async () => {
