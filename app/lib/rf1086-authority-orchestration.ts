@@ -369,6 +369,60 @@ function nextPreparedCheckpoint(
   };
 }
 
+function nextOperationForCheckpoint(
+  checkpoint: Rf1086AuthorityCheckpoint,
+  preview: FilingPreviewRow,
+): Rf1086AuthorityCall["operation"] {
+  const last = checkpoint.calls.at(-1);
+  if (last && ["prepared", "sent", "failed_retryable"].includes(last.status)) return last.operation;
+  const accepted = new Set(checkpoint.calls.filter((call) => call.status === "accepted").map((call) => call.operation));
+  if (!accepted.has("hovedskjema")) return "hovedskjema";
+  const nextDocumentKey = Object.keys(preview.underskjema_xml)
+    .sort(compareKeys)
+    .find((key) => !accepted.has(`underskjema:${key}`));
+  return nextDocumentKey ? `underskjema:${nextDocumentKey}` : "bekreft";
+}
+
+export async function inspectRf1086AuthorityProgress(input: {
+  preview: FilingPreviewRow;
+  environment: Rf1086AuthorityEnvironment;
+  journal: Rf1086AuthorityJournal;
+}): Promise<{
+  checkpoint: Rf1086AuthorityCheckpoint | null;
+  nextOperation: Rf1086AuthorityCall["operation"] | "reconcile" | null;
+  complete: boolean;
+  blocked: boolean;
+}> {
+  assertPreview(input.preview);
+  const checkpoint = await input.journal.load(input.preview.id);
+  if (!checkpoint) {
+    return { checkpoint: null, nextOperation: "hovedskjema", complete: false, blocked: false };
+  }
+  if (checkpoint.environment !== input.environment) {
+    throw orchestrationError("rf1086_environment_changed", "RF-1086 authority environment cannot change during a submission.");
+  }
+  if (checkpoint.payloadHash !== canonicalPayloadHash(input.preview)) {
+    throw orchestrationError("rf1086_preview_changed", "RF-1086 preview cannot change during a submission.");
+  }
+  assertCheckpoint(checkpoint, input.preview);
+  if (checkpoint.status === "confirmed") {
+    return { checkpoint, nextOperation: null, complete: true, blocked: false };
+  }
+  if (checkpoint.status === "failed_blocked") {
+    return { checkpoint, nextOperation: null, complete: false, blocked: true };
+  }
+  const last = checkpoint.calls.at(-1);
+  if (last?.operation === "bekreft" && last.status === "sent") {
+    return { checkpoint, nextOperation: "reconcile", complete: false, blocked: true };
+  }
+  return {
+    checkpoint,
+    nextOperation: nextOperationForCheckpoint(checkpoint, input.preview),
+    complete: false,
+    blocked: false,
+  };
+}
+
 async function executePreparedCall(
   checkpoint: Rf1086AuthorityCheckpoint,
   preview: FilingPreviewRow,

@@ -7,6 +7,7 @@ import {
 } from "../app/lib/rf1086-authority-client.ts";
 import {
   Rf1086AuthorityOrchestrationError,
+  inspectRf1086AuthorityProgress,
   runNextRf1086AuthorityStep,
 } from "../app/lib/rf1086-authority-orchestration.ts";
 
@@ -140,6 +141,35 @@ test("journals every prepared call before transport and every accepted response 
   assert.equal(new Set(idempotencyKeys).size, 3);
   assert.ok(idempotencyKeys.every((value) => /^[0-9a-f-]{36}$/u.test(value)));
   assert.doesNotMatch(JSON.stringify(result.checkpoint), /short-lived-system-user-token/u);
+});
+
+test("inspects the next TT02 operation without mutating the journal or calling transport", async () => {
+  let transports = 0;
+  const client = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken: "short-lived-system-user-token",
+    transport: async () => {
+      transports += 1;
+      return jsonResponse({ hovedskjemaId });
+    },
+  });
+  const events = [];
+  const journal = memoryJournal(events);
+
+  assert.deepEqual(await inspectRf1086AuthorityProgress({ preview, environment: "test", journal }), {
+    checkpoint: null,
+    nextOperation: "hovedskjema",
+    complete: false,
+    blocked: false,
+  });
+  await runNextRf1086AuthorityStep({ preview, client, journal });
+  const progress = await inspectRf1086AuthorityProgress({ preview, environment: "test", journal });
+
+  assert.equal(progress.nextOperation, "underskjema:shareholder_a");
+  assert.equal(progress.complete, false);
+  assert.equal(progress.blocked, false);
+  assert.equal(transports, 1);
+  assert.equal(events.length, 3);
 });
 
 test("retries a prepared XML call with the same idempotency key after accepted-state persistence fails", async () => {
