@@ -86,17 +86,25 @@ malformed JSON/UUID/content types fail closed.
 
 - Client: `app/lib/rf1086-authority-client.ts`
 - Contract/security tests: `tests/rf1086_authority_client.test.mjs`
+- Crash-safe orchestration: `app/lib/rf1086-authority-orchestration.ts`
+- Orchestration tests: `tests/rf1086_authority_orchestration.test.mjs`
 - Command: `npm run test:rf1086:authority`
+- Command: `npm run test:rf1086:orchestration`
 - Launch rehearsal includes the authority-client contract tests.
 
 The tests prove exact test/production URLs, headers, operation paths, strict
 response parsing, bounded responses, no bearer-token disclosure, invalid-input
-rejection before transport, and safe idempotent retries.
+rejection before transport, safe UUID retries, write-before-send journal order,
+crash recovery, environment/payload locking, and persisted-checkpoint tamper
+rejection. A durable `sent` state prevents automatic `bekreft` replay when its
+outcome could be unknown.
 
 ## Remaining Before TT02 Submission
 
-1. Add durable orchestration that persists the UUID, URL, and body hash before
-   every authority call and persists each response before advancing.
+1. Bind the implemented journal interface to a reviewed production persistence
+   adapter with optimistic revision checks. The state machine already requires
+   prepared/sent/accepted saves around every call, but the web production runner
+   remains intentionally unwired.
 2. Acquire a fresh system-user-bound token outside the browser process and inject
    it only for the controlled run.
 3. Execute hovedskjema, every underskjema, and bekreft with synthetic data for

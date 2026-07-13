@@ -61,9 +61,12 @@ This is covered by `holding_core.submission.register_api_call` and RF-1086 submi
 
 The exact authority HTTP boundary is implemented in
 `app/lib/rf1086-authority-client.ts` and covered by
-`npm run test:rf1086:authority`. It is not wired to the web production adapter.
-Durable per-call checkpointing and TT02 feedback/receipt evidence remain required
-before activation.
+`npm run test:rf1086:authority`. Crash-safe one-call orchestration is implemented
+in `app/lib/rf1086-authority-orchestration.ts` and covered by
+`npm run test:rf1086:orchestration`. It requires prepared, sent, and accepted
+journal revisions and blocks replay of an uncertain `bekreft`. A reviewed
+production journal adapter, web production wiring, and TT02 feedback/receipt
+evidence remain required before activation.
 
 ## Failure Handling
 

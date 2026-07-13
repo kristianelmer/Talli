@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `35ce9f9`
+Evidence baseline: commits through `43a81c3`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,9 +11,10 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `35ce9f9`, including the RF-1086 authority contract, auth, error-disclosure, dividend-PDF, and migration security contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `43a81c3`, including the RF-1086 authority contract/orchestration, auth, error-disclosure, dividend-PDF, and migration security contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
+| RF-1086 crash-safe orchestration | 6 tests pass: prepared/sent/accepted write ordering, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -39,6 +40,11 @@ to launch publicly or submit live authority filings. It is not a release approva
   redirects and oversized/malformed responses, and permits an idempotency UUID
   retry only for the identical URL and XML body. It is not wired to the web
   production adapter.
+- RF-1086 authority orchestration advances at most one call at a time and requires
+  optimistic journal saves before send and after response. XML calls retain their
+  UUID across an uncertain retry; a sent `bekreft` cannot replay automatically.
+  The journal contract is implemented, but no production persistence adapter is
+  wired.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production
@@ -99,7 +105,7 @@ required for `security_restore` signoff.
   receipts, and archive evidence are still pending.
 - The separate RF-1086 file-upload scope still reports `Tilgang mangler`; do not
   request it in a token unless Skatteetaten confirms it is required and grants it.
-- RF-1086 durable per-call production orchestration, årsregnskap, and
+- RF-1086 production journal persistence/web wiring, årsregnskap, and
   skattemelding production adapters are not implemented.
 - Billing uses a simulation provider; real charge/refund evidence is pending.
 - Trademark/name, legal policy, security/restore, billing/refund, filing-specific,
