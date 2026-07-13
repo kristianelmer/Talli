@@ -53,7 +53,7 @@ review. It should be run against staging after every schema/RLS change.
   allowlist aligned with server-side byte-signature validation.
 - `step_up_events` are user-scoped and can be created only from a signed,
   recent Supabase AAL2/TOTP claim; user-supplied privilege flags are denied.
-- Production security grants are separate, expiring, admin-controlled, and
+- Production security grants are separate, expiring, admin-controlled, append-only, and
   enforce separation of duties between the subject and approver.
 - Security-definer membership helpers live outside the exposed `public` schema
   with explicit execute grants.

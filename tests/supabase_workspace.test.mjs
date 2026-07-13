@@ -182,11 +182,13 @@ test(
   const reviewerUser = await createConfirmedUser("reviewer");
   const readOnlyUser = await createConfirmedUser("readonly");
   const inviteeUser = await createConfirmedUser("invitee");
+  const grantAdminUser = await createConfirmedUser("grant-admin");
   const owner = await signIn(ownerUser);
   const outsider = await signIn(outsiderUser);
   const reviewer = await signIn(reviewerUser);
   const readOnly = await signIn(readOnlyUser);
   const invitee = await signIn(inviteeUser);
+  const grantAdmin = await signIn(grantAdminUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
   let companyId;
 
@@ -220,6 +222,56 @@ test(
       accepted_at: new Date().toISOString(),
     });
     assert.ifError(membershipError);
+
+    const { error: grantAdminError } = await admin.from("support_operators").insert({
+      user_id: grantAdminUser.id,
+      role: "admin",
+      active: true,
+    });
+    assert.ifError(grantAdminError);
+
+    const grantExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const { error: productionGrantError } = await grantAdmin.from("production_security_grants").insert({
+      actor_id: ownerUser.id,
+      security_review_approved: true,
+      production_credentials_enabled: true,
+      approved_by: grantAdminUser.id,
+      expires_at: grantExpiry,
+    });
+    assert.ifError(productionGrantError);
+
+    const { data: ownerGrant, error: ownerGrantError } = await owner
+      .from("production_security_grants")
+      .select("actor_id, approved_by, revoked_at, revoked_by")
+      .eq("actor_id", ownerUser.id)
+      .single();
+    assert.ifError(ownerGrantError);
+    assert.equal(ownerGrant.approved_by, grantAdminUser.id);
+    assert.equal(ownerGrant.revoked_at, null);
+
+    const { error: rewriteApprovalError } = await grantAdmin
+      .from("production_security_grants")
+      .update({ security_review_approved: false })
+      .eq("actor_id", ownerUser.id);
+    assert.ok(rewriteApprovalError);
+
+    const productionGrantRevokedAt = new Date().toISOString();
+    const { data: revokedGrant, error: revokeGrantError } = await grantAdmin
+      .from("production_security_grants")
+      .update({ revoked_at: productionGrantRevokedAt })
+      .eq("actor_id", ownerUser.id)
+      .select("approved_by, revoked_at, revoked_by")
+      .single();
+    assert.ifError(revokeGrantError);
+    assert.equal(revokedGrant.approved_by, grantAdminUser.id);
+    assert.ok(new Date(revokedGrant.revoked_at).getTime() >= new Date(productionGrantRevokedAt).getTime());
+    assert.equal(revokedGrant.revoked_by, grantAdminUser.id);
+
+    const { error: reinstateGrantError } = await grantAdmin
+      .from("production_security_grants")
+      .update({ revoked_at: null })
+      .eq("actor_id", ownerUser.id);
+    assert.ok(reinstateGrantError);
 
     async function acceptInvitedMembership(member, memberUser, role) {
       const acceptedAt = new Date().toISOString();
@@ -2407,6 +2459,7 @@ test(
     await admin.auth.admin.deleteUser(reviewerUser.id);
     await admin.auth.admin.deleteUser(readOnlyUser.id);
     await admin.auth.admin.deleteUser(inviteeUser.id);
+    await admin.auth.admin.deleteUser(grantAdminUser.id);
   }
   },
 );

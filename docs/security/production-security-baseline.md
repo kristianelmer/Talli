@@ -27,7 +27,8 @@ Migration `20260713121355_secure_step_up_attestation.sql` closes a previously id
 - MFA freshness is derived from the signed Supabase JWT only when `aal=aal2` and a TOTP `amr.timestamp` is no older than 15 minutes.
 - A user-supplied MFA timestamp or privilege flag cannot satisfy the insert policy.
 - Human security review and production-credential enablement live in a separate, expiring `production_security_grants` record.
-- Only an active support admin can create/update a grant, and the approver cannot approve themselves.
+- Only an active support admin can create a grant, and the approver cannot approve themselves.
+- Approval metadata is append-only. An active support admin may only revoke a grant once; the revoking operator and time are preserved on the row.
 - Legacy privilege flags on `step_up_events` are cleared and ignored by application code.
 - `/security/mfa` provides authenticated TOTP enrollment and re-verification through Supabase `challengeAndVerify`; the resulting AAL2 JWT is recorded through the RLS-controlled `record_mfa_step_up` RPC.
 
