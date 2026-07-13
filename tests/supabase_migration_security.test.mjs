@@ -9,6 +9,7 @@ const documentMigrationPath = "supabase/migrations/20260713124354_restrict_compa
 const grantImmutabilityMigrationPath =
   "supabase/migrations/20260713125515_make_production_security_grants_append_only.sql";
 const orphanCleanupMigrationPath = "supabase/migrations/20260713130403_allow_orphan_document_cleanup.sql";
+const launchHistoryMigrationPath = "supabase/migrations/20260713130731_preserve_launch_signoff_history.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -78,6 +79,17 @@ test("production security approvals are append-only and revocations identify the
   assert.match(sql, /new\.revoked_by := auth\.uid\(\)/u);
   assert.match(sql, /create policy "admins can revoke production security grants"/u);
   assert.match(sql, /revoked_by = \(select auth\.uid\(\)\)/u);
+});
+
+test("launch signoff transitions are preserved in append-only history", async () => {
+  const sql = await readFile(launchHistoryMigrationPath, "utf8");
+
+  assert.match(sql, /create table if not exists public\.launch_signoff_events/u);
+  assert.match(sql, /revoke insert, update, delete on public\.launch_signoff_events/u);
+  assert.match(sql, /active operators can read launch signoff history/u);
+  assert.match(sql, /security definer/u);
+  assert.match(sql, /after insert or update on public\.launch_signoffs/u);
+  assert.match(sql, /lower\(tg_op\)/u);
 });
 
 test("security-definer RLS helpers are moved out of the exposed schema", async () => {

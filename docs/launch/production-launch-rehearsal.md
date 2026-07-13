@@ -75,7 +75,9 @@ Record reviewer, date, evidence link, decision. The machine-checkable model is
 approved with reviewer, date, evidence link, and decision text. The
 `security_restore` signoff must be 30 days old or newer. Operator admins record
 these decisions in `launch_signoffs`; active operators can read the resulting
-gate state in the app operator section.
+gate state in the app operator section. Every insert or update is also copied
+into append-only `launch_signoff_events`, so approval, rejection, renewal, and
+revocation history cannot be overwritten through the authenticated app role.
 
 | Decision | Reviewer | Date | Evidence link | Decision |
 | --- | --- | --- | --- | --- |

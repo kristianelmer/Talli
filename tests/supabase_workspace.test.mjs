@@ -190,6 +190,7 @@ test(
   const invitee = await signIn(inviteeUser);
   const grantAdmin = await signIn(grantAdminUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
+  const launchSignoffKey = "support_rollback";
   let companyId;
   const storageKeysToCleanup = [];
 
@@ -230,6 +231,51 @@ test(
       active: true,
     });
     assert.ifError(grantAdminError);
+
+    await admin.from("launch_signoff_events").delete().eq("signoff_key", launchSignoffKey);
+    await admin.from("launch_signoffs").delete().eq("key", launchSignoffKey);
+    const firstSignoffAt = new Date().toISOString();
+    const { error: signoffInsertError } = await grantAdmin.from("launch_signoffs").insert({
+      key: launchSignoffKey,
+      status: "pending",
+      reviewer: "Staging operator",
+      reviewed_at: firstSignoffAt,
+      evidence_link: "",
+      decision: "Pending controlled rehearsal.",
+      recorded_by: grantAdminUser.id,
+      updated_at: firstSignoffAt,
+    });
+    assert.ifError(signoffInsertError);
+
+    const approvedAt = new Date().toISOString();
+    const { error: signoffUpdateError } = await grantAdmin
+      .from("launch_signoffs")
+      .update({
+        status: "approved",
+        reviewer: "Staging operator",
+        reviewed_at: approvedAt,
+        evidence_link: "https://example.invalid/staging-evidence",
+        decision: "Approved only for the isolated staging rehearsal.",
+        recorded_by: grantAdminUser.id,
+        updated_at: approvedAt,
+      })
+      .eq("key", launchSignoffKey);
+    assert.ifError(signoffUpdateError);
+
+    const { data: signoffHistory, error: signoffHistoryError } = await grantAdmin
+      .from("launch_signoff_events")
+      .select("id, operation, status, recorded_by")
+      .eq("signoff_key", launchSignoffKey);
+    assert.ifError(signoffHistoryError);
+    assert.equal(signoffHistory.length, 2);
+    assert.deepEqual(new Set(signoffHistory.map((event) => event.operation)), new Set(["insert", "update"]));
+    assert.ok(signoffHistory.every((event) => event.recorded_by === grantAdminUser.id));
+
+    const { error: historyRewriteError } = await grantAdmin
+      .from("launch_signoff_events")
+      .update({ status: "rejected" })
+      .eq("id", signoffHistory[0].id);
+    assert.ok(historyRewriteError);
 
     const grantExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const { error: productionGrantError } = await grantAdmin.from("production_security_grants").insert({
@@ -2469,6 +2515,8 @@ test(
       });
     assert.ok(readOnlyUploadError);
   } finally {
+    await admin.from("launch_signoff_events").delete().eq("signoff_key", launchSignoffKey);
+    await admin.from("launch_signoffs").delete().eq("key", launchSignoffKey);
     if (storageKeysToCleanup.length) {
       await admin.storage.from(COMPANY_DOCUMENTS_BUCKET).remove(storageKeysToCleanup);
     }
