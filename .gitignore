@@ -16,6 +16,11 @@ output/playwright/
 .env
 .env.*
 !.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jwk
 node_modules/
 .next/
 .vercel/

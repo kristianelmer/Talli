@@ -68,7 +68,23 @@ Current implementation:
 
 - `app/documents/[documentId]/download/route.ts` checks authenticated document metadata access and then creates a five-minute signed URL from the private `company-documents` bucket.
 - Storage RLS scopes each object to the company UUID in its first path segment.
+- Uploads are capped at 6 MB at both the Server Action and bucket boundary.
+- The server derives canonical MIME type from PDF/PNG/JPEG signatures or
+  validated UTF-8 CSV content; browser-supplied MIME values are ignored.
+- The bucket accepts only PDF, PNG, JPEG, and CSV, and remains private.
 - The local Python `talli-signed://` model remains a deterministic domain fixture only; it is not the deployed download path.
+
+## Browser and Artifact Boundary
+
+- All routes receive CSP, frame-ancestor/clickjacking protection, MIME-sniffing
+  protection, a restrictive permissions policy, and a strict referrer policy.
+- Production responses include one-year HSTS. `includeSubDomains` and preload
+  remain an infrastructure/legal decision because they affect every subdomain.
+- The production container runs as a non-root user and is smoke-tested with a
+  read-only root filesystem, all Linux capabilities dropped, and
+  `no-new-privileges`.
+- Local environment files and common private-key formats are excluded from both
+  the standalone artifact and Docker build context.
 
 ## Backup and Restore Runbook
 

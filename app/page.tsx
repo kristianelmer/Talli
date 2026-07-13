@@ -1380,7 +1380,12 @@ export default async function Home({ searchParams }: HomeProps) {
                   </label>
                   <label>
                     Fil
-                    <input name="file" type="file" required />
+                    <input
+                      name="file"
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.csv,application/pdf,image/png,image/jpeg,text/csv"
+                      required
+                    />
                   </label>
                   <button className="primaryButton" type="submit">
                     Last opp dokument

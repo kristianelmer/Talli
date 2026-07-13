@@ -5,6 +5,7 @@ import test from "node:test";
 const migrationPath = "supabase/migrations/20260713121355_secure_step_up_attestation.sql";
 const identityMigrationPath = "supabase/migrations/20260713122759_lock_membership_and_company_identity.sql";
 const cancellationMigrationPath = "supabase/migrations/20260713122955_secure_cancellation_transitions.sql";
+const documentMigrationPath = "supabase/migrations/20260713124354_restrict_company_document_uploads.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -25,6 +26,14 @@ test("final deletion requires an independent admin and immutable cancellation id
   assert.match(sql, /old\.evidence ->> 'archiveExportedAt'/u);
   assert.match(sql, /new\.company_id is distinct from old\.company_id/u);
   assert.match(sql, /support operators can create audit events for themselves/u);
+});
+
+test("private document bucket enforces the bounded upload allowlist", async () => {
+  const sql = await readFile(documentMigrationPath, "utf8");
+
+  assert.match(sql, /file_size_limit = 6291456/u);
+  assert.match(sql, /allowed_mime_types = array\['application\/pdf', 'image\/png', 'image\/jpeg', 'text\/csv'\]/u);
+  assert.match(sql, /set public = false/u);
 });
 
 test("membership roles and confirmed company identity are not client-updatable", async () => {

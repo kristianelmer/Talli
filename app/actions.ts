@@ -23,7 +23,12 @@ import { validateAuthorityObligation } from "./lib/authority-permission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
-import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
+import {
+  COMPANY_DOCUMENTS_BUCKET,
+  DocumentUploadValidationError,
+  documentStorageKey,
+  validateDocumentUpload,
+} from "./lib/documents";
 import {
   DividendReceivedValidationError,
   dividendReceivedLedgerLines,
@@ -235,11 +240,20 @@ export async function uploadDocument(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     redirect("/?error=Velg%20dokument%20for%20opplasting");
   }
+  let validatedFile: Awaited<ReturnType<typeof validateDocumentUpload>>;
+  try {
+    validatedFile = await validateDocumentUpload(file);
+  } catch (error) {
+    const message = error instanceof DocumentUploadValidationError
+      ? `${error.code}: ${error.message}`
+      : "Dokumentvalidering feilet";
+    redirect(`/?error=${encodeURIComponent(message)}`);
+  }
 
   const documentId = crypto.randomUUID();
-  const storageKey = documentStorageKey(companyId, incomeYear, documentId, file.name);
+  const storageKey = documentStorageKey(companyId, incomeYear, documentId, validatedFile.fileName);
   const { error: uploadError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(storageKey, file, {
-    contentType: file.type || "application/octet-stream",
+    contentType: validatedFile.contentType,
     upsert: false,
   });
   if (uploadError) {
@@ -251,7 +265,7 @@ export async function uploadDocument(formData: FormData) {
     company_id: companyId,
     income_year: incomeYear,
     document_type: documentType,
-    name: file.name,
+    name: validatedFile.fileName,
     linked_to: linkedTo,
     status: "attached",
     retention_years: 5,
@@ -267,7 +281,7 @@ export async function uploadDocument(formData: FormData) {
     actor_id: user.id,
     category: "document",
     action: "document_uploaded",
-    message: `Dokument lastet opp: ${file.name}.`,
+    message: `Dokument lastet opp: ${validatedFile.fileName}.`,
   });
 
   revalidatePath("/");
