@@ -71,5 +71,13 @@ test("server actions route dynamic errors through the disclosure boundary", asyn
   assert.doesNotMatch(source, /encodeURIComponent\(/u);
   assert.match(source, /encodeActionError\(uploadError\)/u);
   assert.match(source, /encodeActionError\(operatorError\)/u);
+  assert.match(
+    source,
+    /document_metadata_persistence_failed[\s\S]*?encodeActionError\(metadataError\)/u,
+  );
+  assert.match(
+    source,
+    /owner_dividend_atomic_persistence_failed[\s\S]*?encodeActionError\(persistenceError\)/u,
+  );
   assert.match(source, /encodePublicActionError\(error instanceof Error/u);
 });

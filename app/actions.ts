@@ -296,10 +296,7 @@ export async function uploadDocument(formData: FormData) {
       metadataErrorCode: metadataError.code,
       orphanCleanupFailed: Boolean(cleanupError),
     });
-    const internalMessage = cleanupError
-      ? `${metadataError.message}; orphan cleanup failed: ${cleanupError.message}`
-      : metadataError.message;
-    redirect(`/?error=${encodeActionError(internalMessage)}`);
+    redirect(`/?error=${encodeActionError(metadataError)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1929,10 +1926,7 @@ export async function recordOwnerDividend(formData: FormData) {
       persistenceErrorCode: persistenceError.code,
       orphanCleanupFailed: Boolean(cleanupError),
     });
-    const internalMessage = cleanupError
-      ? `${persistenceError.message}; orphan cleanup failed: ${cleanupError.message}`
-      : persistenceError.message;
-    redirect(`/?error=${encodeActionError(internalMessage)}`);
+    redirect(`/?error=${encodeActionError(persistenceError)}`);
   }
 
   const { error: auditError } = await supabase.from("audit_events").insert({
