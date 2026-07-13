@@ -1,6 +1,7 @@
 # Annual Accounts TT02 Boundary Runbook
 
-Status: local contract implemented; live TT02 mutation is not yet authorized
+Status: local renderer, guarded orchestration, and private journal implemented;
+live TT02 mutation is not yet authorized
 Last updated: 2026-07-13
 Target app: `brg/aarsregnskap-vanlig-202406`
 
@@ -55,6 +56,23 @@ Required Altinn system-register resource:
 - a successful lock must enter an Altinn `signing` task; and
 - it exposes no `sign` or `submit` operation.
 
+`app/lib/annual-accounts-orchestration.ts` and
+`app/lib/annual-accounts-file-journal.ts` add the recovery boundary:
+
+- every operation is persisted as `prepared` and then `sent` before transport;
+- the checkpoint locks the operation, customer, year, and both XML hashes;
+- draft and lock calls are never replayed automatically when their outcome is
+  uncertain;
+- fixed-data-ID XML replacements and validation reads may retry from the same
+  stored identity;
+- locking performs a fresh validation in the same client session immediately
+  before the transition;
+- checkpoint files are atomically replaced under a private `0700` directory,
+  use `0600` files, reject symlinks, and enforce optimistic revisions; and
+- the exact checkpoint schema permits only hashes, instance/data IDs, bounded
+  validation codes, and process state. Tokens, assertions, XML, provider field
+  paths, and provider values are rejected.
+
 Brønnøysund requires a person authenticated through ID-porten to sign annual
 accounts. Signing also submits the form. That action must remain a visible,
 intentional owner step.
@@ -71,8 +89,7 @@ All items must be evidenced before creating a draft:
 5. The approved person has the underlying right being delegated.
 6. A complete RR-0002 XML pair for the supported schema has been generated and
    independently reviewed.
-7. The XML renderer and crash-safe TT02 evidence journal are implemented and
-   their tests pass.
+7. The XML renderer and crash-safe TT02 evidence journal tests pass.
 
 The current client is a contract boundary, not an operator CLI. Do not perform a
 live rehearsal by assembling ad-hoc HTTP calls around it.
@@ -87,7 +104,7 @@ Once the preconditions are met, the guarded orchestration must:
 4. create one empty TT02 instance for the approved synthetic company;
 5. verify the returned owner, instance ID, current task, and data-element IDs;
 6. replace `Hovedskjema` and `Underskjema` with the reviewed XML;
-7. call instance validation and persist only bounded validation codes/paths;
+7. call instance validation and persist only bounded validation codes;
 8. stop on every validation error;
 9. lock the unchanged validated revision with the `confirm` action;
 10. persist the resulting instance reference and signing-task state; and
@@ -106,6 +123,8 @@ Stop without retrying the mutation when:
 - a response is malformed, oversized, redirected, or has an unexpected content
   type;
 - a data-element or instance ID is inconsistent;
+- draft creation or locking has a `sent` checkpoint without an accepted
+  response checkpoint;
 - validation returns an error;
 - XML changes after validation;
 - `confirm` does not enter a signing task; or
@@ -120,6 +139,6 @@ npm run test:annual-accounts
 npm run typecheck
 ```
 
-The focused suite currently covers the RR-0002 payload map plus nine Altinn
-contract/security/state-transition tests. It uses an injected fake transport and
-creates no Altinn instance.
+The focused suite currently has 27 tests across the RR-0002 payload map, XML
+renderer, Altinn client, crash-safe orchestration, and private file journal. It
+uses injected clients/transports and creates no Altinn instance.

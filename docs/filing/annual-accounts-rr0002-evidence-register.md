@@ -176,8 +176,6 @@ Block or escalate:
 
 - Validate the rendered Hovedskjema and Underskjema with the provider in TT02;
   well-formedness and pinned local contract assertions are already covered.
-- Add crash-safe orchestration and a private evidence journal around the
-  implemented TT02-only Altinn client.
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.

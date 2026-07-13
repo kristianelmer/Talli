@@ -11,7 +11,7 @@
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
     "test:action-errors": "node --experimental-strip-types --test tests/action_errors.test.mjs",
-    "test:annual-accounts": "node --experimental-strip-types --test tests/annual_accounts_payload.test.mjs tests/annual_accounts_xml.test.mjs tests/annual_accounts_altinn_client.test.mjs",
+    "test:annual-accounts": "node --experimental-strip-types --test tests/annual_accounts_payload.test.mjs tests/annual_accounts_xml.test.mjs tests/annual_accounts_altinn_client.test.mjs tests/annual_accounts_orchestration.test.mjs tests/annual_accounts_file_journal.test.mjs",
     "test:authority": "node --experimental-strip-types --test tests/authority_permission.test.mjs",
     "test:authority-evidence": "node --experimental-strip-types --test tests/authority_test_evidence.test.mjs",
     "test:bank": "node --experimental-strip-types --test tests/bank_workflow.test.mjs",
