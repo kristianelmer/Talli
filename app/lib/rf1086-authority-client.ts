@@ -82,6 +82,7 @@ export class Rf1086AuthorityError extends Error {
 }
 
 export type Rf1086AuthorityClient = {
+  readonly environment: Rf1086AuthorityEnvironment;
   submitHovedskjema(input: {
     incomeYear: number;
     xml: string;
@@ -340,6 +341,7 @@ export function createRf1086AuthorityClient(options: ClientOptions): Rf1086Autho
   });
 
   return {
+    environment: options.environment,
     async submitHovedskjema(input) {
       const incomeYear = assertIncomeYear(input.incomeYear);
       const xml = assertXml(input.xml);
