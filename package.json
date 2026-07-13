@@ -47,7 +47,7 @@
     "test:rf1086:persisted": "node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs",
     "test:rf1086:submission": "node --experimental-strip-types --test tests/rf1086_submission_persisted.test.mjs",
     "test:rf1086:authority": "node --experimental-strip-types --test tests/rf1086_authority_client.test.mjs",
-    "test:rf1086:orchestration": "node --experimental-strip-types --test tests/rf1086_authority_orchestration.test.mjs tests/rf1086_supabase_journal.test.mjs",
+    "test:rf1086:orchestration": "node --experimental-strip-types --test tests/rf1086_authority_orchestration.test.mjs tests/rf1086_supabase_journal.test.mjs tests/rf1086_production_runner.test.mjs",
     "test:rf1086:tt02": "node --experimental-strip-types --test tests/maskinporten_system_user.test.mjs tests/rf1086_file_journal.test.mjs tests/rf1086_tt02_runner.test.mjs",
     "test:rf1086:archive": "node --experimental-strip-types --test tests/dialogporten_client.test.mjs tests/rf1086_authority_archive.test.mjs",
     "rf1086:tt02": "node --experimental-strip-types scripts/rf1086-tt02.ts",
