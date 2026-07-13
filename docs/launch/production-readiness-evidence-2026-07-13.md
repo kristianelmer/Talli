@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `a5cc6e5`
+Evidence baseline: commits through `208760c`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,14 +11,14 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `a5cc6e5`, including the guarded RF-1086 and company-tax TT02 runners, annual-accounts TT02 contract/signature-evidence boundary, authority contract/orchestration/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `208760c`, including the guarded RF-1086 and company-tax TT02 runners, annual-accounts TT02 contract/signature/Dialogporten-evidence boundary, authority contract/orchestration/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
 | RF-1086 crash-safe orchestration | 7 tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
-| RF-1086 Dialogporten/archive boundary | 6 focused tests pass: fixed Dialogporten hosts, exact party/resource checks, bounded token-free responses, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
+| RF-1086 Dialogporten/archive boundary | 9 focused tests pass: fixed Dialogporten hosts, exact Altinn-instance lookup, party/resource checks, bounded token-free responses, invalid lookup rejection before transport, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
 | Company-tax 2025 contract and TT02 boundary | 31 focused tests pass: exact 2025 XSD/source pins, local no-activity fixture generation, calculation-only enforcement, current-draft inspection, private atomic evidence journal, forbidden sensitive fields, crash-window handling, CLI journal requirement, and non-2025 rejection before token issuance |
-| Annual-accounts RR-0002 and TT02 boundary | 47 focused tests pass: deterministic current-contract Hovedskjema/Underskjema rendering with current/prior whole-kroner reconciliation, exact input shape, XML escaping and schema fingerprints; a narrow source-backed field map; a fixed-host TT02-only client; crash-safe orchestration/private journaling; and a one-step operator runner/CLI covering exact private inputs, customer/year locking, only the two instance scopes, offline inspection, explicit external-execution and lock flags, no replay of uncertain draft/lock calls, fixed-ID upload retry, lock preflight revalidation, identity/hash drift detection, atomic `0700`/`0600` evidence, symlink/revision defenses, and token/assertion/XML/contact/provider-field rejection from outputs and journals. A separate post-signature action uses read scope only, proves the same ended instance and required JSON signature element, and stores bounded evidence immutably; all transport evidence is injected and no Altinn instance was created. |
+| Annual-accounts RR-0002 and TT02 boundary | 56 focused tests pass: deterministic current-contract Hovedskjema/Underskjema rendering with current/prior whole-kroner reconciliation, exact input shape, XML escaping and schema fingerprints; a narrow source-backed field map; a fixed-host TT02-only client; crash-safe orchestration/private journaling; and a one-step operator runner/CLI covering exact private inputs, customer/year locking, only the two instance scopes, offline inspection, explicit external-execution and lock flags, no replay of uncertain draft/lock calls, fixed-ID upload retry, lock preflight revalidation, identity/hash drift detection, atomic `0700`/`0600` evidence, symlink/revision defenses, and token/assertion/XML/contact/provider-field rejection from outputs and journals. A separate post-signature action uses read scope only, proves the same ended instance and required JSON signature element, and stores bounded evidence immutably. A second read-only action requests only `digdir:dialogporten`, resolves the exact signed instance, requires the same company/resource/provider and completed state, and stores a hash-linked bounded dialog record without titles, URLs, authorization evidence, or provider content; all transport evidence is injected and no Altinn instance was created. |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -81,9 +81,12 @@ to launch publicly or submit live authority filings. It is not a release approva
   execution, and separately gates the lock transition. Its read-only
   post-signature action requires the accepted lock checkpoint, requests only
   `altinn:instances.read`, verifies the same ended instance and signature data
-  element, and writes a private immutable bounded evidence record. Provider
-  validation, live TT02 evidence, the personal ID-porten step, and official
-  inbox/archive receipt retrieval remain open.
+  element, and writes a private immutable bounded evidence record. Its separate
+  Dialogporten action first requires that record, requests only
+  `digdir:dialogporten`, performs exact-instance lookup plus one dialog read, and
+  writes only bounded, hash-linked completion metadata. Provider validation,
+  live TT02 evidence, the personal ID-porten step, scope attachment, and official
+  receipt/decision attachment retrieval remain open.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production

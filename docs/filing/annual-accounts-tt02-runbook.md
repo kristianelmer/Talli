@@ -1,7 +1,8 @@
 # Annual Accounts TT02 Boundary Runbook
 
-Status: local renderer, guarded orchestration, private journal, and immutable
-post-signature verifier implemented; live TT02 mutation is not yet authorized
+Status: local renderer, guarded orchestration, private journal, immutable
+post-signature verifier, and read-only Dialogporten evidence verifier implemented;
+live TT02 mutation is not yet authorized
 Last updated: 2026-07-13
 Target app: `brg/aarsregnskap-vanlig-202406`
 
@@ -21,6 +22,10 @@ registering a new system right, or sending production annual accounts.
   https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/apis/
 - Altinn validation API:
   https://docs.altinn.studio/en/api/apps/validation/
+- Dialogporten instance lookup:
+  https://docs.altinn.studio/en/dialogporten/user-guides/looking-up-dialogs/
+- Dialogporten dialog details:
+  https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 
 Pinned TT02 endpoints:
 
@@ -35,6 +40,9 @@ Required Maskinporten scopes:
 - `altinn:instances.write`
 
 The post-signature verifier requests only `altinn:instances.read`.
+
+The separate Dialogporten verifier requests only `digdir:dialogporten`. It does
+not combine that read scope with either instance scope.
 
 Required Altinn system-register resource:
 
@@ -101,6 +109,25 @@ provider bodies, tokens, assertions, XML, symlinks, conflicting rewrites, and
 permissive directories/files are rejected. This proves signed-instance
 completion; it does not invent an Altinn inbox, archive, or receipt reference.
 
+`verify-dialog` is another externally read-only action. It refuses to request a
+token unless the immutable signed-instance record matches the exact operation,
+company, year, and both XML hashes. It then:
+
+- requests only `digdir:dialogporten`;
+- resolves the exact Altinn instance reference through Dialogporten's lookup
+  endpoint;
+- retrieves that one dialog with a second `GET`;
+- requires the same party, `app_brg_aarsregnskap` resource, `brg` owner,
+  completed status, and a dialog update no earlier than instance completion;
+  and
+- stores only bounded IDs, timestamps, linkage hash, and transmission/attachment
+  counts in private immutable `<operation-id>.dialog.json` evidence.
+
+Titles, authorization evidence, attachment names and URLs, provider fields,
+tokens, assertions, and form content are discarded or rejected. This establishes
+the completed dialog for the signed instance; it does not fetch or claim the
+content of a provider receipt or decision attachment.
+
 Brønnøysund requires a person authenticated through ID-porten to sign annual
 accounts. Signing also submits the form. That action must remain a visible,
 intentional owner step.
@@ -118,6 +145,10 @@ All items must be evidenced before creating a draft:
 6. A complete RR-0002 XML pair for the supported schema has been generated and
    independently reviewed.
 7. The XML renderer and crash-safe TT02 evidence journal tests pass.
+
+To run the optional post-completion Dialogporten verification, the same client
+must additionally have `digdir:dialogporten`. Adding that scope is a separate
+permission change and is not authorized by this runbook.
 
 Do not perform a live rehearsal by assembling ad-hoc HTTP calls around the
 client or by running the guarded command before every precondition is evidenced.
@@ -154,8 +185,24 @@ npm run annual-accounts:tt02 -- verify-signed \
 ```
 
 This must prove the ended process and signature artifact before signed-instance
-evidence can be accepted. Official inbox/archive/receipt references remain a
-separate evidence requirement.
+evidence can be accepted. If the separate Dialogporten scope has been explicitly
+approved and attached, resolve and persist the exact completed dialog with:
+
+```sh
+npm run annual-accounts:tt02 -- verify-dialog \
+  --input <absolute-private-input-json> \
+  --journal <absolute-private-journal-directory> \
+  --customer-org <approved-synthetic-org-number> \
+  --income-year 2025 \
+  --client-id <test-client-id> \
+  --key-id <test-key-id> \
+  --private-key <absolute-private-key-pem> \
+  --execute-test
+```
+
+This performs two provider `GET` requests and writes bounded dialog evidence.
+Official receipt/decision attachment content remains a separate evidence
+requirement.
 
 ## Abort Conditions
 
@@ -172,7 +219,10 @@ Stop without retrying the mutation when:
 - XML changes after validation;
 - `confirm` does not enter a signing task; or
 - the post-signature ended process or signature artifact cannot be tied to the
-  same instance.
+  same instance; or
+- Dialogporten resolves another instance, party, resource, or owner, reports an
+  unfinished dialog, or has a completion timestamp inconsistent with the signed
+  instance.
 
 ## Local Verification
 
@@ -183,7 +233,8 @@ npm run test:annual-accounts
 npm run typecheck
 ```
 
-The focused suite currently has 47 tests across the RR-0002 payload map, XML
+The focused suite currently has 56 tests across the RR-0002 payload map, XML
 renderer, Altinn client, crash-safe orchestration, private file journal,
-post-signature verifier and immutable evidence store, TT02 runner, and CLI
-guard. It uses injected clients/transports and creates no Altinn instance.
+post-signature verifier, exact-instance Dialogporten lookup, immutable signed and
+dialog evidence stores, TT02 runner, and CLI guard. It uses injected
+clients/transports and creates no Altinn instance.

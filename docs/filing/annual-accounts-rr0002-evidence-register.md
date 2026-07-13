@@ -19,6 +19,10 @@ required.
   https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Altinn RR-0002 form page:
   https://info.altinn.no/skjemaoversikt/bronnoysundregistrene/arsregnskap/
+- Dialogporten instance lookup:
+  https://docs.altinn.studio/en/dialogporten/user-guides/looking-up-dialogs/
+- Dialogporten dialog details:
+  https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 
 Evidence extraction source:
 
@@ -146,6 +150,15 @@ then records only those bounded IDs, document hashes, and completion timestamp
 in a private immutable file. It does not claim or synthesize an inbox, archive,
 or receipt reference.
 
+`app/lib/annual-accounts-dialog-evidence.ts` adds an independent read-only
+Dialogporten boundary after that signed-instance proof exists. It resolves the
+exact Altinn instance to a dialog, requires the same company, annual-accounts
+resource and provider plus `Completed` state, and writes a second immutable file
+linked by the signed-evidence SHA-256. The record contains bounded dialog IDs,
+timestamps, and counts only; localized text, authorization evidence, attachment
+names/URLs, and provider content are not retained. This proves dialog linkage,
+not receipt or decision attachment content.
+
 ## Notes
 
 Small-enterprise note support starts with:
@@ -194,7 +207,9 @@ Block or escalate:
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
 - Run the implemented signed-instance verifier after the owner's ID-porten step.
-- Retrieve and persist official receipt/inbox/archive references separately.
+- Run the implemented exact-instance Dialogporten verifier after attaching its
+  separately approved read scope.
+- Retrieve and persist official receipt/decision attachment content separately.
 - Complete human release signoff.
 
 The test-only client contract and live-rehearsal stop conditions are recorded in
