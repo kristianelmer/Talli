@@ -1,12 +1,14 @@
 # Production Launch Rehearsal
 
-Status: prepared for final HITL rehearsal  
-Last updated: 2026-06-20  
+Status: local release rehearsal passed; staging and HITL evidence pending
+Last updated: 2026-07-13
 Blocks: #88 remains open until named reviewer signoff and authority test evidence exist
 
 This runbook is the repeatable pre-launch rehearsal for Talli. It does not
 permit live direct filing. It proves the local product gates and documents the
 remaining authority/HITL blockers.
+
+Latest local evidence: `production-readiness-evidence-2026-07-13.md`.
 
 ## Automated Rehearsal Command
 
