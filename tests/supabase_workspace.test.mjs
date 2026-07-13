@@ -388,6 +388,19 @@ test(
     assert.ifError(inviteeOutboxReadError);
     assert.deepEqual(inviteeOutboxRows, []);
 
+    const { error: roleEscalationError } = await readOnly
+      .from("company_memberships")
+      .update({ role: "owner" })
+      .eq("company_id", companyId)
+      .eq("user_id", readOnlyUser.id);
+    assert.ok(roleEscalationError);
+
+    const { error: companyIdentityMutationError } = await owner
+      .from("companies")
+      .update({ org_number: "999999999" })
+      .eq("id", companyId);
+    assert.ok(companyIdentityMutationError);
+
     const { error: selfAssertedStepUpError } = await owner
       .from("step_up_events")
       .insert({

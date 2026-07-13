@@ -38,6 +38,10 @@ review. It should be run against staging after every schema/RLS change.
   comments, but cannot perform owner-only writes such as document upload.
 - Read-only member can read authorized document metadata but cannot write review
   comments or upload document objects.
+- Reviewer/read-only memberships cannot self-promote through Data API updates;
+  membership acceptance is invitation-backed insert-only.
+- Confirmed Brreg company identity is not mutable by authenticated Data API
+  clients after creation.
 - Outsider cannot read company rows, memberships, documents, filings, billing,
   authority permissions, readiness snapshots, ledger/action rows, period locks,
   audit events, or storage objects.
