@@ -91,6 +91,17 @@ function record(value: unknown, code: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function assertExactInputKeys(value: Record<string, unknown>, expected: readonly string[]) {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  if (actual.length !== sortedExpected.length || actual.some((key, index) => key !== sortedExpected[index])) {
+    fail(
+      "annual_accounts_xml_input_invalid",
+      "Annual-accounts XML input contains unknown or missing fields.",
+    );
+  }
+}
+
 function textValue(value: unknown, maximum: number, code = "annual_accounts_xml_text_invalid"): string {
   if (typeof value !== "string") {
     fail(code, "Annual-accounts XML text is invalid.");
@@ -179,6 +190,22 @@ function assertFigures(value: unknown, period: "current" | "prior"): AnnualAccou
     );
   }
   const candidate = value as Partial<AnnualAccountsWholeKronerFigures>;
+  assertExactInputKeys(candidate as Record<string, unknown>, [
+    "operatingCosts",
+    "financialIncome",
+    "financialCosts",
+    "resultBeforeTax",
+    "annualResult",
+    "investmentSharesAndUnits",
+    "bank",
+    "totalAssets",
+    "paidInEquity",
+    "retainedEquity",
+    "totalEquity",
+    "shortTermDebt",
+    "totalDebt",
+    "totalEquityAndDebt",
+  ]);
   const figures: AnnualAccountsWholeKronerFigures = {
     operatingCosts: assertWholeKroner(candidate.operatingCosts, `${period}.operatingCosts`, true),
     financialIncome: assertWholeKroner(candidate.financialIncome, `${period}.financialIncome`, true),
@@ -241,6 +268,7 @@ function assertDeclarations(value: unknown): AnnualAccountsXmlInput["declaration
     "preparedByAuthorizedAccountant",
     "externalAuthorizedAccountantAssistance",
   ] as const;
+  assertExactInputKeys(declarations, required);
   for (const key of required) {
     if (typeof declarations[key] !== "boolean") {
       fail("annual_accounts_xml_declarations_invalid", "Annual-accounts declarations must be explicit booleans.");
@@ -264,7 +292,19 @@ function assertDeclarations(value: unknown): AnnualAccountsXmlInput["declaration
 
 function assertInput(value: unknown) {
   const input = record(value, "annual_accounts_xml_input_invalid");
+  assertExactInputKeys(input, [
+    "organization",
+    "incomeYear",
+    "adoption",
+    "declarations",
+    "current",
+    "prior",
+    "annualFullTimeEquivalents",
+    "investmentDescription",
+    "retainedEquityDescription",
+  ]);
   const organization = record(input.organization, "annual_accounts_xml_organization_missing");
+  assertExactInputKeys(organization, ["number", "name", "form", "contactEmail"]);
   const organizationNumber = textValue(
     organization.number,
     9,
@@ -285,6 +325,7 @@ function assertInput(value: unknown) {
   }
   const incomeYear = assertIncomeYear(input.incomeYear);
   const adoption = record(input.adoption, "annual_accounts_xml_adoption_missing");
+  assertExactInputKeys(adoption, ["date", "confirmingRepresentative"]);
   const adoptionDate = assertDate(adoption.date, "annual_accounts_xml_adoption_date_invalid");
   if (!adoptionDate.startsWith(`${incomeYear + 1}-`)) {
     fail(

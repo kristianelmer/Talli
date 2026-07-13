@@ -131,6 +131,12 @@ The focused suite parses both outputs, verifies exact namespaces, versions,
 paths, `orid` values, current/prior values, and XML escaping, and exercises every
 fail-closed boundary above. It does not call Altinn.
 
+The guarded TT02 runner accepts only a private exact-schema JSON input, renders
+the documents in memory, locks customer/year/document hashes before token
+issuance, advances one journaled operation per invocation, and requires a
+separate flag before locking for personal signature. Its offline inspection and
+test suite do not create an Altinn instance.
+
 ## Notes
 
 Small-enterprise note support starts with:

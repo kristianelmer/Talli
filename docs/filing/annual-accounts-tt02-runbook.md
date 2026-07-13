@@ -73,6 +73,17 @@ Required Altinn system-register resource:
   validation codes, and process state. Tokens, assertions, XML, provider field
   paths, and provider values are rejected.
 
+`npm run annual-accounts:tt02` is the guarded operator entrypoint:
+
+- `inspect` is offline and needs neither a signing key nor `--execute-test`;
+- `step` requires a private exact-schema input file, private journal directory,
+  `--execute-test`, the approved customer/year, and the test client credentials;
+- one invocation advances at most one persisted operation;
+- only `altinn:instances.read` and `altinn:instances.write` are requested;
+- the lock transition additionally requires `--lock`; and
+- stdout contains hashes and checkpoint metadata, never XML, contact data,
+  bearer material, assertions, or private-key content.
+
 Brønnøysund requires a person authenticated through ID-porten to sign annual
 accounts. Signing also submits the form. That action must remain a visible,
 intentional owner step.
@@ -91,8 +102,8 @@ All items must be evidenced before creating a draft:
    independently reviewed.
 7. The XML renderer and crash-safe TT02 evidence journal tests pass.
 
-The current client is a contract boundary, not an operator CLI. Do not perform a
-live rehearsal by assembling ad-hoc HTTP calls around it.
+Do not perform a live rehearsal by assembling ad-hoc HTTP calls around the
+client or by running the guarded command before every precondition is evidenced.
 
 ## Intended Rehearsal Sequence
 
@@ -139,6 +150,7 @@ npm run test:annual-accounts
 npm run typecheck
 ```
 
-The focused suite currently has 27 tests across the RR-0002 payload map, XML
-renderer, Altinn client, crash-safe orchestration, and private file journal. It
-uses injected clients/transports and creates no Altinn instance.
+The focused suite currently has 34 tests across the RR-0002 payload map, XML
+renderer, Altinn client, crash-safe orchestration, private file journal, TT02
+runner, and CLI guard. It uses injected clients/transports and creates no Altinn
+instance.

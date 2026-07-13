@@ -217,3 +217,21 @@ test("rejects invalid identity, dates, notes, and unsafe XML text", () => {
     );
   }
 });
+
+test("rejects unknown fields at every guarded annual-accounts input boundary", () => {
+  for (const input of [
+    { ...baseInput, privateKey: "forbidden" },
+    { ...baseInput, organization: { ...baseInput.organization, token: "forbidden" } },
+    { ...baseInput, adoption: { ...baseInput.adoption, assertion: "forbidden" } },
+    { ...baseInput, declarations: { ...baseInput.declarations, production: true } },
+    { ...baseInput, current: { ...baseInput.current, providerValue: 1 } },
+    { ...baseInput, prior: { ...baseInput.prior, xml: "<secret />" } },
+  ]) {
+    assert.throws(
+      () => buildAnnualAccountsXmlDocuments(input),
+      (error) =>
+        error instanceof AnnualAccountsXmlError &&
+        error.code === "annual_accounts_xml_input_invalid",
+    );
+  }
+});
