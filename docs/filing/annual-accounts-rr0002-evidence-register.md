@@ -1,6 +1,6 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: payload slice and test-only Altinn boundary implemented
+Status: narrow XML renderer and test-only Altinn boundary implemented
 Last updated: 2026-07-13
 Target issue: #82
 
@@ -27,7 +27,24 @@ Evidence extraction source:
 - hovedskjema root: `dataFormatId="1266"`, `dataFormatVersion="51820"`,
   `tjenestehandling="aarsregnskap_vanlig"`, `tjeneste="regnskap"`
 - selskapsregnskap root: `dataFormatId="758"`, `dataFormatVersion="51980"`,
-  `tjenestehandling="aarsregnskap_vanlig_underskjema"`, `tjeneste="regnskap"`
+  `versjon="1.1"`, `tjenestehandling="aarsregnskap_vanlig_underskjema"`,
+  `tjeneste="regnskap"`
+
+Live TT02 contract snapshot inspected on 2026-07-13:
+
+- application: `brg/aarsregnskap-vanlig-202406`;
+- Hovedskjema JSON schema SHA-256:
+  `3776336fa2f7e1ef4773e8cb2800d7930415b9b1c028a59a338327f68b8b4f68`;
+- Underskjema JSON schema SHA-256:
+  `e17fc7f6cb45984f5ab74dc614955199610deab9b12f9eb1012772f2e0e7c931`;
+- application metadata SHA-256:
+  `45da74344955265ede80e42726a29ce33c8efa81090cf45ab6739f00a3ad7aa6`;
+- custom OpenAPI SHA-256:
+  `23f3dc34915a469d031a5ffb9f17fdebf7e548d12211b2019534717156ea38f9`.
+
+The two schema fingerprints are pinned by the renderer. They are evidence of the
+contract inspected, not a substitute for provider validation in an Altinn
+instance.
 
 ## Submission and Signing Flow
 
@@ -89,8 +106,30 @@ Talli launch decision:
 | Annual full-time equivalents | `antallAarsverk` | `37467` | Required small-enterprise note field; supported, default `0` for no employees/payroll. |
 
 Previous-year fields exist in the official example as sibling `fjoraarets` values.
-Talli launch may set them from opening/prior annual accounts where available, or
-block production annual accounts until prior-year values are confirmed.
+The implemented renderer requires explicit prior-year values and blocks rather
+than copying or inventing them.
+
+## Implemented XML Guardrails
+
+`app/lib/annual-accounts-xml.ts` renders deterministic Hovedskjema and
+Underskjema XML only for the launch case documented here. Before rendering it:
+
+- verifies the organization number format and checksum and restricts the entity
+  form to `AS`;
+- requires an explicit next-year adoption date and confirming representative;
+- rejects parent companies, IFRS, audit obligation, and non-small enterprises;
+- requires current and prior figures in whole kroner;
+- reconciles result before tax, annual result, assets, equity, debt, and both
+  sides of the balance for both periods;
+- supports only the no-tax-cost, one-investment, bank, paid-in/retained equity,
+  and short-term-debt path;
+- escapes XML text, rejects forbidden control characters, and bounds identifiers,
+  descriptions, email, amounts, and annual full-time equivalents;
+- emits content hashes for both generated documents.
+
+The focused suite parses both outputs, verifies exact namespaces, versions,
+paths, `orid` values, current/prior values, and XML escaping, and exercises every
+fail-closed boundary above. It does not call Altinn.
 
 ## Notes
 
@@ -135,8 +174,8 @@ Block or escalate:
 
 ## Remaining Before Production
 
-- Render and independently verify the complete hovedskjema and selskapsregnskap
-  XML documents from the implemented field map.
+- Validate the rendered Hovedskjema and Underskjema with the provider in TT02;
+  well-formedness and pinned local contract assertions are already covered.
 - Add crash-safe orchestration and a private evidence journal around the
   implemented TT02-only Altinn client.
 - Validate generated XML/data elements in TT02.
