@@ -157,7 +157,7 @@ export function assertRf1086AuthorityCheckpoint(
     value.companyId !== preview.company_id ||
     value.incomeYear !== preview.income_year ||
     (value.environment !== "test" && value.environment !== "production") ||
-    !/^[0-9a-f]{64}$/u.test(value.payloadHash) ||
+    value.payloadHash !== canonicalPayloadHash(preview) ||
     !checkpointStatuses.includes(value.status) ||
     !Array.isArray(value.calls) ||
     value.calls.length > 100_002 ||

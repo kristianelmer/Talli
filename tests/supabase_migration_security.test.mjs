@@ -16,6 +16,8 @@ const revokedGrantRewriteMigrationPath =
   "supabase/migrations/20260713141000_surface_revoked_grant_rewrites.sql";
 const ownerDividendSetupFixMigrationPath =
   "supabase/migrations/20260713142000_fix_owner_dividend_setup_reference.sql";
+const rf1086CheckpointMigrationPath =
+  "supabase/migrations/20260713192808_persist_rf1086_authority_checkpoints.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -149,4 +151,24 @@ test("owner-dividend RPC uses an unambiguous opening-setup identifier", async ()
   assert.match(sql, /opening_setup_id uuid/u);
   assert.match(sql, /shareholder\.setup_id = opening_setup_id/u);
   assert.doesNotMatch(sql, /\bsetup_id uuid;/u);
+});
+
+test("RF-1086 authority checkpoints use service-only atomic writes and tenant-scoped reads", async () => {
+  const sql = await readFile(rf1086CheckpointMigrationPath, "utf8");
+
+  assert.match(sql, /create table public\.rf1086_authority_checkpoints/u);
+  assert.match(sql, /alter table public\.rf1086_authority_checkpoints enable row level security/u);
+  assert.match(sql, /grant select on public\.rf1086_authority_checkpoints to authenticated/u);
+  assert.match(sql, /membership\.accepted_at is not null/u);
+  assert.match(sql, /octet_length\(convert_to\(checkpoint::text, 'UTF8'\)\) between 1 and 262144/u);
+  assert.match(sql, /private\.rf1086_checkpoint_shape_is_valid/u);
+  assert.match(sql, /jsonb_typeof\(value -> 'revision'\) <> 'number'/u);
+  assert.match(sql, /revoke insert, update, delete on public\.rf1086_authority_checkpoints from anon, authenticated, service_role/u);
+  assert.match(sql, /create or replace function private\.save_rf1086_authority_checkpoint/u);
+  assert.match(sql, /security definer/u);
+  assert.match(sql, /create or replace function public\.save_rf1086_authority_checkpoint/u);
+  assert.match(sql, /security invoker/u);
+  assert.match(sql, /grant execute on function public\.save_rf1086_authority_checkpoint[\s\S]*to service_role/u);
+  assert.match(sql, /raise sqlstate 'PT409'/u);
+  assert.doesNotMatch(sql, /grant (insert|update|delete)[^;]*to authenticated/iu);
 });

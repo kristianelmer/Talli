@@ -30,6 +30,8 @@ import {
   prepareOwnerDividendCorporateDocuments,
 } from "../app/lib/owner-dividend-documents.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+import { createRf1086AuthorityClient } from "../app/lib/rf1086-authority-client.ts";
+import { runNextRf1086AuthorityStep } from "../app/lib/rf1086-authority-orchestration.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   rf1086PayloadHash,
@@ -40,6 +42,10 @@ import {
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
 } from "../app/lib/rf1086-submission.ts";
+import {
+  Rf1086SupabaseJournalError,
+  createRf1086SupabaseJournal,
+} from "../app/lib/rf1086-supabase-journal.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
 import { assertStepUpAllowed, stepUpContextFromEvent } from "../app/lib/security.ts";
 import { sharePurchaseLedgerLines, validateSharePurchase } from "../app/lib/share-purchase.ts";
@@ -782,6 +788,71 @@ test(
     assert.ifError(filingPreviewError);
     assert.equal(filingPreview.status, "ready");
 
+    const authorityAccessToken = `local-integration-token-${randomUUID()}`;
+    const hovedskjemaId = randomUUID();
+    const authorityClient = createRf1086AuthorityClient({
+      environment: "test",
+      accessToken: authorityAccessToken,
+      transport: async () => ({
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: new TextEncoder().encode(JSON.stringify({ hovedskjemaId })),
+      }),
+    });
+    const authorityJournal = createRf1086SupabaseJournal({ preview: filingPreview, client: admin });
+    const authorityProgress = await runNextRf1086AuthorityStep({
+      preview: filingPreview,
+      client: authorityClient,
+      journal: authorityJournal,
+    });
+    assert.equal(authorityProgress.complete, false);
+    assert.equal(authorityProgress.checkpoint.revision, 3);
+    assert.equal(authorityProgress.checkpoint.hovedskjemaId, hovedskjemaId);
+    assert.equal(authorityProgress.checkpoint.calls[0].status, "accepted");
+
+    const { data: ownerCheckpointRows, error: ownerCheckpointError } = await owner
+      .from("rf1086_authority_checkpoints")
+      .select("preview_id, company_id, income_year, revision, checkpoint")
+      .eq("preview_id", filingPreview.id);
+    assert.ifError(ownerCheckpointError);
+    assert.equal(ownerCheckpointRows.length, 1);
+    assert.equal(ownerCheckpointRows[0].revision, 3);
+    assert.doesNotMatch(JSON.stringify(ownerCheckpointRows[0]), new RegExp(authorityAccessToken, "u"));
+
+    const { data: reviewerCheckpointRows, error: reviewerCheckpointError } = await reviewer
+      .from("rf1086_authority_checkpoints")
+      .select("preview_id")
+      .eq("preview_id", filingPreview.id);
+    assert.ifError(reviewerCheckpointError);
+    assert.deepEqual(reviewerCheckpointRows, [{ preview_id: filingPreview.id }]);
+
+    const { data: outsiderCheckpointRows, error: outsiderCheckpointError } = await outsider
+      .from("rf1086_authority_checkpoints")
+      .select("preview_id")
+      .eq("preview_id", filingPreview.id);
+    assert.ifError(outsiderCheckpointError);
+    assert.deepEqual(outsiderCheckpointRows, []);
+
+    const { error: ownerCheckpointRewriteError } = await owner
+      .from("rf1086_authority_checkpoints")
+      .update({ revision: 99 })
+      .eq("preview_id", filingPreview.id);
+    assert.ok(ownerCheckpointRewriteError);
+
+    const { error: ownerCheckpointRpcError } = await owner.rpc("save_rf1086_authority_checkpoint", {
+      p_preview_id: filingPreview.id,
+      p_expected_revision: 3,
+      p_checkpoint: { ...authorityProgress.checkpoint, revision: 4 },
+    });
+    assert.ok(ownerCheckpointRpcError);
+
+    await assert.rejects(
+      authorityJournal.save(authorityProgress.checkpoint, 2),
+      (error) =>
+        error instanceof Rf1086SupabaseJournalError &&
+        error.code === "rf1086_supabase_journal_revision_conflict",
+    );
+
     assert.equal(productionAuthorityGate([], "aksjonaerregisteroppgaven").status, "missing_authority_confirmation");
     const { data: authorityPermission, error: authorityPermissionError } = await owner
       .from("authority_permissions")
@@ -1497,7 +1568,7 @@ test(
     assert.equal(dividendAction.document_id, dividendDocumentId);
     assert.deepEqual(
       summarizeDividendReceivedAnnualImpact([{ action_type: dividendAction.action_type, payload: dividendAction.payload }]),
-      { dividendIncome: 1000, fritaksmetodenAddBack: 30 },
+      { dividendIncome: 10000, fritaksmetodenAddBack: 300 },
     );
     const { error: dividendBankMatchError } = await owner
       .from("bank_transactions")

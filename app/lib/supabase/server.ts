@@ -16,6 +16,7 @@ import type {
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
+import type { Rf1086AuthorityCheckpoint } from "../rf1086-authority-orchestration";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -124,6 +125,16 @@ export type FilingPreviewRow = {
   underskjema_xml: Record<string, string>;
   source: string;
   created_at: string;
+};
+
+export type Rf1086AuthorityCheckpointRow = {
+  preview_id: string;
+  company_id: string;
+  income_year: number;
+  revision: number;
+  checkpoint: Rf1086AuthorityCheckpoint;
+  created_at: string;
+  updated_at: string;
 };
 
 export type FilingSubmissionRow = {
