@@ -6,7 +6,16 @@ const SCOPE_PATTERN = /^[a-z0-9][a-z0-9:/.\-_]{0,199}$/u;
 const DEFAULT_TIMEOUT_MS = 15_000;
 const MAX_TOKEN_RESPONSE_BYTES = 64 * 1024;
 
-export const MASKINPORTEN_TEST_ISSUER = "https://test.maskinporten.no/";
+// Official issuer/audience and JWT-bearer token endpoint contract:
+// https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_token.html
+// System-user RAR authorization_details contract:
+// https://docs.digdir.no/docs/Maskinporten/maskinporten_func_systembruker.html
+export const MASKINPORTEN_ISSUERS = {
+  test: "https://test.maskinporten.no/",
+  production: "https://maskinporten.no/",
+} as const;
+export type MaskinportenEnvironment = keyof typeof MASKINPORTEN_ISSUERS;
+export const MASKINPORTEN_TEST_ISSUER = MASKINPORTEN_ISSUERS.test;
 
 export class MaskinportenSystemUserError extends Error {
   readonly code: string;
@@ -22,6 +31,13 @@ export class MaskinportenSystemUserError extends Error {
 
 function systemUserError(code: string, message: string, retryable = false) {
   return new MaskinportenSystemUserError(code, message, retryable);
+}
+
+function assertEnvironment(value: unknown): MaskinportenEnvironment {
+  if (value !== "test" && value !== "production") {
+    throw systemUserError("maskinporten_environment_invalid", "Maskinporten environment is invalid.");
+  }
+  return value;
 }
 
 function assertUuid(value: unknown, label: string) {
@@ -55,7 +71,8 @@ function encodeJson(value: unknown) {
   return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
 }
 
-export function createMaskinportenTestSystemUserGrant(input: {
+export function createMaskinportenSystemUserGrant(input: {
+  environment: MaskinportenEnvironment;
   clientId: string;
   keyId: string;
   customerOrgNumber: string;
@@ -64,6 +81,7 @@ export function createMaskinportenTestSystemUserGrant(input: {
   nowSeconds?: number;
   jti?: string;
 }) {
+  const environment = assertEnvironment(input.environment);
   const clientId = assertUuid(input.clientId, "Maskinporten client ID");
   const keyId = assertUuid(input.keyId, "Maskinporten key ID");
   const customerOrgNumber = assertOrgNumber(input.customerOrgNumber);
@@ -89,7 +107,7 @@ export function createMaskinportenTestSystemUserGrant(input: {
 
   const header = encodeJson({ alg: "RS256", kid: keyId, typ: "JWT" });
   const payload = encodeJson({
-    aud: MASKINPORTEN_TEST_ISSUER,
+    aud: MASKINPORTEN_ISSUERS[environment],
     iss: clientId,
     scope: scopes.join(" "),
     authorization_details: [
@@ -108,6 +126,12 @@ export function createMaskinportenTestSystemUserGrant(input: {
   const signingInput = `${header}.${payload}`;
   const signature = sign("RSA-SHA256", Buffer.from(signingInput, "utf8"), privateKey).toString("base64url");
   return `${signingInput}.${signature}`;
+}
+
+export function createMaskinportenTestSystemUserGrant(
+  input: Omit<Parameters<typeof createMaskinportenSystemUserGrant>[0], "environment">,
+) {
+  return createMaskinportenSystemUserGrant({ ...input, environment: "test" });
 }
 
 async function readBoundedJson(response: Response) {
@@ -132,12 +156,14 @@ async function readBoundedJson(response: Response) {
   }
 }
 
-export async function requestMaskinportenTestSystemUserToken(input: {
+export async function requestMaskinportenSystemUserToken(input: {
+  environment: MaskinportenEnvironment;
   assertion: string;
   requestedScopes: string[];
   fetchImplementation?: typeof fetch;
   timeoutMs?: number;
 }) {
+  const environment = assertEnvironment(input.environment);
   if (typeof input.assertion !== "string" || input.assertion.length < 16 || input.assertion.length > 128 * 1024) {
     throw systemUserError("maskinporten_assertion_invalid", "Maskinporten assertion is invalid.");
   }
@@ -154,7 +180,7 @@ export async function requestMaskinportenTestSystemUserToken(input: {
   const timeout = setTimeout(() => abortController.abort(), timeoutMs);
   let response: Response;
   try {
-    response = await (input.fetchImplementation ?? fetch)(`${MASKINPORTEN_TEST_ISSUER}token`, {
+    response = await (input.fetchImplementation ?? fetch)(`${MASKINPORTEN_ISSUERS[environment]}token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -191,17 +217,33 @@ export async function requestMaskinportenTestSystemUserToken(input: {
   return { accessToken, expiresIn: expiresIn as number, scopes };
 }
 
+export function requestMaskinportenTestSystemUserToken(
+  input: Omit<Parameters<typeof requestMaskinportenSystemUserToken>[0], "environment">,
+) {
+  return requestMaskinportenSystemUserToken({ ...input, environment: "test" });
+}
+
+export async function issueMaskinportenSystemUserToken(
+  input: Parameters<typeof createMaskinportenSystemUserGrant>[0] & {
+    fetchImplementation?: typeof fetch;
+    timeoutMs?: number;
+  },
+) {
+  const assertion = createMaskinportenSystemUserGrant(input);
+  return requestMaskinportenSystemUserToken({
+    environment: input.environment,
+    assertion,
+    requestedScopes: input.scopes,
+    ...(input.fetchImplementation ? { fetchImplementation: input.fetchImplementation } : {}),
+    ...(input.timeoutMs ? { timeoutMs: input.timeoutMs } : {}),
+  });
+}
+
 export async function issueMaskinportenTestSystemUserToken(
   input: Parameters<typeof createMaskinportenTestSystemUserGrant>[0] & {
     fetchImplementation?: typeof fetch;
     timeoutMs?: number;
   },
 ) {
-  const assertion = createMaskinportenTestSystemUserGrant(input);
-  return requestMaskinportenTestSystemUserToken({
-    assertion,
-    requestedScopes: input.scopes,
-    ...(input.fetchImplementation ? { fetchImplementation: input.fetchImplementation } : {}),
-    ...(input.timeoutMs ? { timeoutMs: input.timeoutMs } : {}),
-  });
+  return issueMaskinportenSystemUserToken({ ...input, environment: "test" });
 }

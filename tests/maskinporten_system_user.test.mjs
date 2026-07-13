@@ -3,8 +3,11 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import test from "node:test";
 
 import {
+  MASKINPORTEN_ISSUERS,
   MASKINPORTEN_TEST_ISSUER,
+  createMaskinportenSystemUserGrant,
   createMaskinportenTestSystemUserGrant,
+  requestMaskinportenSystemUserToken,
   requestMaskinportenTestSystemUserToken,
 } from "../app/lib/maskinporten-system-user.ts";
 
@@ -102,4 +105,64 @@ test("rejects invalid grant inputs and unsafe token responses", async () => {
     }),
     /invalid response/u,
   );
+});
+
+test("pins production system-user grants and token exchange to the official issuer", async () => {
+  const assertion = createMaskinportenSystemUserGrant({
+    environment: "production",
+    clientId,
+    keyId,
+    customerOrgNumber,
+    scopes: [scope],
+    privateKeyPem,
+    nowSeconds: 1_720_000_000,
+    jti: "12345678-1234-4234-9234-123456789abc",
+  });
+  const [, encodedPayload] = assertion.split(".");
+  assert.equal(decodeSegment(encodedPayload).aud, MASKINPORTEN_ISSUERS.production);
+
+  let requestedUrl;
+  const token = await requestMaskinportenSystemUserToken({
+    environment: "production",
+    assertion,
+    requestedScopes: [scope],
+    fetchImplementation: async (url) => {
+      requestedUrl = url;
+      return new Response(
+        JSON.stringify({ access_token: "short-lived-production-token", token_type: "Bearer", expires_in: 120, scope }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    },
+  });
+
+  assert.equal(requestedUrl, `${MASKINPORTEN_ISSUERS.production}token`);
+  assert.equal(token.expiresIn, 120);
+});
+
+test("rejects unknown Maskinporten environments before signing or transport", async () => {
+  assert.throws(
+    () => createMaskinportenSystemUserGrant({
+      environment: "custom",
+      clientId,
+      keyId,
+      customerOrgNumber,
+      scopes: [scope],
+      privateKeyPem,
+    }),
+    /environment/u,
+  );
+  let transports = 0;
+  await assert.rejects(
+    requestMaskinportenSystemUserToken({
+      environment: "custom",
+      assertion: "header.payload.signature",
+      requestedScopes: [scope],
+      fetchImplementation: async () => {
+        transports += 1;
+        throw new Error("must not be called");
+      },
+    }),
+    /environment/u,
+  );
+  assert.equal(transports, 0);
 });
