@@ -1409,6 +1409,7 @@ test(
           grossAmount: 1000,
           linkedInvestmentId: "unclear-fund",
           taxTreatment: "needs_accountant",
+          threePercentTreatment: "needs_accountant",
           documentStatus: "attached",
         }),
       (error) => error?.code === "unsupported_tax_treatment",
@@ -1434,8 +1435,8 @@ test(
         income_year: 2025,
         transaction_date: "2025-04-15",
         text: "Dividend Portfolio AS",
-        amount: 1000,
-        balance: 30950,
+        amount: 10000,
+        balance: 39950,
         source_hash: dividendSourceHash,
         created_by: ownerUser.id,
       })
@@ -1446,14 +1447,15 @@ test(
       payingCompanyName: "Portfolio AS",
       declaredDate: "2025-04-01",
       paidDate: "2025-04-15",
-      grossAmount: 1000,
+      grossAmount: 10000,
       linkedInvestmentId: "portfolio-as",
       taxTreatment: "fritaksmetoden",
+      threePercentTreatment: "applies",
       bankTransactionId: dividendBankTransaction.id,
       documentId: dividendDocumentId,
       documentStatus: "attached",
     });
-    assert.equal(dividendPayload.taxable_add_back, 30);
+    assert.equal(dividendPayload.taxable_add_back, 300);
     const dividendLines = dividendReceivedLedgerLines(dividendPayload);
     const { data: dividendEntry, error: dividendEntryError } = await owner
       .from("ledger_entries")
@@ -2141,7 +2143,7 @@ test(
       holdingActions: [{ action_type: "dividend_received", payload: dividendPayload }],
     });
     assert.equal(taxEstimate.status, "payable");
-    assert.equal(taxEstimate.estimatedTax, 17.6);
+    assert.equal(taxEstimate.estimatedTax, 55);
     const taxDocumentId = randomUUID();
     const { error: taxDocumentError } = await owner.from("documents").insert({
       id: taxDocumentId,
@@ -2162,8 +2164,8 @@ test(
         income_year: 2025,
         transaction_date: "2025-12-31",
         text: "Tax payment",
-        amount: -17.6,
-        balance: 30932.4,
+        amount: -55,
+        balance: 39895,
         source_hash: `tax-bank-${randomUUID()}`,
         created_by: ownerUser.id,
       })

@@ -36,7 +36,7 @@ export function buildCompanyTaxReturnPayload(input: {
   const fritaksmetodenAddBack = roundMoney(
     dividendActions.reduce((sum, action) => sum + Number(action.payload.taxable_add_back ?? 0), 0),
   );
-  const taxableBasis = roundMoney(totals.adminCosts + fritaksmetodenAddBack);
+  const taxableBasis = roundMoney(fritaksmetodenAddBack - totals.adminCosts);
   const noActivity = Boolean(input.annualData?.no_activity_confirmed);
   const feedback = companyTaxReturnPayloadFeedback(input);
 
@@ -122,6 +122,24 @@ export function companyTaxReturnPayloadFeedback(input: {
     const taxTreatment = String(action.payload.tax_treatment ?? "");
     if (taxTreatment && taxTreatment !== "fritaksmetoden") {
       feedback.push(block("tax_return_unclear_fritaksmetoden", "Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype."));
+    }
+    if (action.action_type === "dividend_received") {
+      const threePercentTreatment = String(action.payload.three_percent_treatment ?? "");
+      if (!threePercentTreatment) {
+        feedback.push(
+          block(
+            "tax_return_three_percent_treatment_missing",
+            "Mottatt utbytte må avklare treprosentregel eller konsernunntak før skattemeldingen.",
+          ),
+        );
+      } else if (!["applies", "group_exemption"].includes(threePercentTreatment)) {
+        feedback.push(
+          block(
+            "tax_return_three_percent_treatment_unresolved",
+            "Treprosentbehandlingen for mottatt utbytte krever regnskapsførervurdering.",
+          ),
+        );
+      }
     }
     if (action.action_type === "shareholder_loan") {
       feedback.push(block("tax_return_shareholder_loan_review_required", "Aksjonærlån er utenfor automatisk skattemelding-løype."));

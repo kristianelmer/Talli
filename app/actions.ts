@@ -1329,6 +1329,7 @@ export async function recordDividendReceived(formData: FormData) {
       grossAmount: Number(formString(formData, "grossAmount")),
       linkedInvestmentId: formString(formData, "linkedInvestmentId"),
       taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant",
+      threePercentTreatment: formString(formData, "threePercentTreatment") as "applies" | "group_exemption" | "needs_accountant",
       bankTransactionId,
       documentId,
       documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",

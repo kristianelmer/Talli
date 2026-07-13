@@ -927,7 +927,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     </strong>
                     <p>Grunnlag: {taxEstimate.taxBasis.toFixed(2)} kr.</p>
                     <p>
-                      Kostnader {taxEstimate.adminCosts.toFixed(2)} kr + fritaksmetoden {taxEstimate.fritaksmetodenAddBack.toFixed(2)} kr.
+                      Fritaksmetoden {taxEstimate.fritaksmetodenAddBack.toFixed(2)} kr − fradragsførte kostnader {taxEstimate.adminCosts.toFixed(2)} kr.
                     </p>
                   </div>
                   <div className="readinessItem">
@@ -1545,6 +1545,17 @@ export default async function Home({ searchParams }: HomeProps) {
                     </select>
                   </label>
                   <label>
+                    Treprosentregelen
+                    <select name="threePercentTreatment" defaultValue="needs_accountant" required>
+                      <option value="needs_accountant">Må avklares før filing</option>
+                      <option value="applies">3 % skal inntektsføres</option>
+                      <option value="group_exemption">Konsernunntak bekreftet – 0 %</option>
+                    </select>
+                    <small>
+                      Velg konsernunntak bare når minst 90 % eierskap og øvrige konsernvilkår er bekreftet.
+                    </small>
+                  </label>
+                  <label>
                     Banktransaksjon
                     <select name="bankTransactionId" defaultValue="">
                       <option value="">Ingen bankmatch</option>
@@ -1593,7 +1604,7 @@ export default async function Home({ searchParams }: HomeProps) {
                     <strong data-status={dividendAnnualImpact.fritaksmetodenAddBack ? "warning" : "draft"}>
                       {dividendAnnualImpact.fritaksmetodenAddBack.toFixed(2)} kr
                     </strong>
-                    <p>3 prosent inntektsføring for skattemelding/readiness.</p>
+                    <p>3 prosent inntektsføring etter eventuelt bekreftet konsernunntak.</p>
                   </div>
                 </div>
               </section>

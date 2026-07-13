@@ -300,8 +300,8 @@ def build_annual_accounts_payload(data: AnnualData) -> AnnualAccountsPayload:
 
 def simulate_tax_return(data: AnnualData) -> FilingSimulation:
     readiness = assess_tax_return_readiness(data)
-    estimated_tax_basis = round(data.admin_costs + data.fritaksmetoden_add_back, 2)
-    estimated_tax = round(estimated_tax_basis * 0.22, 2)
+    estimated_tax_basis = round(data.fritaksmetoden_add_back - data.admin_costs, 2)
+    estimated_tax = round(max(0, estimated_tax_basis) * 0.22, 2)
     preview = "\n".join(
         [
             f"Skattemelding for AS {data.income_year}",

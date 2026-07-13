@@ -79,6 +79,22 @@ These mappings are evidence-backed candidates for issue #86. They are not yet pr
 | Owner dividend/equity movement | Næringsspesifikasjon | `egenkapitalendringstype=avsattEllerForventetUtbytte`, `tilleggsutbytte`, `ekstraordinaertUtbytte` when applicable | `2025_egenkapitalendringstype.xml` | Candidate for later; launch tax-return payload should block owner-dividend complexity |
 | No-activity AS | Skattemelding + Næringsspesifikasjon | Minimal valid documents with org/year, required `virksomhet`, `skalBekreftesAvRevisor=false`, zero result/balance where valid | XSD roots plus validation service | Candidate only after validation fixture |
 
+## Tax Calculation Guardrails
+
+Research confirmation date: 2026-07-13.
+
+- Skatteetaten defines `alminnelig inntekt` as net income after deductible costs and states that the company rate is 22 percent. The launch estimate therefore uses `fritaksmetoden add-back - deductible administration costs`, floors the taxable amount at zero for the tax estimate, and never adds costs to taxable income.
+- Skatteetaten states that three percent of qualifying dividend income is normally taxable under `fritaksmetoden`.
+- Skatteetaten also states that the three-percent rule does not apply to qualifying group dividends. Talli does not infer this solely from a percentage: the owner must explicitly confirm that the group exemption conditions are satisfied. An unresolved choice blocks the tax-return candidate.
+- Legacy dividend actions without an explicit `three_percent_treatment` are blocked from tax-return readiness rather than silently treated as taxable or exempt.
+
+Official sources:
+
+- https://www.skatteetaten.no/satser/alminnelig-inntekt/
+- https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/aksjer/fritaksmetoden/
+- https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/aksjer/aksjer-i-naring-selskapets-aksjer/
+- https://www.skatteetaten.no/rettskilder/type/handboker/skatte-abc/gjeldende/a-6-aksjer--utbytte/A-6.011/
+
 ## Unsupported/Escalation Decisions
 
 Block before tax-return payload generation:

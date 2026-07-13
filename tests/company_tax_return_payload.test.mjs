@@ -61,6 +61,7 @@ const dividendAction = {
     gross_amount: 100000,
     taxable_add_back: 3000,
     tax_treatment: "fritaksmetoden",
+    three_percent_treatment: "applies",
   },
   ledger_entry_id: "entry-id",
   bank_transaction_id: null,
@@ -89,9 +90,24 @@ test("builds 2025 schema-backed company tax return payload candidate", () => {
   assert.equal(fields["resultatregnskap.finansinntekt.inntektAvAndreInvesteringerOgUtbytte.inntekt.beloep"].evidence, "2025_resultatregnskapOgBalanse.xml:8090");
   assert.equal(fields["beregnetNaeringsinntekt.permanentForskjell.permanentForskjellstype"].value, "skattepliktigDelAvUtbytterOgUtdelinger");
   assert.equal(fields["beregnetNaeringsinntekt.permanentForskjell.beloep"].value, 3000);
-  assert.equal(payload.derived.taxableBasis, 4490);
-  assert.equal(payload.derived.estimatedTax, 987.8);
+  assert.equal(payload.derived.taxableBasis, 1510);
+  assert.equal(payload.derived.estimatedTax, 332.2);
   assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_payload_candidate_ready"]);
+});
+
+test("blocks legacy dividend actions without an explicit three-percent treatment", () => {
+  const { three_percent_treatment: _omitted, ...legacyPayload } = dividendAction.payload;
+  const payload = buildCompanyTaxReturnPayload({
+    companyOrgNumber: "314259521",
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries,
+    holdingActions: [{ ...dividendAction, payload: legacyPayload }],
+  });
+
+  assert.deepEqual(payload.feedback.map((item) => item.code), [
+    "tax_return_three_percent_treatment_missing",
+  ]);
 });
 
 test("blocks unsupported tax treatment and shareholder loans", () => {

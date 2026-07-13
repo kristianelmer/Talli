@@ -27,6 +27,7 @@ from holding_core.holding_actions import (
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
+    ThreePercentTreatment,
     build_admin_cost_entry,
     build_dividend_received,
     build_opening_balance_entry,
@@ -133,7 +134,8 @@ class AnnualSimulationTest(unittest.TestCase):
 
         self.assertEqual(simulation.filing, "skattemelding for AS")
         self.assertIn("3 prosent inntektsføring etter fritaksmetoden: 3000.00 kr", simulation.preview)
-        self.assertIn("Estimert skatt 22 prosent: 987.80 kr", simulation.preview)
+        self.assertIn("Forenklet skattegrunnlag i simulering: 1510.00 kr", simulation.preview)
+        self.assertIn("Estimert skatt 22 prosent: 332.20 kr", simulation.preview)
         self.assertEqual(simulation.readiness.status, "ready")
         self.assertEqual(simulation.simulated_receipt_id, "sim-skattemelding-314259521-2025")
 
@@ -220,6 +222,7 @@ def _simple_annual_data(
                 paying_company_name="PORTFOLIO AS",
                 linked_investment_id="portfolio-as",
                 tax_treatment=TaxTreatment.FRITAKSMETODEN,
+                three_percent_treatment=ThreePercentTreatment.APPLIES,
                 bank_matched=True,
                 document_status=DocumentStatus.ATTACHED,
             )

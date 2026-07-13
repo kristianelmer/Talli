@@ -19,6 +19,7 @@ from holding_core.holding_actions import (
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
+    ThreePercentTreatment,
     build_admin_cost_entry,
     build_dividend_received,
     build_dividend_to_owner,
@@ -141,6 +142,7 @@ class HoldingActionTest(unittest.TestCase):
                 paying_company_name="PORTFOLIO AS",
                 linked_investment_id="portfolio-as",
                 tax_treatment=TaxTreatment.FRITAKSMETODEN,
+                three_percent_treatment=ThreePercentTreatment.APPLIES,
                 bank_matched=True,
                 document_status=DocumentStatus.ATTACHED,
             )
@@ -148,6 +150,7 @@ class HoldingActionTest(unittest.TestCase):
 
         self.assertEqual(result.taxable_add_back, 3000)
         self.assertIn("tax:fritaksmetoden", result.entry.source)
+        self.assertIn("three_percent:applies", result.entry.source)
         self.assertIn("bank_matched:true", result.entry.source)
         self.assertEqual(result.entry.lines[0].account, "1920")
         self.assertEqual(result.entry.lines[1].account, "8070")
@@ -161,9 +164,26 @@ class HoldingActionTest(unittest.TestCase):
                 paying_company_name="UNCLEAR FUND",
                 linked_investment_id="unclear-fund",
                 tax_treatment=TaxTreatment.NEEDS_ACCOUNTANT,
+                three_percent_treatment=ThreePercentTreatment.NEEDS_ACCOUNTANT,
                 bank_matched=True,
                 document_status=DocumentStatus.ATTACHED,
             )
+
+        group_result = build_dividend_received(
+            DividendReceivedInput(
+                company_id="314259521",
+                declared_date=date(2025, 4, 1),
+                paid_date=date(2025, 4, 15),
+                gross_amount=100000,
+                paying_company_name="SUBSIDIARY AS",
+                linked_investment_id="subsidiary-as",
+                tax_treatment=TaxTreatment.FRITAKSMETODEN,
+                three_percent_treatment=ThreePercentTreatment.GROUP_EXEMPTION,
+                bank_matched=True,
+                document_status=DocumentStatus.ATTACHED,
+            )
+        )
+        self.assertEqual(group_result.taxable_add_back, 0)
 
     def test_share_purchase_creates_position_and_blocks_unclear_tax(self) -> None:
         result = build_share_purchase(

@@ -61,6 +61,12 @@ class TaxTreatment(StrEnum):
     NEEDS_ACCOUNTANT = "needs_accountant"
 
 
+class ThreePercentTreatment(StrEnum):
+    APPLIES = "applies"
+    GROUP_EXEMPTION = "group_exemption"
+    NEEDS_ACCOUNTANT = "needs_accountant"
+
+
 class InvestmentKind(StrEnum):
     NORWEGIAN_PRIVATE_COMPANY = "norwegian_private_company"
     SIMPLE_LISTED_SECURITY = "simple_listed_security"
@@ -143,6 +149,7 @@ class DividendReceivedInput(BaseModel):
     paying_company_name: str
     linked_investment_id: str
     tax_treatment: TaxTreatment
+    three_percent_treatment: ThreePercentTreatment
     bank_matched: bool
     document_status: DocumentStatus
     currency: Literal["NOK"] = "NOK"
@@ -151,6 +158,8 @@ class DividendReceivedInput(BaseModel):
     def validate_supported_dividend(self) -> "DividendReceivedInput":
         if self.tax_treatment != TaxTreatment.FRITAKSMETODEN:
             raise ValueError("dividend tax treatment is not supported for owner-managed filing")
+        if self.three_percent_treatment == ThreePercentTreatment.NEEDS_ACCOUNTANT:
+            raise ValueError("dividend three-percent treatment needs accountant review")
         return self
 
 
@@ -316,7 +325,7 @@ def build_opening_balance_entry(data: OpeningBalanceInput) -> DraftEntry:
 
 
 def build_dividend_received(data: DividendReceivedInput) -> DividendReceivedResult:
-    taxable_add_back = round(data.gross_amount * 0.03, 2)
+    taxable_add_back = round(data.gross_amount * 0.03, 2) if data.three_percent_treatment == ThreePercentTreatment.APPLIES else 0
     entry = DraftEntry(
         company_id=data.company_id,
         entry_date=data.paid_date,
@@ -325,6 +334,7 @@ def build_dividend_received(data: DividendReceivedInput) -> DividendReceivedResu
             "holding_action:dividend_received:"
             f"investment:{data.linked_investment_id}:"
             f"tax:{data.tax_treatment.value}:"
+            f"three_percent:{data.three_percent_treatment.value}:"
             f"bank_matched:{str(data.bank_matched).lower()}:"
             f"document:{data.document_status.value}:"
             f"taxable_add_back:{taxable_add_back}"

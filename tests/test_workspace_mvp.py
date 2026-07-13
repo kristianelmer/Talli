@@ -19,6 +19,7 @@ from holding_core.holding_actions import (
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
+    ThreePercentTreatment,
 )
 from holding_core.ledger import DraftEntry, LedgerLine
 from holding_core.workspace import (
@@ -201,6 +202,7 @@ class WorkspaceMvpTest(unittest.TestCase):
                     paying_company_name="Portfolio AS",
                     linked_investment_id="portfolio-as",
                     tax_treatment=TaxTreatment.FRITAKSMETODEN,
+                    three_percent_treatment=ThreePercentTreatment.APPLIES,
                     bank_matched=True,
                     document_status=DocumentStatus.ATTACHED,
                 ),

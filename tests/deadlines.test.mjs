@@ -145,7 +145,7 @@ test("queues overdue guidance without unsupported cases", () => {
         income_year: 2025,
         ready: false,
         status: "blocked",
-        hard_blocks: [{ code: "tax_return_unclear_fritaksmetoden", level: "block", message: "Unsupported" }],
+        hard_blocks: [{ code: "tax_return_three_percent_treatment_missing", level: "block", message: "Unsupported" }],
       },
     ],
     notifications: [],
