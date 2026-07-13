@@ -1,7 +1,7 @@
 # Supabase RLS and Storage Security Audit
 
 Status: repeatable non-production security check  
-Last updated: 2026-06-16  
+Last updated: 2026-07-13
 Target issue: #74
 
 This audit proves tenant isolation against the real Supabase/Postgres RLS and
@@ -16,7 +16,7 @@ Run against a non-production Supabase project:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DIRECT_DATABASE_URL` or `DATABASE_URL`
 
-The test applies `supabase/migrations/0001_authenticated_workspace.sql`, creates
+The test applies every SQL file in `supabase/migrations` in lexical order, creates
 temporary confirmed users, signs in through the anon client, exercises RLS as
 owner/reviewer/read-only/outsider, then removes the created company and users.
 
@@ -42,8 +42,21 @@ review. It should be run against staging after every schema/RLS change.
   authority permissions, readiness snapshots, ledger/action rows, period locks,
   audit events, or storage objects.
 - Signed document URL generation is denied for non-members by Storage RLS.
-- `step_up_events` are user-scoped: users can read/create only their own
-  MFA/step-up events, and cross-user events are denied.
+- `step_up_events` are user-scoped and can be created only from a signed,
+  recent Supabase AAL2/TOTP claim; user-supplied privilege flags are denied.
+- Production security grants are separate, expiring, admin-controlled, and
+  enforce separation of duties between the subject and approver.
+- Security-definer membership helpers live outside the exposed `public` schema
+  with explicit execute grants.
+
+The migration-contract checks run without an external project:
+
+```bash
+npm run test:supabase-migrations
+```
+
+That static check does not replace `npm run test:supabase`; the latter is the
+required executable RLS/storage proof against a non-production project.
 
 ## Interpretation
 

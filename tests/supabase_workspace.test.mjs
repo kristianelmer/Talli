@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -75,14 +75,18 @@ function hasRequiredEnv() {
 }
 
 async function applyMigration() {
-  const sql = await readFile("supabase/migrations/0001_authenticated_workspace.sql", "utf8");
+  const migrations = (await readdir("supabase/migrations"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
   const client = new pg.Client({
     ...getDatabaseConfig(),
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   try {
-    await client.query(sql);
+    for (const migration of migrations) {
+      await client.query(await readFile(`supabase/migrations/${migration}`, "utf8"));
+    }
   } finally {
     await client.end();
   }
@@ -384,12 +388,25 @@ test(
     assert.ifError(inviteeOutboxReadError);
     assert.deepEqual(inviteeOutboxRows, []);
 
-    const { data: stepUpEvent, error: stepUpError } = await owner
+    const { error: selfAssertedStepUpError } = await owner
       .from("step_up_events")
       .insert({
         actor_id: ownerUser.id,
         method: "totp",
         mfa_verified_at: new Date().toISOString(),
+        security_review_approved: true,
+        production_credentials_enabled: true,
+      });
+    assert.ok(selfAssertedStepUpError);
+
+    const { data: stepUpEvent, error: stepUpError } = await admin
+      .from("step_up_events")
+      .insert({
+        actor_id: ownerUser.id,
+        method: "totp",
+        mfa_verified_at: new Date().toISOString(),
+        security_review_approved: false,
+        production_credentials_enabled: false,
       })
       .select("actor_id, mfa_verified_at, security_review_approved, production_credentials_enabled")
       .single();

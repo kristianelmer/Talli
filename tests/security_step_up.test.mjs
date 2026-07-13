@@ -5,6 +5,7 @@ import {
   assertStepUpAllowed,
   requireStepUpForAction,
   stepUpContextFromEvent,
+  stepUpContextFromRecords,
 } from "../app/lib/security.ts";
 
 const now = new Date("2026-06-16T10:00:00.000Z");
@@ -33,6 +34,8 @@ test("step-up allows fresh matching actor and ignores cross-user events", () => 
     production_credentials_enabled: false,
   });
   assert.doesNotThrow(() => assertStepUpAllowed("invite_reviewer", allowed, now));
+  assert.equal(allowed.securityReviewApproved, undefined);
+  assert.equal(allowed.productionCredentialsEnabled, undefined);
 
   const crossed = stepUpContextFromEvent("owner", {
     actor_id: "other",
@@ -42,6 +45,42 @@ test("step-up allows fresh matching actor and ignores cross-user events", () => 
   });
   assert.equal(crossed.mfaVerifiedAt, null);
   assert.throws(() => assertStepUpAllowed("billing_admin", crossed, now), /fersk MFA\/step-up/);
+});
+
+test("production privileges come only from a matching active admin grant", () => {
+  const event = {
+    actor_id: "owner",
+    mfa_verified_at: "2026-06-16T09:59:00.000Z",
+    security_review_approved: true,
+    production_credentials_enabled: true,
+  };
+  const active = stepUpContextFromRecords(
+    "owner",
+    event,
+    {
+      actor_id: "owner",
+      security_review_approved: true,
+      production_credentials_enabled: true,
+      expires_at: "2026-06-17T10:00:00.000Z",
+      revoked_at: null,
+    },
+    now,
+  );
+  assert.doesNotThrow(() => assertStepUpAllowed("production_filing", active, now));
+
+  const expired = stepUpContextFromRecords(
+    "owner",
+    event,
+    {
+      actor_id: "owner",
+      security_review_approved: true,
+      production_credentials_enabled: true,
+      expires_at: "2026-06-16T09:59:59.000Z",
+      revoked_at: null,
+    },
+    now,
+  );
+  assert.throws(() => assertStepUpAllowed("production_filing", expired, now), /security review/);
 });
 
 test("production filing requires MFA, security review, and production credential gate", () => {
@@ -83,7 +122,14 @@ test("server gate records allowed and blocked sensitive action audit events", as
       production_credentials_enabled: false,
     },
   ];
-  const supabase = fakeSupabase(stepUpRows, auditEvents);
+  const grants = [{
+    actor_id: "owner",
+    security_review_approved: false,
+    production_credentials_enabled: false,
+    expires_at: "2026-06-17T10:00:00.000Z",
+    revoked_at: null,
+  }];
+  const supabase = fakeSupabase(stepUpRows, grants, auditEvents);
 
   await requireStepUpForAction({
     supabase,
@@ -113,7 +159,7 @@ test("server gate records allowed and blocked sensitive action audit events", as
   assert.match(auditEvents.at(-1).message, /expired_mfa_step_up/);
 });
 
-function fakeSupabase(stepUpRows, auditEvents) {
+function fakeSupabase(stepUpRows, grants, auditEvents) {
   return {
     from(table) {
       if (table === "audit_events") {
@@ -141,6 +187,22 @@ function fakeSupabase(stepUpRows, auditEvents) {
           },
           async maybeSingle() {
             return { data: stepUpRows.find((row) => row.actor_id === this.actorId) ?? null, error: null };
+          },
+          select() {
+            return this;
+          },
+        };
+        return query;
+      }
+      if (table === "production_security_grants") {
+        const query = {
+          actorId: null,
+          eq(column, value) {
+            if (column === "actor_id") this.actorId = value;
+            return this;
+          },
+          async maybeSingle() {
+            return { data: grants.find((row) => row.actor_id === this.actorId) ?? null, error: null };
           },
           select() {
             return this;

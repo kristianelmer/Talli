@@ -16,6 +16,21 @@ export type StepUpContext = {
   productionCredentialsEnabled?: boolean;
 };
 
+export type StepUpEventRecord = {
+  actor_id: string;
+  mfa_verified_at: string | null;
+  security_review_approved?: boolean | null;
+  production_credentials_enabled?: boolean | null;
+};
+
+export type ProductionSecurityGrantRecord = {
+  actor_id: string;
+  security_review_approved: boolean | null;
+  production_credentials_enabled: boolean | null;
+  expires_at: string;
+  revoked_at: string | null;
+};
+
 export type StepUpRequirement = {
   action: SensitiveAction;
   requiresMfa: boolean;
@@ -176,15 +191,7 @@ export function assertStepUpAllowed(action: SensitiveAction, context: StepUpCont
 
 export function stepUpContextFromEvent(
   actorId: string,
-  event:
-    | {
-        actor_id: string;
-        mfa_verified_at: string | null;
-        security_review_approved: boolean | null;
-        production_credentials_enabled: boolean | null;
-      }
-    | null
-    | undefined,
+  event: StepUpEventRecord | null | undefined,
 ): StepUpContext {
   if (!event) {
     return { actorId, mfaVerifiedAt: null };
@@ -195,27 +202,58 @@ export function stepUpContextFromEvent(
   return {
     actorId,
     mfaVerifiedAt: event.mfa_verified_at,
-    securityReviewApproved: Boolean(event.security_review_approved),
-    productionCredentialsEnabled: Boolean(event.production_credentials_enabled),
   };
 }
 
-export async function loadLatestStepUpContext(supabase: SupabaseStepUpClient, actorId: string): Promise<StepUpContext> {
-  const { data, error } = await supabase
+export function stepUpContextFromRecords(
+  actorId: string,
+  event: StepUpEventRecord | null | undefined,
+  grant: ProductionSecurityGrantRecord | null | undefined,
+  now = new Date(),
+): StepUpContext {
+  const context = stepUpContextFromEvent(actorId, event);
+  if (!grant || grant.actor_id !== actorId || grant.revoked_at) return context;
+  const expiresAt = new Date(grant.expires_at);
+  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime()) return context;
+  return {
+    ...context,
+    securityReviewApproved: Boolean(grant.security_review_approved),
+    productionCredentialsEnabled: Boolean(grant.production_credentials_enabled),
+  };
+}
+
+export async function loadLatestStepUpContext(
+  supabase: SupabaseStepUpClient,
+  actorId: string,
+  now = new Date(),
+): Promise<StepUpContext> {
+  const { data: event, error: eventError } = await supabase
     .from("step_up_events")
-    .select("actor_id, mfa_verified_at, security_review_approved, production_credentials_enabled")
+    .select("actor_id, mfa_verified_at")
     .eq("actor_id", actorId)
     .order("mfa_verified_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) {
+  if (eventError) {
     throw new SensitiveActionStepUpError(
-      `Kunne ikke lese MFA/step-up-status: ${error.message}`,
+      `Kunne ikke lese MFA/step-up-status: ${eventError.message}`,
       "step_up_lookup_failed",
       "Sensitiv handling stoppet: MFA/step-up-status kunne ikke kontrolleres.",
     );
   }
-  return stepUpContextFromEvent(actorId, data);
+  const { data: grant, error: grantError } = await supabase
+    .from("production_security_grants")
+    .select("actor_id, security_review_approved, production_credentials_enabled, expires_at, revoked_at")
+    .eq("actor_id", actorId)
+    .maybeSingle();
+  if (grantError) {
+    throw new SensitiveActionStepUpError(
+      `Kunne ikke lese produksjonsgodkjenning: ${grantError.message}`,
+      "production_security_grant_lookup_failed",
+      "Sensitiv handling stoppet: produksjonsgodkjenning kunne ikke kontrolleres.",
+    );
+  }
+  return stepUpContextFromRecords(actorId, event, grant, now);
 }
 
 export async function requireStepUpForAction(input: {
@@ -227,7 +265,7 @@ export async function requireStepUpForAction(input: {
 }) {
   const requirement = requirementForSensitiveAction(input.action);
   try {
-    const context = await loadLatestStepUpContext(input.supabase, input.userId);
+    const context = await loadLatestStepUpContext(input.supabase, input.userId, input.now);
     assertStepUpAllowed(input.action, context, input.now);
     await input.supabase.from("audit_events").insert({
       company_id: input.companyId,
