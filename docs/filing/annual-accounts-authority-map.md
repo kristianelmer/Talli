@@ -1,8 +1,8 @@
 # Årsregnskap Authority Map
 
-Status: source-backed map plus RR0002 evidence register  
-Research date: 2026-06-16  
-Target filing: `årsregnskap` / RR-0002  
+Status: source-backed map, payload field slice, and test-only Altinn boundary
+Research date: 2026-07-13
+Target filing: `årsregnskap` / RR-0002
 
 This map defines what Talli can validate from public sources before production annual-accounts filing. It is not a complete production integration spec.
 
@@ -17,7 +17,11 @@ Primary sources:
 - Brønnøysund system-submission docs: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/hvordan-sende-inn/
 - Brønnøysund official Postman examples: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Digdir/Altinn 3 update for annual accounts system submission: https://samarbeid.digdir.no/altinn/nytt-fra-programmet-nye-altinn/2723
+- Digdir system-user setup: https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/setup/
+- Digdir App API flow: https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/apis/
+- Altinn validation API: https://docs.altinn.studio/en/api/apps/validation/
 - RR0002 evidence register: [annual-accounts-rr0002-evidence-register.md](./annual-accounts-rr0002-evidence-register.md)
+- TT02 boundary runbook: [annual-accounts-tt02-runbook.md](./annual-accounts-tt02-runbook.md)
 
 ## Public Filing Surface
 
@@ -55,6 +59,21 @@ Production implications:
   accepted `authority_test_runs` evidence for `aarsregnskap` has receipt and
   archive refs, and the persisted `launch_signoffs` key
   `annual_accounts_authority` is approved with reviewer/date/evidence/decision.
+
+Pinned system-user sequence for the current test boundary:
+
+1. request `altinn:instances.read` and `altinn:instances.write` for a system user
+   delegated the `app_brg_aarsregnskap` resource;
+2. exchange the system-user Maskinporten token for an Altinn token;
+3. create an instance in `brg/aarsregnskap-vanlig-202406`;
+4. replace the generated hovedskjema/underskjema data elements;
+5. validate the whole instance;
+6. lock the unchanged valid draft with `{"action":"confirm"}`; and
+7. stop for personal ID-porten signing, which also submits the form.
+
+Talli now implements steps 2–6 as a fixed-host TT02 client tested with an
+injected fake transport. It has no signing method and has not created a live
+instance.
 
 ## Talli Launch Subset
 
@@ -103,27 +122,33 @@ Current engine coverage:
 - General meeting approval readiness: covered.
 - Bank/document warnings: partial.
 - Simulated receipt: covered for simulation only.
+- RR-0002 field payload map: implemented for the narrow simple-holding slice.
+- Altinn instance/token/data/validation/confirm boundary: implemented for TT02
+  only; local fake-transport contract evidence only.
+
+Missing before a live TT02 rehearsal:
+
+- Complete RR-0002 XML rendering from the mapped fields.
+- Annual-account note model.
+- Attachment payload handling.
+- Crash-safe orchestration and a private evidence journal.
 
 Missing before production:
 
-- Payload builder using `aarsregnskap-vanlig-202406`.
-- TT02 validation of mapped fields.
-- Annual-account note model.
-- Attachment payload handling.
-- Signing model.
-- Altinn/Regnskapsregisteret validation feedback.
+- Accepted live TT02 validation of mapped fields.
+- Proven hybrid owner review/ID-porten signing.
 - Official receipt storage.
 
 Current annual preview field decisions:
 
 | Current preview field | Authority mapping decision |
 | --- | --- |
-| Bank balance | Candidate balance-sheet bank/cash field; blocked until RR-0002 field id is confirmed. |
-| Share investments | Candidate asset/investment field; blocked until RR-0002 field id and note implications are confirmed. |
-| Share capital | Candidate equity/share-capital field; blocked until RR-0002 field id is confirmed. |
-| Retained earnings | Candidate equity field; blocked until RR-0002 field id and result allocation rules are confirmed. |
-| Dividend/gain income | Candidate income statement financial income; blocked until exact RR-0002 field id is confirmed. |
-| Admin costs | Candidate operating/other expenses; blocked until exact RR-0002 field id is confirmed. |
+| Bank balance | Mapped to `sumBankinnskuddKontanter/aarets` / orid `29042`; live TT02 validation pending. |
+| Share investments | Narrow fallback mapped to `investeringAksjerAndeler/aarets` / orid `7100`; unclear classifications remain blocked. |
+| Share capital | Aggregate mapped to `sumInnskuttEgenkapital/aarets` / orid `3730`; detailed capital/note rendering remains pending. |
+| Retained earnings | Mapped to `annenEgenkapital/aarets` / orid `3274`; result allocation and prior-year confirmation remain blocking controls. |
+| Dividend/gain income | Aggregate mapped to `sumFinansinntekter/aarets` / orid `153`; detailed classification remains conservative. |
+| Admin costs | Aggregate mapped to `sumDriftskostnad/aarets` / orid `17126`; detailed rendering remains pending. |
 | Result before tax | Derived display value only; not enough for production payload. |
 | General meeting approval | Supported readiness confirmation; not enough for production signature. |
 
@@ -137,8 +162,8 @@ Current annual preview field decisions:
 
 ## Follow-Up Implementation Slices
 
-1. Add `annual_accounts_payload_map` with RR-0002 field ids for simple holding AS income statement, balance sheet, currency, scale, and small-enterprise note fields.
+1. Add complete RR-0002 XML rendering and schema/evidence fixtures for the narrow payload map.
 2. Add annual-account note model, starting with annual full-time equivalents and small-enterprise note confirmations.
 3. Add attachment rules for no-audit small AS versus non-small/audit cases.
-4. Add Regnskapsregisteret/Altinn 3 adapter interface behind a disabled production gate.
-5. Add test-environment runbook for signing, validation feedback, receipt/decision retrieval, and archive storage.
+4. Add crash-safe orchestration/private journaling around the TT02-only adapter.
+5. Run the documented TT02 hybrid-flow rehearsal after explicit scope/right/customer approval, then persist validation and archive evidence.

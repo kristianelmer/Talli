@@ -1,7 +1,7 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: implementation-ready evidence for simple holding AS payload slice  
-Last updated: 2026-06-16  
+Status: payload slice and test-only Altinn boundary implemented
+Last updated: 2026-07-13
 Target issue: #82
 
 This register records the public evidence Talli can use to build a narrow
@@ -135,8 +135,14 @@ Block or escalate:
 
 ## Remaining Before Production
 
-- Implement payload builder using this map.
+- Render and independently verify the complete hovedskjema and selskapsregnskap
+  XML documents from the implemented field map.
+- Add crash-safe orchestration and a private evidence journal around the
+  implemented TT02-only Altinn client.
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.
 - Complete human release signoff.
+
+The test-only client contract and live-rehearsal stop conditions are recorded in
+[annual-accounts-tt02-runbook.md](./annual-accounts-tt02-runbook.md).
