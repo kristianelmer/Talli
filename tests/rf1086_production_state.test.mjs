@@ -6,6 +6,7 @@ import {
   loadRf1086ProductionState,
 } from "../app/lib/rf1086-production-state.ts";
 import { Rf1086ProductionRunnerError } from "../app/lib/rf1086-production-runner.ts";
+import { runPersistedRf1086ProductionStep } from "../app/lib/rf1086-production-service.ts";
 
 const actorId = "12345678-1234-4234-9234-123456789abc";
 const companyId = "22345678-1234-4234-9234-123456789abc";
@@ -257,8 +258,10 @@ function rowsFor(input) {
   };
 }
 
-function memorySupabase(seed, errors = {}) {
+function memorySupabase(seed, errors = {}, operationEvents = []) {
   const tables = [];
+  const auditRows = [];
+  let checkpointRow = null;
   class Query {
     constructor(table) {
       this.table = table;
@@ -288,7 +291,17 @@ function memorySupabase(seed, errors = {}) {
       return { data: structuredClone(single ? (data[0] ?? null) : data), error: null };
     }
     maybeSingle() {
+      if (this.table === "rf1086_authority_checkpoints") {
+        return Promise.resolve({ data: structuredClone(checkpointRow), error: errors[this.table] ?? null });
+      }
       return Promise.resolve(this.result(true));
+    }
+    insert(value) {
+      operationEvents.push(`insert:${this.table}`);
+      if (this.table === "audit_events" && !errors[this.table]) {
+        auditRows.push(structuredClone(value));
+      }
+      return Promise.resolve({ data: null, error: errors[this.table] ?? null });
     }
     then(resolve, reject) {
       return Promise.resolve(this.result(false)).then(resolve, reject);
@@ -299,8 +312,27 @@ function memorySupabase(seed, errors = {}) {
       tables.push(table);
       return new Query(table);
     },
+    async rpc(name, parameters) {
+      operationEvents.push(`rpc:${name}`);
+      assert.equal(name, "save_rf1086_authority_checkpoint");
+      const currentRevision = checkpointRow?.revision ?? null;
+      if (currentRevision !== parameters.p_expected_revision) {
+        return { data: null, error: { code: "PT409" } };
+      }
+      checkpointRow = {
+        preview_id: preview.id,
+        company_id: companyId,
+        income_year: 2025,
+        revision: parameters.p_checkpoint.revision,
+        checkpoint: structuredClone(parameters.p_checkpoint),
+      };
+      return { data: checkpointRow.revision, error: null };
+    },
     tables() {
       return [...tables];
+    },
+    auditRows() {
+      return structuredClone(auditRows);
     },
   };
 }
@@ -377,4 +409,68 @@ test("maps database failures without reflecting provider diagnostics", async () 
       !error.message.includes("password") &&
       !error.message.includes("host"),
   );
+});
+
+function jsonResponse(value) {
+  return {
+    status: 200,
+    headers: { "content-type": "application/json" },
+    body: new TextEncoder().encode(JSON.stringify(value)),
+  };
+}
+
+test("audits an authoritative release before making one production transport call", async () => {
+  const input = readyInput();
+  const operationEvents = [];
+  const databaseClient = memorySupabase(rowsFor(input), {}, operationEvents);
+  const accessToken = "short-lived-production-system-user-token";
+
+  const result = await runPersistedRf1086ProductionStep({
+    databaseClient,
+    actorId,
+    previewId: preview.id,
+    confirmations: input.confirmations,
+    accessToken,
+    now: input.now,
+    authorityTransport: async () => {
+      operationEvents.push("authority-transport");
+      return jsonResponse({ hovedskjemaId: "a2345678-1234-4234-9234-123456789abc" });
+    },
+  });
+
+  assert.equal(result.complete, false);
+  assert.ok(operationEvents.indexOf("insert:audit_events") < operationEvents.indexOf("authority-transport"));
+  assert.equal(databaseClient.auditRows().length, 1);
+  assert.equal(databaseClient.auditRows()[0].action, "rf1086_production_step_authorized");
+  assert.doesNotMatch(JSON.stringify(databaseClient.auditRows()), new RegExp(accessToken, "u"));
+});
+
+test("fails closed before journal or transport when the audit write fails", async () => {
+  const input = readyInput();
+  const operationEvents = [];
+  const databaseClient = memorySupabase(rowsFor(input), {
+    audit_events: { message: "internal audit database credentials" },
+  }, operationEvents);
+  let transports = 0;
+
+  await assert.rejects(
+    runPersistedRf1086ProductionStep({
+      databaseClient,
+      actorId,
+      previewId: preview.id,
+      confirmations: input.confirmations,
+      accessToken: "short-lived-production-system-user-token",
+      now: input.now,
+      authorityTransport: async () => {
+        transports += 1;
+        throw new Error("must not be called");
+      },
+    }),
+    (error) =>
+      error instanceof Rf1086ProductionRunnerError &&
+      error.code === "rf1086_production_audit_failed" &&
+      !error.message.includes("credentials"),
+  );
+  assert.equal(transports, 0);
+  assert.equal(operationEvents.some((event) => event.startsWith("rpc:")), false);
 });
