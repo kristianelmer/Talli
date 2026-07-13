@@ -589,7 +589,7 @@ test(
       .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
       .eq("setup_id", setup.id);
     assert.ifError(persistedShareholdersError);
-    const rendered = renderRf1086PreviewWithPython(
+    const rendered = await renderRf1086PreviewWithPython(
       buildNoActivityRf1086Case(persistedCompany, setup, persistedShareholders),
     );
     assert.equal(rendered.status, "ready");

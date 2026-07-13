@@ -53,8 +53,8 @@ test("builds RF-1086 no-activity case from persisted setup rows", () => {
   assert.deepEqual(filingCase.events, []);
 });
 
-test("renders persisted no-activity case through Python RF-1086 engine", () => {
-  const result = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+test("renders persisted no-activity case through Python RF-1086 engine", async () => {
+  const result = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
 
   assert.equal(result.status, "ready");
   assert.equal(result.filing, "aksjonærregisteroppgaven");
@@ -63,9 +63,9 @@ test("renders persisted no-activity case through Python RF-1086 engine", () => {
   assert.equal(Object.keys(result.underskjemaXml ?? {}).length, 1);
 });
 
-test("blocks persisted setup with mismatched shareholder totals through Python engine", () => {
+test("blocks persisted setup with mismatched shareholder totals through Python engine", async () => {
   const badCase = buildNoActivityRf1086Case(company, setup, [{ ...shareholders[0], share_count: 90 }]);
-  const result = renderRf1086PreviewWithPython(badCase);
+  const result = await renderRf1086PreviewWithPython(badCase);
 
   assert.equal(result.status, "blocked");
   assert.equal(result.issues[0].code, "invalid_case");

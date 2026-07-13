@@ -1,5 +1,5 @@
-import { spawnSync } from "node:child_process";
 import type { CompanyWorkspaceRow, OpeningBalanceSetupRow, OpeningShareholderRow } from "./supabase/server";
+import { runPythonCli } from "./python-engine.ts";
 
 export type Rf1086RenderResult = {
   filing: string;
@@ -61,16 +61,8 @@ export function buildNoActivityRf1086Case(
   };
 }
 
-export function renderRf1086PreviewWithPython(filingCase: unknown): Rf1086RenderResult {
-  const python = process.env.TALLI_PYTHON_BIN || "python3";
-  const result = spawnSync(python, ["-m", "holding_cli.main", "render-rf1086-preview", "--stdin-json"], {
-    input: JSON.stringify(filingCase),
-    encoding: "utf8",
-    env: process.env,
-  });
-  if (result.error) {
-    throw result.error;
-  }
+export async function renderRf1086PreviewWithPython(filingCase: unknown): Promise<Rf1086RenderResult> {
+  const result = await runPythonCli(["render-rf1086-preview", "--stdin-json"], filingCase);
   const stdout = result.stdout.trim();
   if (!stdout) {
     throw new Error(result.stderr.trim() || "RF-1086 engine produced no output.");

@@ -541,7 +541,7 @@ export async function generateRf1086Preview(formData: FormData) {
 
   let rendered;
   try {
-    rendered = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+    rendered = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
   } catch (error) {
     redirect(`/?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
   }
