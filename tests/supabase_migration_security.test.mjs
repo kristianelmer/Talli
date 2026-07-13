@@ -8,6 +8,7 @@ const cancellationMigrationPath = "supabase/migrations/20260713122955_secure_can
 const documentMigrationPath = "supabase/migrations/20260713124354_restrict_company_document_uploads.sql";
 const grantImmutabilityMigrationPath =
   "supabase/migrations/20260713125515_make_production_security_grants_append_only.sql";
+const orphanCleanupMigrationPath = "supabase/migrations/20260713130403_allow_orphan_document_cleanup.sql";
 
 test("step-up migration derives freshness from signed Supabase MFA claims", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -36,6 +37,15 @@ test("private document bucket enforces the bounded upload allowlist", async () =
   assert.match(sql, /file_size_limit = 6291456/u);
   assert.match(sql, /allowed_mime_types = array\['application\/pdf', 'image\/png', 'image\/jpeg', 'text\/csv'\]/u);
   assert.match(sql, /set public = false/u);
+});
+
+test("owners can clean up only uncommitted document objects", async () => {
+  const sql = await readFile(orphanCleanupMigrationPath, "utf8");
+
+  assert.match(sql, /on storage\.objects for delete/u);
+  assert.match(sql, /membership\.role = 'owner'/u);
+  assert.match(sql, /membership\.accepted_at is not null/u);
+  assert.match(sql, /not exists \([\s\S]*document\.storage_key = storage\.objects\.name/u);
 });
 
 test("membership roles and confirmed company identity are not client-updatable", async () => {

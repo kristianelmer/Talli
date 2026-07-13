@@ -191,6 +191,7 @@ test(
   const grantAdmin = await signIn(grantAdminUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
   let companyId;
+  const storageKeysToCleanup = [];
 
   try {
     const { data: company, error: companyError } = await owner
@@ -2314,12 +2315,26 @@ test(
 
     const documentId = randomUUID();
     const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
+    const orphanStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "orphan.pdf");
+    const { error: orphanUploadError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .upload(orphanStorageKey, new Blob(["orphan"], { type: "application/pdf" }), {
+        contentType: "application/pdf",
+      });
+    assert.ifError(orphanUploadError);
+    storageKeysToCleanup.push(orphanStorageKey);
+    const { error: orphanCleanupError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .remove([orphanStorageKey]);
+    assert.ifError(orphanCleanupError);
+
     const { error: uploadError } = await owner.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
       .upload(storageKey, new Blob(["test"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ifError(uploadError);
+    storageKeysToCleanup.push(storageKey);
 
     const { error: documentInsertError } = await owner.from("documents").insert({
       id: documentId,
@@ -2333,6 +2348,11 @@ test(
       created_by: ownerUser.id,
     });
     assert.ifError(documentInsertError);
+
+    const { error: retainedObjectDeleteError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .remove([storageKey]);
+    assert.ok(retainedObjectDeleteError);
 
     const { data: ownerDocuments, error: ownerDocumentError } = await owner
       .from("documents")
@@ -2448,9 +2468,10 @@ test(
         contentType: "application/pdf",
       });
     assert.ok(readOnlyUploadError);
-
-    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
   } finally {
+    if (storageKeysToCleanup.length) {
+      await admin.storage.from(COMPANY_DOCUMENTS_BUCKET).remove(storageKeysToCleanup);
+    }
     if (companyId) {
       await admin.from("companies").delete().eq("id", companyId);
     }

@@ -272,7 +272,17 @@ export async function uploadDocument(formData: FormData) {
     created_by: user.id,
   });
   if (metadataError) {
-    redirect(`/?error=${encodeActionError(metadataError.message)}`);
+    const { error: cleanupError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+    console.error("document_metadata_persistence_failed", {
+      companyId,
+      documentId,
+      metadataErrorCode: metadataError.code,
+      orphanCleanupFailed: Boolean(cleanupError),
+    });
+    const internalMessage = cleanupError
+      ? `${metadataError.message}; orphan cleanup failed: ${cleanupError.message}`
+      : metadataError.message;
+    redirect(`/?error=${encodeActionError(internalMessage)}`);
   }
 
   await supabase.from("audit_events").insert({

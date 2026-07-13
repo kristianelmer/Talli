@@ -73,6 +73,9 @@ Current implementation:
 - The server derives canonical MIME type from PDF/PNG/JPEG signatures or
   validated UTF-8 CSV content; browser-supplied MIME values are ignored.
 - The bucket accepts only PDF, PNG, JPEG, and CSV, and remains private.
+- If metadata persistence fails after upload, the server removes the orphaned
+  object through an owner policy that applies only while no metadata row
+  references the storage key. Retained objects remain non-deletable by owners.
 - The local Python `talli-signed://` model remains a deterministic domain fixture only; it is not the deployed download path.
 
 ## Browser and Artifact Boundary
