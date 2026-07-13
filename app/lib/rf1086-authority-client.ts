@@ -417,10 +417,12 @@ export function createRf1086AuthorityClient(options: ClientOptions): Rf1086Autho
         headers: jsonHeaders(),
       });
       const body = decodeJson(response);
+      const isNonnegativeSafeInteger = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0;
       if (
-        !Number.isInteger(body.totalItems) ||
-        !Number.isInteger(body.totalPages) ||
-        !Number.isInteger(body.currentPage) ||
+        !isNonnegativeSafeInteger(body.totalItems) ||
+        !isNonnegativeSafeInteger(body.totalPages) ||
+        !isNonnegativeSafeInteger(body.currentPage) ||
+        ((body.totalPages as number) > 0 && (body.currentPage as number) >= (body.totalPages as number)) ||
         !Array.isArray(body.dokumenter) ||
         body.dokumenter.length > 50 ||
         !body.dokumenter.every((document) => typeof document === "string")

@@ -148,6 +148,17 @@ test("rejects malformed and oversized authority responses", async () => {
     oversized.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey }),
     (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_response_too_large",
   );
+
+  const invalidPage = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken: "short-lived-token",
+    transport: async () =>
+      jsonResponse({ totalItems: -1, totalPages: 0, currentPage: 0, dokumenter: [] }),
+  });
+  await assert.rejects(
+    invalidPage.listDocuments({ incomeYear: 2025, forsendelseId }),
+    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_response_invalid",
+  );
 });
 
 test("classifies authority failures without exposing the bearer token", async () => {
