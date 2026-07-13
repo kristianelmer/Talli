@@ -35,6 +35,12 @@ const readyLaunchSignoffs = [
   { key: "annual_accounts_authority", status: "approved", reviewer: "RR reviewer", reviewedAt: "2026-06-17T09:00:00.000Z", evidenceLink: "https://evidence.example/rr", decision: "Approved annual accounts production gate." },
 ];
 
+const readyAdapterCapabilities = {
+  aksjonaerregisteroppgaven: { productionImplemented: true, productionEnabled: true },
+  skattemelding: { productionImplemented: true, productionEnabled: true },
+  aarsregnskap: { productionImplemented: true, productionEnabled: true },
+};
+
 test("keeps all production filing gates disabled without authority, billing, step-up, and human review", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: [],
@@ -72,6 +78,7 @@ test("blocks production when authority evidence or filing-specific signoff is mi
       productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs.filter((item) => item.key !== "rf1086_authority"),
+    adapterCapabilities: readyAdapterCapabilities,
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
@@ -103,10 +110,40 @@ test("marks production ready only when every release gate passes", () => {
       productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs,
+    adapterCapabilities: readyAdapterCapabilities,
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
   assert.ok(gates.every((gate) => gate.status === "production_ready"));
   assert.ok(gates.every((gate) => gate.disabledReasons.length === 0));
   assert.match(gates[0].publicCopyRestriction, /produksjonsklar/);
+});
+
+test("cannot report production ready when a live adapter is unimplemented or disabled", () => {
+  const gates = buildFilingReleaseGates({
+    authorityPermissions: readyPermissions,
+    authorityTestRuns: readyAuthorityEvidence,
+    billingAccount: readyBilling,
+    filingReadyByObligation: {
+      aksjonaerregisteroppgaven: true,
+      skattemelding: true,
+      aarsregnskap: true,
+    },
+    stepUpContext: {
+      actorId: "owner",
+      mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
+      securityReviewApproved: true,
+      productionCredentialsEnabled: true,
+    },
+    launchSignoffs: readyLaunchSignoffs,
+    adapterCapabilities: {
+      ...readyAdapterCapabilities,
+      skattemelding: { productionImplemented: false, productionEnabled: false },
+    },
+    now: new Date("2026-06-17T10:00:00.000Z"),
+  });
+
+  const tax = gates.find((gate) => gate.obligation === "skattemelding");
+  assert.equal(tax.status, "production_disabled");
+  assert.ok(tax.disabledReasons.includes("production_adapter_unimplemented"));
 });

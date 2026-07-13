@@ -42,6 +42,7 @@ Excluded live scope:
 | Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
 | Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | Simulation seam implemented; official evidence pending |
 | Human signoff | Named reviewer signs production release decision | Pending (`rf1086_authority` launch signoff) |
+| Production adapter | Real RF-1086 transport implementation; simulation must never satisfy this row | Unimplemented and disabled (`currentAuthorityAdapterCapabilities`) |
 
 Code gate anchors:
 
@@ -49,6 +50,9 @@ Code gate anchors:
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
 - `buildFilingReleaseGates` requires approved `launch_signoffs` key
   `rf1086_authority` with reviewer, date, evidence link, and decision.
+- `buildFilingReleaseGates` independently requires an implemented and enabled
+  production adapter. The legacy `TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER`
+  environment flag cannot route production to the simulation adapter.
 
 ## Required Test Run
 

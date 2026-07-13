@@ -84,14 +84,68 @@ test("builds 2025 schema-backed company tax return payload candidate", () => {
   assert.equal(payload.schema.skattemeldingUpersonlig.xsd, "skattemeldingUpersonlig_v5_ekstern.xsd");
   assert.equal(payload.schema.naeringsspesifikasjon.xsd, "naeringsspesifikasjon_v6_ekstern.xsd");
   assert.equal(fields["skattemelding.partsnummer"].value, "314259521");
+  assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].id"].value, "action-id");
   assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].utbytte.beloepSomHeltall"].value, 100000);
   assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].erOmfattetAvFritaksmetoden.boolsk"].value, true);
-  assert.equal(fields["resultatregnskap.finansinntekt.inntektAvAndreInvesteringerOgUtbytte.inntekt.beloep"].evidence, "2025_resultatregnskapOgBalanse.xml:8090");
-  assert.equal(fields["beregnetNaeringsinntekt.permanentForskjell.permanentForskjellstype"].value, "skattepliktigDelAvUtbytterOgUtdelinger");
-  assert.equal(fields["beregnetNaeringsinntekt.permanentForskjell.beloep"].value, 3000);
-  assert.equal(payload.derived.taxableBasis, 4490);
-  assert.equal(payload.derived.estimatedTax, 987.8);
+  assert.equal(fields["resultatregnskap.finansinntekt.inntekt[0].type.resultatOgBalanseregnskapstype"].value, "8090");
+  assert.equal(fields["resultatregnskap.finansinntekt.inntekt[0].beloep.beloep.beloep"].value, 100000);
+  assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[1].permanentForskjellstype.permanentForskjellstype"].value, "skattepliktigDelAvUtbytterOgUtdelinger");
+  assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[1].beloep.beloep.beloep"].value, 3000);
+  assert.equal(payload.derived.accountingResultBeforeTax, 98510);
+  assert.equal(payload.derived.taxableBasis, 1510);
+  assert.equal(payload.derived.estimatedTax, 332.2);
   assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_payload_candidate_ready"]);
+});
+
+test("reconciles interest, costs, exempt gains, and non-deductible losses", () => {
+  const shareGainAction = {
+    ...dividendAction,
+    id: "sale-gain",
+    action_type: "share_sale",
+    payload: { gain_or_loss: 20000, tax_treatment: "fritaksmetoden" },
+  };
+  const shareLossAction = {
+    ...dividendAction,
+    id: "sale-loss",
+    action_type: "share_sale",
+    payload: { gain_or_loss: -5000, tax_treatment: "fritaksmetoden" },
+  };
+  const entries = [
+    {
+      ...ledgerEntries[0],
+      lines: [
+        { account: "1920", debit: 0, credit: 0 },
+        { account: "8070", debit: 0, credit: 120000 },
+        { account: "8050", debit: 0, credit: 125.5 },
+        { account: "7770", debit: 1490, credit: 0 },
+        { account: "6700", debit: 990, credit: 0 },
+        { account: "8090", debit: 5000, credit: 0 },
+      ],
+    },
+  ];
+  const payload = buildCompanyTaxReturnPayload({
+    companyOrgNumber: "314259521",
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries: entries,
+    holdingActions: [dividendAction, shareGainAction, shareLossAction],
+  });
+  const fields = Object.fromEntries(payload.fields.map((field) => [field.path, field]));
+
+  assert.equal(payload.derived.adminCosts, 2480);
+  assert.equal(payload.derived.interestIncome, 125.5);
+  assert.equal(payload.derived.exemptShareSaleGain, 20000);
+  assert.equal(payload.derived.nonDeductibleShareSaleLoss, 5000);
+  assert.equal(payload.derived.accountingResultBeforeTax, 112645.5);
+  assert.equal(payload.derived.taxableBasis, 645.5);
+  assert.equal(payload.derived.estimatedTax, 142.01);
+  assert.equal(fields["resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[0].type.resultatOgBalanseregnskapstype"].value, "6700");
+  assert.equal(fields["resultatregnskap.finansinntekt.inntekt[1].type.resultatOgBalanseregnskapstype"].value, "8050");
+  assert.equal(fields["resultatregnskap.finansinntekt.inntekt[2].type.resultatOgBalanseregnskapstype"].value, "8074");
+  assert.equal(fields["resultatregnskap.finanskostnad.kostnad[0].type.resultatOgBalanseregnskapstype"].value, "8174");
+  assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[2].permanentForskjellstype.permanentForskjellstype"].value, "regnskapsmessigGevinstVedRealisasjonAvFinansielleInstrumenter");
+  assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[3].permanentForskjellstype.permanentForskjellstype"].value, "regnskapsmessigTapVedRealisasjonAvFinansielleInstrumenter");
+  assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_share_sale_or_purchase_review"]);
 });
 
 test("blocks unsupported tax treatment and shareholder loans", () => {

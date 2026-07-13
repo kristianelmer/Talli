@@ -51,6 +51,7 @@ export default async function ActionPage({
     primaryCompanyId,
     primaryIncomeYear,
     positions,
+    investmentLots,
     primaryShareholders,
   } = data;
 
@@ -96,6 +97,15 @@ export default async function ActionPage({
             name: position.name,
             share_count: position.share_count,
             cost_basis: position.cost_basis,
+            lot_history_status: position.lot_history_status,
+            acquisition_lots: investmentLots
+              .filter((lot) => lot.position_id === position.id && lot.remaining_share_count > 0)
+              .map((lot) => ({
+                id: lot.id,
+                acquisitionDate: lot.acquisition_date,
+                remainingShareCount: lot.remaining_share_count,
+                remainingCostBasis: lot.remaining_cost_basis,
+              })),
           }))}
         />
       );

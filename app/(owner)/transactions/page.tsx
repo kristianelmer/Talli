@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { recordAdminCost } from "../../actions";
+import {
+  acceptBankTransactionSuggestion,
+  recordAdminCost,
+} from "../../actions";
 import {
   Banner,
   EmptyState,
@@ -9,6 +12,7 @@ import {
   SubmitButton,
 } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
+import { suggestBankTransaction } from "../../lib/bank-suggestions";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { BankImport } from "./BankImport";
 
@@ -131,6 +135,10 @@ export default async function TransactionsPage({
               {unmatched.map((transaction) => {
                 const amount = Number(transaction.amount);
                 const outgoing = amount < 0;
+                const suggestion = suggestBankTransaction({
+                  text: transaction.text,
+                  amount,
+                });
                 return (
                   <details className="txRow" key={transaction.id}>
                     <summary className="txRowSummary">
@@ -148,6 +156,41 @@ export default async function TransactionsPage({
                     </summary>
 
                     <div className="txResolve">
+                      {suggestion ? (
+                        <div className="txSuggestion">
+                          <div className="txSuggestionHead">
+                            <StatusBadge variant="info" label={t.queue.suggestionBadge} />
+                            <h3 className="txResolveTitle">{t.queue.suggestionTitle}</h3>
+                          </div>
+                          <p className="fieldHelp">{suggestion.reason}</p>
+                          <ul className="txSuggestionLines">
+                            {suggestion.lines.map((line) => (
+                              <li key={`${suggestion.ruleId}-${line.account}`}>
+                                <span>
+                                  {line.debit > 0 ? "Debet" : "Kredit"} {line.account} ·{" "}
+                                  {line.description}
+                                </span>
+                                <strong>{formatKr(line.debit || line.credit)}</strong>
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="fieldHelp">{t.queue.suggestionHint}</p>
+                          <form action={acceptBankTransactionSuggestion}>
+                            <input type="hidden" name="returnTo" value={RETURN_TO} />
+                            <input
+                              type="hidden"
+                              name="bankTransactionId"
+                              value={transaction.id}
+                            />
+                            <input type="hidden" name="ruleId" value={suggestion.ruleId} />
+                            <input type="hidden" name="ruleVersion" value={suggestion.ruleVersion} />
+                            <SubmitButton pendingLabel={t.queue.suggestionPending}>
+                              {t.queue.suggestionCta}
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      ) : null}
+
                       {outgoing ? (
                         <div className="txResolveOption">
                           <h3 className="txResolveTitle">{t.queue.resolveCostTitle}</h3>

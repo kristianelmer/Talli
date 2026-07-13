@@ -1,3 +1,9 @@
+import {
+  allocateFifoShareSale,
+  FifoLotValidationError,
+  type ShareAcquisitionLot,
+} from "./share-lots.ts";
+
 export type ShareSaleDocumentStatus = "attached" | "missing_accepted_warning" | "not_required";
 
 export type ShareSaleInput = {
@@ -6,6 +12,7 @@ export type ShareSaleInput = {
   investmentName: string;
   currentShareCount: number;
   currentCostBasis: number;
+  acquisitionLots: ShareAcquisitionLot[];
   saleDate: string;
   soldShareCount: number;
   proceeds: number;
@@ -23,8 +30,15 @@ export type ShareSaleActionPayload = {
   proceeds: number;
   cost_basis_reduction: number;
   gain_or_loss: number;
+  tax_treatment: "fritaksmetoden";
   remaining_share_count: number;
   remaining_cost_basis: number;
+  lot_allocations: Array<{
+    lot_id: string;
+    acquisition_date: string;
+    share_count: number;
+    cost_basis: number;
+  }>;
   bank_transaction_id: string | null;
   document_id: string | null;
   document_status: ShareSaleDocumentStatus;
@@ -51,13 +65,13 @@ export function validateShareSale(input: ShareSaleInput): ShareSaleActionPayload
   if (!/^\d{4}-\d{2}-\d{2}$/.test(saleDate)) {
     throw new ShareSaleValidationError("Salgsdato må være YYYY-MM-DD.", "invalid_date");
   }
-  if (!Number.isFinite(input.currentShareCount) || input.currentShareCount <= 0) {
+  if (!Number.isSafeInteger(input.currentShareCount) || input.currentShareCount <= 0) {
     throw new ShareSaleValidationError("Posisjonen har ingen aksjer å selge.", "empty_position");
   }
   if (!Number.isFinite(input.currentCostBasis) || input.currentCostBasis < 0) {
     throw new ShareSaleValidationError("Ugyldig kostpris på posisjon.", "invalid_cost_basis");
   }
-  if (!Number.isFinite(input.soldShareCount) || input.soldShareCount <= 0) {
+  if (!Number.isSafeInteger(input.soldShareCount) || input.soldShareCount <= 0) {
     throw new ShareSaleValidationError("Solgt antall må være større enn 0.", "invalid_sold_share_count");
   }
   if (input.soldShareCount > input.currentShareCount) {
@@ -69,7 +83,29 @@ export function validateShareSale(input: ShareSaleInput): ShareSaleActionPayload
   if (!["attached", "missing_accepted_warning", "not_required"].includes(input.documentStatus)) {
     throw new ShareSaleValidationError("Ugyldig dokumentstatus.", "invalid_document_status");
   }
-  const costBasisReduction = roundMoney(input.currentCostBasis * (input.soldShareCount / input.currentShareCount));
+  let fifo;
+  try {
+    fifo = allocateFifoShareSale({
+      lots: input.acquisitionLots,
+      saleDate,
+      soldShareCount: input.soldShareCount,
+    });
+  } catch (error) {
+    if (error instanceof FifoLotValidationError) {
+      throw new ShareSaleValidationError(error.message, error.code);
+    }
+    throw error;
+  }
+  if (
+    fifo.remainingShareCount + input.soldShareCount !== input.currentShareCount ||
+    roundMoney(fifo.remainingCostBasis + fifo.costBasisReduction) !== roundMoney(input.currentCostBasis)
+  ) {
+    throw new ShareSaleValidationError(
+      "Anskaffelsespostene stemmer ikke med investeringsposisjonen.",
+      "lot_position_mismatch",
+    );
+  }
+  const costBasisReduction = fifo.costBasisReduction;
   const gainOrLoss = roundMoney(input.proceeds - costBasisReduction);
   return {
     position_id: positionId,
@@ -80,8 +116,15 @@ export function validateShareSale(input: ShareSaleInput): ShareSaleActionPayload
     proceeds: roundMoney(input.proceeds),
     cost_basis_reduction: costBasisReduction,
     gain_or_loss: gainOrLoss,
-    remaining_share_count: roundMoney(input.currentShareCount - input.soldShareCount),
-    remaining_cost_basis: roundMoney(input.currentCostBasis - costBasisReduction),
+    tax_treatment: "fritaksmetoden",
+    remaining_share_count: fifo.remainingShareCount,
+    remaining_cost_basis: fifo.remainingCostBasis,
+    lot_allocations: fifo.allocations.map((allocation) => ({
+      lot_id: allocation.lotId,
+      acquisition_date: allocation.acquisitionDate,
+      share_count: allocation.shareCount,
+      cost_basis: allocation.costBasis,
+    })),
     bank_transaction_id: input.bankTransactionId || null,
     document_id: input.documentId || null,
     document_status: input.documentStatus,

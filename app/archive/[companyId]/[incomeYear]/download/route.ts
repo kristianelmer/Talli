@@ -62,6 +62,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     { data: authorityPermissions },
     { data: reviewComments },
     { data: auditEvents },
+    { data: investmentPositions },
+    { data: investmentLots },
+    { data: investmentLotAllocations },
+    { data: bankSuggestionAcceptances },
   ] =
     await Promise.all([
       supabase
@@ -105,6 +109,22 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .from("audit_events")
         .select("id, company_id, actor_id, category, action, message, created_at")
         .eq("company_id", companyId),
+      supabase
+        .from("investment_positions")
+        .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, lot_history_status, movements, created_by, created_at, updated_at")
+        .eq("company_id", companyId),
+      supabase
+        .from("investment_lots")
+        .select("id, company_id, position_id, acquisition_action_id, acquisition_date, original_share_count, remaining_share_count, original_cost_basis, remaining_cost_basis, created_by, created_at")
+        .eq("company_id", companyId),
+      supabase
+        .from("investment_lot_allocations")
+        .select("id, company_id, position_id, lot_id, sale_action_id, allocated_share_count, allocated_cost_basis, created_by, created_at")
+        .eq("company_id", companyId),
+      supabase
+        .from("bank_suggestion_acceptances")
+        .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
+        .eq("company_id", companyId),
     ]);
 
   const setupIds = (setups ?? []).map((setup) => setup.id);
@@ -123,6 +143,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
     holdingActions: holdingActions ?? [],
+    investmentPositions: investmentPositions ?? [],
+    investmentLots: investmentLots ?? [],
+    investmentLotAllocations: investmentLotAllocations ?? [],
+    bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
     authorityPermissions: authorityPermissions ?? [],
     auditEvents: auditEvents ?? [],

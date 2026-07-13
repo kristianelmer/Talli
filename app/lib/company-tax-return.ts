@@ -30,15 +30,44 @@ export function buildCompanyTaxReturnPayload(input: {
 }) {
   const totals = ledgerTotals(input.ledgerEntries);
   const dividendActions = input.holdingActions.filter((action) => action.action_type === "dividend_received");
+  const shareSaleActions = input.holdingActions.filter((action) => action.action_type === "share_sale");
   const dividendIncome = roundMoney(
-    dividendActions.reduce((sum, action) => sum + Number(action.payload.gross_amount ?? 0), 0) || totals.dividendIncome,
+    dividendActions.reduce((sum, action) => sum + Number(action.payload.gross_amount ?? 0), 0) || totals.dividendAndGainIncome,
+  );
+  const exemptShareSaleGain = roundMoney(
+    shareSaleActions.reduce((sum, action) => sum + Math.max(0, Number(action.payload.gain_or_loss ?? 0)), 0),
+  );
+  const nonDeductibleShareSaleLoss = roundMoney(
+    shareSaleActions.reduce((sum, action) => sum + Math.max(0, -Number(action.payload.gain_or_loss ?? 0)), 0),
   );
   const fritaksmetodenAddBack = roundMoney(
     dividendActions.reduce((sum, action) => sum + Number(action.payload.taxable_add_back ?? 0), 0),
   );
-  const taxableBasis = roundMoney(totals.adminCosts + fritaksmetodenAddBack);
+  const accountingResultBeforeTax = roundMoney(
+    totals.dividendAndGainIncome + totals.interestIncome - totals.adminCosts - totals.shareSaleLoss,
+  );
+  const taxableBasis = roundMoney(
+    accountingResultBeforeTax
+      - dividendIncome
+      - exemptShareSaleGain
+      + nonDeductibleShareSaleLoss
+      + fritaksmetodenAddBack,
+  );
   const noActivity = Boolean(input.annualData?.no_activity_confirmed);
   const feedback = companyTaxReturnPayloadFeedback(input);
+  const resultFields = [
+    ...adminCostResultFields(totals.adminCostsByAccount),
+    ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 0, "8090", dividendIncome, "holding_actions.dividend_received"),
+    ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 1, "8050", totals.interestIncome, "ledger.8050"),
+    ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 2, "8074", exemptShareSaleGain, "holding_actions.share_sale.gain_or_loss"),
+    ...resultOccurrenceFields("resultatregnskap.finanskostnad.kostnad", 0, "8174", nonDeductibleShareSaleLoss, "holding_actions.share_sale.gain_or_loss"),
+  ];
+  const differenceFields = [
+    ...permanentDifferenceFields(0, "tilbakefoeringAvInntektsfoertUtbytte", dividendIncome, "holding_actions.dividend_received.gross_amount"),
+    ...permanentDifferenceFields(1, "skattepliktigDelAvUtbytterOgUtdelinger", fritaksmetodenAddBack, "holding_actions.dividend_received.taxable_add_back"),
+    ...permanentDifferenceFields(2, "regnskapsmessigGevinstVedRealisasjonAvFinansielleInstrumenter", exemptShareSaleGain, "holding_actions.share_sale.gain_or_loss"),
+    ...permanentDifferenceFields(3, "regnskapsmessigTapVedRealisasjonAvFinansielleInstrumenter", nonDeductibleShareSaleLoss, "holding_actions.share_sale.gain_or_loss"),
+  ];
 
   return {
     schema: {
@@ -59,7 +88,11 @@ export function buildCompanyTaxReturnPayload(input: {
     derived: {
       noActivity,
       adminCosts: totals.adminCosts,
+      interestIncome: totals.interestIncome,
       dividendIncome,
+      exemptShareSaleGain,
+      nonDeductibleShareSaleLoss,
+      accountingResultBeforeTax,
       fritaksmetodenAddBack,
       taxableBasis,
       estimatedTax: roundMoney(Math.max(0, taxableBasis) * 0.22),
@@ -70,27 +103,19 @@ export function buildCompanyTaxReturnPayload(input: {
       ...dividendActions.flatMap((action, index) => dividendFields(action, index)),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.partsreferanse", input.companyOrgNumber, "company.org_number", "naeringsspesifikasjon_v6_ekstern.xsd"),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.inntektsaar", input.incomeYear, "company.income_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
-      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.regnskapspliktstype", "fullRegnskapsplikt", "launch_scope", "2025_regnskapsplikttype.xml"),
+      ...resultFields,
+      ...balanceOccurrenceFields("balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi", 0, "1800", totals.investmentBalance, "ledger.1800"),
+      ...balanceOccurrenceFields("balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi", 0, "1920", totals.bankBalance, "ledger.1920"),
+      ...balanceOccurrenceFields("balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld", 0, "2990", totals.shortTermDebt, "ledger.2255_or_2990"),
+      ...balanceOccurrenceFields("balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital", 0, "2000", totals.shareCapital, "ledger.2000"),
+      ...balanceOccurrenceFields("balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital", 1, "2050", totals.retainedEarnings, "ledger.2050"),
+      ...differenceFields,
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.regnskapspliktstype.regnskapspliktstype", "fullRegnskapsplikt", "launch_scope", "2025_regnskapsplikttype.xml"),
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.regnskapsperiode.start.dato", `${input.incomeYear}-01-01`, "calendar_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.regnskapsperiode.slutt.dato", `${input.incomeYear}-12-31`, "calendar_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.virksomhetstype.virksomhetstype", "oevrigSelskap", "launch_scope", "2025_virksomhetstype.xml"),
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.virksomhet.regeltypeForAarsregnskap.regeltypeForAarsregnskap", "regnskapslovensAlminneligeRegler", "launch_scope", "2025_regeltypeForAarsregnskap.xml"),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.skalBekreftesAvRevisor", false, "launch_scope", "naeringsspesifikasjon_v6_ekstern.xsd"),
-      resultBalanceField("balanseregnskap.omloepsmiddel.bankinnskudd.beloep", totals.bankBalance, "ledger.1920", "1920"),
-      resultBalanceField("balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital.beloep", totals.retainedEarnings, "ledger.2050", "2050"),
-      resultBalanceField("balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld.beloep", totals.shortTermDebt, "ledger.2255_or_2990", totals.shortTermDebt ? "2990" : "2380"),
-      resultBalanceField("resultatregnskap.driftskostnad.annenDriftskostnad.kostnad.beloep", totals.adminCosts, "ledger.admin_cost_accounts", "7700"),
-      resultBalanceField("resultatregnskap.finansinntekt.inntektAvAndreInvesteringerOgUtbytte.inntekt.beloep", dividendIncome, "holding_actions.dividend_received", "8090"),
-      field(
-        "naeringsspesifikasjon",
-        "beregnetNaeringsinntekt.permanentForskjell.permanentForskjellstype",
-        "skattepliktigDelAvUtbytterOgUtdelinger",
-        "holding_actions.dividend_received.taxable_add_back",
-        "2025_permanentForskjellstype.xml",
-      ),
-      field(
-        "naeringsspesifikasjon",
-        "beregnetNaeringsinntekt.permanentForskjell.beloep",
-        fritaksmetodenAddBack,
-        "holding_actions.dividend_received.taxable_add_back",
-        "2025_permanentForskjellstype.xml",
-      ),
     ],
     feedback,
   };
@@ -112,7 +137,10 @@ export function companyTaxReturnPayloadFeedback(input: {
   if (input.annualData.answers.declared_owner_dividends) {
     feedback.push(block("tax_return_owner_dividend_review_required", "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding."));
   }
-  if (input.annualData.answers.bought_or_sold_shares) {
+  if (
+    input.annualData.answers.bought_or_sold_shares
+    || input.holdingActions.some((action) => action.action_type === "share_purchase" || action.action_type === "share_sale")
+  ) {
     feedback.push(warning("tax_return_share_sale_or_purchase_review", "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon."));
   }
   for (const action of input.holdingActions) {
@@ -120,7 +148,7 @@ export function companyTaxReturnPayloadFeedback(input: {
       feedback.push(block("tax_return_blocking_holding_action", "Blokkerende holdinghandling må løses før skattemelding."));
     }
     const taxTreatment = String(action.payload.tax_treatment ?? "");
-    if (taxTreatment && taxTreatment !== "fritaksmetoden") {
+    if (["dividend_received", "share_purchase", "share_sale"].includes(action.action_type) && taxTreatment !== "fritaksmetoden") {
       feedback.push(block("tax_return_unclear_fritaksmetoden", "Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype."));
     }
     if (action.action_type === "shareholder_loan") {
@@ -136,6 +164,29 @@ export function companyTaxReturnPayloadFeedback(input: {
   if (input.annualData.no_activity_confirmed && (substantiveLedger.length || substantiveActions.length)) {
     feedback.push(warning("tax_return_no_activity_with_activity_data", "No-activity er bekreftet, men året har posteringer eller holdinghandlinger."));
   }
+  const totals = ledgerTotals(input.ledgerEntries);
+  const classifiedDividendAndGain = roundMoney(
+    input.holdingActions.reduce((sum, action) => {
+      if (action.action_type === "dividend_received") {
+        return sum + Number(action.payload.gross_amount ?? 0);
+      }
+      if (action.action_type === "share_sale") {
+        return sum + Math.max(0, Number(action.payload.gain_or_loss ?? 0));
+      }
+      return sum;
+    }, 0),
+  );
+  const classifiedShareLoss = roundMoney(
+    input.holdingActions
+      .filter((action) => action.action_type === "share_sale")
+      .reduce((sum, action) => sum + Math.max(0, -Number(action.payload.gain_or_loss ?? 0)), 0),
+  );
+  if (classifiedDividendAndGain > 0 && classifiedDividendAndGain !== totals.dividendAndGainIncome) {
+    feedback.push(block("tax_return_financial_income_classification_mismatch", "Finansinntekt i hovedbok stemmer ikke med klassifiserte utbytter og aksjegevinster."));
+  }
+  if (classifiedShareLoss > 0 && classifiedShareLoss !== totals.shareSaleLoss) {
+    feedback.push(block("tax_return_share_loss_classification_mismatch", "Aksjetap i hovedbok stemmer ikke med klassifiserte aksjesalg."));
+  }
   if (!feedback.length) {
     feedback.push(info("tax_return_payload_candidate_ready", "Skattemelding-kandidat kan bygges for lokal validering."));
   }
@@ -145,13 +196,72 @@ export function companyTaxReturnPayloadFeedback(input: {
 function dividendFields(action: HoldingActionRow, index: number): CompanyTaxReturnPayloadField[] {
   const prefix = `skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[${index}]`;
   return [
-    field("skattemeldingUpersonlig", `${prefix}.utbytte.beloepSomHeltall`, Number(action.payload.gross_amount ?? 0), "holding_actions.dividend_received.gross_amount", "skattemeldingUpersonlig_v5_ekstern.xsd"),
+    field("skattemeldingUpersonlig", `${prefix}.id`, action.id, "holding_actions.dividend_received.id", "skattemeldingUpersonlig_v5_ekstern.xsd"),
     field("skattemeldingUpersonlig", `${prefix}.erOmfattetAvFritaksmetoden.boolsk`, true, "holding_actions.dividend_received.tax_treatment", "tekster_upersonlig.json"),
+    field("skattemeldingUpersonlig", `${prefix}.utbytte.beloepSomHeltall`, Number(action.payload.gross_amount ?? 0), "holding_actions.dividend_received.gross_amount", "skattemeldingUpersonlig_v5_ekstern.xsd"),
   ];
 }
 
-function resultBalanceField(path: string, value: number, source: string, code: string): CompanyTaxReturnPayloadField {
-  return field("naeringsspesifikasjon", path, value, source, `2025_resultatregnskapOgBalanse.xml:${code}`);
+function adminCostResultFields(costs: Array<{ account: string; amount: number }>): CompanyTaxReturnPayloadField[] {
+  return costs.flatMap(({ account, amount }, index) =>
+    resultOccurrenceFields("resultatregnskap.driftskostnad.annenDriftskostnad.kostnad", index, account, amount, `ledger.${account}`),
+  );
+}
+
+function resultOccurrenceFields(
+  base: string,
+  index: number,
+  code: string,
+  value: number,
+  source: string,
+): CompanyTaxReturnPayloadField[] {
+  if (value === 0) {
+    return [];
+  }
+  const prefix = `${base}[${index}]`;
+  const evidence = `2025_resultatregnskapOgBalanse.xml:${code}`;
+  return [
+    field("naeringsspesifikasjon", `${prefix}.beloep.beloep.beloep`, value, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.id`, `${code}-${index}`, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.type.resultatOgBalanseregnskapstype`, code, source, evidence),
+  ];
+}
+
+function balanceOccurrenceFields(
+  base: string,
+  index: number,
+  code: string,
+  value: number,
+  source: string,
+): CompanyTaxReturnPayloadField[] {
+  if (value === 0) {
+    return [];
+  }
+  const prefix = `${base}[${index}]`;
+  const evidence = `2025_resultatregnskapOgBalanse.xml:${code}`;
+  return [
+    field("naeringsspesifikasjon", `${prefix}.id`, `${code}-${index}`, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.beloep.beloep.beloep`, value, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.type.resultatOgBalanseregnskapstype`, code, source, evidence),
+  ];
+}
+
+function permanentDifferenceFields(
+  index: number,
+  differenceType: string,
+  value: number,
+  source: string,
+): CompanyTaxReturnPayloadField[] {
+  if (value === 0) {
+    return [];
+  }
+  const prefix = `forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[${index}]`;
+  const evidence = "2025_permanentForskjellstype.xml";
+  return [
+    field("naeringsspesifikasjon", `${prefix}.id`, `permanent-${index}`, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.permanentForskjellstype.permanentForskjellstype`, differenceType, source, evidence),
+    field("naeringsspesifikasjon", `${prefix}.beloep.beloep.beloep`, value, source, evidence),
+  ];
 }
 
 function field(
@@ -165,13 +275,43 @@ function field(
 }
 
 function ledgerTotals(entries: LedgerEntryRow[]) {
+  const adminCostsByAccount = ["6700", "6705", "6420", "6720", "7770", "7790", "7795"]
+    .map((account) => ({ account: authorityAdminAccount(account), amount: accountDebitTotal(entries, account) }))
+    .filter(({ amount }) => amount !== 0)
+    .reduce<Array<{ account: string; amount: number }>>((groups, item) => {
+      const existing = groups.find((group) => group.account === item.account);
+      if (existing) {
+        existing.amount = roundMoney(existing.amount + item.amount);
+      } else {
+        groups.push({ ...item });
+      }
+      return groups;
+    }, [])
+    .sort((left, right) => left.account.localeCompare(right.account));
   return {
     bankBalance: accountBalance(entries, "1920"),
-    adminCosts: debitTotal(entries, new Set(["7770", "6705", "6420", "7790", "6720", "7795"])),
-    dividendIncome: accountCreditBalance(entries, "8070"),
+    investmentBalance: accountBalance(entries, "1800"),
+    adminCostsByAccount,
+    adminCosts: roundMoney(adminCostsByAccount.reduce((sum, item) => sum + item.amount, 0)),
+    dividendAndGainIncome: accountCreditBalance(entries, "8070"),
+    interestIncome: accountCreditBalance(entries, "8050"),
+    shareSaleLoss: accountDebitTotal(entries, "8090"),
+    shareCapital: accountCreditBalance(entries, "2000"),
     retainedEarnings: accountCreditBalance(entries, "2050"),
     shortTermDebt: accountCreditBalance(entries, "2255") + accountCreditBalance(entries, "2990"),
   };
+}
+
+function authorityAdminAccount(account: string) {
+  return account === "6705" ? "6700" : account === "7795" ? "7790" : account;
+}
+
+function accountDebitTotal(entries: LedgerEntryRow[], account: string) {
+  return roundMoney(
+    ledgerLines(entries)
+      .filter((line) => line.account === account)
+      .reduce((sum, line) => sum + Number(line.debit ?? 0), 0),
+  );
 }
 
 function accountBalance(entries: LedgerEntryRow[], account: string) {
@@ -183,14 +323,6 @@ function accountBalance(entries: LedgerEntryRow[], account: string) {
 
 function accountCreditBalance(entries: LedgerEntryRow[], account: string) {
   return roundMoney(-accountBalance(entries, account));
-}
-
-function debitTotal(entries: LedgerEntryRow[], accounts: Set<string>) {
-  return roundMoney(
-    ledgerLines(entries)
-      .filter((line) => line.account && accounts.has(line.account))
-      .reduce((sum, line) => sum + Number(line.debit ?? 0), 0),
-  );
 }
 
 function ledgerLines(entries: LedgerEntryRow[]): LedgerLine[] {

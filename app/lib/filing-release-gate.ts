@@ -6,6 +6,10 @@ import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
 import type { LaunchSignoff, LaunchSignoffKey } from "./launch-signoff.ts";
 import { assertStepUpAllowed, SensitiveActionStepUpError, type StepUpContext } from "./security.ts";
+import {
+  currentAuthorityAdapterCapabilities,
+  type AuthorityAdapterCapabilities,
+} from "./authority-adapters.ts";
 
 export type FilingReleaseGateStatus = "production_ready" | "production_disabled";
 
@@ -42,8 +46,10 @@ export function buildFilingReleaseGates(input: {
   filingReadyByObligation: Partial<Record<AuthorityObligation, boolean>>;
   stepUpContext: StepUpContext;
   launchSignoffs: LaunchSignoff[];
+  adapterCapabilities?: AuthorityAdapterCapabilities;
   now?: Date;
 }): FilingReleaseGate[] {
+  const adapterCapabilities = input.adapterCapabilities ?? currentAuthorityAdapterCapabilities();
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
@@ -74,6 +80,13 @@ export function buildFilingReleaseGates(input: {
     const signoffKey = authoritySignoffKeyByObligation[obligation];
     if (!launchSignoffApproved(input.launchSignoffs, signoffKey)) {
       disabledReasons.push(`${signoffKey}_signoff_missing`);
+    }
+
+    const adapterCapability = adapterCapabilities[obligation];
+    if (!adapterCapability.productionImplemented) {
+      disabledReasons.push("production_adapter_unimplemented");
+    } else if (!adapterCapability.productionEnabled) {
+      disabledReasons.push("production_adapter_disabled");
     }
 
     return {

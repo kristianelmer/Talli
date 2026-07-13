@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import type { CompanyWorkspaceRow, OpeningBalanceSetupRow, OpeningShareholderRow } from "./supabase/server";
+import { resolveTalliPythonBinary } from "./python-runtime.ts";
 
 export type Rf1086RenderResult = {
   filing: string;
@@ -62,7 +63,7 @@ export function buildNoActivityRf1086Case(
 }
 
 export function renderRf1086PreviewWithPython(filingCase: unknown): Rf1086RenderResult {
-  const python = process.env.TALLI_PYTHON_BIN || "python3";
+  const python = resolveTalliPythonBinary();
   const result = spawnSync(python, ["-m", "holding_cli.main", "render-rf1086-preview", "--stdin-json"], {
     input: JSON.stringify(filingCase),
     encoding: "utf8",

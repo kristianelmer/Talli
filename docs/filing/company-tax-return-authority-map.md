@@ -8,6 +8,12 @@ This map defines what Talli can validate from public sources before production c
 
 Detailed schema/code-list evidence for the 2025 income-year launch path is now recorded in `docs/filing/company-tax-return-schema-evidence-register.md`. That register is authoritative for issue #86 payload work: 2025 must use `skattemeldingUpersonlig_v5_ekstern.xsd`, `naeringsspesifikasjon_v6_ekstern.xsd`, and 2025 code lists.
 
+Correction note (2026-07-13): the deterministic candidate now uses the exact
+generic occurrence structure from the v6 XSD and reconciles interest, supported
+costs, exempt gains, non-deductible losses, dividend reversal, and the 3 percent
+inclusion. XML rendering and local official-XSD validation are still missing and
+must not be described as complete.
+
 ## Sources
 
 Primary sources:

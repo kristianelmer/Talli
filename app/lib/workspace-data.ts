@@ -13,6 +13,7 @@ import {
   listAuthorityPermissions,
   listAuthorityTestRuns,
   listAnnualData,
+  listBankSuggestionAcceptances,
   listBankTransactions,
   listBillingAccounts,
   listBillingPaymentEvents,
@@ -26,6 +27,8 @@ import {
   listFilingSubmissions,
   listHoldingActions,
   listInvestmentPositions,
+  listInvestmentLots,
+  listInvestmentLotAllocations,
   listLedgerEntries,
   listNotificationOutbox,
   listOpeningSetups,
@@ -60,8 +63,15 @@ export async function loadWorkspaceData() {
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
   const { billingPaymentEvents } = user ? await listBillingPaymentEvents(companies.map((company) => company.id)) : { billingPaymentEvents: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
+  const { acceptances: bankSuggestionAcceptances } = user
+    ? await listBankSuggestionAcceptances(companies.map((company) => company.id))
+    : { acceptances: [] };
   const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
   const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
+  const { lots: investmentLots } = user ? await listInvestmentLots(companies.map((company) => company.id)) : { lots: [] };
+  const { allocations: investmentLotAllocations } = user
+    ? await listInvestmentLotAllocations(companies.map((company) => company.id))
+    : { allocations: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const primaryCompanyId = companies[0]?.id;
@@ -149,8 +159,11 @@ export async function loadWorkspaceData() {
     billingAccounts,
     billingPaymentEvents,
     transactions,
+    bankSuggestionAcceptances,
     actions,
     positions,
+    investmentLots,
+    investmentLotAllocations,
     entries,
     locks,
     primaryCompanyId,

@@ -8,6 +8,7 @@ import {
   buildAdminCostLedgerLines,
   parseBankCsv,
 } from "./lib/bank";
+import { suggestBankTransaction } from "./lib/bank-suggestions";
 import {
   applyBillingProviderEvent,
   BillingValidationError,
@@ -24,7 +25,11 @@ import { validateAuthorityObligation } from "./lib/authority-permission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
-import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "./lib/documents";
+import {
+  COMPANY_DOCUMENTS_BUCKET,
+  documentStorageKey,
+  validateDocumentUpload,
+} from "./lib/documents";
 import {
   DividendReceivedValidationError,
   dividendReceivedLedgerLines,
@@ -65,8 +70,8 @@ import {
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
 import { requireStepUpForAction, SensitiveAction, SensitiveActionStepUpError } from "./lib/security";
-import { SharePurchaseValidationError, sharePurchaseLedgerLines, validateSharePurchase } from "./lib/share-purchase";
-import { ShareSaleValidationError, shareSaleLedgerLines, validateShareSale } from "./lib/share-sale";
+import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
+import { ShareSaleValidationError, validateShareSale } from "./lib/share-sale";
 import {
   ShareholderLoanValidationError,
   shareholderLoanLedgerLines,
@@ -112,6 +117,45 @@ function returnTarget(formData: FormData): string {
 function failTo(returnTo: string, message: string): never {
   const separator = returnTo.includes("?") ? "&" : "?";
   redirect(`${returnTo}${separator}error=${encodeURIComponent(message)}`);
+}
+
+const investmentWriteErrors: Record<string, string> = {
+  authentication_required: "Innlogging kreves.",
+  company_owner_required: "Bare eier kan postere aksjekjøp og aksjesalg.",
+  income_year_locked: "Regnskapsåret er låst.",
+  idempotency_key_conflict: "Handlings-ID er allerede brukt til en annen postering.",
+  bank_transaction_mismatch: "Banktransaksjonen er ugyldig, allerede avstemt eller har feil beløp.",
+  bank_transaction_concurrent_match: "Banktransaksjonen ble avstemt av en annen handling. Last siden på nytt.",
+  document_mismatch: "Bilaget tilhører ikke valgt selskap og år.",
+  investment_position_identity_conflict: "Investerings-ID-en finnes med andre selskaps- eller skatteopplysninger.",
+  investment_position_mismatch: "Investeringsposisjonen tilhører ikke valgt selskap.",
+  lot_history_incomplete: "Anskaffelseshistorikken må rekonstrueres før aksjene kan selges.",
+  missing_acquisition_lots: "Aksjesalget mangler anskaffelsesposter.",
+  lot_position_mismatch: "Anskaffelsespostene stemmer ikke med investeringsposisjonen.",
+  sale_exceeds_lots: "Salg kan ikke overstige tilgjengelige aksjer.",
+};
+
+function investmentWriteError(message: string) {
+  const code = Object.keys(investmentWriteErrors).find((candidate) => message.includes(candidate));
+  return code ? `${code}: ${investmentWriteErrors[code]}` : "Investeringsposteringen kunne ikke lagres atomisk.";
+}
+
+const bankSuggestionErrors: Record<string, string> = {
+  authentication_required: "Innlogging kreves.",
+  bank_transaction_not_found: "Fant ikke banktransaksjonen.",
+  company_owner_required: "Bare eier kan godkjenne et bankforslag.",
+  income_year_locked: "Regnskapsåret er låst.",
+  bank_transaction_already_reconciled: "Banktransaksjonen er allerede avstemt.",
+  bank_suggestion_acceptance_conflict: "Et annet bankforslag er allerede godkjent.",
+  bank_rule_version_mismatch: "Forslaget er utdatert. Last siden på nytt.",
+  bank_suggestion_rule_mismatch: "Transaksjonen passer ikke lenger med forslaget.",
+  bank_suggestion_ambiguous: "Transaksjonsteksten er tvetydig og må vurderes manuelt.",
+  bank_suggestion_direction_mismatch: "Beløpsretningen passer ikke med forslaget.",
+};
+
+function bankSuggestionWriteError(message: string) {
+  const code = Object.keys(bankSuggestionErrors).find((candidate) => message.includes(candidate));
+  return code ? bankSuggestionErrors[code] : "Bankforslaget kunne ikke godkjennes atomisk.";
 }
 
 /**
@@ -326,10 +370,22 @@ export async function uploadDocument(formData: FormData) {
     failTo(returnTo, "Velg et dokument for opplasting.");
   }
 
+  let validatedFile;
+  try {
+    validatedFile = validateDocumentUpload({
+      name: file.name,
+      contentType: file.type,
+      size: file.size,
+      header: new Uint8Array(await file.slice(0, 5).arrayBuffer()),
+    });
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Dokumentet kunne ikke valideres.");
+  }
+
   const documentId = crypto.randomUUID();
-  const storageKey = documentStorageKey(companyId, incomeYear, documentId, file.name);
+  const storageKey = documentStorageKey(companyId, incomeYear, documentId, validatedFile.name);
   const { error: uploadError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(storageKey, file, {
-    contentType: file.type || "application/octet-stream",
+    contentType: validatedFile.contentType,
     upsert: false,
   });
   if (uploadError) {
@@ -341,7 +397,7 @@ export async function uploadDocument(formData: FormData) {
     company_id: companyId,
     income_year: incomeYear,
     document_type: documentType,
-    name: file.name,
+    name: validatedFile.name,
     linked_to: linkedTo,
     status: "attached",
     retention_years: 5,
@@ -357,7 +413,7 @@ export async function uploadDocument(formData: FormData) {
     actor_id: user.id,
     category: "document",
     action: "document_uploaded",
-    message: `Dokument lastet opp: ${file.name}.`,
+    message: `Dokument lastet opp: ${validatedFile.name}.`,
   });
 
   revalidatePath("/");
@@ -1272,6 +1328,59 @@ export async function importBankCsv(formData: FormData) {
   redirect(returnTo);
 }
 
+export async function acceptBankTransactionSuggestion(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
+
+  const bankTransactionId = formString(formData, "bankTransactionId");
+  const requestedRuleId = formString(formData, "ruleId");
+  const requestedRuleVersion = formString(formData, "ruleVersion");
+  const { data: transaction, error: transactionError } = await supabase
+    .from("bank_transactions")
+    .select("id, text, amount, matched_entry_id, matched_action_id, accepted_warning")
+    .eq("id", bankTransactionId)
+    .single();
+  if (transactionError || !transaction) {
+    failTo(returnTo, transactionError?.message ?? "Fant ikke banktransaksjonen.");
+  }
+  if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
+    failTo(returnTo, bankSuggestionErrors.bank_transaction_already_reconciled);
+  }
+
+  const suggestion = suggestBankTransaction({
+    text: transaction.text,
+    amount: Number(transaction.amount),
+  });
+  if (
+    !suggestion ||
+    suggestion.ruleId !== requestedRuleId ||
+    suggestion.ruleVersion !== requestedRuleVersion
+  ) {
+    failTo(returnTo, "Forslaget er endret eller ikke lenger gyldig. Last siden på nytt.");
+  }
+
+  const { error: writeError } = await supabase.rpc("accept_bank_transaction_suggestion", {
+    p_bank_transaction_id: transaction.id,
+    p_rule_id: suggestion.ruleId,
+    p_rule_version: suggestion.ruleVersion,
+  });
+  if (writeError) {
+    failTo(returnTo, bankSuggestionWriteError(writeError.message));
+  }
+
+  revalidatePath("/");
+  redirect(returnTo === "/transactions" ? "/transactions?posted=1" : returnTo);
+}
+
 export async function recordAdminCost(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
@@ -1528,130 +1637,26 @@ export async function recordSharePurchase(formData: FormData) {
     failTo(returnTarget(formData), message);
   }
 
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    if (Number(transaction.amount) !== -payload.purchase_amount) {
-      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjekj%C3%B8pet");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = sharePurchaseLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "share_purchase",
-      memo: `Share purchase: ${payload.investment_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjekjøp")}`);
-  }
-
   const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "share_purchase",
-    action_date: payload.acquisition_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
+  const { error: writeError } = await supabase.rpc("record_share_purchase_fifo", {
+    p_action_id: actionId,
+    p_company_id: companyId,
+    p_income_year: incomeYear,
+    p_investment_key: payload.investment_key,
+    p_investment_name: payload.investment_name,
+    p_investment_kind: payload.investment_kind,
+    p_tax_treatment: payload.tax_treatment,
+    p_acquisition_date: payload.acquisition_date,
+    p_share_count: payload.share_count,
+    p_purchase_amount: payload.purchase_amount,
+    p_org_number: payload.org_number,
+    p_bank_transaction_id: bankTransactionId,
+    p_document_id: documentId,
+    p_document_status: payload.document_status,
   });
-  if (actionError) {
-    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
+  if (writeError) {
+    failTo(returnTarget(formData), investmentWriteError(writeError.message));
   }
-
-  const { data: existingPosition, error: existingPositionError } = await supabase
-    .from("investment_positions")
-    .select("id, share_count, cost_basis")
-    .eq("company_id", companyId)
-    .eq("investment_key", payload.investment_key)
-    .maybeSingle();
-  if (existingPositionError) {
-    redirect(`/workspace?error=${encodeURIComponent(existingPositionError.message)}`);
-  }
-  if (existingPosition) {
-    const { error: positionUpdateError } = await supabase
-      .from("investment_positions")
-      .update({
-        share_count: Number(existingPosition.share_count) + payload.share_count,
-        cost_basis: Number(existingPosition.cost_basis) + payload.purchase_amount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existingPosition.id);
-    if (positionUpdateError) {
-      redirect(`/workspace?error=${encodeURIComponent(positionUpdateError.message)}`);
-    }
-  } else {
-    const { error: positionInsertError } = await supabase.from("investment_positions").insert({
-      company_id: companyId,
-      investment_key: payload.investment_key,
-      name: payload.investment_name,
-      kind: payload.investment_kind,
-      tax_treatment: payload.tax_treatment,
-      org_number: payload.org_number,
-      share_count: payload.share_count,
-      cost_basis: payload.purchase_amount,
-      created_by: user.id,
-    });
-    if (positionInsertError) {
-      redirect(`/workspace?error=${encodeURIComponent(positionInsertError.message)}`);
-    }
-  }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "share_purchase_recorded",
-    message: `Aksjekjøp postert for ${payload.investment_name} i ${incomeYear}.`,
-  });
 
   revalidatePath("/");
   succeedTo(returnTarget(formData));
@@ -1676,7 +1681,7 @@ export async function recordShareSale(formData: FormData) {
   const documentId = formString(formData, "documentId") || null;
   const { data: position, error: positionError } = await supabase
     .from("investment_positions")
-    .select("id, company_id, investment_key, name, share_count, cost_basis, movements")
+    .select("id, company_id, investment_key, name, share_count, cost_basis, lot_history_status")
     .eq("id", positionId)
     .single();
   if (positionError || !position) {
@@ -1684,6 +1689,20 @@ export async function recordShareSale(formData: FormData) {
   }
   if (position.company_id !== companyId) {
     redirect("/workspace?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+  }
+  if (position.lot_history_status !== "complete") {
+    failTo(returnTarget(formData), investmentWriteErrors.lot_history_incomplete);
+  }
+
+  const { data: acquisitionLots, error: acquisitionLotsError } = await supabase
+    .from("investment_lots")
+    .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+    .eq("position_id", position.id)
+    .gt("remaining_share_count", 0)
+    .order("acquisition_date", { ascending: true })
+    .order("id", { ascending: true });
+  if (acquisitionLotsError) {
+    failTo(returnTarget(formData), investmentWriteError(acquisitionLotsError.message));
   }
 
   let payload;
@@ -1694,6 +1713,12 @@ export async function recordShareSale(formData: FormData) {
       investmentName: position.name,
       currentShareCount: Number(position.share_count),
       currentCostBasis: Number(position.cost_basis),
+      acquisitionLots: (acquisitionLots ?? []).map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: formString(formData, "saleDate"),
       soldShareCount: Number(formString(formData, "soldShareCount")),
       proceeds: Number(formString(formData, "proceeds")),
@@ -1711,117 +1736,22 @@ export async function recordShareSale(formData: FormData) {
     failTo(returnTarget(formData), message);
   }
 
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    if (Number(transaction.amount) !== payload.proceeds) {
-      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20salgsproveny");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = shareSaleLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "share_sale",
-      memo: `Share sale: ${payload.investment_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjesalg")}`);
-  }
-
   const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "share_sale",
-    action_date: payload.sale_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
+  const { error: writeError } = await supabase.rpc("record_share_sale_fifo", {
+    p_action_id: actionId,
+    p_company_id: companyId,
+    p_income_year: incomeYear,
+    p_position_id: position.id,
+    p_sale_date: payload.sale_date,
+    p_sold_share_count: payload.sold_share_count,
+    p_proceeds: payload.proceeds,
+    p_bank_transaction_id: bankTransactionId,
+    p_document_id: documentId,
+    p_document_status: payload.document_status,
   });
-  if (actionError) {
-    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
+  if (writeError) {
+    failTo(returnTarget(formData), investmentWriteError(writeError.message));
   }
-
-  const movements = Array.isArray(position.movements) ? position.movements : [];
-  const { error: positionUpdateError } = await supabase
-    .from("investment_positions")
-    .update({
-      share_count: payload.remaining_share_count,
-      cost_basis: payload.remaining_cost_basis,
-      movements: [
-        ...movements,
-        {
-          action_id: actionId,
-          movement_type: "sale",
-          movement_date: payload.sale_date,
-          share_delta: -payload.sold_share_count,
-          cost_basis_delta: -payload.cost_basis_reduction,
-          amount: payload.proceeds,
-          gain_or_loss: payload.gain_or_loss,
-        },
-      ],
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", position.id);
-  if (positionUpdateError) {
-    redirect(`/workspace?error=${encodeURIComponent(positionUpdateError.message)}`);
-  }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "share_sale_recorded",
-    message: `Aksjesalg postert for ${payload.investment_name} i ${incomeYear}.`,
-  });
 
   revalidatePath("/");
   succeedTo(returnTarget(formData));

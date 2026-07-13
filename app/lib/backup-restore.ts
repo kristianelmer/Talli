@@ -6,8 +6,11 @@ export const launchCriticalTables = [
   "opening_shareholders",
   "ledger_entries",
   "bank_transactions",
+  "bank_suggestion_acceptances",
   "holding_actions",
   "investment_positions",
+  "investment_lots",
+  "investment_lot_allocations",
   "documents",
   "filing_previews",
   "filing_submissions",
@@ -50,6 +53,10 @@ export function buildBackupManifest(archive: Record<string, any>) {
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
       auditEvents: archive.auditEvents?.length ?? 0,
+      investmentPositions: archive.investmentPositions?.length ?? 0,
+      investmentLots: archive.investmentLots?.length ?? 0,
+      investmentLotAllocations: archive.investmentLotAllocations?.length ?? 0,
+      bankSuggestionAcceptances: archive.bankSuggestionAcceptances?.length ?? 0,
     },
   };
 }
@@ -80,6 +87,10 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       reviewComments: archive.reviewComments ?? [],
       billingAccounts: archive.billingAccounts ?? [],
       auditEvents: archive.auditEvents ?? [],
+      investmentPositions: archive.investmentPositions ?? [],
+      investmentLots: archive.investmentLots ?? [],
+      investmentLotAllocations: archive.investmentLotAllocations ?? [],
+      bankSuggestionAcceptances: archive.bankSuggestionAcceptances ?? [],
     },
     warnings: missingObjectWarnings,
   };

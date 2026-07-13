@@ -60,6 +60,7 @@ export function DocumentUpload({ companyId, incomeYear, returnTo }: DocumentUplo
         <input
           name="file"
           type="file"
+          accept=".pdf,application/pdf"
           required
           onChange={(event) => setHasFile((event.target.files?.length ?? 0) > 0)}
         />

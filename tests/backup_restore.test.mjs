@@ -35,6 +35,10 @@ function archiveFixture(overrides = {}) {
     reviewComments: [{ id: "review-id", severity: "advisory" }],
     billingAccounts: [{ company_id: "source-company", filing_package_paid: true }],
     auditEvents: [{ id: "audit-id", action: "rf1086_simulated_receipt_archived" }],
+    investmentPositions: [{ id: "position-id", share_count: 50, cost_basis: 15000 }],
+    investmentLots: [{ id: "lot-id", position_id: "position-id", remaining_share_count: 50, remaining_cost_basis: 15000 }],
+    investmentLotAllocations: [{ id: "allocation-id", lot_id: "lot-id", allocated_share_count: 50, allocated_cost_basis: 5000 }],
+    bankSuggestionAcceptances: [{ id: "acceptance-id", bank_transaction_id: "bank-id", rule_id: "bank_fee" }],
     ...overrides,
   };
 }
@@ -45,6 +49,8 @@ test("backup manifest identifies launch-critical tables and object references", 
   assert.ok(manifest.launchCriticalTables.includes("annual_data"));
   assert.ok(manifest.launchCriticalTables.includes("filing_submissions"));
   assert.ok(manifest.launchCriticalTables.includes("audit_events"));
+  assert.ok(manifest.launchCriticalTables.includes("investment_lots"));
+  assert.ok(manifest.launchCriticalTables.includes("bank_suggestion_acceptances"));
   assert.deepEqual(manifest.objectReferences, [
     {
       documentId: "document-id",
@@ -68,6 +74,8 @@ test("restore fixture preserves launch-critical accounting state in isolated wor
   assert.equal(restored.restored.reviewComments[0].id, "review-id");
   assert.equal(restored.restored.billingAccounts[0].filing_package_paid, true);
   assert.equal(restored.restored.auditEvents[0].action, "rf1086_simulated_receipt_archived");
+  assert.equal(restored.restored.investmentLots[0].remaining_cost_basis, 15000);
+  assert.equal(restored.restored.bankSuggestionAcceptances[0].rule_id, "bank_fee");
   assert.equal(integrity.ok, true);
 });
 

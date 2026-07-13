@@ -2137,6 +2137,39 @@ h2 {
   justify-items: start;
 }
 
+.txSuggestion {
+  background: var(--color-info-soft);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding: var(--space-4);
+}
+
+.txSuggestionHead {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.txSuggestionLines {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: min(100%, 480px);
+}
+
+.txSuggestionLines li {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
 .txResolveTitle {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);

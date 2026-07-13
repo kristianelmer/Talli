@@ -1,8 +1,9 @@
 # Skattemelding/Næringsspesifikasjon Schema Evidence Register
 
-Status: payload builder + validation feedback loop implemented (#86, closed); evidence ready for Skatteetaten/Altinn3 test flow  
+Status: deterministic XML candidate validates against pinned official XSDs; live adapters remain disabled
+
 Research date: 2026-06-16  
-Last updated: 2026-06-27  
+Last updated: 2026-07-13
 Target launch filing: 2025 income-year `skattemelding` for simple Norwegian holding AS  
 Target issue: #86 (payload + validation, closed) / #87 (test-environment submission flow)  
 Official source snapshot: Skatteetaten `skattemeldingen` repository tag `v1.62.47`, commit `7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba`
@@ -54,20 +55,29 @@ Implementation consequence:
 
 ## Candidate Mapping for Simple Holding AS
 
-These mappings are evidence-backed candidates for issue #86. They are not yet production-valid until an XML fixture validates against the official XSD and Skatteetaten validation service.
+These mappings are evidence-backed candidates for issue #86. On 2026-07-13 the
+builder was corrected to use the generic v6 occurrence structure (`id`, `type`,
+and nested `beloep`) rather than semantic paths that do not exist in the 2025
+XSD. Representative rendered documents now validate locally against the pinned
+official XSD snapshot. They are not production-valid until accepted by the
+Skatteetaten validation service and TT02 submission flow.
 
 | Talli concept | Authority surface | Candidate path/code | Evidence file | Decision |
 | --- | --- | --- | --- | --- |
 | Company/org/year | Skattemelding AS | root `skattemelding.partsnummer`, `skattemelding.inntektsaar` | `skattemeldingUpersonlig_v5_ekstern.xsd` | Candidate |
 | Dividend/security positions from Aksjonærregisteret | Skattemelding AS | `spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret.*` with `utbytte`, `erOmfattetAvFritaksmetoden`, gain/loss fields | `skattemeldingUpersonlig_v5_ekstern.xsd`, `tekster_upersonlig.json` | Candidate for holdings in Aksjonærregisteret |
 | Non-register shares | Skattemelding AS | `spesifikasjonAvForholdRelevanteForBeskatning.aksjeIkkeIAksjonaerregisteret.*` with `utbytte`, `erOmfattetAvFritaksmetoden` | `skattemeldingUpersonlig_v5_ekstern.xsd`, `tekster_upersonlig.json` | Escalate unless public/security evidence is clear |
-| Bank balance | Næringsspesifikasjon | `balanseregnskap` using `resultatregnskapOgBalanse` code `1920` (`Bankinnskudd`) | `2025_resultatregnskapOgBalanse.xml` | Candidate |
-| Positive equity / retained earnings | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital.beloep`, code `2050` (`Positiv egenkapital`) | `2025_resultatregnskapOgBalanse.xml`, `tekster_naering.json` | Candidate |
-| Short-term bank debt | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld.beloep`, code `2380` | `2025_resultatregnskapOgBalanse.xml`, `tekster_naering.json` | Candidate |
-| Other short-term debt/shareholder payable | Næringsspesifikasjon | code `2990` (`Annen kortsiktig gjeld`) | `2025_resultatregnskapOgBalanse.xml` | Candidate, but shareholder/intercompany loans remain escalation |
-| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad.beloep`, code `7700` (`Andre kostnader`) or more specific 2025 result/balance code where available | `naeringsspesifikasjon_v6_ekstern.xsd`, `tekster_naering.json`, `2025_resultatregnskapOgBalanse.xml` | Candidate; use narrow supported categories only |
-| Dividend income / other investment income | Næringsspesifikasjon | code `8090` (`Inntekt av andre investeringer/utbytte`) where business-spec result line is needed | `2025_resultatregnskapOgBalanse.xml` | Candidate |
-| Fritaksmetoden 3 percent add-back | Næringsspesifikasjon | `permanentForskjell` with `permanentForskjellstype=skattepliktigDelAvUtbytterOgUtdelinger`; code-list text: 3 percent of net tax-free income under exemption method | `2025_permanentForskjellstype.xml` | Candidate |
+| Non-market shares | Næringsspesifikasjon | `balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi[*]`, code `1800` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
+| Bank balance | Næringsspesifikasjon | `balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi[*]`, code `1920` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
+| Share capital / retained earnings | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital[*]`, codes `2000` and `2050` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate |
+| Other short-term debt | Næringsspesifikasjon | `balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld[*]`, code `2990` | v6 XSD + `2025_resultatregnskapOgBalanse.xml` | Candidate; related-party cases remain escalation |
+| Admin costs | Næringsspesifikasjon | `resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[*]` with exact supported codes such as `6700`, `6420`, `7770`, `7790` | v6 XSD + 2025 result/balance code list | Candidate; narrow supported categories only |
+| Deposit interest | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8050` (`Annen renteinntekt`) | v6 XSD + 2025 result/balance code list | Ordinary taxable income candidate |
+| Dividend income | Næringsspesifikasjon | `resultatregnskap.finansinntekt.inntekt[*]`, code `8090` | v6 XSD + 2025 result/balance code list | Candidate |
+| Share-sale gain/loss | Næringsspesifikasjon | finance occurrences using codes `8074` and `8174` | v6 XSD + 2025 result/balance code list | Candidate only for action rows explicitly classified `fritaksmetoden` |
+| Dividend reversal | Næringsspesifikasjon | `forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[*]`, type `tilbakefoeringAvInntektsfoertUtbytte` | v6 XSD + 2025 permanent-difference code list | Candidate |
+| Fritaksmetoden 3 percent add-back | Næringsspesifikasjon | same occurrence shape, type `skattepliktigDelAvUtbytterOgUtdelinger` | v6 XSD + 2025 permanent-difference code list | Candidate |
+| Exempt share gain / non-deductible share loss | Næringsspesifikasjon | types `regnskapsmessigGevinstVedRealisasjonAvFinansielleInstrumenter` and `regnskapsmessigTapVedRealisasjonAvFinansielleInstrumenter` | v6 XSD + 2025 permanent-difference code list | Candidate |
 | Taxable dividend outside exemption method | Næringsspesifikasjon | `permanentForskjellstype=skattepliktigUtbyttePaaAksjerMv` | `2025_permanentForskjellstype.xml` | Unsupported for launch unless accountant-reviewed |
 | Owner dividend/equity movement | Næringsspesifikasjon | `egenkapitalendringstype=avsattEllerForventetUtbytte`, `tilleggsutbytte`, `ekstraordinaertUtbytte` when applicable | `2025_egenkapitalendringstype.xml` | Candidate for later; launch tax-return payload should block owner-dividend complexity |
 | No-activity AS | Skattemelding + Næringsspesifikasjon | Minimal valid documents with org/year, required `virksomhet`, `skalBekreftesAvRevisor=false`, zero result/balance where valid | XSD roots plus validation service | Candidate only after validation fixture |
@@ -89,30 +99,43 @@ Warn/escalate before submission:
 - Missing supporting document for dividend decision/payment, security purchase/sale, or material admin cost.
 - Difference between Talli calculated 3 percent add-back and Skatteetaten validation/pre-filled draft.
 
-## Next Implementation Slice
+## Tax Reconciliation Decision (2026-07-13)
 
-Issue #86 built (closed):
+For the supported simple holding case, Talli starts with accounting result and
+applies explicit permanent differences: reverse booked exempt dividends, add
+the 3 percent inclusion, subtract booked exempt share gains, and add back booked
+non-deductible share losses. Ordinary deposit interest remains in the basis and
+narrow supported operating costs reduce it.
 
-1. A 2025-only payload builder using `skattemeldingUpersonlig_v5_ekstern.xsd` and `naeringsspesifikasjon_v6_ekstern.xsd`.
-2. XML fixture generation for no-activity and ordinary holding activity.
-3. Local XSD validation against the official XSDs.
-4. A disabled Skatteetaten validation adapter that persists validation feedback into `filing_submissions.feedback_items`.
-5. Readiness blocks for every unsupported case listed above.
+Sources:
 
-## Code Gate Verification (2026-06-27)
+- Skatteetaten, fritaksmetoden: https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/aksjer/fritaksmetoden/
+- Skatte-ABC, 3 percent inclusion independent of actual cost deductions: https://www.skatteetaten.no/rettskilder/type/handboker/skatte-abc/skatte-abc-2024-2025/f-32-fritaksmetoden/F-32.049/F-32.050/
+- Skatte-ABC, costs related to shares and the exemption method: https://www.skatteetaten.no/rettskilder/type/handboker/skatte-abc/gjeldende/a-7-aksjeselskap-mv.--allment/A-7.034/A-7.039/
+
+## Remaining Implementation Slice
+
+1. Vendor the exact official 2025 XSD dependency set or fetch it by verified
+   checksum in CI, then validate representative fixtures locally.
+2. Implement the Skatteetaten validation and Altinn3 adapters behind the
+   disabled production interface.
+3. Persist structured official feedback, signing handoff, receipt, and archive
+   references from a TT02 run.
+4. Obtain the required named authority/security signoffs.
+
+## Code Gate Verification (2026-07-13)
 
 Latest run of the skattemelding/tax-return code-side evidence (all green):
 
 | Suite | Result |
 | --- | --- |
-| `npm run test:company-tax-return` | 5 passed |
+| `npm run test:company-tax-return` | 6 passed |
+| `TALLI_SKATTE_XSD_DIR=<official-v1.62.47>/src/resources/xsd npm run test:company-tax-return-xml` | 2 passed, including both official XSD validations |
 | `node --experimental-strip-types --test tests/tax_settlement.test.mjs` | 4 passed |
-| `uv run python -m unittest tests.test_annual tests.test_annual_validation` (tax settlement + validation) | 12 passed |
+| `uv run python -m unittest tests.test_annual tests.test_annual_validation` (tax settlement + validation) | 13 passed |
 
-This proves the deterministic 2025 payload, tax-settlement, and validation-feedback
-logic is ready for the Skatteetaten/Altinn3 test flow. It does not substitute for the
-remaining external work for #87: running the official test flow with Talli credentials,
-delegated rights, and a supported AS test subject; persisting official feedback/receipt/
-archive references; and the approved `tax_return_authority` launch signoff. Those keep
-`buildFilingReleaseGates` fail-closed for `skattemelding`.
-
+This proves the deterministic 2025 calculation, leaf-field mapping, XML ordering,
+and local XSD validity for the representative supported fixture. It does not
+prove authority-service acceptance or production submission. The live adapter,
+TT02 validation/signing/receipt/archive evidence, and approved
+`tax_return_authority` signoff keep `buildFilingReleaseGates` fail-closed.

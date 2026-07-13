@@ -26,7 +26,7 @@ export function buildAnnualAccountsPayload(input: {
   ledgerEntries: LedgerEntryRow[];
 }) {
   const totals = ledgerTotals(input.ledgerEntries);
-  const resultBeforeTax = round(totals.dividendIncome - totals.adminCosts);
+  const resultBeforeTax = round(totals.financialIncome - totals.adminCosts - totals.financialCosts);
   const retained = round(totals.retainedEarnings + resultBeforeTax);
   const sumEquity = round(totals.shareCapital + retained);
   const sumAssets = round(totals.investmentBalance + totals.bankBalance);
@@ -46,7 +46,8 @@ export function buildAnnualAccountsPayload(input: {
       field("regnskapsslutt", "17104", `${input.incomeYear}-12-31`, "calendar_year"),
       field("valuta", "34984", "NOK", "launch_currency"),
       field("sumDriftskostnad/aarets", "17126", totals.adminCosts, "ledger.expense_accounts"),
-      field("sumFinansinntekter/aarets", "153", totals.dividendIncome, "ledger.8070"),
+      field("sumFinansinntekter/aarets", "153", totals.financialIncome, "ledger.8070_8050"),
+      field("sumFinanskostnader/aarets", "17130", totals.financialCosts, "ledger.8090"),
       field("resultatFoerSkattekostnad/aarets", "167", resultBeforeTax, "derived"),
       field("aarsresultat/aarets", "172", resultBeforeTax, "derived"),
       field("investeringAksjerAndeler/aarets", "7100", totals.investmentBalance, "ledger.1800"),
@@ -92,8 +93,9 @@ function ledgerTotals(entries: LedgerEntryRow[]) {
   return {
     bankBalance: accountBalance(entries, "1920"),
     investmentBalance: accountBalance(entries, "1800"),
-    adminCosts: debitTotal(entries, new Set(["7770", "6705", "6420", "7790", "6720", "7795"])),
-    dividendIncome: accountCreditBalance(entries, "8070"),
+    adminCosts: debitTotal(entries, new Set(["7770", "6700", "6705", "6420", "7790", "6720", "7795"])),
+    financialIncome: round(accountCreditBalance(entries, "8070") + accountCreditBalance(entries, "8050")),
+    financialCosts: debitTotal(entries, new Set(["8090"])),
     shareCapital: accountCreditBalance(entries, "2000"),
     retainedEarnings: accountCreditBalance(entries, "2050"),
     shortTermDebt: accountCreditBalance(entries, "2255"),

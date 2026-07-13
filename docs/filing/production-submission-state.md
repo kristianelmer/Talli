@@ -1,6 +1,7 @@
 # Production Submission State
 
-Status: design baseline for direct filing  
+Status: state model implemented; every production transport adapter remains disabled
+
 Applies to: `aksjonærregisteroppgaven`, `årsregnskap`, `skattemelding for AS`
 
 Production filing is not a single button that sends a payload. It is a state machine with explicit user authority, preview confirmation, idempotent API calls, feedback handling, receipt storage, and billing gates.
@@ -28,6 +29,7 @@ stateDiagram-v2
 Production API calls require:
 
 - Filing readiness status is `ready`.
+- The obligation-specific production adapter is implemented and enabled.
 - Case is inside Talli support boundary.
 - User has confirmed authority to submit for the company.
 - User has reviewed and confirmed the final filing preview.
@@ -71,3 +73,13 @@ For every successful production filing, archive:
 - User confirmations.
 
 Implementation anchor: `holding_core.submission`.
+
+Adapter and release anchors:
+
+- `app/lib/authority-adapters.ts` defines the transport plans and reports all
+  current production capabilities as unimplemented/disabled.
+- `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
+  `production_adapter_disabled` even if permissions, evidence, billing, MFA,
+  and human signoff records are otherwise present.
+- `docs/filing/authority-adapter-plans.md` records the external steps and the
+  evidence required to enable an adapter.

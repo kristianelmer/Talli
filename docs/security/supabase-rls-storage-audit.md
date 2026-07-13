@@ -16,7 +16,7 @@ Run against a non-production Supabase project:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DIRECT_DATABASE_URL` or `DATABASE_URL`
 
-The test applies `supabase/migrations/0001_authenticated_workspace.sql`, creates
+The test applies every SQL file in `supabase/migrations/` in lexical order, creates
 temporary confirmed users, signs in through the anon client, exercises RLS as
 owner/reviewer/read-only/outsider, then removes the created company and users.
 
@@ -44,6 +44,13 @@ review. It should be run against staging after every schema/RLS change.
 - Signed document URL generation is denied for non-members by Storage RLS.
 - `step_up_events` are user-scoped: users can read/create only their own
   MFA/step-up events, and cross-user events are denied.
+- Investment positions and FIFO lots are readable by members but can only be
+  mutated by the atomic purchase/sale functions; outsiders cannot call those
+  functions for the company.
+- Bank suggestions can only be accepted by an owner through the atomic
+  acceptance function. Direct acceptance writes are revoked, the database
+  revalidates rule/version/direction/ambiguity, and outsiders cannot read or
+  accept another company's suggestion.
 
 ## Interpretation
 

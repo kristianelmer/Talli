@@ -1066,6 +1066,12 @@ export const ownerCopy = {
       countLabel: (n: number) => `${n} til avstemming`,
       incoming: "Innbetaling",
       outgoing: "Utbetaling",
+      suggestionBadge: "Forslag",
+      suggestionTitle: "Talli foreslår denne posteringen",
+      suggestionHint:
+        "Kontroller kontoene og beløpet. Ingenting bokføres før du godkjenner.",
+      suggestionCta: "Godkjenn og avstem",
+      suggestionPending: "Godkjenner …",
       resolveCostTitle: "Bokfør som kostnad",
       resolveCostHint: "Gebyrer, regnskap, programvare og lignende.",
       resolveActionTitle: "Registrer som handling",
@@ -1126,7 +1132,7 @@ export const ownerCopy = {
       } as Record<string, string>,
       fileLabel: "Fil",
       fileHint:
-        "Filen lagres privat for selskapet og kan bare lastes ned av deg.",
+        "PDF, maks 10 MB. Filen lagres privat for selskapet og kan bare lastes ned av deg.",
       chooseFile: "Velg en fil for å laste opp",
       cta: "Last opp",
       pending: "Laster opp …",

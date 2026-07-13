@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { FilingPreviewRow } from "./supabase/server";
+import { resolveTalliPythonBinary } from "./python-runtime.ts";
 
 export type Rf1086SubmissionResult = {
   filing: string;
@@ -179,11 +180,13 @@ export function rf1086SubmittedPayloadSnapshot(preview: FilingPreviewRow): Rf108
 }
 
 export function productionRf1086AdapterEnabled() {
-  return process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER === "true";
+  // No live HTTP adapter exists yet. An environment variable must never turn
+  // the simulation bridge into something the product reports as production.
+  return false;
 }
 
 export function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterRequest): Rf1086SubmissionResult {
-  if (request.mode === "production" && !productionRf1086AdapterEnabled()) {
+  if (request.mode === "production") {
     throw new Rf1086ProductionAdapterDisabledError();
   }
   return simulateRf1086SubmissionWithPython(request.preview, request.userId, request.confirmations);
@@ -202,7 +205,7 @@ export function simulateRf1086SubmissionWithPython(
     throw new Error("RF-1086 forhåndsvisning mangler hovedskjema XML.");
   }
 
-  const python = process.env.TALLI_PYTHON_BIN || "python3";
+  const python = resolveTalliPythonBinary();
   const result = spawnSync(python, ["-m", "holding_cli.main", "simulate-rf1086-submission", "--stdin-json"], {
     input: JSON.stringify({
       preview_id: preview.id,

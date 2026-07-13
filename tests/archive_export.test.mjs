@@ -125,6 +125,66 @@ test("builds company-year archive from persisted workspace rows", () => {
         created_at: "2026-01-02T00:00:00Z",
       },
     ],
+    investmentPositions: [
+      {
+        id: "position-id",
+        company_id: "company-id",
+        investment_key: "portfolio-as",
+        name: "Portfolio AS",
+        kind: "norwegian_private_company",
+        tax_treatment: "fritaksmetoden",
+        org_number: "999888777",
+        share_count: 50,
+        cost_basis: 15000,
+        lot_history_status: "complete",
+        movements: [],
+        created_by: "owner",
+        created_at: "2025-01-01T00:00:00Z",
+        updated_at: "2025-03-01T00:00:00Z",
+      },
+    ],
+    investmentLots: [
+      {
+        id: "lot-id",
+        company_id: "company-id",
+        position_id: "position-id",
+        acquisition_action_id: "purchase-action-id",
+        acquisition_date: "2025-01-01",
+        original_share_count: 100,
+        remaining_share_count: 50,
+        original_cost_basis: 30000,
+        remaining_cost_basis: 15000,
+        created_by: "owner",
+        created_at: "2025-01-01T00:00:00Z",
+      },
+    ],
+    investmentLotAllocations: [
+      {
+        id: "allocation-id",
+        company_id: "company-id",
+        position_id: "position-id",
+        lot_id: "lot-id",
+        sale_action_id: "sale-action-id",
+        allocated_share_count: 50,
+        allocated_cost_basis: 15000,
+        created_by: "owner",
+        created_at: "2025-03-01T00:00:00Z",
+      },
+    ],
+    bankSuggestionAcceptances: [
+      {
+        id: "acceptance-id",
+        company_id: "company-id",
+        bank_transaction_id: "bank-id",
+        ledger_entry_id: "ledger-id",
+        rule_id: "bank_fee",
+        rule_version: "2026-07-13.1",
+        reason: "Bankgebyr",
+        lines: [],
+        accepted_by: "owner",
+        accepted_at: "2025-03-01T00:00:00Z",
+      },
+    ],
     billingAccounts: [
       {
         company_id: "company-id",
@@ -265,6 +325,10 @@ test("builds company-year archive from persisted workspace rows", () => {
   assert.equal(archive.taxSettlements[0].ledgerEntryId, "tax-ledger-id");
   assert.equal(archive.taxSettlements[0].document.id, "tax-document-id");
   assert.equal(archive.taxSettlementLedgerEntries[0].entry_type, "tax_settlement");
+  assert.equal(archive.investmentPositions[0].lot_history_status, "complete");
+  assert.equal(archive.investmentLots[0].remaining_cost_basis, 15000);
+  assert.equal(archive.investmentLotAllocations[0].sale_action_id, "sale-action-id");
+  assert.equal(archive.bankSuggestionAcceptances[0].rule_id, "bank_fee");
   assert.equal(archive.billingAccounts[0].pricing_plan, "founder");
   assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
   assert.equal(archive.reviewComments[0].id, "review-id");

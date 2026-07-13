@@ -1,7 +1,8 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: payload builder implemented; evidence ready for TT02 test-environment submission  
-Last updated: 2026-06-27  
+Status: payload candidate implemented; production adapter disabled pending TT02
+
+Last updated: 2026-07-13
 Target issue: #82 (payload map, closed) / #84 (test-environment submission flow)
 
 This register records the public evidence Talli can use to build a narrow
@@ -68,8 +69,8 @@ Talli launch decision:
 | --- | --- | ---: | --- |
 | Currency | `valuta` | `34984` | Supported as `NOK` only. |
 | Admin/operating costs | `sumDriftskostnad/aarets` | `17126` | Supported from ledger expense totals; detail rows can follow later. |
-| Dividend/gain financial income | `sumFinansinntekter/aarets` | `153` | Supported for aggregate financial income preview; detailed classification remains conservative. |
-| Financial costs | `sumFinanskostnader/aarets` | `17130` | Supported as zero or simple finance-cost aggregate. |
+| Dividend/gain/interest financial income | `sumFinansinntekter/aarets` | `153` | Supported from internal accounts `8070` and `8050`; detailed authority classification remains conservative. |
+| Financial costs | `sumFinanskostnader/aarets` | `17130` | Supported for the launch share-sale loss aggregate from internal account `8090`. |
 | Result before tax | `resultatFoerSkattekostnad/aarets` | `167` | Derived from ledger totals. |
 | Annual result | `aarsresultat/aarets` | `172` | Derived after tax settlement, if known; otherwise block production. |
 | Investments in subsidiaries | `investeringDatterselskap/aarets` | `9686` | Supported for owned subsidiary shares when classification is clear. |
@@ -141,15 +142,17 @@ Block or escalate:
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.
 - Complete human release signoff.
+- Implement and enable the real Altinn3 adapter; the current adapter is an
+  explicit fail-closed seam only.
 
-## Code Gate Verification (2026-06-27)
+## Code Gate Verification (2026-07-13)
 
 Latest run of the annual-accounts code-side evidence (all green):
 
 | Suite | Result |
 | --- | --- |
-| `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 12 passed |
-| `npm run test:annual-accounts` | 3 passed |
+| `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 13 passed |
+| `npm run test:annual-accounts` | 4 passed |
 | `npm run test:annual-data` | 2 passed |
 | `npm run test:annual-readiness` | 5 passed |
 | `npm run test:authority-evidence` | 4 passed |

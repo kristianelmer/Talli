@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 from typing import Annotated, Literal
+import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from holding_core.ledger import DraftEntry, LedgerLine
+from holding_core.investment_lots import AcquisitionLot, LotAllocation, allocate_fifo_share_sale
 
 
 Money = Annotated[float, Field(ge=0)]
@@ -125,11 +127,14 @@ class InvestmentPosition(BaseModel):
     share_count: Money = 0
     ownership_percent: Money | None = None
     cost_basis: Money
+    acquisition_lots: tuple[AcquisitionLot, ...] = ()
 
     @model_validator(mode="after")
     def validate_supported_tax_treatment(self) -> "InvestmentPosition":
         if self.tax_treatment == TaxTreatment.NEEDS_ACCOUNTANT:
             raise ValueError("unclear investment tax treatment needs accountant review")
+        if int(self.share_count) != self.share_count:
+            raise ValueError("share count must be a whole number")
         return self
 
 
@@ -178,6 +183,7 @@ class SharePurchaseInput(BaseModel):
     org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
     currency: Literal["NOK"] = "NOK"
     consideration_type: Literal["cash"] = "cash"
+    purchase_reference: str | None = None
 
     @model_validator(mode="after")
     def validate_supported_purchase(self) -> "SharePurchaseInput":
@@ -185,6 +191,8 @@ class SharePurchaseInput(BaseModel):
             raise ValueError("unclear share purchase tax treatment needs accountant review")
         if not self.share_count and self.ownership_percent is None:
             raise ValueError("share purchase requires share count or ownership percent")
+        if int(self.share_count) != self.share_count or self.share_count <= 0:
+            raise ValueError("share purchase requires a positive whole share count")
         return self
 
 
@@ -205,6 +213,7 @@ class ShareSaleInput(BaseModel):
     proceeds: Money
     bank_matched: bool
     document_status: DocumentStatus
+    acquisition_lots: tuple[AcquisitionLot, ...] = ()
     currency: Literal["NOK"] = "NOK"
     consideration_type: Literal["cash"] = "cash"
 
@@ -214,6 +223,8 @@ class ShareSaleInput(BaseModel):
             raise ValueError("unclear share sale tax treatment needs accountant review")
         if self.sold_share_count <= 0:
             raise ValueError("share sale requires sold shares")
+        if int(self.sold_share_count) != self.sold_share_count:
+            raise ValueError("sold share count must be a whole number")
         if self.sold_share_count > self.position.share_count:
             raise ValueError("share sale cannot sell more shares than the recorded position")
         return self
@@ -224,7 +235,10 @@ class ShareSaleResult(BaseModel):
 
     entry: DraftEntry
     updated_position: InvestmentPosition
+    cost_basis_reduction: float
     gain_or_loss: float
+    lot_allocations: tuple[LotAllocation, ...]
+    updated_lots: tuple[AcquisitionLot, ...]
 
 
 class ShareholderDividendAllocation(BaseModel):
@@ -338,6 +352,28 @@ def build_dividend_received(data: DividendReceivedInput) -> DividendReceivedResu
 
 
 def build_share_purchase(data: SharePurchaseInput) -> SharePurchaseResult:
+    lot_id = data.purchase_reference or str(
+        uuid.uuid5(
+            uuid.NAMESPACE_URL,
+            ":".join(
+                (
+                    data.company_id,
+                    data.investment_id,
+                    data.acquisition_date.isoformat(),
+                    str(data.share_count),
+                    str(data.purchase_amount),
+                )
+            ),
+        )
+    )
+    acquisition_lot = AcquisitionLot(
+        id=lot_id,
+        acquisition_date=data.acquisition_date,
+        original_share_count=int(data.share_count),
+        remaining_share_count=int(data.share_count),
+        original_cost_basis=data.purchase_amount,
+        remaining_cost_basis=data.purchase_amount,
+    )
     position = InvestmentPosition(
         id=data.investment_id,
         company_id=data.company_id,
@@ -348,6 +384,7 @@ def build_share_purchase(data: SharePurchaseInput) -> SharePurchaseResult:
         share_count=data.share_count,
         ownership_percent=data.ownership_percent,
         cost_basis=data.purchase_amount,
+        acquisition_lots=(acquisition_lot,),
     )
     entry = DraftEntry(
         company_id=data.company_id,
@@ -369,12 +406,24 @@ def build_share_purchase(data: SharePurchaseInput) -> SharePurchaseResult:
 
 
 def build_share_sale(data: ShareSaleInput) -> ShareSaleResult:
-    cost_reduction = round(data.position.cost_basis * (data.sold_share_count / data.position.share_count), 2)
+    lots = data.acquisition_lots or data.position.acquisition_lots
+    fifo = allocate_fifo_share_sale(
+        lots=lots,
+        sale_date=data.sale_date,
+        sold_share_count=int(data.sold_share_count),
+    )
+    if (
+        fifo.remaining_share_count + data.sold_share_count != data.position.share_count
+        or round(fifo.remaining_cost_basis + fifo.cost_basis_reduction, 2) != round(data.position.cost_basis, 2)
+    ):
+        raise ValueError("lot_position_mismatch: acquisition lots do not match the investment position")
+    cost_reduction = fifo.cost_basis_reduction
     gain_or_loss = round(data.proceeds - cost_reduction, 2)
     updated_position = data.position.model_copy(
         update={
             "share_count": data.position.share_count - data.sold_share_count,
-            "cost_basis": round(data.position.cost_basis - cost_reduction, 2),
+            "cost_basis": fifo.remaining_cost_basis,
+            "acquisition_lots": fifo.updated_lots,
         }
     )
     lines = [
@@ -399,7 +448,14 @@ def build_share_sale(data: ShareSaleInput) -> ShareSaleResult:
         ),
         lines=lines,
     )
-    return ShareSaleResult(entry=entry, updated_position=updated_position, gain_or_loss=gain_or_loss)
+    return ShareSaleResult(
+        entry=entry,
+        updated_position=updated_position,
+        cost_basis_reduction=cost_reduction,
+        gain_or_loss=gain_or_loss,
+        lot_allocations=fifo.allocations,
+        updated_lots=fifo.updated_lots,
+    )
 
 
 def build_dividend_to_owner(data: DividendToOwnerInput) -> DividendToOwnerResult:

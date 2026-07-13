@@ -9,6 +9,7 @@ import {
   shareSaleLedgerLines,
   validateShareSale,
 } from "../../../lib/share-sale";
+import type { ShareAcquisitionLot } from "../../../lib/share-lots";
 import { ActionPreview, formatKr, type LedgerLine } from "./ActionPreview";
 import { DocStatusSelect, SelectField, TextField } from "./fields";
 
@@ -18,6 +19,8 @@ export type SalePosition = {
   name: string;
   share_count: number;
   cost_basis: number;
+  lot_history_status: "complete" | "needs_reconstruction";
+  acquisition_lots: ShareAcquisitionLot[];
 };
 
 type Props = {
@@ -29,7 +32,9 @@ type Props = {
 export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
   const a = ownerCopy.actions;
   const c = a.shareSale;
-  const sellable = positions.filter((position) => position.share_count > 0);
+  const sellable = positions.filter(
+    (position) => position.share_count > 0 && position.lot_history_status === "complete",
+  );
 
   const [positionId, setPositionId] = useState("");
   const [saleDate, setSaleDate] = useState("");
@@ -57,6 +62,7 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
         investmentName: selected.name,
         currentShareCount: selected.share_count,
         currentCostBasis: selected.cost_basis,
+        acquisitionLots: selected.acquisition_lots,
         saleDate,
         soldShareCount: Number(soldShareCount),
         proceeds: Number(proceeds),

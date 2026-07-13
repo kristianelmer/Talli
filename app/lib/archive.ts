@@ -1,5 +1,6 @@
 import type {
   AuthorityPermissionRow,
+  BankSuggestionAcceptanceRow,
   BillingAccountRow,
   CompanyWorkspaceRow,
   DocumentRow,
@@ -7,6 +8,9 @@ import type {
   FilingReviewCommentRow,
   FilingSubmissionRow,
   HoldingActionRow,
+  InvestmentLotAllocationRow,
+  InvestmentLotRow,
+  InvestmentPositionRow,
   OpeningBalanceSetupRow,
   OpeningShareholderRow,
 } from "./supabase/server";
@@ -41,6 +45,10 @@ export function buildPersistedCompanyArchive(input: {
   ledgerEntries: LedgerEntryRow[];
   documents: DocumentRow[];
   holdingActions?: HoldingActionRow[];
+  investmentPositions?: InvestmentPositionRow[];
+  investmentLots?: InvestmentLotRow[];
+  investmentLotAllocations?: InvestmentLotAllocationRow[];
+  bankSuggestionAcceptances?: BankSuggestionAcceptanceRow[];
   billingAccounts?: BillingAccountRow[];
   authorityPermissions?: AuthorityPermissionRow[];
   auditEvents?: AuditEventArchiveRow[];
@@ -104,6 +112,10 @@ export function buildPersistedCompanyArchive(input: {
         : null,
     })),
     taxSettlementLedgerEntries: input.ledgerEntries.filter((entry) => taxSettlementLedgerIds.has(entry.id)),
+    investmentPositions: input.investmentPositions ?? [],
+    investmentLots: input.investmentLots ?? [],
+    investmentLotAllocations: input.investmentLotAllocations ?? [],
+    bankSuggestionAcceptances: input.bankSuggestionAcceptances ?? [],
     billingAccounts: input.billingAccounts ?? [],
     authorityPermissions: input.authorityPermissions ?? [],
     auditEvents: input.auditEvents ?? [],

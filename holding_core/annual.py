@@ -90,7 +90,7 @@ class AnnualData(BaseModel):
 
     @property
     def admin_costs(self) -> float:
-        cost_accounts = {"7770", "6705", "6420", "7790", "6720", "7795"}
+        cost_accounts = {"7770", "6700", "6705", "6420", "7790", "6720", "7795"}
         return round(
             sum(line.debit for entry in self.posted_entries for line in entry.lines if line.account in cost_accounts),
             2,
@@ -99,6 +99,21 @@ class AnnualData(BaseModel):
     @property
     def dividend_income(self) -> float:
         return self.account_credit_balance("8070")
+
+    @property
+    def interest_income(self) -> float:
+        return self.account_credit_balance("8050")
+
+    @property
+    def financial_income(self) -> float:
+        return round(self.dividend_income + self.interest_income, 2)
+
+    @property
+    def financial_costs(self) -> float:
+        return round(
+            sum(line.debit for entry in self.posted_entries for line in entry.lines if line.account == "8090"),
+            2,
+        )
 
     @property
     def shareholder_loan_payable(self) -> float:
@@ -118,7 +133,7 @@ class AnnualData(BaseModel):
 
     @property
     def result_before_tax(self) -> float:
-        return round(self.dividend_income - self.admin_costs, 2)
+        return round(self.financial_income - self.admin_costs - self.financial_costs, 2)
 
     @property
     def fritaksmetoden_add_back(self) -> float:
@@ -262,8 +277,9 @@ def simulate_annual_accounts(data: AnnualData) -> FilingSimulation:
             f"- Aksjonærlån: {_money(data.shareholder_loan_payable)}",
             "",
             "Resultat:",
-            f"- Utbytte/gevinster: {_money(data.dividend_income)}",
+            f"- Finansinntekter: {_money(data.financial_income)}",
             f"- Administrasjonskostnader: {_money(data.admin_costs)}",
+            f"- Finanskostnader: {_money(data.financial_costs)}",
             f"- Resultat før skatt: {_money(data.result_before_tax)}",
             "",
             "Noter/vedlegg:",
@@ -300,8 +316,8 @@ def build_annual_accounts_payload(data: AnnualData) -> AnnualAccountsPayload:
 
 def simulate_tax_return(data: AnnualData) -> FilingSimulation:
     readiness = assess_tax_return_readiness(data)
-    estimated_tax_basis = round(data.admin_costs + data.fritaksmetoden_add_back, 2)
-    estimated_tax = round(estimated_tax_basis * 0.22, 2)
+    estimated_tax_basis = round(data.interest_income - data.admin_costs + data.fritaksmetoden_add_back, 2)
+    estimated_tax = round(max(0, estimated_tax_basis) * 0.22, 2)
     preview = "\n".join(
         [
             f"Skattemelding for AS {data.income_year}",
@@ -439,8 +455,8 @@ def _rr0002_fields(data: AnnualData) -> list[Rr0002Field]:
         _field("aarsregnskapIkkeRevideres", "34669", "ja" if not data.audit_required else "nei", "annual_accounts.audit_required"),
         _field("valuta", "34984", "NOK", "launch_currency"),
         _field("sumDriftskostnad/aarets", "17126", data.admin_costs, "ledger.expense_accounts"),
-        _field("sumFinansinntekter/aarets", "153", data.dividend_income, "ledger.8070"),
-        _field("sumFinanskostnader/aarets", "17130", 0, "launch_scope"),
+        _field("sumFinansinntekter/aarets", "153", data.financial_income, "ledger.8070_8050"),
+        _field("sumFinanskostnader/aarets", "17130", data.financial_costs, "ledger.8090"),
         _field("resultatFoerSkattekostnad/aarets", "167", result_before_tax, "derived"),
         _field("aarsresultat/aarets", "172", annual_result, "derived"),
         _field("investeringAksjerAndeler/aarets", "7100", data.investment_balance, "ledger.1800"),

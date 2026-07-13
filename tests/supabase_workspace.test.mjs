@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -41,8 +41,8 @@ import {
 } from "../app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
 import { assertStepUpAllowed, stepUpContextFromEvent } from "../app/lib/security.ts";
-import { sharePurchaseLedgerLines, validateSharePurchase } from "../app/lib/share-purchase.ts";
-import { shareSaleLedgerLines, validateShareSale } from "../app/lib/share-sale.ts";
+import { validateSharePurchase } from "../app/lib/share-purchase.ts";
+import { validateShareSale } from "../app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
 import {
   estimateAnnualTax,
@@ -75,14 +75,19 @@ function hasRequiredEnv() {
 }
 
 async function applyMigration() {
-  const sql = await readFile("supabase/migrations/0001_authenticated_workspace.sql", "utf8");
+  const migrationFiles = (await readdir("supabase/migrations"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
   const client = new pg.Client({
     ...getDatabaseConfig(),
     ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   try {
-    await client.query(sql);
+    for (const migrationFile of migrationFiles) {
+      const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
+      await client.query(sql);
+    }
   } finally {
     await client.end();
   }
@@ -1233,6 +1238,106 @@ test(
     assert.ifError(outsiderBankError);
     assert.deepEqual(outsiderBankTransactions, []);
 
+    const { data: suggestedBankTransaction, error: suggestedBankTransactionError } = await owner
+      .from("bank_transactions")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        transaction_date: "2025-02-01",
+        text: "Årsgebyr bedriftskonto",
+        amount: -50,
+        source_hash: `bank-suggestion-${randomUUID()}`,
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(suggestedBankTransactionError);
+
+    const outsiderSuggestionResult = await outsider.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: suggestedBankTransaction.id,
+      p_rule_id: "bank_fee",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.ok(outsiderSuggestionResult.error);
+    const reviewerSuggestionResult = await reviewer.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: suggestedBankTransaction.id,
+      p_rule_id: "bank_fee",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.ok(reviewerSuggestionResult.error);
+
+    const { data: acceptedSuggestion, error: acceptedSuggestionError } = await owner.rpc(
+      "accept_bank_transaction_suggestion",
+      {
+        p_bank_transaction_id: suggestedBankTransaction.id,
+        p_rule_id: "bank_fee",
+        p_rule_version: "2026-07-13.1",
+      },
+    );
+    assert.ifError(acceptedSuggestionError);
+    assert.equal(acceptedSuggestion.rule_id, "bank_fee");
+    assert.equal(acceptedSuggestion.idempotent, false);
+    const { data: repeatedSuggestion, error: repeatedSuggestionError } = await owner.rpc(
+      "accept_bank_transaction_suggestion",
+      {
+        p_bank_transaction_id: suggestedBankTransaction.id,
+        p_rule_id: "bank_fee",
+        p_rule_version: "2026-07-13.1",
+      },
+    );
+    assert.ifError(repeatedSuggestionError);
+    assert.equal(repeatedSuggestion.idempotent, true);
+
+    const { data: suggestionAcceptances, error: suggestionAcceptanceError } = await owner
+      .from("bank_suggestion_acceptances")
+      .select("id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, lines, accepted_by")
+      .eq("bank_transaction_id", suggestedBankTransaction.id);
+    assert.ifError(suggestionAcceptanceError);
+    assert.equal(suggestionAcceptances.length, 1);
+    assert.equal(suggestionAcceptances[0].accepted_by, ownerUser.id);
+    assert.deepEqual(suggestionAcceptances[0].lines, [
+      { account: "7770", credit: 0, debit: 50, description: "Bankomkostninger" },
+      { account: "1920", credit: 50, debit: 0, description: "Bank" },
+    ]);
+    const directSuggestionAcceptance = await owner.from("bank_suggestion_acceptances").insert({
+      company_id: companyId,
+      bank_transaction_id: suggestedBankTransaction.id,
+      ledger_entry_id: suggestionAcceptances[0].ledger_entry_id,
+      rule_id: "bank_fee",
+      rule_version: "forged",
+      reason: "forged",
+      lines: [],
+      accepted_by: ownerUser.id,
+    });
+    assert.ok(directSuggestionAcceptance.error);
+    const { data: outsiderSuggestionAcceptances, error: outsiderSuggestionAcceptanceError } = await outsider
+      .from("bank_suggestion_acceptances")
+      .select("id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderSuggestionAcceptanceError);
+    assert.deepEqual(outsiderSuggestionAcceptances, []);
+
+    const { data: ambiguousBankTransaction, error: ambiguousBankTransactionError } = await owner
+      .from("bank_transactions")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        transaction_date: "2025-02-02",
+        text: "Bankgebyr og renter",
+        amount: 100,
+        source_hash: `bank-ambiguous-${randomUUID()}`,
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(ambiguousBankTransactionError);
+    const ambiguousSuggestionResult = await owner.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: ambiguousBankTransaction.id,
+      p_rule_id: "deposit_interest",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.match(ambiguousSuggestionResult.error?.message ?? "", /bank_suggestion_ambiguous/);
+
     assert.throws(
       () =>
         validateDividendReceived({
@@ -1417,94 +1522,83 @@ test(
       documentId: purchaseDocumentId,
       documentStatus: "attached",
     });
-    const purchaseLines = sharePurchaseLedgerLines(purchasePayload);
-    const { data: purchaseEntry, error: purchaseEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "share_purchase",
-        memo: "Share purchase: Portfolio AS",
-        lines: purchaseLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(purchaseEntryError);
-    assert.equal(purchaseEntry.entry_type, "share_purchase");
-    assert.deepEqual(purchaseEntry.lines, purchaseLines);
     const purchaseActionId = randomUUID();
-    const { data: purchaseAction, error: purchaseActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: purchaseActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "share_purchase",
-        action_date: purchasePayload.acquisition_date,
-        payload: purchasePayload,
-        ledger_entry_id: purchaseEntry.id,
-        bank_transaction_id: purchaseBankTransaction.id,
-        document_id: purchaseDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(purchaseActionError);
-    assert.equal(purchaseAction.action_type, "share_purchase");
-    assert.equal(purchaseAction.ledger_entry_id, purchaseEntry.id);
-    assert.equal(purchaseAction.bank_transaction_id, purchaseBankTransaction.id);
-    assert.equal(purchaseAction.document_id, purchaseDocumentId);
+    const { data: purchaseWrite, error: purchaseWriteError } = await owner.rpc("record_share_purchase_fifo", {
+      p_action_id: purchaseActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: purchasePayload.investment_key,
+      p_investment_name: purchasePayload.investment_name,
+      p_investment_kind: purchasePayload.investment_kind,
+      p_tax_treatment: purchasePayload.tax_treatment,
+      p_acquisition_date: purchasePayload.acquisition_date,
+      p_share_count: purchasePayload.share_count,
+      p_purchase_amount: purchasePayload.purchase_amount,
+      p_org_number: purchasePayload.org_number,
+      p_bank_transaction_id: purchaseBankTransaction.id,
+      p_document_id: purchaseDocumentId,
+      p_document_status: purchasePayload.document_status,
+    });
+    assert.ifError(purchaseWriteError);
+    assert.equal(purchaseWrite.action_id, purchaseActionId);
+    assert.equal(purchaseWrite.idempotent, false);
     const { data: purchasePosition, error: purchasePositionError } = await owner
       .from("investment_positions")
-      .insert({
-        company_id: companyId,
-        investment_key: purchasePayload.investment_key,
-        name: purchasePayload.investment_name,
-        kind: purchasePayload.investment_kind,
-        tax_treatment: purchasePayload.tax_treatment,
-        org_number: purchasePayload.org_number,
-        share_count: purchasePayload.share_count,
-        cost_basis: purchasePayload.purchase_amount,
-        created_by: ownerUser.id,
-      })
-      .select("id, investment_key, share_count, cost_basis")
+      .select("id, investment_key, share_count, cost_basis, lot_history_status")
+      .eq("id", purchaseWrite.position_id)
       .single();
     assert.ifError(purchasePositionError);
     assert.equal(purchasePosition.investment_key, "portfolio-as");
     assert.equal(Number(purchasePosition.share_count), 100);
     assert.equal(Number(purchasePosition.cost_basis), 50000);
-    const { error: purchaseBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: purchaseAction.id })
-      .eq("id", purchaseBankTransaction.id);
-    assert.ifError(purchaseBankMatchError);
-    const { data: reloadedPurchasePosition, error: reloadedPurchasePositionError } = await owner
-      .from("investment_positions")
-      .select("id, share_count, cost_basis")
-      .eq("id", purchasePosition.id)
-      .single();
-    assert.ifError(reloadedPurchasePositionError);
-    assert.equal(Number(reloadedPurchasePosition.share_count), 100);
-    assert.equal(Number(reloadedPurchasePosition.cost_basis), 50000);
+    assert.equal(purchasePosition.lot_history_status, "complete");
+    const { data: purchaseLots, error: purchaseLotsError } = await owner
+      .from("investment_lots")
+      .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+      .eq("position_id", purchasePosition.id);
+    assert.ifError(purchaseLotsError);
+    assert.equal(purchaseLots.length, 1);
+    assert.equal(Number(purchaseLots[0].remaining_share_count), 100);
+    assert.equal(Number(purchaseLots[0].remaining_cost_basis), 50000);
+    const { data: purchaseRetry, error: purchaseRetryError } = await owner.rpc("record_share_purchase_fifo", {
+      p_action_id: purchaseActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: purchasePayload.investment_key,
+      p_investment_name: purchasePayload.investment_name,
+      p_investment_kind: purchasePayload.investment_kind,
+      p_tax_treatment: purchasePayload.tax_treatment,
+      p_acquisition_date: purchasePayload.acquisition_date,
+      p_share_count: purchasePayload.share_count,
+      p_purchase_amount: purchasePayload.purchase_amount,
+      p_org_number: purchasePayload.org_number,
+      p_bank_transaction_id: purchaseBankTransaction.id,
+      p_document_id: purchaseDocumentId,
+      p_document_status: purchasePayload.document_status,
+    });
+    assert.ifError(purchaseRetryError);
+    assert.equal(purchaseRetry.idempotent, true);
     const { data: outsiderPositions, error: outsiderPositionError } = await outsider
       .from("investment_positions")
       .select("id")
       .eq("id", purchasePosition.id);
     assert.ifError(outsiderPositionError);
     assert.deepEqual(outsiderPositions, []);
-    const { error: outsiderPurchaseActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "share_purchase",
-      action_date: purchasePayload.acquisition_date,
-      payload: purchasePayload,
-      ledger_entry_id: purchaseEntry.id,
-      bank_transaction_id: purchaseBankTransaction.id,
-      document_id: purchaseDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
+    const { error: outsiderPurchaseActionInsertError } = await outsider.rpc("record_share_purchase_fifo", {
+      p_action_id: randomUUID(),
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: "forbidden",
+      p_investment_name: "Forbidden AS",
+      p_investment_kind: "norwegian_private_company",
+      p_tax_treatment: "fritaksmetoden",
+      p_acquisition_date: "2025-05-01",
+      p_share_count: 1,
+      p_purchase_amount: 1,
+      p_org_number: null,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: "not_required",
     });
     assert.ok(outsiderPurchaseActionInsertError);
     const { error: outsiderPurchasePositionInsertError } = await outsider.from("investment_positions").insert({
@@ -1527,6 +1621,12 @@ test(
           investmentName: "Portfolio AS",
           currentShareCount: 100,
           currentCostBasis: 50000,
+          acquisitionLots: purchaseLots.map((lot) => ({
+            id: lot.id,
+            acquisitionDate: lot.acquisition_date,
+            remainingShareCount: Number(lot.remaining_share_count),
+            remainingCostBasis: Number(lot.remaining_cost_basis),
+          })),
           saleDate: "2025-08-01",
           soldShareCount: 101,
           proceeds: 30000,
@@ -1568,6 +1668,12 @@ test(
       investmentName: "Portfolio AS",
       currentShareCount: 100,
       currentCostBasis: 50000,
+      acquisitionLots: purchaseLots.map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: "2025-08-01",
       soldShareCount: 40,
       proceeds: 30000,
@@ -1577,65 +1683,22 @@ test(
     });
     assert.equal(salePayload.cost_basis_reduction, 20000);
     assert.equal(salePayload.gain_or_loss, 10000);
-    const saleLines = shareSaleLedgerLines(salePayload);
-    const { data: saleEntry, error: saleEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "share_sale",
-        memo: "Share sale: Portfolio AS",
-        lines: saleLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(saleEntryError);
-    assert.deepEqual(saleEntry.lines, saleLines);
     const saleActionId = randomUUID();
-    const { data: saleAction, error: saleActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: saleActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "share_sale",
-        action_date: salePayload.sale_date,
-        payload: salePayload,
-        ledger_entry_id: saleEntry.id,
-        bank_transaction_id: saleBankTransaction.id,
-        document_id: saleDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(saleActionError);
-    assert.equal(saleAction.action_type, "share_sale");
-    const saleMovement = {
-      action_id: saleAction.id,
-      movement_type: "sale",
-      movement_date: salePayload.sale_date,
-      share_delta: -salePayload.sold_share_count,
-      cost_basis_delta: -salePayload.cost_basis_reduction,
-      amount: salePayload.proceeds,
-      gain_or_loss: salePayload.gain_or_loss,
-    };
-    const { error: salePositionUpdateError } = await owner
-      .from("investment_positions")
-      .update({
-        share_count: salePayload.remaining_share_count,
-        cost_basis: salePayload.remaining_cost_basis,
-        movements: [saleMovement],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchasePosition.id);
-    assert.ifError(salePositionUpdateError);
-    const { error: saleBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: saleAction.id })
-      .eq("id", saleBankTransaction.id);
-    assert.ifError(saleBankMatchError);
+    const { data: saleWrite, error: saleWriteError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: saleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: salePayload.sale_date,
+      p_sold_share_count: salePayload.sold_share_count,
+      p_proceeds: salePayload.proceeds,
+      p_bank_transaction_id: saleBankTransaction.id,
+      p_document_id: saleDocumentId,
+      p_document_status: salePayload.document_status,
+    });
+    assert.ifError(saleWriteError);
+    assert.equal(Number(saleWrite.payload.cost_basis_reduction), 20000);
+    assert.equal(Number(saleWrite.payload.gain_or_loss), 10000);
     const { data: positionAfterPartialSale, error: partialSaleReloadError } = await owner
       .from("investment_positions")
       .select("id, share_count, cost_basis, movements")
@@ -1644,7 +1707,27 @@ test(
     assert.ifError(partialSaleReloadError);
     assert.equal(Number(positionAfterPartialSale.share_count), 60);
     assert.equal(Number(positionAfterPartialSale.cost_basis), 30000);
-    assert.equal(positionAfterPartialSale.movements[0].gain_or_loss, 10000);
+    assert.equal(positionAfterPartialSale.movements.at(-1).gain_or_loss, 10000);
+    const { data: partialLots, error: partialLotsError } = await owner
+      .from("investment_lots")
+      .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+      .eq("position_id", purchasePosition.id)
+      .gt("remaining_share_count", 0);
+    assert.ifError(partialLotsError);
+    const { data: saleRetry, error: saleRetryError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: saleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: salePayload.sale_date,
+      p_sold_share_count: salePayload.sold_share_count,
+      p_proceeds: salePayload.proceeds,
+      p_bank_transaction_id: saleBankTransaction.id,
+      p_document_id: saleDocumentId,
+      p_document_status: salePayload.document_status,
+    });
+    assert.ifError(saleRetryError);
+    assert.equal(saleRetry.idempotent, true);
 
     const fullSalePayload = validateShareSale({
       positionId: purchasePosition.id,
@@ -1652,6 +1735,12 @@ test(
       investmentName: "Portfolio AS",
       currentShareCount: 60,
       currentCostBasis: 30000,
+      acquisitionLots: partialLots.map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: "2025-09-01",
       soldShareCount: 60,
       proceeds: 30000,
@@ -1659,27 +1748,20 @@ test(
     });
     assert.equal(fullSalePayload.remaining_share_count, 0);
     assert.equal(fullSalePayload.remaining_cost_basis, 0);
-    const { error: fullSalePositionUpdateError } = await owner
-      .from("investment_positions")
-      .update({
-        share_count: fullSalePayload.remaining_share_count,
-        cost_basis: fullSalePayload.remaining_cost_basis,
-        movements: [
-          ...positionAfterPartialSale.movements,
-          {
-            action_id: "full-sale-test",
-            movement_type: "sale",
-            movement_date: fullSalePayload.sale_date,
-            share_delta: -fullSalePayload.sold_share_count,
-            cost_basis_delta: -fullSalePayload.cost_basis_reduction,
-            amount: fullSalePayload.proceeds,
-            gain_or_loss: fullSalePayload.gain_or_loss,
-          },
-        ],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchasePosition.id);
-    assert.ifError(fullSalePositionUpdateError);
+    const fullSaleActionId = randomUUID();
+    const { error: fullSaleError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: fullSaleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: fullSalePayload.sale_date,
+      p_sold_share_count: fullSalePayload.sold_share_count,
+      p_proceeds: fullSalePayload.proceeds,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: fullSalePayload.document_status,
+    });
+    assert.ifError(fullSaleError);
     const { data: positionAfterFullSale, error: fullSaleReloadError } = await owner
       .from("investment_positions")
       .select("share_count, cost_basis, movements")
@@ -1688,19 +1770,19 @@ test(
     assert.ifError(fullSaleReloadError);
     assert.equal(Number(positionAfterFullSale.share_count), 0);
     assert.equal(Number(positionAfterFullSale.cost_basis), 0);
-    assert.equal(positionAfterFullSale.movements.length, 2);
+    assert.equal(positionAfterFullSale.movements.length, 3);
 
-    const { error: outsiderSaleActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "share_sale",
-      action_date: salePayload.sale_date,
-      payload: salePayload,
-      ledger_entry_id: saleEntry.id,
-      bank_transaction_id: saleBankTransaction.id,
-      document_id: saleDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
+    const { error: outsiderSaleActionInsertError } = await outsider.rpc("record_share_sale_fifo", {
+      p_action_id: randomUUID(),
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: "2025-10-01",
+      p_sold_share_count: 1,
+      p_proceeds: 1,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: "not_required",
     });
     assert.ok(outsiderSaleActionInsertError);
 
@@ -2233,6 +2315,11 @@ test(
       .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
       .eq("company_id", companyId);
     assert.ifError(persistedAuthorityError);
+    const { data: persistedBankSuggestionAcceptances, error: persistedBankSuggestionAcceptanceError } = await owner
+      .from("bank_suggestion_acceptances")
+      .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
+      .eq("company_id", companyId);
+    assert.ifError(persistedBankSuggestionAcceptanceError);
     const archive = buildPersistedCompanyArchive({
       company: persistedCompany,
       incomeYear: 2025,
@@ -2241,6 +2328,7 @@ test(
       ledgerEntries: persistedLedgerEntries,
       documents: ownerDocuments,
       holdingActions: persistedHoldingActions,
+      bankSuggestionAcceptances: persistedBankSuggestionAcceptances,
       billingAccounts: persistedBillingAccounts,
       authorityPermissions: persistedAuthorityPermissions,
       filingPreviews: [filingPreview],
@@ -2261,6 +2349,7 @@ test(
     assert.equal(archive.taxSettlements[0].document.id, taxDocumentId);
     assert.equal(archive.billingAccounts[0].refund_eligible, true);
     assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
+    assert.equal(archive.bankSuggestionAcceptances[0].rule_id, "bank_fee");
 
     const { data: outsiderArchiveCompany, error: outsiderArchiveCompanyError } = await outsider
       .from("companies")

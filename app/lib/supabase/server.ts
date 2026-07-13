@@ -215,6 +215,19 @@ export type BankTransactionRow = {
   created_at: string;
 };
 
+export type BankSuggestionAcceptanceRow = {
+  id: string;
+  company_id: string;
+  bank_transaction_id: string;
+  ledger_entry_id: string;
+  rule_id: "bank_fee" | "system_subscription" | "deposit_interest";
+  rule_version: string;
+  reason: string;
+  lines: unknown[];
+  accepted_by: string;
+  accepted_at: string;
+};
+
 export type HoldingActionRow = {
   id: string;
   company_id: string;
@@ -247,10 +260,37 @@ export type InvestmentPositionRow = {
   org_number: string | null;
   share_count: number;
   cost_basis: number;
+  lot_history_status: "complete" | "needs_reconstruction";
   movements: unknown[];
   created_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type InvestmentLotRow = {
+  id: string;
+  company_id: string;
+  position_id: string;
+  acquisition_action_id: string;
+  acquisition_date: string;
+  original_share_count: number;
+  remaining_share_count: number;
+  original_cost_basis: number;
+  remaining_cost_basis: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type InvestmentLotAllocationRow = {
+  id: string;
+  company_id: string;
+  position_id: string;
+  lot_id: string;
+  sale_action_id: string;
+  allocated_share_count: number;
+  allocated_cost_basis: number;
+  created_by: string;
+  created_at: string;
 };
 
 export type FilingReviewCommentRow = {
@@ -604,6 +644,23 @@ export async function listBankTransactions(companyIds: string[]) {
   };
 }
 
+export async function listBankSuggestionAcceptances(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { acceptances: [] as BankSuggestionAcceptanceRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("bank_suggestion_acceptances")
+    .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
+    .in("company_id", companyIds)
+    .order("accepted_at", { ascending: false });
+
+  return {
+    acceptances: (data ?? []) as BankSuggestionAcceptanceRow[],
+    error: error?.message ?? null,
+  };
+}
+
 export async function listHoldingActions(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { actions: [] as HoldingActionRow[], error: null };
@@ -628,12 +685,47 @@ export async function listInvestmentPositions(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("investment_positions")
-    .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, movements, created_by, created_at, updated_at")
+    .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, lot_history_status, movements, created_by, created_at, updated_at")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
   return {
     positions: (data ?? []) as InvestmentPositionRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listInvestmentLots(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { lots: [] as InvestmentLotRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("investment_lots")
+    .select("id, company_id, position_id, acquisition_action_id, acquisition_date, original_share_count, remaining_share_count, original_cost_basis, remaining_cost_basis, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("acquisition_date", { ascending: true })
+    .order("id", { ascending: true });
+
+  return {
+    lots: (data ?? []) as InvestmentLotRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listInvestmentLotAllocations(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { allocations: [] as InvestmentLotAllocationRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("investment_lot_allocations")
+    .select("id, company_id, position_id, lot_id, sale_action_id, allocated_share_count, allocated_cost_basis, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: true });
+
+  return {
+    allocations: (data ?? []) as InvestmentLotAllocationRow[],
     error: error?.message ?? null,
   };
 }
