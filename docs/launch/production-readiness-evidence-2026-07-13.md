@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `07a36dd`
+Evidence baseline: commits through `94b40ac`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,8 +11,8 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `07a36dd`, including the added auth, error-disclosure, and migration security contracts |
-| Python domain suite | 56 tests pass |
+| `npm run test:release` | Pass on 2026-07-13 at `94b40ac`, including auth, error-disclosure, dividend-PDF, and migration security contracts |
+| Python domain suite | 60 tests pass |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -20,10 +20,12 @@ to launch publicly or submit live authority filings. It is not a release approva
 | TypeScript | Pass |
 | Next.js production build | Pass |
 | Standalone artifact inspection | Pass; required Node/Python/XSD runtime present and local secrets/development evidence absent |
+| Dividend corporate-document runtime | Pass; two deterministic A4 PDFs generated, text-extracted, rendered to PNG, and visually inspected without clipping or broken Norwegian characters |
 | Container contract inspection | Pass; pinned images, locked installs, non-root runtime, key/env exclusions, and hardened smoke command |
 | Browser CSP smoke | Pass in headless Chromium against the production server; no console or page errors |
 | Runtime response headers | CSP, Permissions-Policy, Referrer-Policy, `nosniff`, frame denial, and production HSTS confirmed on `/api/health` |
 | Dependency vulnerability audit | `npm audit --omit=dev --audit-level=high`: zero vulnerabilities |
+| Python dependency vulnerability audit | `uvx pip-audit --local`: no known vulnerabilities found |
 | Repository credential scan | No tracked private-key file or private-key header found; common key formats are ignored and excluded from Docker context |
 
 ## Implemented Fail-Closed Controls
@@ -46,6 +48,10 @@ to launch publicly or submit live authority filings. It is not a release approva
   canonical MIME type, and restricted to PDF/PNG/JPEG/UTF-8 CSV in the private
   bucket. A failed metadata insert can delete only its still-unreferenced orphan
   object; retained document objects remain protected.
+- Simple owner dividends use the complete locked shareholder register and an
+  equal whole-øre amount per share. Two real PDF objects must exist before one
+  transaction writes the ledger entry, action, and `generated_unsigned`
+  metadata; upload or persistence failures clean up unreferenced objects.
 - Dynamic provider/database diagnostics are redacted before production redirect
   URLs. Explicitly trusted domain-validation messages remain actionable and all
   redirect messages are bounded.
@@ -92,7 +98,8 @@ required for `security_restore` signoff.
 - Årsregnskap and skattemelding production adapters are not implemented.
 - Billing uses a simulation provider; real charge/refund evidence is pending.
 - Trademark/name, legal policy, security/restore, billing/refund, filing-specific,
-  and support/rollback decisions require named human reviewers.
+  corporate-template wording, and support/rollback decisions require named
+  human reviewers.
 
 ## Release Decision
 
