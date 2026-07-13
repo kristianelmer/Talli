@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: commits through `43a81c3`
+Evidence baseline: commits through `3660801`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,10 +11,11 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `43a81c3`, including the RF-1086 authority contract/orchestration, auth, error-disclosure, dividend-PDF, and migration security contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `3660801`, including the guarded TT02 runner, RF-1086 authority contract/orchestration, auth, error-disclosure, dividend-PDF, and migration security contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
-| RF-1086 crash-safe orchestration | 6 tests pass: prepared/sent/accepted write ordering, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
+| RF-1086 crash-safe orchestration | 7 tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, and checkpoint tamper rejection |
+| RF-1086 TT02 runner | 8 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, and explicit confirmation gate |
 | Complete launch rehearsal | Pass: accounting, annual, filing simulation, review, billing, cancellation, archive/restore fixture, security, and copy/legal guards |
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
@@ -45,6 +46,10 @@ to launch publicly or submit live authority filings. It is not a release approva
   UUID across an uncertain retry; a sent `bekreft` cannot replay automatically.
   The journal contract is implemented, but no production persistence adapter is
   wired.
+- The local TT02 runner is hard-coded to test, requires private non-symlinked
+  key/preview files and a private journal, validates every XML document against
+  the approved customer/year, and refuses `bekreft` without a separate flag.
+  It is an operator rehearsal boundary, not production web wiring.
 - Release-gate state requires an implemented production adapter in addition to
   authority, billing, MFA/security grant, test evidence, and human signoff.
 - MFA freshness derives from a signed Supabase AAL2/TOTP claim; production

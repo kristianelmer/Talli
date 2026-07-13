@@ -64,6 +64,8 @@ other secrets must never be recorded in this register.
 | 2026-07-13 | TT02 approval troubleshooting | Chrome repeatedly redirected through `reportee/changeandredirect` and remained on `Laster forespørsel`; disabling the site-specific content blocker did not resolve the loop. Safari with high-assurance TestID and the direct confirmation URL loaded the correct company context without creating a duplicate request. |
 | 2026-07-13 | TT02 system-user approval | The approval UI confirmed Talli, `LOGISK ØDE TIGER AS` (`310279617`), and both requested services. A vendor API read returned HTTP 200 and status `Accepted` for request `3d0a9681-87fc-4cd0-967d-cc736d93a686`. |
 | 2026-07-13 | System-user-bound Maskinporten grant | HTTP 200; one 120-second token carried both Skatteetaten scopes plus `urn:altinn:systemuser` details for customer `0192:310279617`, system `930835978_talli`, and the accepted system-user id. No access token or assertion was retained. |
+| 2026-07-13 | Guarded local TT02 operator boundary | Added test-only 120-second token issuance, private atomic checkpoint journal, exact customer/year validation, one-call progression, token redaction, and an explicit gate for `bekreft`; 8 dedicated tests pass. |
+| 2026-07-13 | Synthetic 2025 RF-1086 preview for `310279617` | Generated outside the repository with private permissions. The no-activity preview is ready with no issues; both main and sub-form validate against the pinned official XSDs. No provider call has been made. The constructed sole-shareholder allocation remains subject to explicit test-fixture review. |
 
 ## Current Scope State
 

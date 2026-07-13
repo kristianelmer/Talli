@@ -40,8 +40,9 @@ Excluded live scope:
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
 | Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
-| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested through `43a81c3`; production journal binding remains pending |
-| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, and checkpoint integrity | State machine implemented at `43a81c3`; production persistence adapter and live wiring pending |
+| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested through `2d0822a`; production journal binding remains pending |
+| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, and checkpoint integrity | State machine and non-mutating progress inspection implemented through `2d0822a`; production persistence adapter and live wiring pending |
+| TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; synthetic payload reviewed locally and official provider write still pending |
 | Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | Simulation seam implemented; official evidence pending |
 | Human signoff | Named reviewer signs production release decision | Pending |
 
