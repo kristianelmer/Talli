@@ -125,8 +125,12 @@ malformed JSON/UUID/content types fail closed.
 - Fresh production-state loader: `app/lib/rf1086-production-state.ts`
 - Guarded production runner/service: `app/lib/rf1086-production-runner.ts` and
   `app/lib/rf1086-production-service.ts`
+- Short-lived production lease: `app/lib/rf1086-production-lease.ts`
+- Lease migration and gate-source triggers:
+  `supabase/migrations/20260713201500_guard_rf1086_production_lease.sql`
 - Production release tests: `tests/rf1086_production_runner.test.mjs` and
-  `tests/rf1086_production_state.test.mjs`
+  `tests/rf1086_production_state.test.mjs`, plus
+  `tests/rf1086_production_lease.test.mjs`
 - Command: `npm run test:rf1086:authority`
 - Command: `npm run test:rf1086:orchestration`
 - Dialog/immutable archive:
@@ -149,7 +153,11 @@ fresh hard review comment and blocking override disable release even when an
 older readiness snapshot remains ready. The production-service tests prove
 pre-token and pre-transport audit ordering, a second fresh release-state load
 after token issuance, exact RF scope selection, one provider call per
-invocation, and bearer-token absence from results, audits, and checkpoints.
+invocation, and bearer-token absence from results, audits, and checkpoints. A
+service-only 120-second lease now spans token issuance through the one provider
+operation. Its migration-tested triggers seal every release-gate source,
+concurrent acquisition returns a conflict, successful and failed operations
+attempt release, and automatic expiry limits the effect of a crashed worker.
 
 Archive tests additionally prove exact Dialogporten hosts, strict party and
 resource binding, bounded/token-free responses, consistent provider pagination,

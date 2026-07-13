@@ -89,6 +89,17 @@ Maskinporten production issuer, reloads and audits the release state again, and
 advances at most one provider operation. It never returns or persists the
 bearer token. Final `bekreft` remains a separate explicit flag.
 
+Immediately before the sealed portion of the run, the worker acquires a
+service-only lease bound to the persisted preview and authenticated owner. The
+lease lasts at most 120 seconds. While active, database triggers reject changes
+to every table used by the current release decision, including accounting/year
+data, preview/submission state, review comments and overrides, authority and
+billing evidence, step-up/security state, and the RF-1086 launch signoff. A
+second worker receives a conflict before token/provider transport. The worker
+attempts lease release on success or error; automatic expiry is the fallback if
+the worker crashes or release fails. The checkpoint journal remains the
+authority for reconciling an uncertain provider result.
+
 Hosted migration deployment and an authenticated operational trigger remain
 required before production activation. No browser/web route invokes this
 worker. The local TT02-only operator boundary is implemented by

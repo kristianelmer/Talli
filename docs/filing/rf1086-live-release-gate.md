@@ -40,8 +40,8 @@ Excluded live scope:
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
 | Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
-| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested; durable database journal and guarded server-only production worker are implemented through `5178717`; no hosted operator trigger or web route is enabled |
-| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, checkpoint integrity, and fresh release-state loading | Implemented/tested through `5178717`; the owner-authenticated workspace client, narrow control client, and service-role journal client remain separated. Hosted migration deployment and operational wiring are pending |
+| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested; durable database journal and guarded server-only production worker are implemented through `7af781a`; no hosted operator trigger or web route is enabled |
+| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, checkpoint integrity, fresh release-state loading, and mutation sealing during transport | Implemented/tested through `7af781a`; the owner-authenticated workspace client, narrow control client, and service-role journal/lease client remain separated. A 120-second service-only lease blocks concurrent workers and temporarily seals every current release-gate source until the one provider operation finishes. Hosted migration deployment and operational wiring are pending |
 | TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; the candidate preview was inspected locally on 2026-07-13 with `nextOperation` equal to `hovedskjema`. No provider write has occurred because the synthetic shareholder allocation still requires explicit acceptance |
 | Feedback/receipt archive | Official references, submitted XML, authorized Dialogporten attachment ids, receipt/feedback files, and revisioned private manifest persisted | Fixed-host Dialogporten client and immutable local archive implemented/tested; `digdir:dialogporten` test scope and official artifacts pending |
 | Human signoff | Named reviewer signs production release decision | Pending |
@@ -58,7 +58,12 @@ the current tenant rows through the authenticated owner's RLS context, reads the
 global launch signoff through a separate narrow control client, audits before
 token issuance, reloads and audits again before transport, and limits each
 invocation to one authority call. The service role is reserved for the atomic
-checkpoint journal.
+checkpoint journal and the short-lived production lease. While that lease is
+active, database triggers reject changes to the preview, company/year source
+rows, review/override state, authority evidence, actor security state, and the
+RF-1086 launch signoff. The worker attempts release on both success and failure;
+the lease expires automatically 120 seconds after acquisition if a worker
+crashes or release itself fails.
 
 ## First TT02 Write Gate
 

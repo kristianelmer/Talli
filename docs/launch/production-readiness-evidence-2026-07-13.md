@@ -2,7 +2,7 @@
 
 Status: application artifact verified; staging and human launch gates remain open
 Branch: `codex/production-readiness`
-Evidence baseline: implementation commits through `5178717`
+Evidence baseline: implementation commits through `7af781a`
 
 This record distinguishes a production-shaped application artifact from approval
 to launch publicly or submit live authority filings. It is not a release approval.
@@ -11,10 +11,10 @@ to launch publicly or submit live authority filings. It is not a release approva
 
 | Evidence | Result |
 | --- | --- |
-| `npm run test:release` | Pass on 2026-07-13 at `5178717`, including the guarded RF-1086 TT02 and server-only production runners, fresh-state release derivation, company-tax TT02 runner, annual-accounts TT02 contract/signature/Dialogporten-evidence boundary, authority contract/orchestration/Supabase-journal/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
+| `npm run test:release` | Pass on 2026-07-13 at `7af781a`, including the guarded RF-1086 TT02 and server-only production runners, fresh-state release derivation, service-only production leases and gate-source sealing, company-tax TT02 runner, annual-accounts TT02 contract/signature/Dialogporten-evidence boundary, authority contract/orchestration/Supabase-journal/archive boundaries, auth, error-disclosure, dividend-PDF, migration security, production build, and standalone packaging contracts |
 | Python domain suite | 60 tests pass |
 | RF-1086 authority HTTP boundary | 6 contract/security tests pass against the published OpenAPI 1.0.0 shape: fixed hosts, exact five operations, strict UUID/JSON/content-type parsing, bounded responses, safe UUID retries, and bearer-token redaction |
-| RF-1086 crash-safe orchestration and production release | 26 focused tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, exact checkpoint validation, Supabase persistence, optimistic revision conflicts, database-diagnostic redaction, checkpoint tamper rejection, fresh authoritative release-state derivation, least-privilege split clients, pre-token/pre-transport audit ordering, and bearer-token non-disclosure |
+| RF-1086 crash-safe orchestration and production release | 32 focused tests pass: prepared/sent/accepted write ordering, non-mutating progress inspection, deterministic XML retry after persistence failure, no uncertain confirmation replay, environment/payload locking, exact checkpoint validation, Supabase persistence, optimistic revision conflicts, database-diagnostic redaction, checkpoint tamper rejection, fresh authoritative release-state derivation, least-privilege split clients, pre-token/pre-transport audit ordering, bearer-token non-disclosure, service-only production-lease conflicts, release/error handling, and safe error preservation |
 | RF-1086 Supabase journal | Disposable local Supabase rehearsal passes with the real migration and API: only the service role can call the atomic compare-and-swap function; authenticated accepted company members can read; outsiders and direct client writes are denied; token material is absent; invalid rows and stale revisions fail closed |
 | RF-1086 TT02 runner | 9 tests pass across the Maskinporten grant, private atomic file journal, exact customer/year validation, one-call progression, token redaction, explicit confirmation gate, and confirmed-journal-only archive action |
 | RF-1086 Dialogporten/archive boundary | 9 focused tests pass: fixed Dialogporten hosts, exact Altinn-instance lookup, party/resource checks, bounded token-free responses, invalid lookup rejection before transport, consistent submitted-document pagination, confirmed-path-only attachment resolution, private immutable files, and revisioned manifests; TT02 artifact retrieval remains pending |
@@ -24,7 +24,7 @@ to launch publicly or submit live authority filings. It is not a release approva
 | MFA and step-up unit boundary | Pass |
 | Password and redirect error boundaries | Pass; sign-up secrets are not trimmed, password length is bounded, and internal production errors are redacted before redirects |
 | Supabase migration security contracts | 16 pass, including RF-1086 journal grants/RLS/RPC controls, service-role scope, explicit revoked-grant rejection, local-config isolation, and PostgreSQL 17 owner-dividend name resolution |
-| `npm run test:supabase:local` | Pass on 2026-07-13 at `5178717`; pinned CLI applied every migration to a disposable loopback stack, then Auth, real TOTP/AAL2, invitations, tenant RLS, Storage retention/orphan cleanup, RF-1086 atomic checkpoint writes and isolation, fresh production-state loading through owner/control/journal client separation, atomic dividend PDFs, filing/billing/cancellation state, and outsider denial all passed; containers, network, and volume were removed |
+| `npm run test:supabase:local` | Pass on 2026-07-13 at `7af781a`; pinned CLI applied every migration to a disposable loopback stack, then Auth, real TOTP/AAL2, invitations, tenant RLS, Storage retention/orphan cleanup, RF-1086 atomic checkpoint writes and isolation, fresh production-state loading through owner/control/journal client separation, service-only short-lived production leases, concurrent-worker conflict, release-gate mutation sealing/unsealing, atomic dividend PDFs, filing/billing/cancellation state, and outsider denial all passed; containers, network, and volume were removed |
 | TypeScript | Pass |
 | Next.js production build | Pass |
 | Standalone artifact inspection | Pass; required Node/Python/XSD runtime present and local secrets/development evidence absent |
@@ -56,8 +56,14 @@ to launch publicly or submit live authority filings. It is not a release approva
   service role only for the journal. It records an audit before token issuance,
   reloads and audits the state again before one provider call, requests only the
   RF-1086 scope, never returns or persists the bearer token, and requires a
-  separate flag before `bekreft`. Hosted migration deployment and any operator
-  trigger/web route remain intentionally disabled.
+  separate flag before `bekreft`. Before token issuance it also acquires a
+  service-only 120-second production lease. Database triggers temporarily seal
+  every row source used by the release decision, including the preview,
+  accounting period, authority evidence, security grant, review state, and
+  RF-1086 launch signoff. Concurrent workers fail before transport; release is
+  attempted on every success/failure path; expiry prevents a crashed worker from
+  freezing customer data indefinitely. Hosted migration deployment and any
+  operator trigger/web route remain intentionally disabled.
 - The local TT02 runner is hard-coded to test, requires private non-symlinked
   key/preview files and a private journal, validates every XML document against
   the approved customer/year, and refuses `bekreft` without a separate flag.
