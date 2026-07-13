@@ -137,6 +137,15 @@ issuance, advances one journaled operation per invocation, and requires a
 separate flag before locking for personal signature. Its offline inspection and
 test suite do not create an Altinn instance.
 
+`app/lib/annual-accounts-completion.ts` adds a separate post-signature boundary.
+It uses the exact accepted lock checkpoint, performs one read-only instance
+inspection, and accepts completion only when the same company/instance and the
+same Hovedskjema/Underskjema IDs have an ended process plus exactly one JSON
+`signature` data element. `app/lib/annual-accounts-completion-file-store.ts`
+then records only those bounded IDs, document hashes, and completion timestamp
+in a private immutable file. It does not claim or synthesize an inbox, archive,
+or receipt reference.
+
 ## Notes
 
 Small-enterprise note support starts with:
@@ -184,7 +193,8 @@ Block or escalate:
   well-formedness and pinned local contract assertions are already covered.
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
-- Persist official receipt/inbox/archive references.
+- Run the implemented signed-instance verifier after the owner's ID-porten step.
+- Retrieve and persist official receipt/inbox/archive references separately.
 - Complete human release signoff.
 
 The test-only client contract and live-rehearsal stop conditions are recorded in

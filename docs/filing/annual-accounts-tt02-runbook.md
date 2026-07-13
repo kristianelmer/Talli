@@ -1,7 +1,7 @@
 # Annual Accounts TT02 Boundary Runbook
 
-Status: local renderer, guarded orchestration, and private journal implemented;
-live TT02 mutation is not yet authorized
+Status: local renderer, guarded orchestration, private journal, and immutable
+post-signature verifier implemented; live TT02 mutation is not yet authorized
 Last updated: 2026-07-13
 Target app: `brg/aarsregnskap-vanlig-202406`
 
@@ -33,6 +33,8 @@ Required Maskinporten scopes:
 
 - `altinn:instances.read`
 - `altinn:instances.write`
+
+The post-signature verifier requests only `altinn:instances.read`.
 
 Required Altinn system-register resource:
 
@@ -84,6 +86,21 @@ Required Altinn system-register resource:
 - stdout contains hashes and checkpoint metadata, never XML, contact data,
   bearer material, assertions, or private-key content.
 
+`verify-signed` is a separate externally read-only action. It refuses to run
+unless the exact journaled instance is already at `awaiting-person-signature`,
+requests only `altinn:instances.read`, and then requires:
+
+- the same instance owner, UUID, organization number, and two XML data-element
+  IDs recorded before signing;
+- an ended Altinn process with no current task; and
+- exactly one `signature` data element with `application/json` content type.
+
+The bounded result is written idempotently as a private immutable
+`<operation-id>.signed.json` record in the journal directory. Unknown fields,
+provider bodies, tokens, assertions, XML, symlinks, conflicting rewrites, and
+permissive directories/files are rejected. This proves signed-instance
+completion; it does not invent an Altinn inbox, archive, or receipt reference.
+
 Brønnøysund requires a person authenticated through ID-porten to sign annual
 accounts. Signing also submits the form. That action must remain a visible,
 intentional owner step.
@@ -121,9 +138,24 @@ Once the preconditions are met, the guarded orchestration must:
 10. persist the resulting instance reference and signing-task state; and
 11. hand the owner a direct Altinn link for personal ID-porten review/signing.
 
-No automation may call the `sign` action. After the person signs, a separate
-read-only verification step must prove the ended process and archive/receipt
-data elements before authority-test evidence can be accepted.
+No automation may call the `sign` action. After the person signs, run the
+separate read-only verification step:
+
+```sh
+npm run annual-accounts:tt02 -- verify-signed \
+  --input <absolute-private-input-json> \
+  --journal <absolute-private-journal-directory> \
+  --customer-org <approved-synthetic-org-number> \
+  --income-year 2025 \
+  --client-id <test-client-id> \
+  --key-id <test-key-id> \
+  --private-key <absolute-private-key-pem> \
+  --execute-test
+```
+
+This must prove the ended process and signature artifact before signed-instance
+evidence can be accepted. Official inbox/archive/receipt references remain a
+separate evidence requirement.
 
 ## Abort Conditions
 
@@ -139,7 +171,8 @@ Stop without retrying the mutation when:
 - validation returns an error;
 - XML changes after validation;
 - `confirm` does not enter a signing task; or
-- the post-signature archive/receipt cannot be tied to the same instance.
+- the post-signature ended process or signature artifact cannot be tied to the
+  same instance.
 
 ## Local Verification
 
@@ -150,7 +183,7 @@ npm run test:annual-accounts
 npm run typecheck
 ```
 
-The focused suite currently has 34 tests across the RR-0002 payload map, XML
-renderer, Altinn client, crash-safe orchestration, private file journal, TT02
-runner, and CLI guard. It uses injected clients/transports and creates no Altinn
-instance.
+The focused suite currently has 47 tests across the RR-0002 payload map, XML
+renderer, Altinn client, crash-safe orchestration, private file journal,
+post-signature verifier and immutable evidence store, TT02 runner, and CLI
+guard. It uses injected clients/transports and creates no Altinn instance.
