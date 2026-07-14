@@ -107,10 +107,12 @@ Talli can resolve unusual company-law questions.
 
 ## Immutable input model
 
-One `CorporateDocumentSetInput` is canonicalized and hashed. It contains:
+One `CorporateDecisionInput` is canonicalized and hashed before any document or
+accounting action exists. It contains:
 
 - request ID, company ID, organization number, legal name, and income year;
-- source kind and source ID (`owner_dividend` action or `annual_close` record);
+- decision kind (`owner_dividend` or `annual_close`) and an optional immutable
+  annual-close source ID;
 - template family and version;
 - annual-account basis year and the exact financial totals used;
 - board meeting date, time, place, and treatment method;
@@ -125,7 +127,9 @@ One `CorporateDocumentSetInput` is canonicalized and hashed. It contains:
   unanimity, proportionality, and supported dividend basis.
 
 No generated-at timestamp enters the canonical input or PDF. User-supplied
-meeting timestamps are facts and therefore do enter both.
+meeting timestamps are facts and therefore do enter both. The decision hash is
+the source identity for every artifact, approval, signature attestation, and
+accounting finalization that follows.
 
 ## Rendering module
 
@@ -150,17 +154,29 @@ hash mismatch, or missing artifact as a hard failure.
 
 ## Persistence model
 
-Migration `0004_corporate_document_artifacts.sql` adds three append-only tables.
+Migration `0004_corporate_document_artifacts.sql` adds five append-only tables.
+
+### `corporate_decisions`
+
+- immutable decision ID / idempotency request ID
+- company, income year, and decision kind
+- optional annual-close source ID and source hash
+- canonical decision input JSON and decision hash
+- optional `supersedes_decision_id`
+- lifecycle status is derived from events and finalization, never updated here
+- created by/at
+- unique request ID; decision-hash indexes support lookup but do not prevent an
+  immutable replacement decision with unchanged reviewed facts
 
 ### `corporate_document_sets`
 
-- `id` / idempotency request ID
-- company, income year, source kind, and source ID
+- immutable set ID and decision ID
+- company and income year, repeated for RLS and cross-company validation
 - template family/version
-- canonical input JSON and input hash
+- decision hash
 - optional `supersedes_set_id`
 - created by/at
-- unique request ID; source/template/input indexes support lookup but do not
+- unique set request ID; decision/template indexes support lookup but do not
   prevent an immutable replacement set with unchanged meeting facts
 
 ### `corporate_document_artifacts`
@@ -175,16 +191,28 @@ Migration `0004_corporate_document_artifacts.sql` adds three append-only tables.
 
 ### `corporate_document_events`
 
-- artifact or set ID
+- decision, set, and optional artifact ID
 - event kind: `generated`, `facts_approved`, `signing_requested`,
-  `signed_copy_attested`, `superseded`, or `rejected`
+  `signed_copy_attested`, `finalized`, `superseded`, or `rejected`
 - actor, timestamp, exact input/content hash, and bounded metadata
 - append-only unique idempotency key
 
-Current state is derived from ordered events. Generated and signed object rows
-are never updated or overwritten. Corrections create a new set with a new
-request ID that references the prior set through `supersedes_set_id`, even when
-the reviewed meeting facts and input hash are unchanged.
+### `corporate_decision_finalizations`
+
+- immutable finalization ID and decision ID
+- finalization kind: `owner_dividend_declared` or `annual_close_adopted`
+- owner-dividend holding-action and ledger-entry IDs, or annual-close source ID
+- exact decision hash and the signed-artifact hashes accepted at finalization
+- accounting-policy version used by an owner-dividend declaration
+- created by/at
+- one finalization per decision and one decision per resulting action/ledger
+  entry, enforced by unique constraints
+
+Current state is derived from ordered events and the finalization row. Generated
+and signed object rows are never updated or overwritten. Corrections create a
+new decision and set with new request IDs that reference the prior records,
+even when the reviewed meeting facts and decision hash are unchanged. A
+superseded or rejected decision can never be finalized.
 
 RLS grants company members read access. Only an accepted owner can invoke the
 security-definer creation/transition functions. Direct insert, update, and
@@ -198,25 +226,38 @@ keys:
 
 `<company>/<year>/corporate/<set-id>/<kind>/<content-hash>.pdf`
 
-Generation flow:
+Draft-generation flow:
 
 1. Validate membership, source facts, and period state server-side.
 2. Recompute the complete input from persisted facts plus the reviewed meeting
    facts; never trust hidden financial totals.
-3. If the request ID already exists, return the existing set only when the
-   input hash matches; otherwise reject an idempotency conflict.
-4. Render all required PDFs before any accounting write.
+3. If either request ID already exists, return the existing decision/set only
+   when the decision hash matches; otherwise reject an idempotency conflict.
+4. Render all required PDFs before any database metadata write.
 5. Upload with `upsert: false`. On an existing object, download and compare the
    hash before treating it as a retry.
-6. Call one database function that atomically records the owner-dividend ledger
-   entry/action when it does not already exist, plus document rows, artifact
-   set, artifacts, and audit events. A replacement set may attach to the same
-   unchanged source action but must never repost its ledger entry.
+6. Call one database function that atomically records the immutable decision,
+   document rows, artifact set, artifacts, and audit events. Draft generation
+   must not create a holding action, ledger entry, payable, or bank posting.
 7. If the database function fails, best-effort delete only the objects created
    by this attempt. Existing hash-matched objects are retained.
 
 For annual-close artifacts, the source annual-data/readiness snapshot already
-exists; the same function records only artifact metadata and audit events.
+exists and its hash is bound into the decision. It is not marked adopted by
+draft generation.
+
+Finalization is a separate step-up-protected database function. It accepts only
+the current decision hash, approved facts event, and owner-attested signed copy
+of every required artifact. For an owner dividend it atomically records the
+declaration holding action, balanced declaration ledger entry, finalization
+row, and `finalized` event exactly once. The declaration debits the configured
+equity/distribution account and credits a dividend-payable liability; it must
+not credit bank. A later bank match records payment by debiting the payable and
+crediting bank. Both mappings carry an explicit accounting-policy version and
+remain behind the rollout flag until a named Norwegian accounting review
+accepts the exact accounts. For an annual close, finalization records adoption
+against the bound annual-close source without creating an unrelated ledger
+entry.
 
 ## Review and signing workflow
 
@@ -232,18 +273,24 @@ immutable object, and records `signed_owner_attested`. Product copy uses exactly
 that status and never says `verified digital signature`.
 
 The generated unsigned document remains available for comparison. A signed
-copy cannot replace or mutate it.
+copy cannot replace or mutate it. Only after every required signed variant is
+attested can the owner finalize the decision; finalization is bound to the
+decision and signed-content hashes so replacing a document requires a new
+decision.
 
 ## Readiness integration
 
-- An owner-dividend action is not `ready` until both unsigned artifacts exist
-  and the facts are approved. Filing readiness warns until both signed copies
-  are owner-attested.
+- An owner-dividend draft is not `ready for signing` until both unsigned
+  artifacts exist and the facts are approved. It is not an accounting action
+  until both signed copies are owner-attested and the decision is finalized.
+- Dividend-payment readiness requires a later payment action that references
+  the finalized declaration and clears, but never exceeds, its open payable.
 - Annual-account filing readiness blocks if the annual document set does not
   match the current annual-data and annual-account payload hashes.
-- Production readiness blocks until the annual meeting minutes are signed and
-  owner-attested. This is separate from the authority's ID-porten signature on
-  the annual-account submission.
+- Production readiness blocks until the annual meeting minutes are signed,
+  owner-attested, and the annual decision is finalized as adopted. This is
+  separate from the authority's ID-porten signature on the annual-account
+  submission.
 - Superseded, rejected, mismatched-hash, or unsigned-current artifacts cannot
   satisfy readiness.
 
@@ -258,7 +305,9 @@ The existing owner-dividend wizard becomes a review-first flow:
 5. confirm full participation/representation and unanimity;
 6. generate and preview the two PDFs;
 7. approve exact facts and hashes;
-8. download for signing and upload signed copies.
+8. download for signing and upload signed copies;
+9. complete a fresh owner step-up and finalize the decision;
+10. match the later bank payment to the resulting dividend payable.
 
 The year-end flow offers the same sequence for annual board and general-meeting
 minutes after the annual payload is ready. Norwegian-first copy consistently
@@ -280,6 +329,10 @@ All failures are typed and fail closed. Required blocker codes include:
 - `corporate_documents_storage_hash_mismatch`
 - `corporate_documents_stale_approval`
 - `corporate_documents_missing_signers`
+- `corporate_documents_missing_signed_artifacts`
+- `corporate_documents_already_finalized`
+- `corporate_documents_accounting_policy_disabled`
+- `corporate_documents_payment_exceeds_payable`
 
 Errors shown to owners are Norwegian and actionable. Logs contain IDs, states,
 and hashes but no national identifiers, document bodies, tokens, or raw PDFs.
@@ -298,9 +351,13 @@ The implementation is not complete until evidence covers:
 - partial upload/database failure cleanup does not delete prior valid objects;
 - signed upload creates a separate immutable variant and rejects missing
   signers, stale hashes, non-PDFs, and oversized files;
-- readiness accepts only the current hash-approved/signed set;
-- company archive and restore manifests contain sets, artifacts, events, and
-  both unsigned and signed storage objects;
+- draft generation never creates a holding action, ledger entry, payable, or
+  bank posting;
+- finalization creates one balanced declaration entry exactly once and a later
+  payment clears the payable without exceeding it;
+- readiness accepts only the current hash-approved/signed/finalized decision;
+- company archive and restore manifests contain decisions, sets, artifacts,
+  events, finalizations, and both unsigned and signed storage objects;
 - fresh PostgreSQL migrations and RPC rehearsal pass;
 - authenticated Supabase RLS/storage integration passes when project
   credentials are available;
@@ -312,7 +369,8 @@ The implementation is not complete until evidence covers:
 
 The feature ships behind `TALLI_CORPORATE_DOCUMENTS_ENABLED=false` until:
 
-1. the four templates receive a named Norwegian legal/accounting review;
+1. the four templates and the exact declaration/payment account mappings
+   receive a named Norwegian legal/accounting review;
 2. the generated PDFs pass golden and visual review;
 3. deployed Supabase RLS/storage tests pass;
 4. backup/restore and cancellation archive rehearsals include every artifact;
