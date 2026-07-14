@@ -79,9 +79,16 @@ class Rf1086ProductionSubmissionTest(unittest.TestCase):
         self.assertEqual(len(first.calls), 4)
         self.assertEqual(len(second.calls), 4)
         self.assertTrue(any(call.endpoint.endswith("/1086H") for call in first.calls))
-        self.assertTrue(any("/1086U/" in call.endpoint for call in first.calls))
-        self.assertTrue(any(call.endpoint.endswith("/bekreft") for call in first.calls))
-        self.assertTrue(any(call.endpoint.endswith("/dokumenter") for call in first.calls))
+        self.assertTrue(any(call.endpoint.endswith("/simulated-hovedskjema-id/1086U") for call in first.calls))
+        self.assertTrue(
+            any(call.endpoint.endswith("/simulated-hovedskjema-id/bekreft?antall_underskjema=1") for call in first.calls)
+        )
+        self.assertTrue(
+            any(
+                call.endpoint.endswith("/forsendelser/simulated-forsendelse-id/dokumenter?page=0&size=50")
+                for call in first.calls
+            )
+        )
 
     def test_feedback_receipt_and_retryable_failures_are_recorded(self) -> None:
         case = FilingCase.from_json_file(FIXTURE_DIR / "stiftelse.json")

@@ -248,18 +248,22 @@ def _simulate_rf1086_submission() -> int:
         for shareholder_id, xml in sorted(underskjema_xml.items()):
             submission = register_api_call(
                 submission,
-                endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U/{shareholder_id}",
-                body={"content_type": "application/xml", "xml": str(xml)},
+                endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U",
+                body={"shareholder_id": shareholder_id, "content_type": "application/xml", "xml": str(xml)},
             )
         submission = register_api_call(
             submission,
-            endpoint=f"{base_endpoint}/{hovedskjema_id}/bekreft",
+            endpoint=(
+                f"{base_endpoint}/{hovedskjema_id}/bekreft"
+                f"?antall_underskjema={len(underskjema_xml)}"
+            ),
             body={"antall_underskjema": len(underskjema_xml)},
         )
+        forsendelse_id = f"simulated-forsendelse-{preview_id}"
         submission = register_api_call(
             submission,
-            endpoint=f"{base_endpoint}/{hovedskjema_id}/dokumenter",
-            body={"page": 1, "max_forms": 50},
+            endpoint=f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter?page=0&size=50",
+            body={"page": 0, "size": 50},
         )
         receipt_id = f"sim-rf1086-{submission.company_id}-{submission.income_year}-{preview_id[:8]}"
         submission = store_receipt(

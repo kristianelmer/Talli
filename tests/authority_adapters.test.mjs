@@ -10,14 +10,21 @@ import {
 
 const obligations = ["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"];
 
-test("all production authority adapters truthfully remain unimplemented and disabled", async () => {
+test("RF-1086 transport is implemented but every production authority adapter remains disabled", async () => {
   const capabilities = currentAuthorityAdapterCapabilities();
 
-  for (const obligation of obligations) {
+  assert.deepEqual(capabilities.aksjonaerregisteroppgaven, {
+    productionImplemented: true,
+    productionEnabled: false,
+  });
+  for (const obligation of ["skattemelding", "aarsregnskap"]) {
     assert.deepEqual(capabilities[obligation], {
       productionImplemented: false,
       productionEnabled: false,
     });
+  }
+
+  for (const obligation of obligations) {
     const adapter = createDisabledAuthorityProductionAdapter(obligation);
     await assert.rejects(
       adapter.execute({

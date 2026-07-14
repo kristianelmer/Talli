@@ -48,7 +48,7 @@ export class AuthorityProductionAdapterDisabledError extends Error {
 export function currentAuthorityAdapterCapabilities(): AuthorityAdapterCapabilities {
   return {
     aksjonaerregisteroppgaven: {
-      productionImplemented: false,
+      productionImplemented: true,
       productionEnabled: false,
     },
     skattemelding: {
