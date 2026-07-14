@@ -1,6 +1,6 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: payload candidate and test-only Altinn instance client implemented; production disabled pending TT02
+Status: TT02 payload validated and locked for person signing; signature, submission, and receipt evidence pending
 
 Last updated: 2026-07-14
 Target issue: #82 (payload map, closed) / #84 (test-environment submission flow)
@@ -24,6 +24,16 @@ required.
   https://docs.altinn.studio/en/api/apps/instances/
 - Altinn Apps process API:
   https://docs.altinn.studio/en/api/apps/process/
+- Altinn system registration guide:
+  https://docs.altinn.studio/en/authorization/guides/system-vendor/system-user/systemregistration/
+- Altinn system-register rights update API:
+  https://docs.altinn.studio/en/api/authentication/systemuserapi/systemregister/update/
+- TT02 Resource Registry record used for the rehearsal:
+  https://platform.tt02.altinn.no/resourceregistry/api/v1/resource/app_brg_aarsregnskap-vanlig-202406
+- Live TT02 hovedskjema JSON schema:
+  https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema
+- Live TT02 underskjema JSON schema:
+  https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Underskjema
 
 Evidence extraction source:
 
@@ -150,14 +160,31 @@ Block or escalate:
   and construction with `environment=production` is refused.
 - Add `altinn:instances.read` and `altinn:instances.write` to the TT02
   Maskinporten client. — Done and verified in Digdir Selvbetjening 2026-07-14.
-- Validate generated XML/data elements in TT02.
+- Register the live TT02 resource `app_brg_aarsregnskap-vanlig-202406` on
+  system `930835978_talli`. — Done 2026-07-14 using the rights-only endpoint;
+  read-back verified that both existing Skatteetaten rights were preserved.
+- Create a matching annual-accounts system-user request for test company
+  `310279617`. — Done 2026-07-14; request
+  `4f774704-88b8-4053-994b-37073ab4a896` was approved by the company through
+  TT02 ID-porten and read back through the vendor API with status `Accepted`.
+- Mint and exchange an annual-accounts system-user token with both Altinn
+  instance scopes. — Done 2026-07-14; both tokens remained in memory.
+- Validate generated XML/data elements in TT02. — Done 2026-07-14; instance
+  `51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51` accepted both XML data
+  elements with zero validation issues and moved to the signing task. Evidence:
+  [annual-accounts-tt02-2026-07-14.md](./evidence/annual-accounts-tt02-2026-07-14.md).
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.
 - Complete human release signoff.
-- Add `app_brg_aarsregnskap` to a TT02 system definition and approve a matching
-  company system user before the live rehearsal.
 - Enable the production transport only after all external evidence and signoffs
   above exist; the current client remains test-only.
+
+The generic Altinn system-user setup guide currently shows
+`app_brg_aarsregnskap` as an example. A TT02 rights update with that identifier
+failed on 2026-07-14 with `AUTH.VLD-00003` because the resource was not found.
+The live TT02 Resource Registry returned the versioned, delegable Altinn App
+resource `app_brg_aarsregnskap-vanlig-202406`; that exact identifier is the one
+registered and read back for this rehearsal.
 
 ## Code Gate Verification (2026-07-14)
 
@@ -166,11 +193,13 @@ Latest run of the annual-accounts code-side evidence (all green):
 | Suite | Result |
 | --- | --- |
 | `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 13 passed |
-| `npm run test:annual-accounts` | 4 passed |
+| `npm run test:annual-accounts` | 5 passed |
+| `npm run test:annual-accounts-xml` | 5 passed |
 | `npm run test:annual-accounts-authority` | 5 passed |
+| `npm run test:annual-accounts-authority-script` | 1 passed |
 | `npm run test:annual-data` | 2 passed |
 | `npm run test:annual-readiness` | 5 passed |
-| `npm run test:authority-evidence` | 6 passed |
+| `npm run test:authority-evidence` | 7 passed |
 
 This proves the deterministic payload/readiness/evidence logic is ready for TT02
 submission. It does not substitute for the remaining external rows above

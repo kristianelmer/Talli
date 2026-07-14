@@ -1,6 +1,6 @@
 # Årsregnskap Authority Map
 
-Status: source-backed map, payload, and test-only Altinn transport; TT02 evidence pending
+Status: TT02 XML accepted and locked for person signing; signature, submission, and receipt evidence pending
 Research date: 2026-07-14
 Target filing: `årsregnskap` / RR-0002
 
@@ -18,7 +18,10 @@ Primary sources:
 - Brønnøysund official Postman examples: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Altinn Apps instance API: https://docs.altinn.studio/en/api/apps/instances/
 - Altinn Apps process API: https://docs.altinn.studio/en/api/apps/process/
-- Altinn system-user integration example (`app_brg_aarsregnskap`): https://docs.altinn.studio/en/altinn-studio/v8/guides/integration/sbs/setup/
+- Altinn system-user integration guide (generic example): https://docs.altinn.studio/en/altinn-studio/v8/guides/integration/sbs/setup/
+- Live TT02 annual-accounts resource (`app_brg_aarsregnskap-vanlig-202406`): https://platform.tt02.altinn.no/resourceregistry/api/v1/resource/app_brg_aarsregnskap-vanlig-202406
+- Live TT02 main-form schema: https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema
+- Live TT02 company-accounts schema: https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Underskjema
 - Digdir/Altinn 3 update for annual accounts system submission: https://samarbeid.digdir.no/altinn/nytt-fra-programmet-nye-altinn/2723
 - RR0002 evidence register: [annual-accounts-rr0002-evidence-register.md](./annual-accounts-rr0002-evidence-register.md)
 
@@ -57,6 +60,14 @@ Production implications:
   XML upload, instance validation, locking, and person-signing handoff. It
   refuses production construction and never performs `action=sign`.
 - Brønnøysund docs state system user can fill/upload/lock, but signature requires ID-porten; owner-managed filing therefore needs an ID-porten-only or hybrid system-user/person signing flow.
+- The TT02 system definition now contains the live, versioned resource
+  `app_brg_aarsregnskap-vanlig-202406`. The matching request for the synthetic
+  holding company was approved and read back with status `Accepted` on
+  2026-07-14.
+- The accepted system user minted and exchanged both Altinn instance scopes.
+  TT02 then created the RR0002 instance, accepted the main and company-accounts
+  XML with zero validation issues, and moved it to the signing task. The
+  instance remains explicitly unsigned and unsubmitted.
 - `buildFilingReleaseGates` must remain `production_disabled` until
   accepted `authority_test_runs` evidence for `aarsregnskap` has receipt and
   archive refs, and the persisted `launch_signoffs` key
@@ -112,8 +123,10 @@ Current engine coverage:
 
 Missing before production:
 
-- Complete RR0002 XML renderer and TT02 schema/authority validation.
-- TT02 validation of mapped fields.
+- Complete RR0002 XML renderer and TT02 schema/authority validation. — Done in
+  the guarded 2026-07-14 rehearsal.
+- TT02 validation of mapped fields. — Done with zero validation issues; see
+  [annual-accounts-tt02-2026-07-14.md](./evidence/annual-accounts-tt02-2026-07-14.md).
 - Annual-account note model.
 - Attachment payload handling.
 - ID-porten signing handoff evidence.
@@ -135,11 +148,13 @@ Current annual preview field decisions:
 
 ## Production Blockers
 
-- Register `app_brg_aarsregnskap` in the TT02 system definition and approve a
-  matching system user for the test company.
+- Complete the pending ID-porten signature/submission and capture the resulting
+  receipt, inbox/archive reference, and processing decision. Token exchange,
+  instance access, validation, and lock-for-signing are complete.
 - Confirm required payload schemas and attachment restrictions for a small holding AS.
 - Confirm feedback and receipt retrieval behavior.
-- Validate in test environment before production.
+- Complete production credential, security, restore, and dated release review;
+  the transport remains test-only until then.
 
 ## Follow-Up Implementation Slices
 
@@ -148,3 +163,13 @@ Current annual preview field decisions:
 3. Add attachment rules for no-audit small AS versus non-small/audit cases.
 4. Add Regnskapsregisteret/Altinn 3 adapter interface behind a disabled production gate.
 5. Add test-environment runbook for signing, validation feedback, receipt/decision retrieval, and archive storage.
+
+## TT02 Resource-Identifier Evidence (2026-07-14)
+
+The unversioned `app_brg_aarsregnskap` value shown in the generic system-user
+tutorial is not present in the live TT02 Resource Registry. Attempting to add it
+returned `AUTH.VLD-00003`. The registry returned
+`app_brg_aarsregnskap-vanlig-202406` as a delegable, visible Altinn App owned by
+Brønnøysundregistrene. Talli registered that exact right through the rights-only
+system-register endpoint and verified by read-back that the two pre-existing
+Skatteetaten rights remained intact.

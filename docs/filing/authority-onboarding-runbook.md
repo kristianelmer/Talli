@@ -357,10 +357,23 @@ system that bundles all three across fullmaktsområder.
 | Obligation (label) | Issue | `obligation` value | Maskinporten scope(s) | Test surface |
 |---|---|---|---|---|
 | Aksjonærregisteroppgaven (RF-1086) | #81 | `aksjonaerregisteroppgaven` | `skatteetaten:innrapporteringaksjonaerregisteroppgave` | Skatteetaten test env; POST 1086H / 1086U / bekreft, GET dokumenter |
-| Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; system-user resource `app_brg_aarsregnskap`; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
+| Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; live system-user resource `app_brg_aarsregnskap-vanlig-202406`; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
 | Skattemelding for AS | #87 | `skattemelding` | `skatteetaten:formueinntekt/skattemelding` (+ `altinn:instances.read`, `altinn:instances.write` for the Altinn3 app `skd/formueinntekt-skattemelding-v2`). **NOT** `skatteetaten:skattemeldingupersonlig` — see note. | Skatteetaten external test env (`api-test.sits.no`) + Altinn3 `skd.apps.tt02.altinn.no`; systembruker resource `app_skd_formueinntekt-skattemelding-v2`; owner-managed **system-supplier submission** of the company's *own* return (company = data subject + submitter, Talli = its system via Altinn delegation); final BankID sign done by a person in Altinn UI. 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
 
 Trace any payload fields to the maps/evidence registers in `docs/filing/` — do not invent fields.
+
+> **TT02 resource verification (2026-07-14):** the unversioned
+> `app_brg_aarsregnskap` used by the generic Altinn tutorial returned
+> `AUTH.VLD-00003`. The live Resource Registry exposes
+> `app_brg_aarsregnskap-vanlig-202406`; this exact right is registered on
+> `930835978_talli` and preserved alongside the existing RF-1086 and company-tax
+> rights. Annual-accounts request `4f774704-88b8-4053-994b-37073ab4a896` for
+> synthetic company `310279617` was approved through TT02 ID-porten and read
+> back through the vendor API as `Accepted` on 2026-07-14. Token exchange and
+> instance rehearsal then succeeded: instance
+> `51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51` has both generated XML data
+> elements, zero validation issues, and process task `signing`. It is not signed
+> or submitted; see `evidence/annual-accounts-tt02-2026-07-14.md`.
 
 **All three authenticate via Maskinporten** (Skatteetaten APIs and the Altinn systembruker alike) —
 the token protocol is identical. What differs is the **authorization / access-grant model** on top:

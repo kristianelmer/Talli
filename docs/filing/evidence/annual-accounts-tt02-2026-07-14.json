@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "status": "locked_for_person_signing",
+  "environment": "test",
+  "productionEnabled": false,
+  "authority": "Brønnøysundregistrene RR0002 via Altinn TT02",
+  "companyOrgNumber": "310279617",
+  "companyName": "LOGISK ØDE TIGER AS",
+  "incomeYear": 2025,
+  "scope": "altinn:instances.read altinn:instances.write",
+  "systemUserResource": "app_brg_aarsregnskap-vanlig-202406",
+  "systemUserRequestId": "4f774704-88b8-4053-994b-37073ab4a896",
+  "systemUserExternalRef": "talli_annual_accounts_310279617",
+  "caseFixture": "annual-accounts-simple-holding-2025.json",
+  "evidenceFile": "annual-accounts-tt02-2026-07-14.json",
+  "codeCommit": "862d6b566d8d91767c0fe8a40a36dd885a9cba6f",
+  "payloadHashes": {
+    "mainForm": "9c14047ddafc8a50a1347679558db9dffd32bf8f3c72138a8830390a7626720b",
+    "companyAccounts": "dda6a8b76a30a68ee8b70b5dcac901e27e5d46aa874e0639dfc44bb66705d53c"
+  },
+  "payloadFeedbackCodes": [],
+  "localXmlValidation": {
+    "status": "well_formed"
+  },
+  "instance": {
+    "id": "51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+    "dataIds": {
+      "mainForm": "a8956442-cca7-41df-91c1-1f7033269e2b",
+      "companyAccounts": "eb605b3c-5975-4883-a1c1-0c7e37d72a1d"
+    },
+    "createdProcessTask": "data",
+    "mainFormUploaded": true,
+    "companyAccountsUploaded": true,
+    "locked": true,
+    "lockedProcessTask": "signing"
+  },
+  "validation": {
+    "hasErrors": false,
+    "issues": []
+  },
+  "signingUrl": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/#/instance/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+  "signed": false,
+  "submitted": false,
+  "secretsStored": false,
+  "preparedAt": "2026-07-14T10:27:59.575Z",
+  "error": null,
+  "validatedAt": "2026-07-14T10:28:01.688Z",
+  "lockedAt": "2026-07-14T10:28:05.103Z"
+}
