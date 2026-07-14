@@ -381,7 +381,7 @@ begin
 
   v_actor_id := public.assert_corporate_owner(v_company_id);
 
-  if exists (
+  if v_decision ->> 'decision_kind' = 'owner_dividend' and exists (
     select 1 from public.period_locks p
     where p.company_id = v_company_id and p.income_year = v_income_year
   ) then

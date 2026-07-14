@@ -19,6 +19,7 @@ import {
   evaluateObligationReadiness,
   type AnnualReadinessIssue,
 } from "../../../lib/annual-readiness";
+import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-document-readiness";
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
@@ -131,6 +132,17 @@ export default async function FilingObligationPage({
 
   const returnTo = `/filing/${obligation}`;
   const snapshot = evaluateObligationReadiness(input, obligation);
+  const corporateReadiness = input.corporateDocuments?.enabled
+    ? evaluateCorporateDocumentReadiness(input.corporateDocuments.lifecycle)
+    : null;
+  const annualCorporateDecision = data.corporateDecisions.find(
+    (decision) => decision.company_id === input.company.id
+      && decision.income_year === input.incomeYear
+      && decision.decision_kind === "annual_close",
+  );
+  const annualCorporateSet = annualCorporateDecision
+    ? data.corporateDocumentSets.find((set) => set.decision_id === annualCorporateDecision.id)
+    : null;
   const prereqBlocks = snapshot.hard_blocks.filter((issue) => !STEP_CODES.has(issue.code));
   const prerequisitesClear = prereqBlocks.length === 0;
   const checklist = [...prereqBlocks, ...snapshot.warnings];
@@ -181,6 +193,42 @@ export default async function FilingObligationPage({
             )}
           </div>
         </section>
+        {obligation === "aarsregnskap" ? (
+          <section className="filingStep">
+            <div className="filingStepHead">
+              <h2 className="filingStepTitle">Beslutningsdokumenter</h2>
+              <StatusBadge
+                variant={corporateReadiness?.annualSubmissionReady ? "success" : "danger"}
+                label={corporateReadiness?.annualSubmissionReady ? "Sluttført" : "Ikke sluttført"}
+                icon={corporateReadiness?.annualSubmissionReady ? "check" : "alert"}
+              />
+            </div>
+            <div className="filingStepBody">
+              {input.corporateDocuments?.enabled ? (
+                <>
+                  <p className="cardNote">
+                    Tilstand: {corporateReadiness?.state ?? "draft"}. Årsregnskapet er ikke produksjonsklart før
+                    begge protokoller er signert, eierbekreftet og beslutningen er sluttført.
+                  </p>
+                  {annualCorporateDecision ? (
+                    <p className="cardNote">
+                      Beslutningshash: <code>{annualCorporateDecision.decision_hash}</code><br />
+                      Kildehash: <code>{annualCorporateDecision.source_hash}</code><br />
+                      Malversjon: <code>{annualCorporateSet?.template_version ?? "mangler"}</code>
+                    </p>
+                  ) : null}
+                  <LinkButton variant="secondary" href="/year-end">
+                    Åpne årsbeslutningen
+                  </LinkButton>
+                </>
+              ) : (
+                <p className="cardNote">
+                  Beslutningsdokumentløpet er deaktivert i denne utrullingen og kan ikke markeres produksjonsklart.
+                </p>
+              )}
+            </div>
+          </section>
+        ) : null}
         <section className="filingStep">
           <div className="filingStepHead">
             <h2 className="filingStepTitle">{f.preview.title}</h2>

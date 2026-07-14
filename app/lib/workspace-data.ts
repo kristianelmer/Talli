@@ -19,6 +19,7 @@ import {
   listBillingPaymentEvents,
   listCompanyCancellations,
   listCompanyWorkspaces,
+  listCorporateDocumentLifecycle,
   listDocumentsForCompanies,
   listFilingPreviews,
   listFilingOverrides,
@@ -49,6 +50,16 @@ export async function loadWorkspaceData() {
   const { companies, error } = user ? await listCompanyWorkspaces() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
+  const { error: corporateLifecycleError, ...corporateLifecycle } = user
+    ? await listCorporateDocumentLifecycle(companies.map((company) => company.id))
+    : {
+        corporateDecisions: [],
+        corporateDocumentSets: [],
+        corporateDocumentArtifacts: [],
+        corporateDocumentEvents: [],
+        corporateDecisionFinalizations: [],
+        error: null,
+      };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
   const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
@@ -140,10 +151,11 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error,
+    error: error ?? corporateLifecycleError,
     companies,
     documents,
     annualData,
+    ...corporateLifecycle,
     setups,
     shareholders,
     previews,

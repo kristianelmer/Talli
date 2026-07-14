@@ -460,6 +460,13 @@ select public.finalize_corporate_decision(
   )
 );
 
+insert into public.period_locks (company_id, income_year, reason, locked_by) values (
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  2025,
+  'Annual figures are closed before annual meeting artifacts are created.',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+);
+
 create temporary table annual_rehearsal_inputs (payload jsonb not null);
 insert into annual_rehearsal_inputs (payload) values (
   $json$

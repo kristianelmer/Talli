@@ -101,6 +101,83 @@ export type AnnualDataRow = {
   updated_at: string;
 };
 
+export type CorporateDecisionRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_kind: "owner_dividend" | "annual_close";
+  annual_close_source_id: string;
+  source_hash: string;
+  canonical_input: Record<string, unknown>;
+  decision_hash: string;
+  supersedes_decision_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentSetRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  template_family: string;
+  template_version: string;
+  decision_hash: string;
+  supersedes_set_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentArtifactRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  set_id: string;
+  artifact_kind: string;
+  variant: "unsigned" | "signed_owner_attested";
+  document_id: string;
+  content_sha256: string;
+  byte_length: number;
+  mime_type: "application/pdf";
+  storage_key: string;
+  supersedes_artifact_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentEventRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  set_id: string;
+  artifact_id: string | null;
+  event_kind: string;
+  actor_id: string;
+  occurred_at: string;
+  decision_hash: string;
+  content_sha256: string | null;
+  metadata: Record<string, unknown>;
+  idempotency_key: string;
+  created_at: string;
+};
+
+export type CorporateDecisionFinalizationRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  finalization_kind: "owner_dividend_declared" | "annual_close_adopted";
+  holding_action_id: string | null;
+  ledger_entry_id: string | null;
+  annual_close_source_id: string | null;
+  decision_hash: string;
+  signed_artifact_hashes: Record<string, string>;
+  accounting_policy_version: string | null;
+  created_by: string;
+  created_at: string;
+};
+
 export type OpeningShareholderRow = {
   id: string;
   setup_id: string;
@@ -573,6 +650,60 @@ export async function listAnnualData(companyIds: string[]) {
   return {
     annualData: (data ?? []) as AnnualDataRow[],
     error: error?.message ?? null,
+  };
+}
+
+export async function listCorporateDocumentLifecycle(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return {
+      corporateDecisions: [] as CorporateDecisionRow[],
+      corporateDocumentSets: [] as CorporateDocumentSetRow[],
+      corporateDocumentArtifacts: [] as CorporateDocumentArtifactRow[],
+      corporateDocumentEvents: [] as CorporateDocumentEventRow[],
+      corporateDecisionFinalizations: [] as CorporateDecisionFinalizationRow[],
+      error: null,
+    };
+  }
+  const supabase = await createSupabaseServerClient();
+  const [decisions, sets, artifacts, events, finalizations] = await Promise.all([
+    supabase
+      .from("corporate_decisions")
+      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, supersedes_decision_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("corporate_document_sets")
+      .select("id, company_id, income_year, decision_id, template_family, template_version, decision_hash, supersedes_set_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("corporate_document_artifacts")
+      .select("id, company_id, income_year, set_id, artifact_kind, variant, document_id, content_sha256, byte_length, mime_type, storage_key, supersedes_artifact_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("corporate_document_events")
+      .select("id, company_id, income_year, decision_id, set_id, artifact_id, event_kind, actor_id, occurred_at, decision_hash, content_sha256, metadata, idempotency_key, created_at")
+      .in("company_id", companyIds)
+      .order("occurred_at", { ascending: true }),
+    supabase
+      .from("corporate_decision_finalizations")
+      .select("id, company_id, income_year, decision_id, finalization_kind, holding_action_id, ledger_entry_id, annual_close_source_id, decision_hash, signed_artifact_hashes, accounting_policy_version, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: true }),
+  ]);
+  return {
+    corporateDecisions: (decisions.data ?? []) as CorporateDecisionRow[],
+    corporateDocumentSets: (sets.data ?? []) as CorporateDocumentSetRow[],
+    corporateDocumentArtifacts: (artifacts.data ?? []) as CorporateDocumentArtifactRow[],
+    corporateDocumentEvents: (events.data ?? []) as CorporateDocumentEventRow[],
+    corporateDecisionFinalizations: (finalizations.data ?? []) as CorporateDecisionFinalizationRow[],
+    error: decisions.error?.message
+      ?? sets.error?.message
+      ?? artifacts.error?.message
+      ?? events.error?.message
+      ?? finalizations.error?.message
+      ?? null,
   };
 }
 

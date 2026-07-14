@@ -417,7 +417,7 @@
 
   Expected: all commands pass and repository search finds no `.txt` corporate placeholders or early bank posting.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run: `git add app/lib/owner-dividend.ts tests/owner_dividend.test.mjs app/actions.ts 'app/(owner)/actions/_components/OwnerDividendWizard.tsx' 'app/(owner)/actions/new/page.tsx' 'app/(owner)/workspace/page.tsx' && git commit -m "feat: create owner dividend decision drafts"`
 
@@ -439,25 +439,25 @@
 - Consumes: Task 5 render/storage orchestration, Task 6 annual-close fact builder/readiness, current annual-data and annual-account payload hashes, and Task 4 draft RPC.
 - Produces: server action `createAnnualCorporateDecisionDraft(FormData) -> Promise<void>`, annual corporate-decision form, and annual readiness integration consumed by Task 9 finalization.
 
-- [ ] **Step 1: Add failing annual artifact tests**
+- [x] **Step 1: Add failing annual artifact tests**
 
   Assert `createAnnualCorporateDecisionDraft(formData)` accepts only an annual-data/annual-payload-ready year, recomputes both source hashes, creates exactly `annual_board_minutes` and `annual_general_meeting_minutes`, never creates an unrelated ledger entry, and becomes stale when annual facts change. Assert the filing page blocks production readiness until the matching decision is signed/attested/finalized.
 
-- [ ] **Step 2: Run annual corporate test red**
+- [x] **Step 2: Run annual corporate test red**
 
   Run: `node --experimental-strip-types --test tests/annual_corporate_documents.test.mjs`
 
   Expected: missing annual decision action/UI.
 
-- [ ] **Step 3: Implement annual decision draft action and form**
+- [x] **Step 3: Implement annual decision draft action and form**
 
   Reuse the common rendering/storage/RPC orchestration. Bind the canonical decision to current annual-data and annual-account payload hashes. Render adoption/minutes facts but state that annual accounts themselves require separate statutory signatures.
 
-- [ ] **Step 4: Integrate readiness and scripts**
+- [x] **Step 4: Integrate readiness and scripts**
 
   Add `test:annual-corporate-documents` and include it in launch rehearsal. Show current/superseded status, hashes, template version, and actionable missing steps in year-end and filing views.
 
-- [ ] **Step 5: Run annual tests and typecheck green**
+- [x] **Step 5: Run annual tests and typecheck green**
 
   Run: `npm run test:annual-corporate-documents`
 

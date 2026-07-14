@@ -132,9 +132,9 @@ test("server exposes only the draft action and never posts accounting directly",
   const action = actionsSource.slice(start, end < 0 ? undefined : end);
   assert.match(action, /TALLI_CORPORATE_DOCUMENTS_ENABLED/);
   assert.match(action, /buildOwnerDividendDecisionInput/);
-  assert.match(action, /renderCorporateDocuments/);
-  assert.match(action, /uploadCorporateArtifacts/);
-  assert.match(action, /create_corporate_document_draft/);
+  assert.match(action, /renderCorporateDocuments|persistCorporateDocumentDraft/);
+  assert.match(action, /uploadCorporateArtifacts|persistCorporateDocumentDraft/);
+  assert.match(action, /create_corporate_document_draft|persistCorporateDocumentDraft/);
   assert.doesNotMatch(action, /\.from\(["']ledger_entries["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']holding_actions["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']documents["']\)\.insert/);

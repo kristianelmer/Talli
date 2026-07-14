@@ -13,6 +13,7 @@ export type CorporateDecisionLifecycleRow = {
   id: string;
   decision_kind: "owner_dividend" | "annual_close";
   decision_hash: string;
+  source_hash?: string;
 };
 
 export type CorporateDocumentSetLifecycleRow = {
@@ -52,6 +53,7 @@ export type CorporateDecisionLifecycle = {
 
 export type CorporateDocumentReadinessInput = CorporateDecisionLifecycle & {
   currentDecisionHash: string;
+  currentSourceHash?: string;
 };
 
 export type CorporateDocumentBlockerCode =
@@ -137,7 +139,9 @@ export function evaluateCorporateDocumentReadiness(
     ));
   }
   const currentHashMatches = Boolean(input.decision)
-    && input.decision!.decision_hash === input.currentDecisionHash;
+    && input.decision!.decision_hash === input.currentDecisionHash
+    && (input.currentSourceHash === undefined
+      || input.decision!.source_hash === input.currentSourceHash);
   if (input.decision && !currentHashMatches) {
     blockers.push(blocker(
       "corporate_documents_current_hash_mismatch",
