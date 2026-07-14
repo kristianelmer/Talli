@@ -150,6 +150,8 @@ test("backup manifest identifies launch-critical tables and object references", 
     },
   ]);
   assert.equal(manifest.counts.auditEvents, 1);
+  assert.equal(manifest.counts.filingSubmissions, 1);
+  assert.equal(manifest.counts.companyTaxSubmissions, 0);
   assert.equal(manifest.counts.corporateDecisions, 1);
   assert.equal(manifest.counts.corporateDocumentArtifacts, 2);
   assert.deepEqual(manifest.accountingPolicyVersionReferences, ["no-holding-v1"]);
@@ -163,6 +165,9 @@ test("restore fixture preserves launch-critical accounting state in isolated wor
   assert.equal(restored.targetCompanyId, "restored-company");
   assert.equal(restored.restored.company.id, "restored-company");
   assert.equal(restored.restored.ledgerEntries[0].id, "ledger-id");
+  assert.deepEqual(restored.restored.companyTaxSubmissions, []);
+  assert.equal(restored.restored.rf1086Submissions[0].id, "submission-id");
+  assert.equal(restored.restored.filingSubmissions.length, 1);
   assert.equal(restored.restored.filingSubmissions[0].receiptId, "sim-rf1086");
   assert.equal(restored.restored.reviewComments[0].id, "review-id");
   assert.equal(restored.restored.billingAccounts[0].filing_package_paid, true);
@@ -173,6 +178,28 @@ test("restore fixture preserves launch-critical accounting state in isolated wor
   assert.equal(restored.restored.corporateDocumentArtifacts[1].content_sha256, "c".repeat(64));
   assert.equal(restored.restored.corporateDecisionFinalizations[0].accounting_policy_version, "no-holding-v1");
   assert.equal(integrity.ok, true);
+});
+
+test("company-tax submissions are counted and round-trip with generic filing submissions", () => {
+  const companyTaxSubmission = {
+    id: "company-tax-submission-id",
+    mode: "test_authority",
+    status: "feedback_ready",
+    receiptId: "feedback-data-id",
+    submittedPayload: null,
+  };
+  const archive = archiveFixture({ companyTaxSubmissions: [companyTaxSubmission] });
+  const manifest = buildBackupManifest(archive);
+  const restored = restoreCompanyYearArchive(archive, { targetCompanyId: "restored-company" });
+
+  assert.equal(manifest.counts.companyTaxSubmissions, 1);
+  assert.equal(manifest.counts.filingSubmissions, 2);
+  assert.deepEqual(restored.restored.companyTaxSubmissions, [companyTaxSubmission]);
+  assert.deepEqual(
+    restored.restored.filingSubmissions.map((submission) => submission.id),
+    ["submission-id", "company-tax-submission-id"],
+  );
+  assert.equal(restored.restored.filingSubmissions[1].submittedPayload, null);
 });
 
 test("restore integrity fails when corporate lifecycle rows or object metadata are incomplete", () => {

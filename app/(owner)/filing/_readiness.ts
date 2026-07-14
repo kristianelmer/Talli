@@ -5,6 +5,8 @@ import type { AnnualReadinessInput } from "../../lib/annual-readiness";
 import { corporateAnnualSourceHash } from "../../lib/corporate-decision-facts";
 import type { WorkspaceData } from "../../lib/workspace-data";
 
+export { obligationFilingString } from "./_presentation";
+
 /** Owner-facing filing obligations, in the order shown on the hub. */
 export const FILING_OBLIGATIONS: AuthorityObligation[] = [
   "aksjonaerregisteroppgaven",
@@ -14,16 +16,6 @@ export const FILING_OBLIGATIONS: AuthorityObligation[] = [
 
 export function isFilingObligation(value: string): value is AuthorityObligation {
   return (FILING_OBLIGATIONS as string[]).includes(value);
-}
-
-/**
- * Maps the obligation enum to the `filing` string stored on preview/submission
- * rows (these use Norwegian spelling with accents, unlike the enum).
- */
-export function obligationFilingString(obligation: AuthorityObligation): string {
-  if (obligation === "aksjonaerregisteroppgaven") return "aksjonærregisteroppgaven";
-  if (obligation === "skattemelding") return "skattemelding for AS";
-  return "årsregnskap";
 }
 
 /**

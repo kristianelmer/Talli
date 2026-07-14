@@ -218,7 +218,10 @@ Current tax preview field decisions:
 - Identify the exact current submission API/flow for company tax return, separate from the `skattemelding upersonlig` data API. **(Resolved 2026-06-30 — see "Submission flow and scope" above: service "Innrapportering skattemelding", scope `skatteetaten:formueinntekt/skattemelding`, Altinn3 app `skd/formueinntekt-skattemelding-v2`.)**
 - Confirm the current XSD/JSON schemas and code lists for the relevant income year. **(Resolved for the 2025 launch subset through pinned tag `v1.62.47`.)**
 - Map Talli ledger/tax concepts to `skattemelding` and `næringsspesifikasjon` fields. **(Resolved for the explicitly supported subset; other cases remain blocked.)**
-- Validate generated payloads against official schemas and test environment. **(Schema, `validertest`, Altinn instance, owner signing, receipt, and archive acceptance complete in TT02 on 2026-07-14.)**
+- Validate generated payloads against official schemas and test environment.
+  **(Schema, `validertest`, Altinn instance, owner signing, official feedback
+  retrieval, and archive verification completed in TT02 on 2026-07-14;
+  explicit feedback-outcome classification remains pending.)**
 - Obtain separate production access and written answers for the remaining exchange, human-submit,
   receipt-resume, and pilot questions in
   `docs/filing/skatteetaten-production-access-application.md`.

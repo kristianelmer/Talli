@@ -257,9 +257,13 @@
 
 - Modify: `app/(owner)/filing/[obligation]/page.tsx`
 - Modify: `app/(owner)/filing/page.tsx`
+- Create: `app/(owner)/filing/_presentation.ts`
+- Modify: `app/(owner)/filing/_readiness.ts`
 - Modify: `app/lib/archive.ts`
+- Modify: `app/lib/backup-restore.ts`
 - Create: `tests/owner_filing_flow.test.mjs`
 - Modify: `tests/company_tax_return_payload.test.mjs`
+- Modify: `tests/backup_restore.test.mjs`
 - Modify: `docs/filing/company-tax-return-authority-map.md`
 - Modify: `docs/filing/production-submission-state.md`
 - Modify: `docs/filing/authority-onboarding-runbook.md`
@@ -275,6 +279,13 @@
 existing receipt-only success rule would mislabel this pending test-authority
 record. Task 3 therefore also updates the hub and its owner-flow regression so
 `test_authority` / `feedback_ready` is shown as a warning, never success.
+
+**Post-commit review corrections:** A shared pure presentation model now owns
+exact pending-record selection, hub/detail copy, posted-success suppression and
+submit-control flags. Pending company-tax feedback takes precedence regardless
+of row order, while other obligations retain receipt aggregation. Backup and
+restore now count, preserve and merge company-tax submissions, with old archives
+that omit `companyTaxSubmissions` defaulting safely to an empty array.
 
 - [x] **Step 1: Add failing owner-flow and archive tests**
 
@@ -334,7 +345,7 @@ record. Task 3 therefore also updates the hub and its owner-flow regression so
   Run:
 
   ```bash
-  git add 'app/(owner)/filing/[obligation]/page.tsx' 'app/(owner)/filing/page.tsx' app/lib/archive.ts tests/owner_filing_flow.test.mjs tests/company_tax_return_payload.test.mjs docs/filing/company-tax-return-authority-map.md docs/filing/production-submission-state.md docs/filing/authority-onboarding-runbook.md docs/prd/holdingswift-product-requirements-implementation-plan.md docs/superpowers/plans/2026-07-14-company-tax-feedback-persistence.md
+  git add 'app/(owner)/filing/[obligation]/page.tsx' 'app/(owner)/filing/page.tsx' 'app/(owner)/filing/_presentation.ts' 'app/(owner)/filing/_readiness.ts' app/lib/archive.ts app/lib/backup-restore.ts tests/owner_filing_flow.test.mjs tests/company_tax_return_payload.test.mjs tests/backup_restore.test.mjs docs/filing/company-tax-return-authority-map.md docs/filing/production-submission-state.md docs/filing/authority-onboarding-runbook.md docs/prd/holdingswift-product-requirements-implementation-plan.md docs/superpowers/plans/2026-07-14-company-tax-feedback-persistence.md
   git diff --cached --check
   git diff --exit-code -- docs/remarks/holdingswift_produktkrav.md
   git commit -m "feat: expose company tax TT02 feedback state"

@@ -7,8 +7,8 @@ import { loadWorkspaceData } from "../../lib/workspace-data";
 import {
   FILING_OBLIGATIONS,
   buildReadinessInput,
-  obligationFilingString,
 } from "./_readiness";
+import { buildOwnerFilingPresentation } from "./_presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -60,23 +60,19 @@ export default async function FilingHubPage({ searchParams }: FilingHubProps) {
         {FILING_OBLIGATIONS.map((obligation) => {
           const meta = f.obligations[obligation];
           const snapshot = evaluateObligationReadiness(input, obligation);
-          const submission = input.filingSubmissions.find(
-            (submission) =>
-              submission.filing === obligationFilingString(obligation) &&
-              submission.income_year === input.incomeYear,
-          );
-          const companyTaxFeedbackPending = obligation === "skattemelding"
-            && submission?.mode === "test_authority"
-            && submission.status === "feedback_ready";
-          const submitted = !companyTaxFeedbackPending && Boolean(submission?.receipt_id);
+          const presentation = buildOwnerFilingPresentation({
+            obligation,
+            incomeYear: input.incomeYear,
+            submissions: input.filingSubmissions,
+          });
 
-          const badge = companyTaxFeedbackPending ? (
+          const badge = presentation.pendingFeedback ? (
             <StatusBadge
               variant="warning"
-              label="Test – ikke produksjonsinnsending"
+              label={presentation.pendingFeedback.badgeLabel}
               icon="alert"
             />
-          ) : submitted ? (
+          ) : presentation.submitted ? (
             <StatusBadge variant="success" label={f.status.submitted} icon="check" />
           ) : snapshot.ready ? (
             <StatusBadge status="klar" />
@@ -96,7 +92,9 @@ export default async function FilingHubPage({ searchParams }: FilingHubProps) {
                 <span className="actionCardTitle">{meta.label}</span>
                 {badge}
               </span>
-              <span className="actionCardBody">{meta.summary}</span>
+              <span className="actionCardBody">
+                {presentation.pendingFeedback?.body ?? meta.summary}
+              </span>
             </Link>
           );
         })}

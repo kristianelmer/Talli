@@ -26,8 +26,8 @@ import { loadWorkspaceData } from "../../../lib/workspace-data";
 import {
   buildReadinessInput,
   isFilingObligation,
-  obligationFilingString,
 } from "../_readiness";
+import { buildOwnerFilingPresentation } from "../_presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +146,16 @@ export default async function FilingObligationPage({
   const prereqBlocks = snapshot.hard_blocks.filter((issue) => !STEP_CODES.has(issue.code));
   const prerequisitesClear = prereqBlocks.length === 0;
   const checklist = [...prereqBlocks, ...snapshot.warnings];
+  const presentation = buildOwnerFilingPresentation({
+    obligation,
+    incomeYear: input.incomeYear,
+    submissions: input.filingSubmissions,
+    posted: Boolean(query?.posted),
+    error: query?.error,
+  });
+  const filingString = presentation.filing;
+  const submission = presentation.primarySubmission;
+  const submitted = presentation.submitted;
 
   const header = (
     <div className="pageHead">
@@ -160,27 +170,10 @@ export default async function FilingObligationPage({
 
   const banners = (
     <>
-      {query?.posted ? <Banner variant="success">{f.posted}</Banner> : null}
-      {query?.error ? <Banner variant="danger">{query.error}</Banner> : null}
+      {presentation.showPostedSuccessBanner ? <Banner variant="success">{f.posted}</Banner> : null}
+      {presentation.errorMessage ? <Banner variant="danger">{presentation.errorMessage}</Banner> : null}
     </>
   );
-
-  const filingString = obligationFilingString(obligation);
-  const submission = input.filingSubmissions.find(
-    (item) => item.filing === filingString && item.income_year === input.incomeYear,
-  );
-  const companyTaxFeedback = obligation === "skattemelding"
-    && submission?.mode === "test_authority"
-    && submission.status === "feedback_ready"
-    ? submission
-    : null;
-  const companyTaxArchiveReference = companyTaxFeedback?.receipt_metadata
-    && "archiveReference" in companyTaxFeedback.receipt_metadata
-    ? companyTaxFeedback.receipt_metadata.archiveReference
-    : companyTaxFeedback?.submitted_payload_ref
-      && "archiveReference" in companyTaxFeedback.submitted_payload_ref
-      ? companyTaxFeedback.submitted_payload_ref.archiveReference
-      : null;
 
   // --- Skattemelding / Årsregnskap: readiness + honest placeholder. ---
   if (obligation !== "aksjonaerregisteroppgaven") {
@@ -246,24 +239,23 @@ export default async function FilingObligationPage({
             </div>
           </section>
         ) : null}
-        {companyTaxFeedback ? (
+        {presentation.pendingFeedback ? (
           <section className="filingStep">
             <div className="filingStepHead">
-              <h2 className="filingStepTitle">TT02-tilbakemelding mottatt</h2>
+              <h2 className="filingStepTitle">{presentation.pendingFeedback.title}</h2>
               <StatusBadge
                 variant="warning"
-                label="Test – ikke produksjonsinnsending"
+                label={presentation.pendingFeedback.badgeLabel}
                 icon="alert"
               />
             </div>
             <div className="filingStepBody">
               <Banner variant="warning">
-                Myndighetsutfallet venter på klassifisering. Kvitteringen dokumenterer mottatt
-                testtilbakemelding, ikke et endelig utfall.
+                {presentation.pendingFeedback.body}
               </Banner>
               <p className="cardNote">
-                Tilbakemeldingsdata-ID: <code>{companyTaxFeedback.receipt_id ?? "mangler"}</code><br />
-                Arkivreferanse: <code>{companyTaxArchiveReference ?? "mangler"}</code>
+                Tilbakemeldingsdata-ID: <code>{presentation.pendingFeedback.receiptId ?? "mangler"}</code><br />
+                Arkivreferanse: <code>{presentation.pendingFeedback.archiveReference ?? "mangler"}</code>
               </p>
             </div>
           </section>
@@ -287,7 +279,6 @@ export default async function FilingObligationPage({
     (item) => item.filing === filingString && item.income_year === input.incomeYear,
   );
   const previewReady = preview?.status === "ready";
-  const submitted = Boolean(submission?.receipt_id);
   const permission = input.authorityPermissions.find(
     (item) => item.obligation === obligation,
   );
@@ -437,19 +428,21 @@ export default async function FilingObligationPage({
             ) : (
               <>
                 <p className="cardNote">{f.authority.intro}</p>
-                <form action={confirmAuthorityPermission} className="filingConfirmForm">
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <input type="hidden" name="companyId" value={input.company.id} />
-                  <input type="hidden" name="obligation" value={obligation} />
-                  <input type="hidden" name="productionEnabled" value="on" />
-                  <label className="filingCheck">
-                    <input type="checkbox" name="ack" required />
-                    {f.authority.confirmLabel}
-                  </label>
-                  <SubmitButton pendingLabel={f.authority.pending}>
-                    {f.authority.cta}
-                  </SubmitButton>
-                </form>
+                {presentation.showProductionSubmitControl ? (
+                  <form action={confirmAuthorityPermission} className="filingConfirmForm">
+                    <input type="hidden" name="returnTo" value={returnTo} />
+                    <input type="hidden" name="companyId" value={input.company.id} />
+                    <input type="hidden" name="obligation" value={obligation} />
+                    <input type="hidden" name="productionEnabled" value="on" />
+                    <label className="filingCheck">
+                      <input type="checkbox" name="ack" required />
+                      {f.authority.confirmLabel}
+                    </label>
+                    <SubmitButton pendingLabel={f.authority.pending}>
+                      {f.authority.cta}
+                    </SubmitButton>
+                  </form>
+                ) : null}
               </>
             )}
           </div>

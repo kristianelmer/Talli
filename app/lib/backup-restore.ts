@@ -34,7 +34,22 @@ export type RestoreGateRecord = {
   target: string;
 };
 
+function filingSubmissionCollections(archive: Record<string, any>) {
+  const rf1086Submissions = Array.isArray(archive.rf1086Submissions)
+    ? archive.rf1086Submissions
+    : [];
+  const companyTaxSubmissions = Array.isArray(archive.companyTaxSubmissions)
+    ? archive.companyTaxSubmissions
+    : [];
+  return {
+    rf1086Submissions,
+    companyTaxSubmissions,
+    filingSubmissions: [...rf1086Submissions, ...companyTaxSubmissions],
+  };
+}
+
 export function buildBackupManifest(archive: Record<string, any>) {
+  const submissionCollections = filingSubmissionCollections(archive);
   const corporateByDocumentId = new Map(
     (archive.corporateDocumentArtifacts ?? []).map((artifact: any) => [artifact.document_id, artifact]),
   );
@@ -73,7 +88,8 @@ export function buildBackupManifest(archive: Record<string, any>) {
       holdingActions: archive.taxSettlements?.length ?? 0,
       documents: archive.documents?.length ?? 0,
       filingPreviews: archive.filingPreviews?.length ?? 0,
-      filingSubmissions: archive.rf1086Submissions?.length ?? 0,
+      filingSubmissions: submissionCollections.filingSubmissions.length,
+      companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
       auditEvents: archive.auditEvents?.length ?? 0,
@@ -92,6 +108,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
 
 export function restoreCompanyYearArchive(archive: Record<string, any>, options: { targetCompanyId: string }) {
   const manifest = buildBackupManifest(archive);
+  const submissionCollections = filingSubmissionCollections(archive);
   const missingObjectWarnings = (archive.documents ?? [])
     .filter((document: any) => !document.storageKey || String(document.status).startsWith("missing"))
     .map((document: any) => ({
@@ -112,7 +129,9 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       holdingActions: archive.taxSettlements ?? [],
       documents: archive.documents ?? [],
       filingPreviews: archive.filingPreviews ?? [],
-      filingSubmissions: archive.rf1086Submissions ?? [],
+      rf1086Submissions: submissionCollections.rf1086Submissions,
+      companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
+      filingSubmissions: submissionCollections.filingSubmissions,
       reviewComments: archive.reviewComments ?? [],
       billingAccounts: archive.billingAccounts ?? [],
       auditEvents: archive.auditEvents ?? [],

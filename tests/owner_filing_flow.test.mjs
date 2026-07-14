@@ -1,43 +1,88 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const filingPageSource = readFileSync(
-  new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
-  "utf8",
-);
-const filingHubSource = readFileSync(
-  new URL("../app/(owner)/filing/page.tsx", import.meta.url),
-  "utf8",
-);
-const nonRf1086Branch = filingPageSource.slice(
-  filingPageSource.indexOf("// --- Skattemelding / Årsregnskap"),
-  filingPageSource.indexOf("// --- Aksjonærregisteroppgaven"),
-);
+import { buildOwnerFilingPresentation } from "../app/(owner)/filing/_presentation.ts";
 
-test("company-tax filing shows persisted pending TT02 feedback without production acceptance", () => {
-  assert.match(filingPageSource, /obligationFilingString\(obligation\)/u);
-  assert.match(filingPageSource, /item\.income_year === input\.incomeYear/u);
-  assert.match(filingPageSource, /obligation === "skattemelding"/u);
-  assert.match(filingPageSource, /mode === "test_authority"/u);
-  assert.match(filingPageSource, /status === "feedback_ready"/u);
-  assert.match(nonRf1086Branch, /TT02-tilbakemelding mottatt/u);
-  assert.match(nonRf1086Branch, /Myndighetsutfallet venter på klassifisering/u);
-  assert.match(nonRf1086Branch, /Test – ikke produksjonsinnsending/u);
-  assert.match(nonRf1086Branch, /receipt_id/u);
-  assert.match(filingPageSource, /archiveReference/u);
-  assert.match(nonRf1086Branch, /variant="warning"/u);
-  assert.doesNotMatch(nonRf1086Branch, /<SubmitButton/u);
-  assert.doesNotMatch(nonRf1086Branch, /Akseptert|Godkjent av myndigheten|produksjonsinnsending fullført/iu);
+function submission(overrides = {}) {
+  return {
+    id: "submission-id",
+    filing: "skattemelding for AS",
+    income_year: 2025,
+    mode: "simulation",
+    status: "receipt_stored",
+    receipt_id: "simulation-receipt-id",
+    receipt_metadata: null,
+    submitted_payload_ref: null,
+    ...overrides,
+  };
+}
+
+test("pending company-tax feedback wins regardless of row order and suppresses posted success", () => {
+  const simulation = submission({ id: "simulation" });
+  const pending = submission({
+    id: "pending",
+    mode: "test_authority",
+    status: "feedback_ready",
+    receipt_id: "feedback-data-id",
+    receipt_metadata: {
+      archiveReference: "https://platform.tt02.altinn.no/storage/api/v1/instances/instance-id",
+    },
+  });
+  const wrongYearPending = { ...pending, id: "wrong-year", income_year: 2024 };
+  const wrongFilingPending = { ...pending, id: "wrong-filing", filing: "årsregnskap" };
+
+  for (const submissions of [
+    [simulation, wrongYearPending, pending],
+    [wrongFilingPending, pending, simulation],
+  ]) {
+    const presentation = buildOwnerFilingPresentation({
+      obligation: "skattemelding",
+      incomeYear: 2025,
+      submissions,
+      posted: true,
+      error: "Behold denne feilmeldingen",
+    });
+
+    assert.equal(presentation.primarySubmission?.id, "pending");
+    assert.equal(presentation.pendingCompanyTaxSubmission?.id, "pending");
+    assert.equal(presentation.submitted, false);
+    assert.equal(presentation.showPostedSuccessBanner, false);
+    assert.equal(presentation.showProductionSubmitControl, false);
+    assert.equal(presentation.errorMessage, "Behold denne feilmeldingen");
+    assert.deepEqual(presentation.pendingFeedback, {
+      title: "TT02-tilbakemelding mottatt",
+      badgeLabel: "Test – ikke produksjonsinnsending",
+      body: "Myndighetsutfallet venter på klassifisering. Kvitteringen dokumenterer mottatt testtilbakemelding, ikke et endelig utfall.",
+      receiptId: "feedback-data-id",
+      archiveReference: "https://platform.tt02.altinn.no/storage/api/v1/instances/instance-id",
+    });
+  }
 });
 
-test("filing hub does not turn pending company-tax TT02 feedback into a success badge", () => {
-  assert.match(filingHubSource, /obligation === "skattemelding"/u);
-  assert.match(filingHubSource, /mode === "test_authority"/u);
-  assert.match(filingHubSource, /status === "feedback_ready"/u);
-  assert.match(filingHubSource, /Test – ikke produksjonsinnsending/u);
-  assert.match(
-    filingHubSource,
-    /companyTaxFeedbackPending\s*\?\s*\([\s\S]*?variant="warning"/u,
-  );
+test("non-pending obligations preserve receipt aggregation when the receipt row is not first", () => {
+  const preparing = submission({
+    id: "rf-preparing",
+    filing: "aksjonærregisteroppgaven",
+    status: "submitted",
+    receipt_id: null,
+  });
+  const receipted = submission({
+    id: "rf-receipted",
+    filing: "aksjonærregisteroppgaven",
+    receipt_id: "sim-rf1086-receipt",
+  });
+  const presentation = buildOwnerFilingPresentation({
+    obligation: "aksjonaerregisteroppgaven",
+    incomeYear: 2025,
+    submissions: [preparing, receipted],
+    posted: true,
+  });
+
+  assert.equal(presentation.pendingCompanyTaxSubmission, null);
+  assert.equal(presentation.pendingFeedback, null);
+  assert.equal(presentation.primarySubmission?.id, "rf-receipted");
+  assert.equal(presentation.submitted, true);
+  assert.equal(presentation.showPostedSuccessBanner, true);
+  assert.equal(presentation.showProductionSubmitControl, true);
+  assert.equal(presentation.errorMessage, null);
 });
