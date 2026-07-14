@@ -147,9 +147,17 @@ test("retries produce the same complete projection without a supplied recorded t
 test("rejects unsafe evidence URLs and normalizes blank evidence URLs to null", () => {
   for (const evidenceUrl of [
     "data:text/plain,secret",
+    "https:///missing-host",
+    "https://evidence.example",
     "https://user:password@evidence.example/company-tax.json",
+    "https://evidence.example:443/company-tax.json",
     "https://evidence.example/company-tax.json?token=secret",
     "https://evidence.example/company-tax.json#secret",
+    "https://evidence.example/archive/../company-tax.json",
+    "https://evidence.example/archive/%2e%2e/company-tax.json",
+    " https://evidence.example/company-tax.json",
+    "https://evidence.example/company tax.json",
+    "https://evidence.example/company-tax.json\nignored",
     "https://evidence.example/CuRrEnT_DoCuMeNt_ReFeReNcE_SeNtInEl.json",
     `https://evidence.example/${"a".repeat(2048)}`,
   ]) {

@@ -140,11 +140,16 @@ function evidenceIsoDate(value: unknown, label: string): string {
 }
 
 function safeCompanyTaxEvidenceUrl(value?: string | null): string | null {
+  const raw = value ?? "";
   const normalized = optional(value);
   if (!normalized) return null;
-  if (normalized.length > MAX_EVIDENCE_URL_LENGTH
+  if (raw !== normalized
+    || /[\u0000-\u0020\u007f]/u.test(normalized)
+    || normalized.length > MAX_EVIDENCE_URL_LENGTH
     || normalized.includes("?")
     || normalized.includes("#")
+    || /(?:^|\/)\.{1,2}(?:\/|$)/u.test(normalized)
+    || /%(?:2e|2f|5c)/iu.test(normalized)
     || /current_document_reference_sentinel/iu.test(normalized)) {
     throw new Error("TT02-evidenslenken må være en avgrenset HTTPS-lenke uten query eller fragment.");
   }
@@ -158,8 +163,10 @@ function safeCompanyTaxEvidenceUrl(value?: string | null): string | null {
     || !parsed.hostname
     || parsed.username
     || parsed.password
+    || parsed.port
     || parsed.search
-    || parsed.hash) {
+    || parsed.hash
+    || parsed.href !== normalized) {
     throw new Error("TT02-evidenslenken må være en absolutt HTTPS-lenke uten credentials, query eller fragment.");
   }
   return parsed.href;

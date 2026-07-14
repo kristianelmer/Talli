@@ -76,7 +76,7 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
   assert.match(migration, /companyOrgNumber/u);
   assert.match(migration, /incomeYear/u);
   assert.match(migration, /from public\.companies/u);
-  assert.match(migration, /encode\(digest\(/u);
+  assert.match(migration, /encode\(extensions\.digest\(/u);
   assert.match(migration, /skattemelding:/u);
   assert.match(migration, /naeringsspesifikasjon:/u);
   assert.match(migration, /validationEnvelope:/u);
@@ -130,10 +130,21 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
   );
   assert.match(migration, /company_tax_evidence_conflict/u);
   assert.match(migration, /insert into public\.audit_events/u);
-  assert.match(
-    migration,
-    /create unique index if not exists authority_test_runs_evidence_identity_key[\s\S]*\(company_id, obligation, environment, test_reference\)/u,
+  const authorityIdentityIndexStart = migration.indexOf(
+    "create unique index authority_test_runs_evidence_identity_key",
   );
+  const authorityIdentityIndexEnd = migration.indexOf("\n\ndrop policy", authorityIdentityIndexStart);
+  const authorityIdentityIndex = migration.slice(
+    authorityIdentityIndexStart,
+    authorityIdentityIndexEnd,
+  );
+  assert.match(authorityIdentityIndex, /\(company_id, obligation, environment, test_reference\)/u);
+  assert.match(authorityIdentityIndex, /where obligation = 'skattemelding'/u);
+  assert.match(authorityIdentityIndex, /environment = 'test'/u);
+  assert.match(authorityIdentityIndex, /status = 'pending'/u);
+  assert.match(authorityIdentityIndex, /test_reference ~/u);
+  assert.match(authorityIdentityIndex, /payload_hash ~/u);
+  assert.match(migration, /drop index if exists public\.authority_test_runs_evidence_identity_key/u);
   assert.match(
     migration,
     /revoke all on function public\.import_company_tax_tt02_evidence\(jsonb\) from public, anon/u,
@@ -146,6 +157,51 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
     migration,
     /(?:insert into|update|delete from) public\.(?:authority_permissions|launch_signoffs)/u,
   );
+});
+
+test("RPC evidence URLs use one canonical HTTPS grammar and reject traversal", () => {
+  const patternSource = migration.match(
+    /v_https_evidence_url_pattern constant text :=\s*'([^']+)'/u,
+  )?.[1] ?? "";
+  assert.notEqual(patternSource, "", "migration must define the SQL evidence URL grammar");
+  const pattern = new RegExp(patternSource, "u");
+
+  assert.equal(
+    pattern.test("https://evidence.example/static/company-tax-2025.json"),
+    true,
+  );
+  for (const invalidUrl of [
+    "https:///missing-host",
+    "https://evidence.example",
+    "https://user:password@evidence.example/company-tax.json",
+    "https://evidence.example:443/company-tax.json",
+    "https://evidence.example/company-tax.json?token=secret",
+    "https://evidence.example/company-tax.json#secret",
+    "http://evidence.example/company-tax.json",
+    "https://evidence.example/company tax.json",
+    "https://evidence.example/company-tax.json\nignored",
+  ]) {
+    assert.equal(pattern.test(invalidUrl), false, `${invalidUrl} must fail the SQL URL grammar`);
+  }
+  assert.match(migration, /evidence_url !~ v_https_evidence_url_pattern/u);
+  assert.ok(migration.includes("evidence_url ~ '(^|/)\\.{1,2}(/|$)'"));
+  assert.match(migration, /evidence_url ~\* '%\(2e\|2f\|5c\)'/u);
+});
+
+test("RPC retries compare evidence content without replacing the original actors", () => {
+  const authorityConflictCheck = migration.match(
+    /if v_persisted_authority\.status[\s\S]*?raise exception 'company_tax_evidence_conflict';/u,
+  )?.[0] ?? "";
+  const submissionConflictCheck = migration.match(
+    /if v_persisted_submission\.preview_id[\s\S]*?raise exception 'company_tax_evidence_conflict';/u,
+  )?.[0] ?? "";
+
+  assert.doesNotMatch(authorityConflictCheck, /recorded_by/u);
+  assert.doesNotMatch(submissionConflictCheck, /created_by/u);
+  assert.match(migration, /v_authority\.recorded_by is distinct from v_actor_id/u);
+  assert.match(migration, /v_submission\.created_by is distinct from v_actor_id/u);
+  assert.match(migration, /Skattemelding TT02-evidens importert og venter på klassifisering/u);
+  assert.doesNotMatch(migration, /Skattemelding TT02-evidens importert som pending/u);
 });
 
 test("runtime imports completed company-tax TT02 evidence through exactly one atomic RPC", () => {
@@ -174,6 +230,11 @@ test("runtime imports completed company-tax TT02 evidence through exactly one at
   assert.match(actionBody, /try \{[\s\S]*buildCompanyTaxReturnEvidencePersistence/u);
   assert.match(actionBody, /Ugyldig TT02-evidens/u);
   assert.match(actionBody, /company_tax_evidence_mfa_required/u);
+  assert.match(
+    actionBody,
+    /Ekstra identitetsbekreftelse med tofaktorautentisering kreves\./u,
+  );
+  assert.doesNotMatch(actionBody, /MFA\/step-up/u);
   assert.doesNotMatch(actionBody, /encodeURIComponent\(error\.message\)/u);
   assert.doesNotMatch(
     actionBody,

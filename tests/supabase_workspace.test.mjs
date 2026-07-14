@@ -298,11 +298,13 @@ test(
   await applyMigration();
   const admin = serviceClient();
   const ownerUser = await createConfirmedUser("owner");
+  const secondOwnerUser = await createConfirmedUser("second-owner");
   const outsiderUser = await createConfirmedUser("outsider");
   const reviewerUser = await createConfirmedUser("reviewer");
   const readOnlyUser = await createConfirmedUser("readonly");
   const inviteeUser = await createConfirmedUser("invitee");
   const owner = await signIn(ownerUser);
+  const secondOwner = await signIn(secondOwnerUser);
   const outsider = await signIn(outsiderUser);
   const reviewer = await signIn(reviewerUser);
   const readOnly = await signIn(readOnlyUser);
@@ -341,6 +343,15 @@ test(
     });
     assert.ifError(membershipError);
 
+    const { error: secondOwnerMembershipError } = await admin.from("company_memberships").insert({
+      company_id: companyId,
+      user_id: secondOwnerUser.id,
+      role: "owner",
+      invited_by: ownerUser.id,
+      accepted_at: new Date().toISOString(),
+    });
+    assert.ifError(secondOwnerMembershipError);
+
     const { error: reviewerInviteError } = await owner.from("company_memberships").insert({
       company_id: companyId,
       user_id: reviewerUser.id,
@@ -370,6 +381,7 @@ test(
         [ownerUser.id, "owner"],
         [readOnlyUser.id, "read_only"],
         [reviewerUser.id, "reviewer"],
+        [secondOwnerUser.id, "owner"],
       ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
     );
 
@@ -826,6 +838,30 @@ test(
     assert.match(noMfaImportError?.message ?? "", /company_tax_evidence_mfa_required/u);
 
     await elevateToAal2(owner);
+    for (const [label, evidenceUrl] of [
+      ["missing host", "https:///missing-host"],
+      ["non-canonical host-only URL", "https://evidence.example"],
+      ["credentials", "https://user:password@evidence.example/company-tax.json"],
+      ["port", "https://evidence.example:443/company-tax.json"],
+      ["query", "https://evidence.example/company-tax.json?token=secret"],
+      ["fragment", "https://evidence.example/company-tax.json#secret"],
+      ["unsupported scheme", "http://evidence.example/company-tax.json"],
+      ["path traversal", "https://evidence.example/archive/../company-tax.json"],
+      ["encoded path traversal", "https://evidence.example/archive/%2e%2e/company-tax.json"],
+      ["control character", "https://evidence.example/company-tax.json\nignored"],
+    ]) {
+      const invalidUrlPayload = structuredClone(companyTaxPersistence);
+      invalidUrlPayload.authorityRun.evidence_url = evidenceUrl;
+      const { error: invalidUrlError } = await owner.rpc(
+        "import_company_tax_tt02_evidence",
+        { p_payload: invalidUrlPayload },
+      );
+      assert.match(
+        invalidUrlError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} must fail at the direct RPC boundary`,
+      );
+    }
     const { data: importedCompanyTax, error: companyTaxImportError } = await owner.rpc(
       "import_company_tax_tt02_evidence",
       { p_payload: companyTaxPersistence },
@@ -871,11 +907,12 @@ test(
 
     const { data: companyTaxAuditBeforeRetry, error: companyTaxAuditBeforeRetryError } = await owner
       .from("audit_events")
-      .select("id")
+      .select("id, actor_id")
       .eq("company_id", companyId)
       .eq("action", "company_tax_tt02_evidence_imported");
     assert.ifError(companyTaxAuditBeforeRetryError);
     assert.equal(companyTaxAuditBeforeRetry.length, 1);
+    assert.equal(companyTaxAuditBeforeRetry[0].actor_id, ownerUser.id);
     const { data: retriedCompanyTax, error: companyTaxRetryError } = await owner.rpc(
       "import_company_tax_tt02_evidence",
       { p_payload: structuredClone(companyTaxPersistence) },
@@ -886,13 +923,62 @@ test(
       filing_submission_id: importedCompanyTax.filing_submission_id,
       created: false,
     });
+    await elevateToAal2(secondOwner);
+    const secondOwnerRetryPayload = structuredClone(companyTaxPersistence);
+    secondOwnerRetryPayload.authorityRun.recorded_by = secondOwnerUser.id;
+    secondOwnerRetryPayload.submission.created_by = secondOwnerUser.id;
+    const { data: secondOwnerRetry, error: secondOwnerRetryError } = await secondOwner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: secondOwnerRetryPayload },
+    );
+    assert.ifError(secondOwnerRetryError);
+    assert.deepEqual(secondOwnerRetry, {
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      filing_submission_id: importedCompanyTax.filing_submission_id,
+      created: false,
+    });
+    const { data: originalEvidenceActors, error: originalEvidenceActorsError } = await admin
+      .from("authority_test_runs")
+      .select("recorded_by")
+      .eq("id", importedCompanyTax.authority_test_run_id)
+      .single();
+    assert.ifError(originalEvidenceActorsError);
+    assert.equal(originalEvidenceActors.recorded_by, ownerUser.id);
+    const { data: originalSubmissionActors, error: originalSubmissionActorsError } = await admin
+      .from("filing_submissions")
+      .select("created_by")
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .single();
+    assert.ifError(originalSubmissionActorsError);
+    assert.equal(originalSubmissionActors.created_by, ownerUser.id);
     const { data: companyTaxAuditAfterRetry, error: companyTaxAuditAfterRetryError } = await owner
       .from("audit_events")
-      .select("id")
+      .select("id, actor_id")
       .eq("company_id", companyId)
       .eq("action", "company_tax_tt02_evidence_imported");
     assert.ifError(companyTaxAuditAfterRetryError);
-    assert.equal(companyTaxAuditAfterRetry.length, 1);
+    assert.deepEqual(companyTaxAuditAfterRetry, companyTaxAuditBeforeRetry);
+
+    const legacyDuplicateReference = `legacy-duplicate-${randomUUID()}`;
+    const { error: legacyDuplicateError } = await owner.from("authority_test_runs").insert([
+      {
+        ...companyTaxPersistence.authorityRun,
+        environment: "manual_evidence",
+        status: "accepted",
+        test_reference: legacyDuplicateReference,
+      },
+      {
+        ...companyTaxPersistence.authorityRun,
+        environment: "manual_evidence",
+        status: "accepted",
+        test_reference: legacyDuplicateReference,
+      },
+    ]);
+    assert.ifError(legacyDuplicateError);
+    const { error: duplicateCompanyTaxIdentityError } = await owner
+      .from("authority_test_runs")
+      .insert(structuredClone(companyTaxPersistence.authorityRun));
+    assert.ok(duplicateCompanyTaxIdentityError);
 
     const conflictingCompanyTax = structuredClone(companyTaxPersistence);
     const conflictingReceiptId = randomUUID();
@@ -915,7 +1001,7 @@ test(
       "import_company_tax_tt02_evidence",
       { p_payload: rawNestedCompanyTax },
     );
-    assert.match(rawNestedCompanyTaxError?.message ?? "", /company_tax_evidence_invalid_payload/u);
+    assert.match(rawNestedCompanyTaxError?.message ?? "", /company_tax_evidence_forbidden_content/u);
 
     const missingCanonicalKeys = [
       ["receipt metadata", (payload) => delete payload.submission.receipt_metadata.contentSha256],
@@ -2829,6 +2915,7 @@ test(
       await admin.from("companies").delete().eq("id", companyId);
     }
     await admin.auth.admin.deleteUser(ownerUser.id);
+    await admin.auth.admin.deleteUser(secondOwnerUser.id);
     await admin.auth.admin.deleteUser(outsiderUser.id);
     await admin.auth.admin.deleteUser(reviewerUser.id);
     await admin.auth.admin.deleteUser(readOnlyUser.id);

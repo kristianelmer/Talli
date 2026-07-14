@@ -112,7 +112,13 @@ test("backup manifest identifies launch-critical tables and object references", 
   const manifest = buildBackupManifest(archiveFixture());
 
   assert.ok(manifest.launchCriticalTables.includes("annual_data"));
+  assert.ok(manifest.launchCriticalTables.includes("authority_test_runs"));
   assert.ok(manifest.launchCriticalTables.includes("filing_submissions"));
+  assert.ok(
+    manifest.launchCriticalTables.indexOf("authority_test_runs")
+      < manifest.launchCriticalTables.indexOf("filing_submissions"),
+    "authority test runs must restore before their linked submissions",
+  );
   assert.ok(manifest.launchCriticalTables.includes("audit_events"));
   assert.ok(manifest.launchCriticalTables.includes("investment_lots"));
   assert.ok(manifest.launchCriticalTables.includes("bank_suggestion_acceptances"));
@@ -150,6 +156,7 @@ test("backup manifest identifies launch-critical tables and object references", 
     },
   ]);
   assert.equal(manifest.counts.auditEvents, 1);
+  assert.equal(manifest.counts.authorityTestRuns, 0);
   assert.equal(manifest.counts.filingSubmissions, 1);
   assert.equal(manifest.counts.companyTaxSubmissions, 0);
   assert.equal(manifest.counts.corporateDecisions, 1);
@@ -181,25 +188,106 @@ test("restore fixture preserves launch-critical accounting state in isolated wor
 });
 
 test("company-tax submissions are counted and round-trip with generic filing submissions", () => {
+  const authorityTestRun = {
+    id: "company-tax-authority-run-id",
+    company_id: "source-company",
+    obligation: "skattemelding",
+    environment: "test",
+    status: "pending",
+    test_reference: "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+    feedback_summary: "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+    receipt_reference: "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+    archive_reference: "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+    evidence_url: "https://evidence.example/company-tax-tt02.json",
+    payload_hash: `sha256:${"a".repeat(64)}`,
+    recorded_by: "owner-id",
+    recorded_at: "2026-07-14T12:32:00.000Z",
+  };
   const companyTaxSubmission = {
     id: "company-tax-submission-id",
+    authorityTestRunId: authorityTestRun.id,
     mode: "test_authority",
     status: "feedback_ready",
+    payloadHash: "a".repeat(64),
     receiptId: "feedback-data-id",
+    receiptMetadata: {
+      reference: authorityTestRun.receipt_reference,
+      archiveReference: authorityTestRun.archive_reference,
+    },
     submittedPayload: null,
   };
-  const archive = archiveFixture({ companyTaxSubmissions: [companyTaxSubmission] });
+  const archive = archiveFixture({
+    authorityTestRuns: [authorityTestRun],
+    companyTaxSubmissions: [companyTaxSubmission],
+  });
   const manifest = buildBackupManifest(archive);
   const restored = restoreCompanyYearArchive(archive, { targetCompanyId: "restored-company" });
+  const integrity = assertRestoreIntegrity(restored);
 
+  assert.equal(manifest.counts.authorityTestRuns, 1);
   assert.equal(manifest.counts.companyTaxSubmissions, 1);
   assert.equal(manifest.counts.filingSubmissions, 2);
+  assert.deepEqual(restored.restored.authorityTestRuns, [authorityTestRun]);
   assert.deepEqual(restored.restored.companyTaxSubmissions, [companyTaxSubmission]);
   assert.deepEqual(
     restored.restored.filingSubmissions.map((submission) => submission.id),
     ["submission-id", "company-tax-submission-id"],
   );
   assert.equal(restored.restored.filingSubmissions[1].submittedPayload, null);
+  assert.equal(integrity.ok, true);
+});
+
+test("restore integrity rejects missing and mismatched company-tax authority evidence pairs", () => {
+  const authorityTestRun = {
+    id: "authority-run-id",
+    company_id: "source-company",
+    obligation: "skattemelding",
+    environment: "test",
+    status: "pending",
+    receipt_reference: "https://platform.tt02.altinn.no/receipt",
+    archive_reference: "https://platform.tt02.altinn.no/archive",
+    payload_hash: `sha256:${"a".repeat(64)}`,
+  };
+  const submission = {
+    id: "company-tax-submission-id",
+    authorityTestRunId: authorityTestRun.id,
+    mode: "test_authority",
+    status: "feedback_ready",
+    payloadHash: "a".repeat(64),
+    receiptMetadata: {
+      reference: authorityTestRun.receipt_reference,
+      archiveReference: authorityTestRun.archive_reference,
+    },
+  };
+  const missingRun = restoreCompanyYearArchive(
+    archiveFixture({ companyTaxSubmissions: [submission] }),
+    { targetCompanyId: "restored-company" },
+  );
+  assert.ok(
+    assertRestoreIntegrity(missingRun).failures.includes("company_tax_authority_evidence_pair_missing"),
+  );
+
+  const missingLink = restoreCompanyYearArchive(
+    archiveFixture({
+      authorityTestRuns: [authorityTestRun],
+      companyTaxSubmissions: [{ ...submission, authorityTestRunId: undefined }],
+    }),
+    { targetCompanyId: "restored-company" },
+  );
+  assert.ok(
+    assertRestoreIntegrity(missingLink).failures.includes("company_tax_authority_evidence_pair_missing"),
+  );
+
+  const mismatchedRun = restoreCompanyYearArchive(
+    archiveFixture({
+      authorityTestRuns: [{ ...authorityTestRun, payload_hash: `sha256:${"b".repeat(64)}` }],
+      companyTaxSubmissions: [submission],
+    }),
+    { targetCompanyId: "restored-company" },
+  );
+  assert.ok(
+    assertRestoreIntegrity(mismatchedRun).failures.includes("company_tax_authority_evidence_pair_mismatch"),
+  );
 });
 
 test("restore integrity fails when corporate lifecycle rows or object metadata are incomplete", () => {

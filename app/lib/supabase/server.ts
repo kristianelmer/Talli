@@ -251,6 +251,7 @@ export type CompanyTaxReturnPayloadReference = {
 export type FilingSubmissionRow = {
   id: string;
   preview_id: string | null;
+  authority_test_run_id: string | null;
   company_id: string;
   income_year: number;
   filing: string;
@@ -775,7 +776,7 @@ export async function listFilingSubmissions(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("filing_submissions")
-    .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
+    .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
@@ -1161,7 +1162,7 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
       .in("company_id", companyIds),
     supabase
       .from("filing_submissions")
-      .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
+      .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
       .in("company_id", companyIds)
       .order("updated_at", { ascending: false }),
     supabase

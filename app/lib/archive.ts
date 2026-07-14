@@ -1,5 +1,6 @@
 import type {
   AuthorityPermissionRow,
+  AuthorityTestRunRow,
   BankSuggestionAcceptanceRow,
   BillingAccountRow,
   CompanyWorkspaceRow,
@@ -56,6 +57,7 @@ export function buildPersistedCompanyArchive(input: {
   bankSuggestionAcceptances?: BankSuggestionAcceptanceRow[];
   billingAccounts?: BillingAccountRow[];
   authorityPermissions?: AuthorityPermissionRow[];
+  authorityTestRuns?: AuthorityTestRunRow[];
   auditEvents?: AuditEventArchiveRow[];
   reviewComments?: FilingReviewCommentRow[];
   filingPreviews: FilingPreviewRow[];
@@ -128,6 +130,21 @@ export function buildPersistedCompanyArchive(input: {
     bankSuggestionAcceptances: input.bankSuggestionAcceptances ?? [],
     billingAccounts: input.billingAccounts ?? [],
     authorityPermissions: input.authorityPermissions ?? [],
+    authorityTestRuns: (input.authorityTestRuns ?? []).map((run) => ({
+      id: run.id,
+      company_id: run.company_id,
+      obligation: run.obligation,
+      environment: run.environment,
+      status: run.status,
+      test_reference: run.test_reference,
+      feedback_summary: run.feedback_summary,
+      receipt_reference: run.receipt_reference,
+      archive_reference: run.archive_reference,
+      evidence_url: run.evidence_url,
+      payload_hash: run.payload_hash,
+      recorded_by: run.recorded_by,
+      recorded_at: run.recorded_at,
+    })),
     auditEvents: input.auditEvents ?? [],
     reviewComments: input.reviewComments ?? [],
     corporateDecisions: input.corporateDecisions ?? [],
@@ -198,6 +215,7 @@ export function buildPersistedCompanyArchive(input: {
       )
       .map((submission) => ({
         id: submission.id,
+        authorityTestRunId: submission.authority_test_run_id,
         incomeYear: submission.income_year,
         mode: submission.mode,
         adapterMode: submission.adapter_mode,

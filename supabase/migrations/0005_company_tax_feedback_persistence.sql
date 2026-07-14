@@ -53,8 +53,18 @@ on public.filing_submissions (idempotency_key)
 where idempotency_key is not null
   and mode = 'test_authority';
 
-create unique index if not exists authority_test_runs_evidence_identity_key
-on public.authority_test_runs (company_id, obligation, environment, test_reference);
+drop index if exists public.authority_test_runs_evidence_identity_key;
+create unique index authority_test_runs_evidence_identity_key
+on public.authority_test_runs (company_id, obligation, environment, test_reference)
+where obligation = 'skattemelding'
+  and environment = 'test'
+  and status = 'pending'
+  and test_reference ~ '^tt02:[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  and feedback_summary =
+    'validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.'
+  and receipt_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}/data/[0-9a-f-]{36}$'
+  and archive_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}$'
+  and payload_hash ~ '^sha256:[0-9a-f]{64}$';
 
 drop policy if exists "owners can create filing submissions" on public.filing_submissions;
 create policy "owners can create filing submissions"
@@ -121,6 +131,8 @@ declare
   v_call_index integer;
   v_rfc3339_instant_pattern constant text :=
     '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?(Z|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$';
+  v_https_evidence_url_pattern constant text :=
+    '^https://([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?))*(/[A-Za-z0-9._~!$&()*+,;=:%/-]*)$';
   v_created boolean := false;
 begin
   if v_actor_id is null then
@@ -323,10 +335,9 @@ begin
     or (
       v_authority.evidence_url is not null
       and (
-        v_authority.evidence_url !~ '^https://'
-        or v_authority.evidence_url like '%?%'
-        or v_authority.evidence_url like '%#%'
-        or v_authority.evidence_url like '%@%'
+        v_authority.evidence_url !~ v_https_evidence_url_pattern
+        or v_authority.evidence_url ~ '(^|/)\.{1,2}(/|$)'
+        or v_authority.evidence_url ~* '%(2e|2f|5c)'
         or octet_length(v_authority.evidence_url) > 2048
       )
     )
@@ -372,7 +383,7 @@ begin
     where c.id = v_authority.company_id;
     v_reference_income_year :=
       (v_submission.submitted_payload_ref ->> 'incomeYear')::integer;
-    v_recomputed_payload_hash := encode(digest(
+    v_recomputed_payload_hash := encode(extensions.digest(
       'skattemelding:' || (v_submission.submitted_payload_ref ->> 'skattemeldingHash') || E'\n'
       || 'naeringsspesifikasjon:' || (v_submission.submitted_payload_ref ->> 'naeringsspesifikasjonHash') || E'\n'
       || 'validationEnvelope:' || (v_submission.submitted_payload_ref ->> 'validationEnvelopeHash') || E'\n'
@@ -495,6 +506,12 @@ begin
     and r.obligation = v_authority.obligation
     and r.environment = v_authority.environment
     and r.test_reference = v_authority.test_reference
+    and r.status = 'pending'
+    and r.feedback_summary =
+      'validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.'
+    and r.receipt_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}/data/[0-9a-f-]{36}$'
+    and r.archive_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}$'
+    and r.payload_hash ~ '^sha256:[0-9a-f]{64}$'
   for update;
 
   if not found then
@@ -525,7 +542,7 @@ begin
       v_authority.recorded_by,
       v_authority.recorded_at
     )
-    on conflict (company_id, obligation, environment, test_reference) do nothing
+    on conflict do nothing
     returning * into v_persisted_authority;
 
     if not found then
@@ -535,6 +552,12 @@ begin
         and r.obligation = v_authority.obligation
         and r.environment = v_authority.environment
         and r.test_reference = v_authority.test_reference
+        and r.status = 'pending'
+        and r.feedback_summary =
+          'validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.'
+        and r.receipt_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}/data/[0-9a-f-]{36}$'
+        and r.archive_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}$'
+        and r.payload_hash ~ '^sha256:[0-9a-f]{64}$'
       for update;
     end if;
   end if;
@@ -545,7 +568,6 @@ begin
     or v_persisted_authority.archive_reference is distinct from v_authority.archive_reference
     or v_persisted_authority.evidence_url is distinct from v_authority.evidence_url
     or v_persisted_authority.payload_hash is distinct from v_authority.payload_hash
-    or v_persisted_authority.recorded_by is distinct from v_authority.recorded_by
     or v_persisted_authority.recorded_at is distinct from v_authority.recorded_at then
     raise exception 'company_tax_evidence_conflict';
   end if;
@@ -650,7 +672,6 @@ begin
     or v_persisted_submission.submitted_payload is not null
     or v_persisted_submission.failure_code is not null
     or v_persisted_submission.failure_message is not null
-    or v_persisted_submission.created_by is distinct from v_submission.created_by
     or v_persisted_submission.submitted_by is not null
     or v_persisted_submission.updated_at is distinct from v_submission.updated_at then
     raise exception 'company_tax_evidence_conflict';
@@ -663,7 +684,7 @@ begin
       v_actor_id,
       'submission',
       'company_tax_tt02_evidence_imported',
-      'Skattemelding TT02-evidens importert som pending med ref '
+      'Skattemelding TT02-evidens importert og venter på klassifisering med ref '
         || v_authority.test_reference || '.'
     );
   end if;

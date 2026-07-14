@@ -13,6 +13,7 @@ export const launchCriticalTables = [
   "investment_lot_allocations",
   "documents",
   "filing_previews",
+  "authority_test_runs",
   "filing_submissions",
   "filing_readiness_snapshots",
   "filing_overrides",
@@ -88,6 +89,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
       holdingActions: archive.taxSettlements?.length ?? 0,
       documents: archive.documents?.length ?? 0,
       filingPreviews: archive.filingPreviews?.length ?? 0,
+      authorityTestRuns: archive.authorityTestRuns?.length ?? 0,
       filingSubmissions: submissionCollections.filingSubmissions.length,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       reviewComments: archive.reviewComments?.length ?? 0,
@@ -129,6 +131,7 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       holdingActions: archive.taxSettlements ?? [],
       documents: archive.documents ?? [],
       filingPreviews: archive.filingPreviews ?? [],
+      authorityTestRuns: archive.authorityTestRuns ?? [],
       rf1086Submissions: submissionCollections.rf1086Submissions,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
       filingSubmissions: submissionCollections.filingSubmissions,
@@ -150,13 +153,50 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
 }
 
 export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompanyYearArchive>) {
-  const failures = [];
+  const failures: string[] = [];
+  const fail = (code: string) => {
+    if (!failures.includes(code)) failures.push(code);
+  };
   if (!restored.restored.ledgerEntries.length) failures.push("ledger_entries_missing");
   if (!restored.restored.documents.length) failures.push("documents_metadata_missing");
   if (!restored.restored.filingPreviews.length) failures.push("filing_previews_missing");
   if (!restored.restored.filingSubmissions.length) failures.push("filing_submissions_missing");
   if (!restored.restored.billingAccounts.length) failures.push("billing_accounts_missing");
   if (!restored.restored.auditEvents.length) failures.push("audit_events_missing");
+  const authorityTestRuns = restored.restored.authorityTestRuns;
+  const companyTaxSubmissions = restored.restored.companyTaxSubmissions;
+  const authorityRunsById = new Map(authorityTestRuns.map((run: any) => [run.id, run]));
+  const linkedAuthorityRunIds = new Set<string>();
+  for (const submission of companyTaxSubmissions) {
+    const authorityTestRunId = submission.authorityTestRunId
+      ?? submission.authority_test_run_id;
+    const authorityRun: any = authorityTestRunId
+      ? authorityRunsById.get(authorityTestRunId)
+      : null;
+    if (!authorityTestRunId || !authorityRun) {
+      fail("company_tax_authority_evidence_pair_missing");
+      continue;
+    }
+    if (linkedAuthorityRunIds.has(authorityTestRunId)) {
+      fail("company_tax_authority_evidence_pair_mismatch");
+    }
+    linkedAuthorityRunIds.add(authorityTestRunId);
+    const receiptMetadata = submission.receiptMetadata ?? submission.receipt_metadata ?? {};
+    const payloadHash = submission.payloadHash ?? submission.payload_hash;
+    if (authorityRun.company_id !== restored.sourceCompanyId
+      || authorityRun.obligation !== "skattemelding"
+      || authorityRun.environment !== "test"
+      || authorityRun.status !== "pending"
+      || !payloadHash
+      || authorityRun.payload_hash !== `sha256:${payloadHash}`
+      || authorityRun.receipt_reference !== receiptMetadata.reference
+      || authorityRun.archive_reference !== receiptMetadata.archiveReference) {
+      fail("company_tax_authority_evidence_pair_mismatch");
+    }
+  }
+  if (authorityTestRuns.some((run: any) => !linkedAuthorityRunIds.has(run.id))) {
+    fail("company_tax_authority_evidence_pair_mismatch");
+  }
   const decisions = restored.restored.corporateDecisions;
   const sets = restored.restored.corporateDocumentSets;
   const artifacts = restored.restored.corporateDocumentArtifacts;

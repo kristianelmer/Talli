@@ -3593,7 +3593,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("filing_submissions").select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("filing_submissions").select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("corporate_decisions").select("id, company_id, income_year, decision_kind, source_hash, decision_hash, created_at").eq("company_id", companyId).eq("income_year", incomeYear).order("created_at", { ascending: false }),
     supabase.from("corporate_document_sets").select("id, company_id, income_year, decision_id, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("corporate_document_artifacts").select("id, company_id, income_year, set_id, artifact_kind, variant").eq("company_id", companyId).eq("income_year", incomeYear),
@@ -4085,7 +4085,7 @@ export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
   });
   if (error) {
     const message = error.message.includes("company_tax_evidence_mfa_required")
-      ? "MFA/step-up kreves for TT02-import."
+      ? "Ekstra identitetsbekreftelse med tofaktorautentisering kreves."
       : "TT02-evidensen kunne ikke lagres.";
     redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }

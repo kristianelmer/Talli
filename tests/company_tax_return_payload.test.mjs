@@ -327,6 +327,7 @@ test("archives pending company-tax TT02 feedback without relabeling it as a simu
   };
   const commonSubmission = {
     preview_id: null,
+    authority_test_run_id: null,
     company_id: "company-id",
     income_year: 2025,
     payload_hash: "a".repeat(64),
@@ -358,6 +359,21 @@ test("archives pending company-tax TT02 feedback without relabeling it as a simu
     shareholders: [],
     ledgerEntries: [],
     documents: [],
+    authorityTestRuns: [{
+      id: "company-tax-authority-run-id",
+      company_id: "company-id",
+      obligation: "skattemelding",
+      environment: "test",
+      status: "pending",
+      test_reference: "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+      feedback_summary: "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+      receipt_reference: receiptMetadata.reference,
+      archive_reference: archiveReference,
+      evidence_url: "https://evidence.example/company-tax-tt02.json",
+      payload_hash: `sha256:${"a".repeat(64)}`,
+      recorded_by: "owner",
+      recorded_at: "2026-07-14T12:32:00.000Z",
+    }],
     filingPreviews: [],
     filingSubmissions: [
       {
@@ -378,6 +394,7 @@ test("archives pending company-tax TT02 feedback without relabeling it as a simu
       {
         ...commonSubmission,
         id: "company-tax-submission-id",
+        authority_test_run_id: "company-tax-authority-run-id",
         filing: "skattemelding for AS",
         mode: "test_authority",
         adapter_mode: "test_authority",
@@ -402,6 +419,7 @@ test("archives pending company-tax TT02 feedback without relabeling it as a simu
   assert.equal(archive.companyTaxSubmissions.length, 1);
   assert.deepEqual(archive.companyTaxSubmissions[0], {
     id: "company-tax-submission-id",
+    authorityTestRunId: "company-tax-authority-run-id",
     incomeYear: 2025,
     mode: "test_authority",
     adapterMode: "test_authority",
