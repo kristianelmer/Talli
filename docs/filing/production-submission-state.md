@@ -1,6 +1,6 @@
 # Production Submission State
 
-Status: state model implemented; every production transport adapter remains disabled
+Status: RF-1086 transport implemented and TT02-accepted; every production transport remains disabled
 
 Applies to: `aksjonærregisteroppgaven`, `årsregnskap`, `skattemelding for AS`
 
@@ -76,8 +76,11 @@ Implementation anchor: `holding_core.submission`.
 
 Adapter and release anchors:
 
-- `app/lib/authority-adapters.ts` defines the transport plans and reports all
-  current production capabilities as unimplemented/disabled.
+- `app/lib/authority-adapters.ts` defines the transport plans, reports RF-1086
+  as implemented/disabled, and keeps the other transports
+  unimplemented/disabled.
+- `app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts` implement
+  the opaque-token and Skatteetaten XML transport without enabling production.
 - `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
   `production_adapter_disabled` even if permissions, evidence, billing, MFA,
   and human signoff records are otherwise present.

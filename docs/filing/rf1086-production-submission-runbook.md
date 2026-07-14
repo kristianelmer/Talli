@@ -1,10 +1,13 @@
 # RF-1086 Production Submission Runbook
 
-Status: production blocked until human review and official validation  
-Last updated: 2026-06-16  
+Status: transport and TT02 validation complete; production blocked until human/security review
+Last updated: 2026-07-14
 Target filing: `aksjonærregisteroppgaven` / RF-1086
 
-This runbook defines the path from local RF-1086 simulation to live submission. It is not permission to enable production filing. Live filing remains disabled until authority access, test-environment evidence, RF-1086 code decisions, billing, security, and human review gates are complete.
+This runbook defines the path from local RF-1086 simulation to live submission.
+It is not permission to enable production filing. Live filing remains disabled
+until the accepted evidence is recorded in the runtime gate and the production
+credential, security/restore, billing, and named human review gates are complete.
 
 ## Official Anchors
 
@@ -28,7 +31,9 @@ Before production filing can be enabled:
 
 ## Submission Flow
 
-The local integration seam in `holding_core.rf1086_submission` models the production path:
+`app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts`
+implement the real token/transport path; `holding_core.rf1086_submission`
+models its persisted state. Production invocation is still disabled.
 
 1. Build RF-1086 readiness from the deterministic case model.
 2. Block if readiness has hard errors.
@@ -40,7 +45,8 @@ The local integration seam in `holding_core.rf1086_submission` models the produc
    - `POST 1086H` hovedskjema.
    - `POST 1086U` underskjema per shareholder.
    - `POST bekreft` with underskjema count.
-   - `GET dokumenter` / feedback retrieval seam.
+   - `GET /{year}/forsendelser/{forsendelseId}/dokumenter` with bounded polling
+     for the observed TT02 `GLD_021 / GLD_1017` eventual-consistency window.
 8. Store feedback document references and official receipt/reference ids in submission state.
 
 ## Idempotency Policy
@@ -99,3 +105,13 @@ Production credentials/live filing may be enabled only after a named reviewer si
 - Support/refund policy confirmed.
 
 Until then, Talli may generate previews, XML, validation reports, and simulated submission state only.
+
+## TT02 acceptance evidence
+
+On 2026-07-14 the supported 2025 no-activity shape for Tenor org `310279617`
+completed the full hovedskjema, underskjema, confirmation, and archive sequence.
+Both archived XML hashes matched the submitted payload hashes. See
+`evidence/rf1086-tt02-2026-07-14.md` and its machine-checked JSON companion.
+
+This evidence clears the test-environment transport row only. It does not
+enable production or constitute Skatteetaten endorsement of Talli.

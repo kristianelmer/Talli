@@ -460,10 +460,10 @@ H_AUTH="Authorization: Bearer ${ACCESS_TOKEN}"
 H_ACCEPT="Accept: application/json"
 H_XML="Content-Type: application/xml"
 
-# (a) Hovedskjema → returns {hovedskjemaid}
+# (a) Hovedskjema → current OpenAPI returns {hovedskjemaId}; older example uses lowercase d
 HOVEDID=$(curl -sS -X POST "$BASE/1086H" \
   -H "$H_AUTH" -H "$H_ACCEPT" -H "$H_XML" -H "idempotencyKey: $(uuidgen)" \
-  --data-binary @out/rf1086/1086H.xml | jq -r '.hovedskjemaid')
+  --data-binary @out/rf1086/1086H.xml | jq -r '.hovedskjemaId // .hovedskjemaid')
 
 # (b) Underskjema — one POST per shareholder (200, no body)
 curl -sS -X POST "$BASE/$HOVEDID/1086U" \
@@ -471,18 +471,21 @@ curl -sS -X POST "$BASE/$HOVEDID/1086U" \
   --data-binary @out/rf1086/1086U-<shareholderId>.xml
 
 # (c) Bekreft — pass the underskjema count; returns the receipt references
-curl -sS -X POST "$BASE/$HOVEDID/bekreft?antall_underskjema=${COUNT}" \
-  -H "$H_AUTH" -H "$H_ACCEPT" -H "idempotencyKey: $(uuidgen)"
-  # → oppgavegiversLeveranseReferanse, dialogId, forsendelseId
+CONFIRMATION=$(curl -sS -X POST "$BASE/$HOVEDID/bekreft?antall_underskjema=${COUNT}" \
+  -H "$H_AUTH" -H "$H_ACCEPT" -H "idempotencyKey: $(uuidgen)")
+FORSENDELSE_ID=$(jq -r '.forsendelseId' <<<"$CONFIRMATION")
+# CONFIRMATION also contains oppgavegiversLeveranseReferanse and dialogId
 
-# (d) Dokumenter — retrieve feedback / archive references
-curl -sS -X GET "$BASE/$HOVEDID/dokumenter" -H "$H_AUTH" -H "$H_ACCEPT"
+# (d) Dokumenter — poll by forsendelseId; TT02 can be briefly eventually consistent
+curl -sS -X GET "$BASE/forsendelser/$FORSENDELSE_ID/dokumenter?page=0&size=50" \
+  -H "$H_AUTH" -H "$H_ACCEPT"
 ```
 
 **Capture as evidence** (maps to `authority_test_runs`, see "How this maps to Talli's gates"):
 - **Accepted status** — the `bekreft` 200 response.
 - **Receipt reference** — `oppgavegiversLeveranseReferanse` (and `forsendelseId`).
-- **Archive reference** — the feedback document id(s) from `GET /dokumenter`.
+- **Archive reference** — `forsendelseId`, the successful archive GET, and
+  SHA-256 hashes of the returned documents.
 
 Idempotency, retry, and failure-handling rules are authoritative in
 `rf1086-production-submission-runbook.md` (§Idempotency Policy, §Failure Handling) — the same
@@ -517,18 +520,19 @@ credentials and the admin/step-up flow, so they are performed in the running app
 |---|---|---|---|
 | 1. Operating entity registered (ENK, org nr) | ☑ | ☑ | ☑ |
 | 2. Virksomhetssertifikat (test self-signed) | ☑ | ☑ | ☑ |
-| 3. Maskinporten client + scope | ◑ client+key done; scope `Tilgang mangler` | ◑ | ◑ |
-| 4. Altinn system user + access pkg | ☑ **DONE** — 4a system registered + 4b systembruker **Accepted** (Talli↔Flink Sympatisk Tiger AS 311093363) | ◑ 4a done (shared system); 4b + årsregnskap pkg pending | ◑ 4a done (shared system); 4b + skattemelding resource pending |
-| 5. Tenor test subjects | ☑ FLINK SYMPATISK TIGER AS (311093363) | ◑ reuse / pick as needed | ◑ reuse / pick as needed |
-| 6. Accepted test submission | ☐ | ☐ | ☐ |
+| 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ◑ | ◑ scope visible without `Tilgang mangler`; transport test pending |
+| 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ◑ shared system; årsregnskap package pending | ☑ system access page showed skattemelding right; submission/signing test pending |
+| 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS selected |
+| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ☐ | ☐ |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
 | 8. `authority_test_runs` accepted | ☐ | ☐ | ☐ |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
 
-Step 3 status (2026-06-30): one shared TT02 client `7166e743-978e-4a60-8a2d-0a5c00fe6ad0`
-(kid `2d275f93-10a2-4839-993e-b14da2b84ad8`) created with all three scopes attached as pending;
-Maskinporten signing smoke-test passed (auth OK, only scope grant missing). See the "Live state"
-block under Step 3.
+Step 3 status (updated 2026-07-14): the shared TT02 client
+`7166e743-978e-4a60-8a2d-0a5c00fe6ad0` (kid
+`2d275f93-10a2-4839-993e-b14da2b84ad8`) successfully minted a system-user token
+for `310279617` with the RF-1086 scope. The earlier `invalid_scope` state is
+resolved for RF-1086.
 
 Step 4 status (2026-07-01): **DONE end-to-end.** 4a — `systemregister.write` token minted (HTTP 200)
 and the systemregister payload POSTed → system **`930835978_talli`** registered in TT02 (GET confirms
@@ -542,3 +546,25 @@ type `urn:altinn:systemuser` against the SKD API directly (no Altinn exchange).
 
 Steps 1–5 are shared and only need to be done once; the per-obligation columns diverge from
 Step 3 (scopes) onward.
+
+### Latest RF-1086 rehearsal — 2026-07-14
+
+The newer supported test subject supersedes the earlier Flink Sympatisk Tiger
+rehearsal target without deleting that historical onboarding record:
+
+- Tenor company: **LOGISK ØDE TIGER AS**, org `310279617`, holding industry
+  `64.220`.
+- Altinn approval page: the Talli system request was already approved and showed
+  both RF-1086 and company-tax-return service rights.
+- Maskinporten: system-user token issued with the RF-1086 scope, 119-second
+  lifetime; token was not stored or logged.
+- Skatteetaten test API: 2025 no-activity hovedskjema, one underskjema and
+  confirmation all accepted.
+- Archive: the documented `forsendelseId` returned both submitted XML documents
+  after a short eventual-consistency delay.
+- Sanitized evidence: `docs/filing/evidence/rf1086-tt02-2026-07-14.md` and its
+  machine-checked JSON companion.
+
+Steps 7–9 remain runtime/human gates: record the owner authority permission and
+accepted test run in the deployed app, then obtain the named
+`rf1086_authority` production review. No production feature switch is enabled.

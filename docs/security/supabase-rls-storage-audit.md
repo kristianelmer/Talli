@@ -1,7 +1,7 @@
 # Supabase RLS and Storage Security Audit
 
-Status: repeatable non-production security check  
-Last updated: 2026-06-16  
+Status: current local Supabase stack passed; deployed staging/production evidence pending
+Last updated: 2026-07-14
 Target issue: #74
 
 This audit proves tenant isolation against the real Supabase/Postgres RLS and
@@ -25,6 +25,20 @@ owner/reviewer/read-only/outsider, then removes the created company and users.
 ```bash
 npm run test:supabase
 ```
+
+For a clean local deployment-shaped run using the pinned Supabase CLI and a
+fresh database, run:
+
+```bash
+npm run test:supabase:local
+```
+
+The 2026-07-14 local run applied every migration from zero, reported zero
+blocking security/error advisor findings, exercised authenticated owner,
+reviewer, read-only and outsider access, exercised private Storage policies,
+and completed the browser owner annual loop. Nine low-volume performance
+warnings about multiple permissive policies remain documented; they are not
+security findings. This local result does not replace a staging/production run.
 
 Use this as the repeatable production-shaped security check before launch gate
 review. It should be run against staging after every schema/RLS change.

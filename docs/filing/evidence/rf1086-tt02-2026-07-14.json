@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "status": "accepted",
+  "environment": "TT02 / Skatteetaten external test",
+  "recordedAt": "2026-07-14T08:47:42.603Z",
+  "codeCommit": "1d06b06",
+  "company": {
+    "organizationNumber": "310279617",
+    "name": "LOGISK ØDE TIGER AS",
+    "source": "Tenor synthetic test data"
+  },
+  "incomeYear": 2025,
+  "scope": "skatteetaten:innrapporteringaksjonaerregisteroppgave",
+  "systemUserToken": {
+    "issued": true,
+    "expiresInSeconds": 119,
+    "tokenStored": false
+  },
+  "payloadHashes": {
+    "hovedskjema": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+    "underskjema": [
+      "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556"
+    ]
+  },
+  "calls": [
+    {
+      "method": "POST",
+      "endpoint": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/1086H",
+      "bodyHash": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "idempotencyKey": "d4b0e613-2e1a-46c7-b793-43233d888c19",
+      "status": "accepted"
+    },
+    {
+      "method": "POST",
+      "endpoint": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/019f5fce-1ef2-77c2-87bc-498a4be5f852/1086U",
+      "bodyHash": "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556",
+      "idempotencyKey": "a4ff55d0-20b4-4790-8dc1-e00b88982c48",
+      "status": "accepted"
+    },
+    {
+      "method": "POST",
+      "endpoint": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/019f5fce-1ef2-77c2-87bc-498a4be5f852/bekreft?antall_underskjema=1",
+      "bodyHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "idempotencyKey": "2e46102c-8efc-4406-94a3-a6a6ec7a43fb",
+      "status": "accepted"
+    },
+    {
+      "method": "GET",
+      "endpoint": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/019f5fce-2143-74d6-850d-7dc683746c57/dokumenter?page=0&size=50",
+      "bodyHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "idempotencyKey": null,
+      "status": "accepted"
+    }
+  ],
+  "authorityReferences": {
+    "hovedskjemaId": "019f5fce-1ef2-77c2-87bc-498a4be5f852",
+    "oppgavegiversLeveranseReferanse": "019f5fce-1ef2-77c2-87bc-498a4be5f852",
+    "dialogId": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+    "forsendelseId": "019f5fce-2143-74d6-850d-7dc683746c57"
+  },
+  "archive": {
+    "reference": "019f5fce-2143-74d6-850d-7dc683746c57",
+    "lookupReferenceType": "forsendelseId",
+    "documentCount": 2,
+    "documentHashes": [
+      "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556"
+    ]
+  },
+  "observations": [
+    "The first archive lookup immediately after confirmation returned GLD_021 with GLD_1017; a later lookup with the documented forsendelseId returned both archived XML documents.",
+    "The production-shaped client therefore polls the same documented forsendelseId for this observed eventual-consistency condition.",
+    "All payload data was synthetic Tenor test data. No access token, private key, personal identifier, or raw XML is stored in this evidence file."
+  ],
+  "productionEnabled": false,
+  "remainingGate": "Named RF-1086 production reviewer signoff, production credential/security review, and runtime gate records remain required."
+}

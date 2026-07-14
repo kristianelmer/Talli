@@ -1,7 +1,7 @@
 # Authority Adapter Plans
 
-Status: production adapters unimplemented and disabled
-Last updated: 2026-07-13
+Status: RF-1086 transport implemented and TT02-accepted; all production adapters disabled
+Last updated: 2026-07-14
 
 This document records the minimum real transport sequence for each filing. It
 does not authorize production calls. `app/lib/authority-adapters.ts` is the
@@ -12,13 +12,13 @@ release gate.
 
 | Obligation | Transport | Production implemented | Production enabled | Personal signing |
 | --- | --- | --- | --- | --- |
-| RF-1086 | Skatteetaten XML API | No | No | No |
+| RF-1086 | Skatteetaten XML API | Yes | No | No |
 | Skattemelding AS | Skatteetaten validation + Altinn3 | No | No | Yes |
 | Årsregnskap | Altinn3 instance | No | No | Yes |
 
-All disabled adapters return the typed error
+Production invocation remains fail-closed with the typed error
 `production_authority_adapter_disabled`. No environment variable may substitute
-simulation for a production transport.
+simulation for a production transport or enable the implemented RF-1086 client.
 
 ## RF-1086
 
@@ -30,9 +30,14 @@ Ordered outcomes:
 4. Poll/retrieve feedback documents.
 5. Archive official feedback, receipt, request hashes, and authority references.
 
-Enable only after supported-scope TT02 acceptance, idempotent retry evidence,
-receipt/archive persistence, production credential review, and named
-`rf1086_authority` signoff.
+The real Maskinporten and Skatteetaten transport is implemented in
+`app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts`. The supported
+no-activity flow was accepted in TT02 on 2026-07-14, including archive retrieval;
+see `evidence/rf1086-tt02-2026-07-14.md`.
+
+Enable only after the accepted evidence is recorded in the runtime gate,
+production credentials and restore/security controls are reviewed, and the
+named `rf1086_authority` reviewer signs off.
 
 ## Skattemelding for AS
 

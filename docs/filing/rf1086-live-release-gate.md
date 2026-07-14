@@ -1,7 +1,7 @@
 # RF-1086 Live Release Gate
 
 Status: HITL release checklist  
-Last updated: 2026-06-27  
+Last updated: 2026-07-14
 Target issue: #81  
 Blockers resolved: #76 real payment collection (closed), #80 code evidence decision (closed)
 
@@ -32,19 +32,19 @@ Excluded live scope:
 
 | Gate | Evidence required | Current status |
 | --- | --- | --- |
-| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | Pending (external authority onboarding) |
-| Test submission | Test-environment RF-1086 hovedskjema, underskjema, bekreft, dokumenter/feedback retrieval recorded | Pending (external authority onboarding) |
+| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | **Done in TT02 2026-07-14** — system-user token issued for Tenor org 310279617 with RF-1086 scope |
+| Test submission | Test-environment RF-1086 hovedskjema, underskjema, bekreft, dokumenter/feedback retrieval recorded | **Done 2026-07-14** — accepted no-activity filing and two archived documents; `evidence/rf1086-tt02-2026-07-14.md` |
 | Live scope | K/S/U excluded, stiftelse/no-activity only | Done in #80 |
 | Billing | Real subscription/payment/filing-package gate implemented and test charged/refunded | Implemented in #76 (`productionBillingGate` + payment/refund workflow, #76 closed); live test charge/refund evidence still to attach |
 | Security | Fresh MFA/step-up, human security review, production credential gate | Step-up (#73) and RLS/storage audit (#74) implemented and closed; human security review signoff pending |
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
-| Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
-| Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | Simulation seam implemented; official evidence pending |
+| Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented and exercised in TT02; resumable journal was persisted before each POST |
+| Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | TT02 delivery/dialog/transmission refs and two archive-document hashes recorded; runtime Supabase row still pending |
 | Human signoff | Named reviewer signs production release decision | Pending (`rf1086_authority` launch signoff) |
-| Production adapter | Real RF-1086 transport implementation; simulation must never satisfy this row | Unimplemented and disabled (`currentAuthorityAdapterCapabilities`) |
+| Production adapter | Real RF-1086 transport implementation; simulation must never satisfy this row | **Implemented, disabled** (`currentAuthorityAdapterCapabilities`); test-only CLI refuses production |
 
-Code gate anchors:
+Code and evidence gate anchors:
 
 - `buildFilingReleaseGates` requires accepted `authority_test_runs` evidence
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
@@ -53,6 +53,9 @@ Code gate anchors:
 - `buildFilingReleaseGates` independently requires an implemented and enabled
   production adapter. The legacy `TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER`
   environment flag cannot route production to the simulation adapter.
+- `tests/rf1086_tt02_evidence.test.mjs` checks that accepted evidence has the
+  required references/hashes and contains no token, private key, raw XML, or
+  synthetic personal identifier.
 
 ## Required Test Run
 

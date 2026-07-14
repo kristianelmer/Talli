@@ -85,9 +85,10 @@ private-storage orchestration tests, a fresh PostgreSQL 16 lifecycle rehearsal,
 typecheck, production build, and dependency audit. Exact commands and hashes
 are in `docs/launch/evidence/corporate-document-local-rehearsal.md`.
 
-That local evidence does not approve the feature for production. Deployed
-Supabase authenticated tests were skipped because test-project credentials or a
-usable `DATABASE_URL` were not configured. Legal, accounting, product/security,
-and restore reviewers are also still pending.
+That local evidence does not approve the feature for production. A fresh local
+Supabase deployment-shaped authenticated/RLS/Storage/browser run now passes,
+but deployed staging/production isolation and restore evidence remain pending.
+Legal, accounting, product/security, and restore reviewers are also still
+pending.
 
 If any item is unresolved, launch may still run as a private waitlist or prototype page, but it must not claim live direct filing or final legal clearance.
