@@ -7,7 +7,7 @@ const instanceId = "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108";
 const envelopeDataId = "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5";
 const receiptDataId = "70beee03-d8c2-4584-b366-8231c6de6584";
 
-function companyTaxEvidence() {
+function companyTaxEvidence(overrides = {}) {
   const archiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`;
   return {
     schemaVersion: 2,
@@ -69,10 +69,11 @@ function companyTaxEvidence() {
     },
     receiptRetrievedAt: "2026-07-14T12:32:00.000Z",
     secretsStored: false,
+    ...overrides,
   };
 }
 
-function project(evidence = companyTaxEvidence()) {
+function project(evidence = companyTaxEvidence(), overrides = {}) {
   return buildCompanyTaxReturnEvidencePersistence({
     companyId: "company-1",
     expectedCompanyOrgNumber: "310279617",
@@ -80,7 +81,7 @@ function project(evidence = companyTaxEvidence()) {
     evidence,
     evidenceUrl: "https://evidence.example/company-tax-tt02-2026-07-14.json",
     recordedBy: "user-1",
-    recordedAt: "2026-07-14T12:40:00.000Z",
+    ...overrides,
   });
 }
 
@@ -131,13 +132,58 @@ test("projects completed TT02 evidence as deterministic pending company-tax feed
   assert.equal(projected.submission.updated_at, evidence.receiptRetrievedAt);
 });
 
-test("retries preserve the payload hash and idempotency key", () => {
+test("retries produce the same complete projection without a supplied recorded timestamp", async () => {
   const evidence = companyTaxEvidence();
   const first = project(evidence);
+  await new Promise((resolve) => setTimeout(resolve, 10));
   const second = project(structuredClone(evidence));
 
-  assert.equal(second.submission.payload_hash, first.submission.payload_hash);
-  assert.equal(second.submission.idempotency_key, first.submission.idempotency_key);
+  assert.deepEqual(second, first);
+  assert.equal(first.authorityRun.recorded_at, evidence.receiptRetrievedAt);
+});
+
+test("rejects unsafe evidence URLs and normalizes blank evidence URLs to null", () => {
+  for (const evidenceUrl of [
+    "data:text/plain,secret",
+    "https://user:password@evidence.example/company-tax.json",
+    "https://evidence.example/company-tax.json?token=secret",
+    "https://evidence.example/company-tax.json#secret",
+    `https://evidence.example/${"a".repeat(2048)}`,
+  ]) {
+    assert.throws(
+      () => project(companyTaxEvidence(), { evidenceUrl }),
+      /evidenslenke/u,
+    );
+  }
+
+  assert.equal(
+    project(companyTaxEvidence(), { evidenceUrl: "   " }).authorityRun.evidence_url,
+    null,
+  );
+});
+
+test("requires strict RFC3339 evidence instants in chronological order", () => {
+  for (const evidence of [
+    companyTaxEvidence({ validatedAt: "2026-02-30T12:20:00Z" }),
+    companyTaxEvidence({ validatedAt: "2026-07-14T12:20:00" }),
+    companyTaxEvidence({ validatedAt: "2026-07-14T12:22:00Z" }),
+    companyTaxEvidence({
+      validatedAt: "2026-07-14T12:20:00.0002Z",
+      confirmationPreparedAt: "2026-07-14T12:20:00.0001Z",
+    }),
+    companyTaxEvidence({
+      submission: {
+        ...companyTaxEvidence().submission,
+        processEndedAt: "2026-07-14T12:31:01Z",
+      },
+    }),
+    companyTaxEvidence({ receiptRetrievedAt: "2026-07-14T12:30:59Z" }),
+  ]) {
+    assert.throws(
+      () => project(evidence),
+      /tidspunkt|kronologi/u,
+    );
+  }
 });
 
 test("projection omits raw documents, authority secrets, party data, and personal identifiers", () => {

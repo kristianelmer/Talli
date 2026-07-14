@@ -79,6 +79,8 @@ const COMPANY_TAX_SCHEMAS = [
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const INSTANCE_ID_PATTERN = /^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const DATA_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const RFC3339_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/u;
+const MAX_EVIDENCE_URL_LENGTH = 2048;
 
 function required(value: string, label: string) {
   if (!value.trim()) {
@@ -107,10 +109,93 @@ function evidenceString(value: unknown, label: string): string {
 
 function evidenceIsoDate(value: unknown, label: string): string {
   const timestamp = evidenceString(value, label);
-  if (!Number.isFinite(Date.parse(timestamp))) {
+  const match = RFC3339_INSTANT_PATTERN.exec(timestamp);
+  if (!match) {
+    throw new Error(`${label} er ugyldig i TT02-evidensen.`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const timezone = match[7];
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const offsetHour = timezone === "Z" ? 0 : Number(timezone.slice(1, 3));
+  const offsetMinute = timezone === "Z" ? 0 : Number(timezone.slice(4, 6));
+  if (month < 1
+    || month > 12
+    || day < 1
+    || day > (daysInMonth[month - 1] ?? 0)
+    || hour > 23
+    || minute > 59
+    || second > 59
+    || offsetHour > 23
+    || offsetMinute > 59
+    || !Number.isFinite(Date.parse(timestamp))) {
     throw new Error(`${label} er ugyldig i TT02-evidensen.`);
   }
   return timestamp;
+}
+
+function safeCompanyTaxEvidenceUrl(value?: string | null): string | null {
+  const normalized = optional(value);
+  if (!normalized) return null;
+  if (normalized.length > MAX_EVIDENCE_URL_LENGTH
+    || normalized.includes("?")
+    || normalized.includes("#")) {
+    throw new Error("TT02-evidenslenken må være en avgrenset HTTPS-lenke uten query eller fragment.");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized);
+  } catch {
+    throw new Error("TT02-evidenslenken må være en absolutt HTTPS-lenke.");
+  }
+  if (parsed.protocol !== "https:"
+    || !parsed.hostname
+    || parsed.username
+    || parsed.password
+    || parsed.search
+    || parsed.hash) {
+    throw new Error("TT02-evidenslenken må være en absolutt HTTPS-lenke uten credentials, query eller fragment.");
+  }
+  return parsed.href;
+}
+
+function rfc3339InstantParts(value: string) {
+  const fraction = /\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/u.exec(value)?.[1] ?? "";
+  const wholeSecond = value.replace(/\.\d+(?=Z|[+-]\d{2}:\d{2}$)/u, "");
+  return {
+    epochSecond: Date.parse(wholeSecond) / 1000,
+    fraction,
+  };
+}
+
+function rfc3339InstantIsAfter(left: string, right: string) {
+  const leftParts = rfc3339InstantParts(left);
+  const rightParts = rfc3339InstantParts(right);
+  if (leftParts.epochSecond !== rightParts.epochSecond) {
+    return leftParts.epochSecond > rightParts.epochSecond;
+  }
+  const fractionLength = Math.max(leftParts.fraction.length, rightParts.fraction.length);
+  return leftParts.fraction.padEnd(fractionLength, "0")
+    > rightParts.fraction.padEnd(fractionLength, "0");
+}
+
+function requireChronologicalEvidenceTimestamps(
+  timestamps: Array<{ label: string; value: string }>,
+) {
+  for (let index = 1; index < timestamps.length; index += 1) {
+    const previous = timestamps[index - 1];
+    const current = timestamps[index];
+    if (previous && current && rfc3339InstantIsAfter(previous.value, current.value)) {
+      throw new Error(
+        `TT02-evidensens tidskronologi er ugyldig: ${previous.label} kan ikke være etter ${current.label}.`,
+      );
+    }
+  }
 }
 
 export function buildAuthorityTestRun(input: AuthorityTestRunInput): AuthorityTestRun {
@@ -266,6 +351,7 @@ export function validatedCompanyTaxReturnEvidence(
   input: CompanyTaxReturnAuthorityTestRunImportInput,
 ): ValidatedCompanyTaxReturnEvidence {
   const evidence = objectValue(input.evidence);
+  const evidenceUrl = safeCompanyTaxEvidenceUrl(input.evidenceUrl);
   const expectedOrgNumber = required(
     input.expectedCompanyOrgNumber,
     "Forventet organisasjonsnummer",
@@ -394,6 +480,14 @@ export function validatedCompanyTaxReturnEvidence(
     evidence.receiptRetrievedAt,
     "Tilbakemeldingshentetidspunkt",
   );
+  const recordedAt = input.recordedAt ?? receiptRetrievedAt;
+  requireChronologicalEvidenceTimestamps([
+    { label: "validering", value: validatedAt },
+    { label: "personbekreftelse-handoff", value: confirmationPreparedAt },
+    { label: "prosesslutt", value: processEndedAt },
+    { label: "arkivering", value: archivedAt },
+    { label: "tilbakemeldingshenting", value: receiptRetrievedAt },
+  ]);
 
   const payloadHash = createHash("sha256")
     .update([
@@ -413,10 +507,10 @@ export function validatedCompanyTaxReturnEvidence(
     feedbackSummary: "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
     receiptReference,
     archiveReference,
-    evidenceUrl: input.evidenceUrl,
+    evidenceUrl,
     payloadHash: `sha256:${payloadHash}`,
     recordedBy: input.recordedBy,
-    recordedAt: input.recordedAt,
+    recordedAt,
   });
 
   return {
