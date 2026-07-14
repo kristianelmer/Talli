@@ -100,6 +100,7 @@ export function buildCompanyTaxReturnPayload(input: {
     fields: [
       field("skattemeldingUpersonlig", "skattemelding.partsnummer", input.companyOrgNumber, "company.org_number", "skattemeldingUpersonlig_v5_ekstern.xsd"),
       field("skattemeldingUpersonlig", "skattemelding.inntektsaar", input.incomeYear, "company.income_year", "skattemeldingUpersonlig_v5_ekstern.xsd"),
+      ...taxIncomeFields(taxableBasis),
       ...dividendActions.flatMap((action, index) => dividendFields(action, index)),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.partsreferanse", input.companyOrgNumber, "company.org_number", "naeringsspesifikasjon_v6_ekstern.xsd"),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.inntektsaar", input.incomeYear, "company.income_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
@@ -119,6 +120,25 @@ export function buildCompanyTaxReturnPayload(input: {
     ],
     feedback,
   };
+}
+
+function taxIncomeFields(taxableBasis: number): CompanyTaxReturnPayloadField[] {
+  if (taxableBasis >= 0) {
+    return [field(
+      "skattemeldingUpersonlig",
+      "skattemelding.inntektOgUnderskudd.inntekt.naeringsinntekt.beloepSomHeltall",
+      Math.round(taxableBasis),
+      "reconciliation.taxable_basis",
+      "skattemeldingUpersonlig_v5_ekstern.xsd",
+    )];
+  }
+  return [field(
+    "skattemeldingUpersonlig",
+    "skattemelding.inntektOgUnderskudd.inntektsfradrag.underskudd.beloepSomHeltall",
+    Math.round(Math.abs(taxableBasis)),
+    "reconciliation.taxable_basis",
+    "skattemeldingUpersonlig_v5_ekstern.xsd",
+  )];
 }
 
 export function companyTaxReturnPayloadFeedback(input: {

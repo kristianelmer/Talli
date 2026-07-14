@@ -84,6 +84,7 @@ test("builds 2025 schema-backed company tax return payload candidate", () => {
   assert.equal(payload.schema.skattemeldingUpersonlig.xsd, "skattemeldingUpersonlig_v5_ekstern.xsd");
   assert.equal(payload.schema.naeringsspesifikasjon.xsd, "naeringsspesifikasjon_v6_ekstern.xsd");
   assert.equal(fields["skattemelding.partsnummer"].value, "314259521");
+  assert.equal(fields["skattemelding.inntektOgUnderskudd.inntekt.naeringsinntekt.beloepSomHeltall"].value, 1510);
   assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].id"].value, "action-id");
   assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].utbytte.beloepSomHeltall"].value, 100000);
   assert.equal(fields["skattemelding.spesifikasjonAvForholdRelevanteForBeskatning.aksjeIAksjonaerregisteret[0].erOmfattetAvFritaksmetoden.boolsk"].value, true);
@@ -139,6 +140,7 @@ test("reconciles interest, costs, exempt gains, and non-deductible losses", () =
   assert.equal(payload.derived.accountingResultBeforeTax, 112645.5);
   assert.equal(payload.derived.taxableBasis, 645.5);
   assert.equal(payload.derived.estimatedTax, 142.01);
+  assert.equal(fields["skattemelding.inntektOgUnderskudd.inntekt.naeringsinntekt.beloepSomHeltall"].value, 646);
   assert.equal(fields["resultatregnskap.driftskostnad.annenDriftskostnad.kostnad[0].type.resultatOgBalanseregnskapstype"].value, "6700");
   assert.equal(fields["resultatregnskap.finansinntekt.inntekt[1].type.resultatOgBalanseregnskapstype"].value, "8050");
   assert.equal(fields["resultatregnskap.finansinntekt.inntekt[2].type.resultatOgBalanseregnskapstype"].value, "8074");
@@ -146,6 +148,25 @@ test("reconciles interest, costs, exempt gains, and non-deductible losses", () =
   assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[2].permanentForskjellstype.permanentForskjellstype"].value, "regnskapsmessigGevinstVedRealisasjonAvFinansielleInstrumenter");
   assert.equal(fields["forskjellMellomRegnskapsmessigOgSkattemessigVerdi.permanentForskjell[3].permanentForskjellstype.permanentForskjellstype"].value, "regnskapsmessigTapVedRealisasjonAvFinansielleInstrumenter");
   assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_share_sale_or_purchase_review"]);
+});
+
+test("renders a negative taxable basis as a positive whole-number loss", () => {
+  const payload = buildCompanyTaxReturnPayload({
+    companyOrgNumber: "314259521",
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries: [{
+      ...ledgerEntries[0],
+      lines: [{ account: "7770", debit: 100.5, credit: 0 }],
+    }],
+    holdingActions: [],
+  });
+  const loss = payload.fields.find(
+    (field) => field.path === "skattemelding.inntektOgUnderskudd.inntektsfradrag.underskudd.beloepSomHeltall",
+  );
+
+  assert.equal(payload.derived.taxableBasis, -100.5);
+  assert.equal(loss?.value, 101);
 });
 
 test("blocks unsupported tax treatment and shareholder loans", () => {
@@ -188,6 +209,10 @@ test("builds no-activity payload candidate without activity warnings", () => {
 
   assert.equal(payload.derived.noActivity, true);
   assert.equal(payload.derived.taxableBasis, 0);
+  const incomeField = payload.fields.find(
+    (field) => field.path === "skattemelding.inntektOgUnderskudd.inntekt.naeringsinntekt.beloepSomHeltall",
+  );
+  assert.equal(incomeField?.value, 0);
   assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_payload_candidate_ready"]);
 });
 
