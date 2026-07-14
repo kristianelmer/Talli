@@ -39,7 +39,7 @@
 - Consumes: the same already-validated TT02 evidence object used by `buildCompanyTaxReturnAuthorityTestRunFromEvidence`.
 - Produces: one deterministic `CompanyTaxReturnEvidencePersistence` projection containing the authority test run and a sanitized `filing_submissions` payload.
 
-- [ ] **Step 1: Add failing projection tests**
+- [x] **Step 1: Add failing projection tests**
 
   Assert that a valid evidence fixture produces:
 
@@ -62,13 +62,13 @@
 
   Assert retrying with the same company/year/evidence produces the same payload hash and idempotency key. Recursively inspect the projection JSON and assert it contains none of the raw XML, current document reference, party number, token, key, or personal identifier sentinel values.
 
-- [ ] **Step 2: Run the focused test red**
+- [x] **Step 2: Run the focused test red**
 
   Run: `node --experimental-strip-types --test tests/company_tax_return_submission.test.mjs`
 
   Expected: failure because `company-tax-return-submission.ts` and its projection export do not exist.
 
-- [ ] **Step 3: Implement the minimal pure projection**
+- [x] **Step 3: Implement the minimal pure projection**
 
   Add these exact public shapes:
 
@@ -106,7 +106,7 @@
 
   Refactor strict evidence parsing into one internal validated snapshot used by both the existing authority-run mapper and the new projection, so company/year/scope/resource/receipt/archive checks cannot diverge. Build the operation journal only from timestamps and hashes explicitly present in the evidence. Store references and SHA-256 values, not reconstructed raw documents. Generalize `FilingSubmissionRow` JSON field types enough to represent RF-1086 and company-tax records without weakening their runtime validation.
 
-- [ ] **Step 4: Run focused and evidence regressions green**
+- [x] **Step 4: Run focused and evidence regressions green**
 
   Add `test:company-tax-return-submission` to `package.json`.
 
@@ -118,7 +118,7 @@
 
   Expected: all commands exit 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run:
 
