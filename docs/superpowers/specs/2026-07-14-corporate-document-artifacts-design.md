@@ -154,7 +154,18 @@ hash mismatch, or missing artifact as a hard failure.
 
 ## Persistence model
 
-Migration `0004_corporate_document_artifacts.sql` adds five append-only tables.
+Migration `0004_corporate_document_artifacts.sql` adds five append-only
+lifecycle tables plus one immutable accounting-policy registry.
+
+### `corporate_accounting_policies`
+
+- immutable policy version
+- declaration debit, dividend-payable, and bank account numbers
+- named reviewer, review timestamp, evidence reference, and recorded-by actor
+- enabled state fixed at insert time; a replacement version supersedes rather
+  than mutates an existing policy
+- no authenticated read or write grant; security-definer finalization/payment
+  functions resolve the enabled version internally
 
 ### `corporate_decisions`
 
@@ -253,11 +264,12 @@ declaration holding action, balanced declaration ledger entry, finalization
 row, and `finalized` event exactly once. The declaration debits the configured
 equity/distribution account and credits a dividend-payable liability; it must
 not credit bank. A later bank match records payment by debiting the payable and
-crediting bank. Both mappings carry an explicit accounting-policy version and
-remain behind the rollout flag until a named Norwegian accounting review
-accepts the exact accounts. For an annual close, finalization records adoption
-against the bound annual-close source without creating an unrelated ledger
-entry.
+crediting bank. Both mappings carry an explicit accounting-policy version
+resolved from the immutable server-side registry and remain behind the rollout
+flag until a named Norwegian accounting review accepts the exact accounts.
+Owner-controlled input can never select or override accounts. For an annual
+close, finalization records adoption against the bound annual-close source
+without creating an unrelated ledger entry.
 
 ## Review and signing workflow
 
