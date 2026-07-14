@@ -34,7 +34,7 @@
 - Consumes: existing test-only Altinn token, instance ID validation, `authorityRequest`, and official `data`/`confirmation`/`feedback` process contract.
 - Produces: `getInstance`, `advanceToConfirmation`, `getOwnerConfirmationUrl`, `getFeedbackReceipt`, and `waitForCompanyTaxReturnFeedback`.
 
-- [ ] **Step 1: Add failing process-transition tests**
+- [x] **Step 1: Add failing process-transition tests**
 
   Add fixtures shaped like real Altinn instances and assert:
 
@@ -55,13 +55,13 @@
   https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=<instance-id>
   ```
 
-- [ ] **Step 2: Run the client test red**
+- [x] **Step 2: Run the client test red**
 
   Run: `node --experimental-strip-types --test tests/company_tax_return_authority_client.test.mjs`
 
   Expected: failure because the new methods/exports do not exist.
 
-- [ ] **Step 3: Implement the minimal process API**
+- [x] **Step 3: Implement the minimal process API**
 
   Add exact public signatures:
 
@@ -77,17 +77,17 @@
 
   `getInstance` validates the returned ID, parses `process.currentTask.altinnTaskType`, `process.ended`, `status.isArchived`, `status.archived`, and bounded data-element metadata. `advanceToConfirmation` calls `GET`, then `PUT .../process/next` only from `data`, then verifies with a final `GET`; when already in `confirmation`, it returns without writing.
 
-- [ ] **Step 4: Add failing receipt retrieval and polling tests**
+- [x] **Step 4: Add failing receipt retrieval and polling tests**
 
   Assert one clean `tilbakemelding` element with XML content is downloaded from `/instances/{id}/data/{dataId}`. Assert missing/pending is retryable, duplicate elements block, rejected scan blocks, non-XML content blocks, and `waitForCompanyTaxReturnFeedback` uses only GETs and stops on success or bounded timeout.
 
-- [ ] **Step 5: Run the new receipt tests red**
+- [x] **Step 5: Run the new receipt tests red**
 
   Run: `node --experimental-strip-types --test tests/company_tax_return_authority_client.test.mjs`
 
   Expected: failure because feedback methods are absent.
 
-- [ ] **Step 6: Implement receipt retrieval and polling**
+- [x] **Step 6: Implement receipt retrieval and polling**
 
   Add exact signatures:
 
@@ -114,7 +114,7 @@
 
   Keep receipt XML in memory only. Sanitize all remote errors and validate UUIDs, content type, scan state, byte length, returned instance ID, and archive reference.
 
-- [ ] **Step 7: Run focused and authority regression tests green**
+- [x] **Step 7: Run focused and authority regression tests green**
 
   Run: `npm run test:company-tax-return-authority`
 
@@ -124,7 +124,7 @@
 
   Expected: all commands exit 0.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
   Run:
 

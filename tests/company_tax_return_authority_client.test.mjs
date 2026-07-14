@@ -12,18 +12,37 @@ import {
   renderCompanyTaxReturnEnvelope,
   renderCompanyTaxReturnValidationEnvelope,
   summarizeCompanyTaxReturnValidation,
+  waitForCompanyTaxReturnFeedback,
   waitForCompanyTaxReturnValidation,
 } from "../app/lib/company-tax-return-authority-client.ts";
 
 const taxToken = "opaque-tax-token";
 const altinnToken = "opaque-altinn-token";
 const instanceId = "50001234/10000000-0000-4000-8000-000000000001";
+const feedbackDataId = "30000000-0000-4000-8000-000000000003";
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function instanceResponse(taskType, overrides = {}) {
+  return {
+    id: instanceId,
+    process: {
+      started: "2026-07-14T12:00:00Z",
+      ended: null,
+      endEvent: null,
+      currentTask: taskType === null
+        ? null
+        : { elementId: `${taskType}-task`, altinnTaskType: taskType },
+    },
+    status: { isArchived: false, archived: null },
+    data: [],
+    ...overrides,
+  };
 }
 
 test("renders the official v2 envelope with base64 documents and 2025 submission purpose", () => {
@@ -222,6 +241,261 @@ test("uses the official current-document and Altinn async-validation sequence", 
   assert.equal(requests[1].init.headers.authorization, `Bearer ${altinnToken}`);
   assert.equal(requests[4].init.headers.authorization, `Bearer ${taxToken}`);
   assert.doesNotMatch(JSON.stringify(result), /opaque-tax-token|opaque-altinn-token/u);
+});
+
+test("advances exactly once from data to owner confirmation and returns the documented viewer URL", async () => {
+  const requests = [];
+  const queue = [
+    jsonResponse(instanceResponse("data")),
+    jsonResponse({ process: { currentTask: { altinnTaskType: "confirmation" } } }),
+    jsonResponse(instanceResponse("confirmation")),
+  ];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
+    },
+  });
+
+  const prepared = await client.advanceToConfirmation({ instanceId });
+
+  assert.deepEqual(prepared, {
+    instanceId,
+    processTask: "confirmation",
+    transitioned: true,
+  });
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "PUT", "GET"]);
+  assert.equal(
+    requests[1].url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/process/next`,
+  );
+  assert.equal(
+    client.getOwnerConfirmationUrl({ instanceId }),
+    `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`,
+  );
+});
+
+test("owner-confirmation preparation is idempotent and blocks unknown tasks without a write", async () => {
+  const confirmationRequests = [];
+  const confirmationClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      confirmationRequests.push({ url: String(url), init });
+      return jsonResponse(instanceResponse("confirmation"));
+    },
+  });
+
+  assert.deepEqual(await confirmationClient.advanceToConfirmation({ instanceId }), {
+    instanceId,
+    processTask: "confirmation",
+    transitioned: false,
+  });
+  assert.deepEqual(confirmationRequests.map((request) => request.init.method), ["GET"]);
+
+  const blockedRequests = [];
+  const blockedClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      blockedRequests.push({ url: String(url), init });
+      return jsonResponse(instanceResponse("feedback"));
+    },
+  });
+  await assert.rejects(
+    blockedClient.advanceToConfirmation({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_CONFIRMATION_TASK_INVALID"
+      && error.retryable === false,
+  );
+  assert.deepEqual(blockedRequests.map((request) => request.init.method), ["GET"]);
+});
+
+test("retrieves exactly one clean XML feedback receipt through read-only calls", async () => {
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding><status>mottatt</status></tilbakemelding>";
+  const requests = [];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      if (requests.length === 1) {
+        return jsonResponse(instanceResponse("feedback", {
+          status: { isArchived: true, archived: "2026-07-14T12:30:00Z" },
+          data: [{
+            id: feedbackDataId,
+            dataType: "tilbakemelding",
+            contentType: "application/xml",
+            filename: "tilbakemelding.xml",
+            size: Buffer.byteLength(receiptXml, "utf8"),
+            fileScanResult: "Clean",
+          }],
+        }));
+      }
+      return new Response(receiptXml, {
+        status: 200,
+        headers: { "content-type": "application/xml" },
+      });
+    },
+  });
+
+  const receipt = await client.getFeedbackReceipt({ instanceId });
+
+  assert.deepEqual(receipt, {
+    instanceId,
+    dataId: feedbackDataId,
+    dataType: "tilbakemelding",
+    contentType: "application/xml",
+    sizeBytes: Buffer.byteLength(receiptXml, "utf8"),
+    reference: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}/data/${feedbackDataId}`,
+    receiptXml,
+    archived: true,
+    archivedAt: "2026-07-14T12:30:00Z",
+    archiveReference: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`,
+  });
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "GET"]);
+  assert.equal(
+    requests[1].url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/data/${feedbackDataId}`,
+  );
+});
+
+test("feedback retrieval treats missing feedback as retryable and duplicate feedback as blocked", async () => {
+  const pendingClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse(instanceResponse("feedback")),
+  });
+  await assert.rejects(
+    pendingClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_PENDING"
+      && error.retryable === true,
+  );
+
+  const duplicateClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse(instanceResponse("feedback", {
+      data: [feedbackDataId, "40000000-0000-4000-8000-000000000004"].map((id) => ({
+        id,
+        dataType: "tilbakemelding",
+        contentType: "application/xml",
+        filename: "tilbakemelding.xml",
+        size: 100,
+        fileScanResult: "Clean",
+      })),
+    })),
+  });
+  await assert.rejects(
+    duplicateClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_DUPLICATE"
+      && error.retryable === false,
+  );
+});
+
+test("feedback retrieval blocks rejected scans, non-XML content, and byte-length mismatches", async () => {
+  const invalidElement = {
+    id: feedbackDataId,
+    dataType: "tilbakemelding",
+    contentType: "application/xml",
+    filename: "tilbakemelding.xml",
+    size: 100,
+    fileScanResult: "Clean",
+  };
+  const cases = [
+    {
+      expectedCode: "COMPANY_TAX_FEEDBACK_SCAN_REJECTED",
+      element: { ...invalidElement, fileScanResult: "Infected" },
+    },
+    {
+      expectedCode: "COMPANY_TAX_FEEDBACK_CONTENT_TYPE_INVALID",
+      element: { ...invalidElement, contentType: "application/pdf" },
+    },
+  ];
+  for (const testCase of cases) {
+    const client = createCompanyTaxReturnAuthorityClient({
+      environment: "test",
+      taxAccessToken: taxToken,
+      altinnAccessToken: altinnToken,
+      fetch: async () => jsonResponse(instanceResponse("feedback", { data: [testCase.element] })),
+    });
+    await assert.rejects(
+      client.getFeedbackReceipt({ instanceId }),
+      (error) => error instanceof CompanyTaxReturnAuthorityError
+        && error.code === testCase.expectedCode
+        && error.retryable === false,
+    );
+  }
+
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding/>";
+  let requestCount = 0;
+  const sizeMismatchClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => {
+      requestCount += 1;
+      return requestCount === 1
+        ? jsonResponse(instanceResponse("feedback", {
+          data: [{ ...invalidElement, size: Buffer.byteLength(receiptXml, "utf8") + 1 }],
+        }))
+        : new Response(receiptXml, { status: 200, headers: { "content-type": "application/xml" } });
+    },
+  });
+  await assert.rejects(
+    sizeMismatchClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_SIZE_MISMATCH"
+      && error.retryable === false,
+  );
+});
+
+test("polls read-only until the company tax feedback receipt is available", async () => {
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding><status>mottatt</status></tilbakemelding>";
+  const requests = [];
+  const queue = [
+    jsonResponse(instanceResponse("feedback")),
+    jsonResponse(instanceResponse("feedback", {
+      data: [{
+        id: feedbackDataId,
+        dataType: "tilbakemelding",
+        contentType: "text/xml",
+        filename: "tilbakemelding.xml",
+        size: Buffer.byteLength(receiptXml, "utf8"),
+        fileScanResult: "Clean",
+      }],
+    })),
+    new Response(receiptXml, { status: 200, headers: { "content-type": "text/xml" } }),
+  ];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
+    },
+  });
+
+  const receipt = await waitForCompanyTaxReturnFeedback(
+    client,
+    { instanceId },
+    { attempts: 2, sleep: async () => {} },
+  );
+
+  assert.equal(receipt.dataId, feedbackDataId);
+  assert.equal(receipt.contentType, "text/xml");
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "GET", "GET"]);
 });
 
 test("fails closed before validation until the uploaded envelope is virus-scan Clean", async () => {

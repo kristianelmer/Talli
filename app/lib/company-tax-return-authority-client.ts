@@ -24,6 +24,7 @@ type EnvironmentEndpoints = {
   taxApiBase: string;
   altinnPlatformBase: string;
   altinnAppBase: string;
+  ownerViewerBase: string;
 };
 
 type ParsedResponse = {
@@ -37,11 +38,13 @@ const ENDPOINTS: Record<CompanyTaxReturnAuthorityEnvironment, EnvironmentEndpoin
     taxApiBase: "https://api-test.sits.no",
     altinnPlatformBase: "https://platform.tt02.altinn.no",
     altinnAppBase: "https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2",
+    ownerViewerBase: "https://skatt-test.sits.no/web/skattemelding-visning/altinn",
   },
   production: {
     taxApiBase: "https://api.skatteetaten.no",
     altinnPlatformBase: "https://platform.altinn.no",
     altinnAppBase: "https://skd.apps.altinn.no/skd/formueinntekt-skattemelding-v2",
+    ownerViewerBase: "https://skatt.skatteetaten.no/web/skattemelding-visning/altinn",
   },
 };
 
@@ -352,6 +355,40 @@ export async function exchangeMaskinportenForAltinnToken(input: ExchangeInput): 
 
 export type CompanyTaxReturnAuthorityClient = ReturnType<typeof createCompanyTaxReturnAuthorityClient>;
 
+export type CompanyTaxReturnInstanceSummary = {
+  instanceId: string;
+  processTask: string | null;
+  processEndedAt: string | null;
+  archived: boolean;
+  archivedAt: string | null;
+  data: Array<{
+    id: string;
+    dataType: string;
+    contentType: string | null;
+    filename: string | null;
+    sizeBytes: number | null;
+    fileScanResult: string | null;
+  }>;
+};
+
+export type CompanyTaxReturnFeedbackReceipt = {
+  instanceId: string;
+  dataId: string;
+  dataType: "tilbakemelding";
+  contentType: "application/xml" | "text/xml";
+  sizeBytes: number;
+  reference: string;
+  receiptXml: string;
+  archived: boolean;
+  archivedAt: string | null;
+  archiveReference: string;
+};
+
+function optionalIsoDateTime(value: unknown): string | null {
+  const normalized = safeString(value);
+  return normalized && Number.isFinite(Date.parse(normalized)) ? normalized : null;
+}
+
 export function createCompanyTaxReturnAuthorityClient(input: AuthorityClientInput) {
   const endpoints = ENDPOINTS[input.environment];
   if (!endpoints) throw new Error("Company tax authority environment must be test or production.");
@@ -377,6 +414,10 @@ export function createCompanyTaxReturnAuthorityClient(input: AuthorityClientInpu
 
   function taxUrl(path: string): string {
     return `${endpoints.taxApiBase}/api/skattemelding/v2/${path}`;
+  }
+
+  function instanceUrl(instanceId: string): string {
+    return `${endpoints.altinnAppBase}/instances/${validInstanceId(instanceId)}`;
   }
 
   return {
@@ -487,6 +528,172 @@ export function createCompanyTaxReturnAuthorityClient(input: AuthorityClientInpu
       return { dataId: safeString(envelope.id), fileScanResult };
     },
 
+    // Skatteetaten documents one process/next into Bekreftelse followed by a
+    // separate owner-controlled transition into Tilbakemelding.
+    // https://github.com/Skatteetaten/skattemeldingen/blob/v1.62.47/docs/api-v2/README.md#altinn3-api
+    async getInstance(options: { instanceId: string }): Promise<CompanyTaxReturnInstanceSummary> {
+      const id = validInstanceId(options.instanceId);
+      const result = await authorityRequest({
+        fetch: fetchImplementation,
+        url: instanceUrl(id),
+        method: "GET",
+        token: requireAltinnToken(),
+        timeoutMs,
+        headers: { accept: "application/json" },
+      });
+      const instance = result.json;
+      const returnedId = validInstanceId(safeString(instance.id));
+      if (returnedId !== id) {
+        throw new CompanyTaxReturnAuthorityError(
+          "Altinn returned a different company tax instance id.",
+          { code: "COMPANY_TAX_INSTANCE_MISMATCH" },
+        );
+      }
+      const process = safeObject(instance.process);
+      const currentTask = safeObject(process.currentTask);
+      const status = safeObject(instance.status);
+      const archivedAt = optionalIsoDateTime(status.archived);
+      const elements = Array.isArray(instance.data) ? instance.data.map(safeObject) : [];
+      return {
+        instanceId: id,
+        processTask: safeString(currentTask.altinnTaskType || currentTask.elementId) || null,
+        processEndedAt: optionalIsoDateTime(process.ended),
+        archived: status.isArchived === true && archivedAt !== null,
+        archivedAt,
+        data: elements.map((element) => {
+          const size = Number(element.size);
+          return {
+            id: validDataId(safeString(element.id)),
+            dataType: safeString(element.dataType),
+            contentType: safeString(element.contentType) || null,
+            filename: safeString(element.filename) || null,
+            sizeBytes: Number.isInteger(size) && size >= 0 ? size : null,
+            fileScanResult: safeString(element.fileScanResult) || null,
+          };
+        }),
+      };
+    },
+
+    async advanceToConfirmation(options: { instanceId: string }) {
+      const id = validInstanceId(options.instanceId);
+      const current = await this.getInstance({ instanceId: id });
+      if (current.processTask === "confirmation") {
+        return { instanceId: id, processTask: "confirmation" as const, transitioned: false };
+      }
+      if (current.processTask !== "data") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax instance is not in the initial data task.",
+          { code: "COMPANY_TAX_CONFIRMATION_TASK_INVALID" },
+        );
+      }
+      await authorityRequest({
+        fetch: fetchImplementation,
+        url: `${instanceUrl(id)}/process/next`,
+        method: "PUT",
+        token: requireAltinnToken(),
+        timeoutMs,
+        headers: { accept: "application/json", "content-type": "application/json" },
+      });
+      const prepared = await this.getInstance({ instanceId: id });
+      if (prepared.processTask !== "confirmation") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax instance did not enter owner confirmation.",
+          { code: "COMPANY_TAX_CONFIRMATION_NOT_REACHED", retryable: true },
+        );
+      }
+      return { instanceId: id, processTask: "confirmation" as const, transitioned: true };
+    },
+
+    getOwnerConfirmationUrl(options: { instanceId: string }) {
+      const id = validInstanceId(options.instanceId);
+      return `${endpoints.ownerViewerBase}?appId=${APP_ID}&instansId=${id}`;
+    },
+
+    // Skatteetaten adds one XML data element named "tilbakemelding" after the
+    // owner has submitted and the return has been processed.
+    // https://github.com/Skatteetaten/skattemeldingen/blob/v1.62.47/docs/api-v2/README.md#hente-kvittering
+    async getFeedbackReceipt(
+      options: { instanceId: string },
+    ): Promise<CompanyTaxReturnFeedbackReceipt> {
+      const id = validInstanceId(options.instanceId);
+      const instance = await this.getInstance({ instanceId: id });
+      const feedbackElements = instance.data.filter((element) => element.dataType === "tilbakemelding");
+      if (feedbackElements.length === 0) {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax feedback receipt is not available yet.",
+          { code: "COMPANY_TAX_FEEDBACK_PENDING", retryable: true },
+        );
+      }
+      if (feedbackElements.length !== 1) {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax instance contains more than one feedback receipt.",
+          { code: "COMPANY_TAX_FEEDBACK_DUPLICATE" },
+        );
+      }
+      const element = feedbackElements[0];
+      if (element.fileScanResult === "Pending") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax feedback receipt is still being scanned.",
+          { code: "COMPANY_TAX_FEEDBACK_PENDING", retryable: true },
+        );
+      }
+      if (element.fileScanResult !== "Clean") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Altinn rejected the company tax feedback receipt during file scanning.",
+          { code: "COMPANY_TAX_FEEDBACK_SCAN_REJECTED" },
+        );
+      }
+      if (element.contentType !== "application/xml" && element.contentType !== "text/xml") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax feedback receipt is not XML.",
+          { code: "COMPANY_TAX_FEEDBACK_CONTENT_TYPE_INVALID" },
+        );
+      }
+      if (!Number.isInteger(element.sizeBytes) || (element.sizeBytes ?? 0) < 1) {
+        throw new CompanyTaxReturnAuthorityError(
+          "Company tax feedback receipt has an invalid byte length.",
+          { code: "COMPANY_TAX_FEEDBACK_SIZE_INVALID" },
+        );
+      }
+      const result = await authorityRequest({
+        fetch: fetchImplementation,
+        url: `${instanceUrl(id)}/data/${element.id}`,
+        method: "GET",
+        token: requireAltinnToken(),
+        timeoutMs,
+        headers: { accept: "application/xml, text/xml" },
+      });
+      const responseContentType = safeString(result.response.headers.get("content-type"))
+        .toLowerCase()
+        .split(";", 1)[0];
+      if (responseContentType !== "application/xml" && responseContentType !== "text/xml") {
+        throw new CompanyTaxReturnAuthorityError(
+          "Downloaded company tax feedback receipt is not XML.",
+          { code: "COMPANY_TAX_FEEDBACK_CONTENT_TYPE_INVALID" },
+        );
+      }
+      const receiptXml = requiredXml(result.raw, "Company tax feedback receipt");
+      const actualSize = Buffer.byteLength(receiptXml, "utf8");
+      if (actualSize !== element.sizeBytes) {
+        throw new CompanyTaxReturnAuthorityError(
+          "Downloaded company tax feedback receipt byte length does not match Altinn metadata.",
+          { code: "COMPANY_TAX_FEEDBACK_SIZE_MISMATCH" },
+        );
+      }
+      return {
+        instanceId: id,
+        dataId: element.id,
+        dataType: "tilbakemelding",
+        contentType: responseContentType,
+        sizeBytes: actualSize,
+        reference: `${endpoints.altinnPlatformBase}/storage/api/v1/instances/${id}/data/${element.id}`,
+        receiptXml,
+        archived: instance.archived,
+        archivedAt: instance.archivedAt,
+        archiveReference: `${endpoints.altinnPlatformBase}/storage/api/v1/instances/${id}`,
+      };
+    },
+
     async startValidation(options: {
       incomeYear: number;
       companyOrgNumber: string;
@@ -594,5 +801,34 @@ export async function waitForCompanyTaxReturnValidation(
   throw new CompanyTaxReturnAuthorityError(
     "Company tax validation did not finish within the polling window.",
     { code: "COMPANY_TAX_VALIDATION_TIMEOUT", retryable: true },
+  );
+}
+
+export async function waitForCompanyTaxReturnFeedback(
+  client: CompanyTaxReturnAuthorityClient,
+  input: { instanceId: string },
+  dependencies: { sleep?: (milliseconds: number) => Promise<void>; attempts?: number } = {},
+): Promise<CompanyTaxReturnFeedbackReceipt> {
+  const attempts = dependencies.attempts ?? 30;
+  if (!Number.isInteger(attempts) || attempts < 1 || attempts > 120) {
+    throw new Error("Company tax feedback attempts must be between 1 and 120.");
+  }
+  const sleep = dependencies.sleep ?? (async (milliseconds: number) => {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+  });
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await client.getFeedbackReceipt(input);
+    } catch (error) {
+      if (!(error instanceof CompanyTaxReturnAuthorityError)
+        || error.code !== "COMPANY_TAX_FEEDBACK_PENDING") {
+        throw error;
+      }
+      if (attempt < attempts) await sleep(2_000);
+    }
+  }
+  throw new CompanyTaxReturnAuthorityError(
+    "Company tax feedback receipt did not become available within the polling window.",
+    { code: "COMPANY_TAX_FEEDBACK_TIMEOUT", retryable: true },
   );
 }
