@@ -625,7 +625,9 @@
 
 - Modify: `docs/launch/production-launch-rehearsal.md`
 - Modify: `docs/launch/clearance-checklist.md`
+- Modify: `docs/launch/corporate-document-release-gate.md`
 - Modify: `docs/prd/talli-holding-first-filing-assistant.md`
+- Modify: `docs/superpowers/plans/2026-07-14-corporate-document-artifacts.md`
 - Create: `docs/launch/evidence/corporate-document-local-rehearsal.md`
 
 **Interfaces:**
@@ -633,7 +635,7 @@
 - Consumes: every implementation/test command and artifact from Tasks 1–11.
 - Produces: reproducible local launch evidence, updated clearance status, exact pending external gates, and a clean reviewable branch with the feature disabled by default.
 
-- [ ] **Step 1: Run static safety scans**
+- [x] **Step 1: Run static safety scans**
 
   Run: `rg -n "Styreforslag utbytte\.txt|Generalforsamlingsprotokoll utbytte\.txt|missing_placeholder|Dividend paid from bank|account: \"1920\"" app tests`
 
@@ -643,7 +645,7 @@
 
   Expected: no embedded secret material; documentation references are reviewed individually.
 
-- [ ] **Step 2: Run all automated verification**
+- [x] **Step 2: Run all automated verification**
 
   Run: `uv run python -m unittest discover -s tests -p 'test_*.py'`
 
@@ -661,19 +663,19 @@
 
   Expected: local commands pass. If authenticated Supabase credentials are absent, record that exact external gate as not run; do not claim it passed.
 
-- [ ] **Step 3: Verify PDFs structurally and visually**
+- [x] **Step 3: Verify PDFs structurally and visually**
 
   Render both fixtures twice; compare SHA-256; run `pdfinfo` and `pdftotext` on all four files; confirm page counts, valid structure, Norwegian text extraction, no dynamic timestamps, and no clipped text. Render pages to PNG with `pdftoppm`, inspect all pages, and record hashes/template version/screenshots in the local rehearsal evidence.
 
-- [ ] **Step 4: Rehearse fresh PostgreSQL and private storage behavior**
+- [x] **Step 4: Rehearse fresh PostgreSQL and private storage behavior**
 
   Run migrations 0001–0004 into a fresh local PostgreSQL instance, execute the database runtime suite, and exercise draft/retry/approval/attestation/finalization/payment/cross-company denial. If deployed Supabase credentials exist, repeat RLS and storage tests against the configured test project; otherwise leave the release gate explicitly pending.
 
-- [ ] **Step 5: Update launch evidence without overstating readiness**
+- [x] **Step 5: Update launch evidence without overstating readiness**
 
   Record exact commands, versions, commit SHA, output summaries, PDF hashes, font hashes, migration results, and pending named reviews. Keep `TALLI_CORPORATE_DOCUMENTS_ENABLED=false` until every external release-gate row is evidenced.
 
-- [ ] **Step 6: Run final diff and status checks**
+- [x] **Step 6: Run final diff and status checks**
 
   Run: `git diff --check`
 
@@ -683,8 +685,8 @@
 
   Expected: no unintended or uncommitted files; commits are task-scoped and reviewable.
 
-- [ ] **Step 7: Commit verification evidence**
+- [x] **Step 7: Commit verification evidence**
 
-  Run: `git add docs/launch/production-launch-rehearsal.md docs/launch/clearance-checklist.md docs/launch/evidence/corporate-document-local-rehearsal.md docs/prd/talli-holding-first-filing-assistant.md && git commit -m "docs: record corporate document launch rehearsal"`
+  Run: `git add docs/launch/production-launch-rehearsal.md docs/launch/clearance-checklist.md docs/launch/corporate-document-release-gate.md docs/launch/evidence/corporate-document-local-rehearsal.md docs/prd/talli-holding-first-filing-assistant.md docs/superpowers/plans/2026-07-14-corporate-document-artifacts.md && git commit -m "docs: record corporate document launch rehearsal"`
 
   Expected: the commit contains only reviewed evidence/documentation changes; external gates remain visibly pending until supplied.

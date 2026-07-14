@@ -1,7 +1,7 @@
 # Talli Launch Clearance Checklist
 
-Status: human review required  
-Last updated: 2026-06-14  
+Status: pre-production copy baseline cleared; production and corporate-document human review still required
+Last updated: 2026-07-14
 Working brand: Talli  
 Domain note: `talli.no` is secured
 
@@ -70,5 +70,24 @@ Public launch may proceed only when each item has a named reviewer, date, eviden
 - Pricing copy reviewed against refund/support-boundary policy.
 - Terms, privacy policy, DPA, retention, export, and incident language reviewed.
 - Security baseline sign-off completed.
+- Corporate-document templates, accounting policy, PDF goldens, deployed RLS
+  and private storage, backup/restore, and corporate public copy approved under
+  `docs/launch/corporate-document-release-gate.md`.
+- `TALLI_CORPORATE_DOCUMENTS_ENABLED=false` remains unchanged until all six
+  corporate-document release rows contain a named reviewer, date, immutable
+  evidence reference, and approval.
+
+## Latest Local Corporate-Document Evidence
+
+The 2026-07-14 local rehearsal passed deterministic rendering, extracted-text
+checks, four-page visual inspection, canonical decision/content hashing,
+private-storage orchestration tests, a fresh PostgreSQL 16 lifecycle rehearsal,
+typecheck, production build, and dependency audit. Exact commands and hashes
+are in `docs/launch/evidence/corporate-document-local-rehearsal.md`.
+
+That local evidence does not approve the feature for production. Deployed
+Supabase authenticated tests were skipped because test-project credentials or a
+usable `DATABASE_URL` were not configured. Legal, accounting, product/security,
+and restore reviewers are also still pending.
 
 If any item is unresolved, launch may still run as a private waitlist or prototype page, but it must not claim live direct filing or final legal clearance.

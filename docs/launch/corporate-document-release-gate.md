@@ -18,7 +18,14 @@ The corporate-document workflow must remain disabled in every public environment
 
 ## Automated evidence available locally
 
-The implementation provides deterministic PDF generation, canonical decision and content hashes, private content-addressed storage keys, immutable lifecycle rows, fresh owner MFA gates, owner-only preview, policy-bound database finalization/payment, and archive/restore integrity checks. These claims still require the full Task 12 rehearsal to record exact command output and artifact hashes.
+The implementation provides deterministic PDF generation, canonical decision and content hashes, private content-addressed storage keys, immutable lifecycle rows, fresh owner MFA gates, owner-only preview, policy-bound database finalization/payment, and archive/restore integrity checks. The local Task 12 rehearsal records exact command output and artifact hashes; named external reviews and deployed-environment evidence remain required.
+
+The Task 12 local rehearsal completed on 2026-07-14 for commit
+`aa3afaf5bd3bd7e100e108b74e2a8eb03354fd4c`. Exact commands, environment
+versions, PDF/font/screenshot hashes, fresh PostgreSQL attack-path coverage, and
+the deployed-Supabase skip are recorded in
+`docs/launch/evidence/corporate-document-local-rehearsal.md`. Local evidence
+does not change any pending row above.
 
 ## Enablement procedure
 
