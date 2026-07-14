@@ -153,6 +153,7 @@ async function main() {
     schemaVersion: 1,
     status: validation.result === "validertOK" ? "validated" : "rejected",
     environment: "test",
+    productionEnabled: false,
     authority: "Skatteetaten skattemelding v2 validertest",
     companyOrgNumber,
     companyName,
