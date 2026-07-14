@@ -77,8 +77,8 @@ const COMPANY_TAX_SCHEMAS = [
   "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd",
 ];
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
-const INSTANCE_ID_PATTERN = /^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const DATA_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const INSTANCE_ID_PATTERN = /^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const DATA_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const RFC3339_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/u;
 const MAX_EVIDENCE_URL_LENGTH = 2048;
 
@@ -144,7 +144,8 @@ function safeCompanyTaxEvidenceUrl(value?: string | null): string | null {
   if (!normalized) return null;
   if (normalized.length > MAX_EVIDENCE_URL_LENGTH
     || normalized.includes("?")
-    || normalized.includes("#")) {
+    || normalized.includes("#")
+    || /current_document_reference_sentinel/iu.test(normalized)) {
     throw new Error("TT02-evidenslenken må være en avgrenset HTTPS-lenke uten query eller fragment.");
   }
   let parsed: URL;
@@ -360,9 +361,8 @@ export function validatedCompanyTaxReturnEvidence(
     || evidenceString(evidence.companyOrgNumber, "Organisasjonsnummer") !== expectedOrgNumber) {
     throw new Error("TT02-evidensens organisasjonsnummer matcher ikke selskapet.");
   }
-  if (!Number.isInteger(input.expectedIncomeYear)
-    || input.expectedIncomeYear < 2000
-    || input.expectedIncomeYear > 2100
+  if (input.expectedIncomeYear !== 2025
+    || evidence.incomeYear !== 2025
     || evidence.incomeYear !== input.expectedIncomeYear) {
     throw new Error("TT02-evidensens inntektsår matcher ikke aktivt regnskapsår.");
   }

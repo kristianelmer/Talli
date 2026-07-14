@@ -150,6 +150,7 @@ test("rejects unsafe evidence URLs and normalizes blank evidence URLs to null", 
     "https://user:password@evidence.example/company-tax.json",
     "https://evidence.example/company-tax.json?token=secret",
     "https://evidence.example/company-tax.json#secret",
+    "https://evidence.example/CuRrEnT_DoCuMeNt_ReFeReNcE_SeNtInEl.json",
     `https://evidence.example/${"a".repeat(2048)}`,
   ]) {
     assert.throws(
@@ -161,6 +162,19 @@ test("rejects unsafe evidence URLs and normalizes blank evidence URLs to null", 
   assert.equal(
     project(companyTaxEvidence(), { evidenceUrl: "   " }).authorityRun.evidence_url,
     null,
+  );
+  assert.equal(
+    project(companyTaxEvidence(), {
+      evidenceUrl: "https://evidence.example/static/company-tax-2025.json",
+    }).authorityRun.evidence_url,
+    "https://evidence.example/static/company-tax-2025.json",
+  );
+});
+
+test("rejects a self-consistent non-2025 company-tax evidence projection", () => {
+  assert.throws(
+    () => project(companyTaxEvidence({ incomeYear: 2024 }), { expectedIncomeYear: 2024 }),
+    /2025|inntektsår/u,
   );
 });
 

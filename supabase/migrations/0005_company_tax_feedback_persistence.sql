@@ -48,6 +48,11 @@ alter table public.filing_submissions
 create unique index if not exists filing_submissions_authority_test_run_id_key
 on public.filing_submissions (authority_test_run_id);
 
+create unique index if not exists filing_submissions_test_authority_idempotency_key
+on public.filing_submissions (idempotency_key)
+where idempotency_key is not null
+  and mode = 'test_authority';
+
 create unique index if not exists authority_test_runs_evidence_identity_key
 on public.authority_test_runs (company_id, obligation, environment, test_reference);
 
@@ -114,6 +119,8 @@ declare
   v_recomputed_payload_hash text;
   v_call jsonb;
   v_call_index integer;
+  v_rfc3339_instant_pattern constant text :=
+    '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$';
   v_created boolean := false;
 begin
   if v_actor_id is null then
@@ -162,7 +169,7 @@ begin
 
   if octet_length(p_payload::text) > 32768
     or p_payload::text ~* '<[^>]+>'
-    or p_payload::text ~* '(raw_xml_sentinel|party_number_sentinel|access_token_sentinel|private_key_sentinel|personal_identifier_sentinel)' then
+    or p_payload::text ~* '(raw_xml_sentinel|party_number_sentinel|access_token_sentinel|private_key_sentinel|personal_identifier_sentinel|current_document_reference_sentinel)' then
     raise exception 'company_tax_evidence_forbidden_content';
   end if;
 
@@ -282,6 +289,18 @@ begin
     end if;
   end loop;
 
+  if v_authority_payload ->> 'recorded_at' !~ v_rfc3339_instant_pattern
+    or v_submission_payload ->> 'updated_at' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'calls' -> 0 ->> 'created_at' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'calls' -> 1 ->> 'created_at' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'calls' -> 2 ->> 'created_at' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'receipt_metadata' ->> 'receivedAt' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'receipt_metadata' ->> 'processEndedAt' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'receipt_metadata' ->> 'archivedAt' !~ v_rfc3339_instant_pattern
+    or v_submission_payload -> 'submitted_payload_ref' ->> 'storedAt' !~ v_rfc3339_instant_pattern then
+    raise exception 'company_tax_evidence_invalid_payload';
+  end if;
+
   begin
     select * into v_authority
     from jsonb_populate_record(null::public.authority_test_runs, v_authority_payload);
@@ -295,8 +314,7 @@ begin
   if v_authority.company_id is null
     or v_submission.company_id is null
     or v_authority.company_id is distinct from v_submission.company_id
-    or v_submission.income_year is null
-    or v_submission.income_year not between 2000 and 2100
+    or v_submission.income_year is distinct from 2025
     or v_authority.obligation is distinct from 'skattemelding'
     or v_authority.environment is distinct from 'test'
     or v_authority.status is distinct from 'pending'
@@ -363,11 +381,12 @@ begin
     ), 'hex');
 
   if v_authority.test_reference is null
-    or v_authority.test_reference !~ '^tt02:[0-9]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    or v_authority.test_reference !~ '^tt02:[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     or octet_length(v_authority.test_reference) > 64
-    or v_submission.receipt_id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    or v_submission.receipt_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     or v_submission.submitted_payload_ref ->> 'companyOrgNumber' !~ '^[0-9]{9}$'
     or v_submission.submitted_payload_ref ->> 'companyOrgNumber' is distinct from v_company_org_number
+    or v_reference_income_year is distinct from 2025
     or v_reference_income_year is distinct from v_submission.income_year
     or v_submission.payload_hash is distinct from v_recomputed_payload_hash
     or v_submission.submitted_payload_ref ->> 'payloadHash' is distinct from v_recomputed_payload_hash
@@ -417,7 +436,7 @@ begin
       'currentDocumentReferenceHash', 'storedAt'
     ] is distinct from '{}'::jsonb
     or v_submission.submitted_payload_ref ->> 'envelopeDataId'
-      !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+      !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     or v_submission.submitted_payload_ref ->> 'archiveReference' is distinct from v_authority.archive_reference
     or v_submission.submitted_payload_ref ->> 'skattemeldingHash' !~ '^[0-9a-f]{64}$'
     or v_submission.submitted_payload_ref ->> 'naeringsspesifikasjonHash' !~ '^[0-9a-f]{64}$'
@@ -455,13 +474,14 @@ begin
       (v_submission.receipt_metadata ->> 'receivedAt')::timestamptz
     or v_submission.updated_at is distinct from
       (v_submission.submitted_payload_ref ->> 'storedAt')::timestamptz
-    or (v_submission.calls -> 0 ->> 'created_at')::timestamptz >=
+    or (v_submission.calls -> 0 ->> 'created_at')::timestamptz >
       (v_submission.calls -> 1 ->> 'created_at')::timestamptz
-    or (v_submission.calls -> 1 ->> 'created_at')::timestamptz >= v_submission.updated_at
+    or (v_submission.calls -> 1 ->> 'created_at')::timestamptz >
+      (v_submission.receipt_metadata ->> 'processEndedAt')::timestamptz
     or (v_submission.calls -> 2 ->> 'created_at')::timestamptz is distinct from v_submission.updated_at
-    or (v_submission.receipt_metadata ->> 'processEndedAt')::timestamptz >=
+    or (v_submission.receipt_metadata ->> 'processEndedAt')::timestamptz >
       (v_submission.receipt_metadata ->> 'archivedAt')::timestamptz
-    or (v_submission.receipt_metadata ->> 'archivedAt')::timestamptz >= v_submission.updated_at then
+    or (v_submission.receipt_metadata ->> 'archivedAt')::timestamptz > v_submission.updated_at then
     raise exception 'company_tax_evidence_invalid_payload';
   end if;
   exception

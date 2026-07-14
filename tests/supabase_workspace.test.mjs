@@ -945,12 +945,47 @@ test(
       ["income year", (payload) => {
         payload.submission.submitted_payload_ref.incomeYear = 2024;
       }],
+      ["self-consistent non-2025 income year", (payload) => {
+        payload.submission.income_year = 2024;
+        payload.submission.submitted_payload_ref.incomeYear = 2024;
+        payload.submission.idempotency_key = payload.submission.idempotency_key.replace(
+          ":2025:",
+          ":2024:",
+        );
+      }],
       ["component digest", (payload) => {
         payload.submission.submitted_payload_ref.validationEnvelopeHash = "0".repeat(64);
         payload.submission.calls[0].body_hash = "0".repeat(64);
       }],
       ["receipt UUID", (payload) => {
         payload.submission.receipt_id = "not-a-uuid";
+      }],
+      ["uppercase semantic UUID duplicate", (payload) => {
+        const instanceUuid = payload.authorityRun.test_reference.split("/").at(-1);
+        const uppercaseInstanceUuid = instanceUuid.toUpperCase();
+        const uppercaseReceiptId = payload.submission.receipt_id.toUpperCase();
+        const envelopeDataId = payload.submission.submitted_payload_ref.envelopeDataId;
+        const uppercaseArchiveReference = payload.authorityRun.archive_reference.replace(
+          instanceUuid,
+          uppercaseInstanceUuid,
+        );
+        const uppercaseReceiptReference =
+          `${uppercaseArchiveReference}/data/${uppercaseReceiptId}`;
+        payload.authorityRun.test_reference = payload.authorityRun.test_reference.replace(
+          instanceUuid,
+          uppercaseInstanceUuid,
+        );
+        payload.authorityRun.archive_reference = uppercaseArchiveReference;
+        payload.authorityRun.receipt_reference = uppercaseReceiptReference;
+        payload.submission.receipt_id = uppercaseReceiptId;
+        payload.submission.feedback_document_ids = [uppercaseReceiptId];
+        payload.submission.feedback_items[0].documentId = uppercaseReceiptId;
+        payload.submission.receipt_metadata.receiptId = uppercaseReceiptId;
+        payload.submission.receipt_metadata.feedbackDocumentIds = [uppercaseReceiptId];
+        payload.submission.receipt_metadata.reference = uppercaseReceiptReference;
+        payload.submission.receipt_metadata.archiveReference = uppercaseArchiveReference;
+        payload.submission.submitted_payload_ref.envelopeDataId = envelopeDataId.toUpperCase();
+        payload.submission.submitted_payload_ref.archiveReference = uppercaseArchiveReference;
       }],
     ];
     for (const [label, mutate] of identityAndDigestAttacks) {
@@ -963,6 +998,40 @@ test(
         attackedPayloadError?.message ?? "",
         /company_tax_evidence_invalid_payload/u,
         `${label} tampering must fail closed`,
+      );
+    }
+    const { data: canonicalRetryRows, error: canonicalRetryRowsError } = await owner
+      .from("filing_submissions")
+      .select("id, idempotency_key")
+      .eq("mode", "test_authority")
+      .eq("idempotency_key", companyTaxPersistence.submission.idempotency_key);
+    assert.ifError(canonicalRetryRowsError);
+    assert.deepEqual(canonicalRetryRows, [{
+      id: importedCompanyTax.filing_submission_id,
+      idempotency_key: companyTaxPersistence.submission.idempotency_key,
+    }]);
+
+    for (const [label, mutate] of [
+      ["PostgreSQL infinity timestamp", (payload) => {
+        payload.submission.calls[0].created_at = "infinity";
+      }],
+      ["non-RFC3339 timestamp", (payload) => {
+        payload.submission.calls[1].created_at = "2026-07-14 12:21:00+00";
+      }],
+      ["confirmation after process end", (payload) => {
+        payload.submission.calls[1].created_at = "2026-07-14T12:30:30.000Z";
+      }],
+    ]) {
+      const timestampAttack = structuredClone(companyTaxPersistence);
+      mutate(timestampAttack);
+      const { error: timestampAttackError } = await owner.rpc(
+        "import_company_tax_tt02_evidence",
+        { p_payload: timestampAttack },
+      );
+      assert.match(
+        timestampAttackError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} must fail closed`,
       );
     }
 
@@ -982,6 +1051,17 @@ test(
         /company_tax_evidence_forbidden_content/u,
       );
     }
+    const currentReferenceSentinelPayload = structuredClone(companyTaxPersistence);
+    currentReferenceSentinelPayload.authorityRun.evidence_url =
+      "https://evidence.example/CuRrEnT_DoCuMeNt_ReFeReNcE_SeNtInEl.json";
+    const { error: currentReferenceSentinelError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: currentReferenceSentinelPayload },
+    );
+    assert.match(
+      currentReferenceSentinelError?.message ?? "",
+      /company_tax_evidence_forbidden_content/u,
+    );
 
     const directAuthority = {
       ...companyTaxPersistence.authorityRun,
@@ -1000,6 +1080,45 @@ test(
         authority_test_run_id: directAuthorityRow.id,
       });
     assert.ok(directTestAuthoritySubmissionError);
+
+    const { data: directSimulationSubmission, error: directSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .insert({
+        preview_id: filingPreview.id,
+        company_id: companyId,
+        setup_id: setup.id,
+        income_year: 2025,
+        filing: filingPreview.filing,
+        mode: "simulation",
+        adapter_mode: "simulation",
+        status: "ready",
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(directSimulationSubmissionError);
+    const { error: simulationToTestAuthorityError } = await owner
+      .from("filing_submissions")
+      .update({
+        mode: "test_authority",
+        adapter_mode: "test_authority",
+        preview_id: null,
+        authority_test_run_id: directAuthorityRow.id,
+      })
+      .eq("id", directSimulationSubmission.id);
+    assert.ok(simulationToTestAuthorityError);
+    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", directSimulationSubmission.id)
+      .single();
+    assert.ifError(unchangedSimulationSubmissionError);
+    assert.deepEqual(unchangedSimulationSubmission, {
+      mode: "simulation",
+      adapter_mode: "simulation",
+      preview_id: filingPreview.id,
+      authority_test_run_id: null,
+    });
 
     const { data: directTestAuthorityUpdates, error: directTestAuthorityUpdateError } = await owner
       .from("filing_submissions")

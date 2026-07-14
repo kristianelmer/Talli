@@ -220,6 +220,44 @@ test("company-tax TT02 import fails closed on identity, authority, handoff, rece
   assert.throws(
     () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
       ...base,
+      expectedIncomeYear: 2024,
+      evidence: companyTaxEvidence({ incomeYear: 2024 }),
+    }),
+    /2025|inntektsår/u,
+  );
+  const uppercaseInstanceId = companyTaxInstanceId.toUpperCase();
+  const uppercaseEnvelopeDataId = companyTaxEnvelopeDataId.toUpperCase();
+  const uppercaseReceiptDataId = companyTaxReceiptDataId.toUpperCase();
+  const uppercaseArchiveReference =
+    `https://platform.tt02.altinn.no/storage/api/v1/instances/${uppercaseInstanceId}`;
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({
+        instance: {
+          ...companyTaxEvidence().instance,
+          id: uppercaseInstanceId,
+          envelopeDataId: uppercaseEnvelopeDataId,
+        },
+        confirmationUrl:
+          "https://skatt-test.sits.no/web/skattemelding-visning/altinn"
+          + `?appId=skd/formueinntekt-skattemelding-v2&instansId=${uppercaseInstanceId}`,
+        receipt: {
+          ...companyTaxEvidence().receipt,
+          dataId: uppercaseReceiptDataId,
+          reference: `${uppercaseArchiveReference}/data/${uppercaseReceiptDataId}`,
+        },
+        submission: {
+          ...companyTaxEvidence().submission,
+          archiveReference: uppercaseArchiveReference,
+        },
+      }),
+    }),
+    /instans- eller konvoluttdata-id/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
       evidence: companyTaxEvidence({ productionEnabled: true }),
     }),
     /produksjon/u,

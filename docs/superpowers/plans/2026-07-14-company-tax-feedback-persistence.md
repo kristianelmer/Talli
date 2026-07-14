@@ -15,7 +15,7 @@
 - Treat `docs/superpowers/specs/2026-07-14-company-tax-return-tt02-submission-design.md` as the approved contract.
 - Do not implement the separate attachment-boundary design until its explicit approval gate is satisfied.
 - Keep `productionCompanyTaxReturnAdapterEnabled()` false and keep the production client constructor fail-closed.
-- Import only evidence with `environment:"test"`, `productionEnabled:false`, exact company/year/scope/resource, complete schema validation, `validertOK`, human-confirmation handoff, one official feedback data element, and matching archive references.
+- Import only evidence with `environment:"test"`, `productionEnabled:false`, the exact company and approved 2025 income year, exact scope/resource, complete schema validation, `validertOK`, human-confirmation handoff, one official feedback data element, and matching archive references.
 - Do not infer accepted/rejected from receipt presence. Persist `status:"feedback_ready"` and warning code `COMPANY_TAX_AUTHORITY_OUTCOME_PENDING`.
 - Never persist raw source/current/submission/receipt XML, access tokens, private keys, current-document references, internal party numbers, or personal identifiers.
 - Use TDD: write the focused failing assertion, observe the expected failure, implement the smallest behavior, and rerun focused plus regression tests.
@@ -154,7 +154,7 @@
   - permits `mode IN ('simulation', 'test_authority')` and `adapter_mode IN ('simulation', 'test_authority', 'production')` while retaining the owner RLS policy's direct-write requirement `mode = 'simulation'`;
   - permits `preview_id IS NULL` only when `mode = 'test_authority'` and requires a preview for simulation;
   - creates `public.import_company_tax_tt02_evidence(jsonb)` as `security definer` with `search_path = public, pg_temp`;
-  - checks `auth.uid()`, the current `auth.jwt()` AAL2 claim, accepted owner membership, company organization-number/year identity, obligation `skattemelding`, test environment, pending authority status, test-authority mode, feedback-ready status, recomputed canonical payload digest, exact hashes/references/shapes, and null raw payload;
+  - checks `auth.uid()`, the current `auth.jwt()` AAL2 claim, accepted owner membership, company organization-number identity, the approved 2025 income year, lowercase canonical instance/data UUIDs, strict RFC3339 event timestamps and chronology, obligation `skattemelding`, test environment, pending authority status, test-authority mode, feedback-ready status, recomputed canonical payload digest, exact hashes/references/shapes, and null raw payload;
   - grants execute only to `authenticated` after revoking public/anon access.
 
   Assert `recordCompanyTaxReturnTt02Evidence` calls the pure projection and exactly one RPC instead of a direct `authority_test_runs` insert.
@@ -190,7 +190,7 @@
   }
   ```
 
-  Add a unique index on `(company_id, obligation, environment, test_reference)` for authority runs. Inside one function transaction, reuse or insert the exact authority run, then reuse or insert the filing submission by `authority_test_run_id`. On retry, compare payload hash, idempotency key, receipt ID, feedback IDs/items, receipt metadata, payload reference, and calls; raise `company_tax_evidence_conflict` on any mismatch rather than overwriting history. Return the two row IDs and `created:boolean`. Insert the audit event in the same function only on first creation.
+  Add a unique index on `(company_id, obligation, environment, test_reference)` for authority runs and a partial unique index on non-null `filing_submissions.idempotency_key` values in `test_authority` mode. Inside one function transaction, reuse or insert the exact authority run, then reuse or insert the filing submission by `authority_test_run_id`. On retry, compare payload hash, idempotency key, receipt ID, feedback IDs/items, receipt metadata, payload reference, and calls; raise `company_tax_evidence_conflict` on any mismatch rather than overwriting history. Return the two row IDs and `created:boolean`. Insert the audit event in the same function only on first creation.
 
   Keep raw table inserts blocked by RLS for `test_authority`; the RPC is the sole write path for this mode.
 
@@ -222,6 +222,8 @@
   - an AAL2 owner creates exactly one linked authority run and submission;
   - retry returns the same IDs and does not add an audit row;
   - a conflicting payload/receipt is rejected;
+  - self-consistent non-2025 payloads, uppercase UUID aliases, special/non-RFC timestamps, broken event chronology, and forbidden reference sentinels are rejected without creating another row;
+  - ordinary updates cannot convert either `test_authority` to `simulation` or `simulation` to `test_authority`;
   - reviewer/outsider cannot call the RPC;
   - company members can read the persisted record through normal RLS;
   - `authority_permissions.production_enabled` and launch signoffs remain unchanged.

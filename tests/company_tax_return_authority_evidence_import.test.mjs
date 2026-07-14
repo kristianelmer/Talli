@@ -22,6 +22,10 @@ test("migration links test-authority submissions without opening the direct-writ
     migration,
     /create unique index if not exists filing_submissions_authority_test_run_id_key[\s\S]*\(authority_test_run_id\)/u,
   );
+  assert.match(
+    migration,
+    /create unique index if not exists filing_submissions_test_authority_idempotency_key[\s\S]*\(idempotency_key\)[\s\S]*where idempotency_key is not null[\s\S]*mode = 'test_authority'/u,
+  );
   assert.match(migration, /mode in \('simulation', 'test_authority'\)/u);
   assert.match(
     migration,
@@ -80,6 +84,30 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
   assert.match(migration, /receipt_id !~/u);
   assert.match(migration, /octet_length/u);
   assert.match(migration, /company_tax_evidence_forbidden_content/u);
+  assert.match(migration, /current_document_reference_sentinel/u);
+  assert.match(migration, /income_year is distinct from 2025/u);
+  assert.match(migration, /v_reference_income_year is distinct from 2025/u);
+  assert.match(migration, /test_reference !~ '\^tt02:\[0-9\]\+\/\[0-9a-f\]/u);
+  assert.match(migration, /receipt_id !~ '\^\[0-9a-f\]/u);
+  assert.match(migration, /v_rfc3339_instant_pattern constant text/u);
+  for (const timestampField of [
+    "recorded_at",
+    "updated_at",
+    "created_at",
+    "receivedAt",
+    "processEndedAt",
+    "archivedAt",
+    "storedAt",
+  ]) {
+    assert.match(
+      migration,
+      new RegExp(`${timestampField}'[^\\n]*!~ v_rfc3339_instant_pattern`, "u"),
+    );
+  }
+  assert.match(
+    migration,
+    /calls -> 1 ->> 'created_at'\)::timestamptz >[\s\S]*receipt_metadata ->> 'processEndedAt'/u,
+  );
   assert.match(migration, /company_tax_evidence_conflict/u);
   assert.match(migration, /insert into public\.audit_events/u);
   assert.match(
