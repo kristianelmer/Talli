@@ -1,6 +1,6 @@
 # Authority Adapter Plans
 
-Status: RF-1086 transport and company-tax validation transport are TT02-accepted; all production adapters disabled
+Status: all three supported filing paths have sanitized TT02 evidence; all production adapters disabled
 Last updated: 2026-07-14
 
 This document records the minimum real transport sequence for each filing. It
@@ -42,10 +42,13 @@ named `rf1086_authority` reviewer signs off.
 ## Skattemelding for AS
 
 The deterministic 2025 documents, combined envelope, test-only authority
-client, and guarded rehearsal are implemented. The no-activity fixture returned
-`validertOK` from TT02 on 2026-07-14; see
-`evidence/company-tax-tt02-2026-07-14.md`. This is validation evidence, not an
-accepted filing, so `productionImplemented` remains `false`.
+client, and guarded rehearsal are implemented. The no-activity fixture completed
+TT02 validation with `validertOK`, personal high-assurance submission, official
+feedback retrieval, and archive verification on 2026-07-14; see
+`evidence/company-tax-tt02-2026-07-14.md`. The company-bound runtime importer
+deliberately records this evidence as `pending` until the final authority
+outcome is explicitly classified. Production transport remains unimplemented
+and disabled.
 
 Ordered outcomes:
 
@@ -53,14 +56,19 @@ Ordered outcomes:
 2. Validate the complete skattemelding plus næringsspesifikasjon and persist all
    structured feedback.
 3. Create the Altinn3 instance.
-4. Upload both data documents and any supported attachments.
+4. Upload both data documents. Block the case if an additional attachment is
+   required until attachment handling has its own approved implementation and
+   TT02 evidence.
 5. Hand the instance to a person authenticated through ID-porten for signing;
    a system user must not be treated as the signer.
 6. Archive the official receipt and all data/archive references.
 
-Enable only after official 2025 XML XSD validation, TT02 validation/submission,
-personal signing proof, receipt/archive persistence, and named
-`tax_return_authority` signoff.
+Enable only after the deployed runtime has accepted evidence with structured
+final feedback, the no-attachment support boundary is enforced, production
+access/credentials and restore/security controls are reviewed, and the named
+`tax_return_authority` reviewer signs off. The pinned 2025 XSD validation and
+TT02 submission/signing/receipt/archive evidence are complete but do not satisfy
+those remaining production gates.
 
 ## Årsregnskap
 

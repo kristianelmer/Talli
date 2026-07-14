@@ -11,29 +11,30 @@ remaining authority/HITL blockers.
 ## Latest Rehearsal Run (2026-07-14)
 
 Code-under-test commit:
-`aa3afaf5bd3bd7e100e108b74e2a8eb03354fd4c` (`fix: harden corporate decision accounting boundary`).
+`8f55da700d53642c9abfa9d4ab998d5f885f2e23` (`docs: record company tax TT02 submission evidence`).
 
 The local automated command set completed as follows:
 
 | Command | Result |
 | --- | --- |
 | `uv run python -m unittest discover -s tests -p 'test_*.py'` | exit 0 — 68 tests, 0 failures |
-| `npm run test:launch-rehearsal` | exit 0 — every chained suite passed; corporate suite included a fresh PostgreSQL 16 migration/RPC rehearsal |
+| `TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47-xsd-dir> npm run test:launch-rehearsal` | exit 0 — every chained suite passed; company-tax XML/envelope tests used all 91 files from the pinned official XSD bundle, and the corporate suite included a fresh PostgreSQL migration/RPC rehearsal |
 | `npm run test:web` | exit 0 — 4 tests, 0 failures |
 | `npm run test:supabase` | exit 0 with 1 intentional skip — configured Supabase URL/keys or usable `DATABASE_URL` were absent, so deployed authenticated RLS/storage is still pending |
 | `npm run typecheck` | exit 0 |
 | `npm run build` | exit 0 — Next.js 16.2.9 production build, 18 static pages generated and the route table completed |
 | `npm audit --audit-level=high` | exit 0 — 0 vulnerabilities |
 
-One company-tax-return XML test intentionally skipped official XSD validation
-because the pinned official XSD bundle was not supplied to this workspace. This
-is not counted as a pass and remains part of the authority/schema evidence gate.
+The company-tax XML and combined request envelope were validated against the
+pinned Skatteetaten `v1.62.47` XSD bundle during this run. The company-tax
+authority suite also proved the test-only prepare/handoff/read-only-resume
+contract and continued to reject production transport.
 
-This proves the local automated product, filing-simulation, security, billing,
-copy, corporate-lifecycle, and policy guards are green on the tested commit. It
-does **not** prove deployed tenant isolation, live authority integration,
-Norwegian legal/accounting approval, or restore readiness. The launch state
-therefore stays `production_disabled`, and
+This proves the local automated product, filing simulation, test-authority
+contract, security, billing, copy, corporate-lifecycle, and policy guards on the
+tested commit. It does **not** prove deployed tenant isolation, production
+authority access/transport, Norwegian legal/accounting approval, or restore
+readiness. The launch state therefore stays `production_disabled`, and
 `TALLI_CORPORATE_DOCUMENTS_ENABLED=false` remains unchanged.
 
 Detailed corporate artifact evidence, PDF hashes, renderer versions, and the
@@ -60,9 +61,9 @@ The rehearsal command covers:
 - bank import/reconciliation and manual journal;
 - holding actions;
 - annual data and annual readiness;
-- RF-1086 preview/submission simulation;
-- annual accounts payload;
-- company tax return payload;
+- RF-1086 preview/submission simulation plus TT02 evidence validation;
+- annual accounts payload, test-only authority contract, and TT02 evidence validation;
+- company tax return payload/XSDs, test-only authority contract, and TT02 evidence validation;
 - reviewer workflow;
 - billing/refund/cancellation/operator support;
 - deadlines;
@@ -84,7 +85,7 @@ The rehearsal command covers:
 | Bank/import/manual entries | `npm run test:bank`, `npm run test:manual-journal` | Automated |
 | Holding actions | share/dividend/loan/tax-settlement tests | Automated |
 | Annual data/readiness | `npm run test:annual-data`, `npm run test:annual-readiness` | Automated |
-| Filing previews/submissions | RF-1086 simulation, annual accounts payload, company tax return payload | Automated simulation/payload only |
+| Filing previews/submissions | RF-1086 simulation plus authority client/evidence; annual accounts and company-tax payload, authority client, signing-handoff, receipt/archive evidence | Local contract and sanitized TT02 evidence passed; production transports, deployed runtime evidence decisions, and named authority signoffs remain blocked |
 | Review | `npm run test:review` | Automated |
 | Billing/refund | `npm run test:billing` | Automated test-mode provider only |
 | Cancellation/retention | `npm run test:cancellation` | Automated retained-deletion state |
@@ -103,8 +104,10 @@ RF-1086, årsregnskap, and skattemelding must each show one of:
   readiness, and filing-specific launch signoff gates passed; or
 - `production_disabled` with public copy restricted to preview/simulation.
 
-Current launch state is `production_disabled` until official authority
-test-environment evidence and named human release signoff exist.
+Current launch state is `production_disabled`. Sanitized TT02 evidence exists
+for all three obligations, but company-tax and annual-accounts runtime evidence
+remain `pending`; production access/credentials, deployed controls, supported
+case boundaries, and named human release signoffs are not complete.
 
 The corporate-document workflow has a separate fail-closed release gate. Local
 evidence is complete for this rehearsal, but the templates, accounting policy,
@@ -137,8 +140,9 @@ gate state in the app operator section.
 Scope: private/limited pre-launch with direct filing in preview/simulation mode
 (`production_disabled`). The three authority filing signoffs (RF-1086,
 årsregnskap, skattemelding) are intentionally NOT addressed here; they remain
-blocked on official authority test-environment onboarding and are required only
-for live direct filing (full public launch).
+blocked on their obligation-specific runtime evidence, production access,
+security/restore, and named-review gates and are required for live direct filing
+(full public launch).
 
 Operational signoffs attested by the founder for the pre-launch:
 
