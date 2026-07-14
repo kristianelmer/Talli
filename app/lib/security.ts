@@ -3,6 +3,7 @@ export type SensitiveAction =
   | "approve_corporate_facts"
   | "attest_signed_corporate_document"
   | "finalize_corporate_decision"
+  | "record_owner_dividend_payment"
   | "confirm_authority"
   | "invite_reviewer"
   | "change_role"
@@ -76,6 +77,14 @@ export const sensitiveActionRequirements: StepUpRequirement[] = [
     requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Fullfør selskapsbeslutning",
+  },
+  {
+    action: "record_owner_dividend_payment",
+    requiresMfa: true,
+    requiresSecurityReview: false,
+    requiresProductionCredentialsGate: false,
+    maxMfaAgeMinutes: 15,
+    label: "Avstem utbyttebetaling",
   },
   {
     action: "confirm_authority",

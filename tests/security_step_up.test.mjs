@@ -78,6 +78,7 @@ test("corporate approval, attestation, and finalization require fresh owner MFA"
     "approve_corporate_facts",
     "attest_signed_corporate_document",
     "finalize_corporate_decision",
+    "record_owner_dividend_payment",
   ]) {
     assert.throws(
       () => assertStepUpAllowed(action, { actorId: "owner", mfaVerifiedAt: null }, now),

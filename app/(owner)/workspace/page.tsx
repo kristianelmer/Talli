@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   acknowledgeFilingReviewComment,
   activateBillingSubscription,
@@ -22,6 +24,7 @@ import {
   recordAuthorityTestEvidence,
   recordDividendReceived,
   recordLaunchSignoff,
+  recordOwnerDividendPayment,
   recordSharePurchase,
   recordShareSale,
   recordShareholderLoan,
@@ -49,6 +52,10 @@ import {
 import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from "../../lib/launch-signoff";
 import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel, defaultReminderPreferences } from "../../lib/deadlines";
 import { summarizeDividendReceivedAnnualImpact } from "../../lib/dividend-received";
+import {
+  deriveOpenDividendPayable,
+  validateOwnerDividendPaymentInput,
+} from "../../lib/owner-dividend-payment";
 import { invitationStatus, reviewChecklistStatus } from "../../lib/invitations";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
 import { estimateAnnualTax } from "../../lib/tax-settlement";
@@ -83,7 +90,7 @@ import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
 
 type WorkspaceProps = {
-  searchParams?: Promise<{ error?: string; operatorOrg?: string }>;
+  searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string }>;
 };
 
 function supportBoundary(entityType: string) {
@@ -129,6 +136,10 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     positions,
     entries,
     locks,
+    corporateDecisions,
+    corporateDocumentSets,
+    corporateDocumentEvents,
+    corporateDecisionFinalizations,
     primaryCompanyId,
     unmatchedTransactions,
     adminCostEntries,
@@ -158,6 +169,32 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     deadlineReminderPlan,
     deadlineReminderPreferences,
   } = data;
+  const ownerDividendPayables = corporateDecisionFinalizations.flatMap((finalization) => {
+    if (finalization.finalization_kind !== "owner_dividend_declared") return [];
+    const decision = corporateDecisions.find((candidate) => candidate.id === finalization.decision_id);
+    const documentSet = corporateDocumentSets.find((candidate) => candidate.decision_id === finalization.decision_id);
+    if (!decision || !documentSet) return [];
+    try {
+      return [deriveOpenDividendPayable({
+        decision: decision as Parameters<typeof deriveOpenDividendPayable>[0]["decision"],
+        documentSet,
+        finalization,
+        events: corporateDocumentEvents.filter((event) => event.decision_id === decision.id),
+      })];
+    } catch {
+      return [];
+    }
+  }).filter((payable) => payable.companyId === primaryCompanyId);
+  const eligibleDividendTransactions = (payable: (typeof ownerDividendPayables)[number]) =>
+    transactions.filter((transaction) => {
+      if (transaction.matched_entry_id || transaction.matched_action_id) return false;
+      try {
+        validateOwnerDividendPaymentInput({ payable, transaction });
+        return true;
+      } catch {
+        return false;
+      }
+    });
   return (
     <>
       <section className="band mutedBand">
@@ -189,6 +226,9 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
           <h1>{ownerCopy.workspace.introTitle}</h1>
           <p className="lede">{ownerCopy.workspace.introLede}</p>
           {params?.error ? <p className="errorText">{params.error}</p> : null}
+          {params?.dividendPayment === "recorded" ? (
+            <p data-status="ready">Utbyttebetalingen er avstemt mot den deklarerte gjelden.</p>
+          ) : null}
           {!hasSupabaseEnv() ? (
             <p className="errorText">{ownerCopy.auth.unavailable}</p>
           ) : user ? (
@@ -1292,6 +1332,69 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </div>
                   ))}
                 </div>
+              </section>
+
+              <section className="band">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Utbyttegjeld</p>
+                  <h2>Avstem betaling etter sluttført utbyttebeslutning.</h2>
+                  <p>
+                    Deklarasjonen bokføres først som gjeld. Bank krediteres bare når en faktisk utgående
+                    transaksjon matches her.
+                  </p>
+                </div>
+                {ownerDividendPayables.length === 0 ? (
+                  <div className="readinessItem">
+                    <strong data-status="draft">Ingen sluttført deklarasjon</strong>
+                    <p>Sluttfør en eierbekreftet utbyttebeslutning før betaling kan avstemmes.</p>
+                  </div>
+                ) : (
+                  <div className="setupGrid">
+                    {ownerDividendPayables.map((payable) => {
+                      const eligible = eligibleDividendTransactions(payable);
+                      return (
+                        <div className="dataPanel formPanel" key={payable.finalizationId}>
+                          <span className="panelLabel">Beslutning {payable.incomeYear}</span>
+                          <strong>
+                            Gjenstår {(payable.remainingAmountOre / 100).toLocaleString("nb-NO")} kr
+                          </strong>
+                          <p>
+                            Deklarert {(payable.declaredAmountOre / 100).toLocaleString("nb-NO")} kr · betalt
+                            {" "}{(payable.paidAmountOre / 100).toLocaleString("nb-NO")} kr
+                          </p>
+                          <a href={`/corporate-decisions/${payable.decisionId}`}>Se beslutning og dokumentasjon</a>
+                          {payable.settled ? (
+                            <p data-status="ready">Utbyttegjelden er fullt oppgjort.</p>
+                          ) : process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true" ? (
+                            <p data-status="warning">Betalingsmatching er deaktivert av release-gaten.</p>
+                          ) : eligible.length === 0 ? (
+                            <p data-status="warning">Ingen uavstemte utgående banktransaksjoner passer restgjelden.</p>
+                          ) : (
+                            <form action={recordOwnerDividendPayment}>
+                              <input name="decisionId" type="hidden" value={payable.decisionId} />
+                              <input name="documentSetId" type="hidden" value={payable.documentSetId} />
+                              <input name="decisionHash" type="hidden" value={payable.decisionHash} />
+                              <input name="holdingActionId" type="hidden" value={randomUUID()} />
+                              <input name="ledgerEntryId" type="hidden" value={randomUUID()} />
+                              <label>
+                                Utgående banktransaksjon
+                                <select name="bankTransactionId" required defaultValue="">
+                                  <option value="" disabled>Velg transaksjon</option>
+                                  {eligible.map((transaction) => (
+                                    <option value={transaction.id} key={transaction.id}>
+                                      {transaction.transaction_date} · {transaction.text} · {transaction.amount.toLocaleString("nb-NO")} kr
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button className="primaryButton" type="submit">Avstem utbyttebetaling</button>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
 
               <section className="band mutedBand">

@@ -80,6 +80,11 @@ import {
   buildOwnerDividendAnnualBasis,
 } from "./lib/owner-dividend";
 import {
+  deriveOpenDividendPayable,
+  OwnerDividendPaymentError,
+  validateOwnerDividendPaymentInput,
+} from "./lib/owner-dividend-payment";
+import {
   Rf1086ProductionAdapterDisabledError,
   rf1086PayloadHash,
   rf1086ReceiptMetadata,
@@ -2428,11 +2433,11 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   redirect(`/corporate-decisions/${decision.request_id}`);
 }
 
-async function corporateLifecycleActionSetup(formData: FormData) {
+async function corporateLifecycleActionSetup(formData: FormData, returnToOverride?: string) {
   const decisionId = requiredFormUuid(formData, "decisionId");
   const setId = requiredFormUuid(formData, "documentSetId");
   const decisionHash = formString(formData, "decisionHash");
-  const returnTo = corporateDecisionPath(decisionId);
+  const returnTo = returnToOverride ?? corporateDecisionPath(decisionId);
   if (process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true") {
     failTo(returnTo, "Selskapsdokumenter er deaktivert til påkrevde godkjenninger foreligger.");
   }
@@ -2649,6 +2654,74 @@ export async function finalizeCorporateDecision(formData: FormData) {
   if (error) failTo(setup.returnTo, error.message);
   revalidatePath("/");
   redirect(setup.returnTo);
+}
+
+export async function recordOwnerDividendPayment(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData, "/workspace");
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "record_owner_dividend_payment",
+  );
+  const bankTransactionId = requiredFormUuid(formData, "bankTransactionId");
+  const holdingActionId = requiredFormUuid(formData, "holdingActionId");
+  const ledgerEntryId = requiredFormUuid(formData, "ledgerEntryId");
+  const [finalizationResult, eventsResult, transactionResult] = await Promise.all([
+    setup.supabase
+      .from("corporate_decision_finalizations")
+      .select("id, decision_id, finalization_kind, decision_hash, accounting_policy_version")
+      .eq("decision_id", setup.decisionId)
+      .maybeSingle(),
+    setup.supabase
+      .from("corporate_document_events")
+      .select("decision_id, event_kind, metadata")
+      .eq("decision_id", setup.decisionId)
+      .eq("event_kind", "payment_recorded"),
+    setup.supabase
+      .from("bank_transactions")
+      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id")
+      .eq("id", bankTransactionId)
+      .maybeSingle(),
+  ]);
+  if (finalizationResult.error || eventsResult.error || transactionResult.error
+    || !transactionResult.data) {
+    failTo(
+      setup.returnTo,
+      finalizationResult.error?.message
+        ?? eventsResult.error?.message
+        ?? transactionResult.error?.message
+        ?? "Fant ikke banktransaksjonen.",
+    );
+  }
+  try {
+    const payable = deriveOpenDividendPayable({
+      decision: setup.context.decision,
+      documentSet: setup.context.documentSet,
+      finalization: finalizationResult.data,
+      events: eventsResult.data ?? [],
+    });
+    validateOwnerDividendPaymentInput({ payable, transaction: transactionResult.data });
+  } catch (error) {
+    const message = error instanceof OwnerDividendPaymentError
+      ? `${error.code}: ${error.message}`
+      : error instanceof Error ? error.message : "Utbyttebetalingen er ugyldig.";
+    failTo(setup.returnTo, message);
+  }
+  const { error } = await setup.supabase.rpc("record_owner_dividend_payment", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      decision_hash: setup.decisionHash,
+      bank_transaction_id: bankTransactionId,
+      holding_action_id: holdingActionId,
+      ledger_entry_id: ledgerEntryId,
+      idempotency_key: `owner-dividend-payment:${holdingActionId}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath("/");
+  redirect("/workspace?dividendPayment=recorded");
 }
 
 export async function recordShareholderLoan(formData: FormData) {

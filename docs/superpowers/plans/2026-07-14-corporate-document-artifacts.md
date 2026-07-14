@@ -518,7 +518,7 @@
 
   Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run: `git add app/lib/security.ts tests/security_step_up.test.mjs app/actions.ts 'app/(owner)/corporate-decisions/[decisionId]/page.tsx' 'app/(owner)/corporate-decisions/[decisionId]/SignedArtifactUpload.tsx' 'app/documents/[documentId]/preview/route.ts' tests/corporate_decision_workflow.test.mjs && git commit -m "feat: finalize owner-attested corporate decisions"`
 
@@ -540,21 +540,21 @@
 - Consumes: Task 4 `record_owner_dividend_payment` RPC, Task 9 finalized declaration rows, eligible persisted bank transactions, and the immutable accounting-policy version resolved in PostgreSQL.
 - Produces: `validateOwnerDividendPaymentInput`, `deriveOpenDividendPayable`, and server action `recordOwnerDividendPayment(FormData) -> Promise<void>`.
 
-- [ ] **Step 1: Add failing declaration/payment separation tests**
+- [x] **Step 1: Add failing declaration/payment separation tests**
 
   Assert declaration lines are not computed client-side and never credit bank. Test payment input references one finalized declaration, one unmatched outgoing bank transaction, and the open payable. Reject wrong company/year/currency/sign, amount above open payable, already matched transactions, and duplicate idempotency conflicts. Assert payment ledger lines are returned only from the policy-bound RPC and contain payable debit/bank credit.
 
-- [ ] **Step 2: Run payment tests red**
+- [x] **Step 2: Run payment tests red**
 
   Run: `node --experimental-strip-types --test tests/owner_dividend.test.mjs tests/owner_dividend_payment.test.mjs`
 
   Expected: missing payment module/action.
 
-- [ ] **Step 3: Implement payment matching and UI**
+- [x] **Step 3: Implement payment matching and UI**
 
   Add `recordOwnerDividendPayment(formData)` with feature flag, authentication, fresh step-up, persisted reference checks, and `record_owner_dividend_payment` RPC. Present only eligible outgoing bank transactions and the remaining payable. Support partial payments while total paid cannot exceed declared amount; the final payment marks the payable settled by derived state, not mutation.
 
-- [ ] **Step 4: Run payment, bank, and owner tests green**
+- [x] **Step 4: Run payment, bank, and owner tests green**
 
   Run: `node --experimental-strip-types --test tests/owner_dividend.test.mjs tests/owner_dividend_payment.test.mjs tests/bank_workflow.test.mjs tests/bank_suggestion_integration.test.mjs`
 

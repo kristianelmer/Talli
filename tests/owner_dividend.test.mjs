@@ -138,6 +138,7 @@ test("server exposes only the draft action and never posts accounting directly",
   assert.doesNotMatch(action, /\.from\(["']ledger_entries["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']holding_actions["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']documents["']\)\.insert/);
+  assert.doesNotMatch(ownerDividendSource, /dividend_payable_account|bank_account|ledgerLines/i);
 });
 
 test("wizard reviews all owners and meeting facts with proportional allocation only", () => {
@@ -174,7 +175,7 @@ test("wizard reviews all owners and meeting facts with proportional allocation o
 });
 
 test("workspace no longer embeds the legacy posting form or placeholder copy", () => {
-  assert.doesNotMatch(workspaceSource, /recordOwnerDividend/);
+  assert.doesNotMatch(workspaceSource, /recordOwnerDividend(?!Payment)/);
   assert.doesNotMatch(workspaceSource, /Poster eierutbytte/);
   assert.doesNotMatch(workspaceSource, /placeholders/i);
 });
