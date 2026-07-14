@@ -38,7 +38,7 @@
 - Consumes: the approved immutable-input and supported-launch-scope rules in `docs/superpowers/specs/2026-07-14-corporate-document-artifacts-design.md`.
 - Produces: `CorporateDecisionInput`, `CorporateArtifactKind`, `CorporateDocumentValidationError`, `canonical_decision_json(CorporateDecisionInput) -> bytes`, `decision_sha256(CorporateDecisionInput) -> str`, `required_artifact_kinds(CorporateDecisionInput) -> tuple[CorporateArtifactKind, ...]`, and `validate_supported_scope(CorporateDecisionInput) -> None`.
 
-- [ ] **Step 1: Add failing canonicalization and validation tests**
+- [x] **Step 1: Add failing canonicalization and validation tests**
 
   Define fixtures with stable UUIDs, `LOGISK ØDE TIGER AS`, two ordered board participants, two proportional shareholders, full representation, unanimous votes, exact annual totals in integer øre, and fixed meeting facts. Add tests for these public types and signatures:
 
@@ -56,17 +56,17 @@
 
   Assert canonical bytes are identical after JSON key reordering; lists retain validated business order; money is integer øre; owner dividend requires latest approved annual basis, one share class, all board members, all shares, unanimity, proportional allocation, payment after decision, sufficient available equity, and non-negative post-payment liquidity. Assert each unsupported case emits the design's exact blocker code.
 
-- [ ] **Step 2: Run the Python test red**
+- [x] **Step 2: Run the Python test red**
 
   Run: `uv run python -m unittest tests.test_corporate_documents -v`
 
   Expected: import failure for `holding_core.corporate_documents`.
 
-- [ ] **Step 3: Implement the typed immutable models and validators**
+- [x] **Step 3: Implement the typed immutable models and validators**
 
   Use Pydantic models with `ConfigDict(extra="forbid", frozen=True)`, `date`/`time` fields, non-empty normalized strings, positive share counts, integer-øre money, and discriminated `decision_kind`. Assign `decision.model_dump(mode="json", exclude_none=False)` to `payload`, then serialize with `json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))`. Exclude no decision fields and include no runtime timestamp.
 
-- [ ] **Step 4: Run focused and full Python tests green**
+- [x] **Step 4: Run focused and full Python tests green**
 
   Run: `uv run python -m unittest tests.test_corporate_documents -v`
 
@@ -76,7 +76,7 @@
 
   Expected: the existing Python suite remains green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add holding_core/corporate_documents.py holding_core/__init__.py tests/test_corporate_documents.py tests/fixtures/corporate_documents && git commit -m "feat: model immutable corporate decisions"`
 
