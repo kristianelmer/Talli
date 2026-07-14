@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -9,9 +14,11 @@ from holding_core.corporate_documents import (
     CorporateArtifactKind,
     CorporateDecisionInput,
     CorporateDocumentValidationError,
+    RenderedCorporateArtifact,
     canonical_decision_json,
     decision_sha256,
     required_artifact_kinds,
+    render_corporate_documents,
     validate_supported_scope,
 )
 
@@ -110,6 +117,78 @@ class CorporateDecisionModelTests(unittest.TestCase):
             validate_supported_scope(decision)
 
         self.assertEqual(raised.exception.code, "corporate_documents_unsupported_dividend_basis")
+
+
+class CorporateDocumentRenderingTests(unittest.TestCase):
+    def test_render_is_byte_identical_and_hash_bound(self) -> None:
+        decision = CorporateDecisionInput.model_validate(load_fixture("owner_dividend.json"))
+
+        first = render_corporate_documents(decision)
+        second = render_corporate_documents(decision)
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 2)
+        for artifact in first:
+            self.assertIsInstance(artifact, RenderedCorporateArtifact)
+            self.assertTrue(artifact.pdf_bytes.startswith(b"%PDF-"))
+            self.assertEqual(artifact.byte_length, len(artifact.pdf_bytes))
+            self.assertEqual(artifact.decision_hash, decision_sha256(decision))
+            self.assertEqual(artifact.content_sha256, hashlib.sha256(artifact.pdf_bytes).hexdigest())
+            self.assertTrue(artifact.filename.endswith(".pdf"))
+
+    def test_all_four_artifacts_extract_reviewed_norwegian_facts(self) -> None:
+        pdftotext = shutil.which("pdftotext")
+        self.assertIsNotNone(pdftotext, "Poppler pdftotext is required for PDF content verification")
+
+        for fixture in ("owner_dividend.json", "annual_close.json"):
+            decision = CorporateDecisionInput.model_validate(load_fixture(fixture))
+            for artifact in render_corporate_documents(decision):
+                with self.subTest(fixture=fixture, kind=artifact.artifact_kind):
+                    with tempfile.TemporaryDirectory() as directory:
+                        pdf_path = Path(directory) / artifact.filename
+                        text_path = Path(directory) / "artifact.txt"
+                        pdf_path.write_bytes(artifact.pdf_bytes)
+                        result = subprocess.run(
+                            [pdftotext, "-layout", str(pdf_path), str(text_path)],
+                            capture_output=True,
+                            text=True,
+                            check=False,
+                        )
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        content = text_path.read_text(encoding="utf-8")
+                    self.assertIn("LOGISK ØDE TIGER AS", content)
+                    self.assertIn("310 279 617", content)
+                    self.assertIn("Åse Nordmann", content)
+                    self.assertIn("Jørgen Østby", content)
+                    self.assertIn(decision_sha256(decision), content)
+                    self.assertIn(decision.template_version, content)
+                    self.assertIn("Signatur", content)
+
+    def test_cli_returns_base64_artifacts_and_typed_block(self) -> None:
+        success = subprocess.run(
+            [sys.executable, "-m", "holding_cli.main", "render-corporate-documents", "--stdin-json"],
+            input=json.dumps(load_fixture("owner_dividend.json"), ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(success.returncode, 0, success.stderr)
+        rendered = json.loads(success.stdout)
+        self.assertEqual(rendered["status"], "rendered")
+        self.assertEqual(len(rendered["artifacts"]), 2)
+        self.assertGreater(len(rendered["artifacts"][0]["pdfBase64"]), 100)
+
+        blocked = subprocess.run(
+            [sys.executable, "-m", "holding_cli.main", "render-corporate-documents", "--stdin-json"],
+            input="{}",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(blocked.returncode, 1)
+        failure = json.loads(blocked.stdout)
+        self.assertEqual(failure["status"], "blocked")
+        self.assertEqual(failure["issues"][0]["code"], "corporate_documents_invalid_input")
 
 
 if __name__ == "__main__":

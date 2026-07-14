@@ -100,7 +100,7 @@
 - Consumes: Task 1's `CorporateDecisionInput`, canonical bytes/hash, artifact kinds, and validation error.
 - Produces: `RenderedCorporateArtifact`, `render_corporate_documents(CorporateDecisionInput) -> tuple[RenderedCorporateArtifact, ...]`, template version `corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1`, and the CLI JSON contract consumed by Task 5.
 
-- [ ] **Step 1: Add failing render and CLI tests**
+- [x] **Step 1: Add failing render and CLI tests**
 
   Test these signatures and output contract:
 
@@ -119,13 +119,13 @@
 
   Assert the same fixture renders byte-identical output twice, each byte stream begins `%PDF-`, independently recomputed hashes and lengths match, metadata contains only stable values, both owner-dividend and both annual-close kinds render, and extracted page content contains Norwegian names, organization number, meeting facts, exact amounts, decision wording, signature lines, decision hash, and template version. Test `talli render-corporate-documents --stdin-json` returns JSON with base64 bytes and typed blocked output on invalid input.
 
-- [ ] **Step 2: Run the renderer test red**
+- [x] **Step 2: Run the renderer test red**
 
   Run: `uv run python -m unittest tests.test_corporate_documents -v`
 
   Expected: missing renderer symbols and CLI command.
 
-- [ ] **Step 3: Pin ReportLab and the exact font assets**
+- [x] **Step 3: Pin ReportLab and the exact font assets**
 
   Set `reportlab==5.0.0` in `pyproject.toml`, then run `uv lock` and `uv sync`.
 
@@ -140,15 +140,15 @@
   - regular: `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5`
   - bold: `c976e4b1b99edc88775377fcc21692ca4bfa46b6d6ca6522bfda505b28ff9d6a`
 
-- [ ] **Step 4: Implement stable rendering**
+- [x] **Step 4: Implement stable rendering**
 
   Register the bundled fonts, use ReportLab invariant mode and fixed metadata, suppress runtime dates and random identifiers, use stable page geometry and ordering, and set template version `corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1`. In tests, write rendered bytes to a temporary file and invoke the verified Poppler `pdftotext` binary for content assertions; the application itself must not invoke or depend on Poppler.
 
-- [ ] **Step 5: Implement the CLI JSON contract**
+- [x] **Step 5: Implement the CLI JSON contract**
 
   Add `render-corporate-documents --stdin-json`. Success output is `{status:"rendered", decisionHash, artifacts:[{artifactKind, filename, templateVersion, decisionHash, contentSha256, byteLength, pdfBase64}]}`. Validation failures are `{status:"blocked", issues:[{code,message}]}` and exit 1; unexpected rendering failures use `corporate_documents_render_failed`, omit document bytes, and exit 1.
 
-- [ ] **Step 6: Run renderer, CLI, and full Python tests green**
+- [x] **Step 6: Run renderer, CLI, and full Python tests green**
 
   Run: `uv run python -m unittest tests.test_corporate_documents -v`
 
@@ -158,7 +158,7 @@
 
   Expected: all commands exit 0.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   Run: `git add pyproject.toml uv.lock holding_core/corporate_documents.py holding_core/assets holding_cli/main.py tests/test_corporate_documents.py && git commit -m "feat: render deterministic corporate PDFs"`
 

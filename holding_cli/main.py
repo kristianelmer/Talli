@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import shutil
 import subprocess
@@ -9,6 +10,11 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from holding_core.corporate_documents import (
+    CorporateDecisionInput,
+    CorporateDocumentValidationError,
+    render_corporate_documents,
+)
 from holding_core.models import FilingCase
 from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
 from holding_core.rf1086 import filing_preview, generate_rf1086, write_rf1086
@@ -64,6 +70,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     simulate_rf1086_submission.add_argument("--stdin-json", action="store_true", required=True)
 
+    render_corporate = subparsers.add_parser(
+        "render-corporate-documents",
+        help="Render deterministic corporate decision PDFs from JSON on stdin",
+    )
+    render_corporate.add_argument("--stdin-json", action="store_true", required=True)
+
     args = parser.parse_args(argv)
     if args.command == "simulate-aksjonaerregister":
         return _simulate(args.case, args.out, args.preview)
@@ -79,6 +91,8 @@ def main(argv: list[str] | None = None) -> int:
         return _render_rf1086_preview()
     if args.command == "simulate-rf1086-submission":
         return _simulate_rf1086_submission()
+    if args.command == "render-corporate-documents":
+        return _render_corporate_documents()
     return 2
 
 
@@ -262,6 +276,82 @@ def _simulate_rf1086_submission() -> int:
                     "failure_code": "simulation_input_blocked",
                     "failure_message": str(error),
                 }
+            )
+        )
+        return 1
+
+
+def _render_corporate_documents() -> int:
+    try:
+        decision = CorporateDecisionInput.model_validate_json(sys.stdin.read())
+        artifacts = render_corporate_documents(decision)
+        print(
+            json.dumps(
+                {
+                    "status": "rendered",
+                    "decisionHash": artifacts[0].decision_hash,
+                    "artifacts": [
+                        {
+                            "artifactKind": artifact.artifact_kind.value,
+                            "filename": artifact.filename,
+                            "templateVersion": artifact.template_version,
+                            "decisionHash": artifact.decision_hash,
+                            "contentSha256": artifact.content_sha256,
+                            "byteLength": artifact.byte_length,
+                            "pdfBase64": base64.b64encode(artifact.pdf_bytes).decode("ascii"),
+                        }
+                        for artifact in artifacts
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+        return 0
+    except ValidationError as error:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [
+                        {
+                            "code": "corporate_documents_invalid_input",
+                            "message": "Dokumentgrunnlaget er ugyldig.",
+                            "details": error.error_count(),
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+        return 1
+    except CorporateDocumentValidationError as error:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [{"code": error.code, "message": str(error)}],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+        return 1
+    except Exception:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [
+                        {
+                            "code": "corporate_documents_render_failed",
+                            "message": "Dokumentene kunne ikke genereres.",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
             )
         )
         return 1
