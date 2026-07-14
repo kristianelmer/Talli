@@ -36,5 +36,7 @@ test("company tax rehearsal is resumable, company-bound, and keeps final submiss
   assert.match(source, /existingEvidence/u);
   assert.match(source, /writeJsonAtomic/u);
   assert.match(source, /companyOrgNumber !== systemUserOrgNumber/u);
+  assert.match(source, /optional\("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF"\)/u);
+  assert.doesNotMatch(source, /required\("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF"\)/u);
   assert.doesNotMatch(source, /submitCompanyTax|finalProcessTransition|advanceToFeedback/u);
 });

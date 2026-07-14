@@ -37,6 +37,10 @@ function required(name) {
   return value;
 }
 
+function optional(name) {
+  return process.env[name]?.trim() || undefined;
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -177,6 +181,7 @@ async function main() {
   assertRequiredScopes(scope);
   const evidencePath = resolve(required("TALLI_COMPANY_TAX_EVIDENCE_PATH"));
   const systemUserOrgNumber = required("TALLI_MASKINPORTEN_SYSTEM_USER_ORG");
+  const systemUserExternalRef = optional("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF");
   if (!/^\d{9}$/u.test(systemUserOrgNumber)) {
     throw new Error("Maskinporten system-user organization must contain 9 digits.");
   }
@@ -246,7 +251,7 @@ async function main() {
       incomeYear,
       scope,
       systemUserResource: "app_skd_formueinntekt-skattemelding-v2",
-      systemUserExternalRef: required("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF"),
+      systemUserExternalRef: systemUserExternalRef ?? null,
       caseFixture: basename(casePath),
       evidenceFile: basename(evidencePath),
       codeCommit: gitCommit(),
@@ -271,7 +276,7 @@ async function main() {
     evidence.authority = "Skatteetaten company tax via Altinn TT02";
     evidence.scope = scope;
     evidence.systemUserResource = "app_skd_formueinntekt-skattemelding-v2";
-    evidence.systemUserExternalRef = required("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF");
+    evidence.systemUserExternalRef = systemUserExternalRef ?? null;
     evidence.evidenceFile = basename(evidencePath);
     evidence.codeCommit = gitCommit();
     evidence.payloadHashes = {
@@ -307,7 +312,7 @@ async function main() {
       privateKeyPem: await readFile(privateKeyPath, "utf8"),
       scope,
       systemUserOrgNumber,
-      systemUserExternalRef: required("TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF"),
+      systemUserExternalRef,
     });
     const altinnToken = await exchangeMaskinportenForAltinnToken({
       environment: "test",
