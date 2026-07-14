@@ -69,6 +69,13 @@
   },
   "submittedAt": "2026-07-14T10:37:41.935543Z",
   "uiReceiptReference": "a1b7e8a20f51",
+  "inbox": {
+    "checkedAt": "2026-07-14T10:51:21Z",
+    "status": "til_behandling",
+    "displayStatus": "Til behandling",
+    "confirmation": "Innsendingen er bekreftet mottatt.",
+    "dialogReference": "https://af.tt02.altinn.no/inbox/019f602b-55e1-7f9e-8d8f-a1b7e8a20f51"
+  },
   "downloadVerifiedAt": "2026-07-14T10:45:33Z",
   "downloadVerification": {
     "receiptPdf": {

@@ -27,6 +27,10 @@ identical to that API data element (SHA-256
 The two downloaded JSON artifacts also match the recorded main-form and
 company-accounts data IDs.
 
+The linked TT02 inbox dialog was checked at `2026-07-14T10:51:21Z`. It showed
+`Til behandling` and confirmed that the submission was received. This is an
+inbox receipt state, not the later Regnskapsregisteret processing decision.
+
 The evidence stores only identifiers, SHA-256 hashes, state transitions, and
 TT02 references. It excludes access tokens, private keys, raw payloads, contact
 details, local paths, and personal identifiers.

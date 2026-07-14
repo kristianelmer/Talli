@@ -185,6 +185,8 @@ Block or escalate:
 - Persist official receipt/inbox/archive references. — Done for the TT02 evidence
   pack; read-only polling captured `process.ended`, `status.archived`, the
   platform instance reference, and the official `ref-data-as-pdf` reference.
+  The linked inbox dialog confirmed receipt and currently reports
+  `Til behandling`.
 - Capture the later Regnskapsregisteret processing decision from the TT02 inbox.
 - Connect the verified evidence shape to the deployed runtime submission journal.
 - Complete human release signoff.

@@ -48,6 +48,13 @@ test("annual-accounts TT02 evidence is submitted, archived, test-only, and secre
     `${evidence.submission.archiveReference}/data/${evidence.submission.receipt.dataId}`,
   );
   assert.equal(evidence.uiReceiptReference, "a1b7e8a20f51");
+  assert.equal(evidence.inbox.status, "til_behandling");
+  assert.equal(evidence.inbox.displayStatus, "Til behandling");
+  assert.equal(evidence.inbox.confirmation, "Innsendingen er bekreftet mottatt.");
+  assert.equal(
+    evidence.inbox.dialogReference,
+    "https://af.tt02.altinn.no/inbox/019f602b-55e1-7f9e-8d8f-a1b7e8a20f51",
+  );
   assert.equal(evidence.downloadVerification.receiptPdf.exactApiMatch, true);
   assert.equal(evidence.downloadVerification.receiptPdf.sizeBytes, evidence.submission.receipt.sizeBytes);
   assert.equal(
