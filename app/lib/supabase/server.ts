@@ -13,7 +13,6 @@ import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
 import { assertOperatorSearchAllowed, buildOperatorSupportSummaries } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
-  Rf1086SubmissionFeedbackItem,
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
@@ -204,23 +203,66 @@ export type FilingPreviewRow = {
   created_at: string;
 };
 
+export type FilingSubmissionCall = {
+  endpoint: string;
+  body_hash: string;
+  idempotency_key: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type FilingSubmissionFeedbackItem = {
+  severity: "accepted" | "error" | "warning";
+  code: string;
+  message: string;
+  documentId: string | null;
+};
+
+export type CompanyTaxReturnReceiptMetadata = {
+  authority: "skatteetaten";
+  receiptId: string;
+  status: "feedback_ready";
+  receivedAt: string;
+  feedbackDocumentIds: string[];
+  dataType: "tilbakemelding";
+  contentType: "application/xml" | "text/xml";
+  byteLength: number;
+  contentSha256: string;
+  reference: string;
+  archiveReference: string;
+  processEndedAt: string;
+  archivedAt: string;
+};
+
+export type CompanyTaxReturnPayloadReference = {
+  envelopeDataId: string;
+  archiveReference: string;
+  payloadHash: string;
+  skattemeldingHash: string;
+  naeringsspesifikasjonHash: string;
+  validationEnvelopeHash: string;
+  submissionEnvelopeHash: string;
+  currentDocumentReferenceHash: string;
+  storedAt: string;
+};
+
 export type FilingSubmissionRow = {
   id: string;
-  preview_id: string;
+  preview_id: string | null;
   company_id: string;
   income_year: number;
   filing: string;
-  mode: "simulation";
-  adapter_mode: "simulation" | "production";
+  mode: "simulation" | "test_authority";
+  adapter_mode: "simulation" | "test_authority" | "production";
   payload_hash: string | null;
   idempotency_key: string | null;
   status: string;
-  calls: { endpoint: string; body_hash: string; idempotency_key: string; status: string; created_at: string }[];
+  calls: FilingSubmissionCall[];
   receipt_id: string | null;
   feedback_document_ids: string[];
-  feedback_items: Rf1086SubmissionFeedbackItem[];
-  receipt_metadata: Rf1086ReceiptMetadata | null;
-  submitted_payload_ref: Rf1086SubmittedPayloadReference | null;
+  feedback_items: FilingSubmissionFeedbackItem[];
+  receipt_metadata: Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | null;
+  submitted_payload_ref: Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | null;
   submitted_payload: Rf1086SubmittedPayloadSnapshot | null;
   authority_confirmed_at: string | null;
   preview_confirmed_at: string | null;

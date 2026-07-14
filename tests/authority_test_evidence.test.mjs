@@ -82,6 +82,7 @@ function companyTaxEvidence(overrides = {}) {
       result: "validertOK",
       failureReasons: [],
     },
+    validatedAt: "2026-07-14T12:20:00.000Z",
     currentDocumentReferenceHash: "e".repeat(64),
     instance: {
       id: companyTaxInstanceId,
@@ -92,6 +93,7 @@ function companyTaxEvidence(overrides = {}) {
       processTask: "confirmation",
     },
     confirmationUrl: `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${companyTaxInstanceId}`,
+    confirmationPreparedAt: "2026-07-14T12:21:00.000Z",
     receipt: {
       dataId: companyTaxReceiptDataId,
       dataType: "tilbakemelding",
@@ -108,6 +110,7 @@ function companyTaxEvidence(overrides = {}) {
       archivedAt: "2026-07-14T12:31:00.000Z",
       archiveReference,
     },
+    receiptRetrievedAt: "2026-07-14T12:32:00.000Z",
     secretsStored: false,
     ...overrides,
   };
@@ -236,6 +239,13 @@ test("company-tax TT02 import fails closed on identity, authority, handoff, rece
       }),
     }),
     /validertOK/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({ receiptRetrievedAt: "not-a-timestamp" }),
+    }),
+    /Tilbakemeldingshentetidspunkt/u,
   );
   assert.throws(
     () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({

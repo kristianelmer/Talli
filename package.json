@@ -24,6 +24,7 @@
     "test:billing": "node --experimental-strip-types --test tests/billing_persisted.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs",
+    "test:company-tax-return-submission": "node --experimental-strip-types --test tests/company_tax_return_submission.test.mjs",
     "test:company-tax-return-authority": "node --experimental-strip-types --test tests/company_tax_return_authority_client.test.mjs",
     "test:company-tax-return-authority-script": "node --test tests/company_tax_return_authority_script.test.mjs",
     "test:company-tax-return-xml": "node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs",

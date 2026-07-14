@@ -105,6 +105,14 @@ function evidenceString(value: unknown, label: string): string {
   return value.trim();
 }
 
+function evidenceIsoDate(value: unknown, label: string): string {
+  const timestamp = evidenceString(value, label);
+  if (!Number.isFinite(Date.parse(timestamp))) {
+    throw new Error(`${label} er ugyldig i TT02-evidensen.`);
+  }
+  return timestamp;
+}
+
 export function buildAuthorityTestRun(input: AuthorityTestRunInput): AuthorityTestRun {
   if (!["accepted", "rejected", "blocked", "pending"].includes(input.status)) {
     throw new Error("Ugyldig teststatus.");
@@ -223,9 +231,40 @@ export function buildAnnualAccountsAuthorityTestRunFromEvidence(
   });
 }
 
-export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
+/** @internal Shared strict snapshot for company-tax evidence projections. */
+export type ValidatedCompanyTaxReturnEvidence = {
+  authorityRun: AuthorityTestRun;
+  incomeYear: number;
+  instanceId: string;
+  envelopeDataId: string;
+  archiveReference: string;
+  payloadHash: string;
+  payloadHashes: {
+    skattemelding: string;
+    naeringsspesifikasjon: string;
+    validationEnvelope: string;
+    submissionEnvelope: string;
+  };
+  currentDocumentReferenceHash: string;
+  validatedAt: string;
+  confirmationPreparedAt: string;
+  processEndedAt: string;
+  archivedAt: string;
+  receiptRetrievedAt: string;
+  receipt: {
+    dataId: string;
+    dataType: "tilbakemelding";
+    contentType: "application/xml" | "text/xml";
+    byteLength: number;
+    contentSha256: string;
+    reference: string;
+  };
+};
+
+/** @internal Validate once, then map the same snapshot to every persistence shape. */
+export function validatedCompanyTaxReturnEvidence(
   input: CompanyTaxReturnAuthorityTestRunImportInput,
-): AuthorityTestRun {
+): ValidatedCompanyTaxReturnEvidence {
   const evidence = objectValue(input.evidence);
   const expectedOrgNumber = required(
     input.expectedCompanyOrgNumber,
@@ -278,6 +317,7 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
     || authorityValidation.failureReasons.length !== 0) {
     throw new Error("TT02-evidensen mangler validertOK uten blokkerende feil.");
   }
+  const validatedAt = evidenceIsoDate(evidence.validatedAt, "Valideringstidspunkt");
 
   const payloadHashes = objectValue(evidence.payloadHashes);
   const skattemeldingHash = evidenceString(payloadHashes.skattemelding, "Skattemeldingshash");
@@ -314,6 +354,10 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
   if (instance.confirmationPrepared !== true || instance.processTask !== "confirmation") {
     throw new Error("TT02-evidensen mangler dokumentert personbekreftelse-handoff.");
   }
+  const confirmationPreparedAt = evidenceIsoDate(
+    evidence.confirmationPreparedAt,
+    "Personbekreftelse-handoff-tidspunkt",
+  );
   const expectedConfirmationUrl = "https://skatt-test.sits.no/web/skattemelding-visning/altinn"
     + `?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`;
   if (evidenceString(evidence.confirmationUrl, "Bekreftelseslenke") !== expectedConfirmationUrl) {
@@ -324,9 +368,10 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
   const receipt = objectValue(evidence.receipt);
   const receiptDataId = evidenceString(receipt.dataId, "Kvitteringsdata-id");
   const receiptHash = evidenceString(receipt.contentSha256, "Kvitteringshash");
+  const receiptContentType = receipt.contentType;
   if (!DATA_ID_PATTERN.test(receiptDataId)
     || receipt.dataType !== "tilbakemelding"
-    || !["application/xml", "text/xml"].includes(String(receipt.contentType))
+    || (receiptContentType !== "application/xml" && receiptContentType !== "text/xml")
     || !Number.isInteger(receipt.byteLength)
     || Number(receipt.byteLength) < 1
     || !SHA256_PATTERN.test(receiptHash)) {
@@ -338,13 +383,17 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
   }
 
   const submission = objectValue(evidence.submission);
+  const processEndedAt = evidenceIsoDate(submission.processEndedAt, "Prosesslutt");
+  const archivedAt = evidenceIsoDate(submission.archivedAt, "Arkiveringstidspunkt");
   if (submission.submitted !== true
-    || !Number.isFinite(Date.parse(evidenceString(submission.processEndedAt, "Prosesslutt")))
     || submission.archived !== true
-    || !Number.isFinite(Date.parse(evidenceString(submission.archivedAt, "Arkiveringstidspunkt")))
     || evidenceString(submission.archiveReference, "Arkivreferanse") !== archiveReference) {
     throw new Error("TT02-evidensens innsending eller arkiv er ufullstendig.");
   }
+  const receiptRetrievedAt = evidenceIsoDate(
+    evidence.receiptRetrievedAt,
+    "Tilbakemeldingshentetidspunkt",
+  );
 
   const payloadHash = createHash("sha256")
     .update([
@@ -355,7 +404,7 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
     ].join("\n"))
     .digest("hex");
 
-  return buildAuthorityTestRun({
+  const authorityRun = buildAuthorityTestRun({
     companyId: input.companyId,
     obligation: "skattemelding",
     environment: "test",
@@ -369,6 +418,41 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
     recordedBy: input.recordedBy,
     recordedAt: input.recordedAt,
   });
+
+  return {
+    authorityRun,
+    incomeYear: input.expectedIncomeYear,
+    instanceId,
+    envelopeDataId,
+    archiveReference,
+    payloadHash,
+    payloadHashes: {
+      skattemelding: skattemeldingHash,
+      naeringsspesifikasjon: naeringsspesifikasjonHash,
+      validationEnvelope: validationEnvelopeHash,
+      submissionEnvelope: submissionEnvelopeHash,
+    },
+    currentDocumentReferenceHash: currentReferenceHash,
+    validatedAt,
+    confirmationPreparedAt,
+    processEndedAt,
+    archivedAt,
+    receiptRetrievedAt,
+    receipt: {
+      dataId: receiptDataId,
+      dataType: "tilbakemelding",
+      contentType: receiptContentType,
+      byteLength: Number(receipt.byteLength),
+      contentSha256: receiptHash,
+      reference: receiptReference,
+    },
+  };
+}
+
+export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
+  input: CompanyTaxReturnAuthorityTestRunImportInput,
+): AuthorityTestRun {
+  return validatedCompanyTaxReturnEvidence(input).authorityRun;
 }
 
 export function authorityTestEvidenceGate(
