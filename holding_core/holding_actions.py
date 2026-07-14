@@ -241,51 +241,6 @@ class ShareSaleResult(BaseModel):
     updated_lots: tuple[AcquisitionLot, ...]
 
 
-class ShareholderDividendAllocation(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    shareholder_id: str
-    share_count: Money
-    amount: Money
-
-
-class DividendToOwnerInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_id: str
-    decision_date: date
-    payment_date: date
-    total_amount: Money
-    distributable_equity: Money
-    liquidity_after_payment: float
-    document_status: DocumentStatus
-    allocations: list[ShareholderDividendAllocation]
-    share_class_count: int = 1
-    payment_type: Literal["cash"] = "cash"
-
-    @model_validator(mode="after")
-    def validate_supported_owner_dividend(self) -> "DividendToOwnerInput":
-        if self.share_class_count != 1:
-            raise ValueError("multiple share classes are not supported for owner dividends")
-        if self.payment_type != "cash":
-            raise ValueError("only cash dividends are supported")
-        if round(sum(allocation.amount for allocation in self.allocations), 2) != round(self.total_amount, 2):
-            raise ValueError("shareholder dividend allocations must equal total dividend")
-        if self.total_amount > self.distributable_equity:
-            raise ValueError("dividend exceeds distributable equity")
-        if self.liquidity_after_payment < 0:
-            raise ValueError("dividend fails liquidity check")
-        return self
-
-
-class DividendToOwnerResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    entry: DraftEntry
-    board_proposal_title: str
-    general_meeting_resolution_title: str
-
-
 class ShareholderLoanInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -455,29 +410,6 @@ def build_share_sale(data: ShareSaleInput) -> ShareSaleResult:
         gain_or_loss=gain_or_loss,
         lot_allocations=fifo.allocations,
         updated_lots=fifo.updated_lots,
-    )
-
-
-def build_dividend_to_owner(data: DividendToOwnerInput) -> DividendToOwnerResult:
-    entry = DraftEntry(
-        company_id=data.company_id,
-        entry_date=data.payment_date,
-        memo="Cash dividend paid to shareholders",
-        source=(
-            "holding_action:dividend_to_owner:"
-            f"decision_date:{data.decision_date.isoformat()}:"
-            f"document:{data.document_status.value}:"
-            f"allocations:{len(data.allocations)}"
-        ),
-        lines=[
-            _debit(Account.RETAINED_EARNINGS, "Dividend to shareholders", data.total_amount),
-            _credit(Account.BANK, "Dividend paid from bank", data.total_amount),
-        ],
-    )
-    return DividendToOwnerResult(
-        entry=entry,
-        board_proposal_title="Styrets forslag om utdeling av utbytte",
-        general_meeting_resolution_title="Generalforsamlingens beslutning om utbytte",
     )
 
 

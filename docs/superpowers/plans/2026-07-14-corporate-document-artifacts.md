@@ -367,7 +367,7 @@
 
   Expected: all tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add app/lib/corporate-decision-facts.ts app/lib/corporate-document-readiness.ts app/lib/annual-readiness.ts tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs && git commit -m "feat: derive corporate decision facts and readiness"`
 
@@ -389,25 +389,25 @@
 - Consumes: Task 5 render/storage orchestration, Task 6 owner-dividend fact builder/readiness, and Task 4 `create_corporate_document_draft` RPC.
 - Produces: server action `createOwnerDividendDecisionDraft(FormData) -> Promise<void>` and a decision-review redirect to `/corporate-decisions/{decisionId}`; removes the legacy `recordOwnerDividend` write path.
 
-- [ ] **Step 1: Rewrite owner-dividend tests to fail on legacy behavior**
+- [x] **Step 1: Rewrite owner-dividend tests to fail on legacy behavior**
 
   Assert no exported helper produces `2050/1920` declaration lines or `.txt` placeholder documents. Assert the wizard accepts all shareholders, board/meeting participants, one-share-class/full-participation/full-representation/unanimity confirmations, and exposes only proportional allocations. Assert the server action is named `createOwnerDividendDecisionDraft` and `recordOwnerDividend` is absent.
 
-- [ ] **Step 2: Run owner-dividend test red**
+- [x] **Step 2: Run owner-dividend test red**
 
   Run: `npm run test:owner-dividend`
 
   Expected: assertions identify the legacy bank posting and placeholders.
 
-- [ ] **Step 3: Implement the draft-only server action**
+- [x] **Step 3: Implement the draft-only server action**
 
   `createOwnerDividendDecisionDraft(formData)` authenticates the owner, checks the feature flag, loads the accepted membership/company/all shareholders/annual sources/period state, builds facts server-side, renders and uploads both PDFs, calls `create_corporate_document_draft`, cleans up only new objects after RPC failure, audits IDs/hashes without bodies, and redirects to the decision review. It does not insert `ledger_entries`, `holding_actions`, or placeholder `documents` directly.
 
-- [ ] **Step 4: Implement the review-first Norwegian UI**
+- [x] **Step 4: Implement the review-first Norwegian UI**
 
   Present basis, computed allocations, meeting facts, participants, confirmations, and explicit unsupported-case blockers. Use `utkast` and `godkjent for signering`; never imply the draft is signed or booked. Keep the old workspace form unavailable when the feature is enabled and show a fail-closed explanation when disabled.
 
-- [ ] **Step 5: Run owner workflow tests and typecheck green**
+- [x] **Step 5: Run owner workflow tests and typecheck green**
 
   Run: `npm run test:owner-dividend`
 

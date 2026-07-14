@@ -13,6 +13,17 @@ insert into public.company_memberships (company_id, user_id, role, accepted_at) 
 insert into public.annual_data (
   id, company_id, income_year, answers, completed_by, updated_by
 ) values (
+  '33333333-3333-4333-8333-333333333333',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  2024,
+  '{"general_meeting_approved": true}'::jsonb,
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+);
+
+insert into public.annual_data (
+  id, company_id, income_year, answers, completed_by, updated_by
+) values (
   'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   2025,
@@ -50,12 +61,13 @@ insert into rehearsal_inputs (payload) values (
       "company_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
       "income_year": 2025,
       "decision_kind": "owner_dividend",
-      "annual_close_source_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      "annual_close_source_id": "33333333-3333-4333-8333-333333333333",
       "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "canonical_input": {
         "request_id": "11111111-1111-4111-8111-111111111111",
         "company_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "income_year": 2025,
+        "annual_basis_year": 2024,
         "decision_kind": "owner_dividend",
         "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "general_meeting": {"meeting_date": "2025-06-20", "chair_name": "Åse Nordmann", "co_signer_name": "Jørgen Østby"},
@@ -374,7 +386,7 @@ begin
           '14111111-1111-4111-8111-111111111111', '36111111-1111-4111-8111-111111111111'),
         '15111111-1111-4111-8111-111111111111', '37111111-1111-4111-8111-111111111111'),
       '16111111-1111-4111-8111-111111111111', '38111111-1111-4111-8111-111111111111'),
-    'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'ffffffff-ffff-4fff-8fff-ffffffffffff'))::jsonb;
+    '33333333-3333-4333-8333-333333333333', 'ffffffff-ffff-4fff-8fff-ffffffffffff'))::jsonb;
   v_payload := jsonb_set(v_payload, '{idempotency_key}', to_jsonb('cross-company-source-draft'::text));
   begin
     perform public.create_corporate_document_draft(v_payload);
@@ -463,6 +475,7 @@ insert into annual_rehearsal_inputs (payload) values (
         "request_id": "41111111-1111-4111-8111-111111111111",
         "company_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         "income_year": 2025,
+        "annual_basis_year": 2025,
         "decision_kind": "annual_close",
         "source_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "general_meeting": {"meeting_date": "2026-05-10", "chair_name": "Åse Nordmann", "co_signer_name": "Jørgen Østby"},

@@ -9,19 +9,16 @@ from holding_core.holding_actions import (
     AdminCostCategory,
     AdminCostInput,
     DividendReceivedInput,
-    DividendToOwnerInput,
     DocumentStatus,
     InvestmentKind,
     OpeningBalanceInput,
     SharePurchaseInput,
     ShareSaleInput,
-    ShareholderDividendAllocation,
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
     build_admin_cost_entry,
     build_dividend_received,
-    build_dividend_to_owner,
     build_opening_balance_entry,
     build_share_purchase,
     build_share_sale,
@@ -294,40 +291,6 @@ class HoldingActionTest(unittest.TestCase):
         self.assertEqual(sale.gain_or_loss, 5000)
         self.assertEqual(sale.updated_position.cost_basis, 15000)
         self.assertEqual([allocation.lot_id for allocation in sale.lot_allocations], ["lot-old", "lot-new"])
-
-    def test_dividend_to_owner_allocates_and_blocks_bad_dividends(self) -> None:
-        result = build_dividend_to_owner(
-            DividendToOwnerInput(
-                company_id="314259521",
-                decision_date=date(2025, 6, 1),
-                payment_date=date(2025, 6, 15),
-                total_amount=40000,
-                distributable_equity=100000,
-                liquidity_after_payment=25000,
-                document_status=DocumentStatus.ATTACHED,
-                allocations=[
-                    ShareholderDividendAllocation(shareholder_id="owner_a", share_count=60, amount=24000),
-                    ShareholderDividendAllocation(shareholder_id="owner_b", share_count=40, amount=16000),
-                ],
-            )
-        )
-
-        self.assertEqual(result.entry.lines[0].account, "2050")
-        self.assertEqual(result.entry.lines[1].account, "1920")
-        self.assertEqual(result.board_proposal_title, "Styrets forslag om utdeling av utbytte")
-        self.assertIn("allocations:2", result.entry.source)
-
-        with self.assertRaises(ValidationError):
-            DividendToOwnerInput(
-                company_id="314259521",
-                decision_date=date(2025, 6, 1),
-                payment_date=date(2025, 6, 15),
-                total_amount=40000,
-                distributable_equity=30000,
-                liquidity_after_payment=25000,
-                document_status=DocumentStatus.ATTACHED,
-                allocations=[ShareholderDividendAllocation(shareholder_id="owner", share_count=100, amount=40000)],
-            )
 
     def test_shareholder_loan_records_supported_direction_and_blocks_high_risk(self) -> None:
         entry = build_shareholder_loan(

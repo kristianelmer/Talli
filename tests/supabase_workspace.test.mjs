@@ -23,11 +23,6 @@ import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../app/
 import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "../app/lib/invitations.ts";
 import { validateManualJournal } from "../app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
-import {
-  ownerDividendCorporateDocumentRecords,
-  ownerDividendLedgerLines,
-  validateOwnerDividend,
-} from "../app/lib/owner-dividend.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
@@ -1785,106 +1780,6 @@ test(
       p_document_status: "not_required",
     });
     assert.ok(outsiderSaleActionInsertError);
-
-    assert.throws(
-      () =>
-        validateOwnerDividend({
-          decisionDate: "2025-06-01",
-          paymentDate: "2025-06-15",
-          totalAmount: 1000,
-          distributableEquity: 5000,
-          liquidityAfterPayment: 1000,
-          documentStatus: "attached",
-          allocations: [{ shareholderId: persistedShareholders[0].id, shareholderName: persistedShareholders[0].name, shareCount: 100, amount: 900 }],
-        }),
-      (error) => error?.code === "allocation_mismatch",
-    );
-    const ownerDividendPayload = validateOwnerDividend({
-      decisionDate: "2025-06-01",
-      paymentDate: "2025-06-15",
-      totalAmount: 1000,
-      distributableEquity: 5000,
-      liquidityAfterPayment: 1000,
-      documentStatus: "missing_accepted_warning",
-      allocations: [{ shareholderId: persistedShareholders[0].id, shareholderName: persistedShareholders[0].name, shareCount: 100, amount: 1000 }],
-    });
-    const ownerDividendLines = ownerDividendLedgerLines(ownerDividendPayload);
-    const { data: ownerDividendEntry, error: ownerDividendEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "dividend_to_owner",
-        memo: "Cash dividend paid to shareholders",
-        lines: ownerDividendLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(ownerDividendEntryError);
-    assert.equal(ownerDividendEntry.entry_type, "dividend_to_owner");
-    assert.deepEqual(ownerDividendEntry.lines, ownerDividendLines);
-    const ownerDividendActionId = randomUUID();
-    const { data: ownerDividendAction, error: ownerDividendActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: ownerDividendActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "dividend_to_owner",
-        action_date: ownerDividendPayload.payment_date,
-        payload: ownerDividendPayload,
-        ledger_entry_id: ownerDividendEntry.id,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, payload")
-      .single();
-    assert.ifError(ownerDividendActionError);
-    assert.equal(ownerDividendAction.action_type, "dividend_to_owner");
-    assert.equal(ownerDividendAction.ledger_entry_id, ownerDividendEntry.id);
-    const { error: ownerDividendDocumentError } = await owner
-      .from("documents")
-      .insert(ownerDividendCorporateDocumentRecords(companyId, 2025, ownerDividendAction.id, ownerUser.id));
-    assert.ifError(ownerDividendDocumentError);
-    const { data: corporateDocuments, error: corporateDocumentReloadError } = await owner
-      .from("documents")
-      .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
-      .eq("linked_to", ownerDividendAction.id)
-      .order("name", { ascending: true });
-    assert.ifError(corporateDocumentReloadError);
-    assert.equal(corporateDocuments.length, 2);
-    assert.deepEqual(
-      corporateDocuments.map((document) => document.document_type),
-      ["corporate_document", "corporate_document"],
-    );
-    assert.ok(corporateDocuments.every((document) => document.status === "missing_placeholder"));
-    const dividendArchive = buildPersistedCompanyArchive({
-      company: persistedCompany,
-      incomeYear: 2025,
-      setups: [setup],
-      shareholders: persistedShareholders,
-      ledgerEntries: [ownerDividendEntry],
-      documents: corporateDocuments,
-      filingPreviews: [filingPreview],
-      filingSubmissions: [filingSubmission],
-    });
-    assert.equal(dividendArchive.documents.length, 2);
-    assert.deepEqual(
-      dividendArchive.documents.map((document) => document.documentType),
-      ["corporate_document", "corporate_document"],
-    );
-    const { error: outsiderOwnerDividendActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "dividend_to_owner",
-      action_date: ownerDividendPayload.payment_date,
-      payload: ownerDividendPayload,
-      ledger_entry_id: ownerDividendEntry.id,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
-    });
-    assert.ok(outsiderOwnerDividendActionInsertError);
 
     assert.throws(
       () =>

@@ -1,7 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
+import { buildAnnualAccountsPayload } from "../../../lib/annual-accounts";
 import { ownerCopy } from "../../../lib/copy";
+import {
+  buildOwnerDividendAnnualBasis,
+  buildOwnerDividendReviewedFacts,
+} from "../../../lib/owner-dividend";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
 import { DividendReceivedWizard } from "../_components/DividendReceivedWizard";
 import { OwnerDividendWizard } from "../_components/OwnerDividendWizard";
@@ -52,7 +58,10 @@ export default async function ActionPage({
     primaryIncomeYear,
     positions,
     investmentLots,
-    primaryShareholders,
+    annualData,
+    setups,
+    shareholders,
+    entries,
   } = data;
 
   const a = ownerCopy.actions;
@@ -80,6 +89,7 @@ export default async function ActionPage({
     (position) => position.company_id === companyId,
   );
   const head = a[COPY_KEY[type]] as { title: string; intro: string };
+  const corporateDocumentsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true";
 
   let body: React.ReactNode;
   switch (type) {
@@ -123,15 +133,77 @@ export default async function ActionPage({
       );
       break;
     case "owner-dividend":
+      const currentSetup = setups.find(
+        (setup) => setup.company_id === companyId && setup.income_year === incomeYear,
+      );
+      const decisionShareholders = currentSetup
+        ? shareholders
+            .filter((shareholder) => shareholder.setup_id === currentSetup.id)
+            .sort((left, right) => left.id.localeCompare(right.id, "en"))
+        : [];
+      const approvedAnnualData = [...annualData]
+        .filter((candidate) => candidate.company_id === companyId
+          && candidate.income_year <= incomeYear
+          && candidate.answers.general_meeting_approved)
+        .sort((left, right) => right.income_year - left.income_year)[0];
+      let annualBasis = null;
+      let reviewedFacts = null;
+      let basisBlocker: string | null = null;
+      if (!currentSetup) {
+        basisBlocker = "Låst aksjonærgrunnlag mangler for beslutningsåret.";
+      } else if (!approvedAnnualData) {
+        basisBlocker = "Siste godkjente årsregnskap mangler.";
+      } else {
+        try {
+          const annualAccountsPayload = buildAnnualAccountsPayload({
+            incomeYear: approvedAnnualData.income_year,
+            annualData: approvedAnnualData,
+            ledgerEntries: entries.filter((entry) => entry.company_id === companyId
+              && entry.income_year === approvedAnnualData.income_year),
+          });
+          annualBasis = buildOwnerDividendAnnualBasis({
+            annualData: approvedAnnualData,
+            annualAccountsPayload,
+          });
+          reviewedFacts = buildOwnerDividendReviewedFacts({
+            company: {
+              id: primaryCompany.id,
+              organizationNumber: primaryCompany.org_number,
+              legalName: primaryCompany.name,
+            },
+            shareholders: decisionShareholders.map((shareholder, order) => ({
+              id: shareholder.id,
+              name: shareholder.name,
+              shareCount: Number(shareholder.share_count),
+              order,
+            })),
+            annualBasis,
+          });
+        } catch (error) {
+          basisBlocker = error instanceof Error ? error.message : "Årsgrunnlaget er utenfor støttet løype.";
+        }
+      }
       body = (
         <OwnerDividendWizard
           companyId={companyId}
           incomeYear={incomeYear}
-          shareholders={primaryShareholders.map((shareholder) => ({
+          shareholders={decisionShareholders.map((shareholder) => ({
             id: shareholder.id,
             name: shareholder.name,
             share_count: shareholder.share_count,
           }))}
+          annualBasis={annualBasis}
+          reviewedFacts={reviewedFacts}
+          featureEnabled={corporateDocumentsEnabled}
+          basisBlocker={basisBlocker}
+          draftIds={{
+            decisionId: randomUUID(),
+            documentSetId: randomUUID(),
+            dividendBoardArtifactId: randomUUID(),
+            dividendBoardDocumentId: randomUUID(),
+            dividendGeneralMeetingArtifactId: randomUUID(),
+            dividendGeneralMeetingDocumentId: randomUUID(),
+          }}
         />
       );
       break;

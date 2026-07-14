@@ -22,7 +22,6 @@ import {
   recordAuthorityTestEvidence,
   recordDividendReceived,
   recordLaunchSignoff,
-  recordOwnerDividend,
   recordSharePurchase,
   recordShareSale,
   recordShareholderLoan,
@@ -135,7 +134,6 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     adminCostEntries,
     taxSettlementEntries,
     taxSettlementActions,
-    primaryShareholders,
     dividendReceivedActions,
     dividendAnnualImpact,
     manualJournalEntries,
@@ -1675,68 +1673,24 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <section className="band mutedBand">
                 <div className="sectionHeader">
                   <p className="eyebrow">Eierutbytte</p>
-                  <h2>Poster utbytte til aksjonær og opprett selskapsdokumenter.</h2>
+                  <h2>Opprett et gjennomgått beslutningsutkast før signering og bokføring.</h2>
                 </div>
-                <form className="dataPanel formPanel widePanel" action={recordOwnerDividend}>
-                  <input name="companyId" type="hidden" value={primaryCompanyId} />
-                  <label>
-                    Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
-                  </label>
-                  <label>
-                    Aksjonær
-                    <select name="shareholderId" required>
-                      <option value="">Velg aksjonær</option>
-                      {primaryShareholders.map((shareholder) => (
-                        <option key={shareholder.id} value={shareholder.id}>
-                          {shareholder.name} ({shareholder.share_count} aksjer)
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Beslutningsdato
-                    <input name="decisionDate" defaultValue="2025-06-01" required />
-                  </label>
-                  <label>
-                    Betalingsdato
-                    <input name="paymentDate" defaultValue="2025-06-15" required />
-                  </label>
-                  <label>
-                    Totalutbytte
-                    <input name="totalAmount" inputMode="decimal" defaultValue="1000" required />
-                  </label>
-                  <label>
-                    Allokert beløp
-                    <input name="allocationAmount" inputMode="decimal" defaultValue="1000" required />
-                  </label>
-                  <label>
-                    Fri egenkapital
-                    <input name="distributableEquity" inputMode="decimal" defaultValue="5000" required />
-                  </label>
-                  <label>
-                    Likviditet etter betaling
-                    <input name="liquidityAfterPayment" inputMode="decimal" defaultValue="1000" required />
-                  </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="missing_accepted_warning">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
-                  </label>
-                  <button className="secondaryButton" type="submit">
-                    Poster eierutbytte
-                  </button>
-                </form>
                 <div className="readinessGrid">
                   <div className="readinessItem">
-                    <span>Selskapsdokumenter</span>
-                    <strong data-status={documents.some((document) => document.linked_to && document.document_type === "corporate_document") ? "warning" : "draft"}>
-                      {documents.filter((document) => document.document_type === "corporate_document").length}
+                    <span>Beslutningsdokumenter</span>
+                    <strong data-status={process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" ? "warning" : "draft"}>
+                      {process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" ? "Utkast tilgjengelig" : "Deaktivert"}
                     </strong>
-                    <p>Styreforslag og generalforsamlingsprotokoll opprettes som arkivklare placeholders.</p>
+                    <p>
+                      {process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true"
+                        ? "Gå til handlingsløypen for å gjennomgå alle fakta og lage PDF-utkast uten bokføring."
+                        : "Løypen åpnes først etter navngitt juridisk og regnskapsfaglig godkjenning."}
+                    </p>
+                    {process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" ? (
+                      <a className="secondaryButton" href="/actions/owner-dividend">
+                        Åpne utkastløype
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               </section>

@@ -28,7 +28,6 @@ from holding_core.billing import CompanyBillingAccount, assign_founder_pricing, 
 from holding_core.holding_actions import (
     AdminCostInput,
     DividendReceivedInput,
-    DividendToOwnerInput,
     InvestmentPosition,
     SharePurchaseInput,
     ShareSaleInput,
@@ -36,7 +35,6 @@ from holding_core.holding_actions import (
     TaxTreatment,
     build_admin_cost_entry,
     build_dividend_received,
-    build_dividend_to_owner,
     build_share_purchase,
     build_share_sale,
     build_shareholder_loan,
@@ -670,7 +668,6 @@ def record_holding_action(
         | DividendReceivedInput
         | SharePurchaseInput
         | ShareSaleInput
-        | DividendToOwnerInput
         | ShareholderLoanInput
     ),
     document_ids: tuple[str, ...] = (),
@@ -839,34 +836,6 @@ def add_filing_override(
         AuditCategory.FILING,
         "filing_override_added",
         f"Manuell filing-overstyring lagt til for {field_target}.",
-    )
-    return store.replace_workspace(workspace)
-
-
-def generate_owner_dividend_documents(store: WorkspaceStore, actor_id: str, company_id: str, action_id: str) -> CompanyWorkspace:
-    workspace = store.get_workspace(actor_id, company_id, roles=(WorkspaceRole.OWNER,))
-    action = next((item for item in workspace.structured_actions if item.id == action_id), None)
-    if action is None or action.action_type != "dividend_to_owner":
-        raise ValueError("owner dividend action not found")
-    names = ("Styreforslag utbytte.txt", "Generalforsamlingsprotokoll utbytte.txt")
-    documents = tuple(
-        StoredDocument(
-            company_id=company_id,
-            income_year=action.income_year,
-            document_type="corporate_document",
-            name=name,
-            linked_to=action.id,
-            storage_key=f"generated/{company_id}/{action.income_year}/{action.id}/{name}",
-            created_by=actor_id,
-        )
-        for name in names
-    )
-    workspace = _with_audit(
-        workspace.model_copy(update={"documents": workspace.documents + documents}),
-        actor_id,
-        AuditCategory.DOCUMENT,
-        "corporate_documents_generated",
-        "Styreforslag og generalforsamlingsprotokoll generert.",
     )
     return store.replace_workspace(workspace)
 
@@ -1116,9 +1085,6 @@ def _build_action_entry(action_input: Any) -> dict[str, Any]:
     if isinstance(action_input, ShareSaleInput):
         result = build_share_sale(action_input)
         return {"action_type": "share_sale", "entry": result.entry, "result": result}
-    if isinstance(action_input, DividendToOwnerInput):
-        result = build_dividend_to_owner(action_input)
-        return {"action_type": "dividend_to_owner", "entry": result.entry, "result": result}
     if isinstance(action_input, ShareholderLoanInput):
         return {"action_type": "shareholder_loan", "entry": build_shareholder_loan(action_input)}
     raise TypeError("unsupported action input")

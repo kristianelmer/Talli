@@ -441,7 +441,26 @@ begin
     from public.annual_data a
     where a.id = (v_decision ->> 'annual_close_source_id')::uuid
       and a.company_id = v_company_id
-      and a.income_year = v_income_year
+      and a.income_year = (v_decision -> 'canonical_input' ->> 'annual_basis_year')::integer
+      and (
+        (
+          v_decision ->> 'decision_kind' = 'annual_close'
+          and a.income_year = v_income_year
+        )
+        or (
+          v_decision ->> 'decision_kind' = 'owner_dividend'
+          and a.income_year <= v_income_year
+          and a.answers ->> 'general_meeting_approved' = 'true'
+          and not exists (
+            select 1
+            from public.annual_data newer
+            where newer.company_id = v_company_id
+              and newer.income_year <= v_income_year
+              and newer.income_year > a.income_year
+              and newer.answers ->> 'general_meeting_approved' = 'true'
+          )
+        )
+      )
   ) then
     raise exception 'corporate_documents_cross_company_source';
   end if;
