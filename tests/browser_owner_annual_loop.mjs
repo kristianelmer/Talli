@@ -56,7 +56,9 @@ test("browser owner annual loop uses persisted state and survives reload", async
   t.after(async () => browser.close());
   const page = await browser.newPage();
 
-  await page.goto(baseUrl);
+  // The public landing page moved to `/` in #90; authentication is a distinct
+  // route and the browser rehearsal must exercise the real login surface.
+  await page.goto(`${baseUrl}/login`);
   const loginForm = page.locator("form").filter({ hasText: "Logg inn" }).first();
   await loginForm.getByLabel("E-post").fill(ownerEmail);
   await loginForm.getByLabel("Passord").fill(password);

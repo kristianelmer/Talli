@@ -11,3 +11,4 @@
 \i ../../supabase/migrations/0002_fifo_investment_lots.sql
 \i ../../supabase/migrations/0003_bank_rule_suggestions.sql
 \i ../../supabase/migrations/0004_corporate_document_artifacts.sql
+\i ../../supabase/migrations/20260714081443_explicit_data_api_grants.sql

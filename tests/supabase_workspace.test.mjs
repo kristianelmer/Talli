@@ -75,7 +75,6 @@ async function applyMigration() {
     .sort();
   const client = new pg.Client({
     ...getDatabaseConfig(),
-    ssl: { rejectUnauthorized: false },
   });
   await client.connect();
   try {
@@ -121,14 +120,19 @@ function parsePostgresUrl(raw) {
   }
   const hostPort = rest.slice(0, slash);
   const databaseAndParams = rest.slice(slash + 1);
-  const database = databaseAndParams.split("?", 1)[0] || "postgres";
+  const [databaseName, rawParams = ""] = databaseAndParams.split("?", 2);
+  const database = databaseName || "postgres";
   const portColon = hostPort.lastIndexOf(":");
   const host = portColon === -1 ? hostPort : hostPort.slice(0, portColon);
   const port = portColon === -1 ? 5432 : Number(hostPort.slice(portColon + 1));
   if (!host || !Number.isFinite(port)) {
     return null;
   }
-  return { host, port, database, user, password };
+  const sslMode = new URLSearchParams(rawParams).get("sslmode");
+  const ssl = sslMode === "disable" || host === "127.0.0.1" || host === "localhost"
+    ? false
+    : { rejectUnauthorized: false };
+  return { host, port, database, user, password, ssl };
 }
 
 function serviceClient() {
