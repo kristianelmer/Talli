@@ -1,6 +1,6 @@
 # Skattemelding for AS Authority Map
 
-Status: source-backed map for simulation and validation  
+Status: source-backed map with accepted end-to-end TT02 evidence; production disabled
 Research date: 2026-06-16  
 Target filing: `skattemelding for AS` / company tax return
 
@@ -8,11 +8,11 @@ This map defines what Talli can validate from public sources before production c
 
 Detailed schema/code-list evidence for the 2025 income-year launch path is now recorded in `docs/filing/company-tax-return-schema-evidence-register.md`. That register is authoritative for issue #86 payload work: 2025 must use `skattemeldingUpersonlig_v5_ekstern.xsd`, `naeringsspesifikasjon_v6_ekstern.xsd`, and 2025 code lists.
 
-Correction note (2026-07-13): the deterministic candidate now uses the exact
-generic occurrence structure from the v6 XSD and reconciles interest, supported
-costs, exempt gains, non-deductible losses, dividend reversal, and the 3 percent
-inclusion. XML rendering and local official-XSD validation are still missing and
-must not be described as complete.
+Correction note (2026-07-14): the deterministic candidate uses the exact generic
+occurrence structure from the v6 XSD and reconciles interest, supported costs,
+exempt gains, non-deductible losses, dividend reversal, and the 3 percent
+inclusion. XML rendering, local official-XSD validation, and the supported TT02
+prepare/sign/receipt/archive rehearsal are complete. Production remains gated.
 
 ## Sources
 
@@ -95,7 +95,7 @@ skattemelding`), distinct from the restricted `skattemelding upersonlig` data AP
   refs, and the persisted `launch_signoffs` key `tax_return_authority` is
   approved with reviewer/date/evidence/decision.
 
-## TT02 validation evidence (2026-07-14)
+## TT02 submission evidence (2026-07-14)
 
 The shared test client successfully minted a system-user token for synthetic
 holding company `310279617` with scope
@@ -104,17 +104,25 @@ holding company `310279617` with scope
 `validertest` endpoint returned `validertOK`. Sanitized machine evidence is in
 `docs/filing/evidence/company-tax-tt02-2026-07-14.json`.
 
-This closes the scope-access and authority-validation questions only. The two
-Altinn instance scopes were subsequently added to the same client and a
-combined-scope token was successfully exchanged for an Altinn token. Following
-Skatteetaten's official test-data procedure, the synthetic company was
-initialized for income year 2025 through the ID-porten `opprettpart` endpoint.
-The person-token and scope-resolved system-user current-document calls then
-returned the same `skattemeldingUpersonligUtkast`; the document-reference hash
-was `a2e9e47dd5bc62e12a355368d7ba8dbd94bf0711d555689057b01033f5653fd7`.
-No raw current-return XML or document reference was persisted. Full TT02
-submission acceptance still requires instance/upload validation, owner signing
-handoff, and receipt/archive proof.
+The two Altinn instance scopes were added to the same client and a combined-scope
+token was successfully exchanged for an Altinn token. Following Skatteetaten's
+official test-data procedure, the synthetic company was initialized for income
+year 2025 through the ID-porten `opprettpart` endpoint. The person-token and
+scope-resolved system-user current-document calls returned the same
+`skattemeldingUpersonligUtkast`.
+
+The supported no-activity payload was uploaded to Altinn instance
+`51549454/5cb600d9-b525-45e9-a506-ebb45b70af31`. The current draft required a
+separate internal ten-digit party number rather than the organization number;
+Talli extracted it only in memory and replaced the rejected envelope in the
+same instance. The corrected payload passed the file scan, preflight, and
+asynchronous validation with `validertOK`. The system user stopped at personal
+confirmation, the owner signed with high-assurance TestID, and the instance
+ended and archived. The official `tilbakemelding` was retrieved and independently
+matched by byte length, SHA-256, data reference, and archive reference. No raw
+XML, document reference, internal party number, token, key, or personal
+identifier was persisted. Narrative and machine evidence are under
+`docs/filing/evidence/company-tax-tt02-2026-07-14.*`.
 
 ## Talli Launch Subset
 
@@ -145,12 +153,12 @@ These decisions are the source-backed launch schema for simple holding AS tax re
 
 | Authority requirement | Source evidence | Talli source data | Launch decision |
 | --- | --- | --- | --- |
-| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport and a fail-closed runtime evidence importer exist; direct filing remains blocked until real instance/signing/receipt evidence, deployed persistence, and the production adapter are complete. |
+| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport completed a supported TT02 instance, personal signing, receipt, and archive cycle. Direct production filing remains blocked until deployed persistence, final state/feedback integration, approvals, and the production adapter are complete. |
 | Deadline | Skatteetaten states the ordinary deadline is 31 May each year. | `deadlines`, `filing_readiness_snapshots` | Supported as deadline/readiness data. |
-| No-activity companies | Skatteetaten states the tax return must be filed even if the company has had no turnover. | `annual_data.no_activity_confirmed` | Minimum 2025 payload is locally schema-valid and TT02 `validertOK`; filing still needs the Altinn/signing leg. |
+| No-activity companies | Skatteetaten states the tax return must be filed even if the company has had no turnover. | `annual_data.no_activity_confirmed` | Minimum 2025 payload is locally schema-valid and completed the TT02 Altinn/signing/receipt leg for the supported fixture. |
 | Tax return plus business specification | Skatteetaten states the company must retrieve and submit the tax return with `næringsspesifikasjon` through the system. | `ledger_entries`, `holding_actions`, `annual_data` | 2025 schema/code-list mapping exists for the supported holding subset; unsupported cases fail closed. |
 | Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | test-only validation client; company-bound `authority_test_runs` importer; future `filing_submissions.feedback_items` integration | TT02 validation accepted; the importer rejects incomplete evidence and records completed evidence as `pending`, while final persisted feedback/state-machine integration remains blocked. |
-| Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | test-only receipt client; `authority_test_runs`; `filing_submissions`; archive export | Conservative receipt retrieval and validation are implemented, but official instance receipt/archive evidence has not yet been produced or imported. |
+| Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | test-only receipt client; `authority_test_runs`; `filing_submissions`; archive export | Official TT02 receipt/archive evidence is captured and machine-checked. Deployed import, structured feedback, and final filing-state persistence remain gated. |
 | Access packages/roles | Skatteetaten lists supported access packages and roles and notes transition from old Altinn roles to access packages. | `authority_permissions` | Readiness supported; production access package/delegation flow blocked. |
 | `skattemelding upersonlig` API | Skatteetaten API docs state this service delivers information appearing in a company's tax return. | potential import/pre-fill adapter | Data-reading candidate only; not evidence of production submission. |
 
@@ -164,16 +172,16 @@ Current engine coverage:
 - Validates both documents and the combined v2 envelope against pinned official XSDs.
 - Calls TT02 `validertest` through a system-user token and returns sanitized feedback codes.
 - Estimates tax at 22 percent for review only; it is not submitted as an authority field.
-- Produces no official receipt until the Altinn instance/signing leg is complete.
+- Completed the supported TT02 Altinn instance, owner-signing handoff, official
+  feedback receipt, and archive cycle without enabling production.
 
 Missing before production:
 
 - Persisted adapter integration with final preview, immutable body hash, and retry journal.
-- Complete instance/upload/file-scan flow in TT02 using the active scopes.
 - Attachment/vedlegg handling or an enforced no-attachment support boundary.
 - Persisted structured Skatteetaten feedback.
-- Owner signing handoff and official receipt/status/archive storage.
-- Complete TT02 filing acceptance and dated authority/security approval.
+- Deployed evidence import and final receipt/status/archive storage.
+- Dated authority/security approval and production credentials.
 
 Current tax preview field decisions:
 
@@ -192,14 +200,20 @@ Current tax preview field decisions:
 - Identify the exact current submission API/flow for company tax return, separate from the `skattemelding upersonlig` data API. **(Resolved 2026-06-30 — see "Submission flow and scope" above: service "Innrapportering skattemelding", scope `skatteetaten:formueinntekt/skattemelding`, Altinn3 app `skd/formueinntekt-skattemelding-v2`.)**
 - Confirm the current XSD/JSON schemas and code lists for the relevant income year. **(Resolved for the 2025 launch subset through pinned tag `v1.62.47`.)**
 - Map Talli ledger/tax concepts to `skattemelding` and `næringsspesifikasjon` fields. **(Resolved for the explicitly supported subset; other cases remain blocked.)**
-- Validate generated payloads against official schemas and test environment. **(Schema and `validertest` acceptance complete 2026-07-14; full Altinn filing acceptance pending.)**
+- Validate generated payloads against official schemas and test environment. **(Schema, `validertest`, Altinn instance, owner signing, receipt, and archive acceptance complete in TT02 on 2026-07-14.)**
 - Confirm access package, Maskinporten/Altinn delegation, signing, feedback, and receipt behavior for owner-managed filing.
 
 ## Follow-Up Implementation Slices
 
 1. Add the two Altinn instance scopes to the shared TT02 client. **Done 2026-07-14.**
-2. Initialize the supported synthetic company and verify its current 2025 draft. **Done 2026-07-14; instance creation awaits an explicit test-write confirmation.**
-3. Run instance creation, envelope upload, file-scan polling, and async validation with that company.
-4. Execute the company/year-bound evidence import after receipt retrieval, then connect final authority feedback to the persisted filing state machine and structured feedback records. **The fail-closed `authority_test_runs` importer is implemented; deployed import and final state integration remain pending.**
-5. Implement owner signing handoff and receipt/archive retrieval.
-6. Record complete TT02 acceptance and named approvals before enabling production.
+2. Initialize the supported synthetic company and verify its current 2025 draft. **Done 2026-07-14.**
+3. Run instance creation, envelope upload, file-scan polling, async validation,
+   owner signing, receipt retrieval, and archive verification. **Done in TT02 on
+   2026-07-14 for the supported no-activity fixture.**
+4. Execute the company/year-bound evidence import, then connect final authority
+   feedback to the persisted filing state machine and structured feedback
+   records. **The fail-closed `authority_test_runs` importer is implemented;
+   deployed import and final state integration remain pending.**
+5. Enforce the no-attachment production support boundary and complete
+   production credential/security/restore review.
+6. Record the named authority approval before enabling production.

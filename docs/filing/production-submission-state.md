@@ -1,6 +1,6 @@
 # Production Submission State
 
-Status: RF-1086 transport implemented and TT02-accepted; company-tax validation and current-draft preflight accepted in TT02; every production transport remains disabled
+Status: RF-1086 and supported company-tax flows accepted end-to-end in TT02; every production transport remains disabled
 
 Applies to: `aksjonærregisteroppgaven`, `årsregnskap`, `skattemelding for AS`
 
@@ -83,16 +83,19 @@ Adapter and release anchors:
   the opaque-token and Skatteetaten XML transport without enabling production.
 - `app/lib/company-tax-return-authority-client.ts` implements test-only current
   document, validation, Altinn instance/upload, scan, and asynchronous result
-  calls. The validation and initialized-current-draft preflight are TT02-accepted;
-  the real instance/signing/receipt leg remains incomplete, and the constructor
+  calls. The supported current-draft-bound flow completed TT02 instance upload,
+  clean scan, preflight and asynchronous `validertOK`, personal owner signing,
+  official feedback receipt, and archive verification. The constructor still
   refuses production.
 - `app/lib/authority-test-evidence.ts` and the owner workspace implement a
   company/year-bound, step-up-protected import for completed company-tax TT02
   evidence. It validates exact scopes/app/data types, `validertOK`, personal
   confirmation handoff, receipt and archive metadata, writes only a `pending`
   `authority_test_runs` row plus audit metadata, and never enables production.
-  Deployed import and final `filing_submissions` feedback/state integration remain
-  release gates.
+  Sanitized company-tax receipt/archive evidence is complete. Deployed import,
+  final `filing_submissions` feedback/state integration, production permission
+  and credentials, security/restore review, and named approval remain release
+  gates.
 - `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
   `production_adapter_disabled` even if permissions, evidence, billing, MFA,
   and human signoff records are otherwise present.

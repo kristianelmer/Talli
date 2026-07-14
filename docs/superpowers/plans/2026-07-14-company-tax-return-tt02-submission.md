@@ -230,27 +230,27 @@
 - Consumes: Task 2 CLI, synthetic company access, user-controlled high-assurance TestID, and official TT02 receipt.
 - Produces: machine-checkable complete TT02 evidence with no secrets.
 
-- [ ] **Step 1: Probe the current synthetic company read-only**
+- [x] **Step 1: Probe the current synthetic company read-only**
 
   Mint a test system-user token and call only `fetchCurrent` for the approved company/year. If the draft is absent, query only approved synthetic candidates and choose a company that satisfies the same supported holding-AS/no-attachment fixture boundary. Do not create an instance until a current document reference exists.
 
-- [ ] **Step 2: Run prepare mode and verify owner handoff**
+- [x] **Step 2: Run prepare mode and verify owner handoff**
 
   Run the CLI with the pinned v1.62.47 XSD directory and synthetic case. Verify evidence says `awaiting_person_confirmation`, includes the exact instance ID/viewer URL, has `validertOK`, and contains no raw XML, token, key, or personal identifier.
 
-- [ ] **Step 3: Complete the human boundary**
+- [x] **Step 3: Complete the human boundary**
 
   Open the exact TT02 viewer URL. A person authenticated with TestID at high assurance reviews and performs the final confirmation/submission. No automation clicks the final submit control without a contemporaneous user confirmation.
 
-- [ ] **Step 4: Run resume mode and verify receipt/archive**
+- [x] **Step 4: Run resume mode and verify receipt/archive**
 
   Run resume mode until `tilbakemelding` is available. Independently download it in memory, recompute SHA-256/byte length, and verify those values equal sanitized evidence. Confirm production remains disabled.
 
-- [ ] **Step 5: Add/update evidence tests first, then docs**
+- [x] **Step 5: Add/update evidence tests first, then docs**
 
   Extend `tests/company_tax_return_tt02_evidence.test.mjs` to require submitted/receipted test-only evidence, matching receipt/archive references, hashes, and no secrets. Run it red before updating evidence; then update the machine evidence and narrative/authority maps and run it green.
 
-- [ ] **Step 6: Run verification and commit**
+- [x] **Step 6: Run verification and commit**
 
   Run:
 
