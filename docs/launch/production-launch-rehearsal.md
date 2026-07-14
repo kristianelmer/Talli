@@ -41,6 +41,13 @@ Detailed corporate artifact evidence, PDF hashes, renderer versions, and the
 explicitly pending external gates are recorded in
 `docs/launch/evidence/corporate-document-local-rehearsal.md`.
 
+The 2026-07-14 production-access documentation reconciliation was additionally
+verified on parent commit `4aac7e59eeea0a4360e70186fb89911296a438fd` with
+`TALLI_SKATTE_XSD_DIR=/tmp/talli-skattemeldingen-v1.62.47/src/resources/xsd npm run test:launch-rehearsal`.
+It exited 0, including official-XSD company-tax tests and the assertions that
+all production adapters remain disabled. This documentation-only slice made no
+runtime code change.
+
 ## Automated Rehearsal Command
 
 Run:
@@ -108,6 +115,12 @@ Current launch state is `production_disabled`. Sanitized TT02 evidence exists
 for all three obligations, but company-tax and annual-accounts runtime evidence
 remain `pending`; production access/credentials, deployed controls, supported
 case boundaries, and named human release signoffs are not complete.
+
+The company-tax production-access requirements have been refreshed against
+current official sources, and a submission packet is copy-ready in
+`docs/filing/skatteetaten-production-access-application.md`. It has not been
+submitted, the production client does not yet exist, and neither fact changes
+the launch state.
 
 The corporate-document workflow has a separate fail-closed release gate. Local
 evidence is complete for this rehearsal, but the templates, accounting policy,

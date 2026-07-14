@@ -1,12 +1,12 @@
 # Authority Onboarding Runbook
 
-Status: onboarding not started — production filing blocked for all obligations
-Last updated: 2026-06-27
+Status: TT02 onboarding complete for all three filing paths; production onboarding not started and production filing blocked
+Last updated: 2026-07-14
 Covers: `aksjonærregisteroppgaven` (RF-1086, #81), `årsregnskap` (RR-0002, #84), `skattemelding for AS` (#87)
 
-This runbook sequences the real-world steps that take Talli from "no authority access" to
-"accepted test-environment submission" for each filing obligation, and maps every step to the
-gate Talli already enforces in code. It is a working checklist, not permission to enable
+This runbook sequences the real-world steps that take Talli from authority onboarding through
+accepted test-environment evidence and, later, separately approved production access. TT02 is
+complete for the supported filing paths. It is a working checklist, not permission to enable
 production filing: live filing stays disabled until each obligation's gate is satisfied.
 
 The actual account registrations, certificate purchases, and authority delegations are
@@ -24,6 +24,9 @@ in-app evidence records described in [How this maps to Talli's gates](#how-this-
 - Per-obligation maps: [rf1086-production-submission-runbook.md](./rf1086-production-submission-runbook.md),
   [annual-accounts-authority-map.md](./annual-accounts-authority-map.md),
   [company-tax-return-authority-map.md](./company-tax-return-authority-map.md)
+- Current company-tax production research and application packet:
+  [skatteetaten-production-access-research.md](./skatteetaten-production-access-research.md) and
+  [skatteetaten-production-access-application.md](./skatteetaten-production-access-application.md)
 
 ## The shared spine (do once)
 
@@ -74,8 +77,8 @@ sufficient for the Maskinporten / Altinn / virksomhetssertifikat integration. (T
 
 ### Step 2 — Client key / certificate
 
-Maskinporten signs the client-assertion JWT with your key. The requirement **differs by
-environment**, which matters for cost while doing action item 1 (test-env onboarding only):
+The Maskinporten client signs its JWT assertion with a private key. Keep test and production
+keys separate and store only the public key on the client:
 
 - **Test environment (free):** Maskinporten's test/ver2 accepts a **self-generated key pair /
   self-signed certificate** — no CA purchase needed. Do the entire test integration this way and
@@ -83,10 +86,17 @@ environment**, which matters for cost while doing action item 1 (test-env onboar
   - [ ] Generate a key pair locally, e.g. `openssl genrsa -out talli-test.key 4096` then
         `openssl req -new -x509 -key talli-test.key -out talli-test.pem -days 1095 -subj "/CN=Talli test"`.
   - [ ] Keep the private key secure; you upload only the **public** key/cert at Step 3 (test).
-- **Production (paid, defer until cutover):** production Maskinporten requires a CA-issued
-  **virksomhetssertifikat** from **Buypass** or **Commfides** for org 930835978 (~NOK 1 500–4 000/yr).
-  - [ ] Buy it only when moving an obligation to production. Order the **soft/file-based** cert
-        (server use), not a smartkort, and keep the key in production-separated storage.
+- **Production:** current Digdir and Altinn documentation permits either a CA-issued
+  virksomhetssertifikat or a client-generated asymmetric key registered as JWK/PEM. A paid
+  certificate is therefore optional for this client, not a production prerequisite.
+  - [ ] Generate a production-only asymmetric key in managed secret storage, register only its
+        public JWK/PEM, record owner and creation/expiry dates, and rotate it before the documented
+        one-year maximum lifetime.
+  - [ ] Do not reuse `~/talli-test.key`, the TT02 JWK, or a developer workstation path in
+        production.
+  - [ ] If a virksomhetssertifikat is chosen instead, use a valid production certificate issued
+        for the operating organization and keep its private key in the same managed-secret and
+        rotation controls.
 
 ### Step 3 — Maskinporten client (Samarbeidsportalen)
 
@@ -182,10 +192,12 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **active 2026-07-01** — granted to org, added to the client in the Digdir portal, token requests return HTTP 200 |
 | 2026-07-14 | #84/#87 Altinn instances | Digdir Selvbetjening TT02 | authenticated self-service | add `altinn:instances.read` + `altinn:instances.write` to client `7166e743-…` | ✅ both added and visible on client; token/system-user rehearsal still requires the matching app resource right |
 
-Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
-(`eksternjira.sits.no`), which needs a per-virksomhet brukerkonto. Until that account exists, the
-overgangsfase email `altinnreetablering@skatteetaten.no` is the sanctioned channel for the reetablerte
-tjenester (RF-1086 is one).
+Current access applications for Skatteetaten reporting services, including test and production
+Skattemeldingen access, go through the authenticated External Jira support service. A leader or
+main administrator must first delegate the current Altinn access package **Teknisk samhandling med
+Skatteetaten** (or the documented support-administration single service) and create the support
+user. The transition email in the historical 2026-06-30 log is not the current application route.
+See [skatteetaten-production-access-application.md](./skatteetaten-production-access-application.md).
 
 ### Step 4 — Altinn system user + access packages (systembruker + tilgangspakker)
 

@@ -68,7 +68,10 @@ final feedback, the no-attachment support boundary is enforced, production
 access/credentials and restore/security controls are reviewed, and the named
 `tax_return_authority` reviewer signs off. The pinned 2025 XSD validation and
 TT02 submission/signing/receipt/archive evidence are complete but do not satisfy
-those remaining production gates.
+those remaining production gates. Current official production prerequisites and
+the copy-ready, not-yet-submitted application are recorded in
+`skatteetaten-production-access-research.md` and
+`skatteetaten-production-access-application.md`.
 
 ## Årsregnskap
 

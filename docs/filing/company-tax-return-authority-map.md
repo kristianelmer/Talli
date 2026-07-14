@@ -1,7 +1,7 @@
 # Skattemelding for AS Authority Map
 
 Status: source-backed map with accepted end-to-end TT02 evidence; production disabled
-Research date: 2026-06-16  
+Research date: 2026-07-14
 Target filing: `skattemelding for AS` / company tax return
 
 This map defines what Talli can validate from public sources before production company-tax-return filing. It is not a complete production integration spec.
@@ -23,6 +23,7 @@ Primary sources:
 - Raw Skatteetaten API docs: https://raw.githubusercontent.com/Skatteetaten/api-dokumentasjon/main/docs/api/skattemeldingupersonlig.md
 - Skatteetaten `skattemeldingen` specification repository: https://github.com/Skatteetaten/skattemeldingen
 - Talli schema evidence register: `docs/filing/company-tax-return-schema-evidence-register.md`
+- Talli production-access research: `docs/filing/skatteetaten-production-access-research.md`
 - Altinn legacy/company tax return overview: https://info.altinn.no/skjemaoversikt/skatteetaten/skattemelding-for-formues-og-inntektsskatt-aksjeselskap-mv/
 
 ## Public Filing Surface
@@ -86,10 +87,11 @@ skattemelding`), distinct from the restricted `skattemelding upersonlig` data AP
 - **Owner-managed signing caveat:** the final confirmation/signing step (`process/next` →
   BankID) cannot be performed by the systembruker; a person (daglig leder/styreleder) must sign in the
   Altinn UI. This shapes Talli's owner-managed UX (systembruker fills/locks, owner signs).
-- **Order test access:** SKD brukerstøtte (`eksternjira.sits.no`) under Innrapportering → Skattemelding,
-  or the overgangsfase email `altinnreetablering@skatteetaten.no`, for scope
-  `skatteetaten:formueinntekt/skattemelding` in test for the org. After SKD grants it, the scope must be
-  **explicitly added to the Maskinporten client** in the Digdir self-service portal.
+- **Order service access:** use Skatteetaten's authenticated support-service application for test
+  or production access to Skattemeldingen. The old transition email is retained only in the
+  historical TT02 log. After Skatteetaten grants the scope, it must be **explicitly added to the
+  matching Maskinporten client** in Digdir self-service. Production uses a separate client and
+  separate approval; see `docs/filing/skatteetaten-production-access-application.md`.
 - `buildFilingReleaseGates` must remain `production_disabled` until accepted
   `authority_test_runs` evidence for `skattemelding` has receipt and archive
   refs, and the persisted `launch_signoffs` key `tax_return_authority` is
@@ -201,7 +203,9 @@ Current tax preview field decisions:
 - Confirm the current XSD/JSON schemas and code lists for the relevant income year. **(Resolved for the 2025 launch subset through pinned tag `v1.62.47`.)**
 - Map Talli ledger/tax concepts to `skattemelding` and `næringsspesifikasjon` fields. **(Resolved for the explicitly supported subset; other cases remain blocked.)**
 - Validate generated payloads against official schemas and test environment. **(Schema, `validertest`, Altinn instance, owner signing, receipt, and archive acceptance complete in TT02 on 2026-07-14.)**
-- Confirm access package, Maskinporten/Altinn delegation, signing, feedback, and receipt behavior for owner-managed filing.
+- Obtain separate production access and written answers for the remaining exchange, human-submit,
+  receipt-resume, and pilot questions in
+  `docs/filing/skatteetaten-production-access-application.md`.
 
 ## Follow-Up Implementation Slices
 

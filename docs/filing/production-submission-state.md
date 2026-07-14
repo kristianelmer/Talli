@@ -101,3 +101,7 @@ Adapter and release anchors:
   and human signoff records are otherwise present.
 - `docs/filing/authority-adapter-plans.md` records the external steps and the
   evidence required to enable an adapter.
+- `docs/filing/skatteetaten-production-access-research.md` and
+  `docs/filing/skatteetaten-production-access-application.md` record the current
+  official company-tax production prerequisites and the not-yet-submitted
+  application packet. They are evidence inputs, not runtime enablement.
