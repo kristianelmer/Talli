@@ -149,17 +149,17 @@
 - Consumes: Task 1 client, existing 2025 payload/XML renderer, pinned XSD directory, Maskinporten token helper, and Altinn exchange helper.
 - Produces: prepare/resume modes and schema-version-2 sanitized evidence.
 
-- [ ] **Step 1: Add failing script safety and idempotency tests**
+- [x] **Step 1: Add failing script safety and idempotency tests**
 
   Spawn the script with an empty environment and assert explicit write approval is required. Inspect the script source and assert it requires all three scopes, supports `prepare` and `resume`, calls `advanceToConfirmation` only in prepare, calls `waitForCompanyTaxReturnFeedback` only in resume, never invokes a final process transition, writes atomically, and compares company/year/payload hashes before reusing evidence.
 
-- [ ] **Step 2: Run the script test red**
+- [x] **Step 2: Run the script test red**
 
   Run: `node --test tests/company_tax_return_authority_script.test.mjs`
 
   Expected: failure because resumable phases are absent.
 
-- [ ] **Step 3: Implement prepare mode**
+- [x] **Step 3: Implement prepare mode**
 
   Require:
 
@@ -172,7 +172,7 @@
 
   Fetch the current draft, render the reference-bound envelope, validate all three XSDs, mint/exchange tokens, create/upload the instance, wait for `Clean`, run async validation, require `validertOK`, and advance once to confirmation. Write evidence after every irreversible remote step so retries reuse the same instance.
 
-- [ ] **Step 4: Implement read-only resume mode**
+- [x] **Step 4: Implement read-only resume mode**
 
   Require compatible existing evidence with status `awaiting_person_confirmation`. Mint fresh tokens, call only `waitForCompanyTaxReturnFeedback`, hash the returned XML, then update evidence to `submitted_and_receipted`. Store stable metadata and hashes only:
 
@@ -189,7 +189,7 @@
   }
   ```
 
-- [ ] **Step 5: Add scripts and run tests green**
+- [x] **Step 5: Add scripts and run tests green**
 
   Add `test:company-tax-return-authority-script` to `package.json` and include it in `test:launch-rehearsal`.
 
@@ -201,7 +201,7 @@
 
   Expected: all commands exit 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run:
 
