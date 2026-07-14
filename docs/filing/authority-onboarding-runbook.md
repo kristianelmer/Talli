@@ -151,9 +151,10 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   `skatteetaten:innrapporteringaksjonaerregisteroppgavefilopplasting` (⏳ awaiting SKD grant),
   `altinn:authentication/systemregister.write` (✅ **ACTIVE** 2026-07-01 — token request returns
   HTTP 200; used to register the system, see Step 4a live result).
-  - ⏭️ **Not yet attached:** `skatteetaten:formueinntekt/skattemelding` (#87). SKD grants don't
-    auto-activate on the client — once granted, **add this scope to the client** in the Digdir
-    self-service portal (and `altinn:instances.read` / `altinn:instances.write` for the Altinn3 app).
+  - ✅ **Active 2026-07-14:** `skatteetaten:formueinntekt/skattemelding` (#87). A system-user token
+    was issued and TT02 `validertest` returned `validertOK` for `310279617`.
+  - ⏭️ **Not yet attached:** `altinn:instances.read` / `altinn:instances.write`, required for the
+    Altinn3 instance/upload leg of the skattemelding flow.
   - ✅ **Active for vendor-initiated Step 4b (2026-07-01):**
     `altinn:authentication/systemuser.request.write` + `altinn:authentication/systemuser.request.read`.
     Altinn granted these to org 930835978, and after **adding both to the client** in the Digdir
@@ -175,7 +176,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | Date | Obligation | Authority | Channel | Request | Status |
 |---|---|---|---|---|---|
 | 2026-06-30 | #81 RF-1086 | Skatteetaten | email `altinnreetablering@skatteetaten.no` (overgangsfase; eksternjira brukerstøtte requires a brukerkonto we don't yet have) | Test access to scopes `skatteetaten:innrapporteringaksjonaerregisteroppgave` + `…filopplasting` for org 930835978 / client_id `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` | ⏳ sent, awaiting grant |
-| 2026-06-30 | #87 skattemelding | Skatteetaten | same thread (`altinnreetablering@skatteetaten.no`) | scope `skatteetaten:formueinntekt/skattemelding` (test) — verified 2026-06-30 from Skatteetaten api-dokumentasjon; Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ⏳ sent, awaiting grant |
+| 2026-06-30 | #87 skattemelding | Skatteetaten | same thread (`altinnreetablering@skatteetaten.no`) | scope `skatteetaten:formueinntekt/skattemelding` (test) — Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ✅ granted, added to client, token issued and `validertest` accepted 2026-07-14 |
 | 2026-06-30 | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | (1) grant `altinn:authentication/systemregister.write` (TT02) + (2) enable real org 930835978 in TT02 systemregister, for client_id above | ✅ **granted 2026-07-01** — `systemregister.write` active (token 200); org 930835978 accepted (Step 4a POST succeeded, no separate enablement needed) |
 | 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **active 2026-07-01** — granted to org, added to the client in the Digdir portal, token requests return HTTP 200 |
 
@@ -520,10 +521,10 @@ credentials and the admin/step-up flow, so they are performed in the running app
 |---|---|---|---|
 | 1. Operating entity registered (ENK, org nr) | ☑ | ☑ | ☑ |
 | 2. Virksomhetssertifikat (test self-signed) | ☑ | ☑ | ☑ |
-| 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ◑ | ◑ scope visible without `Tilgang mangler`; transport test pending |
+| 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ◑ | ◑ tax scope active and validated; Altinn instance scopes pending |
 | 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ◑ shared system; årsregnskap package pending | ☑ system access page showed skattemelding right; submission/signing test pending |
 | 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS selected |
-| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ☐ | ☐ |
+| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ☐ | ◑ TT02 payload validation accepted; instance/signing/receipt pending |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
 | 8. `authority_test_runs` accepted | ☐ | ☐ | ☐ |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
@@ -532,7 +533,9 @@ Step 3 status (updated 2026-07-14): the shared TT02 client
 `7166e743-978e-4a60-8a2d-0a5c00fe6ad0` (kid
 `2d275f93-10a2-4839-993e-b14da2b84ad8`) successfully minted a system-user token
 for `310279617` with the RF-1086 scope. The earlier `invalid_scope` state is
-resolved for RF-1086.
+resolved for RF-1086. The company-tax scope also minted a token and returned
+`validertOK` from TT02 on 2026-07-14; only the two Altinn instance scopes remain
+missing from the combined submission token.
 
 Step 4 status (2026-07-01): **DONE end-to-end.** 4a — `systemregister.write` token minted (HTTP 200)
 and the systemregister payload POSTed → system **`930835978_talli`** registered in TT02 (GET confirms

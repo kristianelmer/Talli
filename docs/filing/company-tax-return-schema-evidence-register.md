@@ -123,19 +123,22 @@ Sources:
    references from a TT02 run.
 4. Obtain the required named authority/security signoffs.
 
-## Code Gate Verification (2026-07-13)
+## Code and TT02 Gate Verification (2026-07-14)
 
 Latest run of the skattemelding/tax-return code-side evidence (all green):
 
 | Suite | Result |
 | --- | --- |
-| `npm run test:company-tax-return` | 6 passed |
+| `npm run test:company-tax-return` | 7 passed |
 | `TALLI_SKATTE_XSD_DIR=<official-v1.62.47>/src/resources/xsd npm run test:company-tax-return-xml` | 2 passed, including both official XSD validations |
+| `TALLI_SKATTE_XSD_DIR=<official-v1.62.47>/src/resources/xsd npm run test:company-tax-return-authority` | 8 passed, including the combined envelope schema and fail-closed transport behavior |
+| `npm run authority:company-tax-test` | TT02 `validertest` returned `validertOK`; sanitized evidence recorded under `docs/filing/evidence/` |
 | `node --experimental-strip-types --test tests/tax_settlement.test.mjs` | 4 passed |
 | `uv run python -m unittest tests.test_annual tests.test_annual_validation` (tax settlement + validation) | 13 passed |
 
 This proves the deterministic 2025 calculation, leaf-field mapping, XML ordering,
-and local XSD validity for the representative supported fixture. It does not
-prove authority-service acceptance or production submission. The live adapter,
-TT02 validation/signing/receipt/archive evidence, and approved
+local XSD validity, test-scope access, and authority validation for the
+representative supported fixture. It does not prove an accepted Altinn filing
+or production submission. Altinn instance scopes, owner signing,
+receipt/archive evidence, persisted runtime integration, and the approved
 `tax_return_authority` signoff keep `buildFilingReleaseGates` fail-closed.

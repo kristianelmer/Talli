@@ -1,6 +1,6 @@
 # Production Submission State
 
-Status: RF-1086 transport implemented and TT02-accepted; every production transport remains disabled
+Status: RF-1086 transport implemented and TT02-accepted; company-tax validation transport implemented and TT02-accepted; every production transport remains disabled
 
 Applies to: `aksjonærregisteroppgaven`, `årsregnskap`, `skattemelding for AS`
 
@@ -81,6 +81,11 @@ Adapter and release anchors:
   unimplemented/disabled.
 - `app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts` implement
   the opaque-token and Skatteetaten XML transport without enabling production.
+- `app/lib/company-tax-return-authority-client.ts` implements test-only current
+  document, validation, Altinn instance/upload, scan, and asynchronous result
+  calls. The validation leg is TT02-accepted; the instance/signing/receipt leg
+  and persisted runtime integration remain incomplete, and the constructor
+  refuses production.
 - `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
   `production_adapter_disabled` even if permissions, evidence, billing, MFA,
   and human signoff records are otherwise present.

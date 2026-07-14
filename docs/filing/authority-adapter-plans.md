@@ -1,6 +1,6 @@
 # Authority Adapter Plans
 
-Status: RF-1086 transport implemented and TT02-accepted; all production adapters disabled
+Status: RF-1086 transport and company-tax validation transport are TT02-accepted; all production adapters disabled
 Last updated: 2026-07-14
 
 This document records the minimum real transport sequence for each filing. It
@@ -40,6 +40,12 @@ production credentials and restore/security controls are reviewed, and the
 named `rf1086_authority` reviewer signs off.
 
 ## Skattemelding for AS
+
+The deterministic 2025 documents, combined envelope, test-only authority
+client, and guarded rehearsal are implemented. The no-activity fixture returned
+`validertOK` from TT02 on 2026-07-14; see
+`evidence/company-tax-tt02-2026-07-14.md`. This is validation evidence, not an
+accepted filing, so `productionImplemented` remains `false`.
 
 Ordered outcomes:
 

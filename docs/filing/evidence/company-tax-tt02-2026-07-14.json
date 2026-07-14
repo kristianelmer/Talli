@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "validated",
+  "environment": "test",
+  "productionEnabled": false,
+  "authority": "Skatteetaten skattemelding v2 validertest",
+  "companyOrgNumber": "310279617",
+  "companyName": "LOGISK ØDE TIGER AS",
+  "incomeYear": 2025,
+  "scope": "skatteetaten:formueinntekt/skattemelding",
+  "caseFixture": "company-tax-no-activity-2025.json",
+  "codeCommit": "b545dde225815bcc3c51e2ba3a7ebb1793847b85",
+  "payloadHashes": {
+    "skattemelding": "efe81fe750cdc1be2a40ec9738b031587536fb2d06bb5608c593aeb623f482ab",
+    "naeringsspesifikasjon": "fe66b951b582b98fb24f7f8858484758f25443f25ad107a86c1f99706362a154",
+    "envelope": "574d1f6436a6dfbbb66e444f40e8748280b67c8a76f311ed118c540c99bece92"
+  },
+  "payloadFeedbackCodes": [
+    "tax_return_payload_candidate_ready"
+  ],
+  "localSchemaValidation": {
+    "status": "passed",
+    "schemas": [
+      "skattemeldingUpersonlig_v5_ekstern.xsd",
+      "naeringsspesifikasjon_v6_ekstern.xsd",
+      "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+    ]
+  },
+  "authorityValidation": {
+    "result": "validertOK",
+    "deviationCodes": [
+      "avvikSkattemelding"
+    ],
+    "guidanceCodes": [
+      "N_EGENKAPITALAVSTEMMING_MANGLER",
+      "N_MANGLER_OPPLYSNINGER_OM_SELSKAPET",
+      "N_MANGLER_VERDI_BAK_AKSJENE"
+    ],
+    "failureReasons": []
+  },
+  "responseBytes": 5050,
+  "secretsStored": false,
+  "validatedAt": "2026-07-14T09:29:38.578Z"
+}
