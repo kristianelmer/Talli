@@ -98,6 +98,21 @@ test("builds 2025 schema-backed company tax return payload candidate", () => {
   assert.deepEqual(payload.feedback.map((item) => item.code), ["tax_return_payload_candidate_ready"]);
 });
 
+test("uses the current-draft party number for both authority documents", () => {
+  const payload = buildCompanyTaxReturnPayload({
+    companyOrgNumber: "314259521",
+    companyPartyNumber: "9000020078",
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries,
+    holdingActions: [dividendAction],
+  });
+  const fields = Object.fromEntries(payload.fields.map((field) => [field.path, field]));
+
+  assert.equal(fields["skattemelding.partsnummer"].value, "9000020078");
+  assert.equal(fields["naeringsspesifikasjon.partsreferanse"].value, "9000020078");
+});
+
 test("reconciles interest, costs, exempt gains, and non-deductible losses", () => {
   const shareGainAction = {
     ...dividendAction,

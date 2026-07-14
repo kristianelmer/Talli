@@ -87,19 +87,27 @@ function assertRequiredScopes(scope) {
 
 function assertSamePreparedCase(evidence, expected) {
   if (!evidence) return;
-  const validationEnvelopeHash = evidence.payloadHashes?.validationEnvelope
-    ?? evidence.payloadHashes?.envelope;
   if (
     evidence.environment !== "test"
     || evidence.productionEnabled !== false
     || evidence.companyOrgNumber !== expected.companyOrgNumber
     || evidence.incomeYear !== expected.incomeYear
-    || evidence.payloadHashes?.skattemelding !== expected.payloadHashes.skattemelding
-    || evidence.payloadHashes?.naeringsspesifikasjon !== expected.payloadHashes.naeringsspesifikasjon
-    || validationEnvelopeHash !== expected.payloadHashes.validationEnvelope
   ) {
-    throw new Error("Existing company-tax evidence belongs to a different payload; choose a new evidence path.");
+    throw new Error("Existing company-tax evidence belongs to a different company or year; choose a new evidence path.");
   }
+}
+
+function samePayloadHashes(evidence, expected) {
+  return evidence.payloadHashes?.skattemelding === expected.skattemelding
+    && evidence.payloadHashes?.naeringsspesifikasjon === expected.naeringsspesifikasjon
+    && evidence.payloadHashes?.validationEnvelope === expected.validationEnvelope;
+}
+
+function canRepairInvalidPartyNumber(evidence) {
+  return evidence.status === "failed_blocked"
+    && evidence.authorityValidation?.failureReasons?.includes("UgyldigPartsnummer") === true
+    && evidence.instance?.processTask === "data"
+    && evidence.instance?.envelopeUploaded === true;
 }
 
 function assertResumableEvidence(evidence, systemUserOrgNumber) {
@@ -207,31 +215,7 @@ async function main() {
       throw new Error("Company-tax authority rehearsal is currently limited to the approved no-activity case.");
     }
 
-    const payload = buildCompanyTaxReturnPayload({
-      companyOrgNumber,
-      incomeYear,
-      annualData: caseData.annualData,
-      ledgerEntries: caseData.ledgerEntries ?? [],
-      holdingActions: caseData.holdingActions ?? [],
-    });
-    const blockingCodes = payload.feedback.filter((item) => item.level === "block").map((item) => item.code);
-    if (blockingCodes.length) {
-      throw new Error(`Company-tax payload is blocked: ${blockingCodes.join(", ")}`);
-    }
-    const documents = renderCompanyTaxReturnXml(payload.fields);
-    const validationEnvelopeXml = renderCompanyTaxReturnValidationEnvelope({
-      ...documents,
-      companyOrgNumber,
-      incomeYear,
-      createdBy: "Talli",
-    });
-    await validateLocally(xsdDirectory, { ...documents, envelopeXml: validationEnvelopeXml });
-    const payloadHashes = {
-      skattemelding: sha256(documents.skattemeldingXml),
-      naeringsspesifikasjon: sha256(documents.naeringsspesifikasjonXml),
-      validationEnvelope: sha256(validationEnvelopeXml),
-    };
-    assertSamePreparedCase(prior, { companyOrgNumber, incomeYear, payloadHashes });
+    assertSamePreparedCase(prior, { companyOrgNumber, incomeYear });
     if (prior?.status === "submitted_and_receipted") {
       prior.codeCommit = gitCommit();
       prior.evidenceFile = basename(evidencePath);
@@ -255,9 +239,9 @@ async function main() {
       caseFixture: basename(casePath),
       evidenceFile: basename(evidencePath),
       codeCommit: gitCommit(),
-      payloadHashes,
-      payloadFeedbackCodes: payload.feedback.map((item) => item.code).sort(),
-      localSchemaValidation: { status: "passed", schemas: REQUIRED_SCHEMAS },
+      payloadHashes: {},
+      payloadFeedbackCodes: [],
+      localSchemaValidation: null,
       preflightValidation: null,
       authorityValidation: null,
       instance: null,
@@ -279,13 +263,9 @@ async function main() {
     evidence.systemUserExternalRef = systemUserExternalRef ?? null;
     evidence.evidenceFile = basename(evidencePath);
     evidence.codeCommit = gitCommit();
-    evidence.payloadHashes = {
-      ...evidence.payloadHashes,
-      ...payloadHashes,
-    };
     delete evidence.evidencePath;
     await writeJsonAtomic(evidencePath, evidence);
-    evidence.__prepareContext = { documents, payload, xsdDirectory };
+    evidence.__prepareContext = { caseData, xsdDirectory };
   } else {
     assertResumableEvidence(prior, systemUserOrgNumber);
     evidence = prior;
@@ -354,7 +334,7 @@ async function main() {
       return;
     }
 
-    const { documents, payload, xsdDirectory } = evidence.__prepareContext;
+    const { caseData, xsdDirectory } = evidence.__prepareContext;
     delete evidence.__prepareContext;
     if (evidence.status === "awaiting_person_confirmation" || evidence.instance?.confirmationPrepared) {
       const prepared = await client.advanceToConfirmation({ instanceId: evidence.instance.id });
@@ -372,6 +352,50 @@ async function main() {
       incomeYear: evidence.incomeYear,
       companyOrgNumber: evidence.companyOrgNumber,
     });
+    const payload = buildCompanyTaxReturnPayload({
+      companyOrgNumber: evidence.companyOrgNumber,
+      companyPartyNumber: current.partyNumber,
+      incomeYear: evidence.incomeYear,
+      annualData: caseData.annualData,
+      ledgerEntries: caseData.ledgerEntries ?? [],
+      holdingActions: caseData.holdingActions ?? [],
+    });
+    const blockingCodes = payload.feedback.filter((item) => item.level === "block").map((item) => item.code);
+    if (blockingCodes.length) {
+      throw new Error(`Company-tax payload is blocked: ${blockingCodes.join(", ")}`);
+    }
+    const documents = renderCompanyTaxReturnXml(payload.fields);
+    const validationEnvelopeXml = renderCompanyTaxReturnValidationEnvelope({
+      ...documents,
+      companyOrgNumber: evidence.companyOrgNumber,
+      incomeYear: evidence.incomeYear,
+      createdBy: "Talli",
+    });
+    await validateLocally(xsdDirectory, { ...documents, envelopeXml: validationEnvelopeXml });
+    const correctedPayloadHashes = {
+      skattemelding: sha256(documents.skattemeldingXml),
+      naeringsspesifikasjon: sha256(documents.naeringsspesifikasjonXml),
+      validationEnvelope: sha256(validationEnvelopeXml),
+    };
+    const payloadChanged = !samePayloadHashes(evidence, correctedPayloadHashes);
+    const repairingInvalidPartyNumber = payloadChanged && canRepairInvalidPartyNumber(evidence);
+    if (payloadChanged && evidence.instance && !repairingInvalidPartyNumber) {
+      throw new Error("Existing company-tax instance belongs to a different payload; choose a new evidence path.");
+    }
+    if (payloadChanged || evidence.preflightValidation?.result !== "validertOK") {
+      const response = await client.validateTest({
+        incomeYear: evidence.incomeYear,
+        companyOrgNumber: evidence.companyOrgNumber,
+        envelopeXml: validationEnvelopeXml,
+      });
+      const preflightValidation = summarizeCompanyTaxReturnValidation(response.resultXml);
+      evidence.preflightValidation = preflightValidation;
+      if (preflightValidation.result !== "validertOK") {
+        evidence.status = "preflight_validation_failed";
+        await writeJsonAtomic(evidencePath, evidence);
+        throw new Error("Skatteetaten preflight validation did not accept the corrected company-tax payload.");
+      }
+    }
     const envelopeXml = renderCompanyTaxReturnEnvelope({
       ...documents,
       currentDocumentReference: current.documentReference,
@@ -381,13 +405,44 @@ async function main() {
     });
     await validateLocally(xsdDirectory, { ...documents, envelopeXml });
     const submissionEnvelopeHash = sha256(envelopeXml);
-    if (evidence.payloadHashes.submissionEnvelope
-      && evidence.payloadHashes.submissionEnvelope !== submissionEnvelopeHash) {
+    const submissionEnvelopeChanged = Boolean(evidence.payloadHashes?.submissionEnvelope)
+      && evidence.payloadHashes.submissionEnvelope !== submissionEnvelopeHash;
+    const currentDocumentReferenceHash = sha256(current.documentReference);
+    if (evidence.currentDocumentReferenceHash
+      && evidence.currentDocumentReferenceHash !== currentDocumentReferenceHash) {
       throw new Error("Current company-tax reference changed for an existing prepared instance.");
     }
-    evidence.payloadHashes.submissionEnvelope = submissionEnvelopeHash;
-    evidence.currentDocumentReferenceHash = sha256(current.documentReference);
+    evidence.payloadHashes = {
+      ...correctedPayloadHashes,
+      submissionEnvelope: submissionEnvelopeHash,
+    };
+    evidence.payloadFeedbackCodes = payload.feedback.map((item) => item.code).sort();
+    evidence.localSchemaValidation = { status: "passed", schemas: REQUIRED_SCHEMAS };
+    evidence.currentDocumentReferenceHash = currentDocumentReferenceHash;
+    evidence.error = null;
     await writeJsonAtomic(evidencePath, evidence);
+
+    if (repairingInvalidPartyNumber || submissionEnvelopeChanged) {
+      if (!evidence.instance?.envelopeDataId) {
+        throw new Error("Existing company-tax instance is missing its envelope data id.");
+      }
+      const replaced = await client.replaceEnvelope({
+        instanceId: evidence.instance.id,
+        dataId: evidence.instance.envelopeDataId,
+        envelopeXml,
+      });
+      evidence.instance.envelopeDataId = replaced.dataId;
+      evidence.instance.fileScanResult = replaced.fileScanResult;
+      evidence.instance.validationJobId = null;
+      evidence.instance.validationJobStatus = null;
+      evidence.instance.confirmationPrepared = false;
+      evidence.instance.processTask = "data";
+      evidence.authorityValidation = null;
+      evidence.validationResponseBytes = null;
+      evidence.validatedAt = null;
+      evidence.status = "envelope_uploaded";
+      await writeJsonAtomic(evidencePath, evidence);
+    }
 
     if (!evidence.instance) {
       const created = await client.createInstance({

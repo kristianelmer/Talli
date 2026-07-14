@@ -164,7 +164,8 @@ test("exchanges a system-user Maskinporten token at the official Altinn endpoint
 
 test("uses the official current-document and Altinn async-validation sequence", async () => {
   const requests = [];
-  const currentXml = `<?xml version="1.0"?><skattemeldingOgNaeringsspesifikasjonforespoerselResponse><dokumenter><skattemeldingdokument><id>SKI:755:14847</id><encoding>utf-8</encoding><content>eA==</content><type>skattemeldingUpersonligUtkast</type></skattemeldingdokument></dokumenter></skattemeldingOgNaeringsspesifikasjonforespoerselResponse>`;
+  const currentSkattemeldingXml = `<?xml version="1.0"?><skattemelding><partsnummer>9000020078</partsnummer><inntektsaar>2025</inntektsaar></skattemelding>`;
+  const currentXml = `<?xml version="1.0"?><skattemeldingOgNaeringsspesifikasjonforespoerselResponse><dokumenter><skattemeldingdokument><id>SKI:755:14847</id><encoding>utf-8</encoding><content>${Buffer.from(currentSkattemeldingXml, "utf8").toString("base64")}</content><type>skattemeldingUpersonligUtkast</type></skattemeldingdokument></dokumenter></skattemeldingOgNaeringsspesifikasjonforespoerselResponse>`;
   const queue = [
     new Response(currentXml, { status: 200, headers: { "content-type": "application/xml" } }),
     jsonResponse({ id: instanceId, data: [] }),
@@ -201,6 +202,7 @@ test("uses the official current-document and Altinn async-validation sequence", 
 
   const current = await client.fetchCurrent({ incomeYear: 2025, companyOrgNumber: "310279617" });
   assert.equal(current.documentReference, "SKI:755:14847");
+  assert.equal(current.partyNumber, "9000020078");
   assert.equal(current.rawXml, currentXml);
 
   const instance = await client.createInstance({ incomeYear: 2025, companyOrgNumber: "310279617" });
@@ -241,6 +243,40 @@ test("uses the official current-document and Altinn async-validation sequence", 
   assert.equal(requests[1].init.headers.authorization, `Bearer ${altinnToken}`);
   assert.equal(requests[4].init.headers.authorization, `Bearer ${taxToken}`);
   assert.doesNotMatch(JSON.stringify(result), /opaque-tax-token|opaque-altinn-token/u);
+});
+
+test("replaces an existing company-tax envelope data element in place", async () => {
+  const dataId = "20000000-0000-4000-8000-000000000002";
+  let captured;
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      captured = { url: String(url), init };
+      return jsonResponse({
+        id: dataId,
+        dataType: "skattemeldingOgNaeringsspesifikasjon",
+        fileScanResult: "Pending",
+      });
+    },
+  });
+
+  const replaced = await client.replaceEnvelope({
+    instanceId,
+    dataId,
+    envelopeXml: "<envelope/>",
+  });
+
+  assert.deepEqual(replaced, { dataId, fileScanResult: "Pending" });
+  assert.equal(
+    captured.url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/data/${dataId}`,
+  );
+  assert.equal(captured.init.method, "PUT");
+  assert.equal(captured.init.headers.authorization, `Bearer ${altinnToken}`);
+  assert.equal(captured.init.headers["content-type"], "text/xml");
+  assert.equal(captured.init.body, "<envelope/>");
 });
 
 test("advances exactly once from data to owner confirmation and returns the documented viewer URL", async () => {

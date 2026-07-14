@@ -228,6 +228,28 @@ function documentReferenceFromCurrentXml(xml: string): string {
   return normalized;
 }
 
+function partyNumberFromCurrentXml(xml: string): string {
+  const document = /<(?:(?:[A-Za-z_][\w.-]*):)?skattemeldingdokument\b[^>]*>([\s\S]*?)<\/(?:(?:[A-Za-z_][\w.-]*):)?skattemeldingdokument>/u.exec(xml)?.[1] ?? "";
+  const encoded = /<(?:(?:[A-Za-z_][\w.-]*):)?content\b[^>]*>([\s\S]*?)<\/(?:(?:[A-Za-z_][\w.-]*):)?content>/u.exec(document)?.[1]
+    ?.replace(/\s+/gu, "") ?? "";
+  if (!encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) {
+    throw new CompanyTaxReturnAuthorityError(
+      "Current company tax return did not contain decodable document content.",
+      { code: "COMPANY_TAX_CURRENT_CONTENT_INVALID" },
+    );
+  }
+  const decoded = Buffer.from(encoded, "base64").toString("utf8");
+  const partyNumber = /<(?:(?:[A-Za-z_][\w.-]*):)?partsnummer\b[^>]*>([^<]+)<\/(?:(?:[A-Za-z_][\w.-]*):)?partsnummer>/u.exec(decoded)?.[1]
+    ?.trim() ?? "";
+  if (!/^\d{1,19}$/u.test(partyNumber)) {
+    throw new CompanyTaxReturnAuthorityError(
+      "Current company tax return did not contain a usable party number.",
+      { code: "COMPANY_TAX_CURRENT_PARTY_NUMBER_MISSING" },
+    );
+  }
+  return partyNumber;
+}
+
 type EnvelopeInput = {
   skattemeldingXml: string;
   naeringsspesifikasjonXml: string;
@@ -435,7 +457,11 @@ export function createCompanyTaxReturnAuthorityClient(input: AuthorityClientInpu
         headers: { accept: "application/xml" },
       });
       const rawXml = requiredXml(result.raw, "Current company tax return response");
-      return { rawXml, documentReference: documentReferenceFromCurrentXml(rawXml) };
+      return {
+        rawXml,
+        documentReference: documentReferenceFromCurrentXml(rawXml),
+        partyNumber: partyNumberFromCurrentXml(rawXml),
+      };
     },
 
     async validateTest(options: {
@@ -485,6 +511,29 @@ export function createCompanyTaxReturnAuthorityClient(input: AuthorityClientInpu
         fetch: fetchImplementation,
         url: `${endpoints.altinnAppBase}/instances/${id}/data?dataType=${ENVELOPE_DATA_TYPE}`,
         method: "POST",
+        token: requireAltinnToken(),
+        timeoutMs,
+        headers: {
+          accept: "application/json",
+          "content-type": "text/xml",
+          "content-disposition": "attachment; filename=skattemeldingOgNaeringsspesifikasjon.xml",
+        },
+        body,
+      });
+      return {
+        dataId: validDataId(safeString(result.json.id)),
+        fileScanResult: safeString(result.json.fileScanResult, "Unknown"),
+      };
+    },
+
+    async replaceEnvelope(options: { instanceId: string; dataId: string; envelopeXml: string }) {
+      const id = validInstanceId(options.instanceId);
+      const dataId = validDataId(options.dataId);
+      const body = requiredXml(options.envelopeXml, "Company tax envelope");
+      const result = await authorityRequest({
+        fetch: fetchImplementation,
+        url: `${endpoints.altinnAppBase}/instances/${id}/data/${dataId}`,
+        method: "PUT",
         token: requireAltinnToken(),
         timeoutMs,
         headers: {

@@ -23,11 +23,13 @@ type LedgerLine = {
 
 export function buildCompanyTaxReturnPayload(input: {
   companyOrgNumber: string;
+  companyPartyNumber?: string;
   incomeYear: number;
   annualData: AnnualDataRow | null;
   ledgerEntries: LedgerEntryRow[];
   holdingActions: HoldingActionRow[];
 }) {
+  const authorityPartyNumber = input.companyPartyNumber ?? input.companyOrgNumber;
   const totals = ledgerTotals(input.ledgerEntries);
   const dividendActions = input.holdingActions.filter((action) => action.action_type === "dividend_received");
   const shareSaleActions = input.holdingActions.filter((action) => action.action_type === "share_sale");
@@ -98,11 +100,11 @@ export function buildCompanyTaxReturnPayload(input: {
       estimatedTax: roundMoney(Math.max(0, taxableBasis) * 0.22),
     },
     fields: [
-      field("skattemeldingUpersonlig", "skattemelding.partsnummer", input.companyOrgNumber, "company.org_number", "skattemeldingUpersonlig_v5_ekstern.xsd"),
+      field("skattemeldingUpersonlig", "skattemelding.partsnummer", authorityPartyNumber, "current.skattemelding.partsnummer", "skattemeldingUpersonlig_v5_ekstern.xsd"),
       field("skattemeldingUpersonlig", "skattemelding.inntektsaar", input.incomeYear, "company.income_year", "skattemeldingUpersonlig_v5_ekstern.xsd"),
       ...taxIncomeFields(taxableBasis),
       ...dividendActions.flatMap((action, index) => dividendFields(action, index)),
-      field("naeringsspesifikasjon", "naeringsspesifikasjon.partsreferanse", input.companyOrgNumber, "company.org_number", "naeringsspesifikasjon_v6_ekstern.xsd"),
+      field("naeringsspesifikasjon", "naeringsspesifikasjon.partsreferanse", authorityPartyNumber, "current.skattemelding.partsnummer", "naeringsspesifikasjon_v6_ekstern.xsd"),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.inntektsaar", input.incomeYear, "company.income_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
       ...resultFields,
       ...balanceOccurrenceFields("balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi", 0, "1800", totals.investmentBalance, "ledger.1800"),
