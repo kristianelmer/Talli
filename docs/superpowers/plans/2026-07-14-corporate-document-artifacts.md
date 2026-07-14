@@ -177,29 +177,29 @@
 - Consumes: canonical decision hashes, artifact kinds, variants, state events, and accounting-policy gate defined by Tasks 1–2 and the design.
 - Produces: six immutable tables, company/year indexes, composite foreign keys, read-only membership RLS, immutable triggers, and SQL types/constraints consumed by Task 4 RPCs and Task 11 archive queries.
 
-- [ ] **Step 1: Add a failing structural schema test**
+- [x] **Step 1: Add a failing structural schema test**
 
   Assert the migration creates `corporate_accounting_policies`, `corporate_decisions`, `corporate_document_sets`, `corporate_document_artifacts`, `corporate_document_events`, and `corporate_decision_finalizations`; uses SHA-256 hex checks, constrained kinds/variants/events, cross-company composite foreign keys, unique request/idempotency/storage/finalization constraints, RLS, immutable triggers, `security definer` functions with `set search_path = public, pg_temp`, and authenticated read-only policies scoped through accepted membership. Assert direct authenticated insert/update/delete is revoked for all six tables.
 
-- [ ] **Step 2: Run the schema test red**
+- [x] **Step 2: Run the schema test red**
 
   Run: `node --test tests/corporate_document_schema.test.mjs`
 
   Expected: missing migration file.
 
-- [ ] **Step 3: Add tables, constraints, RLS, and immutable triggers**
+- [x] **Step 3: Add tables, constraints, RLS, and immutable triggers**
 
   Use UUID primary keys supplied as request IDs for decisions/sets/artifacts. Use `numeric(18,2)` only for ledger amounts already represented as decimal currency and store document decision money as integer øre inside canonical JSON. Add `prevent_corporate_record_mutation()` before-update/delete triggers. Give `service_role` full access, accepted company members select access, and authenticated users no direct writes. Keep the accounting-policy table inaccessible to authenticated users.
 
-- [ ] **Step 4: Add migration to the consolidated schema and run structural tests**
+- [x] **Step 4: Add migration to the consolidated schema and run structural tests**
 
-  Append the exact migration SQL to `docs/supabase/talli_mvp_schema.sql` after migrations 0001–0003.
+  Add the repository-standard `\i ../../supabase/migrations/0004_corporate_document_artifacts.sql` include to `docs/supabase/talli_mvp_schema.sql` after migrations 0001–0003 so the consolidated schema continues to apply the migration source of truth in lexical order.
 
   Run: `node --test tests/corporate_document_schema.test.mjs tests/investment_lots_schema.test.mjs tests/bank_suggestion_schema.test.mjs`
 
   Expected: all schema tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add supabase/migrations/0004_corporate_document_artifacts.sql docs/supabase/talli_mvp_schema.sql tests/corporate_document_schema.test.mjs && git commit -m "feat: add immutable corporate decision schema"`
 
