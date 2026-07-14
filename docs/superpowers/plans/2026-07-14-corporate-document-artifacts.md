@@ -219,7 +219,7 @@
 - Consumes: Task 3 tables/constraints plus existing `companies`, `company_memberships`, `step_up_events`, `documents`, `ledger_entries`, `holding_actions`, and `bank_transactions`.
 - Produces: `create_corporate_document_draft(jsonb) -> jsonb`, `record_corporate_document_event(jsonb) -> jsonb`, `attest_corporate_signed_artifact(jsonb) -> jsonb`, `finalize_corporate_decision(jsonb) -> jsonb`, and `record_owner_dividend_payment(jsonb) -> jsonb`.
 
-- [ ] **Step 1: Add failing PostgreSQL runtime cases**
+- [x] **Step 1: Add failing PostgreSQL runtime cases**
 
   Reuse the repository's temporary PostgreSQL rehearsal pattern. Cover:
 
@@ -234,13 +234,13 @@
   - `record_owner_dividend_payment(jsonb)` clears the payable once, references the declaration, matches one bank transaction, and rejects overpayment/retry conflict;
   - direct mutation and rejected/superseded finalization fail.
 
-- [ ] **Step 2: Run database runtime test red**
+- [x] **Step 2: Run database runtime test red**
 
   Run: `node --test tests/corporate_document_database_runtime.test.mjs`
 
   Expected: RPC assertions fail because functions are absent.
 
-- [ ] **Step 3: Implement the five security-definer RPCs**
+- [x] **Step 3: Implement the five security-definer RPCs**
 
   Implement exact functions:
 
@@ -254,7 +254,7 @@
 
   Lock the decision and source rows `for update`; check `auth.uid()`, accepted owner membership, latest step-up age at most 15 minutes for approval/attestation/finalization, period state, source hash, artifact count/kinds, and policy registry internally. Derive ledger lines from policy accounts, not caller JSON. Set deterministic application-level idempotency keys in payloads/events. Revoke public execute and grant only the intended authenticated functions.
 
-- [ ] **Step 4: Run a fresh-migration PostgreSQL rehearsal green**
+- [x] **Step 4: Run a fresh-migration PostgreSQL rehearsal green**
 
   Run: `node --test tests/corporate_document_database_runtime.test.mjs`
 
