@@ -188,6 +188,9 @@ async function main() {
     preparedAt: new Date().toISOString(),
     error: null,
   };
+  evidence.codeCommit = gitCommit();
+  evidence.evidenceFile = basename(evidencePath);
+  delete evidence.evidencePath;
   await writeJsonAtomic(evidencePath, evidence);
 
   const privateKeyPath = resolve(required("TALLI_MASKINPORTEN_PRIVATE_KEY_PATH"));
