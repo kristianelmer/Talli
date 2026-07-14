@@ -1,6 +1,6 @@
 # Årsregnskap Authority Map
 
-Status: TT02 XML accepted and locked for person signing; signature, submission, and receipt evidence pending
+Status: TT02 XML accepted, signed, submitted, and archived; processing decision and production approval pending
 Research date: 2026-07-14
 Target filing: `årsregnskap` / RR-0002
 
@@ -18,6 +18,8 @@ Primary sources:
 - Brønnøysund official Postman examples: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Altinn Apps instance API: https://docs.altinn.studio/en/api/apps/instances/
 - Altinn Apps process API: https://docs.altinn.studio/en/api/apps/process/
+- Altinn instance model: https://docs.altinn.studio/en/api/models/instance/
+- Altinn end-user-system receipt retrieval: https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/apis/#4-hente-kvittering
 - Altinn system-user integration guide (generic example): https://docs.altinn.studio/en/altinn-studio/v8/guides/integration/sbs/setup/
 - Live TT02 annual-accounts resource (`app_brg_aarsregnskap-vanlig-202406`): https://platform.tt02.altinn.no/resourceregistry/api/v1/resource/app_brg_aarsregnskap-vanlig-202406
 - Live TT02 main-form schema: https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema
@@ -66,8 +68,10 @@ Production implications:
   2026-07-14.
 - The accepted system user minted and exchanged both Altinn instance scopes.
   TT02 then created the RR0002 instance, accepted the main and company-accounts
-  XML with zero validation issues, and moved it to the signing task. The
-  instance remains explicitly unsigned and unsubmitted.
+  XML with zero validation issues, and moved it to the signing task. A TestID
+  high-assurance person then signed and submitted; read-only API polling verified
+  the ended process, distinct signature element, official PDF receipt, and
+  archived instance.
 - `buildFilingReleaseGates` must remain `production_disabled` until
   accepted `authority_test_runs` evidence for `aarsregnskap` has receipt and
   archive refs, and the persisted `launch_signoffs` key
@@ -102,14 +106,14 @@ These decisions are the source-backed launch schema for a simple holding AS. A r
 | Authority requirement | Source evidence | Talli source data | Launch decision |
 | --- | --- | --- | --- |
 | Reporting obligation and deadline | Brønnøysund states reporting-obligated enterprises must submit a complete annual-account set by 31 July, and the tax return is a separate obligation. | `companies`, `annual_data`, `filing_readiness_snapshots` | Supported as readiness/deadline data. |
-| RR-0002 main form | Brønnøysund official Postman example exposes `dataFormatId=1266`, `dataFormatVersion=51820`, and key hovedskjema orids. | `companies`, `annual_data`, `authority_permissions`, future accountant/auditor metadata | Evidence mapped for simple holding AS; production still blocked until TT02 validation. |
+| RR-0002 main form | Brønnøysund official Postman example exposes `dataFormatId=1266`, `dataFormatVersion=51820`, and key hovedskjema orids. | `companies`, `annual_data`, `authority_permissions`, future accountant/auditor metadata | Evidence mapped and TT02-validated for the supported simple holding AS; production remains gated. |
 | Accounting currency and scale | Official Postman example exposes `valuta` orid `34984`. | Ledger amounts currently stored as NOK numeric values. | Supported for NOK/whole-kroner launch only; other currencies/scales blocked. |
 | Income statement figures | Official Postman example exposes result tags/orids including `sumDriftskostnad`, `sumFinansinntekter`, `resultatFoerSkattekostnad`, and `aarsresultat`. | `ledger_entries.lines`, annual preview totals | Evidence mapped for aggregate launch fields; implementation slice needed. |
 | Balance-sheet figures | Official Postman example exposes balance tags/orids for investments, bank/cash, equity, and debt. | `ledger_entries.lines`, opening balance, investment register | Evidence mapped for simple holding AS fields; implementation slice needed. |
 | Small-enterprise notes | Official Postman example exposes `antallAarsverk` orid `37467`. | `annual_data`, future note records | Evidence mapped; implementation needs annual full-time equivalents field, default `0` for no employees/payroll. |
 | Attachments | Altinn says small enterprises with no audit obligation generally do not need annual report/cash-flow attachments, while non-small cases require notes, annual report, cash-flow statement and usually auditor report as file attachments. | `documents` metadata/object references | Supported only as readiness metadata; production attachment payload is blocked. |
-| Confirmation/signing | Altinn says sender confirms the annual accounts are approved by the competent body; it then goes to signing/submission. | `annual_data.general_meeting_approved`, `authority_permissions` | Readiness supported; production signing flow blocked until Altinn 3/Regnskapsregisteret flow is tested. |
-| Receipt/decision | Altinn/Brønnøysund state the enterprise receives electronic feedback/decision in Altinn inbox after processing. | `filing_submissions`, archive receipt state | Simulation only; official receipt retrieval/storage is blocked. |
+| Confirmation/signing | Altinn says sender confirms the annual accounts are approved by the competent body; it then goes to signing/submission. | `annual_data.general_meeting_approved`, `authority_permissions` | Hybrid system-user/TestID signing and submission proven in TT02; production remains human-controlled and gated. |
+| Receipt/decision | Altinn/Brønnøysund state the enterprise receives electronic feedback/decision in Altinn inbox after processing. | `filing_submissions`, archive receipt state | Official TT02 receipt/archive retrieval proven; later Regnskapsregisteret processing decision remains pending. |
 
 ## Mapping to Current Engine
 
@@ -129,9 +133,10 @@ Missing before production:
   [annual-accounts-tt02-2026-07-14.md](./evidence/annual-accounts-tt02-2026-07-14.md).
 - Annual-account note model.
 - Attachment payload handling.
-- ID-porten signing handoff evidence.
-- Altinn/Regnskapsregisteret validation feedback.
-- Official receipt storage.
+- ID-porten signing handoff evidence. — Done in TT02.
+- Official receipt/archive retrieval. — Done in TT02.
+- Later Altinn/Regnskapsregisteret processing decision retrieval.
+- Deployed-runtime submission journal and receipt persistence.
 
 Current annual preview field decisions:
 
@@ -148,11 +153,10 @@ Current annual preview field decisions:
 
 ## Production Blockers
 
-- Complete the pending ID-porten signature/submission and capture the resulting
-  receipt, inbox/archive reference, and processing decision. Token exchange,
-  instance access, validation, and lock-for-signing are complete.
+- Capture the later Regnskapsregisteret processing decision. ID-porten
+  signature/submission and receipt/inbox/archive references are complete in TT02.
 - Confirm required payload schemas and attachment restrictions for a small holding AS.
-- Confirm feedback and receipt retrieval behavior.
+- Confirm later processing-feedback behavior; receipt retrieval is proven.
 - Complete production credential, security, restore, and dated release review;
   the transport remains test-only until then.
 

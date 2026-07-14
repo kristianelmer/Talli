@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "locked_for_person_signing",
+  "status": "submitted_and_archived",
   "environment": "test",
   "productionEnabled": false,
   "authority": "Brønnøysundregistrene RR0002 via Altinn TT02",
@@ -13,7 +13,7 @@
   "systemUserExternalRef": "talli_annual_accounts_310279617",
   "caseFixture": "annual-accounts-simple-holding-2025.json",
   "evidenceFile": "annual-accounts-tt02-2026-07-14.json",
-  "codeCommit": "862d6b566d8d91767c0fe8a40a36dd885a9cba6f",
+  "codeCommit": "faa9593496432432de40b23998d5cc29e9014664",
   "payloadHashes": {
     "mainForm": "9c14047ddafc8a50a1347679558db9dffd32bf8f3c72138a8830390a7626720b",
     "companyAccounts": "dda6a8b76a30a68ee8b70b5dcac901e27e5d46aa874e0639dfc44bb66705d53c"
@@ -39,11 +39,56 @@
     "issues": []
   },
   "signingUrl": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/#/instance/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
-  "signed": false,
-  "submitted": false,
+  "signed": true,
+  "submitted": true,
   "secretsStored": false,
   "preparedAt": "2026-07-14T10:27:59.575Z",
   "error": null,
   "validatedAt": "2026-07-14T10:28:01.688Z",
-  "lockedAt": "2026-07-14T10:28:05.103Z"
+  "lockedAt": "2026-07-14T10:28:05.103Z",
+  "submission": {
+    "instanceId": "51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+    "processCompleted": true,
+    "processEndedAt": "2026-07-14T10:37:41.935543Z",
+    "endEvent": "EndEvent_1",
+    "signed": true,
+    "signatureDataId": "89f1b462-f5e5-4d26-ac83-4c8710dd7512",
+    "submitted": true,
+    "archived": true,
+    "archivedAt": "2026-07-14T10:37:41.935543Z",
+    "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+    "receipt": {
+      "dataId": "f9b307e1-3534-4adb-9e5b-515c312f16f3",
+      "dataType": "ref-data-as-pdf",
+      "filename": "Årsregnskap RR-0002.pdf",
+      "contentType": "application/pdf",
+      "sizeBytes": 109275,
+      "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+      "downloadUrl": "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3"
+    }
+  },
+  "submittedAt": "2026-07-14T10:37:41.935543Z",
+  "uiReceiptReference": "a1b7e8a20f51",
+  "downloadVerifiedAt": "2026-07-14T10:45:33Z",
+  "downloadVerification": {
+    "receiptPdf": {
+      "filename": "Årsregnskap RR-0002.pdf",
+      "dataId": "f9b307e1-3534-4adb-9e5b-515c312f16f3",
+      "sizeBytes": 109275,
+      "sha256": "efcc42bafd11ef2960ed755534f47e6ed00e77d4a2aba812d2cdaae83987febc",
+      "exactApiMatch": true
+    },
+    "mainFormJson": {
+      "filename": "a8956442-cca7-41df-91c1-1f7033269e2b.json",
+      "dataId": "a8956442-cca7-41df-91c1-1f7033269e2b",
+      "sizeBytes": 1484,
+      "sha256": "664d3c2fb4a06400af7fd128ba1d6767bc3045a48616fb20ddb396489b0b4adb"
+    },
+    "companyAccountsJson": {
+      "filename": "eb605b3c-5975-4883-a1c1-0c7e37d72a1d.json",
+      "dataId": "eb605b3c-5975-4883-a1c1-0c7e37d72a1d",
+      "sizeBytes": 5107,
+      "sha256": "0ddb094f69600551ac66b933517ed05ae1ce4b9505a7cb7b8e7439f841dd6fb4"
+    }
+  }
 }
