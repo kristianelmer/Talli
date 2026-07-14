@@ -324,7 +324,7 @@
 
   Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run: `git add app/lib/corporate-documents.ts app/lib/corporate-document-storage.ts tests/corporate_documents.test.mjs package.json .env.example && git commit -m "feat: add corporate PDF server bridge"`
 
@@ -345,23 +345,23 @@
 - Consumes: Task 5 TypeScript decision types plus persisted company/shareholder/annual/lifecycle rows.
 - Produces: `buildOwnerDividendDecisionInput`, `buildAnnualCloseDecisionInput`, `allocateDividendOreProportionally`, `deriveCorporateDecisionState`, and `evaluateCorporateDocumentReadiness`, with typed blocker/state unions consumed by Tasks 7–9.
 
-- [ ] **Step 1: Add failing fact-builder and readiness tests**
+- [x] **Step 1: Add failing fact-builder and readiness tests**
 
   Test owner-dividend inputs are computed from company identity, all persisted shareholders, latest approved annual totals, and submitted meeting fields; allocations are proportional by share count with deterministic øre remainder assignment. Reject client-supplied company names, shareholder counts, total shares, available equity, and annual hashes when they differ from persisted data. Test annual-close decisions bind both annual-data and annual-account-payload hashes.
 
   Define readiness states `draft`, `rendered`, `facts_approved`, `signed_owner_attested`, `finalized`, `superseded`, `rejected`, derived only from immutable rows/events. Assert annual submission readiness blocks unless the current annual decision hash matches and is finalized.
 
-- [ ] **Step 2: Run focused tests red**
+- [x] **Step 2: Run focused tests red**
 
   Run: `node --experimental-strip-types --test tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs`
 
   Expected: missing modules.
 
-- [ ] **Step 3: Implement pure fact builders and readiness evaluator**
+- [x] **Step 3: Implement pure fact builders and readiness evaluator**
 
   Keep Supabase access outside pure functions. Normalize Norwegian form input, stable-sort participants by supplied order plus stable ID, allocate money using integer øre, and compare exact hashes. Return typed blocker codes rather than booleans.
 
-- [ ] **Step 4: Run focused and annual readiness regressions green**
+- [x] **Step 4: Run focused and annual readiness regressions green**
 
   Run: `node --experimental-strip-types --test tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/annual_readiness_gates.test.mjs`
 

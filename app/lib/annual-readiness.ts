@@ -4,6 +4,10 @@ import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
 import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
 import { companyTaxReturnPayloadFeedback } from "./company-tax-return.ts";
+import {
+  evaluateCorporateDocumentReadiness,
+  type CorporateDocumentReadinessInput,
+} from "./corporate-document-readiness.ts";
 import type {
   BankTransactionRow,
   AnnualDataRow,
@@ -55,6 +59,10 @@ export type AnnualReadinessInput = {
   authorityPermissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
+  corporateDocuments?: {
+    enabled: boolean;
+    lifecycle: CorporateDocumentReadinessInput;
+  };
 };
 
 const obligations: AuthorityObligation[] = ["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"];
@@ -233,6 +241,12 @@ function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[
 
 function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[] {
   const issues: AnnualReadinessIssue[] = [];
+  if (input.corporateDocuments?.enabled) {
+    const readiness = evaluateCorporateDocumentReadiness(input.corporateDocuments.lifecycle);
+    for (const blockerIssue of readiness.blockers) {
+      issues.push(block(blockerIssue.code, blockerIssue.message, "corporate_documents"));
+    }
+  }
   const hasLedger = input.ledgerEntries.some(
     (entry) => entry.company_id === input.company.id && entry.income_year === input.incomeYear,
   );

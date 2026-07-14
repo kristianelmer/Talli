@@ -21,7 +21,7 @@
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs",
     "test:company-tax-return-xml": "node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs",
-    "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs",
+    "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs",
     "test:cancellation": "node --experimental-strip-types --test tests/cancellation.test.mjs",
     "test:deadlines": "node --experimental-strip-types --test tests/deadlines.test.mjs",
     "test:dividend-received": "node --experimental-strip-types --test tests/dividend_received.test.mjs",
