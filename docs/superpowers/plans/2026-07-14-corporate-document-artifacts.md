@@ -262,7 +262,7 @@
 
   Run: `git diff --check`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add supabase/migrations/0004_corporate_document_artifacts.sql docs/supabase/talli_mvp_schema.sql tests/corporate_document_database_runtime.test.mjs tests/fixtures/corporate_documents/database_rehearsal.sql && git commit -m "feat: add atomic corporate decision lifecycle"`
 
@@ -283,7 +283,7 @@
 - Consumes: Task 2's CLI success/blocked JSON and `resolveTalliPythonBinary()`.
 - Produces: TypeScript `CorporateDecisionInput`, `RenderedCorporateArtifact`, `CorporateRenderResult`, `CorporateArtifactUploadInput`, `CorporateUploadResult`, `canonicalDecisionJson`, `corporateDecisionHash`, `parseCorporateRenderResult`, `renderCorporateDocuments`, `corporateArtifactStorageKey`, and `uploadCorporateArtifacts` for Tasks 6–9.
 
-- [ ] **Step 1: Add failing bridge and storage tests**
+- [x] **Step 1: Add failing bridge and storage tests**
 
   Define and test:
 
@@ -300,21 +300,21 @@
 
   Assert independent Node/Python canonical hash parity, base64/length/content-hash checks, exact required artifact kinds, bounded CLI stdout/stderr, malformed JSON failure, path validation, `upsert:false`, existing-object download/hash retry, and cleanup of only newly uploaded objects after later failure.
 
-- [ ] **Step 2: Run Node test red**
+- [x] **Step 2: Run Node test red**
 
   Run: `node --experimental-strip-types --test tests/corporate_documents.test.mjs`
 
   Expected: module-not-found failures.
 
-- [ ] **Step 3: Implement the bridge and storage seam**
+- [x] **Step 3: Implement the bridge and storage seam**
 
   Use `resolveTalliPythonBinary()`, `spawn` with stdin JSON and a 15-second timeout, a 10 MiB stdout cap, no shell, and a restricted inherited environment. Parse with explicit type guards. Recompute every hash with `node:crypto`. Accept a narrow injected Storage client in tests; production uses the authenticated server client and the private `company-documents` bucket.
 
-- [ ] **Step 4: Add scripts and feature defaults**
+- [x] **Step 4: Add scripts and feature defaults**
 
   Add `test:corporate-documents` to `package.json` and include it in `test:launch-rehearsal`. Add `TALLI_CORPORATE_DOCUMENTS_ENABLED=false` to `.env.example`.
 
-- [ ] **Step 5: Run bridge and regression tests green**
+- [x] **Step 5: Run bridge and regression tests green**
 
   Run: `npm run test:corporate-documents`
 
