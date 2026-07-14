@@ -56,3 +56,24 @@ test("accounting policy accounts are server-side reviewed facts", async () => {
   assert.match(sql, /evidence_reference text not null check \(btrim\(evidence_reference\) <> ''\)/i);
   assert.doesNotMatch(sql, /grant select on public\.corporate_accounting_policies to authenticated/i);
 });
+
+test("database RPCs recompute canonical hashes and persisted accounting facts", async () => {
+  const sql = await readFile(migrationUrl, "utf8");
+
+  assert.match(sql, /create or replace function public\.canonical_corporate_json_text\(p_value jsonb\)/i);
+  assert.match(sql, /digest\(public\.canonical_corporate_json_text\(p_canonical_input\), 'sha256'\)/i);
+  assert.match(sql, /create or replace function public\.assert_corporate_decision_persisted_facts/i);
+  assert.match(sql, /from public\.ledger_entries entry/i);
+  assert.match(sql, /from public\.opening_shareholders shareholder/i);
+  assert.match(sql, /available_distribution_ore/i);
+  assert.match(sql, /revoke all on function public\.canonical_corporate_json_text\(jsonb\)\s+from public, anon, authenticated/i);
+  assert.match(sql, /revoke all on function public\.assert_corporate_decision_persisted_facts[\s\S]+from public, anon, authenticated/i);
+  assert.equal(
+    (sql.match(/perform public\.assert_corporate_decision_persisted_facts\(/gi) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (sql.match(/raise exception 'corporate_documents_income_year_locked'/gi) ?? []).length,
+    3,
+  );
+});

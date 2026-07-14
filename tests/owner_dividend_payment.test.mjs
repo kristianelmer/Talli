@@ -108,6 +108,8 @@ test("server delegates policy-bound accounting atomically to the payment RPC", (
   assert.match(action, /record_owner_dividend_payment/);
   assert.match(action, /record_owner_dividend_payment|finalize_corporate_decision/);
   assert.match(action, /validateOwnerDividendPaymentInput/);
+  assert.match(action, /verifyCurrentAnnualSource:\s*false/);
+  assert.match(actionsSource, /if \(input\.verifyCurrentAnnualSource !== false\)/);
   assert.doesNotMatch(action, /dividend_payable_account|bank_account|account:\s*["'](?:1920|2920)["']/);
 
   assert.match(migrationSource, /dividend_payable_account[\s\S]*debit[\s\S]*bank_account[\s\S]*credit/);

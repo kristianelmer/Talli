@@ -343,6 +343,7 @@ async function loadCorporateLifecycleActionContext(input: {
   decisionId: string;
   setId: string;
   submittedDecisionHash: string;
+  verifyCurrentAnnualSource?: boolean;
 }): Promise<CorporateLifecycleActionContext> {
   const [decisionResult, setResult] = await Promise.all([
     input.supabase
@@ -387,37 +388,39 @@ async function loadCorporateLifecycleActionContext(input: {
     throw new Error("Beslutningshashen er endret. Opprett og gjennomgå et nytt dokumentsett.");
   }
 
-  let annualQuery = input.supabase
-    .from("annual_data")
-    .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
-    .eq("company_id", decision.company_id);
-  annualQuery = decision.decision_kind === "owner_dividend"
-    ? annualQuery.lte("income_year", decision.income_year)
-    : annualQuery.eq("income_year", decision.income_year);
-  const annualResult = await annualQuery.order("income_year", { ascending: false });
-  if (annualResult.error) throw new Error(annualResult.error.message);
-  const currentSource = (annualResult.data ?? []).find(
-    (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
-  ) as AnnualDataRow | undefined;
-  if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
-    throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
-  }
-  const ledgerResult = await input.supabase
-    .from("ledger_entries")
-    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
-    .eq("company_id", decision.company_id)
-    .eq("income_year", currentSource.income_year);
-  if (ledgerResult.error) throw new Error(ledgerResult.error.message);
-  const currentBasis = buildAnnualCloseBasis({
-    annualData: currentSource,
-    annualAccountsPayload: buildAnnualAccountsPayload({
-      incomeYear: currentSource.income_year,
+  if (input.verifyCurrentAnnualSource !== false) {
+    let annualQuery = input.supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
+      .eq("company_id", decision.company_id);
+    annualQuery = decision.decision_kind === "owner_dividend"
+      ? annualQuery.lte("income_year", decision.income_year)
+      : annualQuery.eq("income_year", decision.income_year);
+    const annualResult = await annualQuery.order("income_year", { ascending: false });
+    if (annualResult.error) throw new Error(annualResult.error.message);
+    const currentSource = (annualResult.data ?? []).find(
+      (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
+    ) as AnnualDataRow | undefined;
+    if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
+      throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+    }
+    const ledgerResult = await input.supabase
+      .from("ledger_entries")
+      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
+      .eq("company_id", decision.company_id)
+      .eq("income_year", currentSource.income_year);
+    if (ledgerResult.error) throw new Error(ledgerResult.error.message);
+    const currentBasis = buildAnnualCloseBasis({
       annualData: currentSource,
-      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
-    }),
-  });
-  if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
-    throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+      annualAccountsPayload: buildAnnualAccountsPayload({
+        incomeYear: currentSource.income_year,
+        annualData: currentSource,
+        ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+      }),
+    });
+    if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
+      throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+    }
   }
   return { decision, documentSet };
 }
@@ -2433,7 +2436,11 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   redirect(`/corporate-decisions/${decision.request_id}`);
 }
 
-async function corporateLifecycleActionSetup(formData: FormData, returnToOverride?: string) {
+async function corporateLifecycleActionSetup(
+  formData: FormData,
+  returnToOverride?: string,
+  options: { verifyCurrentAnnualSource?: boolean } = {},
+) {
   const decisionId = requiredFormUuid(formData, "decisionId");
   const setId = requiredFormUuid(formData, "documentSetId");
   const decisionHash = formString(formData, "decisionHash");
@@ -2453,6 +2460,7 @@ async function corporateLifecycleActionSetup(formData: FormData, returnToOverrid
       decisionId,
       setId,
       submittedDecisionHash: decisionHash,
+      verifyCurrentAnnualSource: options.verifyCurrentAnnualSource,
     });
   } catch (error) {
     failTo(returnTo, error instanceof Error ? error.message : "Beslutningsgrunnlaget kunne ikke kontrolleres.");
@@ -2657,7 +2665,9 @@ export async function finalizeCorporateDecision(formData: FormData) {
 }
 
 export async function recordOwnerDividendPayment(formData: FormData) {
-  const setup = await corporateLifecycleActionSetup(formData, "/workspace");
+  const setup = await corporateLifecycleActionSetup(formData, "/workspace", {
+    verifyCurrentAnnualSource: false,
+  });
   await requireSensitiveActionStepUp(
     setup.supabase,
     setup.user.id,

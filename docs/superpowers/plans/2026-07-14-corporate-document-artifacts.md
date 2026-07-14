@@ -613,7 +613,7 @@
 
   Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run: `git add app/lib/supabase/server.ts app/lib/workspace-data.ts app/lib/archive.ts app/lib/backup-restore.ts 'app/archive/[companyId]/[incomeYear]/download/route.ts' app/lib/cancellation.ts tests/archive_export.test.mjs tests/backup_restore.test.mjs tests/cancellation.test.mjs docs/launch/corporate-document-release-gate.md docs/security/corporate-document-backup-restore-runbook.md && git commit -m "feat: archive corporate decision evidence"`
 
