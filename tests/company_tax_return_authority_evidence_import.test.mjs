@@ -90,6 +90,26 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
   assert.match(migration, /test_reference !~ '\^tt02:\[0-9\]\+\/\[0-9a-f\]/u);
   assert.match(migration, /receipt_id !~ '\^\[0-9a-f\]/u);
   assert.match(migration, /v_rfc3339_instant_pattern constant text/u);
+  const rfc3339PatternSource = migration.match(
+    /v_rfc3339_instant_pattern constant text :=\s*'([^']+)'/u,
+  )?.[1] ?? "";
+  const rfc3339Pattern = new RegExp(rfc3339PatternSource, "u");
+  assert.equal(rfc3339Pattern.test("2026-07-14T23:59:59.123Z"), true);
+  assert.equal(rfc3339Pattern.test("2026-07-14T23:59:59+23:59"), true);
+  for (const invalidTimestamp of [
+    "2026-13-14T23:59:59Z",
+    "2026-07-14T24:00:00Z",
+    "2026-07-14T23:60:00Z",
+    "2026-07-14T23:59:60Z",
+    "2026-07-14T23:59:59+24:00",
+    "2026-07-14T23:59:59+23:60",
+  ]) {
+    assert.equal(
+      rfc3339Pattern.test(invalidTimestamp),
+      false,
+      `${invalidTimestamp} must fail the SQL RFC3339 grammar`,
+    );
+  }
   for (const timestampField of [
     "recorded_at",
     "updated_at",

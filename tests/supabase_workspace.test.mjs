@@ -1021,6 +1021,18 @@ test(
       ["confirmation after process end", (payload) => {
         payload.submission.calls[1].created_at = "2026-07-14T12:30:30.000Z";
       }],
+      ["out-of-range RFC3339 components", (payload) => {
+        const invalidTimestamp = "2026-07-14T24:00:00Z";
+        payload.authorityRun.recorded_at = invalidTimestamp;
+        payload.submission.updated_at = invalidTimestamp;
+        for (const call of payload.submission.calls) {
+          call.created_at = invalidTimestamp;
+        }
+        payload.submission.receipt_metadata.receivedAt = invalidTimestamp;
+        payload.submission.receipt_metadata.processEndedAt = invalidTimestamp;
+        payload.submission.receipt_metadata.archivedAt = invalidTimestamp;
+        payload.submission.submitted_payload_ref.storedAt = invalidTimestamp;
+      }],
     ]) {
       const timestampAttack = structuredClone(companyTaxPersistence);
       mutate(timestampAttack);
