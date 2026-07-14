@@ -73,6 +73,30 @@ test("production filing requires MFA, security review, and production credential
   );
 });
 
+test("corporate approval, attestation, and finalization require fresh owner MFA", () => {
+  for (const action of [
+    "approve_corporate_facts",
+    "attest_signed_corporate_document",
+    "finalize_corporate_decision",
+  ]) {
+    assert.throws(
+      () => assertStepUpAllowed(action, { actorId: "owner", mfaVerifiedAt: null }, now),
+      /fersk MFA\/step-up/,
+    );
+    assert.throws(
+      () => assertStepUpAllowed(action, {
+        actorId: "owner",
+        mfaVerifiedAt: "2026-06-16T09:44:59.000Z",
+      }, now),
+      /nyere enn 15 minutter/,
+    );
+    assert.doesNotThrow(() => assertStepUpAllowed(action, {
+      actorId: "owner",
+      mfaVerifiedAt: "2026-06-16T09:59:00.000Z",
+    }, now));
+  }
+});
+
 test("server gate records allowed and blocked sensitive action audit events", async () => {
   const auditEvents = [];
   const stepUpRows = [

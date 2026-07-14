@@ -49,6 +49,12 @@ import {
   uploadCorporateArtifacts,
 } from "./lib/corporate-document-storage";
 import {
+  corporateSignedArtifactStorageKey,
+  requiredCorporateArtifactSigners,
+  uploadSignedCorporateArtifact,
+  validateSignedCorporateArtifactUpload,
+} from "./lib/corporate-signed-artifacts";
+import {
   DividendReceivedValidationError,
   dividendReceivedLedgerLines,
   validateDividendReceived,
@@ -303,6 +309,112 @@ async function requireSensitiveActionStepUp(
           : "Sensitiv handling stoppet: MFA/step-up kreves.";
     redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
+}
+
+type CorporateLifecycleActionContext = {
+  decision: {
+    id: string;
+    company_id: string;
+    income_year: number;
+    decision_kind: "owner_dividend" | "annual_close";
+    annual_close_source_id: string;
+    source_hash: string;
+    canonical_input: CorporateDecisionInput;
+    decision_hash: string;
+  };
+  documentSet: { id: string; decision_id: string; decision_hash: string };
+};
+
+function corporateDecisionPath(decisionId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decisionId)) {
+    return "/workspace";
+  }
+  return `/corporate-decisions/${decisionId}`;
+}
+
+async function loadCorporateLifecycleActionContext(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  decisionId: string;
+  setId: string;
+  submittedDecisionHash: string;
+}): Promise<CorporateLifecycleActionContext> {
+  const [decisionResult, setResult] = await Promise.all([
+    input.supabase
+      .from("corporate_decisions")
+      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash")
+      .eq("id", input.decisionId)
+      .maybeSingle(),
+    input.supabase
+      .from("corporate_document_sets")
+      .select("id, decision_id, decision_hash")
+      .eq("id", input.setId)
+      .maybeSingle(),
+  ]);
+  const decision = decisionResult.data as CorporateLifecycleActionContext["decision"] | null;
+  const documentSet = setResult.data as CorporateLifecycleActionContext["documentSet"] | null;
+  if (decisionResult.error || !decision || setResult.error || !documentSet) {
+    throw new Error(decisionResult.error?.message ?? setResult.error?.message ?? "Fant ikke selskapsbeslutningen.");
+  }
+
+  const membershipResult = await input.supabase
+    .from("company_memberships")
+    .select("company_id")
+    .eq("company_id", decision.company_id)
+    .eq("user_id", input.userId)
+    .eq("role", "owner")
+    .not("accepted_at", "is", null)
+    .maybeSingle();
+  if (membershipResult.error || !membershipResult.data) {
+    throw new Error("Bare en eier med akseptert tilgang kan behandle selskapsbeslutningen.");
+  }
+
+  let recomputedDecisionHash = "";
+  try {
+    recomputedDecisionHash = corporateDecisionHash(decision.canonical_input);
+  } catch {
+    throw new Error("Det lagrede beslutningsgrunnlaget er ugyldig.");
+  }
+  if (recomputedDecisionHash !== decision.decision_hash
+    || input.submittedDecisionHash !== decision.decision_hash
+    || documentSet.decision_id !== decision.id
+    || documentSet.decision_hash !== decision.decision_hash) {
+    throw new Error("Beslutningshashen er endret. Opprett og gjennomgå et nytt dokumentsett.");
+  }
+
+  let annualQuery = input.supabase
+    .from("annual_data")
+    .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
+    .eq("company_id", decision.company_id);
+  annualQuery = decision.decision_kind === "owner_dividend"
+    ? annualQuery.lte("income_year", decision.income_year)
+    : annualQuery.eq("income_year", decision.income_year);
+  const annualResult = await annualQuery.order("income_year", { ascending: false });
+  if (annualResult.error) throw new Error(annualResult.error.message);
+  const currentSource = (annualResult.data ?? []).find(
+    (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
+  ) as AnnualDataRow | undefined;
+  if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
+    throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+  }
+  const ledgerResult = await input.supabase
+    .from("ledger_entries")
+    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
+    .eq("company_id", decision.company_id)
+    .eq("income_year", currentSource.income_year);
+  if (ledgerResult.error) throw new Error(ledgerResult.error.message);
+  const currentBasis = buildAnnualCloseBasis({
+    annualData: currentSource,
+    annualAccountsPayload: buildAnnualAccountsPayload({
+      incomeYear: currentSource.income_year,
+      annualData: currentSource,
+      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+    }),
+  });
+  if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
+    throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+  }
+  return { decision, documentSet };
 }
 
 export async function signIn(formData: FormData) {
@@ -2314,6 +2426,229 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   }
   revalidatePath("/");
   redirect(`/corporate-decisions/${decision.request_id}`);
+}
+
+async function corporateLifecycleActionSetup(formData: FormData) {
+  const decisionId = requiredFormUuid(formData, "decisionId");
+  const setId = requiredFormUuid(formData, "documentSetId");
+  const decisionHash = formString(formData, "decisionHash");
+  const returnTo = corporateDecisionPath(decisionId);
+  if (process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true") {
+    failTo(returnTo, "Selskapsdokumenter er deaktivert til påkrevde godkjenninger foreligger.");
+  }
+  if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) failTo(returnTo, "Innlogging kreves.");
+  let context: CorporateLifecycleActionContext;
+  try {
+    context = await loadCorporateLifecycleActionContext({
+      supabase,
+      userId: user.id,
+      decisionId,
+      setId,
+      submittedDecisionHash: decisionHash,
+    });
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Beslutningsgrunnlaget kunne ikke kontrolleres.");
+  }
+  return { supabase, user, context, decisionId, setId, decisionHash, returnTo };
+}
+
+export async function approveCorporateDecisionFacts(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "facts_approved",
+      decision_hash: setup.decisionHash,
+      metadata: { attestation: "owner_reviewed_persisted_facts" },
+      idempotency_key: `corporate-facts-approved:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function recordCorporateSigningRequested(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "signing_requested",
+      decision_hash: setup.decisionHash,
+      metadata: { delivery: "external_signing_managed_by_owner" },
+      idempotency_key: `corporate-signing-requested:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function rejectCorporateDecision(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "rejected",
+      decision_hash: setup.decisionHash,
+      metadata: { reason: formString(formData, "reason").slice(0, 1000) || "owner_rejected" },
+      idempotency_key: `corporate-rejected:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function attestSignedCorporateArtifact(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "attest_signed_corporate_document",
+  );
+  if (formString(formData, "ownerAttestation") !== "on") {
+    failTo(setup.returnTo, "Du må bekrefte at den opplastede filen er en signert kopi.");
+  }
+  const unsignedArtifactId = requiredFormUuid(formData, "unsignedArtifactId");
+  const signedArtifactId = requiredFormUuid(formData, "signedArtifactId");
+  const signedDocumentId = requiredFormUuid(formData, "signedDocumentId");
+  const unsignedResult = await setup.supabase
+    .from("corporate_document_artifacts")
+    .select("id, set_id, artifact_kind, variant")
+    .eq("id", unsignedArtifactId)
+    .eq("set_id", setup.setId)
+    .eq("variant", "unsigned")
+    .maybeSingle();
+  if (unsignedResult.error || !unsignedResult.data) {
+    failTo(setup.returnTo, unsignedResult.error?.message ?? "Fant ikke originaldokumentet.");
+  }
+  const artifactKind = unsignedResult.data.artifact_kind as CorporateArtifactKind;
+  const signers = requiredCorporateArtifactSigners(artifactKind, setup.context.decision.canonical_input);
+  if (signers.length === 0) failTo(setup.returnTo, "Dokumentet mangler påkrevde signatarer.");
+  const file = formData.get("signedFile");
+  if (!(file instanceof File)) failTo(setup.returnTo, "Velg en signert PDF-fil.");
+
+  let artifact;
+  try {
+    artifact = validateSignedCorporateArtifactUpload({
+      filename: file.name,
+      contentType: file.type,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    });
+  } catch (error) {
+    failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen er ugyldig.");
+  }
+  const storageKey = corporateSignedArtifactStorageKey({
+    companyId: setup.context.decision.company_id,
+    incomeYear: setup.context.decision.income_year,
+    setId: setup.setId,
+    artifactId: signedArtifactId,
+    artifactKind,
+    contentSha256: artifact.contentSha256,
+  });
+  let upload;
+  try {
+    upload = await uploadSignedCorporateArtifact({
+      storageClient: setup.supabase as unknown as CorporateStorageClient,
+      storageKey,
+      artifact,
+    });
+  } catch (error) {
+    failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen kunne ikke lagres.");
+  }
+
+  const { error } = await setup.supabase.rpc("attest_corporate_signed_artifact", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      unsigned_artifact_id: unsignedArtifactId,
+      decision_hash: setup.decisionHash,
+      signers,
+      signed_artifact: {
+        id: signedArtifactId,
+        document_id: signedDocumentId,
+        artifact_kind: artifactKind,
+        name: artifact.filename,
+        content_sha256: artifact.contentSha256,
+        byte_length: artifact.byteLength,
+        mime_type: artifact.mimeType,
+        storage_key: storageKey,
+      },
+      idempotency_key: `corporate-signed-copy:${signedArtifactId}`,
+    },
+  });
+  if (error) {
+    if (upload.newlyUploaded) {
+      const cleanup = await setup.supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+      if (cleanup.error) {
+        throw new AggregateError(
+          [new Error(error.message), new Error(cleanup.error.message)],
+          "Signert kopi ble ikke registrert, og det nye lagringsobjektet kunne ikke ryddes opp.",
+        );
+      }
+    }
+    failTo(setup.returnTo, error.message);
+  }
+  revalidatePath(setup.returnTo);
+  revalidatePath("/documents");
+  redirect(setup.returnTo);
+}
+
+export async function finalizeCorporateDecision(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "finalize_corporate_decision",
+  );
+  const finalizationId = requiredFormUuid(formData, "finalizationId");
+  const holdingActionId = setup.context.decision.decision_kind === "owner_dividend"
+    ? requiredFormUuid(formData, "holdingActionId")
+    : null;
+  const ledgerEntryId = setup.context.decision.decision_kind === "owner_dividend"
+    ? requiredFormUuid(formData, "ledgerEntryId")
+    : null;
+  const { error } = await setup.supabase.rpc("finalize_corporate_decision", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      decision_hash: setup.decisionHash,
+      finalization_id: finalizationId,
+      holding_action_id: holdingActionId,
+      ledger_entry_id: ledgerEntryId,
+      idempotency_key: `corporate-finalized:${finalizationId}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath("/");
+  redirect(setup.returnTo);
 }
 
 export async function recordShareholderLoan(formData: FormData) {

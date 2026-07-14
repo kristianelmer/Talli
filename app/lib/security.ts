@@ -1,5 +1,8 @@
 export type SensitiveAction =
   | "production_filing"
+  | "approve_corporate_facts"
+  | "attest_signed_corporate_document"
+  | "finalize_corporate_decision"
   | "confirm_authority"
   | "invite_reviewer"
   | "change_role"
@@ -49,6 +52,30 @@ export const sensitiveActionRequirements: StepUpRequirement[] = [
     requiresProductionCredentialsGate: true,
     maxMfaAgeMinutes: 15,
     label: "Produksjonsinnsending",
+  },
+  {
+    action: "approve_corporate_facts",
+    requiresMfa: true,
+    requiresSecurityReview: false,
+    requiresProductionCredentialsGate: false,
+    maxMfaAgeMinutes: 15,
+    label: "Godkjenn selskapsrettslige fakta",
+  },
+  {
+    action: "attest_signed_corporate_document",
+    requiresMfa: true,
+    requiresSecurityReview: false,
+    requiresProductionCredentialsGate: false,
+    maxMfaAgeMinutes: 15,
+    label: "Bekreft signert selskapsdokument",
+  },
+  {
+    action: "finalize_corporate_decision",
+    requiresMfa: true,
+    requiresSecurityReview: false,
+    requiresProductionCredentialsGate: false,
+    maxMfaAgeMinutes: 15,
+    label: "Fullfør selskapsbeslutning",
   },
   {
     action: "confirm_authority",

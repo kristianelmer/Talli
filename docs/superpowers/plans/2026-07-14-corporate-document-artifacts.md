@@ -469,7 +469,7 @@
 
   Expected: all commands pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
   Run: `git add app/actions.ts 'app/(owner)/filing/[obligation]/page.tsx' 'app/(owner)/year-end/page.tsx' 'app/(owner)/year-end/CorporateAnnualDecisionForm.tsx' tests/annual_corporate_documents.test.mjs package.json && git commit -m "feat: add annual corporate decision artifacts"`
 
@@ -492,25 +492,25 @@
 - Consumes: Tasks 4–8 decision rows, RPCs, rendered/private objects, derived state, and existing step-up helpers.
 - Produces: sensitive actions `approve_corporate_facts`, `attest_signed_corporate_document`, `finalize_corporate_decision`; server actions `approveCorporateDecisionFacts`, `recordCorporateSigningRequested`, `attestSignedCorporateArtifact`, `rejectCorporateDecision`, `finalizeCorporateDecision`; and owner-only review/preview/upload UI.
 
-- [ ] **Step 1: Add failing security and workflow tests**
+- [x] **Step 1: Add failing security and workflow tests**
 
   Add sensitive actions `approve_corporate_facts`, `attest_signed_corporate_document`, and `finalize_corporate_decision`, all requiring accepted owner and MFA no older than 15 minutes. Test exact-hash approval; PDF MIME, `%PDF-` magic, non-empty body, and 10 MiB limit; explicit required signer names; separate immutable signed storage key; stale/rejected/superseded failure; enabled accounting policy requirement for dividend; idempotent finalization; annual finalization without ledger; and private owner-only inline preview.
 
-- [ ] **Step 2: Run tests red**
+- [x] **Step 2: Run tests red**
 
   Run: `node --experimental-strip-types --test tests/security_step_up.test.mjs tests/corporate_decision_workflow.test.mjs`
 
   Expected: missing sensitive actions and workflow routes/actions.
 
-- [ ] **Step 3: Implement lifecycle actions**
+- [x] **Step 3: Implement lifecycle actions**
 
   Add `approveCorporateDecisionFacts`, `recordCorporateSigningRequested`, `attestSignedCorporateArtifact`, `rejectCorporateDecision`, and `finalizeCorporateDecision`. Each authenticates, loads the immutable decision/set/artifacts, calls `requireStepUpForAction` where required, verifies current hashes, then invokes one RPC. Signed upload uses a new object with `upsert:false`; failure cleanup cannot delete the unsigned or prior signed object.
 
-- [ ] **Step 4: Implement the decision review page**
+- [x] **Step 4: Implement the decision review page**
 
   Display persisted facts, template/input/content hashes, owner-only PDF previews, state history, exact signer checklist, signed uploads, and finalization result. Copy must say `signert kopi bekreftet av eier`, not `verifisert signatur`.
 
-- [ ] **Step 5: Run workflow, security, document, and type tests green**
+- [x] **Step 5: Run workflow, security, document, and type tests green**
 
   Run: `node --experimental-strip-types --test tests/security_step_up.test.mjs tests/corporate_decision_workflow.test.mjs tests/documents.test.mjs`
 
