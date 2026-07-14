@@ -210,6 +210,34 @@ test("requires strict RFC3339 evidence instants in chronological order", () => {
   }
 });
 
+test("supports only PostgreSQL-safe RFC3339 fractional precision before chronology checks", () => {
+  for (const timestamp of [
+    "2026-07-14T12:20:00Z",
+    "2026-07-14T12:20:00.1Z",
+    "2026-07-14T12:20:00.123456Z",
+  ]) {
+    const projected = project(companyTaxEvidence({ validatedAt: timestamp }));
+    assert.equal(projected.submission.calls[0].created_at, timestamp);
+  }
+
+  for (const evidence of [
+    companyTaxEvidence({ validatedAt: "2026-07-14T12:20:00.1234567Z" }),
+    companyTaxEvidence({
+      validatedAt: "2026-07-14T12:20:00.0000002Z",
+      confirmationPreparedAt: "2026-07-14T12:20:00.0000001Z",
+    }),
+  ]) {
+    assert.throws(
+      () => project(evidence),
+      (error) => /tidspunkt/u.test(error.message) && !/kronologi/u.test(error.message),
+    );
+  }
+  assert.throws(
+    () => project(companyTaxEvidence(), { recordedAt: "2026-07-14T12:32:00.1234567Z" }),
+    (error) => /tidspunkt/u.test(error.message) && !/kronologi/u.test(error.message),
+  );
+});
+
 test("projection omits raw documents, authority secrets, party data, and personal identifiers", () => {
   const json = JSON.stringify(project());
   for (const sentinel of [

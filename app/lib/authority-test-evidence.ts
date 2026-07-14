@@ -79,7 +79,7 @@ const COMPANY_TAX_SCHEMAS = [
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const INSTANCE_ID_PATTERN = /^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const DATA_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
-const RFC3339_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/u;
+const RFC3339_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/u;
 const MAX_EVIDENCE_URL_LENGTH = 2048;
 
 function required(value: string, label: string) {
@@ -487,7 +487,9 @@ export function validatedCompanyTaxReturnEvidence(
     evidence.receiptRetrievedAt,
     "Tilbakemeldingshentetidspunkt",
   );
-  const recordedAt = input.recordedAt ?? receiptRetrievedAt;
+  const recordedAt = input.recordedAt === undefined
+    ? receiptRetrievedAt
+    : evidenceIsoDate(input.recordedAt, "Registreringstidspunkt");
   requireChronologicalEvidenceTimestamps([
     { label: "validering", value: validatedAt },
     { label: "personbekreftelse-handoff", value: confirmationPreparedAt },
@@ -554,6 +556,21 @@ export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
   input: CompanyTaxReturnAuthorityTestRunImportInput,
 ): AuthorityTestRun {
   return validatedCompanyTaxReturnEvidence(input).authorityRun;
+}
+
+export function authorityTestRunStatusLabel(status: AuthorityTestRunStatus): string {
+  if (status === "accepted") return "Akseptert test-evidens";
+  if (status === "rejected") return "Avvist test-evidens";
+  if (status === "blocked") return "Blokkert test-evidens";
+  return "Venter på klassifisering";
+}
+
+export function authorityTestEvidenceGateStatusLabel(status: AuthorityTestEvidenceGateStatus): string {
+  if (status === "test_evidence_ready") return "Test-evidens klar";
+  if (status === "test_evidence_rejected") return "Test-evidens avvist";
+  if (status === "test_evidence_blocked") return "Test-evidens blokkert";
+  if (status === "test_evidence_pending") return "Venter på klassifisering";
+  return "Test-evidens mangler";
 }
 
 export function authorityTestEvidenceGate(

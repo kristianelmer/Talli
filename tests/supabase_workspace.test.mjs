@@ -1119,6 +1119,10 @@ test(
         payload.submission.receipt_metadata.archivedAt = invalidTimestamp;
         payload.submission.submitted_payload_ref.storedAt = invalidTimestamp;
       }],
+      ["sub-microsecond reversed chronology", (payload) => {
+        payload.submission.calls[0].created_at = "2026-07-14T12:20:00.0000002Z";
+        payload.submission.calls[1].created_at = "2026-07-14T12:20:00.0000001Z";
+      }],
     ]) {
       const timestampAttack = structuredClone(companyTaxPersistence);
       mutate(timestampAttack);

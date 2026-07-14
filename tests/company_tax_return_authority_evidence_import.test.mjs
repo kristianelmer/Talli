@@ -94,7 +94,13 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
     /v_rfc3339_instant_pattern constant text :=\s*'([^']+)'/u,
   )?.[1] ?? "";
   const rfc3339Pattern = new RegExp(rfc3339PatternSource, "u");
-  assert.equal(rfc3339Pattern.test("2026-07-14T23:59:59.123Z"), true);
+  for (const validTimestamp of [
+    "2026-07-14T23:59:59Z",
+    "2026-07-14T23:59:59.1Z",
+    "2026-07-14T23:59:59.123456Z",
+  ]) {
+    assert.equal(rfc3339Pattern.test(validTimestamp), true);
+  }
   assert.equal(rfc3339Pattern.test("2026-07-14T23:59:59+23:59"), true);
   for (const invalidTimestamp of [
     "2026-13-14T23:59:59Z",
@@ -103,6 +109,7 @@ test("migration exposes one authenticated owner-AAL2-protected atomic import RPC
     "2026-07-14T23:59:60Z",
     "2026-07-14T23:59:59+24:00",
     "2026-07-14T23:59:59+23:60",
+    "2026-07-14T23:59:59.1234567Z",
   ]) {
     assert.equal(
       rfc3339Pattern.test(invalidTimestamp),
@@ -248,5 +255,5 @@ test("workspace offers a company-tax JSON evidence import bound to the active ye
   assert.match(workspace, /name="incomeYear" type="hidden" value=\{primaryIncomeYear\}/u);
   assert.match(workspace, /Verifisert skattemelding-evidens fra TT02/u);
   assert.match(workspace, /name="evidenceFile"[^>]*type="file"/u);
-  assert.match(workspace, /status pending/u);
+  assert.match(workspace, /tilstanden «Venter på klassifisering»/u);
 });

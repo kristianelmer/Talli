@@ -79,7 +79,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await page.waitForLoadState("networkidle");
   await page.reload();
   await page.waitForLoadState("networkidle");
-  await expectText(page, "ready");
+  await expectText(page, "Klar for produksjonsinnsending");
 
   await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
   await page.waitForLoadState("networkidle");

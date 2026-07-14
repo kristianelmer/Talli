@@ -45,10 +45,15 @@ import {
 } from "../../actions";
 import { productionBillingGate } from "../../lib/billing";
 import { buildCancellationLifecycle, cancellationStatusLabel } from "../../lib/cancellation";
-import { authorityTestEvidenceGate } from "../../lib/authority-test-evidence";
+import {
+  authorityTestEvidenceGate,
+  authorityTestEvidenceGateStatusLabel,
+  authorityTestRunStatusLabel,
+} from "../../lib/authority-test-evidence";
 import {
   authorityObligationLabel,
   authorityObligations,
+  authorityPermissionGateStatusLabel,
   productionAuthorityGate,
 } from "../../lib/authority-permission";
 import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from "../../lib/launch-signoff";
@@ -90,6 +95,7 @@ import {
 } from "../../lib/supabase/server";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
+import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation";
 
 type WorkspaceProps = {
   searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string }>;
@@ -197,6 +203,10 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
         return false;
       }
     });
+  const submissionPresentation = buildWorkspaceSubmissionPresentation({
+    submissions,
+    authorityTestRuns: primaryAuthorityTestRuns,
+  });
   return (
     <>
       <section className="band mutedBand">
@@ -1238,7 +1248,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <p>
                     Importen krever riktig selskap og år, eksakte TT02-scopes, validertOK,
                     fullført personbekreftelse, offisiell tilbakemelding og arkiv. Resultatet
-                    lagres med status pending og aktiverer aldri produksjon.
+                    lagres med tilstanden «Venter på klassifisering» og aktiverer aldri produksjon.
                   </p>
                 </form>
                 <div className="readinessGrid">
@@ -1250,14 +1260,16 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     return (
                       <div className="readinessItem" key={obligation}>
                         <span>{authorityObligationLabel(obligation)}</span>
-                        <strong data-status={gate.allowed ? "ready" : permission ? "warning" : "draft"}>{gate.status}</strong>
+                        <strong data-status={gate.allowed ? "ready" : permission ? "warning" : "draft"}>
+                          {authorityPermissionGateStatusLabel(gate.status)}
+                        </strong>
                         <p>{gate.message}</p>
-                        <p>Test-evidens: {evidenceGate.status}</p>
+                        <p>Test-evidens: {authorityTestEvidenceGateStatusLabel(evidenceGate.status)}</p>
                         <p>{evidenceGate.message}</p>
                         <p>
                           Siste testref:{" "}
                           {latestRun
-                            ? `${latestRun.test_reference} (${latestRun.status})`
+                            ? `${latestRun.test_reference} (${authorityTestRunStatusLabel(latestRun.status)})`
                             : "Ingen"}
                         </p>
                         <p>
@@ -1276,7 +1288,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Arkivert kvittering uten live Altinn-innsending.</h2>
                 </div>
                 <div className="readinessGrid">
-                  {submissions.map((submission) => (
+                  {submissionPresentation.simulations.map(({ submission }) => (
                     <div className="readinessItem" key={submission.id}>
                       <span>{submission.income_year}</span>
                       <strong data-status={submission.status}>{submission.receipt_id ?? "Ingen kvittering"}</strong>
@@ -1288,7 +1300,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                       <a href={`/archive/${submission.company_id}/${submission.income_year}/download`}>Eksporter arkiv</a>
                     </div>
                   ))}
-                  {submissions.length === 0 ? (
+                  {submissionPresentation.simulations.length === 0 ? (
                     <div className="readinessItem">
                       <span>Kvittering</span>
                       <strong data-status="draft">Ikke arkivert</strong>
@@ -1297,6 +1309,32 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   ) : null}
                 </div>
               </section>
+
+              {submissionPresentation.testAuthority.length > 0 ? (
+                <section className="band">
+                  <div className="sectionHeader">
+                    <p className="eyebrow">TT02-testinnsending</p>
+                    <h2>Mottatt testtilbakemelding venter på klassifisering.</h2>
+                  </div>
+                  <div className="readinessGrid">
+                    {submissionPresentation.testAuthority.map((item) => (
+                      <div className="readinessItem" key={item.submission.id}>
+                        <span>{item.submission.income_year}</span>
+                        <strong data-status="warning">{item.statusLabel}</strong>
+                        <p>
+                          Dette er test-evidens fra TT02. Den er ikke en produksjonsinnsending og
+                          dokumenterer ikke myndighetsaksept.
+                        </p>
+                        <p>Tilbakemeldingsdata-ID: {item.submission.receipt_id ?? "Mangler"}</p>
+                        <p>Arkivreferanse: {item.archiveReference ?? "Mangler"}</p>
+                        <a href={`/archive/${item.submission.company_id}/${item.submission.income_year}/download`}>
+                          Eksporter arkiv
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <section className="band mutedBand">
                 <div className="sectionHeader">

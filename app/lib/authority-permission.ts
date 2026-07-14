@@ -42,6 +42,12 @@ export function validateAuthorityObligation(value: string): AuthorityObligation 
   return value as AuthorityObligation;
 }
 
+export function authorityPermissionGateStatusLabel(status: AuthorityPermissionGateStatus): string {
+  if (status === "ready_for_production_submission") return "Klar for produksjonsinnsending";
+  if (status === "production_disabled") return "Produksjonsinnsending deaktivert";
+  return "Innsendingsrett ikke bekreftet";
+}
+
 export function productionAuthorityGate(
   permissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[],
   obligation: AuthorityObligation,

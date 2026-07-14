@@ -1,5 +1,5 @@
 import { buildPersistedCompanyArchive } from "../../../../lib/archive";
-import { requireStepUpForAction, SensitiveActionStepUpError } from "../../../../lib/security";
+import { requireStepUpForAction } from "../../../../lib/security";
 import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
@@ -32,12 +32,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       companyId,
       action: "archive_export",
     });
-  } catch (stepUpError) {
-    const message =
-      stepUpError instanceof SensitiveActionStepUpError
-        ? stepUpError.userMessage
-        : "Arkiveksport stoppet: MFA/step-up kunne ikke kontrolleres.";
-    return new Response(message, { status: 403 });
+  } catch {
+    return new Response(
+      "Ekstra identitetsbekreftelse med tofaktorautentisering kreves før arkivet kan lastes ned.",
+      { status: 403 },
+    );
   }
 
   const { data: submissions, error: submissionError } = await supabase

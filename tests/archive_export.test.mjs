@@ -494,4 +494,10 @@ test("archive download fetches only sanitized authority runs linked by submissio
   );
   assert.doesNotMatch(route, /authority_test_runs[\s\S]*\.select\("\*"\)/u);
   assert.match(route, /authorityTestRuns: authorityTestRuns \?\? \[\]/u);
+  assert.match(
+    route,
+    /Ekstra identitetsbekreftelse med tofaktorautentisering kreves før arkivet kan lastes ned\./u,
+  );
+  assert.doesNotMatch(route, /stepUpError\.userMessage/u);
+  assert.doesNotMatch(route, /MFA\/step-up/u);
 });
