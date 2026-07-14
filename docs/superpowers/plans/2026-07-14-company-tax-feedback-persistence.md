@@ -4,7 +4,7 @@
 
 **Goal:** Persist completed company-tax TT02 evidence as an idempotent, company/year-bound filing state with structured pending feedback, receipt/archive metadata, and owner-visible archive output while production remains disabled.
 
-**Architecture:** Extend the strict evidence mapper with a pure persistence projection, then pass that projection to one step-up-protected PostgreSQL RPC that atomically upserts the authority test run and its linked `filing_submissions` record. The filing record uses an explicit `test_authority` mode, stores only sanitized hashes/references, and stops at `feedback_ready` because the receipt does not contain a machine-verified accepted/rejected outcome. Owner UI and archive export read the same persisted record; no production flag, permission, launch signoff, raw XML, token, or key is written.
+**Architecture:** Extend the strict evidence mapper with a pure persistence projection, then pass that projection to one Supabase-JWT-AAL2-protected PostgreSQL RPC that atomically upserts the authority test run and its linked `filing_submissions` record. The filing record uses an explicit `test_authority` mode, stores only sanitized hashes/references, and stops at `feedback_ready` because the receipt does not contain a machine-verified accepted/rejected outcome. Owner UI and archive export read the same persisted record; no production flag, permission, launch signoff, raw XML, token, or key is written.
 
 **Tech Stack:** Next.js 16.2.9, TypeScript, Node test runner, Supabase/PostgreSQL 17, Altinn TT02 evidence schema v2
 
@@ -131,7 +131,7 @@
 
 ---
 
-### Task 2: Atomic, owner-step-up-protected evidence import
+### Task 2: Atomic, owner-AAL2-protected evidence import
 
 **Files:**
 
@@ -143,7 +143,7 @@
 
 **Interfaces:**
 
-- Consumes: `buildCompanyTaxReturnEvidencePersistence(...)` and an authenticated owner with a fresh step-up event.
+- Consumes: `buildCompanyTaxReturnEvidencePersistence(...)` and an authenticated owner whose current Supabase JWT has AAL2.
 - Produces: one atomic, retry-safe authority-test-run/filing-submission pair linked by `authority_test_run_id`.
 
 - [x] **Step 1: Add failing migration and action tests**
@@ -154,7 +154,7 @@
   - permits `mode IN ('simulation', 'test_authority')` and `adapter_mode IN ('simulation', 'test_authority', 'production')` while retaining the owner RLS policy's direct-write requirement `mode = 'simulation'`;
   - permits `preview_id IS NULL` only when `mode = 'test_authority'` and requires a preview for simulation;
   - creates `public.import_company_tax_tt02_evidence(jsonb)` as `security definer` with `search_path = public, pg_temp`;
-  - checks `auth.uid()`, accepted owner membership, a step-up event from the last 15 minutes, company/year identity, obligation `skattemelding`, test environment, pending authority status, test-authority mode, feedback-ready status, matching hashes/references, and null raw payload;
+  - checks `auth.uid()`, the current `auth.jwt()` AAL2 claim, accepted owner membership, company organization-number/year identity, obligation `skattemelding`, test environment, pending authority status, test-authority mode, feedback-ready status, recomputed canonical payload digest, exact hashes/references/shapes, and null raw payload;
   - grants execute only to `authenticated` after revoking public/anon access.
 
   Assert `recordCompanyTaxReturnTt02Evidence` calls the pure projection and exactly one RPC instead of a direct `authority_test_runs` insert.
@@ -218,8 +218,8 @@
 
   Extend the Supabase workspace test to apply migration 0005 and prove:
 
-  - an owner without fresh step-up is rejected;
-  - a stepped-up owner creates exactly one linked authority run and submission;
+  - an owner whose current session is only AAL1 is rejected;
+  - an AAL2 owner creates exactly one linked authority run and submission;
   - retry returns the same IDs and does not add an audit row;
   - a conflicting payload/receipt is rejected;
   - reviewer/outsider cannot call the RPC;

@@ -41,16 +41,19 @@ test("migration links test-authority submissions without opening the direct-writ
   assert.match(updatePolicyUsing, /and mode = 'simulation'/u);
 });
 
-test("migration exposes one authenticated owner-step-up-protected atomic import RPC", () => {
+test("migration exposes one authenticated owner-AAL2-protected atomic import RPC", () => {
   assert.match(
     migration,
     /create or replace function public\.import_company_tax_tt02_evidence\(p_payload jsonb\)/u,
   );
   assert.match(migration, /security definer\s+set search_path = public, pg_temp/u);
   assert.match(migration, /auth\.uid\(\)/u);
+  assert.match(migration, /auth\.jwt\(\)\s*->>\s*'aal'/u);
+  assert.match(migration, /is distinct from 'aal2'/u);
+  assert.match(migration, /company_tax_evidence_mfa_required/u);
   assert.match(migration, /m\.role = 'owner'/u);
   assert.match(migration, /m\.accepted_at is not null/u);
-  assert.match(migration, /now\(\) - interval '15 minutes'/u);
+  assert.doesNotMatch(migration, /from public\.step_up_events/u);
   assert.match(migration, /obligation is distinct from 'skattemelding'/u);
   assert.match(migration, /environment is distinct from 'test'/u);
   assert.match(migration, /status is distinct from 'pending'/u);
@@ -65,6 +68,18 @@ test("migration exposes one authenticated owner-step-up-protected atomic import 
   assert.match(migration, /calls -> 2 ->> 'status' is distinct from 'received'/u);
   assert.match(migration, /receipt_metadata - array\[/u);
   assert.match(migration, /submitted_payload_ref - array\[/u);
+  assert.match(migration, /\?& array\[/u);
+  assert.match(migration, /companyOrgNumber/u);
+  assert.match(migration, /incomeYear/u);
+  assert.match(migration, /from public\.companies/u);
+  assert.match(migration, /encode\(digest\(/u);
+  assert.match(migration, /skattemelding:/u);
+  assert.match(migration, /naeringsspesifikasjon:/u);
+  assert.match(migration, /validationEnvelope:/u);
+  assert.match(migration, /submissionEnvelope:/u);
+  assert.match(migration, /receipt_id !~/u);
+  assert.match(migration, /octet_length/u);
+  assert.match(migration, /company_tax_evidence_forbidden_content/u);
   assert.match(migration, /company_tax_evidence_conflict/u);
   assert.match(migration, /insert into public\.audit_events/u);
   assert.match(
@@ -98,15 +113,20 @@ test("runtime imports completed company-tax TT02 evidence through exactly one at
   )?.[0] ?? "";
   assert.match(
     actionBody,
-    /const persistence = buildCompanyTaxReturnEvidencePersistence\(/u,
+    /persistence = buildCompanyTaxReturnEvidencePersistence\(/u,
   );
   assert.match(
     actionBody,
     /supabase\.rpc\("import_company_tax_tt02_evidence", \{\s*p_payload: persistence,\s*\}\)/u,
   );
   assert.equal(actionBody.match(/supabase\.rpc\(/gu)?.length, 1);
+  assert.doesNotMatch(actionBody, /requireSensitiveActionStepUp/u);
   assert.doesNotMatch(actionBody, /\.from\("authority_test_runs"\)\.insert/u);
   assert.doesNotMatch(actionBody, /\.from\("audit_events"\)\.insert/u);
+  assert.match(actionBody, /try \{[\s\S]*buildCompanyTaxReturnEvidencePersistence/u);
+  assert.match(actionBody, /Ugyldig TT02-evidens/u);
+  assert.match(actionBody, /company_tax_evidence_mfa_required/u);
+  assert.doesNotMatch(actionBody, /encodeURIComponent\(error\.message\)/u);
   assert.doesNotMatch(
     actionBody,
     /production_enabled|authority_permissions|launch_signoffs/u,

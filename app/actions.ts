@@ -4042,7 +4042,6 @@ export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
   }
 
   const companyId = formString(formData, "companyId");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "confirm_authority");
   const evidenceFile = formData.get("evidenceFile");
   if (!(evidenceFile instanceof File)
     || !evidenceFile.name.toLowerCase().endsWith(".json")
@@ -4067,20 +4066,28 @@ export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
   }
 
-  const persistence = buildCompanyTaxReturnEvidencePersistence({
-    companyId,
-    expectedCompanyOrgNumber: company.org_number,
-    expectedIncomeYear: Number(formString(formData, "incomeYear")),
-    evidence,
-    evidenceUrl: formString(formData, "evidenceUrl"),
-    recordedBy: user.id,
-  });
+  let persistence;
+  try {
+    persistence = buildCompanyTaxReturnEvidencePersistence({
+      companyId,
+      expectedCompanyOrgNumber: company.org_number,
+      expectedIncomeYear: Number(formString(formData, "incomeYear")),
+      evidence,
+      evidenceUrl: formString(formData, "evidenceUrl"),
+      recordedBy: user.id,
+    });
+  } catch {
+    redirect(`/workspace?error=${encodeURIComponent("Ugyldig TT02-evidens")}`);
+  }
 
   const { error } = await supabase.rpc("import_company_tax_tt02_evidence", {
     p_payload: persistence,
   });
   if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+    const message = error.message.includes("company_tax_evidence_mfa_required")
+      ? "MFA/step-up kreves for TT02-import."
+      : "TT02-evidensen kunne ikke lagres.";
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   revalidatePath("/");

@@ -109,16 +109,24 @@ declare
   v_persisted_authority public.authority_test_runs%rowtype;
   v_persisted_submission public.filing_submissions%rowtype;
   v_expected_archive_reference text;
+  v_company_org_number text;
+  v_reference_income_year integer;
+  v_recomputed_payload_hash text;
+  v_call jsonb;
+  v_call_index integer;
   v_created boolean := false;
 begin
   if v_actor_id is null then
     raise exception 'company_tax_evidence_authentication_required';
   end if;
 
+  if (select auth.jwt() ->> 'aal') is distinct from 'aal2' then
+    raise exception 'company_tax_evidence_mfa_required';
+  end if;
+
   if p_payload is null
     or jsonb_typeof(p_payload) is distinct from 'object'
-    or not (p_payload ? 'authorityRun')
-    or not (p_payload ? 'submission')
+    or not (p_payload ?& array['authorityRun', 'submission'])
     or p_payload - array['authorityRun', 'submission'] is distinct from '{}'::jsonb
     or jsonb_typeof(p_payload -> 'authorityRun') is distinct from 'object'
     or jsonb_typeof(p_payload -> 'submission') is distinct from 'object' then
@@ -127,11 +135,22 @@ begin
 
   v_authority_payload := p_payload -> 'authorityRun';
   v_submission_payload := p_payload -> 'submission';
-  if v_authority_payload - array[
+  if not (v_authority_payload ?& array[
+      'company_id', 'obligation', 'environment', 'status', 'test_reference',
+      'feedback_summary', 'receipt_reference', 'archive_reference', 'evidence_url',
+      'payload_hash', 'recorded_by', 'recorded_at'
+    ])
+    or v_authority_payload - array[
       'company_id', 'obligation', 'environment', 'status', 'test_reference',
       'feedback_summary', 'receipt_reference', 'archive_reference', 'evidence_url',
       'payload_hash', 'recorded_by', 'recorded_at'
     ] is distinct from '{}'::jsonb
+    or not (v_submission_payload ?& array[
+      'company_id', 'income_year', 'filing', 'mode', 'adapter_mode', 'payload_hash',
+      'idempotency_key', 'status', 'calls', 'receipt_id', 'feedback_document_ids',
+      'feedback_items', 'receipt_metadata', 'submitted_payload_ref', 'submitted_payload',
+      'failure_code', 'failure_message', 'created_by', 'submitted_by', 'updated_at'
+    ])
     or v_submission_payload - array[
       'company_id', 'income_year', 'filing', 'mode', 'adapter_mode', 'payload_hash',
       'idempotency_key', 'status', 'calls', 'receipt_id', 'feedback_document_ids',
@@ -140,6 +159,128 @@ begin
     ] is distinct from '{}'::jsonb then
     raise exception 'company_tax_evidence_invalid_payload';
   end if;
+
+  if octet_length(p_payload::text) > 32768
+    or p_payload::text ~* '<[^>]+>'
+    or p_payload::text ~* '(raw_xml_sentinel|party_number_sentinel|access_token_sentinel|private_key_sentinel|personal_identifier_sentinel)' then
+    raise exception 'company_tax_evidence_forbidden_content';
+  end if;
+
+  if jsonb_typeof(v_authority_payload -> 'company_id') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'obligation') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'environment') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'status') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'test_reference') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'feedback_summary') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'receipt_reference') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'archive_reference') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'evidence_url') not in ('string', 'null')
+    or jsonb_typeof(v_authority_payload -> 'payload_hash') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'recorded_by') is distinct from 'string'
+    or jsonb_typeof(v_authority_payload -> 'recorded_at') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'company_id') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'income_year') is distinct from 'number'
+    or jsonb_typeof(v_submission_payload -> 'filing') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'mode') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'adapter_mode') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'payload_hash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'idempotency_key') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'status') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'calls') is distinct from 'array'
+    or jsonb_typeof(v_submission_payload -> 'receipt_id') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'feedback_document_ids') is distinct from 'array'
+    or jsonb_typeof(v_submission_payload -> 'feedback_items') is distinct from 'array'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata') is distinct from 'object'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref') is distinct from 'object'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload') is distinct from 'null'
+    or jsonb_typeof(v_submission_payload -> 'failure_code') is distinct from 'null'
+    or jsonb_typeof(v_submission_payload -> 'failure_message') is distinct from 'null'
+    or jsonb_typeof(v_submission_payload -> 'created_by') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_by') is distinct from 'null'
+    or jsonb_typeof(v_submission_payload -> 'updated_at') is distinct from 'string' then
+    raise exception 'company_tax_evidence_invalid_payload';
+  end if;
+
+  if jsonb_array_length(v_submission_payload -> 'calls') <> 3
+    or jsonb_array_length(v_submission_payload -> 'feedback_document_ids') <> 1
+    or jsonb_array_length(v_submission_payload -> 'feedback_items') <> 1
+    or (v_submission_payload -> 'income_year')::text !~ '^[0-9]+$'
+    or (v_submission_payload -> 'receipt_metadata' -> 'byteLength')::text !~ '^[0-9]+$'
+    or (v_submission_payload -> 'submitted_payload_ref' -> 'incomeYear')::text !~ '^[0-9]+$'
+    or jsonb_typeof(v_submission_payload -> 'feedback_items' -> 0) is distinct from 'object'
+    or not ((v_submission_payload -> 'feedback_items' -> 0) ?& array[
+      'severity', 'code', 'message', 'documentId'
+    ])
+    or (v_submission_payload -> 'feedback_items' -> 0) - array[
+      'severity', 'code', 'message', 'documentId'
+    ] is distinct from '{}'::jsonb
+    or jsonb_typeof(v_submission_payload -> 'feedback_items' -> 0 -> 'severity') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'feedback_items' -> 0 -> 'code') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'feedback_items' -> 0 -> 'message') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'feedback_items' -> 0 -> 'documentId') is distinct from 'string'
+    or not (v_submission_payload -> 'receipt_metadata' ?& array[
+      'authority', 'receiptId', 'status', 'receivedAt', 'feedbackDocumentIds',
+      'dataType', 'contentType', 'byteLength', 'contentSha256', 'reference',
+      'archiveReference', 'processEndedAt', 'archivedAt'
+    ])
+    or (v_submission_payload -> 'receipt_metadata') - array[
+      'authority', 'receiptId', 'status', 'receivedAt', 'feedbackDocumentIds',
+      'dataType', 'contentType', 'byteLength', 'contentSha256', 'reference',
+      'archiveReference', 'processEndedAt', 'archivedAt'
+    ] is distinct from '{}'::jsonb
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'authority') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'receiptId') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'status') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'receivedAt') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'feedbackDocumentIds') is distinct from 'array'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'dataType') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'contentType') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'byteLength') is distinct from 'number'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'contentSha256') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'reference') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'archiveReference') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'processEndedAt') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'receipt_metadata' -> 'archivedAt') is distinct from 'string'
+    or not (v_submission_payload -> 'submitted_payload_ref' ?& array[
+      'companyOrgNumber', 'incomeYear', 'envelopeDataId', 'archiveReference',
+      'payloadHash', 'skattemeldingHash', 'naeringsspesifikasjonHash',
+      'validationEnvelopeHash', 'submissionEnvelopeHash',
+      'currentDocumentReferenceHash', 'storedAt'
+    ])
+    or (v_submission_payload -> 'submitted_payload_ref') - array[
+      'companyOrgNumber', 'incomeYear', 'envelopeDataId', 'archiveReference',
+      'payloadHash', 'skattemeldingHash', 'naeringsspesifikasjonHash',
+      'validationEnvelopeHash', 'submissionEnvelopeHash',
+      'currentDocumentReferenceHash', 'storedAt'
+    ] is distinct from '{}'::jsonb
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'companyOrgNumber') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'incomeYear') is distinct from 'number'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'envelopeDataId') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'archiveReference') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'payloadHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'skattemeldingHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'naeringsspesifikasjonHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'validationEnvelopeHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'submissionEnvelopeHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'currentDocumentReferenceHash') is distinct from 'string'
+    or jsonb_typeof(v_submission_payload -> 'submitted_payload_ref' -> 'storedAt') is distinct from 'string' then
+    raise exception 'company_tax_evidence_invalid_payload';
+  end if;
+
+  for v_call_index in 0..2 loop
+    v_call := v_submission_payload -> 'calls' -> v_call_index;
+    if jsonb_typeof(v_call) is distinct from 'object'
+      or not (v_call ?& array['endpoint', 'body_hash', 'idempotency_key', 'status', 'created_at'])
+      or v_call - array['endpoint', 'body_hash', 'idempotency_key', 'status', 'created_at']
+        is distinct from '{}'::jsonb
+      or jsonb_typeof(v_call -> 'endpoint') is distinct from 'string'
+      or jsonb_typeof(v_call -> 'body_hash') is distinct from 'string'
+      or jsonb_typeof(v_call -> 'idempotency_key') is distinct from 'null'
+      or jsonb_typeof(v_call -> 'status') is distinct from 'string'
+      or jsonb_typeof(v_call -> 'created_at') is distinct from 'string' then
+      raise exception 'company_tax_evidence_invalid_payload';
+    end if;
+  end loop;
 
   begin
     select * into v_authority
@@ -168,7 +309,7 @@ begin
         or v_authority.evidence_url like '%?%'
         or v_authority.evidence_url like '%#%'
         or v_authority.evidence_url like '%@%'
-        or length(v_authority.evidence_url) > 2048
+        or octet_length(v_authority.evidence_url) > 2048
       )
     )
     or v_submission.filing is distinct from 'skattemelding for AS'
@@ -204,39 +345,49 @@ begin
     raise exception 'company_tax_evidence_invalid_payload';
   end if;
 
-  if not exists (
-    select 1
-    from public.step_up_events s
-    where s.actor_id = v_actor_id
-      and s.mfa_verified_at <= now() + interval '1 minute'
-      and s.mfa_verified_at >= now() - interval '15 minutes'
-  ) then
-    raise exception 'company_tax_evidence_fresh_step_up_required';
-  end if;
-
-  v_expected_archive_reference :=
-    'https://platform.tt02.altinn.no/storage/api/v1/instances/'
-    || substring(v_authority.test_reference from 6);
+  begin
+    v_expected_archive_reference :=
+      'https://platform.tt02.altinn.no/storage/api/v1/instances/'
+      || substring(v_authority.test_reference from 6);
+    select c.org_number into v_company_org_number
+    from public.companies c
+    where c.id = v_authority.company_id;
+    v_reference_income_year :=
+      (v_submission.submitted_payload_ref ->> 'incomeYear')::integer;
+    v_recomputed_payload_hash := encode(digest(
+      'skattemelding:' || (v_submission.submitted_payload_ref ->> 'skattemeldingHash') || E'\n'
+      || 'naeringsspesifikasjon:' || (v_submission.submitted_payload_ref ->> 'naeringsspesifikasjonHash') || E'\n'
+      || 'validationEnvelope:' || (v_submission.submitted_payload_ref ->> 'validationEnvelopeHash') || E'\n'
+      || 'submissionEnvelope:' || (v_submission.submitted_payload_ref ->> 'submissionEnvelopeHash'),
+      'sha256'
+    ), 'hex');
 
   if v_authority.test_reference is null
     or v_authority.test_reference !~ '^tt02:[0-9]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-    or v_submission.payload_hash is null
-    or v_submission.payload_hash !~ '^[0-9a-f]{64}$'
-    or v_submission.receipt_id is null
-    or v_authority.payload_hash is distinct from 'sha256:' || v_submission.payload_hash
+    or octet_length(v_authority.test_reference) > 64
+    or v_submission.receipt_id !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    or v_submission.submitted_payload_ref ->> 'companyOrgNumber' !~ '^[0-9]{9}$'
+    or v_submission.submitted_payload_ref ->> 'companyOrgNumber' is distinct from v_company_org_number
+    or v_reference_income_year is distinct from v_submission.income_year
+    or v_submission.payload_hash is distinct from v_recomputed_payload_hash
+    or v_submission.submitted_payload_ref ->> 'payloadHash' is distinct from v_recomputed_payload_hash
+    or v_authority.payload_hash is distinct from 'sha256:' || v_recomputed_payload_hash
     or v_submission.idempotency_key is distinct from
       'company-tax:' || v_submission.company_id::text || ':'
-      || v_submission.income_year::text || ':' || v_submission.payload_hash
+      || v_submission.income_year::text || ':' || v_recomputed_payload_hash
+    or octet_length(v_submission.idempotency_key) > 180
     or v_authority.archive_reference is distinct from v_expected_archive_reference
+    or octet_length(v_authority.archive_reference) > 2048
     or v_authority.receipt_reference is distinct from
       v_expected_archive_reference || '/data/' || v_submission.receipt_id
+    or octet_length(v_authority.receipt_reference) > 2048
     or jsonb_typeof(v_submission.calls) is distinct from 'array'
     or jsonb_array_length(v_submission.calls) is distinct from 3
     or jsonb_typeof(v_submission.feedback_document_ids) is distinct from 'array'
     or v_submission.feedback_document_ids is distinct from jsonb_build_array(v_submission.receipt_id)
     or jsonb_typeof(v_submission.feedback_items) is distinct from 'array'
     or jsonb_array_length(v_submission.feedback_items) is distinct from 1
-    or v_submission.feedback_items -> 0 - array[
+    or (v_submission.feedback_items -> 0) - array[
       'severity', 'code', 'message', 'documentId'
     ] is distinct from '{}'::jsonb
     or v_submission.feedback_items -> 0 ->> 'documentId' is distinct from v_submission.receipt_id
@@ -260,26 +411,26 @@ begin
     or v_submission.receipt_metadata ->> 'reference' is distinct from v_authority.receipt_reference
     or v_submission.receipt_metadata ->> 'archiveReference' is distinct from v_authority.archive_reference
     or v_submission.submitted_payload_ref - array[
-      'envelopeDataId', 'archiveReference', 'payloadHash', 'skattemeldingHash',
-      'naeringsspesifikasjonHash', 'validationEnvelopeHash', 'submissionEnvelopeHash',
+      'companyOrgNumber', 'incomeYear', 'envelopeDataId', 'archiveReference',
+      'payloadHash', 'skattemeldingHash', 'naeringsspesifikasjonHash',
+      'validationEnvelopeHash', 'submissionEnvelopeHash',
       'currentDocumentReferenceHash', 'storedAt'
     ] is distinct from '{}'::jsonb
     or v_submission.submitted_payload_ref ->> 'envelopeDataId'
       !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
     or v_submission.submitted_payload_ref ->> 'archiveReference' is distinct from v_authority.archive_reference
-    or v_submission.submitted_payload_ref ->> 'payloadHash' is distinct from v_submission.payload_hash
     or v_submission.submitted_payload_ref ->> 'skattemeldingHash' !~ '^[0-9a-f]{64}$'
     or v_submission.submitted_payload_ref ->> 'naeringsspesifikasjonHash' !~ '^[0-9a-f]{64}$'
     or v_submission.submitted_payload_ref ->> 'validationEnvelopeHash' !~ '^[0-9a-f]{64}$'
     or v_submission.submitted_payload_ref ->> 'submissionEnvelopeHash' !~ '^[0-9a-f]{64}$'
     or v_submission.submitted_payload_ref ->> 'currentDocumentReferenceHash' !~ '^[0-9a-f]{64}$'
-    or v_submission.calls -> 0 - array[
+    or (v_submission.calls -> 0) - array[
       'endpoint', 'body_hash', 'idempotency_key', 'status', 'created_at'
     ] is distinct from '{}'::jsonb
-    or v_submission.calls -> 1 - array[
+    or (v_submission.calls -> 1) - array[
       'endpoint', 'body_hash', 'idempotency_key', 'status', 'created_at'
     ] is distinct from '{}'::jsonb
-    or v_submission.calls -> 2 - array[
+    or (v_submission.calls -> 2) - array[
       'endpoint', 'body_hash', 'idempotency_key', 'status', 'created_at'
     ] is distinct from '{}'::jsonb
     or v_submission.calls -> 0 ->> 'endpoint' is distinct from 'skatteetaten:company-tax-validation'
@@ -313,6 +464,10 @@ begin
     or (v_submission.receipt_metadata ->> 'archivedAt')::timestamptz >= v_submission.updated_at then
     raise exception 'company_tax_evidence_invalid_payload';
   end if;
+  exception
+    when others then
+      raise exception 'company_tax_evidence_invalid_payload';
+  end;
 
   select r.* into v_persisted_authority
   from public.authority_test_runs r

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -170,6 +170,50 @@ async function signIn(user) {
   });
   assert.ifError(error);
   return client;
+}
+
+function totpCode(secret, now = Date.now()) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const normalized = secret.toUpperCase().replace(/=+$/u, "").replace(/\s+/gu, "");
+  let bits = "";
+  for (const character of normalized) {
+    const value = alphabet.indexOf(character);
+    assert.notEqual(value, -1, "Supabase returned an invalid base32 TOTP secret");
+    bits += value.toString(2).padStart(5, "0");
+  }
+  const bytes = Buffer.alloc(Math.floor(bits.length / 8));
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(bits.slice(index * 8, index * 8 + 8), 2);
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
+  const digest = createHmac("sha1", bytes).update(counter).digest();
+  const offset = digest.at(-1) & 0x0f;
+  const binary = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return String(binary).padStart(6, "0");
+}
+
+async function elevateToAal2(client) {
+  const { data: enrollment, error: enrollmentError } = await client.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: `company-tax-${randomUUID()}`,
+  });
+  assert.ifError(enrollmentError);
+  assert.ok(enrollment?.id);
+  assert.ok(enrollment?.totp?.secret);
+  const { data: challenge, error: challengeError } = await client.auth.mfa.challenge({
+    factorId: enrollment.id,
+  });
+  assert.ifError(challengeError);
+  const { error: verificationError } = await client.auth.mfa.verify({
+    factorId: enrollment.id,
+    challengeId: challenge.id,
+    code: totpCode(enrollment.totp.secret),
+  });
+  assert.ifError(verificationError);
+  const { data: assurance, error: assuranceError } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+  assert.ifError(assuranceError);
+  assert.equal(assurance.currentLevel, "aal2");
 }
 
 function companyTaxTt02Persistence({ companyId, orgNumber, ownerId }) {
@@ -776,22 +820,12 @@ test(
       .order("key");
     assert.ifError(launchSignoffsBeforeImportError);
 
-    const { error: clearStepUpError } = await admin
-      .from("step_up_events")
-      .delete()
-      .eq("actor_id", ownerUser.id);
-    assert.ifError(clearStepUpError);
-    const { error: noStepUpImportError } = await owner.rpc("import_company_tax_tt02_evidence", {
+    const { error: noMfaImportError } = await owner.rpc("import_company_tax_tt02_evidence", {
       p_payload: companyTaxPersistence,
     });
-    assert.match(noStepUpImportError?.message ?? "", /company_tax_evidence_fresh_step_up_required/u);
+    assert.match(noMfaImportError?.message ?? "", /company_tax_evidence_mfa_required/u);
 
-    const { error: importStepUpError } = await owner.from("step_up_events").insert({
-      actor_id: ownerUser.id,
-      method: "totp",
-      mfa_verified_at: new Date().toISOString(),
-    });
-    assert.ifError(importStepUpError);
+    await elevateToAal2(owner);
     const { data: importedCompanyTax, error: companyTaxImportError } = await owner.rpc(
       "import_company_tax_tt02_evidence",
       { p_payload: companyTaxPersistence },
@@ -883,6 +917,72 @@ test(
     );
     assert.match(rawNestedCompanyTaxError?.message ?? "", /company_tax_evidence_invalid_payload/u);
 
+    const missingCanonicalKeys = [
+      ["receipt metadata", (payload) => delete payload.submission.receipt_metadata.contentSha256],
+      ["payload reference", (payload) => delete payload.submission.submitted_payload_ref.validationEnvelopeHash],
+      ["feedback item", (payload) => delete payload.submission.feedback_items[0].severity],
+      ["validation call", (payload) => delete payload.submission.calls[0].status],
+      ["confirmation call", (payload) => delete payload.submission.calls[1].status],
+      ["receipt call", (payload) => delete payload.submission.calls[2].status],
+    ];
+    for (const [label, removeKey] of missingCanonicalKeys) {
+      const missingKeyPayload = structuredClone(companyTaxPersistence);
+      removeKey(missingKeyPayload);
+      const { error: missingKeyError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: missingKeyPayload,
+      });
+      assert.match(
+        missingKeyError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} key removal must fail closed`,
+      );
+    }
+
+    const identityAndDigestAttacks = [
+      ["organization number", (payload) => {
+        payload.submission.submitted_payload_ref.companyOrgNumber = "999999999";
+      }],
+      ["income year", (payload) => {
+        payload.submission.submitted_payload_ref.incomeYear = 2024;
+      }],
+      ["component digest", (payload) => {
+        payload.submission.submitted_payload_ref.validationEnvelopeHash = "0".repeat(64);
+        payload.submission.calls[0].body_hash = "0".repeat(64);
+      }],
+      ["receipt UUID", (payload) => {
+        payload.submission.receipt_id = "not-a-uuid";
+      }],
+    ];
+    for (const [label, mutate] of identityAndDigestAttacks) {
+      const attackedPayload = structuredClone(companyTaxPersistence);
+      mutate(attackedPayload);
+      const { error: attackedPayloadError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: attackedPayload,
+      });
+      assert.match(
+        attackedPayloadError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} tampering must fail closed`,
+      );
+    }
+
+    for (const forbiddenContent of [
+      "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+      "ACCESS_TOKEN_SENTINEL",
+      "PRIVATE_KEY_SENTINEL",
+      "PERSONAL_IDENTIFIER_SENTINEL",
+    ]) {
+      const forbiddenPayload = structuredClone(companyTaxPersistence);
+      forbiddenPayload.submission.feedback_items[0].message = forbiddenContent;
+      const { error: forbiddenPayloadError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: forbiddenPayload,
+      });
+      assert.match(
+        forbiddenPayloadError?.message ?? "",
+        /company_tax_evidence_forbidden_content/u,
+      );
+    }
+
     const directAuthority = {
       ...companyTaxPersistence.authorityRun,
       test_reference: `tt02:51549454/${randomUUID()}`,
@@ -901,11 +1001,38 @@ test(
       });
     assert.ok(directTestAuthoritySubmissionError);
 
+    const { data: directTestAuthorityUpdates, error: directTestAuthorityUpdateError } = await owner
+      .from("filing_submissions")
+      .update({
+        mode: "simulation",
+        adapter_mode: "simulation",
+        preview_id: filingPreview.id,
+        authority_test_run_id: null,
+      })
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .select("id");
+    assert.ifError(directTestAuthorityUpdateError);
+    assert.deepEqual(directTestAuthorityUpdates, []);
+    const { data: unchangedTestAuthoritySubmission, error: unchangedTestAuthoritySubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .single();
+    assert.ifError(unchangedTestAuthoritySubmissionError);
+    assert.deepEqual(unchangedTestAuthoritySubmission, {
+      mode: "test_authority",
+      adapter_mode: "test_authority",
+      preview_id: null,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+    });
+
+    await elevateToAal2(reviewer);
     const { error: reviewerCompanyTaxError } = await reviewer.rpc(
       "import_company_tax_tt02_evidence",
       { p_payload: companyTaxPersistence },
     );
     assert.match(reviewerCompanyTaxError?.message ?? "", /company_tax_evidence_owner_required/u);
+    await elevateToAal2(outsider);
     const { error: outsiderCompanyTaxError } = await outsider.rpc(
       "import_company_tax_tt02_evidence",
       { p_payload: companyTaxPersistence },

@@ -129,6 +129,8 @@ test("projects completed TT02 evidence as deterministic pending company-tax feed
   assert.equal(projected.submission.receipt_metadata.contentSha256, evidence.receipt.contentSha256);
   assert.equal(projected.submission.submitted_payload_ref.currentDocumentReferenceHash, evidence.currentDocumentReferenceHash);
   assert.equal(projected.submission.submitted_payload_ref.submissionEnvelopeHash, evidence.payloadHashes.submissionEnvelope);
+  assert.equal(projected.submission.submitted_payload_ref.companyOrgNumber, evidence.companyOrgNumber);
+  assert.equal(projected.submission.submitted_payload_ref.incomeYear, evidence.incomeYear);
   assert.equal(projected.submission.updated_at, evidence.receiptRetrievedAt);
 });
 

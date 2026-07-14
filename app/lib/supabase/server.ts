@@ -235,6 +235,8 @@ export type CompanyTaxReturnReceiptMetadata = {
 };
 
 export type CompanyTaxReturnPayloadReference = {
+  companyOrgNumber: string;
+  incomeYear: number;
   envelopeDataId: string;
   archiveReference: string;
   payloadHash: string;

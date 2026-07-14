@@ -108,6 +108,8 @@ export function buildCompanyTaxReturnEvidencePersistence(
         archivedAt: evidence.archivedAt,
       },
       submitted_payload_ref: {
+        companyOrgNumber: input.expectedCompanyOrgNumber.trim(),
+        incomeYear: evidence.incomeYear,
         envelopeDataId: evidence.envelopeDataId,
         archiveReference: evidence.archiveReference,
         payloadHash,
