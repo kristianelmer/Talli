@@ -537,9 +537,9 @@ credentials and the admin/step-up flow, so they are performed in the running app
 | 1. Operating entity registered (ENK, org nr) | ☑ | ☑ | ☑ |
 | 2. Virksomhetssertifikat (test self-signed) | ☑ | ☑ | ☑ |
 | 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ☑ both Altinn instance scopes minted and exchanged | ☑ tax scope plus shared Altinn instance scopes active |
-| 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ☑ versioned RR0002 resource registered; request `Accepted` | ☑ company-tax resource preserved on the accepted shared system user |
-| 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS selected |
-| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ◑ TT02 payload validation accepted; instance/signing/receipt pending |
+| 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ☑ versioned RR0002 resource registered; request `Accepted` | ☑ tax-capable system user resolves by scope; do not pin the annual-accounts-only external reference |
+| 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS initialized for 2025; current draft verified through both person and system-user access |
+| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ◑ TT02 payload validation and current-draft preflight accepted; instance/signing/receipt pending |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
 | 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ☐ |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
@@ -551,6 +551,16 @@ for `310279617` with the RF-1086 scope. The earlier `invalid_scope` state is
 resolved for RF-1086. The company-tax scope also minted a token and returned
 `validertOK` from TT02 on 2026-07-14. Both Altinn instance scopes were then added
 to the same client and successfully minted/exchanged for the RR0002 rehearsal.
+For company tax, the accepted annual-accounts request external reference resolves
+only the RR0002 right and must not be reused. Omitting that unrelated reference
+allowed Maskinporten to resolve the tax-capable system user by scope; the combined
+tax and Altinn scopes minted and exchanged successfully.
+
+Step 5 company-tax status (updated 2026-07-14): the official ID-porten
+`opprettpart/2025/310279617` test-data initialization returned HTTP 200 and
+`status: OK`. Both the person token and the scope-resolved system-user token then
+retrieved the same current draft. Only the document-reference hash was retained;
+the raw current XML and reference were not stored.
 
 Step 4 status (2026-07-01): **DONE end-to-end.** 4a — `systemregister.write` token minted (HTTP 200)
 and the systemregister payload POSTed → system **`930835978_talli`** registered in TT02 (GET confirms

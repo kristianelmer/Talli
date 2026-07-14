@@ -104,13 +104,17 @@ holding company `310279617` with scope
 `validertest` endpoint returned `validertOK`. Sanitized machine evidence is in
 `docs/filing/evidence/company-tax-tt02-2026-07-14.json`.
 
-This closes the scope-access and authority-validation questions only. The
-client does not yet have `altinn:instances.read` and
-`altinn:instances.write`, so the Altinn instance/upload leg has not been run.
-The selected synthetic company also has no current tax-return draft available
-from the current-document endpoint. Full TT02 submission acceptance therefore
-still requires the two client scopes, a suitable tax-populated Tenor company,
-instance/upload validation, owner signing handoff, and receipt/archive proof.
+This closes the scope-access and authority-validation questions only. The two
+Altinn instance scopes were subsequently added to the same client and a
+combined-scope token was successfully exchanged for an Altinn token. Following
+Skatteetaten's official test-data procedure, the synthetic company was
+initialized for income year 2025 through the ID-porten `opprettpart` endpoint.
+The person-token and scope-resolved system-user current-document calls then
+returned the same `skattemeldingUpersonligUtkast`; the document-reference hash
+was `a2e9e47dd5bc62e12a355368d7ba8dbd94bf0711d555689057b01033f5653fd7`.
+No raw current-return XML or document reference was persisted. Full TT02
+submission acceptance still requires instance/upload validation, owner signing
+handoff, and receipt/archive proof.
 
 ## Talli Launch Subset
 
@@ -165,7 +169,7 @@ Current engine coverage:
 Missing before production:
 
 - Persisted adapter integration with final preview, immutable body hash, and retry journal.
-- Altinn instance scopes and complete instance/upload/file-scan flow in TT02.
+- Complete instance/upload/file-scan flow in TT02 using the active scopes.
 - Attachment/vedlegg handling or an enforced no-attachment support boundary.
 - Persisted structured Skatteetaten feedback.
 - Owner signing handoff and official receipt/status/archive storage.
@@ -193,8 +197,9 @@ Current tax preview field decisions:
 
 ## Follow-Up Implementation Slices
 
-1. Add the two Altinn instance scopes to the shared TT02 client.
-2. Run instance creation, envelope upload, file-scan polling, and async validation with a tax-populated Tenor company.
-3. Connect the test-only transport to the persisted filing state machine and structured feedback records.
-4. Implement owner signing handoff and receipt/archive retrieval.
-5. Record complete TT02 acceptance and named approvals before enabling production.
+1. Add the two Altinn instance scopes to the shared TT02 client. **Done 2026-07-14.**
+2. Initialize the supported synthetic company and verify its current 2025 draft. **Done 2026-07-14; instance creation awaits an explicit test-write confirmation.**
+3. Run instance creation, envelope upload, file-scan polling, and async validation with that company.
+4. Connect the test-only transport to the persisted filing state machine and structured feedback records.
+5. Implement owner signing handoff and receipt/archive retrieval.
+6. Record complete TT02 acceptance and named approvals before enabling production.

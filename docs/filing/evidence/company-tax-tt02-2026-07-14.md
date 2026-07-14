@@ -21,7 +21,17 @@ calculated response documents, and personal identifiers.
 
 This proves access to the tax scope and authority validation of the supported
 payload shape. It does not prove Altinn instance creation, file-scan handling,
-personal signing, receipt/archive retrieval, or production access. The shared
-Maskinporten client still needs `altinn:instances.read` and
-`altinn:instances.write` before the TT02 instance flow can run. Those steps and
-the dated human approvals remain hard launch gates.
+personal signing, receipt/archive retrieval, or production access.
+
+Later on 2026-07-14, both Altinn instance scopes were active and a combined
+system-user token was exchanged successfully. Skatteetaten's official
+ID-porten test-data initializer returned HTTP 200 with `status: OK` for income
+year 2025. A person-token read and an unpinned, scope-resolved system-user read
+then returned the same current draft and document-reference SHA-256
+`a2e9e47dd5bc62e12a355368d7ba8dbd94bf0711d555689057b01033f5653fd7`.
+The initializer response, tokens, raw XML, and raw reference were not stored.
+
+The next hard gate is the separately approved test write that creates and
+uploads the Altinn instance. Personal confirmation, the official feedback
+receipt, persisted runtime evidence, and dated human approvals also remain
+required. Production remains disabled.
