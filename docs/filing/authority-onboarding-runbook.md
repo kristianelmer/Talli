@@ -541,7 +541,7 @@ credentials and the admin/step-up flow, so they are performed in the running app
 | 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS initialized for 2025; current draft verified through both person and system-user access |
 | 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ◑ TT02 payload validation and current-draft preflight accepted; instance/signing/receipt pending |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
-| 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ☐ |
+| 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ◑ company/year-bound pending importer implemented; receipt, deployed import, and final authority decision pending |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
 
 Step 3 status (updated 2026-07-14): the shared TT02 client

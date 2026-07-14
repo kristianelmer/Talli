@@ -5,10 +5,14 @@ import {
   authorityTestEvidenceGate,
   buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
+  buildCompanyTaxReturnAuthorityTestRunFromEvidence,
 } from "../app/lib/authority-test-evidence.ts";
 
 const annualInstanceId = "51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51";
 const annualReceiptDataId = "f9b307e1-3534-4adb-9e5b-515c312f16f3";
+const companyTaxInstanceId = "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108";
+const companyTaxEnvelopeDataId = "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5";
+const companyTaxReceiptDataId = "70beee03-d8c2-4584-b366-8231c6de6584";
 
 function annualEvidence(overrides = {}) {
   return {
@@ -45,6 +49,66 @@ function annualEvidence(overrides = {}) {
       displayStatus: "Til behandling",
       confirmation: "Innsendingen er bekreftet mottatt.",
     },
+    ...overrides,
+  };
+}
+
+function companyTaxEvidence(overrides = {}) {
+  const archiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${companyTaxInstanceId}`;
+  return {
+    schemaVersion: 2,
+    status: "submitted_and_receipted",
+    environment: "test",
+    productionEnabled: false,
+    companyOrgNumber: "310279617",
+    incomeYear: 2025,
+    scope: "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+    systemUserResource: "app_skd_formueinntekt-skattemelding-v2",
+    payloadHashes: {
+      skattemelding: "a".repeat(64),
+      naeringsspesifikasjon: "b".repeat(64),
+      validationEnvelope: "c".repeat(64),
+      submissionEnvelope: "d".repeat(64),
+    },
+    localSchemaValidation: {
+      status: "passed",
+      schemas: [
+        "skattemeldingUpersonlig_v5_ekstern.xsd",
+        "naeringsspesifikasjon_v6_ekstern.xsd",
+        "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd",
+      ],
+    },
+    authorityValidation: {
+      result: "validertOK",
+      failureReasons: [],
+    },
+    currentDocumentReferenceHash: "e".repeat(64),
+    instance: {
+      id: companyTaxInstanceId,
+      envelopeUploaded: true,
+      envelopeDataId: companyTaxEnvelopeDataId,
+      fileScanResult: "Clean",
+      confirmationPrepared: true,
+      processTask: "confirmation",
+    },
+    confirmationUrl: `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${companyTaxInstanceId}`,
+    receipt: {
+      dataId: companyTaxReceiptDataId,
+      dataType: "tilbakemelding",
+      contentType: "application/xml",
+      byteLength: 527,
+      contentSha256: "f".repeat(64),
+      reference: `${archiveReference}/data/${companyTaxReceiptDataId}`,
+    },
+    submission: {
+      submitted: true,
+      processTask: null,
+      processEndedAt: "2026-07-14T12:30:00.000Z",
+      archived: true,
+      archivedAt: "2026-07-14T12:31:00.000Z",
+      archiveReference,
+    },
+    secretsStored: false,
     ...overrides,
   };
 }
@@ -94,6 +158,112 @@ test("imports submitted annual-accounts TT02 evidence as pending runtime evidenc
   assert.match(run.payload_hash, /^sha256:[0-9a-f]{64}$/u);
   assert.equal(run.recorded_at, "2026-07-14T10:55:00Z");
   assert.equal(authorityTestEvidenceGate([run], "aarsregnskap").status, "test_evidence_pending");
+});
+
+test("imports completed company-tax TT02 evidence as company- and year-bound pending evidence", () => {
+  const run = buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+    companyId: "company-1",
+    expectedCompanyOrgNumber: "310279617",
+    expectedIncomeYear: 2025,
+    evidence: companyTaxEvidence(),
+    evidenceUrl: "https://evidence.example/company-tax-tt02-2026-07-14.json",
+    recordedBy: "user-1",
+    recordedAt: "2026-07-14T12:40:00Z",
+  });
+
+  assert.equal(run.obligation, "skattemelding");
+  assert.equal(run.environment, "test");
+  assert.equal(run.status, "pending");
+  assert.equal(run.test_reference, `tt02:${companyTaxInstanceId}`);
+  assert.match(run.feedback_summary, /validertOK.*personbekreftelse.*tilbakemelding/u);
+  assert.equal(
+    run.receipt_reference,
+    `https://platform.tt02.altinn.no/storage/api/v1/instances/${companyTaxInstanceId}/data/${companyTaxReceiptDataId}`,
+  );
+  assert.equal(
+    run.archive_reference,
+    `https://platform.tt02.altinn.no/storage/api/v1/instances/${companyTaxInstanceId}`,
+  );
+  assert.match(run.payload_hash, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(run.recorded_at, "2026-07-14T12:40:00Z");
+  assert.equal(authorityTestEvidenceGate([run], "skattemelding").status, "test_evidence_pending");
+});
+
+test("company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches", () => {
+  const base = {
+    companyId: "company-1",
+    expectedCompanyOrgNumber: "310279617",
+    expectedIncomeYear: 2025,
+    evidenceUrl: null,
+    recordedBy: "user-1",
+  };
+
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      expectedCompanyOrgNumber: "930835978",
+      evidence: companyTaxEvidence(),
+    }),
+    /organisasjonsnummer/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      expectedIncomeYear: 2024,
+      evidence: companyTaxEvidence(),
+    }),
+    /inntektsår/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({ productionEnabled: true }),
+    }),
+    /produksjon/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({ scope: "skatteetaten:formueinntekt/skattemelding" }),
+    }),
+    /scope/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({
+        authorityValidation: { result: "validertMedAvvik", failureReasons: ["avvik"] },
+      }),
+    }),
+    /validertOK/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({
+        instance: { ...companyTaxEvidence().instance, confirmationPrepared: false },
+      }),
+    }),
+    /personbekreftelse/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({
+        receipt: { ...companyTaxEvidence().receipt, reference: "https://example.invalid/receipt" },
+      }),
+    }),
+    /kvitteringsreferanse/u,
+  );
+  assert.throws(
+    () => buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      ...base,
+      evidence: companyTaxEvidence({
+        submission: { ...companyTaxEvidence().submission, archived: false },
+      }),
+    }),
+    /arkiv/u,
+  );
 });
 
 test("annual-accounts TT02 import fails closed on company, production, and submission mismatches", () => {

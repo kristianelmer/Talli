@@ -84,8 +84,15 @@ Adapter and release anchors:
 - `app/lib/company-tax-return-authority-client.ts` implements test-only current
   document, validation, Altinn instance/upload, scan, and asynchronous result
   calls. The validation and initialized-current-draft preflight are TT02-accepted;
-  the instance/signing/receipt leg and persisted runtime integration remain
-  incomplete, and the constructor refuses production.
+  the real instance/signing/receipt leg remains incomplete, and the constructor
+  refuses production.
+- `app/lib/authority-test-evidence.ts` and the owner workspace implement a
+  company/year-bound, step-up-protected import for completed company-tax TT02
+  evidence. It validates exact scopes/app/data types, `validertOK`, personal
+  confirmation handoff, receipt and archive metadata, writes only a `pending`
+  `authority_test_runs` row plus audit metadata, and never enables production.
+  Deployed import and final `filing_submissions` feedback/state integration remain
+  release gates.
 - `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
   `production_adapter_disabled` even if permissions, evidence, billing, MFA,
   and human signoff records are otherwise present.

@@ -56,6 +56,30 @@ export type AnnualAccountsAuthorityTestRunImportInput = {
   recordedAt?: string;
 };
 
+export type CompanyTaxReturnAuthorityTestRunImportInput = {
+  companyId: string;
+  expectedCompanyOrgNumber: string;
+  expectedIncomeYear: number;
+  evidence: unknown;
+  evidenceUrl?: string | null;
+  recordedBy: string;
+  recordedAt?: string;
+};
+
+const COMPANY_TAX_SCOPES = [
+  "altinn:instances.read",
+  "altinn:instances.write",
+  "skatteetaten:formueinntekt/skattemelding",
+];
+const COMPANY_TAX_SCHEMAS = [
+  "naeringsspesifikasjon_v6_ekstern.xsd",
+  "skattemeldingUpersonlig_v5_ekstern.xsd",
+  "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd",
+];
+const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const INSTANCE_ID_PATTERN = /^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const DATA_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
 function required(value: string, label: string) {
   if (!value.trim()) {
     throw new Error(`${label} mangler.`);
@@ -190,6 +214,154 @@ export function buildAnnualAccountsAuthorityTestRunFromEvidence(
     status: "pending",
     testReference: `tt02:${instanceId}`,
     feedbackSummary: `${inboxDisplayStatus} (${inboxStatus}): ${inboxConfirmation}`,
+    receiptReference,
+    archiveReference,
+    evidenceUrl: input.evidenceUrl,
+    payloadHash: `sha256:${payloadHash}`,
+    recordedBy: input.recordedBy,
+    recordedAt: input.recordedAt,
+  });
+}
+
+export function buildCompanyTaxReturnAuthorityTestRunFromEvidence(
+  input: CompanyTaxReturnAuthorityTestRunImportInput,
+): AuthorityTestRun {
+  const evidence = objectValue(input.evidence);
+  const expectedOrgNumber = required(
+    input.expectedCompanyOrgNumber,
+    "Forventet organisasjonsnummer",
+  );
+  if (!/^\d{9}$/u.test(expectedOrgNumber)
+    || evidenceString(evidence.companyOrgNumber, "Organisasjonsnummer") !== expectedOrgNumber) {
+    throw new Error("TT02-evidensens organisasjonsnummer matcher ikke selskapet.");
+  }
+  if (!Number.isInteger(input.expectedIncomeYear)
+    || input.expectedIncomeYear < 2000
+    || input.expectedIncomeYear > 2100
+    || evidence.incomeYear !== input.expectedIncomeYear) {
+    throw new Error("TT02-evidensens inntektsår matcher ikke aktivt regnskapsår.");
+  }
+  if (evidence.schemaVersion !== 2 || evidence.status !== "submitted_and_receipted") {
+    throw new Error("TT02-evidensen må være ferdig innsendt med offisiell tilbakemelding.");
+  }
+  if (evidence.environment !== "test") {
+    throw new Error("Bare TT02 test-evidens kan importeres.");
+  }
+  if (evidence.productionEnabled !== false) {
+    throw new Error("TT02-evidens med produksjon aktivert kan ikke importeres.");
+  }
+  if (evidence.secretsStored !== false) {
+    throw new Error("TT02-evidensen kan ikke inneholde lagrede hemmeligheter.");
+  }
+
+  const scopes = evidenceString(evidence.scope, "Scope").split(/\s+/u).sort();
+  if (scopes.length !== COMPANY_TAX_SCOPES.length
+    || scopes.some((scope, index) => scope !== COMPANY_TAX_SCOPES[index])) {
+    throw new Error("TT02-evidensen bruker feil scope-sett for skattemelding.");
+  }
+  if (evidence.systemUserResource !== "app_skd_formueinntekt-skattemelding-v2") {
+    throw new Error("TT02-evidensen bruker feil systembrukerressurs for skattemelding.");
+  }
+
+  const localValidation = objectValue(evidence.localSchemaValidation);
+  const schemas = Array.isArray(localValidation.schemas)
+    ? localValidation.schemas.filter((schema): schema is string => typeof schema === "string").sort()
+    : [];
+  if (localValidation.status !== "passed"
+    || schemas.length !== COMPANY_TAX_SCHEMAS.length
+    || schemas.some((schema, index) => schema !== COMPANY_TAX_SCHEMAS[index])) {
+    throw new Error("TT02-evidensen mangler komplett lokal skjemavalidering.");
+  }
+  const authorityValidation = objectValue(evidence.authorityValidation);
+  if (authorityValidation.result !== "validertOK"
+    || !Array.isArray(authorityValidation.failureReasons)
+    || authorityValidation.failureReasons.length !== 0) {
+    throw new Error("TT02-evidensen mangler validertOK uten blokkerende feil.");
+  }
+
+  const payloadHashes = objectValue(evidence.payloadHashes);
+  const skattemeldingHash = evidenceString(payloadHashes.skattemelding, "Skattemeldingshash");
+  const naeringsspesifikasjonHash = evidenceString(
+    payloadHashes.naeringsspesifikasjon,
+    "Næringsspesifikasjonshash",
+  );
+  const validationEnvelopeHash = evidenceString(
+    payloadHashes.validationEnvelope,
+    "Valideringskonvolutthash",
+  );
+  const submissionEnvelopeHash = evidenceString(
+    payloadHashes.submissionEnvelope,
+    "Innsendingskonvolutthash",
+  );
+  const currentReferenceHash = evidenceString(
+    evidence.currentDocumentReferenceHash,
+    "Gjeldende dokumentreferansehash",
+  );
+  if (![skattemeldingHash, naeringsspesifikasjonHash, validationEnvelopeHash,
+    submissionEnvelopeHash, currentReferenceHash].every((hash) => SHA256_PATTERN.test(hash))) {
+    throw new Error("TT02-evidensens payload-hasher er ugyldige.");
+  }
+
+  const instance = objectValue(evidence.instance);
+  const instanceId = evidenceString(instance.id, "Instans-id");
+  const envelopeDataId = evidenceString(instance.envelopeDataId, "Konvoluttdata-id");
+  if (!INSTANCE_ID_PATTERN.test(instanceId) || !DATA_ID_PATTERN.test(envelopeDataId)) {
+    throw new Error("TT02-evidensens instans- eller konvoluttdata-id er ugyldig.");
+  }
+  if (instance.envelopeUploaded !== true || instance.fileScanResult !== "Clean") {
+    throw new Error("TT02-evidensens innsendingskonvolutt er ikke ferdig og ren.");
+  }
+  if (instance.confirmationPrepared !== true || instance.processTask !== "confirmation") {
+    throw new Error("TT02-evidensen mangler dokumentert personbekreftelse-handoff.");
+  }
+  const expectedConfirmationUrl = "https://skatt-test.sits.no/web/skattemelding-visning/altinn"
+    + `?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`;
+  if (evidenceString(evidence.confirmationUrl, "Bekreftelseslenke") !== expectedConfirmationUrl) {
+    throw new Error("TT02-evidensens personbekreftelseslenke er ugyldig.");
+  }
+
+  const archiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`;
+  const receipt = objectValue(evidence.receipt);
+  const receiptDataId = evidenceString(receipt.dataId, "Kvitteringsdata-id");
+  const receiptHash = evidenceString(receipt.contentSha256, "Kvitteringshash");
+  if (!DATA_ID_PATTERN.test(receiptDataId)
+    || receipt.dataType !== "tilbakemelding"
+    || !["application/xml", "text/xml"].includes(String(receipt.contentType))
+    || !Number.isInteger(receipt.byteLength)
+    || Number(receipt.byteLength) < 1
+    || !SHA256_PATTERN.test(receiptHash)) {
+    throw new Error("TT02-evidensens offisielle tilbakemelding er ugyldig.");
+  }
+  const receiptReference = evidenceString(receipt.reference, "Kvitteringsreferanse");
+  if (receiptReference !== `${archiveReference}/data/${receiptDataId}`) {
+    throw new Error("TT02-evidensens kvitteringsreferanse er ugyldig.");
+  }
+
+  const submission = objectValue(evidence.submission);
+  if (submission.submitted !== true
+    || !Number.isFinite(Date.parse(evidenceString(submission.processEndedAt, "Prosesslutt")))
+    || submission.archived !== true
+    || !Number.isFinite(Date.parse(evidenceString(submission.archivedAt, "Arkiveringstidspunkt")))
+    || evidenceString(submission.archiveReference, "Arkivreferanse") !== archiveReference) {
+    throw new Error("TT02-evidensens innsending eller arkiv er ufullstendig.");
+  }
+
+  const payloadHash = createHash("sha256")
+    .update([
+      `skattemelding:${skattemeldingHash}`,
+      `naeringsspesifikasjon:${naeringsspesifikasjonHash}`,
+      `validationEnvelope:${validationEnvelopeHash}`,
+      `submissionEnvelope:${submissionEnvelopeHash}`,
+    ].join("\n"))
+    .digest("hex");
+
+  return buildAuthorityTestRun({
+    companyId: input.companyId,
+    obligation: "skattemelding",
+    environment: "test",
+    status: "pending",
+    testReference: `tt02:${instanceId}`,
+    feedbackSummary: "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
     receiptReference,
     archiveReference,
     evidenceUrl: input.evidenceUrl,

@@ -23,6 +23,7 @@ import {
   recordAdminCost,
   recordAnnualAccountsTt02Evidence,
   recordAuthorityTestEvidence,
+  recordCompanyTaxReturnTt02Evidence,
   recordDividendReceived,
   recordLaunchSignoff,
   recordOwnerDividendPayment,
@@ -1209,6 +1210,35 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Importen validerer selskap, signatur, innsending, kvittering og arkiv.
                     Innboksstatus uten endelig myndighetsbeslutning lagres alltid som venter og
                     aktiverer aldri produksjon.
+                  </p>
+                </form>
+                <form
+                  className="dataPanel formPanel widePanel"
+                  action={recordCompanyTaxReturnTt02Evidence}
+                  encType="multipart/form-data"
+                >
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
+                  <label>
+                    Verifisert skattemelding-evidens fra TT02
+                    <input
+                      name="evidenceFile"
+                      type="file"
+                      accept="application/json,.json"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Evidens-URL (valgfri)
+                    <input name="evidenceUrl" placeholder="https://..." type="url" />
+                  </label>
+                  <button className="secondaryButton" type="submit">
+                    Importer skattemelding-evidens
+                  </button>
+                  <p>
+                    Importen krever riktig selskap og år, eksakte TT02-scopes, validertOK,
+                    fullført personbekreftelse, offisiell tilbakemelding og arkiv. Resultatet
+                    lagres med status pending og aktiverer aldri produksjon.
                   </p>
                 </form>
                 <div className="readinessGrid">

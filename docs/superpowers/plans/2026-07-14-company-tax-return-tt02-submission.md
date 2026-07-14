@@ -292,21 +292,21 @@
 - Consumes: Task 3 sanitized evidence.
 - Produces: company-bound, owner-step-up-protected JSON import into `authority_test_runs`, always `pending` unless the receipt has an explicit accepted outcome that the mapper validates.
 
-- [ ] **Step 1: Add failing mapper/action/UI tests**
+- [x] **Step 1: Add failing mapper/action/UI tests**
 
   Test exact company/year/scope/app/data type, `validertOK`, confirmation handoff, official receipt hash/reference, archive reference, test-only environment, and `productionEnabled:false`. Assert the action writes only `authority_test_runs` plus audit metadata and never changes `authority_permissions`, launch signoffs, production flags, or adapter capability.
 
-- [ ] **Step 2: Run tests red**
+- [x] **Step 2: Run tests red**
 
   Run: `npm run test:authority-evidence`
 
   Expected: failure because the company-tax mapper/import action is absent.
 
-- [ ] **Step 3: Implement the minimal importer**
+- [x] **Step 3: Implement the minimal importer**
 
   Reuse the annual-evidence upload boundary: authenticated owner, sensitive-action step-up, 512 KiB JSON limit, company lookup, strict evidence validation, deterministic combined payload hash, `pending` status, one insert, and sanitized audit event.
 
-- [ ] **Step 4: Run full verification green**
+- [x] **Step 4: Run full verification green**
 
   Run:
 

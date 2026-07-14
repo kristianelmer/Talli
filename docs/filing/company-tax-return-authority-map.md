@@ -145,12 +145,12 @@ These decisions are the source-backed launch schema for simple holding AS tax re
 
 | Authority requirement | Source evidence | Talli source data | Launch decision |
 | --- | --- | --- | --- |
-| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport exists; direct filing remains blocked until persisted instance/signing/receipt integration is complete. |
+| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport and a fail-closed runtime evidence importer exist; direct filing remains blocked until real instance/signing/receipt evidence, deployed persistence, and the production adapter are complete. |
 | Deadline | Skatteetaten states the ordinary deadline is 31 May each year. | `deadlines`, `filing_readiness_snapshots` | Supported as deadline/readiness data. |
 | No-activity companies | Skatteetaten states the tax return must be filed even if the company has had no turnover. | `annual_data.no_activity_confirmed` | Minimum 2025 payload is locally schema-valid and TT02 `validertOK`; filing still needs the Altinn/signing leg. |
 | Tax return plus business specification | Skatteetaten states the company must retrieve and submit the tax return with `næringsspesifikasjon` through the system. | `ledger_entries`, `holding_actions`, `annual_data` | 2025 schema/code-list mapping exists for the supported holding subset; unsupported cases fail closed. |
-| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | test-only validation client; future `filing_submissions.feedback_items` integration | TT02 validation accepted; persisted feedback/state-machine integration remains blocked. |
-| Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | `filing_submissions`, archive export | Simulation only; official receipt/archive retrieval is blocked. |
+| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | test-only validation client; company-bound `authority_test_runs` importer; future `filing_submissions.feedback_items` integration | TT02 validation accepted; the importer rejects incomplete evidence and records completed evidence as `pending`, while final persisted feedback/state-machine integration remains blocked. |
+| Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | test-only receipt client; `authority_test_runs`; `filing_submissions`; archive export | Conservative receipt retrieval and validation are implemented, but official instance receipt/archive evidence has not yet been produced or imported. |
 | Access packages/roles | Skatteetaten lists supported access packages and roles and notes transition from old Altinn roles to access packages. | `authority_permissions` | Readiness supported; production access package/delegation flow blocked. |
 | `skattemelding upersonlig` API | Skatteetaten API docs state this service delivers information appearing in a company's tax return. | potential import/pre-fill adapter | Data-reading candidate only; not evidence of production submission. |
 
@@ -200,6 +200,6 @@ Current tax preview field decisions:
 1. Add the two Altinn instance scopes to the shared TT02 client. **Done 2026-07-14.**
 2. Initialize the supported synthetic company and verify its current 2025 draft. **Done 2026-07-14; instance creation awaits an explicit test-write confirmation.**
 3. Run instance creation, envelope upload, file-scan polling, and async validation with that company.
-4. Connect the test-only transport to the persisted filing state machine and structured feedback records.
+4. Execute the company/year-bound evidence import after receipt retrieval, then connect final authority feedback to the persisted filing state machine and structured feedback records. **The fail-closed `authority_test_runs` importer is implemented; deployed import and final state integration remain pending.**
 5. Implement owner signing handoff and receipt/archive retrieval.
 6. Record complete TT02 acceptance and named approvals before enabling production.

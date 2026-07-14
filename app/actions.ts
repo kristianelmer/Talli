@@ -23,6 +23,7 @@ import { getSiteUrl } from "./lib/site-url";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
+  buildCompanyTaxReturnAuthorityTestRunFromEvidence,
   type AuthorityTestRunEnvironment,
   type AuthorityTestRunStatus,
 } from "./lib/authority-test-evidence";
@@ -4022,6 +4023,75 @@ export async function recordAnnualAccountsTt02Evidence(formData: FormData) {
     category: "submission",
     action: "annual_accounts_tt02_evidence_imported",
     message: `Årsregnskap TT02-evidens importert som pending med ref ${record.test_reference}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/workspace");
+}
+
+export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "confirm_authority");
+  const evidenceFile = formData.get("evidenceFile");
+  if (!(evidenceFile instanceof File)
+    || !evidenceFile.name.toLowerCase().endsWith(".json")
+    || evidenceFile.size < 1
+    || evidenceFile.size > 512 * 1024) {
+    redirect("/workspace?error=Velg%20en%20gyldig%20skattemelding-evidensfil%20i%20JSON-format");
+  }
+
+  let evidence;
+  try {
+    evidence = JSON.parse(await evidenceFile.text());
+  } catch {
+    redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number")
+    .eq("id", companyId)
+    .single();
+  if (companyError || !company) {
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
+  }
+
+  let record;
+  try {
+    record = buildCompanyTaxReturnAuthorityTestRunFromEvidence({
+      companyId,
+      expectedCompanyOrgNumber: company.org_number,
+      expectedIncomeYear: Number(formString(formData, "incomeYear")),
+      evidence,
+      evidenceUrl: formString(formData, "evidenceUrl"),
+      recordedBy: user.id,
+    });
+  } catch (error) {
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig TT02-evidens")}`);
+  }
+
+  const { error } = await supabase.from("authority_test_runs").insert(record);
+  if (error) {
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "submission",
+    action: "company_tax_tt02_evidence_imported",
+    message: `Skattemelding TT02-evidens importert som pending med ref ${record.test_reference}.`,
   });
 
   revalidatePath("/");
