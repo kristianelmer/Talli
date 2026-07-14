@@ -562,7 +562,7 @@
 
   Expected: all commands pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add app/lib/owner-dividend.ts app/lib/owner-dividend-payment.ts tests/owner_dividend.test.mjs tests/owner_dividend_payment.test.mjs app/actions.ts 'app/(owner)/workspace/page.tsx' && git commit -m "feat: match dividend payments to declared payable"`
 
@@ -589,25 +589,25 @@
 - Consumes: all Task 3 lifecycle row types, Task 5 storage references/hashes, Task 9 signed variants/finalizations, and current archive/restore/cancellation structures.
 - Produces: corporate lifecycle fields in persisted workspace/archive/manifest/restore models, object-reference integrity checks, cancellation evidence requirements, and external release-gate/runbook documents.
 
-- [ ] **Step 1: Add failing archive and restore assertions**
+- [x] **Step 1: Add failing archive and restore assertions**
 
   Assert company/year archives include decisions, sets, artifacts, events, finalizations, policy version references, document metadata, and both unsigned/signed object references. Assert manifests count all new tables/objects; restore fixtures preserve IDs/hashes/relationships; integrity fails on missing corporate rows or objects; cancellation blocks until corporate objects are included in export evidence.
 
-- [ ] **Step 2: Run archive/restore tests red**
+- [x] **Step 2: Run archive/restore tests red**
 
   Run: `node --experimental-strip-types --test tests/archive_export.test.mjs tests/backup_restore.test.mjs tests/cancellation.test.mjs`
 
   Expected: missing corporate lifecycle data assertions fail.
 
-- [ ] **Step 3: Extend data loading, archive, manifest, restore, and cancellation**
+- [x] **Step 3: Extend data loading, archive, manifest, restore, and cancellation**
 
   Query each table by company/year with explicit columns. Include object content hashes and sizes in the manifest. Never embed raw signed PDFs in JSON archives; include authenticated storage references and verify them during the backup rehearsal.
 
-- [ ] **Step 4: Write operator runbooks and immutable release gate**
+- [x] **Step 4: Write operator runbooks and immutable release gate**
 
   Name every external gate: legal review of four templates, accounting review of policy accounts, PDF golden/visual approval, deployed RLS/storage test evidence, backup/restore rehearsal, and public-copy review. State current status and required evidence fields without marking an unavailable review complete.
 
-- [ ] **Step 5: Run archive/restore/cancellation tests green**
+- [x] **Step 5: Run archive/restore/cancellation tests green**
 
   Run: `node --experimental-strip-types --test tests/archive_export.test.mjs tests/backup_restore.test.mjs tests/cancellation.test.mjs`
 

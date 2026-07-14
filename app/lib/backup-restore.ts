@@ -20,6 +20,12 @@ export const launchCriticalTables = [
   "billing_accounts",
   "authority_permissions",
   "audit_events",
+  "corporate_accounting_policies",
+  "corporate_decisions",
+  "corporate_document_sets",
+  "corporate_document_artifacts",
+  "corporate_document_events",
+  "corporate_decision_finalizations",
 ] as const;
 
 export type RestoreGateRecord = {
@@ -29,13 +35,26 @@ export type RestoreGateRecord = {
 };
 
 export function buildBackupManifest(archive: Record<string, any>) {
+  const corporateByDocumentId = new Map(
+    (archive.corporateDocumentArtifacts ?? []).map((artifact: any) => [artifact.document_id, artifact]),
+  );
   const objectReferences = (archive.documents ?? [])
-    .map((document: any) => ({
-      documentId: document.id,
-      storageKey: document.storageKey,
-      status: document.status,
-      retentionYears: document.retentionYears,
-    }))
+    .map((document: any) => {
+      const artifact: any = corporateByDocumentId.get(document.id);
+      return {
+        documentId: document.id,
+        storageKey: document.storageKey,
+        status: document.status,
+        retentionYears: document.retentionYears,
+        ...(artifact ? {
+          artifactId: artifact.id,
+          artifactKind: artifact.artifact_kind,
+          variant: artifact.variant,
+          contentSha256: artifact.content_sha256,
+          byteLength: artifact.byte_length,
+        } : {}),
+      };
+    })
     .filter((reference: any) => reference.storageKey);
 
   return {
@@ -43,6 +62,11 @@ export function buildBackupManifest(archive: Record<string, any>) {
     companyId: archive.company?.id,
     incomeYear: archive.incomeYear,
     launchCriticalTables,
+    accountingPolicyVersionReferences: [...new Set(
+      (archive.corporateDecisionFinalizations ?? [])
+        .map((finalization: any) => finalization.accounting_policy_version)
+        .filter(Boolean),
+    )].sort(),
     objectReferences,
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
@@ -57,6 +81,11 @@ export function buildBackupManifest(archive: Record<string, any>) {
       investmentLots: archive.investmentLots?.length ?? 0,
       investmentLotAllocations: archive.investmentLotAllocations?.length ?? 0,
       bankSuggestionAcceptances: archive.bankSuggestionAcceptances?.length ?? 0,
+      corporateDecisions: archive.corporateDecisions?.length ?? 0,
+      corporateDocumentSets: archive.corporateDocumentSets?.length ?? 0,
+      corporateDocumentArtifacts: archive.corporateDocumentArtifacts?.length ?? 0,
+      corporateDocumentEvents: archive.corporateDocumentEvents?.length ?? 0,
+      corporateDecisionFinalizations: archive.corporateDecisionFinalizations?.length ?? 0,
     },
   };
 }
@@ -91,6 +120,11 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       investmentLots: archive.investmentLots ?? [],
       investmentLotAllocations: archive.investmentLotAllocations ?? [],
       bankSuggestionAcceptances: archive.bankSuggestionAcceptances ?? [],
+      corporateDecisions: archive.corporateDecisions ?? [],
+      corporateDocumentSets: archive.corporateDocumentSets ?? [],
+      corporateDocumentArtifacts: archive.corporateDocumentArtifacts ?? [],
+      corporateDocumentEvents: archive.corporateDocumentEvents ?? [],
+      corporateDecisionFinalizations: archive.corporateDecisionFinalizations ?? [],
     },
     warnings: missingObjectWarnings,
   };
@@ -104,6 +138,39 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.filingSubmissions.length) failures.push("filing_submissions_missing");
   if (!restored.restored.billingAccounts.length) failures.push("billing_accounts_missing");
   if (!restored.restored.auditEvents.length) failures.push("audit_events_missing");
+  const decisions = restored.restored.corporateDecisions;
+  const sets = restored.restored.corporateDocumentSets;
+  const artifacts = restored.restored.corporateDocumentArtifacts;
+  const events = restored.restored.corporateDocumentEvents;
+  const finalizations = restored.restored.corporateDecisionFinalizations;
+  if (decisions.length) {
+    if (!sets.length) failures.push("corporate_document_sets_missing");
+    if (!artifacts.length) failures.push("corporate_document_artifacts_missing");
+    if (!events.length) failures.push("corporate_document_events_missing");
+    if (events.some((event: any) => event.event_kind === "finalized") && !finalizations.length) {
+      failures.push("corporate_decision_finalizations_missing");
+    }
+    const decisionIds = new Set(decisions.map((decision: any) => decision.id));
+    const setIds = new Set(sets.map((set: any) => set.id));
+    if (sets.some((set: any) => !decisionIds.has(set.decision_id))
+      || artifacts.some((artifact: any) => !setIds.has(artifact.set_id))
+      || events.some((event: any) => !decisionIds.has(event.decision_id) || !setIds.has(event.set_id))
+      || finalizations.some((finalization: any) => !decisionIds.has(finalization.decision_id))) {
+      failures.push("corporate_lifecycle_relationship_mismatch");
+    }
+    const documentsById = new Map(restored.restored.documents.map((document: any) => [document.id, document]));
+    if (artifacts.some((artifact: any) => {
+      const document: any = documentsById.get(artifact.document_id);
+      return !document
+        || !artifact.storage_key
+        || document.storageKey !== artifact.storage_key
+        || !/^[0-9a-f]{64}$/.test(String(artifact.content_sha256))
+        || !Number.isSafeInteger(artifact.byte_length)
+        || artifact.byte_length <= 0;
+    })) {
+      failures.push("corporate_artifact_object_reference_missing");
+    }
+  }
   return {
     ok: failures.length === 0,
     failures,

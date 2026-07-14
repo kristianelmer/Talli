@@ -3069,25 +3069,51 @@ export async function requestCompanyCancellation(formData: FormData) {
     redirect("/workspace?error=Kun%20eier%20kan%20be%20om%20kansellering");
   }
 
-  const { data: documents, error: documentError } = await supabase
-    .from("documents")
-    .select("id, status")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear);
-  if (documentError) {
-    redirect(`/workspace?error=${encodeURIComponent(documentError.message)}`);
-  }
+  const [documentResult, artifactResult, archiveAuditResult] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, status")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear),
+    supabase
+      .from("corporate_document_artifacts")
+      .select("storage_key, created_at")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear),
+    supabase
+      .from("audit_events")
+      .select("created_at")
+      .eq("company_id", companyId)
+      .eq("action", `company_year_archive_exported:${incomeYear}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const evidenceError = documentResult.error ?? artifactResult.error ?? archiveAuditResult.error;
+  if (evidenceError) redirect(`/workspace?error=${encodeURIComponent(evidenceError.message)}`);
 
-  const archiveExportedAt = new Date().toISOString();
+  const archiveExportedAt = archiveAuditResult.data?.created_at ?? null;
+  const archiveExportedTime = archiveExportedAt ? new Date(archiveExportedAt).getTime() : Number.NaN;
+  const corporateArtifacts = artifactResult.data ?? [];
+  const missingCorporateObjectKeys = corporateArtifacts
+    .filter((artifact) => !Number.isFinite(archiveExportedTime)
+      || new Date(artifact.created_at).getTime() > archiveExportedTime)
+    .map((artifact) => artifact.storage_key);
   const evidence = buildCancellationEvidence({
     companyId,
     incomeYear,
     archiveExportedAt,
-    missingDocumentIds: (documents ?? [])
+    missingDocumentIds: (documentResult.data ?? [])
       .filter((document) => String(document.status ?? "").startsWith("missing"))
       .map((document) => document.id),
+    corporateObjectKeys: corporateArtifacts.map((artifact) => artifact.storage_key),
+    missingCorporateObjectKeys,
   });
-  const status = nextCancellationStatus({ archiveExportedAt });
+  const status = nextCancellationStatus({
+    archiveExportedAt,
+    corporateLifecyclePresent: corporateArtifacts.length > 0,
+    corporateEvidenceComplete: evidence.corporateEvidenceComplete,
+  });
 
   const { data: existing } = await supabase
     .from("company_cancellations")
@@ -3098,14 +3124,15 @@ export async function requestCompanyCancellation(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
+  const requestedAt = new Date().toISOString();
   const payload = {
     company_id: companyId,
     status,
     reason,
     evidence,
     requested_by: user.id,
-    requested_at: archiveExportedAt,
-    updated_at: archiveExportedAt,
+    requested_at: requestedAt,
+    updated_at: requestedAt,
   };
   const { error } = existing?.id
     ? await supabase.from("company_cancellations").update(payload).eq("id", existing.id)

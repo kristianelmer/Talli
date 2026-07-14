@@ -308,6 +308,78 @@ test("builds company-year archive from persisted workspace rows", () => {
         updated_at: "2026-01-01T00:00:00Z",
       },
     ],
+    corporateDecisions: [{
+      id: "decision-id",
+      company_id: "company-id",
+      income_year: 2025,
+      decision_kind: "annual_close",
+      annual_close_source_id: "annual-id",
+      source_hash: "a".repeat(64),
+      canonical_input: { request_id: "decision-id" },
+      decision_hash: "b".repeat(64),
+      supersedes_decision_id: null,
+      created_by: "owner",
+      created_at: "2026-01-03T00:00:00Z",
+    }],
+    corporateDocumentSets: [{
+      id: "set-id",
+      company_id: "company-id",
+      income_year: 2025,
+      decision_id: "decision-id",
+      template_family: "norwegian_simple_as",
+      template_version: "corporate-no-v1",
+      decision_hash: "b".repeat(64),
+      supersedes_set_id: null,
+      created_by: "owner",
+      created_at: "2026-01-03T00:00:00Z",
+    }],
+    corporateDocumentArtifacts: [{
+      id: "artifact-id",
+      company_id: "company-id",
+      income_year: 2025,
+      set_id: "set-id",
+      artifact_kind: "annual_board_minutes",
+      variant: "signed_owner_attested",
+      document_id: "document-id",
+      content_sha256: "c".repeat(64),
+      byte_length: 1234,
+      mime_type: "application/pdf",
+      storage_key: "company-id/2025/corporate/set-id/annual_board_minutes/signed-owner-attested/artifact-id/hash.pdf",
+      supersedes_artifact_id: null,
+      created_by: "owner",
+      created_at: "2026-01-03T00:00:00Z",
+    }],
+    corporateDocumentEvents: [{
+      id: "event-id",
+      company_id: "company-id",
+      income_year: 2025,
+      decision_id: "decision-id",
+      set_id: "set-id",
+      artifact_id: "artifact-id",
+      event_kind: "finalized",
+      actor_id: "owner",
+      occurred_at: "2026-01-03T00:00:00Z",
+      decision_hash: "b".repeat(64),
+      content_sha256: "c".repeat(64),
+      metadata: {},
+      idempotency_key: "finalized-idempotency",
+      created_at: "2026-01-03T00:00:00Z",
+    }],
+    corporateDecisionFinalizations: [{
+      id: "finalization-id",
+      company_id: "company-id",
+      income_year: 2025,
+      decision_id: "decision-id",
+      finalization_kind: "annual_close_adopted",
+      holding_action_id: null,
+      ledger_entry_id: null,
+      annual_close_source_id: "annual-id",
+      decision_hash: "b".repeat(64),
+      signed_artifact_hashes: { annual_board_minutes: "c".repeat(64) },
+      accounting_policy_version: null,
+      created_by: "owner",
+      created_at: "2026-01-03T00:00:00Z",
+    }],
   });
 
   assert.equal(archive.archiveType, "talli_company_year_archive");
@@ -333,4 +405,12 @@ test("builds company-year archive from persisted workspace rows", () => {
   assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
   assert.equal(archive.reviewComments[0].id, "review-id");
   assert.equal(archive.auditEvents[0].action, "rf1086_simulated_receipt_archived");
+  assert.equal(archive.corporateDecisions[0].id, "decision-id");
+  assert.equal(archive.corporateDocumentSets[0].decision_id, "decision-id");
+  assert.equal(archive.corporateDocumentArtifacts[0].variant, "signed_owner_attested");
+  assert.equal(archive.corporateDocumentArtifacts[0].content_sha256, "c".repeat(64));
+  assert.equal(archive.corporateDocumentEvents[0].event_kind, "finalized");
+  assert.equal(archive.corporateDecisionFinalizations[0].id, "finalization-id");
+  assert.equal(archive.corporateDecisionFinalizations[0].accounting_policy_version, null);
+  assert.equal("pdfBytes" in archive.corporateDocumentArtifacts[0], false);
 });

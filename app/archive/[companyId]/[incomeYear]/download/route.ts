@@ -66,6 +66,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     { data: investmentLots },
     { data: investmentLotAllocations },
     { data: bankSuggestionAcceptances },
+    { data: corporateDecisions, error: corporateDecisionsError },
+    { data: corporateDocumentSets, error: corporateDocumentSetsError },
+    { data: corporateDocumentArtifacts, error: corporateDocumentArtifactsError },
+    { data: corporateDocumentEvents, error: corporateDocumentEventsError },
+    { data: corporateDecisionFinalizations, error: corporateDecisionFinalizationsError },
   ] =
     await Promise.all([
       supabase
@@ -125,7 +130,41 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .from("bank_suggestion_acceptances")
         .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
         .eq("company_id", companyId),
+      supabase
+        .from("corporate_decisions")
+        .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, supersedes_decision_id, created_by, created_at")
+        .eq("company_id", companyId)
+        .eq("income_year", incomeYear),
+      supabase
+        .from("corporate_document_sets")
+        .select("id, company_id, income_year, decision_id, template_family, template_version, decision_hash, supersedes_set_id, created_by, created_at")
+        .eq("company_id", companyId)
+        .eq("income_year", incomeYear),
+      supabase
+        .from("corporate_document_artifacts")
+        .select("id, company_id, income_year, set_id, artifact_kind, variant, document_id, content_sha256, byte_length, mime_type, storage_key, supersedes_artifact_id, created_by, created_at")
+        .eq("company_id", companyId)
+        .eq("income_year", incomeYear),
+      supabase
+        .from("corporate_document_events")
+        .select("id, company_id, income_year, decision_id, set_id, artifact_id, event_kind, actor_id, occurred_at, decision_hash, content_sha256, metadata, idempotency_key, created_at")
+        .eq("company_id", companyId)
+        .eq("income_year", incomeYear),
+      supabase
+        .from("corporate_decision_finalizations")
+        .select("id, company_id, income_year, decision_id, finalization_kind, holding_action_id, ledger_entry_id, annual_close_source_id, decision_hash, signed_artifact_hashes, accounting_policy_version, created_by, created_at")
+        .eq("company_id", companyId)
+        .eq("income_year", incomeYear),
     ]);
+
+  const corporateError = corporateDecisionsError
+    ?? corporateDocumentSetsError
+    ?? corporateDocumentArtifactsError
+    ?? corporateDocumentEventsError
+    ?? corporateDecisionFinalizationsError;
+  if (corporateError) {
+    return new Response("Could not read corporate decision evidence", { status: 500 });
+  }
 
   const setupIds = (setups ?? []).map((setup) => setup.id);
   const { data: shareholders } = setupIds.length
@@ -153,7 +192,23 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     reviewComments: reviewComments ?? [],
     filingPreviews: previews ?? [],
     filingSubmissions: submissions ?? [],
+    corporateDecisions: corporateDecisions ?? [],
+    corporateDocumentSets: corporateDocumentSets ?? [],
+    corporateDocumentArtifacts: corporateDocumentArtifacts ?? [],
+    corporateDocumentEvents: corporateDocumentEvents ?? [],
+    corporateDecisionFinalizations: corporateDecisionFinalizations ?? [],
   });
+
+  const { error: auditError } = await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "archive",
+    action: `company_year_archive_exported:${incomeYear}`,
+    message: `Company-year archive exported with ${(corporateDocumentArtifacts ?? []).length} corporate object references.`,
+  });
+  if (auditError) {
+    return new Response("Could not record archive export evidence", { status: 500 });
+  }
 
   return new Response(JSON.stringify(archive, null, 2), {
     headers: {

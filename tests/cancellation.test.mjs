@@ -13,6 +13,16 @@ import {
 test("requires archive export before cancellation can move into retention hold", () => {
   assert.equal(nextCancellationStatus({}), "export_required");
   assert.equal(nextCancellationStatus({ archiveExportedAt: "2026-06-17T10:00:00.000Z" }), "retention_hold");
+  assert.equal(nextCancellationStatus({
+    archiveExportedAt: "2026-06-17T10:00:00.000Z",
+    corporateLifecyclePresent: true,
+    corporateEvidenceComplete: false,
+  }), "export_required");
+  assert.equal(nextCancellationStatus({
+    archiveExportedAt: "2026-06-17T10:00:00.000Z",
+    corporateLifecyclePresent: true,
+    corporateEvidenceComplete: true,
+  }), "retention_hold");
 });
 
 test("keeps final deletion behind legal review and explicit deletion state", () => {
@@ -27,15 +37,20 @@ test("builds archive and retention evidence for launch-critical records", () => 
     incomeYear: 2025,
     archiveExportedAt: "2026-06-17T10:00:00.000Z",
     missingDocumentIds: ["document-id"],
+    corporateObjectKeys: ["company-id/2025/corporate/signed.pdf"],
+    missingCorporateObjectKeys: [],
   });
 
   assert.equal(evidence.archiveDownloadPath, "/archive/company-id/2025/download");
   assert.equal(evidence.archiveIncomeYear, 2025);
   assert.equal(evidence.legalReviewRequired, true);
   assert.deepEqual(evidence.missingDocumentIds, ["document-id"]);
+  assert.deepEqual(evidence.corporateObjectKeys, ["company-id/2025/corporate/signed.pdf"]);
+  assert.equal(evidence.corporateEvidenceComplete, true);
   assert.ok(retentionClasses.includes("accounting_documents"));
   assert.ok(retentionClasses.includes("filing_payloads_feedback_receipts"));
   assert.ok(retentionClasses.includes("audit_security_logs"));
+  assert.ok(retentionClasses.includes("corporate_decisions_and_signed_artifacts"));
 });
 
 test("shows explicit export, soft-delete, retention, and final deletion lifecycle states", () => {

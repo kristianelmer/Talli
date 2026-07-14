@@ -3,6 +3,11 @@ import type {
   BankSuggestionAcceptanceRow,
   BillingAccountRow,
   CompanyWorkspaceRow,
+  CorporateDecisionFinalizationRow,
+  CorporateDecisionRow,
+  CorporateDocumentArtifactRow,
+  CorporateDocumentEventRow,
+  CorporateDocumentSetRow,
   DocumentRow,
   FilingPreviewRow,
   FilingReviewCommentRow,
@@ -55,6 +60,11 @@ export function buildPersistedCompanyArchive(input: {
   reviewComments?: FilingReviewCommentRow[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
+  corporateDecisions?: CorporateDecisionRow[];
+  corporateDocumentSets?: CorporateDocumentSetRow[];
+  corporateDocumentArtifacts?: CorporateDocumentArtifactRow[];
+  corporateDocumentEvents?: CorporateDocumentEventRow[];
+  corporateDecisionFinalizations?: CorporateDecisionFinalizationRow[];
 }) {
   const taxSettlementActions = (input.holdingActions ?? []).filter((action) => action.action_type === "tax_settlement");
   const taxSettlementLedgerIds = new Set(
@@ -120,6 +130,26 @@ export function buildPersistedCompanyArchive(input: {
     authorityPermissions: input.authorityPermissions ?? [],
     auditEvents: input.auditEvents ?? [],
     reviewComments: input.reviewComments ?? [],
+    corporateDecisions: input.corporateDecisions ?? [],
+    corporateDocumentSets: input.corporateDocumentSets ?? [],
+    corporateDocumentArtifacts: (input.corporateDocumentArtifacts ?? []).map((artifact) => ({
+      id: artifact.id,
+      company_id: artifact.company_id,
+      income_year: artifact.income_year,
+      set_id: artifact.set_id,
+      artifact_kind: artifact.artifact_kind,
+      variant: artifact.variant,
+      document_id: artifact.document_id,
+      content_sha256: artifact.content_sha256,
+      byte_length: artifact.byte_length,
+      mime_type: artifact.mime_type,
+      storage_key: artifact.storage_key,
+      supersedes_artifact_id: artifact.supersedes_artifact_id,
+      created_by: artifact.created_by,
+      created_at: artifact.created_at,
+    })),
+    corporateDocumentEvents: input.corporateDocumentEvents ?? [],
+    corporateDecisionFinalizations: input.corporateDecisionFinalizations ?? [],
     documents: input.documents.map((document) => ({
       id: document.id,
       incomeYear: document.income_year,
