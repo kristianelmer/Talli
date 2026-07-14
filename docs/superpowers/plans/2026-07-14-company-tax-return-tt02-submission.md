@@ -320,7 +320,7 @@
 
   Expected: all commands exit 0; production remains disabled in adapter and release-gate tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run:
 
