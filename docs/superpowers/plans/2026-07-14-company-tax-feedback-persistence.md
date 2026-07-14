@@ -256,6 +256,7 @@
 **Files:**
 
 - Modify: `app/(owner)/filing/[obligation]/page.tsx`
+- Modify: `app/(owner)/filing/page.tsx`
 - Modify: `app/lib/archive.ts`
 - Create: `tests/owner_filing_flow.test.mjs`
 - Modify: `tests/company_tax_return_payload.test.mjs`
@@ -270,7 +271,12 @@
 - Consumes: `FilingSubmissionRow` with `filing:"skattemelding for AS"`, `mode:"test_authority"`, and `status:"feedback_ready"`.
 - Produces: truthful owner feedback and a year archive entry without presenting test evidence as production acceptance.
 
-- [ ] **Step 1: Add failing owner-flow and archive tests**
+**Review scope adjustment:** The whole-branch review found that the filing hub's
+existing receipt-only success rule would mislabel this pending test-authority
+record. Task 3 therefore also updates the hub and its owner-flow regression so
+`test_authority` / `feedback_ready` is shown as a warning, never success.
+
+- [x] **Step 1: Add failing owner-flow and archive tests**
 
   For the company-tax route, assert a persisted test-authority record renders:
 
@@ -282,21 +288,21 @@
 
   Assert the archive exposes a `companyTaxSubmissions` array with mode, status, payload hash, idempotency key, receipt ID, feedback items, receipt metadata, submitted-payload reference, and sanitized call journal. Assert `submittedPayload` remains null and `simulatedReceipts` continues to contain simulation records only.
 
-- [ ] **Step 2: Run focused tests red**
+- [x] **Step 2: Run focused tests red**
 
   Run: `node --test tests/owner_filing_flow.test.mjs tests/company_tax_return_payload.test.mjs`
 
   Expected: failure because the non-RF-1086 route still renders only the generic preparing placeholder and the archive lacks `companyTaxSubmissions`.
 
-- [ ] **Step 3: Render the persisted pending outcome truthfully**
+- [x] **Step 3: Render the persisted pending outcome truthfully**
 
   In the non-RF-1086 branch, select the current-year filing submission by `obligationFilingString(obligation)`. For `skattemelding`, render a feedback section only when the record is `mode === "test_authority"` and `status === "feedback_ready"`; otherwise keep the current preparing placeholder. Use warning styling and never derive acceptance from receipt presence.
 
-- [ ] **Step 4: Extend the archive**
+- [x] **Step 4: Extend the archive**
 
   Add `companyTaxSubmissions` alongside `rf1086Submissions`. Map only stored sanitized fields. Keep the existing `simulatedReceipts` filter exactly simulation-only so test-authority evidence cannot be mislabeled as a simulated or production receipt.
 
-- [ ] **Step 5: Update release documentation**
+- [x] **Step 5: Update release documentation**
 
   Record that local/deployed-capable persistence, idempotency, RLS, structured pending feedback, and archive visibility are implemented. Leave these gates explicitly open:
 
@@ -306,7 +312,7 @@
   - production credentials, security/restore review, and dated named approval;
   - production adapter implementation and enablement.
 
-- [ ] **Step 6: Run full verification green**
+- [x] **Step 6: Run full verification green**
 
   Run:
 
@@ -323,12 +329,12 @@
 
   Expected: all commands exit 0, with zero known production dependency vulnerabilities.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   Run:
 
   ```bash
-  git add 'app/(owner)/filing/[obligation]/page.tsx' app/lib/archive.ts tests/owner_filing_flow.test.mjs tests/company_tax_return_payload.test.mjs docs/filing/company-tax-return-authority-map.md docs/filing/production-submission-state.md docs/filing/authority-onboarding-runbook.md docs/prd/holdingswift-product-requirements-implementation-plan.md docs/superpowers/plans/2026-07-14-company-tax-feedback-persistence.md
+  git add 'app/(owner)/filing/[obligation]/page.tsx' 'app/(owner)/filing/page.tsx' app/lib/archive.ts tests/owner_filing_flow.test.mjs tests/company_tax_return_payload.test.mjs docs/filing/company-tax-return-authority-map.md docs/filing/production-submission-state.md docs/filing/authority-onboarding-runbook.md docs/prd/holdingswift-product-requirements-implementation-plan.md docs/superpowers/plans/2026-07-14-company-tax-feedback-persistence.md
   git diff --cached --check
   git diff --exit-code -- docs/remarks/holdingswift_produktkrav.md
   git commit -m "feat: expose company tax TT02 feedback state"
@@ -338,8 +344,8 @@
 
 ## Final review
 
-- [ ] Run a fresh whole-branch specification review against the approved TT02 design and this plan.
-- [ ] Run a fresh whole-branch code-quality review.
-- [ ] Resolve every Critical or Important finding and rerun the affected verification.
-- [ ] Confirm production capability remains disabled in tests and source.
-- [ ] Confirm the product-requirements source file is byte-for-byte unchanged.
+- [x] Run a fresh whole-branch specification review against the approved TT02 design and this plan.
+- [x] Run a fresh whole-branch code-quality review.
+- [x] Resolve every Critical or Important finding and rerun the affected verification.
+- [x] Confirm production capability remains disabled in tests and source.
+- [x] Confirm the product-requirements source file is byte-for-byte unchanged.

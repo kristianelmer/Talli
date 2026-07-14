@@ -165,6 +165,23 @@ export default async function FilingObligationPage({
     </>
   );
 
+  const filingString = obligationFilingString(obligation);
+  const submission = input.filingSubmissions.find(
+    (item) => item.filing === filingString && item.income_year === input.incomeYear,
+  );
+  const companyTaxFeedback = obligation === "skattemelding"
+    && submission?.mode === "test_authority"
+    && submission.status === "feedback_ready"
+    ? submission
+    : null;
+  const companyTaxArchiveReference = companyTaxFeedback?.receipt_metadata
+    && "archiveReference" in companyTaxFeedback.receipt_metadata
+    ? companyTaxFeedback.receipt_metadata.archiveReference
+    : companyTaxFeedback?.submitted_payload_ref
+      && "archiveReference" in companyTaxFeedback.submitted_payload_ref
+      ? companyTaxFeedback.submitted_payload_ref.archiveReference
+      : null;
+
   // --- Skattemelding / Årsregnskap: readiness + honest placeholder. ---
   if (obligation !== "aksjonaerregisteroppgaven") {
     return (
@@ -229,28 +246,47 @@ export default async function FilingObligationPage({
             </div>
           </section>
         ) : null}
-        <section className="filingStep">
-          <div className="filingStepHead">
-            <h2 className="filingStepTitle">{f.preview.title}</h2>
-            <StatusBadge variant="info" label={f.status.preparing} />
-          </div>
-          <div className="filingStepBody">
-            <p className="cardNote">{f.preview.preparing}</p>
-          </div>
-        </section>
+        {companyTaxFeedback ? (
+          <section className="filingStep">
+            <div className="filingStepHead">
+              <h2 className="filingStepTitle">TT02-tilbakemelding mottatt</h2>
+              <StatusBadge
+                variant="warning"
+                label="Test – ikke produksjonsinnsending"
+                icon="alert"
+              />
+            </div>
+            <div className="filingStepBody">
+              <Banner variant="warning">
+                Myndighetsutfallet venter på klassifisering. Kvitteringen dokumenterer mottatt
+                testtilbakemelding, ikke et endelig utfall.
+              </Banner>
+              <p className="cardNote">
+                Tilbakemeldingsdata-ID: <code>{companyTaxFeedback.receipt_id ?? "mangler"}</code><br />
+                Arkivreferanse: <code>{companyTaxArchiveReference ?? "mangler"}</code>
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className="filingStep">
+            <div className="filingStepHead">
+              <h2 className="filingStepTitle">{f.preview.title}</h2>
+              <StatusBadge variant="info" label={f.status.preparing} />
+            </div>
+            <div className="filingStepBody">
+              <p className="cardNote">{f.preview.preparing}</p>
+            </div>
+          </section>
+        )}
       </div>
     );
   }
 
   // --- Aksjonærregisteroppgaven: full guided flow. ---
-  const filingString = obligationFilingString(obligation);
   const preview = input.filingPreviews.find(
     (item) => item.filing === filingString && item.income_year === input.incomeYear,
   );
   const previewReady = preview?.status === "ready";
-  const submission = input.filingSubmissions.find(
-    (item) => item.filing === filingString && item.income_year === input.incomeYear,
-  );
   const submitted = Boolean(submission?.receipt_id);
   const permission = input.authorityPermissions.find(
     (item) => item.obligation === obligation,

@@ -60,14 +60,23 @@ export default async function FilingHubPage({ searchParams }: FilingHubProps) {
         {FILING_OBLIGATIONS.map((obligation) => {
           const meta = f.obligations[obligation];
           const snapshot = evaluateObligationReadiness(input, obligation);
-          const submitted = input.filingSubmissions.some(
+          const submission = input.filingSubmissions.find(
             (submission) =>
               submission.filing === obligationFilingString(obligation) &&
-              submission.income_year === input.incomeYear &&
-              Boolean(submission.receipt_id),
+              submission.income_year === input.incomeYear,
           );
+          const companyTaxFeedbackPending = obligation === "skattemelding"
+            && submission?.mode === "test_authority"
+            && submission.status === "feedback_ready";
+          const submitted = !companyTaxFeedbackPending && Boolean(submission?.receipt_id);
 
-          const badge = submitted ? (
+          const badge = companyTaxFeedbackPending ? (
+            <StatusBadge
+              variant="warning"
+              label="Test – ikke produksjonsinnsending"
+              icon="alert"
+            />
+          ) : submitted ? (
             <StatusBadge variant="success" label={f.status.submitted} icon="check" />
           ) : snapshot.ready ? (
             <StatusBadge status="klar" />

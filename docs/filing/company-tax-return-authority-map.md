@@ -1,6 +1,6 @@
 # Skattemelding for AS Authority Map
 
-Status: source-backed map with accepted end-to-end TT02 evidence; production disabled
+Status: source-backed TT02 flow with persisted pending feedback; production disabled
 Research date: 2026-07-14
 Target filing: `skattemelding for AS` / company tax return
 
@@ -12,7 +12,10 @@ Correction note (2026-07-14): the deterministic candidate uses the exact generic
 occurrence structure from the v6 XSD and reconciles interest, supported costs,
 exempt gains, non-deductible losses, dividend reversal, and the 3 percent
 inclusion. XML rendering, local official-XSD validation, and the supported TT02
-prepare/sign/receipt/archive rehearsal are complete. Production remains gated.
+prepare/sign/feedback/archive rehearsal are complete. The sanitized evidence now
+has a deployed-capable, idempotent and RLS-protected persistence path, plus owner
+and year-archive visibility. The official feedback outcome is not yet
+classified, and production remains gated.
 
 ## Sources
 
@@ -126,6 +129,16 @@ XML, document reference, internal party number, token, key, or personal
 identifier was persisted. Narrative and machine evidence are under
 `docs/filing/evidence/company-tax-tt02-2026-07-14.*`.
 
+The runtime persistence slice validates the same company/year/evidence contract
+and atomically records an `authority_test_runs` row in `pending` plus a linked
+`filing_submissions` row in `test_authority` / `feedback_ready`. The owner filing
+page labels this evidence explicitly as a test submission and presents the
+outcome as awaiting classification. The company-year archive exposes sanitized
+hashes, references, feedback metadata and call journal separately from simulated
+receipts. The write path requires an owner at AAL2, is retry-idempotent, is
+protected by RLS outside its dedicated RPC, and cannot enable a production
+permission, adapter or launch signoff.
+
 ## Talli Launch Subset
 
 Supported for validation:
@@ -155,12 +168,12 @@ These decisions are the source-backed launch schema for simple holding AS tax re
 
 | Authority requirement | Source evidence | Talli source data | Launch decision |
 | --- | --- | --- | --- |
-| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport completed a supported TT02 instance, personal signing, receipt, and archive cycle. Direct production filing remains blocked until deployed persistence, final state/feedback integration, approvals, and the production adapter are complete. |
+| Filing via system | Skatteetaten states company tax returns for AS must be retrieved and submitted through an accounting or year-end system. | Talli app/backend | Test-only system-supplier transport completed a supported TT02 instance, personal signing, feedback, and archive cycle. Deployed-capable persistence is implemented, but direct production filing remains blocked until the deployed import, outcome classification, approvals, and production adapter are complete. |
 | Deadline | Skatteetaten states the ordinary deadline is 31 May each year. | `deadlines`, `filing_readiness_snapshots` | Supported as deadline/readiness data. |
 | No-activity companies | Skatteetaten states the tax return must be filed even if the company has had no turnover. | `annual_data.no_activity_confirmed` | Minimum 2025 payload is locally schema-valid and completed the TT02 Altinn/signing/receipt leg for the supported fixture. |
 | Tax return plus business specification | Skatteetaten states the company must retrieve and submit the tax return with `næringsspesifikasjon` through the system. | `ledger_entries`, `holding_actions`, `annual_data` | 2025 schema/code-list mapping exists for the supported holding subset; unsupported cases fail closed. |
-| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | test-only validation client; company-bound `authority_test_runs` importer; future `filing_submissions.feedback_items` integration | TT02 validation accepted; the importer rejects incomplete evidence and records completed evidence as `pending`, while final persisted feedback/state-machine integration remains blocked. |
-| Altinn receipt/archive | Skatteetaten states receipt and submitted information are available in Altinn archive after signed submission. | test-only receipt client; `authority_test_runs`; `filing_submissions`; archive export | Official TT02 receipt/archive evidence is captured and machine-checked. Deployed import, structured feedback, and final filing-state persistence remain gated. |
+| Validation before submission | Skatteetaten states validation checks the tax return and business specification before submission and returns feedback. | test-only validation client; company-bound `authority_test_runs` importer; `filing_submissions.feedback_items` | TT02 returned `validertOK`; the importer rejects incomplete evidence and atomically records completed evidence as `pending` with structured warning code `COMPANY_TAX_AUTHORITY_OUTCOME_PENDING`. Explicit outcome classification remains blocked. |
+| Altinn feedback/archive | Skatteetaten states feedback and submitted information are available in Altinn archive after signed submission. | test-only feedback client; `authority_test_runs`; `filing_submissions`; archive export | Official TT02 feedback/archive evidence is captured and machine-checked. Sanitized archive visibility is implemented; deployed import execution and final outcome classification remain gated. |
 | Access packages/roles | Skatteetaten lists supported access packages and roles and notes transition from old Altinn roles to access packages. | `authority_permissions` | Readiness supported; production access package/delegation flow blocked. |
 | `skattemelding upersonlig` API | Skatteetaten API docs state this service delivers information appearing in a company's tax return. | potential import/pre-fill adapter | Data-reading candidate only; not evidence of production submission. |
 
@@ -176,14 +189,17 @@ Current engine coverage:
 - Estimates tax at 22 percent for review only; it is not submitted as an authority field.
 - Completed the supported TT02 Altinn instance, owner-signing handoff, official
   feedback receipt, and archive cycle without enabling production.
+- Persists the sanitized evidence atomically and idempotently behind owner-AAL2
+  and RLS boundaries, exposes the pending warning to the owner, and includes it
+  in the company-year archive without classifying it as simulation or production.
 
 Missing before production:
 
-- Persisted adapter integration with final preview, immutable body hash, and retry journal.
-- Attachment/vedlegg handling or an enforced no-attachment support boundary.
-- Persisted structured Skatteetaten feedback.
-- Deployed evidence import and final receipt/status/archive storage.
-- Dated authority/security approval and production credentials.
+- Actual evidence-import execution against the deployed Supabase project.
+- Explicit classification of the official feedback outcome.
+- Approval and implementation of the separate attachment/no-attachment boundary.
+- Production credentials, security/restore review, and dated named authority approval.
+- Production adapter implementation and enablement.
 
 Current tax preview field decisions:
 
@@ -216,8 +232,11 @@ Current tax preview field decisions:
    2026-07-14 for the supported no-activity fixture.**
 4. Execute the company/year-bound evidence import, then connect final authority
    feedback to the persisted filing state machine and structured feedback
-   records. **The fail-closed `authority_test_runs` importer is implemented;
-   deployed import and final state integration remain pending.**
-5. Enforce the no-attachment production support boundary and complete
-   production credential/security/restore review.
-6. Record the named authority approval before enabling production.
+   records. **The atomic importer, structured pending feedback, owner UI and
+   archive mapping are implemented; deployed import execution and explicit
+   outcome classification remain pending.**
+5. Obtain approval for, then implement, the separate attachment/no-attachment
+   support boundary.
+6. Complete production credentials and security/restore review, record dated
+   named authority approval, and separately implement and enable the production
+   adapter.

@@ -192,6 +192,34 @@ export function buildPersistedCompanyArchive(input: {
         createdAt: submission.created_at,
         updatedAt: submission.updated_at,
       })),
+    companyTaxSubmissions: input.filingSubmissions
+      .filter(
+        (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",
+      )
+      .map((submission) => ({
+        id: submission.id,
+        incomeYear: submission.income_year,
+        mode: submission.mode,
+        adapterMode: submission.adapter_mode,
+        status: submission.status,
+        payloadHash: submission.payload_hash,
+        idempotencyKey: submission.idempotency_key,
+        receiptId: submission.receipt_id,
+        feedbackDocumentIds: submission.feedback_document_ids,
+        feedbackItems: submission.feedback_items,
+        receiptMetadata: submission.receipt_metadata,
+        submittedPayloadReference: submission.submitted_payload_ref,
+        submittedPayload: null,
+        calls: submission.calls.map((call) => ({
+          endpoint: call.endpoint,
+          bodyHash: call.body_hash,
+          idempotencyKey: call.idempotency_key,
+          status: call.status,
+        })),
+        submittedBy: submission.submitted_by,
+        createdAt: submission.created_at,
+        updatedAt: submission.updated_at,
+      })),
     readinessReports: input.filingPreviews.map((preview) => ({
       filing: preview.filing,
       status: preview.status,

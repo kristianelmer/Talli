@@ -551,9 +551,9 @@ credentials and the admin/step-up flow, so they are performed in the running app
 | 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ☑ both Altinn instance scopes minted and exchanged | ☑ tax scope plus shared Altinn instance scopes active |
 | 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ☑ versioned RR0002 resource registered; request `Accepted` | ☑ tax-capable system user resolves by scope; do not pin the annual-accounts-only external reference |
 | 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS initialized for 2025; current draft verified through both person and system-user access |
-| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ☑ **accepted in TT02 2026-07-14**, high-assurance owner signature, official feedback receipt, and archived instance |
+| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ◑ submitted in TT02 2026-07-14 with high-assurance owner signature, official feedback, and archived instance; outcome classification pending |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
-| 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ◑ company/year-bound pending importer implemented and sanitized receipt/archive evidence complete; deployed import and final authority decision pending |
+| 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ◑ atomic owner-AAL2 importer, linked structured pending submission, and archive/UI visibility implemented; deployed import and explicit outcome classification pending |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
 
 Step 3 status (updated 2026-07-14): the shared TT02 client
@@ -584,8 +584,16 @@ envelope passed file scan, preflight, and asynchronous validation with
 signed with high-assurance TestID, and the official `tilbakemelding` plus
 archived instance were retrieved and independently verified. Sanitized evidence
 is in `docs/filing/evidence/company-tax-tt02-2026-07-14.*`. Production remains
-disabled; deployed evidence import, final state/feedback integration, explicit
-permission, and `tax_return_authority` approval remain open.
+disabled. The local/deployed-capable runtime path now atomically persists the
+evidence idempotently behind owner-AAL2 and RLS, records structured
+`COMPANY_TAX_AUTHORITY_OUTCOME_PENDING` feedback, and exposes sanitized owner and
+archive views without treating the record as simulated or production evidence.
+
+Still open: execute the import against the deployed Supabase project; classify
+the official feedback outcome explicitly; approve and implement the separate
+attachment/no-attachment boundary; complete production credentials and
+security/restore review with dated named `tax_return_authority` approval; and
+implement and enable the production adapter.
 
 Step 4 status (2026-07-01): **DONE end-to-end.** 4a — `systemregister.write` token minted (HTTP 200)
 and the systemregister payload POSTed → system **`930835978_talli`** registered in TT02 (GET confirms

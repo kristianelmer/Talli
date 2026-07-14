@@ -1,6 +1,6 @@
 # Production Submission State
 
-Status: RF-1086 and supported company-tax flows accepted end-to-end in TT02; every production transport remains disabled
+Status: RF-1086 has accepted TT02 evidence; company-tax TT02 feedback awaits outcome classification; every production transport remains disabled
 
 Applies to: `aksjonærregisteroppgaven`, `årsregnskap`, `skattemelding for AS`
 
@@ -23,6 +23,11 @@ stateDiagram-v2
     failed_retryable --> submitting: retry same body with same idempotency key
     failed_blocked --> ready: source data corrected
 ```
+
+For the persisted company-tax TT02 record, `feedback_ready` means only that an
+official feedback document is available. It remains in that state with
+`COMPANY_TAX_AUTHORITY_OUTCOME_PENDING`; receipt presence does not authorize the
+`receipt_stored` transition or imply acceptance.
 
 ## Hard Gates
 
@@ -87,15 +92,16 @@ Adapter and release anchors:
   clean scan, preflight and asynchronous `validertOK`, personal owner signing,
   official feedback receipt, and archive verification. The constructor still
   refuses production.
-- `app/lib/authority-test-evidence.ts` and the owner workspace implement a
-  company/year-bound, step-up-protected import for completed company-tax TT02
-  evidence. It validates exact scopes/app/data types, `validertOK`, personal
-  confirmation handoff, receipt and archive metadata, writes only a `pending`
-  `authority_test_runs` row plus audit metadata, and never enables production.
-  Sanitized company-tax receipt/archive evidence is complete. Deployed import,
-  final `filing_submissions` feedback/state integration, production permission
-  and credentials, security/restore review, and named approval remain release
-  gates.
+- `app/lib/authority-test-evidence.ts`,
+  `app/lib/company-tax-return-submission.ts`, migration `0005`, and the owner
+  workspace implement a company/year-bound, owner-AAL2-protected import for
+  completed company-tax TT02 evidence. The dedicated RPC atomically and
+  idempotently records a `pending` authority run and linked `test_authority` /
+  `feedback_ready` submission while ordinary RLS writes remain blocked. The
+  owner filing page and company-year archive expose only structured pending
+  feedback and sanitized hashes, references, metadata and call journal;
+  `simulatedReceipts` remains simulation-only. None of these paths enables
+  production.
 - `app/lib/filing-release-gate.ts` adds `production_adapter_unimplemented` or
   `production_adapter_disabled` even if permissions, evidence, billing, MFA,
   and human signoff records are otherwise present.
@@ -105,3 +111,11 @@ Adapter and release anchors:
   `docs/filing/skatteetaten-production-access-application.md` record the current
   official company-tax production prerequisites and the not-yet-submitted
   application packet. They are evidence inputs, not runtime enablement.
+
+Company tax still has these explicit open gates:
+
+- Execute the evidence import against the deployed Supabase project.
+- Classify the official feedback outcome explicitly.
+- Approve and implement the separate attachment/no-attachment boundary.
+- Complete production credentials, security/restore review, and dated named approval.
+- Implement and enable the production adapter.

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
 import { buildCompanyTaxReturnPayload } from "../app/lib/company-tax-return.ts";
 import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
 
@@ -285,4 +286,144 @@ test("persists tax return payload feedback into skattemelding readiness", () => 
 
   assert.equal(tax.status, "blocked");
   assert.ok(tax.hard_blocks.some((issue) => issue.code === "tax_return_unclear_fritaksmetoden"));
+});
+
+test("archives pending company-tax TT02 feedback without relabeling it as a simulated receipt", () => {
+  const companyTaxReceiptId = "70beee03-d8c2-4584-b366-8231c6de6584";
+  const archiveReference = "https://platform.tt02.altinn.no/storage/api/v1/instances/instance-id";
+  const feedbackItems = [{
+    severity: "warning",
+    code: "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+    message: "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+    documentId: companyTaxReceiptId,
+  }];
+  const receiptMetadata = {
+    authority: "skatteetaten",
+    receiptId: companyTaxReceiptId,
+    status: "feedback_ready",
+    receivedAt: "2026-07-14T12:32:00.000Z",
+    feedbackDocumentIds: [companyTaxReceiptId],
+    dataType: "tilbakemelding",
+    contentType: "application/xml",
+    byteLength: 527,
+    contentSha256: "f".repeat(64),
+    reference: `${archiveReference}/data/${companyTaxReceiptId}`,
+    archiveReference,
+    processEndedAt: "2026-07-14T12:30:00.000Z",
+    archivedAt: "2026-07-14T12:31:00.000Z",
+  };
+  const submittedPayloadReference = {
+    companyOrgNumber: "310279617",
+    incomeYear: 2025,
+    envelopeDataId: "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+    archiveReference,
+    payloadHash: "a".repeat(64),
+    skattemeldingHash: "b".repeat(64),
+    naeringsspesifikasjonHash: "c".repeat(64),
+    validationEnvelopeHash: "d".repeat(64),
+    submissionEnvelopeHash: "e".repeat(64),
+    currentDocumentReferenceHash: "0".repeat(64),
+    storedAt: "2026-07-14T12:32:00.000Z",
+  };
+  const commonSubmission = {
+    preview_id: null,
+    company_id: "company-id",
+    income_year: 2025,
+    payload_hash: "a".repeat(64),
+    idempotency_key: "company-tax:company-id:2025:payload-hash",
+    authority_confirmed_at: null,
+    preview_confirmed_at: null,
+    submitted_by: null,
+    created_at: "2026-07-14T12:32:00.000Z",
+    updated_at: "2026-07-14T12:32:00.000Z",
+  };
+  const archive = buildPersistedCompanyArchive({
+    company: {
+      id: "company-id",
+      org_number: "310279617",
+      name: "Logisk Øde Tiger AS",
+      entity_type: "AS",
+      address: "",
+      postal_code: "",
+      city: "",
+      status_text: "aktiv",
+      source: "test",
+      created_by: "owner",
+      identity_confirmed_at: "2026-01-01T00:00:00.000Z",
+      identity_locked_at: "2026-01-01T00:00:00.000Z",
+      created_at: "2026-01-01T00:00:00.000Z",
+    },
+    incomeYear: 2025,
+    setups: [],
+    shareholders: [],
+    ledgerEntries: [],
+    documents: [],
+    filingPreviews: [],
+    filingSubmissions: [
+      {
+        ...commonSubmission,
+        id: "simulation-id",
+        filing: "aksjonærregisteroppgaven",
+        mode: "simulation",
+        adapter_mode: "simulation",
+        status: "receipt_stored",
+        calls: [],
+        receipt_id: "simulation-receipt-id",
+        feedback_document_ids: [],
+        feedback_items: [],
+        receipt_metadata: null,
+        submitted_payload_ref: null,
+        submitted_payload: null,
+      },
+      {
+        ...commonSubmission,
+        id: "company-tax-submission-id",
+        filing: "skattemelding for AS",
+        mode: "test_authority",
+        adapter_mode: "test_authority",
+        status: "feedback_ready",
+        calls: [{
+          endpoint: "altinn:official-feedback-receipt",
+          body_hash: "f".repeat(64),
+          idempotency_key: null,
+          status: "received",
+          created_at: "2026-07-14T12:32:00.000Z",
+        }],
+        receipt_id: companyTaxReceiptId,
+        feedback_document_ids: [companyTaxReceiptId],
+        feedback_items: feedbackItems,
+        receipt_metadata: receiptMetadata,
+        submitted_payload_ref: submittedPayloadReference,
+        submitted_payload: null,
+      },
+    ],
+  });
+
+  assert.equal(archive.companyTaxSubmissions.length, 1);
+  assert.deepEqual(archive.companyTaxSubmissions[0], {
+    id: "company-tax-submission-id",
+    incomeYear: 2025,
+    mode: "test_authority",
+    adapterMode: "test_authority",
+    status: "feedback_ready",
+    payloadHash: "a".repeat(64),
+    idempotencyKey: "company-tax:company-id:2025:payload-hash",
+    receiptId: companyTaxReceiptId,
+    feedbackDocumentIds: [companyTaxReceiptId],
+    feedbackItems,
+    receiptMetadata,
+    submittedPayloadReference,
+    submittedPayload: null,
+    calls: [{
+      endpoint: "altinn:official-feedback-receipt",
+      bodyHash: "f".repeat(64),
+      idempotencyKey: null,
+      status: "received",
+    }],
+    submittedBy: null,
+    createdAt: "2026-07-14T12:32:00.000Z",
+    updatedAt: "2026-07-14T12:32:00.000Z",
+  });
+  assert.equal(archive.companyTaxSubmissions[0].submittedPayload, null);
+  assert.deepEqual(archive.simulatedReceipts.map((receipt) => receipt.receiptId), ["simulation-receipt-id"]);
 });
