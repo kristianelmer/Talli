@@ -146,7 +146,7 @@
 - Consumes: `buildCompanyTaxReturnEvidencePersistence(...)` and an authenticated owner with a fresh step-up event.
 - Produces: one atomic, retry-safe authority-test-run/filing-submission pair linked by `authority_test_run_id`.
 
-- [ ] **Step 1: Add failing migration and action tests**
+- [x] **Step 1: Add failing migration and action tests**
 
   Assert the migration:
 
@@ -159,13 +159,13 @@
 
   Assert `recordCompanyTaxReturnTt02Evidence` calls the pure projection and exactly one RPC instead of a direct `authority_test_runs` insert.
 
-- [ ] **Step 2: Run focused tests red**
+- [x] **Step 2: Run focused tests red**
 
   Run: `node --test tests/company_tax_return_authority_evidence_import.test.mjs tests/backup_restore.test.mjs`
 
   Expected: failure because migration 0005 and the RPC action path do not exist.
 
-- [ ] **Step 3: Implement migration 0005 and the atomic RPC**
+- [x] **Step 3: Implement migration 0005 and the atomic RPC**
 
   The function accepts this exact top-level JSON object:
 
@@ -194,7 +194,7 @@
 
   Keep raw table inserts blocked by RLS for `test_authority`; the RPC is the sole write path for this mode.
 
-- [ ] **Step 4: Switch the server action to the RPC**
+- [x] **Step 4: Switch the server action to the RPC**
 
   Replace the direct insert with:
 
@@ -214,7 +214,7 @@
 
   Do not separately mutate `authority_permissions`, `launch_signoffs`, adapter configuration, or audit events.
 
-- [ ] **Step 5: Add deployed-database behavior coverage**
+- [x] **Step 5: Add deployed-database behavior coverage**
 
   Extend the Supabase workspace test to apply migration 0005 and prove:
 
@@ -226,7 +226,7 @@
   - company members can read the persisted record through normal RLS;
   - `authority_permissions.production_enabled` and launch signoffs remain unchanged.
 
-- [ ] **Step 6: Run focused and database tests green**
+- [x] **Step 6: Run focused and database tests green**
 
   Run: `node --test tests/company_tax_return_authority_evidence_import.test.mjs tests/backup_restore.test.mjs`
 
@@ -236,7 +236,7 @@
 
   Expected: all commands exit 0; database test may skip only under its existing documented no-local-Postgres condition.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   Run:
 

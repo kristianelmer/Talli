@@ -13,6 +13,7 @@ import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../app/lib/authority-permission.ts";
 import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
 import { buildBillingAccount, productionBillingGate } from "../app/lib/billing.ts";
+import { buildCompanyTaxReturnEvidencePersistence } from "../app/lib/company-tax-return-submission.ts";
 import {
   dividendReceivedLedgerLines,
   summarizeDividendReceivedAnnualImpact,
@@ -169,6 +170,81 @@ async function signIn(user) {
   });
   assert.ifError(error);
   return client;
+}
+
+function companyTaxTt02Persistence({ companyId, orgNumber, ownerId }) {
+  const instanceId = `51549454/${randomUUID()}`;
+  const envelopeDataId = randomUUID();
+  const receiptDataId = randomUUID();
+  const archiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`;
+  return buildCompanyTaxReturnEvidencePersistence({
+    companyId,
+    expectedCompanyOrgNumber: orgNumber,
+    expectedIncomeYear: 2025,
+    evidenceUrl: "https://evidence.example/company-tax-tt02.json",
+    recordedBy: ownerId,
+    evidence: {
+      schemaVersion: 2,
+      status: "submitted_and_receipted",
+      environment: "test",
+      productionEnabled: false,
+      companyOrgNumber: orgNumber,
+      incomeYear: 2025,
+      scope: "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+      systemUserResource: "app_skd_formueinntekt-skattemelding-v2",
+      payloadHashes: {
+        skattemelding: "a".repeat(64),
+        naeringsspesifikasjon: "b".repeat(64),
+        validationEnvelope: "c".repeat(64),
+        submissionEnvelope: "d".repeat(64),
+      },
+      localSchemaValidation: {
+        status: "passed",
+        schemas: [
+          "skattemeldingUpersonlig_v5_ekstern.xsd",
+          "naeringsspesifikasjon_v6_ekstern.xsd",
+          "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd",
+        ],
+      },
+      authorityValidation: { result: "validertOK", failureReasons: [] },
+      currentDocumentReferenceHash: "e".repeat(64),
+      currentDocumentReference: "DATABASE_TEST_REFERENCE",
+      sourceXml: "<skattemelding>DATABASE_TEST_XML</skattemelding>",
+      partyNumber: "DATABASE_TEST_PARTY",
+      accessToken: "DATABASE_TEST_TOKEN",
+      privateKeyPem: "DATABASE_TEST_KEY",
+      personalIdentifier: "DATABASE_TEST_PERSON",
+      instance: {
+        id: instanceId,
+        envelopeUploaded: true,
+        envelopeDataId,
+        fileScanResult: "Clean",
+        confirmationPrepared: true,
+        processTask: "confirmation",
+      },
+      confirmationUrl: `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`,
+      validatedAt: "2026-07-14T12:20:00.000Z",
+      confirmationPreparedAt: "2026-07-14T12:21:00.000Z",
+      receipt: {
+        dataId: receiptDataId,
+        dataType: "tilbakemelding",
+        contentType: "application/xml",
+        byteLength: 527,
+        contentSha256: "f".repeat(64),
+        reference: `${archiveReference}/data/${receiptDataId}`,
+      },
+      submission: {
+        submitted: true,
+        processTask: null,
+        processEndedAt: "2026-07-14T12:30:00.000Z",
+        archived: true,
+        archivedAt: "2026-07-14T12:31:00.000Z",
+        archiveReference,
+      },
+      receiptRetrievedAt: "2026-07-14T12:32:00.000Z",
+      secretsStored: false,
+    },
+  });
 }
 
 test(
@@ -682,6 +758,189 @@ test(
       .eq("company_id", companyId);
     assert.ifError(outsiderAuthorityRowsError);
     assert.equal(outsiderAuthorityRows.length, 0);
+
+    const companyTaxPersistence = companyTaxTt02Persistence({
+      companyId,
+      orgNumber,
+      ownerId: ownerUser.id,
+    });
+    const { data: authorityPermissionsBeforeImport, error: authorityPermissionsBeforeImportError } = await admin
+      .from("authority_permissions")
+      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
+      .eq("company_id", companyId)
+      .order("obligation");
+    assert.ifError(authorityPermissionsBeforeImportError);
+    const { data: launchSignoffsBeforeImport, error: launchSignoffsBeforeImportError } = await admin
+      .from("launch_signoffs")
+      .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
+      .order("key");
+    assert.ifError(launchSignoffsBeforeImportError);
+
+    const { error: clearStepUpError } = await admin
+      .from("step_up_events")
+      .delete()
+      .eq("actor_id", ownerUser.id);
+    assert.ifError(clearStepUpError);
+    const { error: noStepUpImportError } = await owner.rpc("import_company_tax_tt02_evidence", {
+      p_payload: companyTaxPersistence,
+    });
+    assert.match(noStepUpImportError?.message ?? "", /company_tax_evidence_fresh_step_up_required/u);
+
+    const { error: importStepUpError } = await owner.from("step_up_events").insert({
+      actor_id: ownerUser.id,
+      method: "totp",
+      mfa_verified_at: new Date().toISOString(),
+    });
+    assert.ifError(importStepUpError);
+    const { data: importedCompanyTax, error: companyTaxImportError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.ifError(companyTaxImportError);
+    assert.equal(importedCompanyTax.created, true);
+    assert.match(importedCompanyTax.authority_test_run_id, /^[0-9a-f-]{36}$/u);
+    assert.match(importedCompanyTax.filing_submission_id, /^[0-9a-f-]{36}$/u);
+
+    const { data: importedAuthorityRuns, error: importedAuthorityRunsError } = await owner
+      .from("authority_test_runs")
+      .select("id, company_id, obligation, environment, status, test_reference, payload_hash")
+      .eq("company_id", companyId)
+      .eq("obligation", "skattemelding")
+      .eq("test_reference", companyTaxPersistence.authorityRun.test_reference);
+    assert.ifError(importedAuthorityRunsError);
+    assert.deepEqual(importedAuthorityRuns, [{
+      id: importedCompanyTax.authority_test_run_id,
+      company_id: companyId,
+      obligation: "skattemelding",
+      environment: "test",
+      status: "pending",
+      test_reference: companyTaxPersistence.authorityRun.test_reference,
+      payload_hash: companyTaxPersistence.authorityRun.payload_hash,
+    }]);
+    const { data: importedSubmissions, error: importedSubmissionsError } = await owner
+      .from("filing_submissions")
+      .select("id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, status, receipt_id, submitted_payload")
+      .eq("authority_test_run_id", importedCompanyTax.authority_test_run_id);
+    assert.ifError(importedSubmissionsError);
+    assert.deepEqual(importedSubmissions, [{
+      id: importedCompanyTax.filing_submission_id,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      company_id: companyId,
+      income_year: 2025,
+      filing: "skattemelding for AS",
+      mode: "test_authority",
+      adapter_mode: "test_authority",
+      status: "feedback_ready",
+      receipt_id: companyTaxPersistence.submission.receipt_id,
+      submitted_payload: null,
+    }]);
+
+    const { data: companyTaxAuditBeforeRetry, error: companyTaxAuditBeforeRetryError } = await owner
+      .from("audit_events")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("action", "company_tax_tt02_evidence_imported");
+    assert.ifError(companyTaxAuditBeforeRetryError);
+    assert.equal(companyTaxAuditBeforeRetry.length, 1);
+    const { data: retriedCompanyTax, error: companyTaxRetryError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: structuredClone(companyTaxPersistence) },
+    );
+    assert.ifError(companyTaxRetryError);
+    assert.deepEqual(retriedCompanyTax, {
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      filing_submission_id: importedCompanyTax.filing_submission_id,
+      created: false,
+    });
+    const { data: companyTaxAuditAfterRetry, error: companyTaxAuditAfterRetryError } = await owner
+      .from("audit_events")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("action", "company_tax_tt02_evidence_imported");
+    assert.ifError(companyTaxAuditAfterRetryError);
+    assert.equal(companyTaxAuditAfterRetry.length, 1);
+
+    const conflictingCompanyTax = structuredClone(companyTaxPersistence);
+    const conflictingReceiptId = randomUUID();
+    conflictingCompanyTax.authorityRun.receipt_reference = `${conflictingCompanyTax.authorityRun.archive_reference}/data/${conflictingReceiptId}`;
+    conflictingCompanyTax.submission.receipt_id = conflictingReceiptId;
+    conflictingCompanyTax.submission.feedback_document_ids = [conflictingReceiptId];
+    conflictingCompanyTax.submission.feedback_items[0].documentId = conflictingReceiptId;
+    conflictingCompanyTax.submission.receipt_metadata.receiptId = conflictingReceiptId;
+    conflictingCompanyTax.submission.receipt_metadata.feedbackDocumentIds = [conflictingReceiptId];
+    conflictingCompanyTax.submission.receipt_metadata.reference = conflictingCompanyTax.authorityRun.receipt_reference;
+    const { error: conflictingCompanyTaxError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: conflictingCompanyTax },
+    );
+    assert.match(conflictingCompanyTaxError?.message ?? "", /company_tax_evidence_conflict/u);
+
+    const rawNestedCompanyTax = structuredClone(companyTaxPersistence);
+    rawNestedCompanyTax.submission.receipt_metadata.rawXml = "<skattemelding>forbidden</skattemelding>";
+    const { error: rawNestedCompanyTaxError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: rawNestedCompanyTax },
+    );
+    assert.match(rawNestedCompanyTaxError?.message ?? "", /company_tax_evidence_invalid_payload/u);
+
+    const directAuthority = {
+      ...companyTaxPersistence.authorityRun,
+      test_reference: `tt02:51549454/${randomUUID()}`,
+    };
+    const { data: directAuthorityRow, error: directAuthorityError } = await owner
+      .from("authority_test_runs")
+      .insert(directAuthority)
+      .select("id")
+      .single();
+    assert.ifError(directAuthorityError);
+    const { error: directTestAuthoritySubmissionError } = await owner
+      .from("filing_submissions")
+      .insert({
+        ...companyTaxPersistence.submission,
+        authority_test_run_id: directAuthorityRow.id,
+      });
+    assert.ok(directTestAuthoritySubmissionError);
+
+    const { error: reviewerCompanyTaxError } = await reviewer.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.match(reviewerCompanyTaxError?.message ?? "", /company_tax_evidence_owner_required/u);
+    const { error: outsiderCompanyTaxError } = await outsider.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.match(outsiderCompanyTaxError?.message ?? "", /company_tax_evidence_owner_required/u);
+
+    const { data: reviewerCompanyTaxRuns, error: reviewerCompanyTaxRunsError } = await reviewer
+      .from("authority_test_runs")
+      .select("id")
+      .eq("id", importedCompanyTax.authority_test_run_id);
+    assert.ifError(reviewerCompanyTaxRunsError);
+    assert.deepEqual(reviewerCompanyTaxRuns, [{ id: importedCompanyTax.authority_test_run_id }]);
+    const { data: reviewerCompanyTaxSubmissions, error: reviewerCompanyTaxSubmissionsError } = await reviewer
+      .from("filing_submissions")
+      .select("id, authority_test_run_id")
+      .eq("id", importedCompanyTax.filing_submission_id);
+    assert.ifError(reviewerCompanyTaxSubmissionsError);
+    assert.deepEqual(reviewerCompanyTaxSubmissions, [{
+      id: importedCompanyTax.filing_submission_id,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+    }]);
+
+    const { data: authorityPermissionsAfterImport, error: authorityPermissionsAfterImportError } = await admin
+      .from("authority_permissions")
+      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
+      .eq("company_id", companyId)
+      .order("obligation");
+    assert.ifError(authorityPermissionsAfterImportError);
+    assert.deepEqual(authorityPermissionsAfterImport, authorityPermissionsBeforeImport);
+    const { data: launchSignoffsAfterImport, error: launchSignoffsAfterImportError } = await admin
+      .from("launch_signoffs")
+      .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
+      .order("key");
+    assert.ifError(launchSignoffsAfterImportError);
+    assert.deepEqual(launchSignoffsAfterImport, launchSignoffsBeforeImport);
 
     assert.throws(() => buildBillingAccount({ companyId, pricingPlan: "founder", founderCohortNumber: 101 }), /Founder-kull/);
     const billingAccount = buildBillingAccount({

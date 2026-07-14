@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -85,6 +85,28 @@ function archiveFixture(overrides = {}) {
     ...overrides,
   };
 }
+
+test("company-tax evidence migration preserves an atomic reference-only backup boundary", () => {
+  const migrationPath = new URL(
+    "../supabase/migrations/0005_company_tax_feedback_persistence.sql",
+    import.meta.url,
+  );
+  assert.ok(existsSync(migrationPath), "company-tax evidence persistence migration must exist");
+  const migration = readFileSync(migrationPath, "utf8");
+
+  assert.match(
+    migration,
+    /authority_test_run_id uuid[\s\S]*references public\.authority_test_runs\(id\)/u,
+  );
+  assert.match(migration, /submitted_payload is not null/u);
+  assert.match(migration, /raise exception 'company_tax_evidence_invalid_payload'/u);
+  assert.match(migration, /insert into public\.audit_events/u);
+  assert.doesNotMatch(migration, /submitted_payload\s*=\s*p_payload/u);
+  assert.doesNotMatch(
+    migration,
+    /(?:insert into|update|delete from) public\.(?:authority_permissions|launch_signoffs)/u,
+  );
+});
 
 test("backup manifest identifies launch-critical tables and object references", () => {
   const manifest = buildBackupManifest(archiveFixture());
