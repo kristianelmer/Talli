@@ -217,6 +217,17 @@ function dataElementId(value: unknown, dataType: string): string | null {
   return matches.length === 1 ? validDataId(matches[0]) : null;
 }
 
+function dataElement(value: unknown, dataType: string): Record<string, unknown> | null {
+  const matches = dataElements(value)
+    .filter((element) => safeString(element.dataType) === dataType);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function isoDateTime(value: unknown): string | null {
+  const candidate = safeString(value);
+  return candidate && !Number.isNaN(Date.parse(candidate)) ? candidate : null;
+}
+
 function processTask(value: unknown): string {
   const data = safeObject(value);
   const process = safeObject(data.process);
@@ -391,6 +402,81 @@ export function createAnnualAccountsAuthorityClient(input: AuthorityClientInput)
         signingUrl: `${endpoints.altinnAppBase}/#/instance/${id}`,
         signed: false as const,
         submitted: false as const,
+      };
+    },
+
+    // Altinn's official instance model exposes process.ended/endEvent and
+    // status.archived. The official end-user-system guide identifies the
+    // ref-data-as-pdf data element as the receipt for this filing flow.
+    // https://docs.altinn.studio/en/api/models/instance/
+    // https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/apis/#4-hente-kvittering
+    async getSubmissionEvidence(options: { instanceId: string }) {
+      const id = validInstanceId(options.instanceId);
+      const result = await authorityRequest({
+        fetch: fetchImplementation,
+        url: instanceUrl(id),
+        method: "GET",
+        token: altinnAccessToken,
+        timeoutMs,
+        headers: { accept: "application/json" },
+      });
+      const instance = safeObject(result.data);
+      const returnedId = validInstanceId(safeString(instance.id));
+      if (returnedId !== id) {
+        throw new AnnualAccountsAuthorityError(
+          "Altinn returned a different annual accounts instance id.",
+          { code: "ANNUAL_ACCOUNTS_INSTANCE_MISMATCH" },
+        );
+      }
+
+      const process = safeObject(instance.process);
+      const status = safeObject(instance.status);
+      const processEndedAt = isoDateTime(process.ended);
+      const endEvent = safeString(process.endEvent) || null;
+      const processCompleted = process.currentTask === null
+        && processEndedAt !== null
+        && endEvent !== null;
+      const archivedAt = isoDateTime(status.archived);
+      const archived = status.isArchived === true && archivedAt !== null;
+
+      const signatureElement = dataElement(result.data, "signature");
+      const signed = signatureElement !== null
+        && safeString(signatureElement.contentType) === "application/json";
+      const signatureDataId = signed
+        ? validDataId(safeString(signatureElement.id))
+        : null;
+      const receiptElement = dataElement(result.data, "ref-data-as-pdf");
+      let receipt = null;
+      if (receiptElement && safeString(receiptElement.contentType) === "application/pdf") {
+        const dataId = validDataId(safeString(receiptElement.id));
+        const sizeBytes = Number(receiptElement.size);
+        if (Number.isInteger(sizeBytes) && sizeBytes > 0) {
+          receipt = {
+            dataId,
+            dataType: "ref-data-as-pdf" as const,
+            filename: safeString(receiptElement.filename, "annual-accounts-receipt.pdf"),
+            contentType: "application/pdf" as const,
+            sizeBytes,
+            reference: `${endpoints.altinnPlatformBase}/storage/api/v1/instances/${id}/data/${dataId}`,
+            downloadUrl: `${instanceUrl(id)}/data/${dataId}`,
+          };
+        }
+      }
+
+      return {
+        instanceId: id,
+        processCompleted,
+        processEndedAt,
+        endEvent,
+        signed,
+        signatureDataId,
+        submitted: processCompleted && signed && archived && receipt !== null,
+        archived,
+        archivedAt,
+        archiveReference: archived
+          ? `${endpoints.altinnPlatformBase}/storage/api/v1/instances/${id}`
+          : null,
+        receipt,
       };
     },
   };

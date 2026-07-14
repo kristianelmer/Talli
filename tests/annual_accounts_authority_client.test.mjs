@@ -37,6 +37,51 @@ function instanceResponse(taskType = "data") {
   };
 }
 
+function submittedInstanceResponse() {
+  const receiptDataId = "40000000-0000-4000-8000-000000000004";
+  const signatureDataId = "50000000-0000-4000-8000-000000000005";
+  const base = "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406";
+  return {
+    ...instanceResponse(),
+    selfLinks: {
+      apps: `${base}/instances/${instanceId}`,
+      platform: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`,
+    },
+    process: {
+      started: "2026-07-14T10:28:00.4886352Z",
+      startEvent: "StartEvent_1",
+      currentTask: null,
+      ended: "2026-07-14T10:37:41.935543Z",
+      endEvent: "EndEvent_1",
+    },
+    status: {
+      isArchived: true,
+      archived: "2026-07-14T10:37:41.935543Z",
+    },
+    data: [
+      ...instanceResponse().data,
+      {
+        id: receiptDataId,
+        dataType: "ref-data-as-pdf",
+        filename: "Årsregnskap RR-0002.pdf",
+        contentType: "application/pdf",
+        size: 109275,
+        selfLinks: {
+          apps: `${base}/instances/${instanceId}/data/${receiptDataId}`,
+          platform: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}/data/${receiptDataId}`,
+        },
+      },
+      {
+        id: signatureDataId,
+        dataType: "signature",
+        filename: "signature.json",
+        contentType: "application/json",
+        size: 884,
+      },
+    ],
+  };
+}
+
 test("prepares the official RR0002 instance for person signing without signing or submitting", async () => {
   const requests = [];
   const queue = [
@@ -102,6 +147,48 @@ test("prepares the official RR0002 instance for person signing without signing o
   );
   assert.equal(result.signed, false);
   assert.equal(result.submitted, false);
+  assert.doesNotMatch(JSON.stringify(result), /opaque-altinn-token/u);
+});
+
+test("reads completed RR0002 signature, receipt, and archive evidence without downloading documents", async () => {
+  const requests = [];
+  const client = createAnnualAccountsAuthorityClient({
+    environment: "test",
+    altinnAccessToken: accessToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return jsonResponse(submittedInstanceResponse());
+    },
+  });
+
+  const result = await client.getSubmissionEvidence({ instanceId });
+
+  assert.deepEqual(requests.map((request) => [request.init.method, request.url]), [[
+    "GET",
+    `https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/${instanceId}`,
+  ]]);
+  assert.equal(result.instanceId, instanceId);
+  assert.equal(result.processCompleted, true);
+  assert.equal(result.processEndedAt, "2026-07-14T10:37:41.935543Z");
+  assert.equal(result.endEvent, "EndEvent_1");
+  assert.equal(result.signed, true);
+  assert.equal(result.signatureDataId, "50000000-0000-4000-8000-000000000005");
+  assert.equal(result.submitted, true);
+  assert.equal(result.archived, true);
+  assert.equal(result.archivedAt, "2026-07-14T10:37:41.935543Z");
+  assert.equal(
+    result.archiveReference,
+    `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`,
+  );
+  assert.deepEqual(result.receipt, {
+    dataId: "40000000-0000-4000-8000-000000000004",
+    dataType: "ref-data-as-pdf",
+    filename: "Årsregnskap RR-0002.pdf",
+    contentType: "application/pdf",
+    sizeBytes: 109275,
+    reference: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}/data/40000000-0000-4000-8000-000000000004`,
+    downloadUrl: `https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/${instanceId}/data/40000000-0000-4000-8000-000000000004`,
+  });
   assert.doesNotMatch(JSON.stringify(result), /opaque-altinn-token/u);
 });
 

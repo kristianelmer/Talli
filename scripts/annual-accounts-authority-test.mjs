@@ -80,7 +80,8 @@ function assertSamePreparedCase(evidence, expected) {
 
 function safeSummary(evidence) {
   return {
-    ok: evidence.status === "locked_for_person_signing",
+    ok: evidence.status === "locked_for_person_signing"
+      || evidence.status === "submitted_and_archived",
     status: evidence.status,
     environment: evidence.environment,
     companyOrgNumber: evidence.companyOrgNumber,
@@ -88,8 +89,10 @@ function safeSummary(evidence) {
     instanceId: evidence.instance?.id ?? null,
     validationIssueCodes: evidence.validation?.issues?.map((item) => item.code) ?? [],
     signingUrl: evidence.signingUrl ?? null,
-    signed: false,
-    submitted: false,
+    signed: evidence.signed === true,
+    submitted: evidence.submitted === true,
+    receiptReference: evidence.submission?.receipt?.reference ?? null,
+    archiveReference: evidence.submission?.archiveReference ?? null,
     evidenceFile: evidence.evidenceFile,
   };
 }
@@ -147,7 +150,7 @@ async function main() {
 
   const prior = await existingEvidence(evidencePath);
   assertSamePreparedCase(prior, { companyOrgNumber, incomeYear, payloadHashes });
-  if (prior?.status === "locked_for_person_signing") {
+  if (prior?.status === "submitted_and_archived") {
     prior.codeCommit = gitCommit();
     prior.evidenceFile = basename(evidencePath);
     delete prior.evidencePath;
@@ -180,6 +183,7 @@ async function main() {
     signingUrl: null,
     signed: false,
     submitted: false,
+    submission: null,
     secretsStored: false,
     preparedAt: new Date().toISOString(),
     error: null,
@@ -210,6 +214,25 @@ async function main() {
   });
 
   try {
+    if (evidence.status === "locked_for_person_signing") {
+      const submission = await client.getSubmissionEvidence({
+        instanceId: evidence.instance.id,
+      });
+      evidence.submission = submission;
+      evidence.signed = submission.signed;
+      evidence.submitted = submission.submitted;
+      evidence.status = submission.submitted
+        ? "submitted_and_archived"
+        : "locked_for_person_signing";
+      evidence.submittedAt = submission.submitted
+        ? submission.processEndedAt
+        : null;
+      evidence.error = null;
+      await writeJsonAtomic(evidencePath, evidence);
+      console.log(JSON.stringify(safeSummary(evidence)));
+      return;
+    }
+
     if (!evidence.instance) {
       const created = await client.createInstance({ companyOrgNumber });
       evidence.instance = {
