@@ -1,8 +1,8 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: payload candidate implemented; production adapter disabled pending TT02
+Status: payload candidate and test-only Altinn instance client implemented; production disabled pending TT02
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 Target issue: #82 (payload map, closed) / #84 (test-environment submission flow)
 
 This register records the public evidence Talli can use to build a narrow
@@ -20,6 +20,10 @@ required.
   https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Altinn RR-0002 form page:
   https://info.altinn.no/skjemaoversikt/bronnoysundregistrene/arsregnskap/
+- Altinn Apps instance API:
+  https://docs.altinn.studio/en/api/apps/instances/
+- Altinn Apps process API:
+  https://docs.altinn.studio/en/api/apps/process/
 
 Evidence extraction source:
 
@@ -138,14 +142,24 @@ Block or escalate:
 
 - Implement payload builder using this map. — Done in #83 (`holding_core.annual` +
   `app/lib`; covered by the code-gate verification below).
+- Implement the test-only stepped Altinn transport through the person-signing
+  handoff. — Done 2026-07-14 in `app/lib/annual-accounts-authority-client.ts`.
+  It creates the instance, resolves exactly one `Hovedskjema` and one
+  `Underskjema`, uploads XML, validates, fails closed on errors, locks with
+  `action=confirm`, and returns the person-signing URL. It cannot sign or submit,
+  and construction with `environment=production` is refused.
+- Add `altinn:instances.read` and `altinn:instances.write` to the TT02
+  Maskinporten client. — Done and verified in Digdir Selvbetjening 2026-07-14.
 - Validate generated XML/data elements in TT02.
 - Prove hybrid system-user/ID-porten owner signing.
 - Persist official receipt/inbox/archive references.
 - Complete human release signoff.
-- Implement and enable the real Altinn3 adapter; the current adapter is an
-  explicit fail-closed seam only.
+- Add `app_brg_aarsregnskap` to a TT02 system definition and approve a matching
+  company system user before the live rehearsal.
+- Enable the production transport only after all external evidence and signoffs
+  above exist; the current client remains test-only.
 
-## Code Gate Verification (2026-07-13)
+## Code Gate Verification (2026-07-14)
 
 Latest run of the annual-accounts code-side evidence (all green):
 
@@ -153,9 +167,10 @@ Latest run of the annual-accounts code-side evidence (all green):
 | --- | --- |
 | `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 13 passed |
 | `npm run test:annual-accounts` | 4 passed |
+| `npm run test:annual-accounts-authority` | 5 passed |
 | `npm run test:annual-data` | 2 passed |
 | `npm run test:annual-readiness` | 5 passed |
-| `npm run test:authority-evidence` | 4 passed |
+| `npm run test:authority-evidence` | 6 passed |
 
 This proves the deterministic payload/readiness/evidence logic is ready for TT02
 submission. It does not substitute for the remaining external rows above

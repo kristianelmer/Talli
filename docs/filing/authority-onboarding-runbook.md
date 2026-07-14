@@ -153,8 +153,9 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   HTTP 200; used to register the system, see Step 4a live result).
   - ✅ **Active 2026-07-14:** `skatteetaten:formueinntekt/skattemelding` (#87). A system-user token
     was issued and TT02 `validertest` returned `validertOK` for `310279617`.
-  - ⏭️ **Not yet attached:** `altinn:instances.read` / `altinn:instances.write`, required for the
-    Altinn3 instance/upload leg of the skattemelding flow.
+  - ✅ **Attached 2026-07-14:** `altinn:instances.read` / `altinn:instances.write`, required for the
+    Altinn3 instance/upload legs of the skattemelding and annual-accounts flows. Digdir Selvbetjening
+    confirmed both scopes were added to the client without a `Tilgang mangler` marker.
   - ✅ **Active for vendor-initiated Step 4b (2026-07-01):**
     `altinn:authentication/systemuser.request.write` + `altinn:authentication/systemuser.request.read`.
     Altinn granted these to org 930835978, and after **adding both to the client** in the Digdir
@@ -179,6 +180,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | 2026-06-30 | #87 skattemelding | Skatteetaten | same thread (`altinnreetablering@skatteetaten.no`) | scope `skatteetaten:formueinntekt/skattemelding` (test) — Altinn3 app `skd/formueinntekt-skattemelding-v2`, systembruker resource `app_skd_formueinntekt-skattemelding-v2` | ✅ granted, added to client, token issued and `validertest` accepted 2026-07-14 |
 | 2026-06-30 | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | (1) grant `altinn:authentication/systemregister.write` (TT02) + (2) enable real org 930835978 in TT02 systemregister, for client_id above | ✅ **granted 2026-07-01** — `systemregister.write` active (token 200); org 930835978 accepted (Step 4a POST succeeded, no separate enablement needed) |
 | 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **active 2026-07-01** — granted to org, added to the client in the Digdir portal, token requests return HTTP 200 |
+| 2026-07-14 | #84/#87 Altinn instances | Digdir Selvbetjening TT02 | authenticated self-service | add `altinn:instances.read` + `altinn:instances.write` to client `7166e743-…` | ✅ both added and visible on client; token/system-user rehearsal still requires the matching app resource right |
 
 Note: the Skatteetaten SBS "Bestill tilgang" link routes to the eksternjira brukerstøtte
 (`eksternjira.sits.no`), which needs a per-virksomhet brukerkonto. Until that account exists, the
@@ -355,7 +357,7 @@ system that bundles all three across fullmaktsområder.
 | Obligation (label) | Issue | `obligation` value | Maskinporten scope(s) | Test surface |
 |---|---|---|---|---|
 | Aksjonærregisteroppgaven (RF-1086) | #81 | `aksjonaerregisteroppgaven` | `skatteetaten:innrapporteringaksjonaerregisteroppgave` | Skatteetaten test env; POST 1086H / 1086U / bekreft, GET dokumenter |
-| Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
+| Årsregnskap (RR-0002) | #84 | `aarsregnskap` | `altinn:instances.read`, `altinn:instances.write` | Regnskapsregisteret machine API via Altinn3 **TT02**; system-user resource `app_brg_aarsregnskap`; system user fills + locks, **ID-porten** signs (hybrid); `dataFormatId=1266` |
 | Skattemelding for AS | #87 | `skattemelding` | `skatteetaten:formueinntekt/skattemelding` (+ `altinn:instances.read`, `altinn:instances.write` for the Altinn3 app `skd/formueinntekt-skattemelding-v2`). **NOT** `skatteetaten:skattemeldingupersonlig` — see note. | Skatteetaten external test env (`api-test.sits.no`) + Altinn3 `skd.apps.tt02.altinn.no`; systembruker resource `app_skd_formueinntekt-skattemelding-v2`; owner-managed **system-supplier submission** of the company's *own* return (company = data subject + submitter, Talli = its system via Altinn delegation); final BankID sign done by a person in Altinn UI. 2025 schema `skattemeldingUpersonlig_v5` / `naeringsspesifikasjon_v6` |
 
 Trace any payload fields to the maps/evidence registers in `docs/filing/` — do not invent fields.

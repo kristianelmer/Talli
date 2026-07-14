@@ -1,8 +1,8 @@
 # Årsregnskap Authority Map
 
-Status: source-backed map plus RR0002 evidence register  
-Research date: 2026-06-16  
-Target filing: `årsregnskap` / RR-0002  
+Status: source-backed map, payload, and test-only Altinn transport; TT02 evidence pending
+Research date: 2026-07-14
+Target filing: `årsregnskap` / RR-0002
 
 This map defines what Talli can validate from public sources before production annual-accounts filing. It is not a complete production integration spec.
 
@@ -16,6 +16,9 @@ Primary sources:
 - Brønnøysund API documentation index for Regnskapsregisteret: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/
 - Brønnøysund system-submission docs: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/hvordan-sende-inn/
 - Brønnøysund official Postman examples: https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
+- Altinn Apps instance API: https://docs.altinn.studio/en/api/apps/instances/
+- Altinn Apps process API: https://docs.altinn.studio/en/api/apps/process/
+- Altinn system-user integration example (`app_brg_aarsregnskap`): https://docs.altinn.studio/en/altinn-studio/v8/guides/integration/sbs/setup/
 - Digdir/Altinn 3 update for annual accounts system submission: https://samarbeid.digdir.no/altinn/nytt-fra-programmet-nye-altinn/2723
 - RR0002 evidence register: [annual-accounts-rr0002-evidence-register.md](./annual-accounts-rr0002-evidence-register.md)
 
@@ -50,6 +53,9 @@ Production implications:
 
 - Talli can model annual-account data and readiness from public sources.
 - Talli now has a narrow RR0002 field evidence pack for a simple holding AS, but cannot claim production RR-0002 filing until generated payloads, attachment rules, signing flow, feedback, and receipt behavior are validated in TT02 or equivalent test environment.
+- Talli now also has a test-only stepped Altinn client for instance creation,
+  XML upload, instance validation, locking, and person-signing handoff. It
+  refuses production construction and never performs `action=sign`.
 - Brønnøysund docs state system user can fill/upload/lock, but signature requires ID-porten; owner-managed filing therefore needs an ID-porten-only or hybrid system-user/person signing flow.
 - `buildFilingReleaseGates` must remain `production_disabled` until
   accepted `authority_test_runs` evidence for `aarsregnskap` has receipt and
@@ -98,19 +104,19 @@ These decisions are the source-backed launch schema for a simple holding AS. A r
 
 Current engine coverage:
 
-- Balance preview: partial.
-- Income statement preview: partial.
+- Balance and income-statement payload fields for the narrow launch subset: covered.
 - General meeting approval readiness: covered.
 - Bank/document warnings: partial.
+- Test-only Altinn instance/create/upload/validate/lock transport: covered.
 - Simulated receipt: covered for simulation only.
 
 Missing before production:
 
-- Payload builder using `aarsregnskap-vanlig-202406`.
+- Complete RR0002 XML renderer and TT02 schema/authority validation.
 - TT02 validation of mapped fields.
 - Annual-account note model.
 - Attachment payload handling.
-- Signing model.
+- ID-porten signing handoff evidence.
 - Altinn/Regnskapsregisteret validation feedback.
 - Official receipt storage.
 
@@ -129,8 +135,8 @@ Current annual preview field decisions:
 
 ## Production Blockers
 
-- Confirm exact Altinn 3/Regnskapsregisteret machine-submission API contract.
-- Confirm whether owner-managed direct filing can use ID-porten-only, system-user-only, or hybrid flow.
+- Register `app_brg_aarsregnskap` in the TT02 system definition and approve a
+  matching system user for the test company.
 - Confirm required payload schemas and attachment restrictions for a small holding AS.
 - Confirm feedback and receipt retrieval behavior.
 - Validate in test environment before production.
