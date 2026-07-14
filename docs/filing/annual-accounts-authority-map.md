@@ -136,7 +136,9 @@ Missing before production:
 - ID-porten signing handoff evidence. — Done in TT02.
 - Official receipt/archive retrieval. — Done in TT02.
 - Later Altinn/Regnskapsregisteret processing decision retrieval.
-- Deployed-runtime submission journal and receipt persistence.
+- Deployed-runtime submission journal and receipt persistence. — The validated
+  JSON import path is implemented and fail-closed as `pending`; deployed import
+  execution remains outstanding.
 
 Current annual preview field decisions:
 

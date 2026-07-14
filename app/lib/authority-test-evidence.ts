@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { AuthorityObligation } from "./authority-permission.ts";
 
 export type AuthorityTestRunStatus = "accepted" | "rejected" | "blocked" | "pending";
@@ -45,6 +47,15 @@ export type AuthorityTestEvidenceGate = {
   message: string;
 };
 
+export type AnnualAccountsAuthorityTestRunImportInput = {
+  companyId: string;
+  expectedCompanyOrgNumber: string;
+  evidence: unknown;
+  evidenceUrl?: string | null;
+  recordedBy: string;
+  recordedAt?: string;
+};
+
 function required(value: string, label: string) {
   if (!value.trim()) {
     throw new Error(`${label} mangler.`);
@@ -55,6 +66,19 @@ function required(value: string, label: string) {
 function optional(value?: string | null) {
   const trimmed = value?.trim() ?? "";
   return trimmed ? trimmed : null;
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function evidenceString(value: unknown, label: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${label} mangler i TT02-evidensen.`);
+  }
+  return value.trim();
 }
 
 export function buildAuthorityTestRun(input: AuthorityTestRunInput): AuthorityTestRun {
@@ -76,6 +100,103 @@ export function buildAuthorityTestRun(input: AuthorityTestRunInput): AuthorityTe
     recorded_by: required(input.recordedBy, "Recorded by"),
     recorded_at: recordedAt,
   };
+}
+
+export function buildAnnualAccountsAuthorityTestRunFromEvidence(
+  input: AnnualAccountsAuthorityTestRunImportInput,
+): AuthorityTestRun {
+  const evidence = objectValue(input.evidence);
+  const expectedOrgNumber = required(
+    input.expectedCompanyOrgNumber,
+    "Forventet organisasjonsnummer",
+  );
+  if (!/^\d{9}$/u.test(expectedOrgNumber)
+    || evidenceString(evidence.companyOrgNumber, "Organisasjonsnummer") !== expectedOrgNumber) {
+    throw new Error("TT02-evidensens organisasjonsnummer matcher ikke selskapet.");
+  }
+  if (evidence.environment !== "test") {
+    throw new Error("Bare TT02 test-evidens kan importeres.");
+  }
+  if (evidence.productionEnabled !== false) {
+    throw new Error("TT02-evidens med produksjon aktivert kan ikke importeres.");
+  }
+  if (evidence.systemUserResource !== "app_brg_aarsregnskap-vanlig-202406") {
+    throw new Error("TT02-evidensen bruker feil årsregnskapsressurs.");
+  }
+  if (evidence.status !== "submitted_and_archived"
+    || evidence.signed !== true
+    || evidence.submitted !== true) {
+    throw new Error("TT02-evidensen må være signert og sendt før import.");
+  }
+
+  const validation = objectValue(evidence.validation);
+  if (validation.hasErrors !== false) {
+    throw new Error("TT02-evidensen har valideringsfeil.");
+  }
+  const instance = objectValue(evidence.instance);
+  const instanceId = evidenceString(instance.id, "Instans-id");
+  if (!/^\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(instanceId)) {
+    throw new Error("TT02-evidensens instans-id er ugyldig.");
+  }
+
+  const submission = objectValue(evidence.submission);
+  if (submission.processCompleted !== true
+    || submission.signed !== true
+    || submission.submitted !== true
+    || submission.archived !== true
+    || !Number.isFinite(Date.parse(evidenceString(submission.processEndedAt, "Prosesslutt")))) {
+    throw new Error("TT02-evidensens signerings- og innsendingstilstand er ufullstendig.");
+  }
+  const expectedArchiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`;
+  const archiveReference = evidenceString(submission.archiveReference, "Arkivreferanse");
+  if (archiveReference !== expectedArchiveReference) {
+    throw new Error("TT02-evidensens arkivreferanse er ugyldig.");
+  }
+
+  const receipt = objectValue(submission.receipt);
+  const receiptDataId = evidenceString(receipt.dataId, "Kvitteringsdata-id");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(receiptDataId)
+    || receipt.dataType !== "ref-data-as-pdf"
+    || receipt.contentType !== "application/pdf") {
+    throw new Error("TT02-evidensens kvittering er ugyldig.");
+  }
+  const receiptReference = evidenceString(receipt.reference, "Kvitteringsreferanse");
+  if (receiptReference !== `${expectedArchiveReference}/data/${receiptDataId}`) {
+    throw new Error("TT02-evidensens kvitteringsreferanse er ugyldig.");
+  }
+
+  const payloadHashes = objectValue(evidence.payloadHashes);
+  const mainFormHash = evidenceString(payloadHashes.mainForm, "Hovedskjemahash");
+  const companyAccountsHash = evidenceString(
+    payloadHashes.companyAccounts,
+    "Selskapsregnskapshash",
+  );
+  if (!/^[0-9a-f]{64}$/u.test(mainFormHash) || !/^[0-9a-f]{64}$/u.test(companyAccountsHash)) {
+    throw new Error("TT02-evidensens payload-hasher er ugyldige.");
+  }
+  const payloadHash = createHash("sha256")
+    .update(`mainForm:${mainFormHash}\ncompanyAccounts:${companyAccountsHash}`)
+    .digest("hex");
+
+  const inbox = objectValue(evidence.inbox);
+  const inboxStatus = evidenceString(inbox.status, "Innboksstatus");
+  const inboxDisplayStatus = evidenceString(inbox.displayStatus, "Innboksstatusvisning");
+  const inboxConfirmation = evidenceString(inbox.confirmation, "Innboksbekreftelse");
+
+  return buildAuthorityTestRun({
+    companyId: input.companyId,
+    obligation: "aarsregnskap",
+    environment: "test",
+    status: "pending",
+    testReference: `tt02:${instanceId}`,
+    feedbackSummary: `${inboxDisplayStatus} (${inboxStatus}): ${inboxConfirmation}`,
+    receiptReference,
+    archiveReference,
+    evidenceUrl: input.evidenceUrl,
+    payloadHash: `sha256:${payloadHash}`,
+    recordedBy: input.recordedBy,
+    recordedAt: input.recordedAt,
+  });
 }
 
 export function authorityTestEvidenceGate(

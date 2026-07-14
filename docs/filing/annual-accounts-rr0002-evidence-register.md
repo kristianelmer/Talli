@@ -189,6 +189,9 @@ Block or escalate:
   `Til behandling`.
 - Capture the later Regnskapsregisteret processing decision from the TT02 inbox.
 - Connect the verified evidence shape to the deployed runtime submission journal.
+  — The owner workspace now imports the sanitized JSON through a company-bound,
+  step-up-protected action and stores it as `pending`; executing that import in
+  the deployed environment remains pending.
 - Complete human release signoff.
 - Enable the production transport only after all external evidence and signoffs
   above exist; the current client remains test-only.
@@ -213,7 +216,7 @@ Latest run of the annual-accounts code-side evidence (all green):
 | `npm run test:annual-accounts-authority-script` | 1 passed |
 | `npm run test:annual-data` | 2 passed |
 | `npm run test:annual-readiness` | 5 passed |
-| `npm run test:authority-evidence` | 7 passed |
+| `npm run test:authority-evidence` | 11 passed |
 
 This proves the deterministic payload/readiness/evidence logic and the full TT02
 hybrid submission path through receipt/archive. It does not substitute for the

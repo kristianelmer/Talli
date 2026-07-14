@@ -16,7 +16,7 @@
     "test:annual-corporate-documents": "node --experimental-strip-types --test tests/annual_corporate_documents.test.mjs",
     "test:authority": "node --experimental-strip-types --test tests/authority_permission.test.mjs",
     "test:authority-adapters": "node --experimental-strip-types --test tests/authority_adapters.test.mjs",
-    "test:authority-evidence": "node --experimental-strip-types --test tests/authority_test_evidence.test.mjs tests/rf1086_tt02_evidence.test.mjs tests/company_tax_return_tt02_evidence.test.mjs tests/annual_accounts_tt02_evidence.test.mjs",
+    "test:authority-evidence": "node --experimental-strip-types --test tests/authority_test_evidence.test.mjs tests/annual_accounts_authority_evidence_import.test.mjs tests/rf1086_tt02_evidence.test.mjs tests/company_tax_return_tt02_evidence.test.mjs tests/annual_accounts_tt02_evidence.test.mjs",
     "test:bank": "node --experimental-strip-types --test tests/bank_workflow.test.mjs",
     "test:bank-suggestions": "node --experimental-strip-types --test tests/bank_suggestions.test.mjs tests/bank_suggestion_schema.test.mjs tests/bank_suggestion_integration.test.mjs",
     "test:backup-restore": "node --experimental-strip-types --test tests/backup_restore.test.mjs",

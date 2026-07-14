@@ -536,12 +536,12 @@ credentials and the admin/step-up flow, so they are performed in the running app
 |---|---|---|---|
 | 1. Operating entity registered (ENK, org nr) | ☑ | ☑ | ☑ |
 | 2. Virksomhetssertifikat (test self-signed) | ☑ | ☑ | ☑ |
-| 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ◑ | ◑ tax scope active and validated; Altinn instance scopes pending |
-| 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ◑ shared system; årsregnskap package pending | ☑ system access page showed skattemelding right; submission/signing test pending |
+| 3. Maskinporten client + scope | ☑ token issued with RF-1086 scope 2026-07-14 | ☑ both Altinn instance scopes minted and exchanged | ☑ tax scope plus shared Altinn instance scopes active |
+| 4. Altinn system user + access pkg | ☑ **DONE** — Talli system access approved for LOGISK ØDE TIGER AS (310279617) | ☑ versioned RR0002 resource registered; request `Accepted` | ☑ company-tax resource preserved on the accepted shared system user |
 | 5. Tenor test subjects | ☑ LOGISK ØDE TIGER AS (310279617), holding code 64.220 | ◑ reuse / pick as needed | ☑ same synthetic AS selected |
-| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ☐ | ◑ TT02 payload validation accepted; instance/signing/receipt pending |
+| 6. Accepted test submission | ☑ **accepted 2026-07-14**, receipt + two archived XML documents | ◑ signed/submitted with receipt and archive; inbox `Til behandling` | ◑ TT02 payload validation accepted; instance/signing/receipt pending |
 | 7. `authority_permissions` recorded | ☐ | ☐ | ☐ |
-| 8. `authority_test_runs` accepted | ☐ | ☐ | ☐ |
+| 8. `authority_test_runs` accepted | ☐ | ◑ fail-closed pending importer implemented; deployed import/final decision pending | ☐ |
 | 9. `*_authority` launch signoff | ☐ | ☐ | ☐ |
 
 Step 3 status (updated 2026-07-14): the shared TT02 client
@@ -549,8 +549,8 @@ Step 3 status (updated 2026-07-14): the shared TT02 client
 `2d275f93-10a2-4839-993e-b14da2b84ad8`) successfully minted a system-user token
 for `310279617` with the RF-1086 scope. The earlier `invalid_scope` state is
 resolved for RF-1086. The company-tax scope also minted a token and returned
-`validertOK` from TT02 on 2026-07-14; only the two Altinn instance scopes remain
-missing from the combined submission token.
+`validertOK` from TT02 on 2026-07-14. Both Altinn instance scopes were then added
+to the same client and successfully minted/exchanged for the RR0002 rehearsal.
 
 Step 4 status (2026-07-01): **DONE end-to-end.** 4a — `systemregister.write` token minted (HTTP 200)
 and the systemregister payload POSTed → system **`930835978_talli`** registered in TT02 (GET confirms

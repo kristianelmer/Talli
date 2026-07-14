@@ -21,6 +21,7 @@ import {
   postManualJournal,
   queueDeadlineReminders,
   recordAdminCost,
+  recordAnnualAccountsTt02Evidence,
   recordAuthorityTestEvidence,
   recordDividendReceived,
   recordLaunchSignoff,
@@ -1146,9 +1147,9 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Status
-                    <select name="status" defaultValue="accepted">
-                      <option value="accepted">Akseptert</option>
+                    <select name="status" defaultValue="pending">
                       <option value="pending">Venter</option>
+                      <option value="accepted">Akseptert</option>
                       <option value="rejected">Avvist</option>
                       <option value="blocked">Blokkert</option>
                     </select>
@@ -1181,6 +1182,34 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Lagre test-evidens
                   </button>
                   <p>Dette dokumenterer test/feedback. Produksjon krever fortsatt separat release gate.</p>
+                </form>
+                <form
+                  className="dataPanel formPanel widePanel"
+                  action={recordAnnualAccountsTt02Evidence}
+                  encType="multipart/form-data"
+                >
+                  <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <label>
+                    Verifisert årsregnskap-evidens fra TT02
+                    <input
+                      name="evidenceFile"
+                      type="file"
+                      accept="application/json,.json"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Evidens-URL (valgfri)
+                    <input name="evidenceUrl" placeholder="https://..." type="url" />
+                  </label>
+                  <button className="secondaryButton" type="submit">
+                    Importer TT02-evidens
+                  </button>
+                  <p>
+                    Importen validerer selskap, signatur, innsending, kvittering og arkiv.
+                    Innboksstatus uten endelig myndighetsbeslutning lagres alltid som venter og
+                    aktiverer aldri produksjon.
+                  </p>
                 </form>
                 <div className="readinessGrid">
                   {authorityObligations.map((obligation) => {
