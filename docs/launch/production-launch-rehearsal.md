@@ -31,6 +31,26 @@ professional review or dated risk acceptance, and live Vipps charge/refund remai
 open. The complete launch rehearsal/build/browser pass is recorded only after it
 runs on the final branch SHA.
 
+## Final Customer-Ready Branch Verification (2026-07-15)
+
+Implementation-under-test commit:
+`fd52a82e88fa0cea0076ac11621e0aaa438a7060` (`fix: reject future launch signoffs`).
+The evidence-record commit that follows changes documentation only.
+
+| Command/check | Result |
+| --- | --- |
+| `TALLI_PYTHON_BIN=<project-venv-python> TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47-xsd-dir> npm run test:launch-rehearsal` | exit 0 — every chained product, filing, corporate-document, billing, security, launch-copy, signoff, and policy suite passed |
+| `npm run typecheck` | exit 0 |
+| `npm run build` | exit 0 — Next.js 16.2.9 production build completed with all 18 static pages and the route table |
+| `npm audit --omit=dev` | exit 0 — 0 vulnerabilities |
+| `git diff --check` | exit 0 |
+| Headless Chromium, desktop and mobile | homepage and legal pages returned 200; beta mail links, non-affiliation text, pre-production text, identified operator, and support address rendered; no browser-console errors or prohibited launch claims |
+
+The production gates deliberately remain closed: every authority adapter still
+reports production disabled, live Vipps charging is unavailable, paid-customer
+admission is unavailable, and `founder_production_go_live` remains missing. This
+verification authorizes only the truthful invite-only free-beta deployment.
+
 ## Latest Rehearsal Run (2026-07-14)
 
 Code-under-test commit:
