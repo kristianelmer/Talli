@@ -4,77 +4,88 @@ import test from "node:test";
 import {
   assertStepUpAllowed,
   requireStepUpForAction,
-  stepUpContextFromEvent,
+  stepUpContextFromClaims,
 } from "../app/lib/security.ts";
 
 const now = new Date("2026-06-16T10:00:00.000Z");
 
-test("step-up blocks missing and expired MFA for sensitive actions", () => {
-  assert.throws(
-    () => assertStepUpAllowed("billing_admin", { actorId: "owner", mfaVerifiedAt: null }, now),
-    /fersk MFA\/step-up/,
-  );
-  assert.throws(
-    () =>
-      assertStepUpAllowed(
-        "confirm_authority",
-        { actorId: "owner", mfaVerifiedAt: "2026-06-16T09:40:00.000Z" },
-        now,
-      ),
-    /nyere enn 15 minutter/,
-  );
-});
+function claims(overrides = {}) {
+  return {
+    sub: "owner",
+    aal: "aal2",
+    amr: [
+      { method: "password", timestamp: Date.parse("2026-06-16T09:00:00.000Z") / 1000 },
+      { method: "totp", timestamp: Date.parse("2026-06-16T09:55:00.000Z") / 1000 },
+    ],
+    ...overrides,
+  };
+}
 
-test("step-up allows fresh matching actor and ignores cross-user events", () => {
-  const allowed = stepUpContextFromEvent("owner", {
-    actor_id: "owner",
-    mfa_verified_at: "2026-06-16T09:55:00.000Z",
-    security_review_approved: false,
-    production_credentials_enabled: false,
+test("step-up accepts fresh signed AAL2 claims for the matching actor", () => {
+  const context = stepUpContextFromClaims("owner", claims());
+
+  assert.deepEqual(context, {
+    actorId: "owner",
+    mfaVerifiedAt: "2026-06-16T09:55:00.000Z",
   });
-  assert.doesNotThrow(() => assertStepUpAllowed("invite_reviewer", allowed, now));
-
-  const crossed = stepUpContextFromEvent("owner", {
-    actor_id: "other",
-    mfa_verified_at: "2026-06-16T09:59:00.000Z",
-    security_review_approved: true,
-    production_credentials_enabled: true,
-  });
-  assert.equal(crossed.mfaVerifiedAt, null);
-  assert.throws(() => assertStepUpAllowed("billing_admin", crossed, now), /fersk MFA\/step-up/);
+  assert.doesNotThrow(() => assertStepUpAllowed("invite_reviewer", context, now));
 });
 
-test("production filing requires MFA, security review, and production credential gate", () => {
+test("step-up accepts supported signed MFA method references and uses the newest one", () => {
+  for (const method of ["totp", "mfa/totp", "mfa/phone", "mfa/webauthn"]) {
+    const context = stepUpContextFromClaims(
+      "owner",
+      claims({
+        amr: [
+          { method, timestamp: Date.parse("2026-06-16T09:54:00.000Z") / 1000 },
+          { method: "mfa/totp", timestamp: Date.parse("2026-06-16T09:57:00.000Z") / 1000 },
+        ],
+      }),
+    );
+
+    assert.equal(context.mfaVerifiedAt, "2026-06-16T09:57:00.000Z");
+  }
+});
+
+test("step-up fails closed for AAL1, cross-user, missing AMR, and string-only AMR claims", () => {
+  for (const untrustedClaims of [
+    claims({ aal: "aal1" }),
+    claims({ sub: "other" }),
+    claims({ amr: undefined }),
+    claims({ amr: ["password", "totp"] }),
+  ]) {
+    const context = stepUpContextFromClaims("owner", untrustedClaims);
+    assert.equal(context.mfaVerifiedAt, null);
+    assert.throws(() => assertStepUpAllowed("billing_admin", context, now), /fersk MFA\/step-up/);
+  }
+});
+
+test("step-up rejects invalid, stale, and future MFA timestamps", () => {
+  const invalid = stepUpContextFromClaims(
+    "owner",
+    claims({ amr: [{ method: "totp", timestamp: Number.NaN }] }),
+  );
+  assert.equal(invalid.mfaVerifiedAt, null);
+
+  const stale = stepUpContextFromClaims(
+    "owner",
+    claims({ amr: [{ method: "totp", timestamp: Date.parse("2026-06-16T09:44:59.000Z") / 1000 }] }),
+  );
+  assert.throws(() => assertStepUpAllowed("confirm_authority", stale, now), /nyere enn 15 minutter/);
+
+  const future = stepUpContextFromClaims(
+    "owner",
+    claims({ amr: [{ method: "totp", timestamp: Date.parse("2026-06-16T10:00:01.000Z") / 1000 }] }),
+  );
   assert.throws(
-    () =>
-      assertStepUpAllowed(
-        "production_filing",
-        {
-          actorId: "owner",
-          mfaVerifiedAt: "2026-06-16T09:59:00.000Z",
-          securityReviewApproved: true,
-          productionCredentialsEnabled: false,
-        },
-        now,
-      ),
-    /produksjonscredential-gate/,
-  );
-  assert.doesNotThrow(() =>
-    assertStepUpAllowed(
-      "production_filing",
-      {
-        actorId: "owner",
-        mfaVerifiedAt: "2026-06-16T09:59:00.000Z",
-        securityReviewApproved: true,
-        productionCredentialsEnabled: true,
-      },
-      now,
-    ),
+    () => assertStepUpAllowed("confirm_authority", future, now),
+    (error) => error.code === "expired_mfa_step_up" && /utløpt/.test(error.userMessage),
   );
 });
 
-test("corporate approval, attestation, and finalization require fresh owner MFA", () => {
+test("all protected corporate actions require fresh AAL2 user presence", () => {
   for (const action of [
+    "production_filing",
     "approve_corporate_facts",
     "attest_signed_corporate_document",
     "finalize_corporate_decision",
@@ -84,31 +95,23 @@ test("corporate approval, attestation, and finalization require fresh owner MFA"
       () => assertStepUpAllowed(action, { actorId: "owner", mfaVerifiedAt: null }, now),
       /fersk MFA\/step-up/,
     );
-    assert.throws(
-      () => assertStepUpAllowed(action, {
-        actorId: "owner",
-        mfaVerifiedAt: "2026-06-16T09:44:59.000Z",
-      }, now),
-      /nyere enn 15 minutter/,
+    assert.doesNotThrow(() =>
+      assertStepUpAllowed(
+        action,
+        { actorId: "owner", mfaVerifiedAt: "2026-06-16T09:59:00.000Z" },
+        now,
+      ),
     );
-    assert.doesNotThrow(() => assertStepUpAllowed(action, {
-      actorId: "owner",
-      mfaVerifiedAt: "2026-06-16T09:59:00.000Z",
-    }, now));
   }
 });
 
-test("server gate records allowed and blocked sensitive action audit events", async () => {
+test("server gate verifies claims, never reads legacy step-up rows, and audits allow/block", async () => {
   const auditEvents = [];
-  const stepUpRows = [
-    {
-      actor_id: "owner",
-      mfa_verified_at: "2026-06-16T09:59:00.000Z",
-      security_review_approved: false,
-      production_credentials_enabled: false,
-    },
-  ];
-  const supabase = fakeSupabase(stepUpRows, auditEvents);
+  let currentClaims = claims({
+    amr: [{ method: "totp", timestamp: Date.parse("2026-06-16T09:59:00.000Z") / 1000 }],
+  });
+  const queriedTables = [];
+  const supabase = fakeSupabase(() => currentClaims, auditEvents, queriedTables);
 
   await requireStepUpForAction({
     supabase,
@@ -118,10 +121,13 @@ test("server gate records allowed and blocked sensitive action audit events", as
     now,
   });
 
+  assert.deepEqual(queriedTables, ["audit_events"]);
   assert.equal(auditEvents.at(-1).action, "sensitive_action_allowed");
   assert.match(auditEvents.at(-1).message, /Billing-admin tillatt/);
 
-  stepUpRows[0].mfa_verified_at = "2026-06-16T09:00:00.000Z";
+  currentClaims = claims({
+    amr: [{ method: "totp", timestamp: Date.parse("2026-06-16T09:00:00.000Z") / 1000 }],
+  });
   await assert.rejects(
     () =>
       requireStepUpForAction({
@@ -134,46 +140,53 @@ test("server gate records allowed and blocked sensitive action audit events", as
     /nyere enn 15 minutter/,
   );
 
+  assert.deepEqual(queriedTables, ["audit_events", "audit_events"]);
   assert.equal(auditEvents.at(-1).action, "sensitive_action_blocked");
   assert.match(auditEvents.at(-1).message, /expired_mfa_step_up/);
 });
 
-function fakeSupabase(stepUpRows, auditEvents) {
+test("claims lookup failures are blocked and audited without leaking provider details", async () => {
+  const auditEvents = [];
+  const supabase = fakeSupabase(() => null, auditEvents, [], new Error("raw provider detail"));
+
+  await assert.rejects(
+    () =>
+      requireStepUpForAction({
+        supabase,
+        userId: "owner",
+        companyId: "company-id",
+        action: "billing_admin",
+        now,
+      }),
+    (error) => error.code === "trusted_claims_lookup_failed" && !error.userMessage.includes("raw provider detail"),
+  );
+
+  assert.equal(auditEvents.at(-1).action, "sensitive_action_blocked");
+  assert.match(auditEvents.at(-1).message, /trusted_claims_lookup_failed/);
+  assert.doesNotMatch(auditEvents.at(-1).message, /provider detail/);
+});
+
+function fakeSupabase(readClaims, auditEvents, queriedTables, claimsError = null) {
   return {
+    auth: {
+      async getClaims() {
+        if (claimsError) {
+          return { data: null, error: claimsError };
+        }
+        return { data: { claims: readClaims() }, error: null };
+      },
+    },
     from(table) {
-      if (table === "audit_events") {
-        return {
-          async insert(row) {
-            auditEvents.push(row);
-            return { data: row, error: null };
-          },
-        };
+      queriedTables.push(table);
+      if (table !== "audit_events") {
+        throw new Error(`Unexpected table ${table}`);
       }
-      if (table === "step_up_events") {
-        const query = {
-          actorId: null,
-          eq(column, value) {
-            if (column === "actor_id") {
-              this.actorId = value;
-            }
-            return this;
-          },
-          order() {
-            return this;
-          },
-          limit() {
-            return this;
-          },
-          async maybeSingle() {
-            return { data: stepUpRows.find((row) => row.actor_id === this.actorId) ?? null, error: null };
-          },
-          select() {
-            return this;
-          },
-        };
-        return query;
-      }
-      throw new Error(`Unexpected table ${table}`);
+      return {
+        async insert(row) {
+          auditEvents.push(row);
+          return { data: row, error: null };
+        },
+      };
     },
   };
 }
