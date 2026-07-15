@@ -19,6 +19,13 @@ Production filing, live charging, and live bank/OCR adapters must stay disabled
 until their own release gates are complete. Passing local tests or deploying the
 web application does not authorize a production submission.
 
+The controlled RF-1086 production-pilot foundation is implemented on
+`codex/controlled-production-beta`: exact operator entitlements, immutable owner
+approval, a production-only credential boundary, append-only idempotent journal,
+and honest authority states. The adapter remains disabled until the external
+production-access, legal/security/restore/monitoring, authority, and founder gates
+are evidenced. Company tax and annual accounts remain unimplemented in production.
+
 ## Definition of customer-ready
 
 The first customer-ready release is intentionally narrow:

@@ -1,7 +1,7 @@
 # RF-1086 Live Release Gate
 
 Status: HITL release checklist  
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 Target issue: #81  
 Blockers resolved: #76 real payment collection (closed), #80 code evidence decision (closed)
 
@@ -43,16 +43,24 @@ Excluded live scope:
 | Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | TT02 delivery/dialog/transmission refs and two archive-document hashes recorded; runtime Supabase row still pending |
 | Human signoff | Named reviewer signs production release decision | Pending (`rf1086_authority` launch signoff) |
 | Production adapter | Real RF-1086 transport implementation; simulation must never satisfy this row | **Implemented, disabled** (`currentAuthorityAdapterCapabilities`); test-only CLI refuses production |
+| Exact pilot entitlement | Operator-approved company/user/year/obligation/profile interval | Implemented; no entitlement is active by default |
+| Immutable production approval | Exact payload/document hashes, adapter version and fresh owner AAL2 | Implemented; approval and Send are separate |
+| Durable production journal | Append-only prepared/succeeded/unknown events and stable UUID idempotency keys | Implemented; ambiguous writes quarantine instead of retrying |
 
 Code and evidence gate anchors:
 
 - `buildFilingReleaseGates` requires accepted `authority_test_runs` evidence
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
+- At the protected database Send boundary, the operator-only global
+  `rf1086_authority` signoff carries the accepted TT02 evidence reference. TT02
+  synthetic evidence is never copied onto a real customer's company row.
 - `buildFilingReleaseGates` requires approved `launch_signoffs` key
   `rf1086_authority` with reviewer, date, evidence link, and decision.
 - `buildFilingReleaseGates` independently requires an implemented and enabled
   production adapter. The legacy `TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER`
-  environment flag cannot route production to the simulation adapter.
+  environment flag cannot route production to the simulation adapter. The only
+  live switch is `TALLI_RF1086_PRODUCTION_ENABLED=true` with complete production-
+  only inline secret configuration.
 - `tests/rf1086_tt02_evidence.test.mjs` checks that accepted evidence has the
   required references/hashes and contains no token, private key, raw XML, or
   synthetic personal identifier.
@@ -107,3 +115,7 @@ Notes:
 If any gate is pending, stale, or unclear, production RF-1086 submission remains
 disabled. Talli may still provide simulation, XML export, archive export, and
 support-boundary guidance.
+
+The operator procedure for the first hand-held filing, unknown-outcome quarantine,
+kill switch, evidence closeout, and correction boundary is in
+[`rf1086-production-pilot-runbook.md`](rf1086-production-pilot-runbook.md).

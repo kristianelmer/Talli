@@ -1,4 +1,5 @@
 import type { AuthorityObligation } from "./authority-permission.ts";
+import { productionRf1086AdapterEnabled } from "./rf1086-submission.ts";
 
 export type AuthorityAdapterCapability = {
   productionImplemented: boolean;
@@ -45,11 +46,13 @@ export class AuthorityProductionAdapterDisabledError extends Error {
   }
 }
 
-export function currentAuthorityAdapterCapabilities(): AuthorityAdapterCapabilities {
+export function currentAuthorityAdapterCapabilities(
+  environment: Record<string, string | undefined> = process.env,
+): AuthorityAdapterCapabilities {
   return {
     aksjonaerregisteroppgaven: {
       productionImplemented: true,
-      productionEnabled: false,
+      productionEnabled: productionRf1086AdapterEnabled(environment),
     },
     skattemelding: {
       productionImplemented: false,

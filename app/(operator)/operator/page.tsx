@@ -1,4 +1,4 @@
-import { recordLaunchSignoff } from "../../actions";
+import { recordLaunchSignoff, upsertProductionPilotEntitlement } from "../../actions";
 import {
   buildLaunchSignoffGate,
   launchSignoffKeys,
@@ -11,7 +11,7 @@ import {
 } from "../../lib/supabase/server";
 
 type OperatorProps = {
-  searchParams?: Promise<{ operatorOrg?: string }>;
+  searchParams?: Promise<{ operatorOrg?: string; error?: string; pilot?: string }>;
 };
 
 export default async function OperatorPage({ searchParams }: OperatorProps) {
@@ -47,6 +47,8 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
           <p className="eyebrow">Operator</p>
           <h2>Supportstatus uten muterende snarveier.</h2>
         </div>
+        {params?.error ? <p className="errorText">{params.error}</p> : null}
+        {params?.pilot === "updated" ? <p className="successText">Produksjonspiloten er oppdatert.</p> : null}
         <form className="dataPanel formPanel widePanel" method="get">
           <label>
             Org.nr eller navn
@@ -86,6 +88,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
               })}
             </div>
             {launchSignoffState.isAdminOperator ? (
+              <>
               <form className="dataPanel formPanel widePanel" action={recordLaunchSignoff}>
                 <label>
                   Signoff
@@ -125,6 +128,27 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                   Lagre launch signoff
                 </button>
               </form>
+              <form className="dataPanel formPanel widePanel" action={upsertProductionPilotEntitlement}>
+                <h3>Eksakt RF-1086-produksjonspilot</h3>
+                <p>Én navngitt eier, ett selskap, ett inntektsår og kun profilen uten aktivitet.</p>
+                <label>Selskap-ID<input name="companyId" required placeholder="UUID fra operatørsøket" /></label>
+                <label>Eierens bruker-ID<input name="ownerUserId" required placeholder="Supabase user UUID" /></label>
+                <label>Inntektsår<input name="incomeYear" type="number" min="2000" max="2100" defaultValue="2025" required /></label>
+                <label>Status
+                  <select name="status" defaultValue="pending">
+                    <option value="pending">Pending</option><option value="active">Active</option>
+                    <option value="suspended">Suspended</option><option value="completed">Completed</option>
+                    <option value="revoked">Revoked</option>
+                  </select>
+                </label>
+                <label>Systembruker externalRef<input name="systemUserExternalReference" required /></label>
+                <label>Aktiv fra<input name="startsAt" type="datetime-local" required /></label>
+                <label>Utløper<input name="expiresAt" type="datetime-local" required /></label>
+                <label>Evidensreferanse<input name="evidenceReference" required placeholder="Sak/avtale/runbook-referanse" /></label>
+                <label><input name="billingExempt" type="checkbox" defaultChecked /> Gratis, invitert beta</label>
+                <button className="secondaryButton" type="submit">Lagre eksakt entitlement</button>
+              </form>
+              </>
             ) : null}
           </>
         ) : null}

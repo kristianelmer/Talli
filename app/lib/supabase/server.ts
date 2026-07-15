@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import type { User } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 import type {
   YearEndInterviewAnswers,
 } from "../annual-data";
@@ -275,6 +275,64 @@ export type FilingSubmissionRow = {
   created_at: string;
   updated_at: string;
   submitted_by: string | null;
+};
+
+export type ProductionPilotEntitlementRow = {
+  id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  status: "pending" | "active" | "suspended" | "completed" | "revoked";
+  billing_exempt: boolean;
+  system_user_external_reference: string;
+  starts_at: string;
+  expires_at: string;
+  evidence_reference: string;
+  approved_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FilingApprovalSnapshotRow = {
+  id: string;
+  entitlement_id: string;
+  preview_id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  adapter_version: string;
+  payload_hash: string;
+  manifest_hash: string;
+  manifest: Record<string, unknown>;
+  approved_by: string;
+  approved_at: string;
+  invalidated_at: string | null;
+  invalidation_reason: string | null;
+};
+
+export type ProductionFilingSubmissionRow = {
+  id: string;
+  approval_id: string;
+  entitlement_id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  payload_hash: string;
+  adapter_version: string;
+  environment: "production";
+  status: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  authority_references: Record<string, string>;
+  failure_class: string | null;
+  supersedes_submission_id: string | null;
+  submitted_by: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type FilingOverrideRow = {
@@ -562,6 +620,15 @@ export async function createSupabaseServerClient() {
   });
 }
 
+export function createSupabaseServiceRoleClient() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Supabase service role is not configured for production filing.");
+  }
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function getCurrentUser() {
   if (!hasSupabaseEnv()) {
     return null;
@@ -787,6 +854,42 @@ export async function listFilingSubmissions(companyIds: string[]) {
   return {
     submissions: (data ?? []) as FilingSubmissionRow[],
     error: error?.message ?? null,
+  };
+}
+
+function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message?: string } | null>) {
+  return errors.some((error) => error != null && (
+    error.code === "PGRST205"
+    || error.code === "42P01"
+    || /production_(?:pilot|filing)|filing_approval_snapshots/iu.test(error.message ?? "")
+  ));
+}
+
+export async function listProductionFilingState(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return {
+      productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
+      filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
+      productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
+      error: null,
+    };
+  }
+  const supabase = await createSupabaseServerClient();
+  const [entitlements, approvals, submissions] = await Promise.all([
+    supabase.from("production_pilot_entitlements").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+    supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
+    supabase.from("production_filing_submissions").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+  ]);
+  const errors = [entitlements.error, approvals.error, submissions.error];
+  const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
+    && productionPilotSchemaUnavailable(errors);
+  return {
+    productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
+    filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
+    productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
+    error: rolloutSchemaPending
+      ? null
+      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? null,
   };
 }
 

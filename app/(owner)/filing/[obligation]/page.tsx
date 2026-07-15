@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import {
   confirmAuthorityPermission,
   confirmSimulatedRf1086Submission,
+  approveProductionFiling,
   generateRf1086Preview,
   refreshAnnualReadinessSnapshots,
+  sendApprovedRf1086ProductionFiling,
 } from "../../../actions";
 import {
   Banner,
@@ -283,6 +285,24 @@ export default async function FilingObligationPage({
     (item) => item.obligation === obligation,
   );
   const authorityConfirmed = Boolean(permission?.confirmed_at && permission?.production_enabled);
+  const pilotEntitlement = data.productionPilotEntitlements.find(
+    (item) => item.company_id === input.company.id
+      && item.user_id === data.user?.id
+      && item.income_year === input.incomeYear
+      && item.obligation === obligation
+      && item.case_profile === "rf1086_no_activity_v1"
+      && item.status === "active"
+      && new Date(item.starts_at) <= new Date()
+      && new Date(item.expires_at) > new Date(),
+  );
+  const productionApproval = preview
+    ? data.filingApprovalSnapshots.find(
+      (item) => item.preview_id === preview.id && item.invalidated_at === null,
+    )
+    : null;
+  const productionSubmission = productionApproval
+    ? data.productionFilingSubmissions.find((item) => item.approval_id === productionApproval.id)
+    : null;
 
   const setup = input.setups.find((item) => item.income_year === input.incomeYear);
   const storedReady = data.primaryReadinessSnapshots.some(
@@ -336,6 +356,56 @@ export default async function FilingObligationPage({
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">
+        {pilotEntitlement && previewReady ? (
+          <section className="filingStep">
+            <div className="filingStepHead">
+              <h2 className="filingStepTitle">Reell RF-1086-produksjonspilot</h2>
+              <StatusBadge
+                variant={productionSubmission?.status === "accepted" ? "success" : productionSubmission ? "warning" : productionApproval ? "info" : "danger"}
+                label={productionSubmission?.status === "accepted" ? "Godkjent"
+                  : productionSubmission?.status === "sending" ? "Sender"
+                  : productionSubmission?.status === "processing" ? "Til behandling"
+                  : productionSubmission?.status === "received" ? "Mottatt"
+                  : productionSubmission?.status === "unknown" ? "Uavklart – kontakt support"
+                  : productionSubmission?.status === "rejected" ? "Avvist"
+                  : productionSubmission?.status === "action_required" ? "Krever handling"
+                  : productionApproval ? "Godkjent av deg" : "Klar til gjennomgang"}
+              />
+            </div>
+            <div className="filingStepBody">
+              <Banner variant="warning">
+                Dette er en reell innsending til Skatteetaten med juridiske konsekvenser. HTTP-svar eller kvitteringsreferanse betyr ikke at innholdet er endelig godkjent.
+              </Banner>
+              <p className="cardNote">
+                Selskap: {input.company.name} ({input.company.org_number})<br />
+                Inntektsår: {input.incomeYear}<br />
+                Støttet profil: Ingen aktivitet / stiftelse (`rf1086_no_activity_v1`)<br />
+                Payload-hash: <code>{productionApproval?.payload_hash ?? "opprettes ved godkjenning"}</code>
+              </p>
+              <pre className="filingPreview">{preview?.preview}</pre>
+              {!productionApproval ? (
+                <form action={approveProductionFiling} className="filingConfirmForm">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="previewId" value={preview?.id ?? ""} />
+                  <input type="hidden" name="entitlementId" value={pilotEntitlement.id} />
+                  <label className="filingCheck">
+                    <input type="checkbox" name="realFilingConfirmed" required />
+                    Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell RF-1086.
+                  </label>
+                  <SubmitButton pendingLabel="Lagrer godkjenningen …">Godkjenn eksakt innhold</SubmitButton>
+                </form>
+              ) : !productionSubmission ? (
+                <form action={sendApprovedRf1086ProductionFiling} className="filingConfirmForm">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="approvalId" value={productionApproval.id} />
+                  <SubmitButton pendingLabel="Sender sikkert …">Send reell RF-1086</SubmitButton>
+                </form>
+              ) : (
+                <p className="cardNote">Autoritetsstatus: {productionSubmission.status}. Referanser lagres i den append-only produksjonsjournalen.</p>
+              )}
+            </div>
+          </section>
+        ) : null}
         {/* Step 1 — readiness check */}
         <section className="filingStep">
           <div className="filingStepHead">
