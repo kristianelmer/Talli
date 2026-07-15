@@ -6,6 +6,10 @@ const migrationUrl = new URL(
   "../supabase/migrations/20260714081443_explicit_data_api_grants.sql",
   import.meta.url,
 );
+const anonymousRpcMigrationUrl = new URL(
+  "../supabase/migrations/20260715120700_revoke_anonymous_mutation_rpcs.sql",
+  import.meta.url,
+);
 
 test("Supabase Data API grants fail closed for anon and explicitly enable service_role", async () => {
   const sql = await readFile(migrationUrl, "utf8");
@@ -34,4 +38,22 @@ test("Supabase Data API grants fail closed for anon and explicitly enable servic
   );
   assert.equal((sql.match(/\(select auth\.jwt\(\)\)/gi) ?? []).length, 3);
   assert.doesNotMatch(sql, /grant\s+[^;]+\s+to\s+anon/i);
+});
+
+test("anonymous sessions cannot invoke authenticated mutation RPCs", async () => {
+  const sql = await readFile(anonymousRpcMigrationUrl, "utf8");
+
+  assert.match(
+    sql,
+    /revoke all on function public\.record_share_purchase_fifo\([\s\S]+?\) from public, anon;/i,
+  );
+  assert.match(
+    sql,
+    /revoke all on function public\.record_share_sale_fifo\([\s\S]+?\) from public, anon;/i,
+  );
+  assert.match(
+    sql,
+    /revoke all on function public\.accept_bank_transaction_suggestion\(uuid, text, text\)\s+from public, anon;/i,
+  );
+  assert.equal((sql.match(/to authenticated, service_role;/gi) ?? []).length, 3);
 });

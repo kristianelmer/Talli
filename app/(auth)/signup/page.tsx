@@ -39,7 +39,7 @@ export default async function SignupPage({ searchParams }: SignupProps) {
           name="password"
           type="password"
           autoComplete="new-password"
-          minLength={6}
+          minLength={12}
           required
           helper={ownerCopy.auth.passwordHelp}
         />

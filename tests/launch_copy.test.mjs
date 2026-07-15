@@ -73,6 +73,16 @@ test("public legal copy identifies the real beta operator and contains no placeh
   assert.doesNotMatch(ownerCopySource, /kontakt@talli\.no|personvern@talli\.no/i);
 });
 
+test("email signup communicates the hosted twelve-character password floor", () => {
+  const signupPage = readFileSync(
+    new URL("../app/(auth)/signup/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(ownerCopySource, /passwordHelp: "Minst 12 tegn\."/u);
+  assert.match(signupPage, /minLength=\{12\}/u);
+});
+
 test("launch validator rejects beta overclaims about review, payment, and delivery", () => {
   const required = `${requiredNonAffiliationCopy}\n${preProductionDirectFilingCopy}`;
 

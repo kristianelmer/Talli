@@ -132,7 +132,7 @@ select set_config(
     'amr', jsonb_build_array(
       jsonb_build_object(
         'method', 'totp',
-        'timestamp', extract(epoch from now())::bigint
+        'timestamp', floor(extract(epoch from now()))::bigint
       )
     )
   )::text,

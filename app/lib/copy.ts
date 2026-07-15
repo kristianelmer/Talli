@@ -116,7 +116,7 @@ export const ownerCopy = {
     signUpPending: "Oppretter …",
     emailLabel: "E-post",
     passwordLabel: "Passord",
-    passwordHelp: "Minst 6 tegn.",
+    passwordHelp: "Minst 12 tegn.",
     orDivider: "eller",
     googleCta: "Fortsett med Google",
     googlePending: "Åpner Google …",

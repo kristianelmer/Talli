@@ -36,6 +36,30 @@ The first customer-ready release is intentionally narrow:
 
 ## Current launch posture
 
+### Live customer rehearsal findings (2026-07-15)
+
+- Google login/logout, company workspace access, CSV import, one expense
+  reconciliation, private PDF upload, and signed retrieval worked at
+  `https://talli.no`.
+- A supported share-purchase preview reached the atomic write boundary but failed.
+  The live PostgREST contract proves that `record_share_purchase_fifo`,
+  `record_share_sale_fifo`, and all schema artifacts from migrations `0002+` are
+  absent from project `oytdpbtzoibocshwunss`. The repository migrations exist and
+  pass local static coverage; deployed migration parity is therefore the first
+  P0 repair.
+- The same missing optional feature tables make the aggregate workspace loader
+  report `Tilkobling: Feil` even though baseline workspace reads and writes work.
+- A posted `admin_cost` is present, but a never-saved year-end interview starts all
+  activity answers as false. The UI therefore can say `Ingen aktivitet registrert
+  i året` despite persisted ledger activity. Registered positive facts must seed
+  the interview; confirmations that cannot be derived remain owner-controlled.
+- Filing previews correctly expose unmet readiness gates, company-tax and annual-
+  accounts submission remain marked under development, billing is inactive, and
+  owner-dividend documents remain disabled pending professional review. These are
+  truthful external gates, not defects to bypass.
+- The executable repair order and acceptance criteria are recorded in
+  [`2026-07-15-live-customer-readiness-repair.md`](../superpowers/plans/2026-07-15-live-customer-readiness-repair.md).
+
 - `main` is verified and deployed; `https://talli.no` responds publicly.
 - The local launch rehearsal, build, official company-tax XSD validation, audit,
   and whitespace checks pass at the baseline commit.
