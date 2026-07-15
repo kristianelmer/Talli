@@ -2,7 +2,7 @@
 
 Status: active launch map  
 Last audited: 2026-07-15  
-Code baseline: `main` at `28e4360b503ba3dbd8cb6e6b082803e447c68221`
+Code baseline: `main` including PR #105 (merge `c796104`)
 Scope authority: `docs/remarks/holdingswift_produktkrav.md` and the approved PRDs  
 
 Founder decisions that resolve the launch-scope questions are recorded in
@@ -85,7 +85,10 @@ Repair execution status on 2026-07-15:
 - TT02 evidence exists for RF-1086, annual accounts, and company tax, but the
   evidence, authority outcomes, and production-access state are incomplete by
   flow.
-- No GitHub Actions release gate currently runs before Vercel deploys `main`.
+- GitHub Actions now requires application and isolated-database readiness jobs to
+  pass one aggregate `Release gate`. The clean PR run and branch-protection
+  evidence are recorded in
+  [`customer-ready-release-gate-2026-07-15.md`](evidence/customer-ready-release-gate-2026-07-15.md).
 - A fresh local Supabase stack now applies every migration, reports zero blocking
   advisor findings, denies owner and outsider access to legacy `step_up_events`,
   passes tenant-isolation tests, and completes the persisted owner browser loop.
@@ -168,14 +171,18 @@ deployed-evidence gates are closed.
 - Type: Prototype
 - Blocked by: none
 - Question: How does a change prove readiness before reaching `talli.no`?
-- Answer: Add required CI for typecheck, unit/integration tests, launch rehearsal,
-  official-XSD validation, build, dependency audit, secret scanning, and database
-  migration/advisor tests. Deploy a staging/preview target first, protect `main`,
-  and promote only an immutable tested commit. Pin or cache the official schema
-  dependency rather than relying on a mutable `/tmp` checkout.
-- Exit evidence: required checks and branch protection are visible in GitHub; a
-  deliberately failing change cannot deploy; staging and production environment
-  separation is documented; the exact tested SHA is the promoted SHA.
+- Answer: Implemented in PR #105. Pull requests and `main` run pinned, least-
+  privilege CI for typecheck, the complete launch rehearsal, a production build,
+  dependency audit, credential scan, whitespace checks, official-XSD validation,
+  and a fresh local Supabase migration/advisor/RLS/storage/browser-owner loop. The
+  official schema repository is pinned to `v1.62.47`, and the browser/runtime
+  dependencies are installed deterministically on the clean runner. Vercel keeps
+  preview and production targets separate; only checked changes may reach the
+  protected `main` production branch.
+- Exit evidence: PR #105 passed aggregate `Release gate` run `29421206393`; an
+  earlier missing-browser run failed closed and did not reach `main`; `main`
+  protection requires the `Release gate`, including for administrators; force
+  pushes and branch deletion are disabled. See the linked evidence record.
 
 ### CR-004 — Produce deployed database, storage, and recovery evidence
 
