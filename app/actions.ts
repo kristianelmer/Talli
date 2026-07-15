@@ -114,7 +114,7 @@ import {
 } from "./lib/rf1086-production";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
 import { requestMaskinportenToken } from "./lib/maskinporten";
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
+import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
 import { requireStepUpForAction, SensitiveAction, SensitiveActionStepUpError } from "./lib/security";
 import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
@@ -999,7 +999,7 @@ export async function generateRf1086Preview(formData: FormData) {
 
   let rendered;
   try {
-    rendered = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+    rendered = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
   } catch (error) {
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
   }
@@ -1014,7 +1014,7 @@ export async function generateRf1086Preview(formData: FormData) {
     preview: rendered.preview,
     hovedskjema_xml: rendered.hovedskjemaXml ?? null,
     underskjema_xml: rendered.underskjemaXml ?? {},
-    source: "python_rf1086_engine",
+    source: "deterministic_rf1086_engine",
     created_by: user.id,
   });
   if (insertError) {
