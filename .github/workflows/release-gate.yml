@@ -1,0 +1,125 @@
+name: Customer-ready release gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-ready-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the immutable revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deterministic dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libxml2-utils
+          python -m pip install uv==0.10.2
+          uv sync --locked
+          npm ci
+
+      - name: Fetch the pinned official tax schemas
+        run: |
+          git clone --depth 1 --branch v1.62.47 \
+            https://github.com/Skatteetaten/skattemeldingen.git \
+            "$RUNNER_TEMP/skattemeldingen"
+
+      - name: Scan tracked source for committed credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_header='BEGIN '"(RSA |EC )?"'PRIVATE KEY'
+          keyring='go-keyring''-base64:'
+          jwt='eyJh''bGciOi[A-Za-z0-9_-]+\.'
+          pattern="(${key_header}|${keyring}|${jwt})"
+          if git grep -I -n -E "$pattern" -- . ':!docs/**' ':!tests/**'; then
+            echo "Potential committed credential detected."
+            exit 1
+          fi
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run the complete launch rehearsal
+        env:
+          TALLI_PYTHON_BIN: .venv/bin/python
+          TALLI_SKATTE_XSD_DIR: ${{ runner.temp }}/skattemeldingen/src/resources/xsd
+        run: npm run test:launch-rehearsal
+
+      - name: Build the production application
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Reject whitespace errors
+        run: git diff --check
+
+  database:
+    name: Database isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the immutable revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install uv==0.10.2
+          uv sync --locked
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Rehearse migrations, RLS, storage, and owner persistence
+        env:
+          TALLI_PYTHON_BIN: .venv/bin/python
+        run: npm run test:supabase:local
+
+  release-gate:
+    name: Release gate
+    if: ${{ always() }}
+    needs: [application, database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every readiness job
+        env:
+          APPLICATION_RESULT: ${{ needs.application.result }}
+          DATABASE_RESULT: ${{ needs.database.result }}
+        run: |
+          test "$APPLICATION_RESULT" = "success"
+          test "$DATABASE_RESULT" = "success"

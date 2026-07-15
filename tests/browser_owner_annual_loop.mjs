@@ -40,12 +40,18 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
   await seedAnnualLoop(admin, { companyId, setupId, shareholderId, previewId, ownerId, orgNumber });
 
-  const server = spawn("npm", ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", String(port)], {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: ["ignore", "pipe", "pipe"],
+  const server = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "inherit", "inherit"],
+    },
+  );
+  t.after(async () => {
+    await stopServer(server);
   });
-  t.after(() => server.kill("SIGTERM"));
   t.after(async () => {
     await admin.from("companies").delete().eq("id", companyId);
     await admin.auth.admin.deleteUser(ownerId);
@@ -230,6 +236,28 @@ async function waitForServer(baseUrl) {
     }
   }
   throw new Error(`Server did not start at ${baseUrl}`);
+}
+
+async function stopServer(server) {
+  if (server.exitCode !== null || server.signalCode !== null) return;
+
+  const exited = new Promise((resolve) => server.once("exit", resolve));
+  server.kill("SIGTERM");
+  let timeoutId;
+  const gracefulTimeout = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve(false), 5_000);
+    timeoutId.unref?.();
+  });
+  const stopped = await Promise.race([
+    exited.then(() => true),
+    gracefulTimeout,
+  ]);
+  clearTimeout(timeoutId);
+
+  if (!stopped && server.exitCode === null && server.signalCode === null) {
+    server.kill("SIGKILL");
+    await exited;
+  }
 }
 
 async function expectText(page, text) {
