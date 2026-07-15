@@ -521,7 +521,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <section className="band mutedBand">
                 <div className="sectionHeader">
                   <p className="eyebrow">RF-1086</p>
-                  <h2>Forhåndsvisning fra Python-motoren.</h2>
+                  <h2>Forhåndsvisning av RF-1086.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={inviteWorkspaceReviewer}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />

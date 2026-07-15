@@ -8,8 +8,8 @@ as a substitute for a `launch_signoffs` decision.
 
 ## Deployment
 
-- Source commit: `9ee8032a1cd560b958d8e2a67c54e9c0093fcf3b`
-- Vercel deployment: `dpl_37hV6azfdnx2Q2bmpmM3kK4w1N8o`
+- Source commit: `c5f55aa31dbf56dd4d949692a1ac4d8dd112e0de`
+- Vercel deployment: `dpl_65GesNrXcBL4bg9fCjUfGsR26vMz`
 - Production aliases: `https://talli.no` and `https://www.talli.no`
 - Vercel status after deployment: `Ready`
 - HTTP probes after deployment: `/` returned 200 and `/login` returned 200.
@@ -61,6 +61,10 @@ as a substitute for a `launch_signoffs` decision.
   exact simulated request-plan parity. The production submission switch remains
   false; this remediation does not call an authority endpoint or broaden the
   supported filing profile.
+- A logged-in production owner-session check generated and persisted a ready
+  2025 preview with source `deterministic_rf1086_engine`. The preview displayed
+  the expected company, share-capital, share-count, and shareholder totals. No
+  authority endpoint was called.
 
 ## External state observed
 
