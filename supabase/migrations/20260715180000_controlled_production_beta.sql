@@ -402,13 +402,26 @@ begin
         and p.confirmed_by = v_actor_id
         and p.production_enabled
     )
-    or not exists (
-      select 1 from public.authority_test_runs t
-      where t.company_id = v_approval.company_id
-        and t.obligation = v_approval.obligation
-        and t.status = 'accepted'
-        and t.receipt_reference is not null
-        and t.archive_reference is not null
+    or not coalesce((
+      select r.ready and jsonb_array_length(r.hard_blocks) = 0
+      from public.filing_readiness_snapshots r
+      where r.company_id = v_approval.company_id
+        and r.income_year = v_approval.income_year
+        and r.obligation = v_approval.obligation
+      order by r.updated_at desc, r.id desc
+      limit 1
+    ), false)
+    or exists (
+      select 1 from public.filing_overrides o
+      where o.company_id = v_approval.company_id
+        and o.income_year = v_approval.income_year
+        and o.risk_level = 'block'
+    )
+    or exists (
+      select 1 from public.filing_review_comments c
+      where c.preview_id = v_approval.preview_id
+        and c.severity = 'hard_block'
+        and c.acknowledged_at is null
     )
     or exists (
       select 1 from unnest(array[
@@ -417,7 +430,10 @@ begin
       ]) required_key
       where not exists (
         select 1 from public.launch_signoffs s
-        where s.key = required_key and s.status = 'approved'
+        where s.key = required_key
+          and s.status = 'approved'
+          and s.reviewed_at <= now()
+          and (s.key <> 'security_restore' or s.reviewed_at >= now() - interval '30 days')
       )
     )
   then

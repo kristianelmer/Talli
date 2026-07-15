@@ -73,6 +73,15 @@ export class Rf1086UnknownProductionOutcomeError extends Error {
   }
 }
 
+export class Rf1086BlockedProductionOperationError extends Error {
+  readonly code = "rf1086_blocked_production_operation";
+
+  constructor(operationName: string) {
+    super(`RF-1086 authority operation ${operationName} is blocked and requires a new reviewed filing.`);
+    this.name = "Rf1086BlockedProductionOperationError";
+  }
+}
+
 function failureClassification(error: unknown) {
   if (error instanceof Rf1086AuthorityError) {
     if (error.status === null) return "unknown" as const;
@@ -96,6 +105,9 @@ async function mutation(input: {
   });
   if (operation.state === "succeeded") return parseReference(operation.authorityReference, input.name);
   if (operation.state === "unknown") throw new Rf1086UnknownProductionOutcomeError(input.name);
+  if (operation.state === "failed" && operation.failureClassification === "blocked") {
+    throw new Rf1086BlockedProductionOperationError(input.name);
+  }
   if (!operation.idempotencyKey) throw new Error(`RF-1086 ${input.name} is missing its persisted idempotency key.`);
 
   try {

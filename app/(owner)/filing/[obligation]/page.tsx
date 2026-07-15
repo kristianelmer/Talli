@@ -363,10 +363,12 @@ export default async function FilingObligationPage({
               <StatusBadge
                 variant={productionSubmission?.status === "accepted" ? "success" : productionSubmission ? "warning" : productionApproval ? "info" : "danger"}
                 label={productionSubmission?.status === "accepted" ? "Godkjent"
+                  : productionSubmission?.status === "sending" ? "Sender"
                   : productionSubmission?.status === "processing" ? "Til behandling"
                   : productionSubmission?.status === "received" ? "Mottatt"
                   : productionSubmission?.status === "unknown" ? "Uavklart – kontakt support"
                   : productionSubmission?.status === "rejected" ? "Avvist"
+                  : productionSubmission?.status === "action_required" ? "Krever handling"
                   : productionApproval ? "Godkjent av deg" : "Klar til gjennomgang"}
               />
             </div>

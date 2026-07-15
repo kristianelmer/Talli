@@ -13,8 +13,8 @@ const input = {
   underskjemaXml: { owner: "<U />" },
 };
 
-function createJournal() {
-  const operations = [];
+function createJournal(seed = []) {
+  const operations = seed.map((operation) => ({ ...operation }));
   return {
     operations,
     async prepare(candidate) {
@@ -101,6 +101,44 @@ test("resumes succeeded mutations without sending them twice", async () => {
   const result = await executeJournaledRf1086Production(input, { journal, authorityClient: resumedClient });
   assert.equal(resumedClient.calls.length, 0);
   assert.equal(result.status, "processing");
+});
+
+test("resumes a retryable mutation with its persisted idempotency key", async () => {
+  const journal = createJournal([{
+    id: "operation-1",
+    name: "post_hovedskjema",
+    state: "failed",
+    attempt: 1,
+    bodyHash: "persisted-hash",
+    idempotencyKey: "persisted-idempotency-key",
+    authorityReference: null,
+    failureClassification: "retryable",
+  }]);
+  const authorityClient = createAuthorityClient();
+  const result = await executeJournaledRf1086Production(input, { journal, authorityClient });
+
+  assert.equal(authorityClient.calls[0][1].idempotencyKey, "persisted-idempotency-key");
+  assert.equal(result.status, "processing");
+});
+
+test("does not retry a mutation that authority already blocked", async () => {
+  const journal = createJournal([{
+    id: "operation-1",
+    name: "post_hovedskjema",
+    state: "failed",
+    attempt: 1,
+    bodyHash: "persisted-hash",
+    idempotencyKey: "persisted-idempotency-key",
+    authorityReference: null,
+    failureClassification: "blocked",
+  }]);
+  const authorityClient = createAuthorityClient();
+
+  await assert.rejects(
+    executeJournaledRf1086Production(input, { journal, authorityClient }),
+    /blocked and requires a new reviewed filing/u,
+  );
+  assert.equal(authorityClient.calls.length, 0);
 });
 
 test("quarantines a mutation timeout instead of retrying", async () => {

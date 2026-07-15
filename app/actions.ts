@@ -4328,20 +4328,26 @@ function createRf1086DatabaseJournal(
         .select("*")
         .eq("submission_id", input.submissionId)
         .eq("operation_name", input.name)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1);
       if (readError) throw new Error("Kunne ikke lese produksjonsjournalen.");
       const latest = existing?.[0];
       if (latest) {
+        const retryableFailure = latest.operation_state === "failed" && latest.failure_class === "retryable";
+        const retryExhausted = retryableFailure && latest.attempt >= 20;
         const state = latest.operation_state === "succeeded"
           ? "succeeded"
-          : input.idempotencyKey === null
-            ? latest.operation_state
-            : "unknown";
+          : latest.operation_state === "failed"
+            ? "failed"
+            : input.idempotencyKey === null
+              ? latest.operation_state
+              : "unknown";
         const operation = {
-          id: latest.id, name: latest.operation_name, state, attempt: latest.attempt,
+          id: latest.id, name: latest.operation_name, state,
+          attempt: retryableFailure && !retryExhausted ? latest.attempt + 1 : latest.attempt,
           bodyHash: latest.body_hash, idempotencyKey: latest.idempotency_key,
           authorityReference: latest.authority_reference,
-          failureClassification: latest.failure_class,
+          failureClassification: retryExhausted ? "blocked" : latest.failure_class,
         } as ProductionOperation;
         operations.set(operation.id, operation);
         return operation;
@@ -4437,6 +4443,12 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   if (!approvalMatchesCurrentPayload(currentManifest, approval.manifest_hash)) {
     redirect(`${returnTo}?error=${encodeURIComponent("Dataene er endret. Se over og godkjenn på nytt.")}`);
   }
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch (error) {
+    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsjournalen er ikke konfigurert.")}`);
+  }
   const token = await requestMaskinportenToken({
     ...configuration,
     systemUserOrgNumber: company.org_number,
@@ -4444,7 +4456,6 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   });
   const { data: submission, error: beginError } = await supabase.rpc("begin_production_filing", { p_approval_id: approval.id });
   if (beginError || !submission) redirect(`${returnTo}?error=${encodeURIComponent(beginError?.message ?? "Produksjonsinnsendingen kunne ikke startes.")}`);
-  const service = createSupabaseServiceRoleClient();
   try {
     await executeJournaledRf1086Production({
       submissionId: submission.id,

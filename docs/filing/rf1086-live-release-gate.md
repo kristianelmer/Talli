@@ -51,6 +51,9 @@ Code and evidence gate anchors:
 
 - `buildFilingReleaseGates` requires accepted `authority_test_runs` evidence
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
+- At the protected database Send boundary, the operator-only global
+  `rf1086_authority` signoff carries the accepted TT02 evidence reference. TT02
+  synthetic evidence is never copied onto a real customer's company row.
 - `buildFilingReleaseGates` requires approved `launch_signoffs` key
   `rf1086_authority` with reviewer, date, evidence link, and decision.
 - `buildFilingReleaseGates` independently requires an implemented and enabled

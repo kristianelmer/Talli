@@ -43,6 +43,12 @@ test("approval and begin RPCs enforce owner AAL2 and an exact active entitlement
   assert.match(sql, /production_pilot_entitlements[\s\S]*status = 'active'[\s\S]*user_id = v_actor_id/u);
   assert.match(sql, /create or replace function public\.approve_production_filing/u);
   assert.match(sql, /create or replace function public\.begin_production_filing/u);
+  assert.match(sql, /jsonb_array_length\(r\.hard_blocks\) = 0[\s\S]*filing_readiness_snapshots/u);
+  assert.match(sql, /filing_overrides[\s\S]*risk_level = 'block'/u);
+  assert.doesNotMatch(sql, /o\.filing = v_approval\.obligation/u);
+  assert.match(sql, /filing_review_comments[\s\S]*severity = 'hard_block'/u);
+  assert.match(sql, /security_restore'[\s\S]*interval '30 days'/u);
+  assert.doesNotMatch(sql, /authority_test_runs t[\s\S]*t\.company_id = v_approval\.company_id/u);
 });
 
 test("acceptance requires explicit final authority evidence and events are append-only", () => {

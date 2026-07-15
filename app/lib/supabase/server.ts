@@ -857,6 +857,14 @@ export async function listFilingSubmissions(companyIds: string[]) {
   };
 }
 
+function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message?: string } | null>) {
+  return errors.some((error) => error != null && (
+    error.code === "PGRST205"
+    || error.code === "42P01"
+    || /production_(?:pilot|filing)|filing_approval_snapshots/iu.test(error.message ?? "")
+  ));
+}
+
 export async function listProductionFilingState(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return {
@@ -872,11 +880,16 @@ export async function listProductionFilingState(companyIds: string[]) {
     supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
     supabase.from("production_filing_submissions").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
   ]);
+  const errors = [entitlements.error, approvals.error, submissions.error];
+  const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
+    && productionPilotSchemaUnavailable(errors);
   return {
     productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
     filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
     productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
-    error: entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? null,
+    error: rolloutSchemaPending
+      ? null
+      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? null,
   };
 }
 

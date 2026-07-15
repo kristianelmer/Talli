@@ -1,7 +1,8 @@
 # RF-1086 controlled production pilot runbook
 
-Status: transport implemented, production disabled by default  
-Owner: founder/operator  
+Status: transport implemented, production disabled by default
+
+Owner: founder/operator
 Immediate kill switch: set `TALLI_RF1086_PRODUCTION_ENABLED=false` and redeploy
 
 Disabling transport must preserve every preview, entitlement, approval, submission,
