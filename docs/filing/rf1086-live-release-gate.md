@@ -8,6 +8,9 @@ Blockers resolved: #76 real payment collection (closed), #80 code evidence decis
 This checklist must pass before Talli can enable live RF-1086 submission. It does
 not enable production by itself.
 
+Latest deployed fail-closed verification:
+[`rf1086-controlled-beta-deployment-2026-07-15.md`](../launch/evidence/rf1086-controlled-beta-deployment-2026-07-15.md).
+
 ## Live Scope
 
 Allowed candidate scope:
