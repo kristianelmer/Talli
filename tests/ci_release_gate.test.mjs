@@ -28,6 +28,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "npm ci",
     "python -m pip install uv==0.10.2",
     "uv sync --locked",
+    "npx playwright install --with-deps chromium",
     "npm run typecheck",
     "npm run test:launch-rehearsal",
     "npm run test:supabase:local",
@@ -57,4 +58,17 @@ test("database isolation uses the locked Python renderer environment", () => {
   assert.ok(databaseJob.includes("python -m pip install uv==0.10.2"));
   assert.ok(databaseJob.includes("uv sync --locked"));
   assert.match(databaseJob, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
+  assert.ok(databaseJob.includes("npx playwright install --with-deps chromium"));
+});
+
+test("browser owner rehearsal owns and terminates the Next.js process directly", () => {
+  const harness = readFileSync(
+    new URL("browser_owner_annual_loop.mjs", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(harness, /spawn\("npm"/);
+  assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
+  assert.match(harness, /await stopServer\(server\)/);
+  assert.match(harness, /server\.kill\("SIGKILL"\)/);
 });

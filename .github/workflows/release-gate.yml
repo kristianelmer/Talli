@@ -102,6 +102,7 @@ jobs:
           python -m pip install uv==0.10.2
           uv sync --locked
           npm ci
+          npx playwright install --with-deps chromium
 
       - name: Rehearse migrations, RLS, storage, and owner persistence
         env:
