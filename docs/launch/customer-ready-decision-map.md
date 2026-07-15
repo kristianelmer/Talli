@@ -2,11 +2,13 @@
 
 Status: active launch map  
 Last audited: 2026-07-15  
-Code baseline: `main` at `a9e23b90a59ced2df3942432223a9961673b84c3`  
+Code baseline: `main` at `a20447b65ec1a548cc3b52a452d14a8195b7b7ef`; customer-ready foundation on `codex/customer-ready-foundation`
 Scope authority: `docs/remarks/holdingswift_produktkrav.md` and the approved PRDs  
 
 Founder decisions that resolve the launch-scope questions are recorded in
 [`2026-07-15-customer-ready-foundation-design.md`](../superpowers/specs/2026-07-15-customer-ready-foundation-design.md).
+The executable test-first sequence is recorded in
+[`2026-07-15-customer-ready-foundation.md`](../superpowers/plans/2026-07-15-customer-ready-foundation.md).
 
 This is the canonical dependency map from the current product to a customer-ready
 Talli release. Detailed evidence remains in the existing launch, filing, legal,
@@ -42,14 +44,23 @@ The first customer-ready release is intentionally narrow:
   evidence, authority outcomes, and production-access state are incomplete by
   flow.
 - No GitHub Actions release gate currently runs before Vercel deploys `main`.
-- Deployed Supabase RLS, private-storage, migration, and backup/restore evidence is
-  not yet recorded for the target production environment.
-- The public homepage currently outruns the release state with claims including
-  “uten regnskapsfører” and definitive delivery language while production filing
-  and charging remain disabled.
-- The existing `step_up_events` model is forgeable by an authenticated user: the
-  user can insert the same MFA timestamp and approval fields that application and
-  database guards trust. This is a launch-blocking security defect.
+- A fresh local Supabase stack now applies every migration, reports zero blocking
+  advisor findings, denies owner and outsider access to legacy `step_up_events`,
+  passes tenant-isolation tests, and completes the persisted owner browser loop.
+  This is local evidence only; hosted staging/production RLS, storage, MFA, and
+  restore evidence remains unrecorded.
+- The customer-ready branch replaces homepage overclaims with an invite-only free
+  beta posture, removes human-review/accountant-replacement/live-delivery claims,
+  and identifies ELMER WELFIS, org.nr. 930 835 978. Rendered browser review and
+  deployment verification remain release evidence.
+- The customer-ready branch replaces the forgeable `step_up_events` trust path
+  with verified Supabase `getClaims()` AAL2/AMR checks, revokes customer grants and
+  policies, and protects corporate RPCs with signed `auth.jwt()` claims. A real
+  hosted MFA enrollment/recovery/session-age rehearsal remains required.
+- `founder_production_go_live` is a mandatory operator-only signoff and is
+  intentionally missing. Production filing, live charging, and paid-customer
+  admission require a later explicit founder confirmation after all evidence
+  gates pass.
 
 ## Critical path
 
@@ -81,7 +92,8 @@ deployed-evidence gates are closed.
 - Type: Prototype
 - Blocked by: none
 - Question: What may Talli promise while filing and payment adapters are disabled?
-- Answer: Only a restricted beta/pre-production service. Remove or qualify
+- Answer: Implemented on the customer-ready branch as a restricted, invite-only
+  free beta/pre-production service. Remove or qualify
   accountant-replacement, delivery, submission, and pay-at-submission claims until
   the corresponding live evidence exists. Add the non-affiliation and supported-
   case boundary to the public journey.
@@ -96,13 +108,14 @@ deployed-evidence gates are closed.
 - Blocked by: none
 - Question: Can a customer manufacture the security state required for a sensitive
   action?
-- Answer: Yes today. `authenticated` can insert its own `step_up_events` row,
+- Answer: The baseline was vulnerable: `authenticated` could insert its own `step_up_events` row,
   including `mfa_verified_at`, `security_review_approved`, and
   `production_credentials_enabled`, while application and corporate-document
   guards trust those fields. Use the signed Supabase JWT `aal=aal2` claim for user
   presence, revoke customer writes to trusted security state, and store human
   security approval and production-credential enablement in a server/operator-only
-  boundary.
+  boundary. The corrective application and database boundary now passes local
+  unit, fresh-PostgreSQL, local Supabase RLS/advisor, and browser-loop tests.
 - Exit evidence: corrective migration; all sensitive actions/RPCs use the trusted
   boundary; direct-insert and forged-timestamp adversarial tests fail safely; real
   enrollment, challenge, recovery, and session-age paths pass in a deployed test.
@@ -161,8 +174,9 @@ deployed-evidence gates are closed.
 - Blocked by: CR-001
 - Question: Who contracts with the customer, on what terms, and who responds when
   something goes wrong?
-- Answer: Open. Replace all `[Talli AS, org.nr XXX ...]` placeholders with the
-  actual operator before accepting customers. Obtain Norwegian legal review of
+- Answer: The invite-only beta operator is ELMER WELFIS, org.nr. 930 835 978, and
+  public legal placeholders are removed on the customer-ready branch. Obtain
+  Norwegian legal review of
   terms, privacy, DPA/subprocessors, controller/processor roles, legal bases,
   retention/deletion, incident notice, liability, and cancellation/refund terms.
   Name support, security, billing, filing-authority, and rollback owners with
@@ -178,11 +192,11 @@ deployed-evidence gates are closed.
 - Blocked by: none
 - Question: Does first customer readiness require live bank feeds and OCR, or may
   it launch with CSV/manual evidence intake?
-- Answer: Open; recommended answer is CSV/manual intake for the first narrow
-  release, matching the current PRD exclusion of live bank feeds. If accepted,
-  bank/OCR vendor work moves after launch and public copy must say so. If rejected,
+- Answer: Resolved by founder HITL: CSV/manual intake is sufficient for the first
+  narrow release, matching the current PRD exclusion of live bank feeds. Therefore
+  bank/OCR vendor work moves after launch. Any later live integration requires
   vendor selection, DPA/subprocessor review, EU/EEA processing, token/webhook
-  security, persisted sync state, sandbox evidence, and rollback become blockers.
+  security, persisted sync state, sandbox evidence, and rollback before enablement.
 - Exit evidence: signed supported/unsupported case matrix covering VAT, payroll,
   employees, foreign activity, group complexity, transaction types, attachments,
   bank/OCR behavior, and escalation to an accountant.
@@ -259,7 +273,9 @@ deployed-evidence gates are closed.
 - Blocked by: CR-004, CR-006, CR-007, CR-013
 - Question: Is the evidenced no-activity RF-1086 scope safe to enable for paying
   customers?
-- Answer: Not yet. Import the accepted TT02 evidence into the deployed evidence
+- Answer: Not yet. Paid launch must support ordinary holding-company purchases,
+  sales, and dividends with separate TT02 evidence; no-activity evidence alone is
+  insufficient. Import accepted evidence into the deployed evidence
   store, record security/restore and `rf1086_authority` signoffs, obtain production
   credentials/access, and prove charge/refund behavior. Keep stiftelse/no-activity
   as the only live scope unless purchase, sale, and dividend scenarios receive
@@ -275,8 +291,9 @@ deployed-evidence gates are closed.
 - Blocked by: CR-006
 - Question: Which provider and controls support a real charge, receipt, refund, and
   reconciliation path?
-- Answer: Open. Current Vipps MobilePay/test-mode work is not live charging.
-  Complete merchant onboarding, production credentials, webhook verification,
+- Answer: Vipps MobilePay is the selected first live provider. Current test-mode
+  work is not live charging. Complete merchant onboarding, production credentials,
+  webhook verification,
   idempotency, refund/cancellation behavior, accounting reconciliation, privacy/
   processor review, and support ownership. Until then, remove definitive public
   pay-at-submission language.
@@ -357,7 +374,8 @@ deployed-evidence gates are closed.
   “approved for production.”
 - Exit evidence: clean CI on the release SHA; current deployment and migration IDs;
   all required named signoffs; zero unowned P0/P1 risks; rollback rehearsal; public
-  copy matches enabled flags; signed go/no-go record.
+  copy matches enabled flags; signed go/no-go record; and a separately recorded
+  `founder_production_go_live` approval following explicit founder confirmation.
 
 ## External dependencies that code cannot close
 

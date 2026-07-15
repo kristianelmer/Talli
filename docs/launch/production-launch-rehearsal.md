@@ -1,12 +1,35 @@
 # Production Launch Rehearsal
 
-Status: local rehearsal passed; production launch remains blocked on named human and deployed-environment evidence
-Last updated: 2026-07-14
+Status: local foundation evidence passed; production launch remains blocked on named human and deployed-environment evidence
+Last updated: 2026-07-15
 Blocks: #88, live authority filing, and the corporate-document feature remain blocked until their named external gates are evidenced
 
 This runbook is the repeatable pre-launch rehearsal for Talli. It does not
 permit live direct filing. It proves the local product gates and documents the
 remaining authority/HITL blockers.
+
+## Customer-ready foundation evidence (2026-07-15)
+
+The customer-ready foundation branch replaces customer-authored step-up state
+with verified Supabase AAL2/AMR claims and adds the operator-only
+`founder_production_go_live` release lock. Focused evidence completed locally:
+
+| Command | Result |
+| --- | --- |
+| `npm run test:security` | exit 0 — matching subject, AAL2, supported AMR, freshness, failure/audit paths |
+| `npm run test:trusted-aal2-schema` | exit 0 — customer grants/policies revoked; signed database claims required |
+| `npm run test:corporate-documents` | exit 0 — all 20 tests, including fresh PostgreSQL migration/RPC lifecycle |
+| `npm run test:supabase:local` | exit 0 — migrations, zero blocking advisor findings, authenticated RLS denial of forged step-up state, persisted browser loop |
+| `npm run test:launch-signoff` and `npm run test:filing-release-gate` | exit 0 — common, restore-freshness, authority, adapter, and final-founder locks |
+| `npm run test:launch-copy` and `npm run test:legal-policy` | exit 0 — invite-only beta posture and identified legal operator |
+| `npm run typecheck` | exit 0 |
+
+This evidence is not hosted evidence. Hosted migration application, real MFA
+enrollment/challenge/recovery, staging and production tenant isolation/private
+storage, production restore, authority adapters, five-company beta validation,
+professional review or dated risk acceptance, and live Vipps charge/refund remain
+open. The complete launch rehearsal/build/browser pass is recorded only after it
+runs on the final branch SHA.
 
 ## Latest Rehearsal Run (2026-07-14)
 
@@ -147,6 +170,7 @@ gate state in the app operator section.
 | Årsregnskap authority filing | Pending | Pending | `docs/filing/annual-accounts-authority-map.md` | Pending |
 | Skattemelding authority filing | Pending | Pending | `docs/filing/company-tax-return-authority-map.md` | Pending |
 | Support/rollback | Pending | Pending | Operator dashboard and backup/restore evidence | Pending |
+| Final founder production go-live (`founder_production_go_live`) | Pending | Pending | Complete reconciled release evidence | **Not approved; requires later explicit founder confirmation** |
 
 ## Founder Pre-Launch Attestations (2026-06-24, Kristian Elmer)
 
@@ -180,6 +204,7 @@ Stop rehearsal and keep public copy restricted if:
 - any automated command fails;
 - restore evidence is older than 30 days;
 - any filing gate is not `production_ready`;
+- `founder_production_go_live` is missing, pending, rejected, or lacks a later explicit founder confirmation;
 - any row in `docs/launch/corporate-document-release-gate.md` is pending;
 - public copy claims direct live filing without authority receipt evidence;
 - legal/security/billing/authority reviewer signoff is missing.

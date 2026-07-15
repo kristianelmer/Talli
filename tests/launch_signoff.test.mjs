@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -146,4 +147,27 @@ test("documented launch_legal_name_public_copy entry is a valid approved record"
   assert.equal(record.status, "approved");
   assert.equal(record.reviewer, "Kristian Elmer (founder)");
   assert.equal(record.reviewed_at, "2026-06-24T00:00:00Z");
+});
+
+test("launch evidence records the final founder gate as intentionally unapproved", () => {
+  const evidenceRegister = readFileSync(
+    new URL("../docs/launch/talli-clearance-evidence-register.md", import.meta.url),
+    "utf8",
+  );
+  const productionRehearsal = readFileSync(
+    new URL("../docs/launch/production-launch-rehearsal.md", import.meta.url),
+    "utf8",
+  );
+  const decisionMap = readFileSync(
+    new URL("../docs/launch/customer-ready-decision-map.md", import.meta.url),
+    "utf8",
+  );
+
+  for (const doc of [evidenceRegister, productionRehearsal]) {
+    assert.match(doc, /founder_production_go_live/);
+    assert.match(doc, /(?:missing|pending|not approved|ikke godkjent)/i);
+    assert.match(doc, /explicit founder confirmation/i);
+  }
+  assert.match(decisionMap, /2026-07-15-customer-ready-foundation-design\.md/);
+  assert.match(decisionMap, /2026-07-15-customer-ready-foundation\.md/);
 });
