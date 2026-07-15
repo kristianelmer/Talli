@@ -122,14 +122,22 @@ insert into public.ledger_entries (
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   );
 
-insert into public.step_up_events (
-  actor_id, method, mfa_verified_at, security_review_approved, production_credentials_enabled
-) values (
-  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'mfa', now(), true, false
-);
-
 set role authenticated;
 set request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'aal', 'aal2',
+    'amr', jsonb_build_array(
+      jsonb_build_object(
+        'method', 'totp',
+        'timestamp', extract(epoch from now())::bigint
+      )
+    )
+  )::text,
+  false
+);
 
 create temporary table rehearsal_inputs (payload jsonb not null);
 insert into rehearsal_inputs (payload) values (

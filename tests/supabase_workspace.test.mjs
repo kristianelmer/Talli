@@ -36,7 +36,6 @@ import {
   runRf1086SubmissionAdapter,
 } from "../app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
-import { assertStepUpAllowed, stepUpContextFromEvent } from "../app/lib/security.ts";
 import { validateSharePurchase } from "../app/lib/share-purchase.ts";
 import { validateShareSale } from "../app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
@@ -520,26 +519,20 @@ test(
     assert.ifError(inviteeOutboxReadError);
     assert.deepEqual(inviteeOutboxRows, []);
 
-    const { data: stepUpEvent, error: stepUpError } = await owner
-      .from("step_up_events")
-      .insert({
-        actor_id: ownerUser.id,
-        method: "totp",
-        mfa_verified_at: new Date().toISOString(),
-      })
-      .select("actor_id, mfa_verified_at, security_review_approved, production_credentials_enabled")
-      .single();
-    assert.ifError(stepUpError);
-    assert.doesNotThrow(() =>
-      assertStepUpAllowed("billing_admin", stepUpContextFromEvent(ownerUser.id, stepUpEvent), new Date()),
-    );
+    const { error: ownerStepUpWriteError } = await owner.from("step_up_events").insert({
+      actor_id: ownerUser.id,
+      method: "totp",
+      mfa_verified_at: new Date().toISOString(),
+      security_review_approved: true,
+      production_credentials_enabled: true,
+    });
+    assert.ok(ownerStepUpWriteError);
 
-    const { data: outsiderStepUps, error: outsiderStepUpReadError } = await outsider
+    const { error: ownerStepUpReadError } = await owner
       .from("step_up_events")
       .select("id")
       .eq("actor_id", ownerUser.id);
-    assert.ifError(outsiderStepUpReadError);
-    assert.deepEqual(outsiderStepUps, []);
+    assert.ok(ownerStepUpReadError);
 
     const { error: outsiderStepUpWriteError } = await outsider.from("step_up_events").insert({
       actor_id: ownerUser.id,
@@ -547,6 +540,12 @@ test(
       mfa_verified_at: new Date().toISOString(),
     });
     assert.ok(outsiderStepUpWriteError);
+
+    const { error: outsiderStepUpReadError } = await outsider
+      .from("step_up_events")
+      .select("id")
+      .eq("actor_id", ownerUser.id);
+    assert.ok(outsiderStepUpReadError);
 
     const { data: outsiderCompanies, error: outsiderCompanyError } = await outsider
       .from("companies")

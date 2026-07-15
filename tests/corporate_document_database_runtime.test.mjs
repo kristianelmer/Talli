@@ -10,6 +10,7 @@ const migrationFiles = [
   "0002_fifo_investment_lots.sql",
   "0003_bank_rule_suggestions.sql",
   "0004_corporate_document_artifacts.sql",
+  "20260715084507_trusted_aal2_boundary.sql",
 ];
 
 const bootstrapSql = String.raw`
