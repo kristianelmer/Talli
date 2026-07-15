@@ -1,6 +1,6 @@
 # Controlled production beta design
 
-Status: approved in conversation on 2026-07-15; written-spec review pending
+Status: approved by Kristian Elmer on 2026-07-15
 Decision owner: Kristian Elmer
 Legal beta operator: ELMER WELFIS, org.nr. 930 835 978
 Delivery branch: `codex/controlled-production-beta`
