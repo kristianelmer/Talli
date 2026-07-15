@@ -36,7 +36,7 @@
 - `app/(operator)/operator/page.tsx`: exact entitlement activation/suspension control.
 - `app/(owner)/filing/[obligation]/page.tsx`: real-filing review, approval, send, and honest status presentation.
 - `supabase/migrations/20260715180000_controlled_production_beta.sql`: production aggregate, RLS, grants, AAL2 RPCs, and append-only enforcement.
-- `supabase/migrations/20260715180001_controlled_production_beta_rollback.sql`: explicit rollback that disables functions before dropping additive objects.
+- `supabase/rollback/controlled_production_beta.sql`: manual rollback outside the auto-applied migration stream; it disables functions before dropping additive objects.
 - `tests/production_pilot.test.mjs`: entitlement and free-beta release-gate behavior.
 - `tests/production_approval.test.mjs`: manifest hashing and invalidation.
 - `tests/production_submission.test.mjs`: legal status transitions and retry policy.
@@ -195,7 +195,7 @@ git commit -m "feat: bind production approval to immutable filing state"
 
 **Files:**
 - Create: `supabase/migrations/20260715180000_controlled_production_beta.sql`
-- Create: `supabase/migrations/20260715180001_controlled_production_beta_rollback.sql`
+- Create: `supabase/rollback/controlled_production_beta.sql`
 - Create: `tests/controlled_production_beta_schema.test.mjs`
 - Modify: `tests/supabase_workspace.test.mjs`
 
@@ -243,7 +243,7 @@ Expected: both commands PASS.
 - [ ] **Step 6: Commit the slice**
 
 ```bash
-git add supabase/migrations/20260715180000_controlled_production_beta.sql supabase/migrations/20260715180001_controlled_production_beta_rollback.sql tests/controlled_production_beta_schema.test.mjs tests/supabase_workspace.test.mjs
+git add supabase/migrations/20260715180000_controlled_production_beta.sql supabase/rollback/controlled_production_beta.sql tests/controlled_production_beta_schema.test.mjs tests/supabase_workspace.test.mjs
 git commit -m "feat: add protected production filing aggregate"
 ```
 
