@@ -70,6 +70,11 @@ Code and evidence gate anchors:
 
 ## Required Test Run
 
+The deployed no-activity preview renderer and simulation adapter run in-process
+in TypeScript so they do not depend on a Python runtime in Vercel. The Python
+implementation remains the offline reference oracle: parity tests require the
+TypeScript XML bytes and simulated request plan to match it exactly.
+
 Before release signoff:
 
 ```bash
@@ -87,7 +92,7 @@ Latest run of the code-side release evidence (all green):
 | Suite | Result |
 | --- | --- |
 | `uv run python -m unittest tests.test_rf1086 tests.test_rf1086_submission tests.test_submission_and_billing` | 25 passed |
-| `npm run test:rf1086:submission` (bridge; `TALLI_PYTHON_BIN=.venv/bin/python`) | 7 passed |
+| `npm run test:rf1086:submission` (in-process adapter plus Python parity oracle) | 7 passed |
 | `npm run test:security` | 4 passed |
 | `npm run test:filing-release-gate` | 3 passed |
 | `npm run test:backup-restore` | 4 passed |

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+import { buildNoActivityRf1086Case, renderRf1086Preview } from "../app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   assertRf1086SimulationConfirmations,
@@ -12,6 +12,7 @@ import {
   rf1086SubmittedPayloadReference,
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
+  simulateRf1086Submission,
   simulateRf1086SubmissionWithPython,
 } from "../app/lib/rf1086-submission.ts";
 
@@ -57,7 +58,7 @@ const shareholders = [
 ];
 
 function readyPreview() {
-  const rendered = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+  const rendered = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
   return {
     id: "12345678-1234-1234-1234-123456789abc",
     company_id: company.id,
@@ -106,6 +107,38 @@ test("prepares deterministic simulated submission calls and receipt from persist
     first.calls.map((call) => call.idempotency_key),
   );
   assert.deepEqual(retry.feedback_document_ids, ["sim-feedback-12345678"]);
+});
+
+test("simulates a persisted submission without a Python runtime", () => {
+  const previous = process.env.TALLI_PYTHON_BIN;
+  process.env.TALLI_PYTHON_BIN = "/definitely/missing/talli-python";
+  try {
+    const result = simulateRf1086Submission(readyPreview(), "owner-user", {
+      authorityConfirmed: true,
+      previewConfirmed: true,
+    });
+
+    assert.equal(result.status, "receipt_stored");
+    assert.equal(result.receipt_id, "sim-rf1086-company-id-2025-12345678");
+    assert.equal(result.calls.length, 4);
+  } finally {
+    if (previous === undefined) delete process.env.TALLI_PYTHON_BIN;
+    else process.env.TALLI_PYTHON_BIN = previous;
+  }
+});
+
+test("serverless simulation matches the verified Python request plan", () => {
+  const preview = readyPreview();
+  const confirmations = { authorityConfirmed: true, previewConfirmed: true };
+  const serverless = simulateRf1086Submission(preview, "owner-user", confirmations);
+  const verified = simulateRf1086SubmissionWithPython(preview, "owner-user", confirmations);
+
+  assert.deepEqual(
+    serverless.calls.map(({ endpoint, body_hash, idempotency_key, status }) => ({ endpoint, body_hash, idempotency_key, status })),
+    verified.calls.map(({ endpoint, body_hash, idempotency_key, status }) => ({ endpoint, body_hash, idempotency_key, status })),
+  );
+  assert.equal(serverless.receipt_id, verified.receipt_id);
+  assert.deepEqual(serverless.feedback_document_ids, verified.feedback_document_ids);
 });
 
 test("blocks production adapter even if the legacy environment flag is set", () => {

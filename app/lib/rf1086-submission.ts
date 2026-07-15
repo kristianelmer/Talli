@@ -252,7 +252,108 @@ export function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterReque
   if (request.mode === "production") {
     throw new Rf1086ProductionAdapterDisabledError();
   }
-  return simulateRf1086SubmissionWithPython(request.preview, request.userId, request.confirmations);
+  return simulateRf1086Submission(request.preview, request.userId, request.confirmations);
+}
+
+function sortedJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedJsonValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, sortedJsonValue(child)]),
+    );
+  }
+  return value;
+}
+
+function simulationBodyHash(body: unknown) {
+  return createHash("sha256").update(JSON.stringify(sortedJsonValue(body))).digest("hex");
+}
+
+function uuidV5Url(value: string) {
+  const namespaceUrl = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+  const bytes = createHash("sha1").update(Buffer.concat([namespaceUrl, Buffer.from(value, "utf8")])).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function simulationCall(
+  preview: FilingPreviewRow,
+  endpoint: string,
+  body: unknown,
+): Rf1086SubmissionResult["calls"][number] {
+  const bodyHash = simulationBodyHash(body);
+  const raw = `${preview.company_id}:${preview.income_year}:${preview.filing}:${endpoint}:${bodyHash}`;
+  return {
+    endpoint,
+    body_hash: bodyHash,
+    idempotency_key: uuidV5Url(raw),
+    status: "prepared",
+    created_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Deterministic in-process simulation. This records the same request plan and
+ * simulated receipt as the legacy Python adapter without requiring a Python
+ * subprocess in the deployed Vercel function.
+ */
+export function simulateRf1086Submission(
+  preview: FilingPreviewRow,
+  userId: string,
+  confirmations: Rf1086SubmissionConfirmations,
+): Rf1086SubmissionResult {
+  assertRf1086SimulationConfirmations(confirmations);
+  if (preview.status !== "ready") {
+    throw new Error("RF-1086 må være klar før simulert innsending kan arkiveres.");
+  }
+  if (!preview.hovedskjema_xml) {
+    throw new Error("RF-1086 forhåndsvisning mangler hovedskjema XML.");
+  }
+  const confirmedAt = new Date().toISOString();
+  const baseEndpoint = `/api/aksjonaerregister/v1/${preview.income_year}`;
+  const hovedskjemaId = `simulated-${preview.id}`;
+  const calls = [
+    simulationCall(preview, `${baseEndpoint}/1086H`, {
+      content_type: "application/xml",
+      xml: preview.hovedskjema_xml,
+    }),
+    ...Object.entries(preview.underskjema_xml)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([shareholderId, xml]) => simulationCall(preview, `${baseEndpoint}/${hovedskjemaId}/1086U`, {
+        shareholder_id: shareholderId,
+        content_type: "application/xml",
+        xml,
+      })),
+    simulationCall(
+      preview,
+      `${baseEndpoint}/${hovedskjemaId}/bekreft?antall_underskjema=${Object.keys(preview.underskjema_xml).length}`,
+      { antall_underskjema: Object.keys(preview.underskjema_xml).length },
+    ),
+    simulationCall(
+      preview,
+      `${baseEndpoint}/forsendelser/simulated-forsendelse-${preview.id}/dokumenter?page=0&size=50`,
+      { page: 0, size: 50 },
+    ),
+  ];
+  return {
+    filing: preview.filing,
+    company_id: preview.company_id,
+    income_year: preview.income_year,
+    status: "receipt_stored",
+    authority_confirmed_by: userId,
+    authority_confirmed_at: confirmedAt,
+    preview_confirmed_by: userId,
+    preview_confirmed_at: confirmedAt,
+    calls,
+    receipt_id: `sim-rf1086-${preview.company_id}-${preview.income_year}-${preview.id.slice(0, 8)}`,
+    feedback_document_ids: [`sim-feedback-${preview.id.slice(0, 8)}`],
+    failure_code: null,
+    failure_message: null,
+  };
 }
 
 export function simulateRf1086SubmissionWithPython(
