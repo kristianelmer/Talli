@@ -2,7 +2,7 @@
 
 Status: active launch map  
 Last audited: 2026-07-15  
-Code baseline: `main` at `a20447b65ec1a548cc3b52a452d14a8195b7b7ef`; customer-ready foundation on `codex/customer-ready-foundation`
+Code baseline: `main` at `28e4360b503ba3dbd8cb6e6b082803e447c68221`
 Scope authority: `docs/remarks/holdingswift_produktkrav.md` and the approved PRDs  
 
 Founder decisions that resolve the launch-scope questions are recorded in
@@ -73,6 +73,10 @@ Repair execution status on 2026-07-15:
 - accidental unlinked uploads have an owner-confirmed, audited removal flow, while
   linked accounting, filing, and corporate evidence remains immutable. See
   [`hosted-schema-parity-2026-07-15.md`](evidence/hosted-schema-parity-2026-07-15.md).
+- the promoted application SHA passed a signed-in Safari rehearsal across the
+  workspace, dashboard, actions, transactions, year-end, documents, filing,
+  billing, and a mobile-sized viewport. See
+  [`customer-ready-browser-rehearsal-2026-07-15.md`](evidence/customer-ready-browser-rehearsal-2026-07-15.md).
 
 - `main` is verified and deployed; `https://talli.no` responds publicly.
 - The local launch rehearsal, build, official company-tax XSD validation, audit,
@@ -87,11 +91,11 @@ Repair execution status on 2026-07-15:
   passes tenant-isolation tests, and completes the persisted owner browser loop.
   This is local evidence only; hosted staging/production RLS, storage, MFA, and
   restore evidence remains unrecorded.
-- The customer-ready branch replaces homepage overclaims with an invite-only free
+- `main` replaces homepage overclaims with an invite-only free
   beta posture, removes human-review/accountant-replacement/live-delivery claims,
-  and identifies ELMER WELFIS, org.nr. 930 835 978. Rendered browser review and
-  deployment verification remain release evidence.
-- The customer-ready branch replaces the forgeable `step_up_events` trust path
+  and identifies ELMER WELFIS, org.nr. 930 835 978. The rendered browser and
+  deployment evidence is recorded above.
+- `main` replaces the forgeable `step_up_events` trust path
   with verified Supabase `getClaims()` AAL2/AMR checks, revokes customer grants and
   policies, and protects corporate RPCs with signed `auth.jwt()` claims. A real
   hosted MFA enrollment/recovery/session-age rehearsal remains required.
