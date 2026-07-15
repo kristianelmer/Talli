@@ -51,9 +51,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git grep -I -n -E \
-            '(BEGIN (RSA |EC )?PRIVATE KEY|go-keyring-base64:|eyJhbGciOi[A-Za-z0-9_-]+\.)' \
-            -- . ':!docs/**' ':!tests/**'; then
+          key_header='BEGIN '"(RSA |EC )?"'PRIVATE KEY'
+          keyring='go-keyring''-base64:'
+          jwt='eyJh''bGciOi[A-Za-z0-9_-]+\.'
+          pattern="(${key_header}|${keyring}|${jwt})"
+          if git grep -I -n -E "$pattern" -- . ':!docs/**' ':!tests/**'; then
             echo "Potential committed credential detected."
             exit 1
           fi

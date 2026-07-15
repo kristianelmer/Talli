@@ -14,6 +14,11 @@ test("release gate covers pull requests and main with least privilege", () => {
   assert.match(workflow, /concurrency:/);
   assert.doesNotMatch(workflow, /pull_request_target:/);
   assert.doesNotMatch(workflow, /permissions:\s+write-all/);
+  assert.doesNotMatch(
+    workflow,
+    /(BEGIN (RSA |EC )?PRIVATE KEY|go-keyring-base64:|eyJhbGciOi[A-Za-z0-9_-]+\.)/,
+    "the scanner must not trigger on its own workflow source",
+  );
 });
 
 test("release gate runs every customer-readiness check before promotion", () => {
