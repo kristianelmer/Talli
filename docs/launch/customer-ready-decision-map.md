@@ -5,6 +5,9 @@ Last audited: 2026-07-15
 Code baseline: `main` at `a9e23b90a59ced2df3942432223a9961673b84c3`  
 Scope authority: `docs/remarks/holdingswift_produktkrav.md` and the approved PRDs  
 
+Founder decisions that resolve the launch-scope questions are recorded in
+[`2026-07-15-customer-ready-foundation-design.md`](../superpowers/specs/2026-07-15-customer-ready-foundation-design.md).
+
 This is the canonical dependency map from the current product to a customer-ready
 Talli release. Detailed evidence remains in the existing launch, filing, legal,
 security, and billing documents. This file answers only what remains, why it
@@ -378,4 +381,3 @@ deployed-evidence gates are closed.
 5. Run CR-015 and CR-016, then stage CR-017.
 6. Ship only the feature set that passes CR-018; keep every other flag off and its
    public claim absent.
-
