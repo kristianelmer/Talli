@@ -26,6 +26,7 @@ import {
   listFilingReadinessSnapshots,
   listFilingReviewComments,
   listFilingSubmissions,
+  listProductionFilingState,
   listHoldingActions,
   listInvestmentPositions,
   listInvestmentLots,
@@ -63,6 +64,9 @@ export async function loadWorkspaceData() {
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
   const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
+  const { error: productionStateError, ...productionState } = user
+    ? await listProductionFilingState(companies.map((company) => company.id))
+    : { productionPilotEntitlements: [], filingApprovalSnapshots: [], productionFilingSubmissions: [], error: null };
   const { overrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
   const { readinessSnapshots } = user ? await listFilingReadinessSnapshots(companies.map((company) => company.id)) : { readinessSnapshots: [] };
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
@@ -151,7 +155,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError,
+    error: error ?? corporateLifecycleError ?? productionStateError,
     companies,
     documents,
     annualData,
@@ -160,6 +164,7 @@ export async function loadWorkspaceData() {
     shareholders,
     previews,
     submissions,
+    ...productionState,
     overrides,
     readinessSnapshots,
     comments,

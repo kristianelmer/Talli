@@ -12,6 +12,7 @@ export type ProductionPilotEntitlement = {
   case_profile: string;
   status: ProductionPilotStatus;
   billing_exempt: boolean;
+  system_user_external_reference?: string;
   starts_at: string;
   expires_at: string;
 };

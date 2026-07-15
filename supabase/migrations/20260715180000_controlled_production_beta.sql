@@ -9,6 +9,7 @@ create table if not exists public.production_pilot_entitlements (
   case_profile text not null check (case_profile = 'rf1086_no_activity_v1'),
   status text not null default 'pending' check (status in ('pending', 'active', 'suspended', 'completed', 'revoked')),
   billing_exempt boolean not null default true,
+  system_user_external_reference text not null check (length(trim(system_user_external_reference)) between 1 and 200),
   starts_at timestamptz not null,
   expires_at timestamptz not null,
   evidence_reference text not null check (length(trim(evidence_reference)) between 1 and 1000),
@@ -81,7 +82,7 @@ create table if not exists public.production_filing_events (
   failure_class text check (failure_class is null or failure_class in ('retryable', 'blocked', 'unknown')),
   resulting_status text not null check (resulting_status in ('approved', 'sending', 'received', 'processing', 'accepted', 'rejected', 'action_required', 'unknown')),
   created_at timestamptz not null default now(),
-  unique (submission_id, operation_name, attempt),
+  unique (submission_id, operation_name, attempt, operation_state),
   check (operation_state <> 'prepared' or authority_reference is null),
   check (operation_state not in ('failed', 'unknown') or failure_class is not null)
 );
@@ -227,6 +228,7 @@ create or replace function public.manage_production_pilot_entitlement(
   p_income_year integer,
   p_status text,
   p_billing_exempt boolean,
+  p_system_user_external_reference text,
   p_starts_at timestamptz,
   p_expires_at timestamptz,
   p_evidence_reference text
@@ -250,6 +252,7 @@ begin
     or p_status not in ('pending', 'active', 'suspended', 'completed', 'revoked')
     or p_starts_at >= p_expires_at
     or length(trim(coalesce(p_evidence_reference, ''))) not between 1 and 1000
+    or length(trim(coalesce(p_system_user_external_reference, ''))) not between 1 and 200
     or not exists (
       select 1 from public.company_memberships m
       where m.company_id = p_company_id
@@ -264,16 +267,17 @@ begin
   if p_id is null then
     insert into public.production_pilot_entitlements (
       company_id, user_id, income_year, obligation, case_profile, status,
-      billing_exempt, starts_at, expires_at, evidence_reference, approved_by
+      billing_exempt, system_user_external_reference, starts_at, expires_at, evidence_reference, approved_by
     ) values (
       p_company_id, p_user_id, p_income_year, 'aksjonaerregisteroppgaven',
-      'rf1086_no_activity_v1', p_status, p_billing_exempt, p_starts_at,
+      'rf1086_no_activity_v1', p_status, p_billing_exempt, trim(p_system_user_external_reference), p_starts_at,
       p_expires_at, trim(p_evidence_reference), v_actor_id
     ) returning * into v_row;
   else
     update public.production_pilot_entitlements
     set status = p_status,
         billing_exempt = p_billing_exempt,
+        system_user_external_reference = trim(p_system_user_external_reference),
         starts_at = p_starts_at,
         expires_at = p_expires_at,
         evidence_reference = trim(p_evidence_reference),
@@ -496,12 +500,12 @@ end;
 $$;
 
 revoke all on function public.assert_fresh_production_owner(uuid) from public, anon, authenticated;
-revoke all on function public.manage_production_pilot_entitlement(uuid, uuid, uuid, integer, text, boolean, timestamptz, timestamptz, text) from public, anon, authenticated;
+revoke all on function public.manage_production_pilot_entitlement(uuid, uuid, uuid, integer, text, boolean, text, timestamptz, timestamptz, text) from public, anon, authenticated;
 revoke all on function public.approve_production_filing(uuid, uuid, jsonb, text, text) from public, anon, authenticated;
 revoke all on function public.begin_production_filing(uuid) from public, anon, authenticated;
 revoke all on function public.append_production_filing_event(uuid, text, text, integer, text, uuid, text, text, text, boolean) from public, anon, authenticated;
 
-grant execute on function public.manage_production_pilot_entitlement(uuid, uuid, uuid, integer, text, boolean, timestamptz, timestamptz, text) to authenticated;
+grant execute on function public.manage_production_pilot_entitlement(uuid, uuid, uuid, integer, text, boolean, text, timestamptz, timestamptz, text) to authenticated;
 grant execute on function public.approve_production_filing(uuid, uuid, jsonb, text, text) to authenticated;
 grant execute on function public.begin_production_filing(uuid) to authenticated;
 grant execute on function public.append_production_filing_event(uuid, text, text, integer, text, uuid, text, text, text, boolean) to service_role;
