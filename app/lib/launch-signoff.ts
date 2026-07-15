@@ -74,6 +74,10 @@ function validDate(value: string) {
   return Number.isFinite(Date.parse(value));
 }
 
+function futureDate(value: string, now: Date) {
+  return validDate(value) && new Date(value).getTime() > now.getTime();
+}
+
 function daysBetween(later: Date, earlier: Date) {
   return Math.floor((later.getTime() - earlier.getTime()) / 86_400_000);
 }
@@ -104,6 +108,9 @@ export function buildLaunchSignoffRecord(input: LaunchSignoffInput, now = new Da
   }
   if (!validDate(input.reviewedAt)) {
     throw new Error("Review date er ugyldig.");
+  }
+  if (futureDate(input.reviewedAt, now)) {
+    throw new Error("Review date cannot be in the future.");
   }
   if (status === "approved" && (!nonEmpty(input.reviewer) || !nonEmpty(input.evidenceLink) || !nonEmpty(input.decision))) {
     throw new Error("Approved signoff krever reviewer, evidenslenke og beslutning.");
@@ -136,7 +143,8 @@ export function evaluateLaunchSignoff(input: {
     !nonEmpty(signoff.reviewer) ||
     !nonEmpty(signoff.evidenceLink) ||
     !nonEmpty(signoff.decision) ||
-    !validDate(signoff.reviewedAt)
+    !validDate(signoff.reviewedAt) ||
+    futureDate(signoff.reviewedAt, now)
   ) {
     return "missing";
   }

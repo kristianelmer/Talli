@@ -62,6 +62,35 @@ test("requires fresh restore signoff", () => {
   assert.ok(gate.messages.some((message) => /gammel/.test(message)));
 });
 
+test("rejects future-dated launch signoffs", () => {
+  const gate = buildLaunchSignoffGate({
+    signoffs: launchSignoffKeys.map((key) =>
+      approvedSignoff(key, key === "founder_production_go_live" ? "2026-06-21T10:00:00Z" : "2026-06-20T10:00:00Z"),
+    ),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(gate.ready, false);
+  assert.ok(gate.missing.includes("founder_production_go_live"));
+
+  assert.throws(
+    () =>
+      buildLaunchSignoffRecord(
+        {
+          key: "founder_production_go_live",
+          status: "approved",
+          reviewer: "Founder",
+          reviewedAt: "2026-06-21T10:00:00Z",
+          evidenceLink: "https://evidence.example/final-go-live",
+          decision: "Approved.",
+          recordedBy: "operator-1",
+        },
+        new Date("2026-06-20T12:00:00Z"),
+      ),
+    /future/i,
+  );
+});
+
 test("passes only when every launch signoff is approved with evidence", () => {
   const gate = buildLaunchSignoffGate({
     signoffs: launchSignoffKeys.map((key) => approvedSignoff(key)),
