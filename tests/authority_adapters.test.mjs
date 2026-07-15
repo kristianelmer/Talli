@@ -11,7 +11,7 @@ import {
 const obligations = ["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"];
 
 test("RF-1086 transport is implemented but every production authority adapter remains disabled", async () => {
-  const capabilities = currentAuthorityAdapterCapabilities();
+  const capabilities = currentAuthorityAdapterCapabilities({});
 
   assert.deepEqual(capabilities.aksjonaerregisteroppgaven, {
     productionImplemented: true,
