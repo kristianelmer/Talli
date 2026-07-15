@@ -15,11 +15,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
 
   const { data: document, error } = await supabase
     .from("documents")
-    .select("company_id, storage_key")
+    .select("company_id, storage_key, status")
     .eq("id", documentId)
     .single();
 
-  if (error || !document) {
+  if (error || !document || document.status !== "attached") {
     return new Response("Document not found", { status: 404 });
   }
   try {

@@ -336,23 +336,23 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={companies[0].id} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Bankbalanse
-                    <input name="bankBalance" inputMode="decimal" defaultValue="30000" required />
+                    <input name="bankBalance" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Aksjekapital
-                    <input name="shareCapital" inputMode="decimal" defaultValue="30000" required />
+                    <input name="shareCapital" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Antall aksjer
-                    <input name="shareCount" inputMode="numeric" defaultValue="100" required />
+                    <input name="shareCount" inputMode="numeric" placeholder="Antall" required />
                   </label>
                   <label>
                     Pålydende
-                    <input name="nominalValue" inputMode="decimal" defaultValue="300" required />
+                    <input name="nominalValue" inputMode="decimal" placeholder="Pålydende per aksje" required />
                   </label>
                   <label>
                     Aksjonærnavn
@@ -375,7 +375,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Aksjer hos aksjonær
-                    <input name="shareholderShareCount" inputMode="numeric" defaultValue="100" required />
+                    <input name="shareholderShareCount" inputMode="numeric" placeholder="Antall" required />
                   </label>
                   <button className="primaryButton" type="submit">
                     Lås åpningsbalanse
@@ -458,7 +458,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
                     <label>
                       Begrunnelse
-                      <input name="reason" defaultValue="Kunde ønsker kansellering og arkiv før eventuell sletting." />
+                      <input name="reason" placeholder="Kort begrunnelse" />
                     </label>
                     <button className="secondaryButton" type="submit">
                       Be om kansellering
@@ -489,11 +489,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Årsak
-                    <input name="reason" defaultValue="Filing fullført og arkivert" required />
+                    <input name="reason" placeholder="Hvorfor året låses" required />
                   </label>
                   <button className="primaryButton" type="submit">
                     Lås inntektsår
@@ -741,15 +741,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Lånedato
-                    <input name="loanDate" defaultValue="2025-07-01" required />
+                    <input name="loanDate" type="date" required />
                   </label>
                   <label>
                     Beløp
-                    <input name="amount" inputMode="decimal" defaultValue="20000" required />
+                    <input name="amount" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Retning
@@ -761,7 +761,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Motpart
-                    <input name="counterpartyName" defaultValue="Ola Nordmann" required />
+                    <input name="counterpartyName" required />
                   </label>
                   <label>
                     Banktransaksjon
@@ -787,7 +787,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Dokumentstatus
-                    <select name="documentStatus" defaultValue="attached">
+                    <select name="documentStatus" defaultValue="not_required">
                       <option value="attached">Vedlagt</option>
                       <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
                       <option value="not_required">Ikke påkrevd</option>
@@ -816,11 +816,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Oppgjørsdato
-                    <input name="settlementDate" defaultValue="2025-12-31" required />
+                    <input name="settlementDate" type="date" required />
                   </label>
                   <label>
                     Type
@@ -832,7 +832,13 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Beløp
-                    <input name="amount" inputMode="decimal" defaultValue={taxEstimate.estimatedTax || 1} required />
+                    <input
+                      name="amount"
+                      inputMode="decimal"
+                      defaultValue={taxEstimate.estimatedTax > 0 ? taxEstimate.estimatedTax : undefined}
+                      placeholder="0"
+                      required
+                    />
                   </label>
                   <label>
                     Banktransaksjon
@@ -858,7 +864,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Dokumentstatus
-                    <select name="documentStatus" defaultValue="attached">
+                    <select name="documentStatus" defaultValue="not_required">
                       <option value="attached">Vedlagt</option>
                       <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
                       <option value="not_required">Ikke påkrevd</option>
@@ -938,7 +944,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Årsak
-                      <input name="reason" defaultValue="Utenfor enkel holding-AS-løype" required />
+                      <input name="reason" placeholder="Hvorfor saken er utenfor støttet løype" required />
                     </label>
                     <button className="secondaryButton" type="submit">
                       Marker utenfor støtte
@@ -1402,7 +1408,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={companies[0].id} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Dokumenttype
@@ -1505,15 +1511,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår
-                      <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                     </label>
                     <label>
                       CSV
-                      <textarea
-                        name="csvText"
-                        defaultValue={"date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950"}
-                        required
-                      />
+                      <textarea name="csvText" placeholder="date,text,amount,balance" required />
                     </label>
                     <button className="primaryButton" type="submit">
                       Importer bank
@@ -1525,7 +1527,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår
-                      <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                     </label>
                     <label>
                       Banktransaksjon
@@ -1553,15 +1555,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </label>
                     <label>
                       Mottaker
-                      <input name="payee" defaultValue="Bank" required />
+                      <input name="payee" required />
                     </label>
                     <label>
                       Betalt dato
-                      <input name="paidDate" defaultValue="2025-01-03" required />
+                      <input name="paidDate" type="date" required />
                     </label>
                     <label>
                       Beløp
-                      <input name="amount" inputMode="decimal" defaultValue="50" required />
+                      <input name="amount" inputMode="decimal" placeholder="0" required />
                     </label>
                     <label>
                       Bilag
@@ -1606,27 +1608,27 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Utbetalende selskap
-                    <input name="payingCompanyName" defaultValue="Portfolio AS" required />
+                    <input name="payingCompanyName" required />
                   </label>
                   <label>
                     Investering-ID
-                    <input name="linkedInvestmentId" defaultValue="portfolio-as" required />
+                    <input name="linkedInvestmentId" placeholder="Velg samme ID som investeringen" required />
                   </label>
                   <label>
                     Vedtaksdato
-                    <input name="declaredDate" defaultValue="2025-04-01" required />
+                    <input name="declaredDate" type="date" required />
                   </label>
                   <label>
                     Betalt dato
-                    <input name="paidDate" defaultValue="2025-04-15" required />
+                    <input name="paidDate" type="date" required />
                   </label>
                   <label>
                     Brutto beløp
-                    <input name="grossAmount" inputMode="decimal" defaultValue="1000" required />
+                    <input name="grossAmount" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Skattebehandling
@@ -1662,7 +1664,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Dokumentstatus
-                    <select name="documentStatus" defaultValue="attached">
+                    <select name="documentStatus" defaultValue="not_required">
                       <option value="attached">Vedlagt</option>
                       <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
                       <option value="not_required">Ikke påkrevd</option>
@@ -1699,15 +1701,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Investering-ID
-                    <input name="investmentKey" defaultValue="portfolio-as" required />
+                    <input name="investmentKey" placeholder="Stabil intern ID" required />
                   </label>
                   <label>
                     Selskap
-                    <input name="investmentName" defaultValue="Portfolio AS" required />
+                    <input name="investmentName" required />
                   </label>
                   <label>
                     Organisasjonsnummer
@@ -1730,15 +1732,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Kjøpsdato
-                    <input name="acquisitionDate" defaultValue="2025-05-01" required />
+                    <input name="acquisitionDate" type="date" required />
                   </label>
                   <label>
                     Antall aksjer
-                    <input name="shareCount" inputMode="decimal" defaultValue="100" required />
+                    <input name="shareCount" inputMode="decimal" placeholder="Antall" required />
                   </label>
                   <label>
                     Kjøpsbeløp
-                    <input name="purchaseAmount" inputMode="decimal" defaultValue="50000" required />
+                    <input name="purchaseAmount" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Banktransaksjon
@@ -1766,7 +1768,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Dokumentstatus
-                    <select name="documentStatus" defaultValue="attached">
+                    <select name="documentStatus" defaultValue="not_required">
                       <option value="attached">Vedlagt</option>
                       <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
                       <option value="not_required">Ikke påkrevd</option>
@@ -1805,7 +1807,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Posisjon
@@ -1822,15 +1824,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Salgsdato
-                    <input name="saleDate" defaultValue="2025-08-01" required />
+                    <input name="saleDate" type="date" required />
                   </label>
                   <label>
                     Solgte aksjer
-                    <input name="soldShareCount" inputMode="decimal" defaultValue="40" required />
+                    <input name="soldShareCount" inputMode="decimal" placeholder="Antall" required />
                   </label>
                   <label>
                     Salgsproveny
-                    <input name="proceeds" inputMode="decimal" defaultValue="30000" required />
+                    <input name="proceeds" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     Banktransaksjon
@@ -1858,7 +1860,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   </label>
                   <label>
                     Dokumentstatus
-                    <select name="documentStatus" defaultValue="attached">
+                    <select name="documentStatus" defaultValue="not_required">
                       <option value="attached">Vedlagt</option>
                       <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
                       <option value="not_required">Ikke påkrevd</option>
@@ -1904,37 +1906,37 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
-                    <input name="incomeYear" inputMode="numeric" defaultValue="2025" required />
+                    <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
                     Memo
-                    <input name="memo" defaultValue="Manuell justering" required />
+                    <input name="memo" placeholder="Beskriv posteringen" required />
                   </label>
                   <label>
                     Konto debet
-                    <input name="account0" defaultValue="7795" inputMode="numeric" required />
+                    <input name="account0" inputMode="numeric" required />
                   </label>
                   <label>
                     Beskrivelse debet
-                    <input name="description0" defaultValue="Manuell kostnad" required />
+                    <input name="description0" required />
                   </label>
                   <label>
                     Debet
-                    <input name="debit0" inputMode="decimal" defaultValue="100" required />
+                    <input name="debit0" inputMode="decimal" placeholder="0" required />
                   </label>
                   <input name="credit0" type="hidden" value="0" />
                   <label>
                     Konto kredit
-                    <input name="account1" defaultValue="1920" inputMode="numeric" required />
+                    <input name="account1" inputMode="numeric" required />
                   </label>
                   <label>
                     Beskrivelse kredit
-                    <input name="description1" defaultValue="Bank" required />
+                    <input name="description1" required />
                   </label>
                   <input name="debit1" type="hidden" value="0" />
                   <label>
                     Kredit
-                    <input name="credit1" inputMode="decimal" defaultValue="100" required />
+                    <input name="credit1" inputMode="decimal" placeholder="0" required />
                   </label>
                   <label>
                     <input name="warningAccepted" type="checkbox" />

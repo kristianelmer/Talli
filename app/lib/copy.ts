@@ -1119,6 +1119,7 @@ export const ownerCopy = {
     needsCompanyCta: "Kom i gang",
     yearLabel: (year: number) => `Inntektsår ${year}`,
     uploaded: "Dokumentet er lastet opp.",
+    removed: "Feilopplastingen er fjernet. En auditpost er beholdt.",
     upload: {
       title: "Last opp dokument",
       intro:
@@ -1147,6 +1148,10 @@ export const ownerCopy = {
       title: "Dine dokumenter",
       intro: "Alle bilag for selskapet, med trygg nedlasting.",
       download: "Last ned",
+      remove: "Fjern feilopplasting",
+      removing: "Fjerner …",
+      removeConfirm:
+        "Filen fjernes permanent fra dokumentlageret. Dette er bare mulig når den ikke brukes som regnskaps- eller innsendingsbevis. Fortsette?",
       secureNote: "Nedlasting er sikret og lenken utløper etter kort tid.",
       missingHint:
         "Dette er en plassholder. Last opp selve filen for å fullføre.",

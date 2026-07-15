@@ -665,6 +665,57 @@ export async function uploadDocument(formData: FormData) {
   redirect(returnTo);
 }
 
+export async function removeUnlinkedDocument(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
+
+  const documentId = requiredFormUuid(formData, "documentId");
+  const { data, error } = await supabase.rpc("remove_unlinked_document", {
+    p_document_id: documentId,
+  });
+  if (error) {
+    const message = error.message.includes("document_removal_evidence_linked")
+      ? "Dokumentet brukes som regnskaps- eller innsendingsbevis og kan derfor ikke fjernes."
+      : error.message.includes("document_removal_not_allowed")
+        ? "Dokumentet finnes ikke, eller du har ikke rett til å fjerne det."
+        : "Dokumentet kunne ikke fjernes. Prøv på nytt.";
+    failTo(returnTo, message);
+  }
+
+  const storageKey = Array.isArray(data) ? data[0]?.storage_key : null;
+  if (!storageKey || typeof storageKey !== "string") {
+    failTo(returnTo, "Dokumentlageret kunne ikke identifiseres. Prøv på nytt.");
+  }
+
+  const storageRemoval = await supabase.storage
+    .from(COMPANY_DOCUMENTS_BUCKET)
+    .remove([storageKey]);
+  if (storageRemoval.error) {
+    const rollback = await supabase.rpc("restore_unlinked_document_after_storage_failure", {
+      p_document_id: documentId,
+    });
+    if (rollback.error) {
+      console.error("Document metadata restoration failed after storage removal error.", {
+        documentId,
+        errorCode: rollback.error.code,
+      });
+    }
+    failTo(returnTo, "Dokumentlageret svarte ikke. Dokumentet er beholdt; prøv igjen senere.");
+  }
+
+  revalidatePath("/documents");
+  redirect(returnTo === "/documents" ? "/documents?removed=1" : returnTo);
+}
+
 export async function createOpeningBalanceSetup(formData: FormData) {
   const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
@@ -3586,7 +3637,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("ledger_entries").select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("bank_transactions").select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),

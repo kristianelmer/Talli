@@ -8,6 +8,7 @@ import {
 import { ownerCopy } from "../../lib/copy";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { DocumentUpload } from "./DocumentUpload";
+import { DocumentRemovalButton } from "./DocumentRemovalButton";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ function classifyStatus(status: string): DocStatus {
 }
 
 type DocumentsPageProps = {
-  searchParams?: Promise<{ error?: string; uploaded?: string }>;
+  searchParams?: Promise<{ error?: string; uploaded?: string; removed?: string }>;
 };
 
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
@@ -85,6 +86,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
       </div>
 
       {query?.uploaded ? <Banner variant="success">{t.uploaded}</Banner> : null}
+      {query?.removed ? <Banner variant="success">{t.removed}</Banner> : null}
       {query?.error ? <Banner variant="danger">{query.error}</Banner> : null}
 
       <section className="docSection" id="last-opp">
@@ -115,9 +117,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                     <div className="docRowSide">
                       <StatusBadge variant={status.variant} label={status.label} icon={status.icon} />
                       {status.downloadable ? (
-                        <a className="docDownload" href={`/documents/${document.id}/download`}>
-                          {t.list.download}
-                        </a>
+                        <>
+                          <a className="docDownload" href={`/documents/${document.id}/download`}>
+                            {t.list.download}
+                          </a>
+                          <DocumentRemovalButton documentId={document.id} />
+                        </>
                       ) : document.status.startsWith("missing") ? (
                         <a className="docMissingLink" href="#last-opp">
                           {t.list.missingCta}

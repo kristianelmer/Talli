@@ -60,6 +60,20 @@ The first customer-ready release is intentionally narrow:
 - The executable repair order and acceptance criteria are recorded in
   [`2026-07-15-live-customer-readiness-repair.md`](../superpowers/plans/2026-07-15-live-customer-readiness-repair.md).
 
+Repair execution status on 2026-07-15:
+
+- hosted migrations now match the repository through
+  `20260715143000_retention_safe_document_removal`; the 20-path deployed contract
+  passes, the workspace reports a healthy connection, and an authenticated
+  Test-Norge purchase persisted one action, ledger entry, position, and FIFO lot;
+- year-end activity is reconciled from persisted positions, actions, and costs, so
+  a saved or unsaved false answer cannot create a no-activity contradiction;
+- synthetic accounting values were removed from customer forms and dashboard next
+  steps now lead to the dedicated filing, transaction, and year-end journeys;
+- accidental unlinked uploads have an owner-confirmed, audited removal flow, while
+  linked accounting, filing, and corporate evidence remains immutable. See
+  [`hosted-schema-parity-2026-07-15.md`](evidence/hosted-schema-parity-2026-07-15.md).
+
 - `main` is verified and deployed; `https://talli.no` responds publicly.
 - The local launch rehearsal, build, official company-tax XSD validation, audit,
   and whitespace checks pass at the baseline commit.

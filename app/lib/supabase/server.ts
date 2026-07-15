@@ -63,6 +63,9 @@ export type DocumentRow = {
   storage_key: string;
   created_by: string;
   created_at: string;
+  removed_at: string | null;
+  removed_by: string | null;
+  removal_reason: string | null;
 };
 
 export type OpeningBalanceSetupRow = {
@@ -629,8 +632,9 @@ export async function listDocumentsForCompanies(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("documents")
-    .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
+    .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")
     .in("company_id", companyIds)
+    .neq("status", "removed")
     .order("created_at", { ascending: false });
 
   return {

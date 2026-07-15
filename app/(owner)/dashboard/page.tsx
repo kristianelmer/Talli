@@ -81,7 +81,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       eyebrow: nba.pendingEyebrow(primaryIncomeYear),
       title: nba.pendingTitle,
       body: nba.pendingBody(pendingObligations.length, authorityObligations.length),
-      href: "/workspace#arbeidsflate",
+      href: "/filing",
       cta: nba.pendingCta,
     };
   } else if (unmatchedTransactions.length > 0) {
@@ -89,7 +89,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       eyebrow: nba.reconcileEyebrow,
       title: nba.reconcileTitle,
       body: nba.reconcileBody(unmatchedTransactions.length),
-      href: "/workspace#arbeidsflate",
+      href: "/transactions",
       cta: nba.reconcileCta,
     };
   } else {
@@ -97,7 +97,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       eyebrow: nba.readyEyebrow,
       title: nba.readyTitle,
       body: nba.readyBody,
-      href: "/workspace#arbeidsflate",
+      href: "/year-end",
       cta: nba.readyCta,
     };
   }

@@ -51,15 +51,27 @@ recorded in migration history:
 6. `20260714081443_explicit_data_api_grants`
 7. `20260715084507_trusted_aal2_boundary`
 8. `20260715120700_revoke_anonymous_mutation_rpcs`
+9. `20260715143000_retention_safe_document_removal`
 
 The first seven files were applied atomically because the hosted baseline had
-been restored without migration history. The final migration was added after the
+been restored without migration history. Migration eight was added after the
 hosted advisor revealed explicit legacy `anon` EXECUTE grants that were not
-present on the fresh local project.
+present on the fresh local project. Migration nine followed the retention-safe
+document lifecycle rehearsal.
 
-Post-deploy verification showed unchanged baseline row counts, all 18 required
+Post-deploy verification showed unchanged baseline row counts, all 20 required
 Data API table/RPC paths, and all five critical RPCs. Anonymous execution is now
 revoked explicitly for share purchase, share sale, and bank-suggestion mutations.
+
+The final migration adds an owner-only, audited removal boundary for accidental,
+unlinked uploads. It refuses documents referenced by holding actions, filing
+feedback, immutable corporate artifacts, or ledger evidence. Storage SELECT is
+revoked as soon as the row is marked removed, and Storage DELETE is permitted only
+for that same owner and that database-approved object. The retained metadata records
+who requested removal and why; a five-minute rollback RPC restores metadata if the
+Storage API fails. The fresh local database rehearsal proved owner success,
+reviewer/outsider denial, linked-evidence denial, signed-link denial after removal,
+object deletion, and audit persistence.
 
 ## Signed-in browser proof
 

@@ -24,6 +24,8 @@ test("deployed schema contract covers every post-baseline product capability", (
     "/rpc/import_company_tax_tt02_evidence",
     "/rpc/record_corporate_document_event",
     "/rpc/record_owner_dividend_payment",
+    "/rpc/remove_unlinked_document",
+    "/rpc/restore_unlinked_document_after_storage_failure",
     "/rpc/record_share_purchase_fifo",
     "/rpc/record_share_sale_fifo",
   ]);

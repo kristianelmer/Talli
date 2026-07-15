@@ -2890,6 +2890,80 @@ test(
     assert.ifError(readOnlyDocumentError);
     assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
 
+    const linkedRemoval = await owner.rpc("remove_unlinked_document", {
+      p_document_id: dividendDocumentId,
+    });
+    assert.match(linkedRemoval.error?.message ?? "", /document_removal_evidence_linked/);
+
+    const removableDocumentId = randomUUID();
+    const removableStorageKey = documentStorageKey(
+      companyId,
+      2025,
+      removableDocumentId,
+      "uploaded-by-mistake.pdf",
+    );
+    const { error: removableUploadError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .upload(removableStorageKey, new Blob(["%PDF-test"], { type: "application/pdf" }), {
+        contentType: "application/pdf",
+      });
+    assert.ifError(removableUploadError);
+    const { error: removableInsertError } = await owner.from("documents").insert({
+      id: removableDocumentId,
+      company_id: companyId,
+      income_year: 2025,
+      document_type: "accounting_document",
+      name: "uploaded-by-mistake.pdf",
+      linked_to: "workspace",
+      status: "attached",
+      storage_key: removableStorageKey,
+      created_by: ownerUser.id,
+    });
+    assert.ifError(removableInsertError);
+
+    const reviewerRemoval = await reviewer.rpc("remove_unlinked_document", {
+      p_document_id: removableDocumentId,
+    });
+    assert.match(reviewerRemoval.error?.message ?? "", /document_removal_not_allowed/);
+    const outsiderRemoval = await outsider.rpc("remove_unlinked_document", {
+      p_document_id: removableDocumentId,
+    });
+    assert.match(outsiderRemoval.error?.message ?? "", /document_removal_not_allowed/);
+
+    const { data: removalResult, error: removalError } = await owner.rpc(
+      "remove_unlinked_document",
+      { p_document_id: removableDocumentId },
+    );
+    assert.ifError(removalError);
+    assert.deepEqual(removalResult, [{ storage_key: removableStorageKey }]);
+    const { data: removedDocument, error: removedDocumentError } = await owner
+      .from("documents")
+      .select("status, removed_at, removed_by, removal_reason")
+      .eq("id", removableDocumentId)
+      .single();
+    assert.ifError(removedDocumentError);
+    assert.equal(removedDocument.status, "removed");
+    assert.ok(removedDocument.removed_at);
+    assert.equal(removedDocument.removed_by, ownerUser.id);
+    assert.equal(removedDocument.removal_reason, "accidental_unlinked_upload");
+
+    const hiddenRemovedObject = await reviewer.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .createSignedUrl(removableStorageKey, 60);
+    assert.equal(hiddenRemovedObject.data, null);
+    assert.ok(hiddenRemovedObject.error);
+    const { error: removableObjectDeleteError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .remove([removableStorageKey]);
+    assert.ifError(removableObjectDeleteError);
+    const { data: removalAudit, error: removalAuditError } = await owner
+      .from("audit_events")
+      .select("action")
+      .eq("company_id", companyId)
+      .eq("action", "document_removal_requested");
+    assert.ifError(removalAuditError);
+    assert.deepEqual(removalAudit, [{ action: "document_removal_requested" }]);
+
     const { data: outsiderSigned, error: outsiderSignedError } = await outsider.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
       .createSignedUrl(storageKey, 60);

@@ -99,7 +99,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .eq("income_year", incomeYear),
       supabase
         .from("documents")
-        .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
+        .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
       supabase
