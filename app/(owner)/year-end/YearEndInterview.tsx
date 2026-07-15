@@ -6,25 +6,21 @@ import { saveYearEndInterview } from "../../actions";
 import { Banner, Stepper, SubmitButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
 import {
-  buildYearEndInterviewAnswers,
+  buildYearEndInterviewInitialAnswers,
   noActivityConfirmed,
+  type RegisteredYearEndActivity,
   type YearEndInterviewAnswers,
 } from "../../lib/annual-data";
 
 type AnswerKey = keyof YearEndInterviewAnswers;
-type RegisteredKey =
-  | "bought_or_sold_shares"
-  | "received_dividends"
-  | "declared_owner_dividends"
-  | "shareholder_loans"
-  | "paid_costs";
+type RegisteredKey = keyof RegisteredYearEndActivity;
 
 type Props = {
   companyId: string;
   incomeYear: number;
   initialAnswers: Partial<YearEndInterviewAnswers> | null;
   initialFte: number | null;
-  registered: Record<RegisteredKey, boolean>;
+  registered: RegisteredYearEndActivity;
 };
 
 const ACTIVITY_KEYS: AnswerKey[] = [
@@ -56,9 +52,7 @@ export function YearEndInterview({
   const c = ownerCopy.yearEnd;
 
   const [answers, setAnswers] = useState<Record<AnswerKey, boolean>>(() =>
-    Object.fromEntries(
-      ALL_KEYS.map((key) => [key, Boolean(initialAnswers?.[key])]),
-    ) as Record<AnswerKey, boolean>,
+    buildYearEndInterviewInitialAnswers(initialAnswers, registered),
   );
   const [fte, setFte] = useState(initialFte != null ? String(initialFte) : "0");
   const [step, setStep] = useState(0);
@@ -67,8 +61,8 @@ export function YearEndInterview({
     setAnswers((prev) => ({ ...prev, [key]: value }));
 
   const fullAnswers = useMemo(
-    () => buildYearEndInterviewAnswers(answers),
-    [answers],
+    () => buildYearEndInterviewInitialAnswers(answers, registered),
+    [answers, registered],
   );
   const noActivity = noActivityConfirmed(fullAnswers);
 
@@ -113,7 +107,7 @@ export function YearEndInterview({
         value={fte.trim() === "" ? "0" : fte}
       />
       {ALL_KEYS.map((key) =>
-        answers[key] ? (
+        fullAnswers[key] ? (
           <input key={key} type="hidden" name={key} value="on" />
         ) : null,
       )}
@@ -130,10 +124,10 @@ export function YearEndInterview({
             <Question
               key={key}
               answerKey={key}
-              value={answers[key]}
+              value={fullAnswers[key]}
               onChange={(value) => set(key, value)}
               hint={
-                answers[key] &&
+                fullAnswers[key] &&
                 key in c.consistency &&
                 !registered[key as RegisteredKey]
                   ? c.consistency[key]
@@ -204,9 +198,9 @@ export function YearEndInterview({
           <h2 className="summaryHeading">{c.summary.activityTitle}</h2>
           {noActivity ? (
             <Banner variant="info">{c.summary.noActivity}</Banner>
-          ) : ACTIVITY_KEYS.some((key) => answers[key]) ? (
+          ) : ACTIVITY_KEYS.some((key) => fullAnswers[key]) ? (
             <ul className="summaryList">
-              {ACTIVITY_KEYS.filter((key) => answers[key]).map((key) => (
+              {ACTIVITY_KEYS.filter((key) => fullAnswers[key]).map((key) => (
                 <li key={key}>{c.activityLabels[key]}</li>
               ))}
             </ul>

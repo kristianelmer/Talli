@@ -23,6 +23,7 @@ export default async function YearEndPage() {
     primaryIncomeYear,
     primaryAnnualData,
     actions,
+    positions,
     entries,
     setups,
     shareholders,
@@ -67,6 +68,9 @@ export default async function YearEndPage() {
     yearActions.some((action) => types.includes(action.action_type));
 
   const registered = {
+    shares_owned_at_year_end: positions.some(
+      (position) => position.company_id === companyId && Number(position.share_count) > 0,
+    ),
     bought_or_sold_shares: hasActionType("share_purchase", "share_sale"),
     received_dividends: hasActionType("dividend_received"),
     declared_owner_dividends: hasActionType("dividend_to_owner"),
