@@ -13,6 +13,10 @@ export const launchCriticalTables = [
   "investment_lot_allocations",
   "documents",
   "filing_previews",
+  "production_pilot_entitlements",
+  "filing_approval_snapshots",
+  "production_filing_submissions",
+  "production_filing_events",
   "authority_test_runs",
   "filing_submissions",
   "filing_readiness_snapshots",
@@ -91,6 +95,10 @@ export function buildBackupManifest(archive: Record<string, any>) {
       filingPreviews: archive.filingPreviews?.length ?? 0,
       authorityTestRuns: archive.authorityTestRuns?.length ?? 0,
       filingSubmissions: submissionCollections.filingSubmissions.length,
+      productionPilotEntitlements: archive.productionPilotEntitlements?.length ?? 0,
+      filingApprovalSnapshots: archive.filingApprovalSnapshots?.length ?? 0,
+      productionFilingSubmissions: archive.productionFilingSubmissions?.length ?? 0,
+      productionFilingEvents: archive.productionFilingEvents?.length ?? 0,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
@@ -135,6 +143,10 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       rf1086Submissions: submissionCollections.rf1086Submissions,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions,
       filingSubmissions: submissionCollections.filingSubmissions,
+      productionPilotEntitlements: archive.productionPilotEntitlements ?? [],
+      filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
+      productionFilingSubmissions: archive.productionFilingSubmissions ?? [],
+      productionFilingEvents: archive.productionFilingEvents ?? [],
       reviewComments: archive.reviewComments ?? [],
       billingAccounts: archive.billingAccounts ?? [],
       auditEvents: archive.auditEvents ?? [],
@@ -161,6 +173,18 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.documents.length) failures.push("documents_metadata_missing");
   if (!restored.restored.filingPreviews.length) failures.push("filing_previews_missing");
   if (!restored.restored.filingSubmissions.length) failures.push("filing_submissions_missing");
+  const productionSubmissions = restored.restored.productionFilingSubmissions;
+  if (productionSubmissions.length) {
+    const entitlementIds = new Set(restored.restored.productionPilotEntitlements.map((row: any) => row.id));
+    const approvalIds = new Set(restored.restored.filingApprovalSnapshots.map((row: any) => row.id));
+    const submissionIds = new Set(productionSubmissions.map((row: any) => row.id));
+    if (productionSubmissions.some((row: any) => !entitlementIds.has(row.entitlement_id) || !approvalIds.has(row.approval_id))) {
+      failures.push("production_filing_relationship_missing");
+    }
+    if (restored.restored.productionFilingEvents.some((row: any) => !submissionIds.has(row.submission_id))) {
+      failures.push("production_filing_event_relationship_missing");
+    }
+  }
   if (!restored.restored.billingAccounts.length) failures.push("billing_accounts_missing");
   if (!restored.restored.auditEvents.length) failures.push("audit_events_missing");
   const authorityTestRuns = restored.restored.authorityTestRuns;
