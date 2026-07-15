@@ -62,6 +62,27 @@ const readyAdapterCapabilities = {
   aarsregnskap: { productionImplemented: true, productionEnabled: true },
 };
 
+const rfPilotContext = {
+  companyId: "company-id",
+  userId: "owner",
+  incomeYear: 2025,
+  obligation: "aksjonaerregisteroppgaven",
+  caseProfile: "rf1086_no_activity_v1",
+};
+
+const rfPilotEntitlement = {
+  id: "rf-pilot",
+  company_id: "company-id",
+  user_id: "owner",
+  income_year: 2025,
+  obligation: "aksjonaerregisteroppgaven",
+  case_profile: "rf1086_no_activity_v1",
+  status: "active",
+  billing_exempt: false,
+  starts_at: "2026-06-01T00:00:00.000Z",
+  expires_at: "2026-07-01T00:00:00.000Z",
+};
+
 test("keeps all production filing gates disabled without authority, billing, step-up, and human review", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: [],
@@ -109,10 +130,11 @@ test("blocks production when authority evidence or filing-specific signoff is mi
   assert.ok(rf1086.disabledReasons.includes("rf1086_authority_signoff_missing"));
   assert.equal(tax.status, "production_disabled");
   assert.ok(tax.disabledReasons.includes("test_evidence_missing"));
-  assert.equal(annual.status, "production_ready");
+  assert.equal(annual.status, "production_disabled");
+  assert.ok(annual.disabledReasons.includes("pilot_entitlement_context_missing"));
 });
 
-test("marks production ready only when every release gate passes", () => {
+test("marks only the exactly entitled RF obligation production ready when every release gate passes", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
@@ -128,12 +150,19 @@ test("marks production ready only when every release gate passes", () => {
     },
     launchSignoffs: readyLaunchSignoffs,
     adapterCapabilities: readyAdapterCapabilities,
+    pilotContext: rfPilotContext,
+    pilotEntitlements: [rfPilotEntitlement],
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
-  assert.ok(gates.every((gate) => gate.status === "production_ready"));
-  assert.ok(gates.every((gate) => gate.disabledReasons.length === 0));
-  assert.match(gates[0].publicCopyRestriction, /produksjonsklar/);
+  const rf1086 = gates.find((gate) => gate.obligation === "aksjonaerregisteroppgaven");
+  assert.equal(rf1086.status, "production_ready");
+  assert.deepEqual(rf1086.disabledReasons, []);
+  assert.match(rf1086.publicCopyRestriction, /produksjonsklar/);
+  assert.ok(
+    gates.filter((gate) => gate.obligation !== "aksjonaerregisteroppgaven")
+      .every((gate) => gate.status === "production_disabled"),
+  );
 });
 
 test("cannot report production ready when a live adapter is unimplemented or disabled", () => {

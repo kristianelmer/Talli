@@ -14,6 +14,12 @@ import {
   currentAuthorityAdapterCapabilities,
   type AuthorityAdapterCapabilities,
 } from "./authority-adapters.ts";
+import {
+  evaluateProductionPilotEntitlement,
+  isBillingExemptProductionPilot,
+  type ProductionPilotContext,
+  type ProductionPilotEntitlement,
+} from "./production-pilot.ts";
 
 export type FilingReleaseGateStatus = "production_ready" | "production_disabled";
 
@@ -57,20 +63,40 @@ export function buildFilingReleaseGates(input: {
   stepUpContext: StepUpContext;
   launchSignoffs: LaunchSignoff[];
   adapterCapabilities?: AuthorityAdapterCapabilities;
+  pilotContext?: ProductionPilotContext;
+  pilotEntitlements?: ProductionPilotEntitlement[];
   now?: Date;
 }): FilingReleaseGate[] {
   const adapterCapabilities = input.adapterCapabilities ?? currentAuthorityAdapterCapabilities();
   const now = input.now ?? new Date();
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
+    const pilotContext = input.pilotContext?.obligation === obligation
+      ? input.pilotContext
+      : null;
+    const pilotEntitlement = pilotContext
+      ? (input.pilotEntitlements ?? []).find((candidate) =>
+        candidate.company_id === pilotContext.companyId
+        && candidate.user_id === pilotContext.userId
+        && candidate.income_year === pilotContext.incomeYear
+        && candidate.obligation === obligation
+        && candidate.case_profile === pilotContext.caseProfile
+      ) ?? null
+      : null;
+    const pilotGate = pilotContext
+      ? evaluateProductionPilotEntitlement(pilotContext, pilotEntitlement, now)
+      : { allowed: false, reason: "pilot_entitlement_context_missing" };
+    if (!pilotGate.allowed) disabledReasons.push(pilotGate.reason);
+    const billingExemptPilot = pilotGate.allowed && isBillingExemptProductionPilot(pilotEntitlement);
+
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
     if (!authorityGate.allowed) {
       disabledReasons.push(authorityGate.status);
     }
 
-    if (!input.billingAccount) {
+    if (!input.billingAccount && !billingExemptPilot) {
       disabledReasons.push("billing_account_missing");
-    } else {
+    } else if (input.billingAccount) {
       const billingGate = productionBillingGate(input.billingAccount, Boolean(input.filingReadyByObligation[obligation]));
       if (!billingGate.allowed) {
         disabledReasons.push(billingGate.status);
@@ -91,7 +117,7 @@ export function buildFilingReleaseGates(input: {
     for (const signoffKey of [
       ...commonProductionSignoffKeys,
       authoritySignoffKeyByObligation[obligation],
-    ]) {
+    ].filter((key) => !(billingExemptPilot && key === "billing_refund"))) {
       const reason = launchSignoffDisabledReason({
         signoffs: input.launchSignoffs,
         key: signoffKey,
