@@ -7,6 +7,9 @@ Domain note: `talli.no` is secured
 
 This checklist prevents the app from shipping with unclear brand rights, misleading authority language, or product claims that run ahead of the production filing/security gates. It cannot be completed by code implementation alone.
 
+The dependency order and complete remaining-gap inventory are maintained in
+[`customer-ready-decision-map.md`](./customer-ready-decision-map.md).
+
 ## Official Search Sources
 
 - Patentstyret search service for trademarks, patents, and design: https://search.patentstyret.no/advanced/
