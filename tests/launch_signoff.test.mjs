@@ -29,6 +29,7 @@ test("blocks launch when required signoffs are missing", () => {
   assert.equal(gate.status, "launch_signoff_blocked");
   assert.ok(gate.missing.includes("legal_policy_pack"));
   assert.ok(gate.missing.includes("security_restore"));
+  assert.ok(gate.missing.includes("founder_production_go_live"));
   assert.ok(gate.messages.some((message) => /Legal\/privacy/.test(message)));
 });
 
@@ -67,6 +68,7 @@ test("passes only when every launch signoff is approved with evidence", () => {
   });
 
   assert.equal(launchSignoffLabel("rf1086_authority"), "RF-1086 authority filing");
+  assert.equal(launchSignoffLabel("founder_production_go_live"), "Final founder production go-live");
   assert.equal(gate.ready, true);
   assert.equal(gate.status, "launch_signoff_ready");
   assert.deepEqual(gate.missing, []);

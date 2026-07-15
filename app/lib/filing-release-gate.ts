@@ -4,7 +4,11 @@ import type { AuthorityObligation, AuthorityPermission } from "./authority-permi
 import { authorityObligationLabel, authorityObligations, productionAuthorityGate } from "./authority-permission.ts";
 import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
-import type { LaunchSignoff, LaunchSignoffKey } from "./launch-signoff.ts";
+import {
+  evaluateLaunchSignoff,
+  type LaunchSignoff,
+  type LaunchSignoffKey,
+} from "./launch-signoff.ts";
 import { assertStepUpAllowed, SensitiveActionStepUpError, type StepUpContext } from "./security.ts";
 import {
   currentAuthorityAdapterCapabilities,
@@ -27,16 +31,22 @@ const authoritySignoffKeyByObligation: Record<AuthorityObligation, LaunchSignoff
   skattemelding: "tax_return_authority",
 };
 
-function launchSignoffApproved(signoffs: LaunchSignoff[], key: LaunchSignoffKey) {
-  const signoff = signoffs.find((item) => item.key === key);
-  return Boolean(
-    signoff &&
-      signoff.status === "approved" &&
-      signoff.reviewer.trim() &&
-      signoff.evidenceLink.trim() &&
-      signoff.decision.trim() &&
-      Number.isFinite(Date.parse(signoff.reviewedAt)),
-  );
+const commonProductionSignoffKeys: LaunchSignoffKey[] = [
+  "launch_legal_name_public_copy",
+  "legal_policy_pack",
+  "security_restore",
+  "billing_refund",
+  "support_rollback",
+  "founder_production_go_live",
+];
+
+function launchSignoffDisabledReason(input: {
+  signoffs: LaunchSignoff[];
+  key: LaunchSignoffKey;
+  now: Date;
+}) {
+  const status = evaluateLaunchSignoff(input);
+  return status === "approved" ? null : `${input.key}_signoff_${status}`;
 }
 
 export function buildFilingReleaseGates(input: {
@@ -50,6 +60,7 @@ export function buildFilingReleaseGates(input: {
   now?: Date;
 }): FilingReleaseGate[] {
   const adapterCapabilities = input.adapterCapabilities ?? currentAuthorityAdapterCapabilities();
+  const now = input.now ?? new Date();
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
@@ -72,14 +83,23 @@ export function buildFilingReleaseGates(input: {
     }
 
     try {
-      assertStepUpAllowed("production_filing", input.stepUpContext, input.now);
+      assertStepUpAllowed("production_filing", input.stepUpContext, now);
     } catch (error) {
       disabledReasons.push(error instanceof SensitiveActionStepUpError ? error.code : "production_step_up_failed");
     }
 
-    const signoffKey = authoritySignoffKeyByObligation[obligation];
-    if (!launchSignoffApproved(input.launchSignoffs, signoffKey)) {
-      disabledReasons.push(`${signoffKey}_signoff_missing`);
+    for (const signoffKey of [
+      ...commonProductionSignoffKeys,
+      authoritySignoffKeyByObligation[obligation],
+    ]) {
+      const reason = launchSignoffDisabledReason({
+        signoffs: input.launchSignoffs,
+        key: signoffKey,
+        now,
+      });
+      if (reason) {
+        disabledReasons.push(reason);
+      }
     }
 
     const adapterCapability = adapterCapabilities[obligation];

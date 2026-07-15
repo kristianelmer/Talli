@@ -7,11 +7,13 @@ export const launchSignoffKeys = [
   "annual_accounts_authority",
   "tax_return_authority",
   "support_rollback",
+  "founder_production_go_live",
 ] as const;
 
 export type LaunchSignoffKey = (typeof launchSignoffKeys)[number];
 export type LaunchSignoffStatus = "approved" | "rejected" | "pending";
 export type LaunchSignoffGateStatus = "launch_signoff_ready" | "launch_signoff_blocked";
+export type LaunchSignoffReviewStatus = "approved" | "missing" | "rejected" | "stale";
 
 export type LaunchSignoff = {
   key: LaunchSignoffKey;
@@ -61,6 +63,7 @@ const signoffLabels: Record<LaunchSignoffKey, string> = {
   annual_accounts_authority: "Årsregnskap authority filing",
   tax_return_authority: "Skattemelding authority filing",
   support_rollback: "Support/rollback",
+  founder_production_go_live: "Final founder production go-live",
 };
 
 function nonEmpty(value: string) {
@@ -117,6 +120,38 @@ export function buildLaunchSignoffRecord(input: LaunchSignoffInput, now = new Da
   };
 }
 
+export function evaluateLaunchSignoff(input: {
+  signoffs: LaunchSignoff[];
+  key: LaunchSignoffKey;
+  now?: Date;
+  restoreMaxAgeDays?: number;
+}): LaunchSignoffReviewStatus {
+  const now = input.now ?? new Date();
+  const restoreMaxAgeDays = input.restoreMaxAgeDays ?? 30;
+  const signoff = input.signoffs.find((item) => item.key === input.key);
+
+  if (
+    !signoff ||
+    signoff.status === "pending" ||
+    !nonEmpty(signoff.reviewer) ||
+    !nonEmpty(signoff.evidenceLink) ||
+    !nonEmpty(signoff.decision) ||
+    !validDate(signoff.reviewedAt)
+  ) {
+    return "missing";
+  }
+  if (signoff.status === "rejected") {
+    return "rejected";
+  }
+  if (
+    input.key === "security_restore" &&
+    daysBetween(now, new Date(signoff.reviewedAt)) > restoreMaxAgeDays
+  ) {
+    return "stale";
+  }
+  return "approved";
+}
+
 export function buildLaunchSignoffGate(input: {
   signoffs: LaunchSignoff[];
   now?: Date;
@@ -130,30 +165,27 @@ export function buildLaunchSignoffGate(input: {
   const messages: string[] = [];
 
   for (const key of launchSignoffKeys) {
-    const signoff = input.signoffs.find((item) => item.key === key);
-    if (
-      !signoff ||
-      signoff.status === "pending" ||
-      !nonEmpty(signoff.reviewer) ||
-      !nonEmpty(signoff.evidenceLink) ||
-      !nonEmpty(signoff.decision) ||
-      !validDate(signoff.reviewedAt)
-    ) {
+    const status = evaluateLaunchSignoff({
+      signoffs: input.signoffs,
+      key,
+      now,
+      restoreMaxAgeDays,
+    });
+    if (status === "missing") {
       missing.push(key);
       messages.push(`${launchSignoffLabel(key)} mangler godkjent reviewer, dato, evidenslenke eller beslutning.`);
       continue;
     }
-    if (signoff.status === "rejected") {
+    if (status === "rejected") {
       rejected.push(key);
       messages.push(`${launchSignoffLabel(key)} er avvist av reviewer.`);
       continue;
     }
-    if (key === "security_restore") {
+    if (status === "stale") {
+      const signoff = input.signoffs.find((item) => item.key === key)!;
       const ageDays = daysBetween(now, new Date(signoff.reviewedAt));
-      if (ageDays > restoreMaxAgeDays) {
-        stale.push(key);
-        messages.push(`Security/restore signoff er ${ageDays} dager gammel og maa fornyes.`);
-      }
+      stale.push(key);
+      messages.push(`Security/restore signoff er ${ageDays} dager gammel og maa fornyes.`);
     }
   }
 

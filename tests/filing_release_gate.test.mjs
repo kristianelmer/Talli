@@ -29,10 +29,31 @@ const readyAuthorityEvidence = [
   { obligation: "aarsregnskap", status: "accepted", receipt_reference: "rr-receipt", archive_reference: "rr-archive", recorded_at: "2026-06-17T09:00:00.000Z" },
 ];
 
+function approvedSignoff(key, reviewedAt = "2026-06-17T09:00:00.000Z") {
+  return {
+    key,
+    status: "approved",
+    reviewer: `${key} reviewer`,
+    reviewedAt,
+    evidenceLink: `https://evidence.example/${key}`,
+    decision: `${key} approved for production gate.`,
+  };
+}
+
+const commonProductionSignoffKeys = [
+  "launch_legal_name_public_copy",
+  "legal_policy_pack",
+  "security_restore",
+  "billing_refund",
+  "support_rollback",
+  "founder_production_go_live",
+];
+
 const readyLaunchSignoffs = [
-  { key: "rf1086_authority", status: "approved", reviewer: "RF reviewer", reviewedAt: "2026-06-17T09:00:00.000Z", evidenceLink: "https://evidence.example/rf1086", decision: "Approved RF-1086 production gate." },
-  { key: "tax_return_authority", status: "approved", reviewer: "Tax reviewer", reviewedAt: "2026-06-17T09:00:00.000Z", evidenceLink: "https://evidence.example/tax", decision: "Approved tax return production gate." },
-  { key: "annual_accounts_authority", status: "approved", reviewer: "RR reviewer", reviewedAt: "2026-06-17T09:00:00.000Z", evidenceLink: "https://evidence.example/rr", decision: "Approved annual accounts production gate." },
+  ...commonProductionSignoffKeys.map((key) => approvedSignoff(key)),
+  approvedSignoff("rf1086_authority"),
+  approvedSignoff("tax_return_authority"),
+  approvedSignoff("annual_accounts_authority"),
 ];
 
 const readyAdapterCapabilities = {
@@ -74,8 +95,6 @@ test("blocks production when authority evidence or filing-specific signoff is mi
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
-      securityReviewApproved: true,
-      productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs.filter((item) => item.key !== "rf1086_authority"),
     adapterCapabilities: readyAdapterCapabilities,
@@ -106,8 +125,6 @@ test("marks production ready only when every release gate passes", () => {
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
-      securityReviewApproved: true,
-      productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs,
     adapterCapabilities: readyAdapterCapabilities,
@@ -132,8 +149,6 @@ test("cannot report production ready when a live adapter is unimplemented or dis
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
-      securityReviewApproved: true,
-      productionCredentialsEnabled: true,
     },
     launchSignoffs: readyLaunchSignoffs,
     adapterCapabilities: {
@@ -146,4 +161,60 @@ test("cannot report production ready when a live adapter is unimplemented or dis
   const tax = gates.find((gate) => gate.obligation === "skattemelding");
   assert.equal(tax.status, "production_disabled");
   assert.ok(tax.disabledReasons.includes("production_adapter_unimplemented"));
+});
+
+test("fresh AAL2 and enabled adapters cannot replace final founder confirmation", () => {
+  const gates = buildFilingReleaseGates({
+    authorityPermissions: readyPermissions,
+    authorityTestRuns: readyAuthorityEvidence,
+    billingAccount: readyBilling,
+    filingReadyByObligation: {
+      aksjonaerregisteroppgaven: true,
+      skattemelding: true,
+      aarsregnskap: true,
+    },
+    stepUpContext: {
+      actorId: "owner",
+      mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
+    },
+    launchSignoffs: readyLaunchSignoffs.filter((item) => item.key !== "founder_production_go_live"),
+    adapterCapabilities: readyAdapterCapabilities,
+    now: new Date("2026-06-17T10:00:00.000Z"),
+  });
+
+  assert.ok(gates.every((gate) => gate.status === "production_disabled"));
+  assert.ok(
+    gates.every((gate) =>
+      gate.disabledReasons.includes("founder_production_go_live_signoff_missing"),
+    ),
+  );
+});
+
+test("a stale restore rehearsal blocks every production filing", () => {
+  const gates = buildFilingReleaseGates({
+    authorityPermissions: readyPermissions,
+    authorityTestRuns: readyAuthorityEvidence,
+    billingAccount: readyBilling,
+    filingReadyByObligation: {
+      aksjonaerregisteroppgaven: true,
+      skattemelding: true,
+      aarsregnskap: true,
+    },
+    stepUpContext: {
+      actorId: "owner",
+      mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
+    },
+    launchSignoffs: readyLaunchSignoffs.map((item) =>
+      item.key === "security_restore"
+        ? { ...item, reviewedAt: "2026-04-01T09:00:00.000Z" }
+        : item,
+    ),
+    adapterCapabilities: readyAdapterCapabilities,
+    now: new Date("2026-06-17T10:00:00.000Z"),
+  });
+
+  assert.ok(gates.every((gate) => gate.status === "production_disabled"));
+  assert.ok(
+    gates.every((gate) => gate.disabledReasons.includes("security_restore_signoff_stale")),
+  );
 });
