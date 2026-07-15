@@ -6,6 +6,7 @@ import { ownerCopy } from "./lib/copy";
 import { getCurrentUser } from "./lib/supabase/server";
 
 const c = ownerCopy.home;
+const betaInterestHref = "mailto:post@talli.no?subject=Betatilgang%20til%20Talli";
 
 export const metadata: Metadata = {
   title: c.metaTitle,
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const user = await getCurrentUser();
-  const primaryHref = user ? "/dashboard" : "/signup";
+  const primaryHref = user ? "/dashboard" : betaInterestHref;
   const primaryLabel = user ? c.nav.toApp : c.hero.primaryCta;
 
   return (
@@ -35,7 +36,7 @@ export default async function Home() {
                 <LinkButton href="/login" variant="ghost">
                   {c.nav.signIn}
                 </LinkButton>
-                <LinkButton href="/signup" variant="primary">
+                <LinkButton href={betaInterestHref} variant="primary">
                   {c.nav.signUp}
                 </LinkButton>
               </>
@@ -96,6 +97,13 @@ export default async function Home() {
         <section className="lpScope">
           <h2 className="lpScopeTitle">{c.scope.title}</h2>
           <p className="lpScopeBody">{c.scope.body}</p>
+          <div className="lpDisclosures">
+            {c.disclosures.map((disclosure) => (
+              <p key={disclosure} className="lpScopeBody">
+                {disclosure}
+              </p>
+            ))}
+          </div>
         </section>
 
         <section className="lpClosing">

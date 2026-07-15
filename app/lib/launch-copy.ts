@@ -1,6 +1,8 @@
 export const requiredNonAffiliationCopy =
   "Talli er ikke tilknyttet, godkjent av eller drevet av Fiken, Altinn, Skatteetaten eller Brønnøysundregistrene.";
 
+export const inviteOnlyBetaCopy = "Invitasjonsbasert gratis beta";
+
 export const preProductionDirectFilingCopy =
   "Direkte innsending åpnes først når myndighetstilgang, testmiljø og sikkerhetsgjennomgang er fullført.";
 
@@ -13,6 +15,11 @@ const prohibitedLaunchClaims = [
   /ingen risiko for dagmulkt/i,
   /erstatter regnskapsfører/i,
   /alt du trenger for alle AS/i,
+  /uten regnskapsfører/i,
+  /menneskelig (?:kontroll|gjennomgang|kvalitetssikring)/i,
+  /betaler først ved innsending/i,
+  /innsendingen (?:kvalitetssikres og )?leveres til riktig myndighet/i,
+  /trygg innsending/i,
 ];
 
 export function validateLaunchCopy(text: string) {

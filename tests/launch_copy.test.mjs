@@ -3,10 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  inviteOnlyBetaCopy,
   preProductionDirectFilingCopy,
   requiredNonAffiliationCopy,
   validateLaunchCopy,
 } from "../app/lib/launch-copy.ts";
+
+const ownerCopySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
 
 test("requires non-affiliation and pre-production gate language in public app copy", () => {
   // The canonical launch strings are wired into the central owner copy module
@@ -40,4 +43,48 @@ test("rejects launch claims that outrun authority evidence", () => {
 
   assert.equal(result.approved, false);
   assert.ok(result.violations.length >= 2);
+});
+
+test("public homepage is a truthful invite-only free beta invitation", () => {
+  const publicPage = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+
+  assert.equal(inviteOnlyBetaCopy, "Invitasjonsbasert gratis beta");
+  assert.match(ownerCopySource, /inviteOnlyBetaCopy/);
+  assert.match(ownerCopySource, /Produksjonsinnsending og live betaling er ikke tilgjengelig i betaen/i);
+  assert.match(ownerCopySource, /Be om betatilgang/i);
+  assert.match(ownerCopySource, /requiredNonAffiliationCopy/);
+  assert.match(ownerCopySource, /preProductionDirectFilingCopy/);
+  assert.match(publicPage, /c\.disclosures/);
+  assert.match(publicPage, /mailto:post@talli\.no/);
+
+  assert.doesNotMatch(ownerCopySource, /uten regnskapsfører/i);
+  assert.doesNotMatch(ownerCopySource, /menneskelig kontroll/i);
+  assert.doesNotMatch(ownerCopySource, /betaler først ved innsending/i);
+  assert.doesNotMatch(ownerCopySource, /leveres til riktig myndighet/i);
+  assert.doesNotMatch(ownerCopySource, /trygg innsending/i);
+});
+
+test("public legal copy identifies the real beta operator and contains no placeholders", () => {
+  assert.match(ownerCopySource, /ELMER WELFIS/);
+  assert.match(ownerCopySource, /930 835 978/);
+  assert.match(ownerCopySource, /post@talli\.no/);
+  assert.match(ownerCopySource, /Betaen er gratis/i);
+  assert.doesNotMatch(ownerCopySource, /\[Talli AS|XXX XXX XXX|\[Oslo tingrett\]/i);
+  assert.doesNotMatch(ownerCopySource, /kontakt@talli\.no|personvern@talli\.no/i);
+});
+
+test("launch validator rejects beta overclaims about review, payment, and delivery", () => {
+  const required = `${requiredNonAffiliationCopy}\n${preProductionDirectFilingCopy}`;
+
+  for (const overclaim of [
+    "Årsoppgjøret uten regnskapsfører.",
+    "Hver innsending kvalitetssikres med menneskelig kontroll.",
+    "Du betaler først ved innsending.",
+    "Innsendingen leveres til riktig myndighet.",
+    "Trygg innsending.",
+  ]) {
+    const result = validateLaunchCopy(`${required}\n${overclaim}`);
+    assert.equal(result.approved, false, overclaim);
+    assert.ok(result.violations.length >= 1, overclaim);
+  }
 });

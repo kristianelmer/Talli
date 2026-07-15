@@ -1,4 +1,5 @@
 import {
+  inviteOnlyBetaCopy,
   preProductionDirectFilingCopy,
   requiredNonAffiliationCopy,
 } from "./launch-copy";
@@ -21,20 +22,20 @@ export const ownerCopy = {
       "Talli veileder deg gjennom aksjonærregisteroppgaven, skattemeldingen og årsregnskapet for enkle norske holdingselskaper – i klartekst.",
     nav: {
       signIn: "Logg inn",
-      signUp: "Opprett bruker",
+      signUp: "Be om betatilgang",
       toApp: "Gå til Talli",
     },
     hero: {
-      eyebrow: "For norske holdingselskaper",
-      title: "Årsoppgjøret for holdingselskapet ditt – uten regnskapsfører",
-      lede: "Talli veileder deg steg for steg gjennom aksjonærregisteroppgaven, skattemeldingen og årsregnskapet. Laget for enkle norske AS, i klartekst.",
-      primaryCta: "Kom i gang",
+      eyebrow: inviteOnlyBetaCopy,
+      title: "Få kontroll på årsoppgjøret for holdingselskapet",
+      lede: "Talli hjelper inviterte betabrukere med å forberede og kontrollere utkast til aksjonærregisteroppgaven, skattemeldingen og årsregnskapet for støttede, enkle norske AS.",
+      primaryCta: "Be om betatilgang",
       secondaryCta: "Logg inn",
       reassurance:
-        "Henter selskapsdata fra Brønnøysund · Du betaler først ved innsending",
+        "Produksjonsinnsending og live betaling er ikke tilgjengelig i betaen.",
     },
     features: {
-      title: "Alt på ett sted",
+      title: "Forberedelsene samlet på ett sted",
       items: [
         {
           title: "Vi henter dataene",
@@ -45,8 +46,8 @@ export const ownerCopy = {
           body: "Aksjonærregisteroppgaven, skattemeldingen og årsregnskapet – forklart steg for steg, uten regnskapssjargong.",
         },
         {
-          title: "Trygg innsending",
-          body: "Hver innsending kvalitetssikres med menneskelig kontroll før noe sendes til myndighetene.",
+          title: "Tekniske kontroller",
+          body: "Talli kontrollerer struktur, summer og støttet sakstype, viser avvik og stopper saker som faller utenfor betaflyten.",
         },
       ],
     },
@@ -54,32 +55,37 @@ export const ownerCopy = {
       title: "Slik fungerer det",
       items: [
         {
-          title: "Koble selskapet",
-          body: "Opprett bruker og legg inn organisasjonsnummeret til holdingselskapet.",
+          title: "Legg inn grunnlaget",
+          body: "Inviterte brukere legger inn organisasjonsnummer, dokumentasjon og regnskapsgrunnlag for holdingselskapet.",
         },
         {
-          title: "Talli vurderer",
-          body: "Vi finner ut hva selskapet må levere for inntektsåret.",
+          title: "Talli bygger utkast",
+          body: "Talli bruker det lagrede grunnlaget til å bygge forhåndsvisninger for de støttede oppgavene.",
         },
         {
-          title: "Du bekrefter",
-          body: "Gå gjennom tallene i et enkelt språk og godkjenn.",
+          title: "Du gjennomgår",
+          body: "Du ser nøyaktig hva utkastene inneholder, løser avvik og bekrefter selv opplysningene.",
         },
         {
-          title: "Levering",
-          body: "Innsendingen kvalitetssikres og leveres til riktig myndighet.",
+          title: "Test og eksporter",
+          body: "I betaen kan du teste den veiledede flyten og hente ut grunnlaget. Direkte produksjonslevering er ikke åpnet.",
         },
       ],
     },
     scope: {
       title: "Laget for enkle holdingselskaper",
-      body: "Talli passer best for holdingselskaper og enkle AS uten ansatte eller drift. Er saken mer sammensatt, sier Talli fra – så du aldri sender inn noe du er usikker på.",
+      body: "Talli beta er avgrenset til støttede holdingselskaper og enkle AS uten ansatte, lønn, MVA-aktivitet, revisjonsplikt eller komplekse verdipapirer. Mer sammensatte saker blokkeres og må håndteres utenfor betaflyten.",
     },
     closing: {
-      title: "Klar til å forenkle årsoppgjøret?",
-      body: "Opprett en bruker og se hva holdingselskapet ditt må levere – helt uforpliktende.",
-      cta: "Kom i gang",
+      title: "Interessert i å prøve betaen?",
+      body: "Send oss en kort e-post. Vi inviterer nye testselskaper gradvis og svarer normalt innen to virkedager.",
+      cta: "Be om betatilgang",
     },
+    disclosures: [
+      requiredNonAffiliationCopy,
+      preProductionDirectFilingCopy,
+      "Produksjonsinnsending og live betaling er ikke tilgjengelig i betaen.",
+    ],
     footer: {
       rights: "© 2026 Talli",
     },
@@ -145,7 +151,7 @@ export const ownerCopy = {
 
   legal: {
     lastUpdatedLabel: "Sist oppdatert",
-    lastUpdated: "25. juni 2026",
+    lastUpdated: "15. juli 2026",
     backCta: "Tilbake til innlogging",
     backHref: "/login",
 
@@ -157,8 +163,8 @@ export const ownerCopy = {
         {
           heading: "Behandlingsansvarlig",
           body: [
-            "Talli (heretter «vi», «oss» eller «Talli») er behandlingsansvarlig for personopplysningene som behandles gjennom tjenesten. Talli drives av [Talli AS, org.nr XXX XXX XXX, postadresse].",
-            "Har du spørsmål om personvern, kan du kontakte oss på personvern@talli.no.",
+            "Betaversjonen av Talli drives av ELMER WELFIS, org.nr. 930 835 978, som er behandlingsansvarlig for personopplysningene som behandles gjennom tjenesten.",
+            "Har du spørsmål om personvern, kan du kontakte oss på post@talli.no.",
           ],
           bullets: [],
         },
@@ -249,7 +255,7 @@ export const ownerCopy = {
         {
           heading: "Kontakt",
           body: [
-            "Har du spørsmål om personvern eller ønsker å bruke rettighetene dine, kontakt oss på personvern@talli.no.",
+            "Har du spørsmål om personvern eller ønsker å bruke rettighetene dine, kontakt oss på post@talli.no.",
           ],
           bullets: [],
         },
@@ -264,7 +270,7 @@ export const ownerCopy = {
         {
           heading: "Om tjenesten",
           body: [
-            "Talli er et digitalt verktøy som hjelper enkle norske aksjeselskaper (AS), særlig holdingselskaper, med å forberede årsoppgjør og lovpålagt rapportering. Talli leveres av [Talli AS, org.nr XXX XXX XXX].",
+            "Talli er et digitalt verktøy som hjelper støttede, enkle norske aksjeselskaper (AS), særlig holdingselskaper, med å forberede årsoppgjør og lovpålagt rapportering. Betaversjonen leveres av ELMER WELFIS, org.nr. 930 835 978.",
           ],
           bullets: [],
         },
@@ -292,7 +298,7 @@ export const ownerCopy = {
         {
           heading: "Abonnement og betaling",
           body: [
-            "Deler av tjenesten kan kreve et abonnement eller en betalt innsendingspakke. Gjeldende priser og betingelser vises i tjenesten før du forplikter deg. Du blir ikke belastet før du aktivt har bekreftet et kjøp.",
+            "Betaen er gratis, og live betaling er ikke tilgjengelig. Før en eventuell betalt lansering vil gjeldende priser og betingelser vises i tjenesten før du forplikter deg.",
           ],
           bullets: [],
         },
@@ -336,13 +342,13 @@ export const ownerCopy = {
         {
           heading: "Lovvalg og verneting",
           body: [
-            "Vilkårene reguleres av norsk rett. Tvister skal søkes løst i minnelighet. Fører ikke det frem, kan tvisten bringes inn for de ordinære domstolene med [Oslo tingrett] som verneting, med mindre annet følger av ufravikelig lov.",
+            "Vilkårene reguleres av norsk rett. Tvister skal søkes løst i minnelighet. Fører ikke det frem, kan tvisten bringes inn for de ordinære domstolene etter gjeldende vernetingsregler og ufravikelig lov.",
           ],
           bullets: [],
         },
         {
           heading: "Kontakt",
-          body: ["Har du spørsmål om vilkårene, kontakt oss på kontakt@talli.no."],
+          body: ["Har du spørsmål om vilkårene, kontakt oss på post@talli.no."],
           bullets: [],
         },
       ],
