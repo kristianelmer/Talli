@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -12,6 +13,30 @@ import {
 const requestId = "22345678-1234-4234-8234-123456789abc";
 const companyId = "12345678-1234-4234-8234-123456789abc";
 const ownerId = "32345678-1234-4234-8234-123456789abc";
+
+test("production route import defers canonical origin validation until a callback request", () => {
+  const routeUrl = new URL("../app/auth/systembruker/confirm/route.ts", import.meta.url).href;
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      `await import(${JSON.stringify(routeUrl)})`,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        SITE_URL: "",
+        NEXT_PUBLIC_SITE_URL: "",
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+});
 
 function callbackFixture(options = {}) {
   const queries = [];

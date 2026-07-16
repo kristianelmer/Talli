@@ -134,17 +134,18 @@ export function createSystemUserCallbackHandler(
   };
 }
 
-const callbackHandler = createSystemUserCallbackHandler({
-  siteOrigin: systemUserSiteOrigin(),
-  async createSupabaseClient() {
-    const { createSupabaseServerClient } = await import("../../../lib/supabase/server.ts");
-    return createSupabaseServerClient();
-  },
-  async getCookieStore() {
-    const { cookies } = await import("next/headers.js");
-    return cookies();
-  },
-  reconcileRequest: defaultReconcileRequest,
-});
-
-export const GET = callbackHandler;
+export async function GET(request: Request) {
+  const callbackHandler = createSystemUserCallbackHandler({
+    siteOrigin: systemUserSiteOrigin(),
+    async createSupabaseClient() {
+      const { createSupabaseServerClient } = await import("../../../lib/supabase/server.ts");
+      return createSupabaseServerClient();
+    },
+    async getCookieStore() {
+      const { cookies } = await import("next/headers.js");
+      return cookies();
+    },
+    reconcileRequest: defaultReconcileRequest,
+  });
+  return callbackHandler(request);
+}
