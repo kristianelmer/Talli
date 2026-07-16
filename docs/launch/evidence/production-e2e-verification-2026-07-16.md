@@ -1,6 +1,6 @@
 # Production E2E verification — 2026-07-16
 
-Status: in progress; Tasks 1–3 passed, Tasks 4–6 pending
+Status: in progress; Tasks 1–5 passed, Task 6 pending
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -177,8 +177,8 @@ result, deployed-surface observation, or production-readiness verdict.
   corrections are recorded below.
 - [x] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
   and verify test-process cleanup.
-- [ ] Task 5 — smoke-test only the deployed public surface through read-only
-  Computer Use, without login or mutation.
+- [x] Task 5 — smoke-test only the deployed public surface through read-only
+  Computer Use, without manual credential entry or post-redirect interaction.
 - [ ] Task 6 — rerun decisive gates, reconcile local evidence with read-only
   deployed evidence, grade the result, and list every remaining external gate.
 
@@ -648,12 +648,14 @@ unrelated session information into evidence.
 ### Login boundary
 
 The `Tilbake til innlogging` link reached `/login` without the controller
-entering credentials. The first accessibility state contained only the Talli
-shell. After a short re-read, the existing Chrome session automatically
-redirected to `/dashboard`, proving that this browser already held an
-authenticated Talli session. The controller stopped immediately and did not
-click any authenticated navigation, field, logout, company, filing, payment,
-upload, entitlement, environment, or authority action.
+manually entering credentials. The first accessibility state contained only
+the Talli shell. After a short re-read, the existing Chrome session
+automatically navigated to `/dashboard`, proving that this browser already held
+an authenticated Talli session. Stored authentication material may therefore
+have been used automatically. The controller stopped immediately and did not
+perform any user-initiated interaction after the redirect: no navigation,
+field, logout, company, filing, payment, upload, entitlement, environment, or
+authority action was clicked or submitted.
 
 No account identifier, company identifier, company name, or authenticated page
 content is copied into this evidence. Because the existing session bypassed the
@@ -664,11 +666,13 @@ not inspect any customer workflow or authorize a production filing.
 ### Task 5 result and boundary
 
 The deployed public surface, terms, and privacy routes rendered and navigated
-without an observed broken state. The login route was reachable without
-credential submission but could only be classified as an existing-session
-redirect, not an anonymous login-form pass. No user data was submitted, no
-representational communication occurred, and no production or account state
-was changed.
+without an observed broken state. The login route was reachable without the
+controller manually entering or explicitly submitting credentials, but could
+only be classified as an existing-session redirect, not an anonymous login-form
+pass. Stored authentication material may have been sent automatically. The
+controller manually entered or explicitly submitted no credential or customer
+data, performed no representational communication, and changed no production
+or account state.
 
 Task 5 therefore passes as a bounded public-surface smoke test with the stated
 login limitation. It does not add evidence that production authority access,
