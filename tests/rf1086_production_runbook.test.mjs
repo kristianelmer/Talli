@@ -14,3 +14,32 @@ test("runbook covers the hand-held first production filing and immediate rollbac
   assert.match(runbook, /never the key itself/i);
   assert.match(runbook, /never XML, tokens, personal\s+identifiers, or organization numbers in logs/i);
 });
+
+test("release docs require callback verification before self-service activation", () => {
+  assert.match(runbook, /callback_already_verified|callback_updated_and_verified/);
+  assert.match(runbook, /TALLI_AUTHORITY_OPS_ENABLED=false/);
+  assert.match(runbook, /TALLI_RF1086_PRODUCTION_ENABLED=false/);
+  assert.match(runbook, /rollback/i);
+});
+
+test("runbook defines the activation order, recovery matrix, and local-proof boundary", () => {
+  for (const phrase of [
+    "stale callback",
+    "duplicate/pending request",
+    "failed preflight",
+    "processing archive",
+    "unknown feedback",
+    "failed artifact persistence",
+    "monitoring and on-call questions",
+    "stop conditions",
+    "rollback steps",
+    "local mocked proof",
+  ]) {
+    assert.match(runbook, new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"));
+  }
+  assert.match(
+    runbook,
+    /did not make a live request, change Systemregister, enable a switch, grant an entitlement, or submit a filing/i,
+  );
+  assert.match(runbook, /does not prove a production callback/i);
+});
