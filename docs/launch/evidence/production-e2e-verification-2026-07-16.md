@@ -580,7 +580,12 @@ The passing assertions covered:
   archived artifact hash;
 - a catch-all fail-closed browser egress guard, 0 recorded browser egress
   violations, successful expected loopback-mock Altinn and Skatteetaten reads,
-  no rejected mock requests, and no Skatteetaten operation beginning `post_`.
+  no rejected mock requests, and no recorded Skatteetaten operation beginning
+  `post_`. That last observation covers only the mock's predefined successful
+  operation records: an unknown POST can fall through to a generic `404`, so it
+  is not independent proof that no HTTP POST occurred. The meaningful safety
+  boundary is the catch-all loopback-only egress guard together with the absence
+  of recorded egress violations and rejected mock requests.
 
 The process emitted one non-failing `MODULE_TYPELESS_PACKAGE_JSON` warning for
 `app/lib/system-user-requests.ts`; Node reparsed it as an ES module. This was a
