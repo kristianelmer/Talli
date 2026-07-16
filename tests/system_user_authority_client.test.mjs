@@ -285,6 +285,27 @@ test("authority errors expose only allowlisted safe codes", async () => {
   );
 });
 
+test("prototype names cannot bypass the documented authority-code allowlist", async () => {
+  for (const remoteCode of ["constructor", "toString", "__proto__"]) {
+    const client = createSystemUserAuthorityClient({
+      environment: "production",
+      fetchImpl: async () => jsonResponse(400, { code: remoteCode }),
+    });
+
+    await assert.rejects(
+      () => client.createRequest(input),
+      (error) => {
+        assert.ok(error instanceof SystemUserAuthorityError);
+        assert.equal(error.status, 400);
+        assert.equal(error.code, "authority_http_error");
+        assert.equal(error.authorityCode, null);
+        assert.equal(error.message, "authority_http_error");
+        return true;
+      },
+    );
+  }
+});
+
 test("invalid inputs fail before network access without reflecting sensitive values", async () => {
   let calls = 0;
   const client = createSystemUserAuthorityClient({

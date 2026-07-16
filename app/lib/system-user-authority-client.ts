@@ -385,7 +385,7 @@ function safeAuthorityCode(value: unknown): keyof typeof AUTHORITY_ERROR_CODES |
   if (!isRecord(value)) return null;
   const candidates = [value.code, value.errorCode, value.error];
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate in AUTHORITY_ERROR_CODES) {
+    if (typeof candidate === "string" && Object.hasOwn(AUTHORITY_ERROR_CODES, candidate)) {
       return candidate as keyof typeof AUTHORITY_ERROR_CODES;
     }
   }
