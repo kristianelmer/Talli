@@ -51,6 +51,29 @@ export type JournaledRf1086ProductionResult = {
   finalAuthorityDecision: null;
 };
 
+export type Rf1086ProductionReleaseDependencies<Token, Submission> = {
+  acquireDelegatedToken(): Promise<Token>;
+  beginProductionFiling(): Promise<Submission>;
+  executeExternalSubmission(input: {
+    token: Token;
+    submission: Submission;
+  }): Promise<void>;
+  discardToken(token: Token): void;
+};
+
+export async function executeRf1086ProductionRelease<Token, Submission>(
+  dependencies: Rf1086ProductionReleaseDependencies<Token, Submission>,
+): Promise<Submission> {
+  const token = await dependencies.acquireDelegatedToken();
+  try {
+    const submission = await dependencies.beginProductionFiling();
+    await dependencies.executeExternalSubmission({ token, submission });
+    return submission;
+  } finally {
+    dependencies.discardToken(token);
+  }
+}
+
 function sha256(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }

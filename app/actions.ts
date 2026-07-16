@@ -126,6 +126,7 @@ import {
 } from "./lib/production-approval";
 import {
   executeJournaledRf1086Production,
+  executeRf1086ProductionRelease,
   type ProductionOperation,
   type ProductionOperationJournal,
 } from "./lib/rf1086-production";
@@ -4899,22 +4900,38 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   } catch (error) {
     redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsjournalen er ikke konfigurert.")}`);
   }
-  const { data: submission, error: beginError } = await supabase.rpc("begin_production_filing", { p_approval_id: approval.id });
-  if (beginError || !submission) redirect(`${returnTo}?error=${encodeURIComponent(beginError?.message ?? "Produksjonsinnsendingen kunne ikke startes.")}`);
-  const token = await requestMaskinportenToken({
-    ...configuration,
-    systemUserOrgNumber: company.org_number,
-    systemUserExternalRef: systemUserRequest.external_ref,
-  });
   try {
-    await executeJournaledRf1086Production({
-      submissionId: submission.id,
-      incomeYear: preview.income_year,
-      hovedskjemaXml: preview.hovedskjema_xml,
-      underskjemaXml: preview.underskjema_xml as Record<string, string>,
-    }, {
-      journal: createRf1086DatabaseJournal(service),
-      authorityClient: createRf1086AuthorityClient({ environment: "production", accessToken: token.accessToken }),
+    await executeRf1086ProductionRelease({
+      async acquireDelegatedToken() {
+        return requestMaskinportenToken({
+          ...configuration,
+          systemUserOrgNumber: company.org_number,
+          systemUserExternalRef: systemUserRequest.external_ref,
+        });
+      },
+      async beginProductionFiling() {
+        const { data: submission, error } = await supabase.rpc("begin_production_filing", {
+          p_approval_id: approval.id,
+        });
+        if (error || !submission) {
+          throw new Error("Produksjonsinnsendingen kunne ikke startes.");
+        }
+        return submission;
+      },
+      async executeExternalSubmission({ token, submission }) {
+        await executeJournaledRf1086Production({
+          submissionId: submission.id,
+          incomeYear: preview.income_year,
+          hovedskjemaXml: preview.hovedskjema_xml,
+          underskjemaXml: preview.underskjema_xml as Record<string, string>,
+        }, {
+          journal: createRf1086DatabaseJournal(service),
+          authorityClient: createRf1086AuthorityClient({ environment: "production", accessToken: token.accessToken }),
+        });
+      },
+      discardToken(token) {
+        token.accessToken = "";
+      },
     });
   } catch (error) {
     revalidatePath(returnTo);

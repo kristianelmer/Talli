@@ -278,6 +278,69 @@ test("start fails closed before persistence, token, or network when callback evi
   assert.deepEqual(events.map((event) => event.kind), ["callback_blocked"]);
 });
 
+test("a pre-POST write-token failure leaves creating recoverable without a failure write", async () => {
+  const { deps, events } = dependencies({
+    async requestControlPlaneToken(input) {
+      events.push({ kind: "write_token", input });
+      throw new Error("raw token provider detail");
+    },
+  });
+
+  await assert.rejects(
+    () => startSystemUserRequest(deps, { companyId, requestId, ownerId, orgNumber }),
+    (error) => error instanceof SystemUserFlowError
+      && error.code === "system_user_request_recovery_pending"
+      && !error.message.includes("provider"),
+  );
+  assert.deepEqual(events.map((event) => event.kind), [
+    "callback_verified",
+    "begin",
+    "write_token",
+  ]);
+  assert.equal(events.some((event) => event.kind === "create"), false);
+  assert.equal(events.some((event) => event.kind === "record_verification_failed"), false);
+});
+
+test("a post-POST persistence failure retries by same-reference lookup without another POST", async () => {
+  let recordAttempts = 0;
+  const { deps, events } = dependencies({
+    async recordAuthorityState(input) {
+      recordAttempts += 1;
+      events.push({ kind: `record_${input.status}`, input });
+      if (recordAttempts === 1) throw new Error("raw persistence detail");
+      return requestRow(input.status, {
+        altinnRequestId: input.altinnRequestId,
+        confirmUrl: input.confirmUrl,
+        failureCode: input.failureCode,
+      });
+    },
+  });
+
+  await assert.rejects(
+    () => startSystemUserRequest(deps, { companyId, requestId, ownerId, orgNumber }),
+    (error) => error instanceof SystemUserFlowError
+      && error.code === "system_user_request_recovery_pending"
+      && !error.message.includes("persistence"),
+  );
+  const recovered = await retrySystemUserRequest(deps, requestRow("creating"));
+
+  assert.deepEqual(events.map((event) => event.kind), [
+    "callback_verified",
+    "begin",
+    "write_token",
+    "create",
+    "record_new",
+    "read_token",
+    "lookup_by_external_ref",
+    "record_new",
+  ]);
+  assert.equal(events.filter((event) => event.kind === "create").length, 1);
+  assert.equal(events.some((event) => event.kind === "record_verification_failed"), false);
+  assert.equal(events.find((event) => event.kind === "create").input.externalRef, externalRef);
+  assert.equal(events.find((event) => event.kind === "lookup_by_external_ref").input.externalRef, externalRef);
+  assert.equal(recovered.status, "new");
+});
+
 test("ambiguous create recovers by the same externalRef without a second POST", async () => {
   let creates = 0;
   const { deps, events } = dependencies({
@@ -302,6 +365,26 @@ test("ambiguous create recovers by the same externalRef without a second POST", 
   ]);
   assert.equal(events.find((event) => event.kind === "lookup_by_external_ref").input.externalRef, externalRef);
   assert.equal(result.status, "new");
+});
+
+test("a fixed-field mismatch during same-reference recovery remains verification_failed", async () => {
+  const { deps, events } = dependencies({
+    async createRequest(input) {
+      events.push({ kind: "create", input });
+      throw new SystemUserAuthorityError("network_error", { retryable: true });
+    },
+    async getRequestByExternalRef(input) {
+      events.push({ kind: "lookup_by_external_ref", input });
+      return { ...authorityResponse("new"), partyOrgNo: "999999999" };
+    },
+  });
+
+  const result = await startSystemUserRequest(deps, { companyId, requestId, ownerId, orgNumber });
+
+  assert.equal(result.status, "verification_failed");
+  assert.equal(result.failureCode, "response_contract_mismatch");
+  assert.equal(events.filter((event) => event.kind === "create").length, 1);
+  assert.equal(events.at(-1).kind, "record_verification_failed");
 });
 
 test("retry of creating looks up first and creates the same reference only when independently absent", async () => {

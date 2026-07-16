@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import * as rf1086Production from "../app/lib/rf1086-production.ts";
+
 const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
 const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
 const operatorPage = readFileSync(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8");
@@ -34,6 +36,10 @@ test("owner approval binds persisted preview data and requires a real-filing ack
 });
 
 test("send action rechecks approval, uses production-only credentials, and journals authority calls", () => {
+  const sendAction = actions.slice(
+    actions.indexOf("export async function sendApprovedRf1086ProductionFiling"),
+    actions.indexOf("export async function postManualJournal"),
+  );
   assert.match(actions, /export async function sendApprovedRf1086ProductionFiling/u);
   assert.match(actions, /approvalMatchesCurrentPayload/u);
   assert.match(actions, /rf1086ProductionEnvironment\(\)/u);
@@ -50,12 +56,16 @@ test("send action rechecks approval, uses production-only credentials, and journ
   assert.match(actions, /systemUserExternalRef:\s*systemUserRequest\.external_ref/u);
   assert.match(actions, /createSupabaseServiceRoleClient/u);
   assert.ok(
-    actions.indexOf("createSupabaseServiceRoleClient()") < actions.indexOf('rpc("begin_production_filing"'),
+    sendAction.indexOf("createSupabaseServiceRoleClient()") < sendAction.indexOf("requestMaskinportenToken({"),
     "service-role journal configuration must fail before a sending row is created",
   );
   assert.ok(
-    actions.indexOf('rpc("begin_production_filing"') < actions.indexOf("requestMaskinportenToken({", actions.indexOf("sendApprovedRf1086ProductionFiling")),
-    "the database release gate must pass before requesting a delegated filing token",
+    sendAction.indexOf("requestMaskinportenToken({") < sendAction.indexOf('rpc("begin_production_filing"'),
+    "delegated-token acquisition must fail before a sending row can be created",
+  );
+  assert.ok(
+    sendAction.indexOf('rpc("begin_production_filing"') < sendAction.indexOf("executeJournaledRf1086Production({"),
+    "all external submission mutations must remain after the durable release gate",
   );
   assert.match(actions, /order\("created_at", \{ ascending: false \}\)[\s\S]{0,100}limit\(1\)/u);
   assert.match(actions, /retryableFailure = latest\.operation_state === "failed"[\s\S]{0,80}latest\.failure_class === "retryable"/u);
@@ -64,6 +74,81 @@ test("send action rechecks approval, uses production-only credentials, and journ
   assert.match(actions, /executeJournaledRf1086Production/u);
   assert.match(actions, /environment: "production"/u);
   assert.doesNotMatch(actions, /executeJournaledRf1086Production[\s\S]{0,1200}environment: "test"/u);
+});
+
+test("production release does not begin or submit when delegated-token acquisition fails", async () => {
+  const events = [];
+  await assert.rejects(
+    () => rf1086Production.executeRf1086ProductionRelease({
+      async acquireDelegatedToken() {
+        events.push("token");
+        throw new Error("token unavailable");
+      },
+      async beginProductionFiling() {
+        events.push("begin");
+        return { id: "submission" };
+      },
+      async executeExternalSubmission() {
+        events.push("post");
+      },
+      discardToken() {
+        events.push("discard");
+      },
+    }),
+    /token unavailable/u,
+  );
+  assert.deepEqual(events, ["token"]);
+});
+
+test("production release makes no POST when transactional begin rejects after token acquisition", async () => {
+  const events = [];
+  const token = { accessToken: "opaque" };
+  await assert.rejects(
+    () => rf1086Production.executeRf1086ProductionRelease({
+      async acquireDelegatedToken() {
+        events.push("token");
+        return token;
+      },
+      async beginProductionFiling() {
+        events.push("begin");
+        throw new Error("request invalidated");
+      },
+      async executeExternalSubmission() {
+        events.push("post");
+      },
+      discardToken(value) {
+        events.push("discard");
+        value.accessToken = "";
+      },
+    }),
+    /request invalidated/u,
+  );
+  assert.deepEqual(events, ["token", "begin", "discard"]);
+  assert.equal(token.accessToken, "");
+});
+
+test("production release orders token, durable begin, then journaled external submission", async () => {
+  const events = [];
+  const result = await rf1086Production.executeRf1086ProductionRelease({
+    async acquireDelegatedToken() {
+      events.push("token");
+      return { accessToken: "opaque" };
+    },
+    async beginProductionFiling() {
+      events.push("begin");
+      return { id: "submission" };
+    },
+    async executeExternalSubmission({ submission }) {
+      events.push("post");
+      assert.equal(submission.id, "submission");
+    },
+    discardToken(token) {
+      events.push("discard");
+      token.accessToken = "";
+    },
+  });
+  assert.deepEqual(events, ["token", "begin", "post", "discard"]);
+  assert.equal(result.id, "submission");
 });
 
 test("owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration", () => {

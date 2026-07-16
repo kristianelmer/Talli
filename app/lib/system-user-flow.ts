@@ -362,25 +362,96 @@ async function persistFailure(
   return recorded;
 }
 
+function recoveryPending(): never {
+  throw new SystemUserFlowError("system_user_request_recovery_pending");
+}
+
+async function persistFailureOrRecovery(
+  dependencies: SystemUserFlowDependencies,
+  request: SystemUserRequestRecord,
+  failureCode: SystemUserFailureCode,
+): Promise<SystemUserRequestRecord> {
+  try {
+    return await persistFailure(dependencies, request, failureCode);
+  } catch {
+    return recoveryPending();
+  }
+}
+
+async function persistCreatedResponse(
+  dependencies: SystemUserFlowDependencies,
+  request: SystemUserRequestRecord,
+  response: SystemUserAuthorityResponse,
+): Promise<SystemUserRequestRecord> {
+  try {
+    if (response.status !== "new") {
+      throw new SystemUserAuthorityError("response_contract_mismatch");
+    }
+    assertAuthorityRelationship(response, request);
+    assertSystemUserTransition(request.status, response.status);
+  } catch (error) {
+    return persistFailureOrRecovery(dependencies, request, authorityFailureCode(error));
+  }
+
+  try {
+    return await persistAuthorityResponse(dependencies, request, response);
+  } catch {
+    return recoveryPending();
+  }
+}
+
+async function persistRecoveredResponse(
+  dependencies: SystemUserFlowDependencies,
+  request: SystemUserRequestRecord,
+  response: SystemUserAuthorityResponse,
+): Promise<SystemUserRequestRecord> {
+  try {
+    assertAuthorityRelationship(response, request);
+    assertSystemUserTransition(request.status, response.status);
+  } catch (error) {
+    return persistFailureOrRecovery(dependencies, request, authorityFailureCode(error));
+  }
+
+  try {
+    return await persistAuthorityResponse(dependencies, request, response);
+  } catch {
+    return recoveryPending();
+  }
+}
+
 async function recoverCreatingRequest(
   dependencies: SystemUserFlowDependencies,
   request: SystemUserRequestRecord,
   allowCreateIfAbsent: boolean,
 ): Promise<SystemUserRequestRecord> {
-  const readToken = await dependencies.requestControlPlaneToken({
-    scope: SYSTEM_USER_CONTROL_READ_SCOPE,
-  });
+  let readToken: OpaqueToken;
   try {
-    const recovered = await dependencies.getRequestByExternalRef({
+    readToken = await dependencies.requestControlPlaneToken({
+      scope: SYSTEM_USER_CONTROL_READ_SCOPE,
+    });
+  } catch {
+    return recoveryPending();
+  }
+  let recovered: SystemUserAuthorityResponse | null = null;
+  try {
+    recovered = await dependencies.getRequestByExternalRef({
       bearerToken: readToken.accessToken,
       partyOrgNo: request.orgNumber,
       externalRef: request.externalRef,
     });
-    return persistAuthorityResponse(dependencies, request, recovered);
   } catch (error) {
-    if (!isIndependentAbsence(error) || !allowCreateIfAbsent) {
-      throw new SystemUserFlowError("system_user_request_recovery_pending");
+    if (
+      error instanceof SystemUserAuthorityError
+      && error.code === "response_contract_mismatch"
+    ) {
+      return persistFailureOrRecovery(dependencies, request, error.code);
     }
+    if (!isIndependentAbsence(error) || !allowCreateIfAbsent) {
+      return recoveryPending();
+    }
+  }
+  if (recovered) {
+    return persistRecoveredResponse(dependencies, request, recovered);
   }
 
   try {
@@ -388,22 +459,29 @@ async function recoverCreatingRequest(
   } catch {
     throw new SystemUserFlowError("callback_not_verified");
   }
-  const writeToken = await dependencies.requestControlPlaneToken({
-    scope: SYSTEM_USER_CONTROL_WRITE_SCOPE,
-  });
+  let writeToken: OpaqueToken;
   try {
-    const created = await dependencies.createRequest({
+    writeToken = await dependencies.requestControlPlaneToken({
+      scope: SYSTEM_USER_CONTROL_WRITE_SCOPE,
+    });
+  } catch {
+    return recoveryPending();
+  }
+
+  let created: SystemUserAuthorityResponse;
+  try {
+    created = await dependencies.createRequest({
       bearerToken: writeToken.accessToken,
       partyOrgNo: request.orgNumber,
       externalRef: request.externalRef,
     });
-    return persistAuthorityResponse(dependencies, request, created);
   } catch (error) {
     if (isAmbiguousCreate(error)) {
-      throw new SystemUserFlowError("system_user_request_recovery_pending");
+      return recoveryPending();
     }
-    return persistFailure(dependencies, request, authorityFailureCode(error));
+    return persistFailureOrRecovery(dependencies, request, authorityFailureCode(error));
   }
+  return persistCreatedResponse(dependencies, request, created);
 }
 
 export async function startSystemUserRequest(
@@ -438,25 +516,38 @@ export async function startSystemUserRequest(
     throw new SystemUserFlowError("system_user_relationship_mismatch");
   }
 
+  let token: OpaqueToken;
   try {
-    const token = await dependencies.requestControlPlaneToken({
+    token = await dependencies.requestControlPlaneToken({
       scope: SYSTEM_USER_CONTROL_WRITE_SCOPE,
     });
-    const response = await dependencies.createRequest({
+  } catch {
+    return recoveryPending();
+  }
+
+  let response: SystemUserAuthorityResponse;
+  try {
+    response = await dependencies.createRequest({
       bearerToken: token.accessToken,
       partyOrgNo: request.orgNumber,
       externalRef: request.externalRef,
     });
-    if (response.status !== "new") {
-      throw new SystemUserAuthorityError("response_contract_mismatch");
-    }
-    return startResult(await persistAuthorityResponse(dependencies, request, response));
   } catch (error) {
     if (isAmbiguousCreate(error)) {
-      return startResult(await recoverCreatingRequest(dependencies, request, false));
+      try {
+        return startResult(await recoverCreatingRequest(dependencies, request, false));
+      } catch (recoveryError) {
+        if (recoveryError instanceof SystemUserFlowError) throw recoveryError;
+        return recoveryPending();
+      }
     }
-    return startResult(await persistFailure(dependencies, request, authorityFailureCode(error)));
+    return startResult(await persistFailureOrRecovery(
+      dependencies,
+      request,
+      authorityFailureCode(error),
+    ));
   }
+  return startResult(await persistCreatedResponse(dependencies, request, response));
 }
 
 export async function retrySystemUserRequest(
