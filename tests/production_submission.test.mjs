@@ -64,6 +64,10 @@ test("reconciliation action rechecks the exact owner, submission, and verified r
   assert.match(action, /system_user_requests/u);
   assert.match(action, /preflight_verified_at/u);
   assert.match(action, /claim_production_feedback_reconciliation/u);
+  const claimIndex = action.indexOf("claim_production_feedback_reconciliation");
+  assert.doesNotMatch(action.slice(0, claimIndex), /!submission\.feedback_forsendelse_id/u);
+  assert.match(action.slice(claimIndex), /readClaimedRf1086ForsendelseId/u);
+  assert.match(action.slice(claimIndex), /authoritativeForsendelseId/u);
   assert.match(action, /release_production_feedback_reconciliation/u);
   assert.match(action, /reconcileJournaledRf1086Production/u);
   assert.doesNotMatch(action, /executeJournaledRf1086Production|postHovedskjema|postUnderskjema|\.confirm\(/u);
@@ -75,6 +79,9 @@ test("initial send performs bounded feedback polling only after the journaled co
   const send = actions.slice(start, end);
   assert.ok(send.indexOf("executeJournaledRf1086Production") >= 0);
   assert.ok(send.indexOf("reconcileJournaledRf1086Production") > send.indexOf("executeJournaledRf1086Production"));
+  assert.ok(send.indexOf("claimRf1086FeedbackLease") > send.indexOf("executeJournaledRf1086Production"));
+  assert.ok(send.indexOf("readClaimedRf1086ForsendelseId") > send.indexOf("claimRf1086FeedbackLease"));
+  assert.match(send, /authoritativeForsendelseId !== submitted\.forsendelseId/u);
   assert.match(send, /initialPoll:\s*true/u);
 });
 

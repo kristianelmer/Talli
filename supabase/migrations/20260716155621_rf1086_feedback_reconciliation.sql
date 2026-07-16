@@ -20,6 +20,67 @@ set feedback_state = case
   else 'sent'
 end;
 
+create or replace function public.rf1086_confirmation_forsendelse_id(p_reference text)
+returns uuid
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_confirmation jsonb;
+begin
+  if p_reference is null then
+    return null;
+  end if;
+  begin
+    v_confirmation := p_reference::jsonb;
+  exception when invalid_text_representation then
+    return null;
+  end;
+  if pg_catalog.jsonb_typeof(v_confirmation) is distinct from 'object' then
+    return null;
+  end if;
+  if (select pg_catalog.count(*) from pg_catalog.jsonb_object_keys(v_confirmation)) <> 2
+    or not (v_confirmation ?& array['dialogId', 'forsendelseId'])
+    or pg_catalog.jsonb_typeof(v_confirmation -> 'dialogId') is distinct from 'string'
+    or pg_catalog.jsonb_typeof(v_confirmation -> 'forsendelseId') is distinct from 'string'
+    or v_confirmation ->> 'dialogId'
+      !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    or v_confirmation ->> 'forsendelseId'
+      !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  then
+    return null;
+  end if;
+  return (v_confirmation ->> 'forsendelseId')::uuid;
+end;
+$$;
+
+revoke all on function public.rf1086_confirmation_forsendelse_id(text)
+  from public, anon, authenticated, service_role;
+
+-- Recover submissions confirmed before this migration. Only the latest immutable,
+-- succeeded confirmation event and the exact journal JSON shape may become authoritative.
+with latest_succeeded_confirm as (
+  select distinct on (e.submission_id)
+    e.submission_id,
+    e.authority_reference
+  from public.production_filing_events e
+  where e.operation_name = 'confirm'
+    and e.operation_state = 'succeeded'
+  order by e.submission_id, e.created_at desc, e.id desc
+), validated_confirmation as (
+  select
+    c.submission_id,
+    public.rf1086_confirmation_forsendelse_id(c.authority_reference) as forsendelse_id
+  from latest_succeeded_confirm c
+)
+update public.production_filing_submissions s
+set feedback_forsendelse_id = v.forsendelse_id
+from validated_confirmation v
+where s.id = v.submission_id
+  and s.feedback_forsendelse_id is null
+  and v.forsendelse_id is not null;
+
 create index if not exists production_filing_submissions_feedback_pending_idx
 on public.production_filing_submissions (feedback_state, updated_at)
 where feedback_state in ('sent', 'processing', 'unknown');
@@ -263,7 +324,9 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_claimed boolean := false;
+  v_submission public.production_filing_submissions%rowtype;
+  v_authority_reference text;
+  v_forsendelse_id uuid;
 begin
   if coalesce((select auth.jwt()) ->> 'role', '') <> 'service_role'
     or p_lease_id is null
@@ -271,17 +334,54 @@ begin
     raise exception 'production_feedback_service_role_required';
   end if;
 
-  update public.production_filing_submissions s
-  set feedback_reconciliation_lease_id = p_lease_id,
-      feedback_reconciliation_started_at = pg_catalog.now()
+  select s.*
+  into v_submission
+  from public.production_filing_submissions s
   where s.id = p_submission_id
-    and s.feedback_state in ('sent', 'processing', 'unknown')
+  for update;
+  if v_submission.id is null
+    or v_submission.obligation <> 'aksjonaerregisteroppgaven'
+    or v_submission.environment <> 'production'
+  then
+    raise exception 'production_feedback_submission_relationship_mismatch';
+  end if;
+  if v_submission.feedback_state not in ('sent', 'processing', 'unknown') then
+    return false;
+  end if;
+
+  select e.authority_reference
+  into v_authority_reference
+  from public.production_filing_events e
+  where e.submission_id = p_submission_id
+    and e.operation_name = 'confirm'
+    and e.operation_state = 'succeeded'
+  order by e.created_at desc, e.id desc
+  limit 1;
+  v_forsendelse_id := public.rf1086_confirmation_forsendelse_id(v_authority_reference);
+  if v_forsendelse_id is null then
+    raise exception 'production_feedback_confirmation_reference_invalid';
+  end if;
+
+  if v_submission.feedback_forsendelse_id is not null
+    and v_submission.feedback_forsendelse_id is distinct from v_forsendelse_id
+  then
+    raise exception 'production_feedback_confirmation_relationship_mismatch';
+  end if;
+  if v_submission.feedback_reconciliation_lease_id is not null
     and (
-      s.feedback_reconciliation_lease_id is null
-      or s.feedback_reconciliation_started_at < pg_catalog.now() - interval '5 minutes'
+      v_submission.feedback_reconciliation_started_at is null
+      or v_submission.feedback_reconciliation_started_at >= pg_catalog.now() - interval '5 minutes'
     )
-  returning true into v_claimed;
-  return coalesce(v_claimed, false);
+  then
+    return false;
+  end if;
+
+  update public.production_filing_submissions
+  set feedback_forsendelse_id = v_forsendelse_id,
+      feedback_reconciliation_lease_id = p_lease_id,
+      feedback_reconciliation_started_at = pg_catalog.now()
+  where id = p_submission_id;
+  return true;
 end;
 $$;
 

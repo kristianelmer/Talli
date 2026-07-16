@@ -142,6 +142,36 @@ test("change-only reconciliation events are serialized and expose safe diagnosti
   assert.doesNotMatch(appendSql, /xml|payload|organization_number|org_number|external_ref/iu);
 });
 
+test("backfills and atomically claims only an exact valid succeeded confirmation reference", () => {
+  assert.match(sql, /latest_succeeded_confirm/iu);
+  assert.match(sql, /operation_name = 'confirm'[\s\S]+operation_state = 'succeeded'/iu);
+  assert.match(sql, /create or replace function public\.rf1086_confirmation_forsendelse_id\(p_reference text\)/iu);
+  assert.match(sql, /exception when invalid_text_representation then[\s\S]+return null/iu);
+  assert.match(
+    sql,
+    /revoke all on function public\.rf1086_confirmation_forsendelse_id\(text\)[^;]+from public, anon, authenticated, service_role/isu,
+  );
+  assert.match(sql, /jsonb_typeof\([^;]+?\) is distinct from 'object'/iu);
+  assert.match(sql, /jsonb_object_keys/iu);
+  assert.match(sql, /dialogId/iu);
+  assert.match(sql, /forsendelseId/iu);
+  assert.match(sql, /feedback_forsendelse_id = [^;]+forsendelse/iu);
+
+  const claimSql = sql.match(
+    /create or replace function public\.claim_production_feedback_reconciliation[\s\S]+?\n\$\$;/iu,
+  )?.[0] ?? "";
+  assert.match(claimSql, /from public\.production_filing_submissions[\s\S]+for update/iu);
+  assert.match(claimSql, /operation_name = 'confirm'[\s\S]+operation_state = 'succeeded'/iu);
+  assert.match(claimSql, /public\.rf1086_confirmation_forsendelse_id\(v_authority_reference\)/iu);
+  assert.match(claimSql, /feedback_forsendelse_id[\s\S]+is distinct from[\s\S]+forsendelse/iu);
+  assert.match(
+    claimSql,
+    /set feedback_forsendelse_id = [^,]+,[\s\S]+feedback_reconciliation_lease_id = p_lease_id/iu,
+  );
+  assert.match(claimSql, /feedback_state not in \('sent', 'processing', 'unknown'\)/iu);
+  assert.match(claimSql, /interval '5 minutes'/iu);
+});
+
 test("rollback revokes functions first and restores only feature-owned schema and storage policy changes", () => {
   assert.ok(rollback, "rollback migration is required");
   const revokeIndex = rollback.indexOf("revoke all on function public.append_production_feedback_reconciliation");
@@ -149,6 +179,7 @@ test("rollback revokes functions first and restores only feature-owned schema an
   assert.ok(revokeIndex >= 0 && tableDropIndex > revokeIndex);
   assert.match(rollback, /drop function if exists public\.record_production_feedback_artifact/iu);
   assert.match(rollback, /drop function if exists public\.claim_production_feedback_reconciliation/iu);
+  assert.match(rollback, /drop function if exists public\.rf1086_confirmation_forsendelse_id/iu);
   assert.match(rollback, /drop column if exists feedback_state/iu);
   assert.match(rollback, /drop column if exists artifact_hashes/iu);
   assert.match(rollback, /company members can read company document objects/iu);
@@ -188,13 +219,21 @@ test(
         select
           has_function_privilege('authenticated', 'public.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as authenticated_record,
           has_function_privilege('service_role', 'public.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as service_record,
+          has_function_privilege('authenticated', 'public.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as authenticated_claim,
+          has_function_privilege('service_role', 'public.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as service_claim,
           has_function_privilege('authenticated', 'public.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as authenticated_append,
-          has_function_privilege('service_role', 'public.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as service_append
+          has_function_privilege('service_role', 'public.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as service_append,
+          has_function_privilege('authenticated', 'public.rf1086_confirmation_forsendelse_id(text)', 'execute') as authenticated_parse,
+          has_function_privilege('service_role', 'public.rf1086_confirmation_forsendelse_id(text)', 'execute') as service_parse
       `);
       assert.equal(functions.authenticated_record, false);
       assert.equal(functions.service_record, true);
+      assert.equal(functions.authenticated_claim, false);
+      assert.equal(functions.service_claim, true);
       assert.equal(functions.authenticated_append, false);
       assert.equal(functions.service_append, true);
+      assert.equal(functions.authenticated_parse, false);
+      assert.equal(functions.service_parse, false);
 
       for (const role of ["authenticated", "service_role"]) {
         await database.query("begin");
@@ -235,7 +274,7 @@ test(
 );
 
 test(
-  "local Supabase limits feedback metadata, objects, and signed URLs to accepted owners and active operators",
+  "local Supabase recovers confirmed submissions and limits feedback data to authorized readers",
   { skip: isLocalRuntime() ? false : "local Supabase runtime variables are required", timeout: 120_000 },
   async () => {
     const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
@@ -250,6 +289,10 @@ test(
     const submissionId = randomUUID();
     const feedbackDocumentId = randomUUID();
     const normalDocumentId = randomUUID();
+    const dialogId = randomUUID();
+    const forsendelseId = randomUUID();
+    const firstLeaseId = randomUUID();
+    const competingLeaseId = randomUUID();
     const feedbackHash = "a".repeat(64);
     const feedbackKey = `authority-feedback/${companyId}/${submissionId}/${feedbackHash}`;
     const normalKey = `${companyId}/2025/${normalDocumentId}/ordinary.pdf`;
@@ -322,6 +365,125 @@ test(
          )`,
         [submissionId, approvalId, entitlementId, companyId, ownerUser.id, "b".repeat(64)],
       );
+      await database.query(
+        `insert into public.production_filing_events (
+           submission_id, operation_name, operation_state, attempt, body_hash,
+           idempotency_key, authority_reference, failure_class, resulting_status
+         ) values ($1, 'confirm', 'succeeded', 1, $2, $3, $4, null, 'received')`,
+        [
+          submissionId,
+          "d".repeat(64),
+          randomUUID(),
+          JSON.stringify({ dialogId, forsendelseId }),
+        ],
+      );
+
+      // Reapplying the additive migration simulates upgrading a pre-Task-6
+      // submission whose immutable confirmation event already exists.
+      await database.query(sql);
+      const backfilled = await database.query(
+        `select feedback_forsendelse_id
+         from public.production_filing_submissions where id = $1`,
+        [submissionId],
+      );
+      assert.equal(backfilled.rows[0].feedback_forsendelse_id, forsendelseId);
+
+      await database.query(
+        `update public.production_filing_submissions
+         set feedback_forsendelse_id = null,
+             feedback_reconciliation_lease_id = null,
+             feedback_reconciliation_started_at = null
+         where id = $1`,
+        [submissionId],
+      );
+      const [firstClaim, competingClaim] = await Promise.all([
+        admin.rpc("claim_production_feedback_reconciliation", {
+          p_submission_id: submissionId,
+          p_lease_id: firstLeaseId,
+        }),
+        admin.rpc("claim_production_feedback_reconciliation", {
+          p_submission_id: submissionId,
+          p_lease_id: competingLeaseId,
+        }),
+      ]);
+      assert.ifError(firstClaim.error);
+      assert.ifError(competingClaim.error);
+      assert.deepEqual([firstClaim.data, competingClaim.data].sort(), [false, true]);
+      const recovered = await database.query(
+        `select feedback_forsendelse_id, feedback_reconciliation_lease_id
+         from public.production_filing_submissions where id = $1`,
+        [submissionId],
+      );
+      assert.equal(recovered.rows[0].feedback_forsendelse_id, forsendelseId);
+      assert.ok([firstLeaseId, competingLeaseId].includes(recovered.rows[0].feedback_reconciliation_lease_id));
+
+      const released = await admin.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: recovered.rows[0].feedback_reconciliation_lease_id,
+      });
+      assert.ifError(released.error);
+      assert.equal(released.data, true);
+
+      await database.query(
+        `update public.production_filing_submissions
+         set feedback_forsendelse_id = $2,
+             feedback_reconciliation_lease_id = null,
+             feedback_reconciliation_started_at = null
+         where id = $1`,
+        [submissionId, randomUUID()],
+      );
+      const mismatchedClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: randomUUID(),
+      });
+      assert.match(mismatchedClaim.error?.message ?? "", /confirmation_relationship_mismatch/iu);
+      await database.query(
+        `update public.production_filing_submissions
+         set feedback_forsendelse_id = null,
+             feedback_reconciliation_lease_id = null,
+             feedback_reconciliation_started_at = null
+         where id = $1`,
+        [submissionId],
+      );
+
+      await database.query(
+        `insert into public.production_filing_events (
+           submission_id, operation_name, operation_state, attempt, body_hash,
+           idempotency_key, authority_reference, failure_class, resulting_status
+         ) values ($1, 'confirm', 'succeeded', 2, $2, $3, $4, null, 'received')`,
+        [
+          submissionId,
+          "e".repeat(64),
+          randomUUID(),
+          JSON.stringify({ dialogId, forsendelseId: "not-a-uuid" }),
+        ],
+      );
+      const malformedClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: randomUUID(),
+      });
+      assert.match(malformedClaim.error?.message ?? "", /confirmation_reference_invalid/iu);
+
+      await database.query(
+        `insert into public.production_filing_events (
+           submission_id, operation_name, operation_state, attempt, body_hash,
+           idempotency_key, authority_reference, failure_class, resulting_status
+         ) values ($1, 'confirm', 'succeeded', 3, $2, $3, '{malformed', null, 'received')`,
+        [submissionId, "f".repeat(64), randomUUID()],
+      );
+      const invalidJsonClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: randomUUID(),
+      });
+      assert.match(invalidJsonClaim.error?.message ?? "", /confirmation_reference_invalid/iu);
+      const unclaimed = await database.query(
+        `select feedback_forsendelse_id, feedback_reconciliation_lease_id
+         from public.production_filing_submissions where id = $1`,
+        [submissionId],
+      );
+      assert.equal(unclaimed.rows[0].feedback_forsendelse_id, null);
+      assert.equal(unclaimed.rows[0].feedback_reconciliation_lease_id, null);
+
       await database.query(
         `insert into public.documents (
            id, company_id, income_year, document_type, name, linked_to, status,

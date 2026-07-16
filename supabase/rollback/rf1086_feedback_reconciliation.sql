@@ -8,11 +8,14 @@ revoke all on function public.claim_production_feedback_reconciliation(uuid, uui
   from public, anon, authenticated, service_role;
 revoke all on function public.record_production_feedback_artifact(uuid, uuid, uuid, text, text, bigint, text, text)
   from public, anon, authenticated, service_role;
+revoke all on function public.rf1086_confirmation_forsendelse_id(text)
+  from public, anon, authenticated, service_role;
 
 drop function if exists public.append_production_feedback_reconciliation(uuid, uuid, uuid, text, text[], text, text);
 drop function if exists public.release_production_feedback_reconciliation(uuid, uuid);
 drop function if exists public.claim_production_feedback_reconciliation(uuid, uuid);
 drop function if exists public.record_production_feedback_artifact(uuid, uuid, uuid, text, text, bigint, text, text);
+drop function if exists public.rf1086_confirmation_forsendelse_id(text);
 
 revoke all on table public.production_feedback_artifacts from public, anon, authenticated, service_role;
 drop policy if exists production_feedback_artifacts_operator_read on public.production_feedback_artifacts;

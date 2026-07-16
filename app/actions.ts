@@ -4974,6 +4974,23 @@ async function claimRf1086FeedbackLease(
   return data === true;
 }
 
+async function readClaimedRf1086ForsendelseId(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service
+    .from("production_filing_submissions")
+    .select("feedback_forsendelse_id")
+    .eq("id", submissionId)
+    .eq("feedback_reconciliation_lease_id", leaseId)
+    .single();
+  if (error || !data?.feedback_forsendelse_id) {
+    throw new Error("Innsendingsreferansen kunne ikke gjenopprettes sikkert.");
+  }
+  return data.feedback_forsendelse_id;
+}
+
 async function releaseRf1086FeedbackLease(
   service: ReturnType<typeof createSupabaseServiceRoleClient>,
   submissionId: string,
@@ -5085,13 +5102,21 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
         const leaseId = randomUUID();
         if (await claimRf1086FeedbackLease(service, submission.id, leaseId)) {
           try {
+            const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+              service,
+              submission.id,
+              leaseId,
+            );
+            if (authoritativeForsendelseId !== submitted.forsendelseId) {
+              throw new Error("Den bekreftede innsendingsreferansen samsvarer ikke med produksjonsjournalen.");
+            }
             await reconcileJournaledRf1086Production(
               createRf1086FeedbackJournal(service, {
                 submissionId: submission.id,
                 companyId: approval.company_id,
                 incomeYear: preview.income_year,
                 userId: user.id,
-                forsendelseId: submitted.forsendelseId,
+                forsendelseId: authoritativeForsendelseId,
                 leaseId,
               }),
               authorityClient,
@@ -5099,7 +5124,7 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
                 submissionId: submission.id,
                 companyId: approval.company_id,
                 incomeYear: preview.income_year,
-                forsendelseId: submitted.forsendelseId,
+                forsendelseId: authoritativeForsendelseId,
                 hovedskjemaXml: preview.hovedskjema_xml,
                 underskjemaXml: preview.underskjema_xml as Record<string, string>,
               },
@@ -5150,7 +5175,7 @@ export async function reconcileRf1086ProductionAction(
 
   const { data: submission, error: submissionError } = await supabase
     .from("production_filing_submissions")
-    .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,environment,feedback_state,feedback_forsendelse_id")
+    .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,environment,feedback_state")
     .eq("id", submissionId)
     .single();
   if (
@@ -5246,7 +5271,6 @@ export async function reconcileRf1086ProductionAction(
     || preview.company_id !== submission.company_id
     || preview.income_year !== submission.income_year
     || !preview.hovedskjema_xml
-    || !submission.feedback_forsendelse_id
   ) {
     return { state: storedState, error: "Den verifiserte tilkoblingen eller innsendingen mangler.", requiresManualRetry: true };
   }
@@ -5276,6 +5300,11 @@ export async function reconcileRf1086ProductionAction(
     if (!claimed) {
       return { state: storedState, error: "En statuskontroll pågår allerede.", requiresManualRetry: true };
     }
+    const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+      service,
+      submission.id,
+      leaseId,
+    );
     delegatedToken = await requestMaskinportenToken({
       ...configuration,
       systemUserOrgNumber: company.org_number,
@@ -5287,7 +5316,7 @@ export async function reconcileRf1086ProductionAction(
         companyId: submission.company_id,
         incomeYear: submission.income_year,
         userId: user.id,
-        forsendelseId: submission.feedback_forsendelse_id,
+        forsendelseId: authoritativeForsendelseId,
         leaseId,
       }),
       createRf1086AuthorityClient({
@@ -5298,7 +5327,7 @@ export async function reconcileRf1086ProductionAction(
         submissionId: submission.id,
         companyId: submission.company_id,
         incomeYear: submission.income_year,
-        forsendelseId: submission.feedback_forsendelse_id,
+        forsendelseId: authoritativeForsendelseId,
         hovedskjemaXml: preview.hovedskjema_xml,
         underskjemaXml: preview.underskjema_xml as Record<string, string>,
       },
