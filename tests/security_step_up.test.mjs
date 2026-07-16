@@ -85,6 +85,7 @@ test("step-up rejects invalid, stale, and future MFA timestamps", () => {
 
 test("all protected corporate actions require fresh AAL2 user presence", () => {
   for (const action of [
+    "authority_operations",
     "production_filing",
     "approve_corporate_facts",
     "attest_signed_corporate_document",
