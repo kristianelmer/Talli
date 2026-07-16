@@ -102,11 +102,11 @@ Run: `TALLI_PYTHON_BIN=/Users/kristianelmer/Documents/Work/Talli/.venv/bin/pytho
 
 Expected: migrations, grants, role-abuse/RLS checks, database runtimes, advisors, and the owner browser loop pass using the existing project virtualenv; teardown leaves no conflicting local service.
 
-- [ ] **Step 3: Re-run explicit static grant and advisor gates**
+- [ ] **Step 3: Re-run the static grant gate and reconcile in-suite advisors**
 
-Run: `npm run test:supabase-grants && npm run test:supabase-advisors`
+Run: `npm run test:supabase-grants`
 
-Expected: zero blocking findings; record performance warnings separately rather than hiding them.
+Expected: the static grant tests pass. Reconcile this result with the fresh advisor command already executed inside Step 2 while local Postgres was available; require zero blocking findings and record performance warnings separately rather than hiding them. Do not restart the local stack solely to duplicate the same advisor command after Step 2 has cleanly stopped it.
 
 - [ ] **Step 4: Record and commit exact outcomes**
 
