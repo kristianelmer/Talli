@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type {
   YearEndInterviewAnswers,
 } from "../annual-data";
@@ -16,6 +16,7 @@ import type {
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
+import type { SystemUserRequestStatus } from "../system-user-requests";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -299,6 +300,7 @@ export type ProductionPilotEntitlementRow = {
   case_profile: "rf1086_no_activity_v1";
   status: "pending" | "active" | "suspended" | "completed" | "revoked";
   billing_exempt: boolean;
+  system_user_request_id: string | null;
   system_user_external_reference: string;
   starts_at: string;
   expires_at: string;
@@ -306,6 +308,26 @@ export type ProductionPilotEntitlementRow = {
   approved_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type SystemUserRequestRow = {
+  id: string;
+  company_id: string;
+  initiating_owner_user_id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  external_ref: string;
+  altinn_request_id: string | null;
+  status: SystemUserRequestStatus;
+  confirm_url: string | null;
+  preflight_verified_at: string | null;
+  failure_code: string | null;
+  operator_evidence_id: string | null;
+  requested_at: string | null;
+  last_status_checked_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
 };
 
 export type FilingApprovalSnapshotRow = {
@@ -876,6 +898,22 @@ function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message
     || error.code === "42P01"
     || /production_(?:pilot|filing)|filing_approval_snapshots/iu.test(error.message ?? "")
   ));
+}
+
+export async function listSystemUserRequests(
+  supabase: SupabaseClient,
+  companyIds: string[],
+): Promise<SystemUserRequestRow[]> {
+  if (companyIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code,operator_evidence_id,requested_at,last_status_checked_at,accepted_at,created_at,updated_at,resolved_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as SystemUserRequestRow[];
 }
 
 export async function listProductionFilingState(companyIds: string[]) {
