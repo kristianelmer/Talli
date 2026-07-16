@@ -33,6 +33,7 @@ import {
   AuthorityOperationError,
   RF1086_RIGHT,
   assertAuthorityOperationIntent,
+  authorityOperationEnvironmentFailureCode,
   authorityOperationRequestHash,
   buildRf1086SystemDefinition,
   executeRf1086SystemRegistration,
@@ -4291,8 +4292,8 @@ export async function runProductionAuthorityOperation(formData: FormData) {
   let environment;
   try {
     environment = productionAuthorityOperationEnvironment();
-  } catch {
-    redirect("/operator?authority=authority_environment_invalid");
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
   }
   if (!environment) {
     redirect("/operator?authority=authority_ops_disabled");

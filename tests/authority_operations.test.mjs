@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   AuthorityOperationError,
+  authorityOperationEnvironmentFailureCode,
   assertAuthorityOperationIntent,
   authorityOperationRequestHash,
   buildRf1086SystemDefinition,
@@ -57,6 +58,31 @@ test("authority operation environment fails closed and rejects test credentials"
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: "tt02-client",
       }),
     /must not reference test/i,
+  );
+});
+
+test("environment diagnostics expose only the invalid field", () => {
+  assert.equal(
+    authorityOperationEnvironmentFailureCode(
+      new AuthorityOperationError("authority_client_id_invalid"),
+    ),
+    "authority_client_id_invalid",
+  );
+  assert.equal(
+    authorityOperationEnvironmentFailureCode(
+      new AuthorityOperationError("authority_key_id must not reference test"),
+    ),
+    "authority_key_id_invalid",
+  );
+  assert.equal(
+    authorityOperationEnvironmentFailureCode(
+      new AuthorityOperationError("authority_private_key_invalid"),
+    ),
+    "authority_private_key_invalid",
+  );
+  assert.equal(
+    authorityOperationEnvironmentFailureCode(new Error("secret detail")),
+    "authority_environment_invalid",
   );
 });
 

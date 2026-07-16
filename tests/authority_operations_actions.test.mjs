@@ -18,6 +18,7 @@ test("authority operation is admin-only, AAL2-gated, exact, and service-audited"
   assert.match(actions, /eq\("role", "admin"\)/u);
   assert.match(actions, /assertStepUpAllowed\("authority_operations"/u);
   assert.match(actions, /assertAuthorityOperationIntent/u);
+  assert.match(actions, /authorityOperationEnvironmentFailureCode/u);
   assert.match(actions, /createSupabaseServiceRoleClient/u);
   assert.match(actions, /from\("authority_operations"\)\.insert/u);
   assert.match(actions, /executeRf1086SystemRegistration/u);
@@ -28,6 +29,9 @@ test("operator UI exposes only the immutable RF-1086 operation and redacted resu
   assert.match(operatorPage, /930835978_talli/u);
   assert.match(operatorPage, /ske-innrapportering-aksjonaerregisteroppgave/u);
   assert.match(operatorPage, /REGISTER TALLI RF1086 SYSTEM/u);
+  assert.match(operatorPage, /Maskinporten-klient-ID-en er ugyldig/u);
+  assert.match(operatorPage, /Maskinporten-nøkkel-ID-en er ugyldig/u);
+  assert.match(operatorPage, /Maskinporten-privatnøkkelen er ugyldig/u);
   assert.match(operatorPage, /runProductionAuthorityOperation/u);
   assert.match(server, /listAuthorityOperations/u);
   assert.doesNotMatch(operatorPage, /private key|access token/iu);

@@ -112,6 +112,26 @@ export function productionAuthorityOperationEnvironment(
   return { clientId, keyId, privateKeyPem };
 }
 
+export function authorityOperationEnvironmentFailureCode(error: unknown):
+  | "authority_client_id_invalid"
+  | "authority_key_id_invalid"
+  | "authority_private_key_invalid"
+  | "authority_environment_invalid" {
+  if (!(error instanceof AuthorityOperationError)) {
+    return "authority_environment_invalid";
+  }
+  if (error.code.startsWith("authority_client_id")) {
+    return "authority_client_id_invalid";
+  }
+  if (error.code.startsWith("authority_key_id")) {
+    return "authority_key_id_invalid";
+  }
+  if (error.code.startsWith("authority_private_key")) {
+    return "authority_private_key_invalid";
+  }
+  return "authority_environment_invalid";
+}
+
 export function buildRf1086SystemDefinition(clientId: string): Rf1086SystemDefinition {
   const productionClientId = requiredProductionUuid(clientId, "authority_client_id");
   return {
