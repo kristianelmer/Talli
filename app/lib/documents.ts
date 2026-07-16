@@ -39,3 +39,18 @@ export function documentStorageKey(companyId: string, incomeYear: number, docume
     .slice(0, 120);
   return `${companyId}/${incomeYear}/${documentId}/${safeName || "document"}`;
 }
+
+export function rf1086FeedbackStorageKey(companyId: string, submissionId: string, sha256: string) {
+  return `authority-feedback/${companyId}/${submissionId}/${sha256}`;
+}
+
+export function rf1086FeedbackFileName(contentType: string, sha256: string) {
+  const extension = contentType === "application/xml" || contentType === "text/xml"
+    ? "xml"
+    : contentType === "application/pdf"
+      ? "pdf"
+      : contentType === "text/plain"
+        ? "txt"
+        : "bin";
+  return `authority-feedback-${sha256.slice(0, 12)}.${extension}`;
+}

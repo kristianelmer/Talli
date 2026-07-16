@@ -176,9 +176,9 @@ test("production UI never equates receipt transport with final acceptance", () =
   assert.match(ownerPage, /Mottatt/u);
   assert.match(ownerPage, /Til behandling/u);
   assert.match(ownerPage, /HTTP-svar eller kvitteringsreferanse betyr ikke/u);
-  assert.match(ownerPage, /productionSubmission\?\.status === "accepted" \? "Godkjent"/u);
+  assert.match(ownerPage, /productionFeedbackState === "accepted" \? "Godkjent"/u);
   assert.match(ownerPage, /productionSubmission\?\.status === "sending" \? "Sender"/u);
-  assert.match(ownerPage, /productionSubmission\?\.status === "action_required" \? "Krever handling"/u);
+  assert.match(ownerPage, /productionFeedbackState === "action_required" \? "Krever handling"/u);
 });
 
 test("a disabled production adapter tolerates an unapplied additive schema during rollout", () => {

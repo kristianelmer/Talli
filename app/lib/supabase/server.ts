@@ -366,8 +366,26 @@ export type ProductionFilingSubmissionRow = {
   failure_class: string | null;
   supersedes_submission_id: string | null;
   submitted_by: string;
+  feedback_state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  feedback_artifact_count: number;
+  feedback_last_checked_at: string | null;
+  feedback_last_changed_at: string | null;
+  feedback_safe_error_code: string | null;
+  feedback_correlation_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ProductionFeedbackArtifactRow = {
+  id: string;
+  company_id: string;
+  submission_id: string;
+  document_id: string;
+  content_type: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  byte_length: number;
+  sha256: string;
+  retrieved_at: string;
+  classification: "accepted" | "rejected" | "action_required";
 };
 
 export type FilingOverrideRow = {
@@ -896,7 +914,7 @@ function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message
   return errors.some((error) => error != null && (
     error.code === "PGRST205"
     || error.code === "42P01"
-    || /production_(?:pilot|filing)|filing_approval_snapshots/iu.test(error.message ?? "")
+    || /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(error.message ?? "")
   ));
 }
 
@@ -922,25 +940,34 @@ export async function listProductionFilingState(companyIds: string[]) {
       productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
       filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
       productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
+      productionFeedbackArtifacts: [] as ProductionFeedbackArtifactRow[],
       error: null,
     };
   }
   const supabase = await createSupabaseServerClient();
-  const [entitlements, approvals, submissions] = await Promise.all([
+  const [entitlements, approvals, submissions, artifacts] = await Promise.all([
     supabase.from("production_pilot_entitlements").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
     supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
-    supabase.from("production_filing_submissions").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+    supabase.from("production_filing_submissions")
+      .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,payload_hash,adapter_version,environment,status,supersedes_submission_id,submitted_by,feedback_state,feedback_artifact_count,feedback_last_checked_at,feedback_last_changed_at,feedback_safe_error_code,feedback_correlation_id,created_at,updated_at")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false }),
+    supabase.from("production_feedback_artifacts")
+      .select("id,company_id,submission_id,document_id,content_type,byte_length,sha256,retrieved_at,classification")
+      .in("company_id", companyIds)
+      .order("retrieved_at", { ascending: false }),
   ]);
-  const errors = [entitlements.error, approvals.error, submissions.error];
+  const errors = [entitlements.error, approvals.error, submissions.error, artifacts.error];
   const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
     && productionPilotSchemaUnavailable(errors);
   return {
     productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
     filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
     productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
+    productionFeedbackArtifacts: (artifacts.data ?? []) as ProductionFeedbackArtifactRow[],
     error: rolloutSchemaPending
       ? null
-      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? null,
+      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
   };
 }
 

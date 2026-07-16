@@ -5,6 +5,7 @@ import {
   confirmSimulatedRf1086Submission,
   approveProductionFiling,
   generateRf1086Preview,
+  reconcileRf1086ProductionAction,
   refreshAnnualReadinessSnapshots,
   sendApprovedRf1086ProductionFiling,
 } from "../../../actions";
@@ -34,6 +35,7 @@ import {
   isFilingObligation,
 } from "../_readiness";
 import { buildOwnerFilingPresentation } from "../_presentation";
+import { Rf1086ReconciliationControl } from "../_submission-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -323,6 +325,10 @@ export default async function FilingObligationPage({
   const productionSubmission = productionApproval
     ? data.productionFilingSubmissions.find((item) => item.approval_id === productionApproval.id)
     : null;
+  const productionFeedbackState = productionSubmission?.feedback_state;
+  const productionFeedbackArtifacts = productionSubmission
+    ? data.productionFeedbackArtifacts.filter((artifact) => artifact.submission_id === productionSubmission.id)
+    : [];
 
   const setup = input.setups.find((item) => item.income_year === input.incomeYear);
   const storedReady = data.primaryReadinessSnapshots.some(
@@ -381,14 +387,14 @@ export default async function FilingObligationPage({
             <div className="filingStepHead">
               <h2 className="filingStepTitle">Reell RF-1086-produksjonspilot</h2>
               <StatusBadge
-                variant={productionSubmission?.status === "accepted" ? "success" : productionSubmission ? "warning" : productionApproval ? "info" : "danger"}
-                label={productionSubmission?.status === "accepted" ? "Godkjent"
+                variant={productionFeedbackState === "accepted" ? "success" : productionSubmission ? "warning" : productionApproval ? "info" : "danger"}
+                label={productionFeedbackState === "accepted" ? "Godkjent"
                   : productionSubmission?.status === "sending" ? "Sender"
-                  : productionSubmission?.status === "processing" ? "Til behandling"
-                  : productionSubmission?.status === "received" ? "Mottatt"
-                  : productionSubmission?.status === "unknown" ? "Uavklart – kontakt support"
-                  : productionSubmission?.status === "rejected" ? "Avvist"
-                  : productionSubmission?.status === "action_required" ? "Krever handling"
+                  : productionFeedbackState === "processing" ? "Til behandling"
+                  : productionFeedbackState === "sent" ? "Mottatt"
+                  : productionFeedbackState === "unknown" ? "Uavklart – prøver igjen"
+                  : productionFeedbackState === "rejected" ? "Avvist"
+                  : productionFeedbackState === "action_required" ? "Krever handling"
                   : productionApproval ? "Godkjent av deg" : "Klar til gjennomgang"}
               />
             </div>
@@ -421,7 +427,31 @@ export default async function FilingObligationPage({
                   <SubmitButton pendingLabel="Sender sikkert …">Send reell RF-1086</SubmitButton>
                 </form>
               ) : (
-                <p className="cardNote">Autoritetsstatus: {productionSubmission.status}. Referanser lagres i den append-only produksjonsjournalen.</p>
+                <>
+                  <p className="cardNote">
+                    Autoritetsstatus: {productionFeedbackState}. Tilbakemeldinger lagres privat og kan lastes ned med kortvarig tilgang.
+                  </p>
+                  <Rf1086ReconciliationControl
+                    action={reconcileRf1086ProductionAction}
+                    submissionId={productionSubmission.id}
+                    initialState={{
+                      state: productionSubmission.feedback_state,
+                      error: null,
+                      requiresManualRetry: false,
+                    }}
+                  />
+                  {productionFeedbackArtifacts.length > 0 ? (
+                    <ul className="blockerList">
+                      {productionFeedbackArtifacts.map((artifact) => (
+                        <li key={artifact.id} className="blockerItem">
+                          <Link href={`/documents/${artifact.document_id}/download`}>
+                            Last ned tilbakemelding ({artifact.classification})
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               )}
             </div>
           </section>

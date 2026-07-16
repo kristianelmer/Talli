@@ -69,7 +69,7 @@
     "test:tax-settlement": "node --experimental-strip-types --test tests/tax_settlement.test.mjs",
     "test:web": "node --test tests/web_workspace.test.mjs",
     "test:workspace-presentation": "node --test tests/workspace_presentation.test.mjs",
-    "test:supabase": "node --test tests/supabase_workspace.test.mjs",
+    "test:supabase": "node --test --test-concurrency=1 tests/supabase_workspace.test.mjs tests/rf1086_feedback_schema.test.mjs",
     "test:supabase-advisors": "node scripts/assert-supabase-advisors.mjs",
     "test:supabase-grants": "node --test tests/supabase_explicit_grants.test.mjs",
     "test:supabase:local": "bash scripts/test-supabase-local.sh",
@@ -85,7 +85,8 @@
     "next": "16.2.9",
     "pg": "^8.21.0",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "saxes": "6.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

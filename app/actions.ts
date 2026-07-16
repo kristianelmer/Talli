@@ -53,6 +53,8 @@ import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/dea
 import {
   COMPANY_DOCUMENTS_BUCKET,
   documentStorageKey,
+  rf1086FeedbackFileName,
+  rf1086FeedbackStorageKey,
   validateDocumentUpload,
 } from "./lib/documents";
 import {
@@ -127,8 +129,11 @@ import {
 import {
   executeJournaledRf1086Production,
   executeRf1086ProductionRelease,
+  reconcileJournaledRf1086Production,
   type ProductionOperation,
   type ProductionOperationJournal,
+  type Rf1086ProductionJournal,
+  type Rf1086ReconciliationState,
 } from "./lib/rf1086-production";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
 import { requestMaskinportenToken } from "./lib/maskinporten";
@@ -4835,6 +4840,151 @@ function createRf1086DatabaseJournal(
   };
 }
 
+function createRf1086FeedbackJournal(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  input: {
+    submissionId: string;
+    companyId: string;
+    incomeYear: number;
+    userId: string;
+    forsendelseId: string;
+    leaseId: string;
+  },
+): Rf1086ProductionJournal {
+  return {
+    async readReconciliationState() {
+      const [submission, artifacts] = await Promise.all([
+        service
+          .from("production_filing_submissions")
+          .select("feedback_state,feedback_safe_error_code,feedback_correlation_id")
+          .eq("id", input.submissionId)
+          .eq("company_id", input.companyId)
+          .single(),
+        service
+          .from("production_feedback_artifacts")
+          .select("sha256")
+          .eq("submission_id", input.submissionId)
+          .order("sha256", { ascending: true }),
+      ]);
+      if (submission.error || !submission.data || artifacts.error) {
+        throw new Error("Kunne ikke lese tilbakemeldingsjournalen.");
+      }
+      return {
+        state: submission.data.feedback_state as Rf1086ReconciliationState,
+        artifactHashes: (artifacts.data ?? []).map((artifact) => artifact.sha256),
+        safeErrorCode: submission.data.feedback_safe_error_code,
+        correlationId: submission.data.feedback_correlation_id,
+      };
+    },
+    async recordArtifact(artifact) {
+      const { data: existing, error: existingError } = await service
+        .from("production_feedback_artifacts")
+        .select("sha256")
+        .eq("submission_id", input.submissionId)
+        .eq("sha256", artifact.sha256)
+        .maybeSingle();
+      if (existingError) throw new Error("Kunne ikke kontrollere tilbakemeldingsarkivet.");
+      if (existing) return existing.sha256;
+
+      const storageKey = rf1086FeedbackStorageKey(input.companyId, input.submissionId, artifact.sha256);
+      const documentId = randomUUID();
+      const upload = await service.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(
+        storageKey,
+        artifact.bytes,
+        { contentType: artifact.contentType, upsert: false },
+      );
+      if (upload.error) throw new Error("Kunne ikke lagre tilbakemeldingsdokumentet.");
+
+      let documentInserted = false;
+      try {
+        const { error: documentError } = await service.from("documents").insert({
+          id: documentId,
+          company_id: input.companyId,
+          income_year: input.incomeYear,
+          document_type: "authority_feedback",
+          name: rf1086FeedbackFileName(artifact.contentType, artifact.sha256),
+          linked_to: `production_filing_submission:${input.submissionId}`,
+          status: "attached",
+          retention_years: 5,
+          storage_key: storageKey,
+          created_by: input.userId,
+        });
+        if (documentError) throw new Error("Kunne ikke registrere tilbakemeldingsdokumentet.");
+        documentInserted = true;
+
+        const { data, error } = await service.rpc("record_production_feedback_artifact", {
+          p_company_id: input.companyId,
+          p_submission_id: input.submissionId,
+          p_document_id: documentId,
+          p_authority_reference: artifact.authorityReference,
+          p_content_type: artifact.contentType,
+          p_byte_length: artifact.byteLength,
+          p_sha256: artifact.sha256,
+          p_classification: artifact.classification,
+        });
+        if (error || !data) throw new Error("Kunne ikke registrere tilbakemeldingsmetadata.");
+        return artifact.sha256;
+      } catch {
+        const persisted = await service
+          .from("production_feedback_artifacts")
+          .select("document_id,sha256")
+          .eq("submission_id", input.submissionId)
+          .eq("sha256", artifact.sha256)
+          .maybeSingle();
+        if (!persisted.error && persisted.data?.document_id === documentId) {
+          return persisted.data.sha256;
+        }
+        if (documentInserted) {
+          await service.from("documents").delete().eq("id", documentId);
+        }
+        if (!persisted.data) {
+          await service.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+        }
+        throw new Error("Tilbakemeldingen kunne ikke arkiveres sikkert.");
+      }
+    },
+    async appendReconciliation(event) {
+      const { data, error } = await service.rpc("append_production_feedback_reconciliation", {
+        p_submission_id: input.submissionId,
+        p_lease_id: input.leaseId,
+        p_forsendelse_id: input.forsendelseId,
+        p_state: event.state,
+        p_artifact_hashes: event.artifactHashes,
+        p_safe_error_code: event.safeErrorCode,
+        p_correlation_id: event.correlationId,
+      });
+      if (error || typeof data !== "boolean") {
+        throw new Error("Kunne ikke oppdatere tilbakemeldingsstatusen.");
+      }
+      return data;
+    },
+  };
+}
+
+async function claimRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service.rpc("claim_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+  if (error) throw new Error("Kunne ikke reservere tilbakemeldingskontrollen.");
+  return data === true;
+}
+
+async function releaseRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  await service.rpc("release_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+}
+
 export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   const returnTo = returnTarget(formData);
   const approvalId = requiredFormUuid(formData, "approvalId");
@@ -4919,15 +5069,46 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
         return submission;
       },
       async executeExternalSubmission({ token, submission }) {
-        await executeJournaledRf1086Production({
+        const authorityClient = createRf1086AuthorityClient({
+          environment: "production",
+          accessToken: token.accessToken,
+        });
+        const submitted = await executeJournaledRf1086Production({
           submissionId: submission.id,
           incomeYear: preview.income_year,
           hovedskjemaXml: preview.hovedskjema_xml,
           underskjemaXml: preview.underskjema_xml as Record<string, string>,
         }, {
           journal: createRf1086DatabaseJournal(service),
-          authorityClient: createRf1086AuthorityClient({ environment: "production", accessToken: token.accessToken }),
+          authorityClient,
         });
+        const leaseId = randomUUID();
+        if (await claimRf1086FeedbackLease(service, submission.id, leaseId)) {
+          try {
+            await reconcileJournaledRf1086Production(
+              createRf1086FeedbackJournal(service, {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                userId: user.id,
+                forsendelseId: submitted.forsendelseId,
+                leaseId,
+              }),
+              authorityClient,
+              {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                forsendelseId: submitted.forsendelseId,
+                hovedskjemaXml: preview.hovedskjema_xml,
+                underskjemaXml: preview.underskjema_xml as Record<string, string>,
+              },
+              { initialPoll: true },
+            );
+          } finally {
+            await releaseRf1086FeedbackLease(service, submission.id, leaseId);
+          }
+        }
       },
       discardToken(token) {
         token.accessToken = "";
@@ -4939,6 +5120,204 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   }
   revalidatePath(returnTo);
   redirect(`${returnTo}?sent=1`);
+}
+
+export type Rf1086ReconciliationActionState = {
+  state: Rf1086ReconciliationState;
+  error: string | null;
+  requiresManualRetry: boolean;
+};
+
+export async function reconcileRf1086ProductionAction(
+  previousState: Rf1086ReconciliationActionState,
+  formData: FormData,
+): Promise<Rf1086ReconciliationActionState> {
+  let submissionId: string;
+  try {
+    submissionId = requiredFormUuid(formData, "submissionId");
+  } catch {
+    return { ...previousState, error: "Innsendingen kunne ikke identifiseres.", requiresManualRetry: true };
+  }
+  if (!hasSupabaseEnv()) {
+    return { ...previousState, error: "Statuskontrollen er midlertidig utilgjengelig.", requiresManualRetry: true };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { ...previousState, error: "Innlogging kreves.", requiresManualRetry: true };
+  }
+
+  const { data: submission, error: submissionError } = await supabase
+    .from("production_filing_submissions")
+    .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,environment,feedback_state,feedback_forsendelse_id")
+    .eq("id", submissionId)
+    .single();
+  if (
+    submissionError
+    || !submission
+    || submission.user_id !== user.id
+    || submission.obligation !== "aksjonaerregisteroppgaven"
+    || submission.case_profile !== "rf1086_no_activity_v1"
+    || submission.environment !== "production"
+  ) {
+    return { ...previousState, error: "Innsendingen er ikke tilgjengelig.", requiresManualRetry: true };
+  }
+  const storedState = submission.feedback_state as Rf1086ReconciliationState;
+  if (["accepted", "rejected", "action_required"].includes(storedState)) {
+    return { state: storedState, error: null, requiresManualRetry: false };
+  }
+
+  const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
+    supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", submission.company_id)
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+    supabase
+      .from("filing_approval_snapshots")
+      .select("id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,invalidated_at")
+      .eq("id", submission.approval_id)
+      .single(),
+    supabase
+      .from("production_pilot_entitlements")
+      .select("id,company_id,user_id,income_year,obligation,case_profile,system_user_request_id,system_user_external_reference")
+      .eq("id", submission.entitlement_id)
+      .single(),
+    supabase.from("companies").select("id,org_number").eq("id", submission.company_id).single(),
+  ]);
+  const membership = membershipResult.data;
+  const approval = approvalResult.data;
+  const entitlement = entitlementResult.data;
+  const company = companyResult.data;
+  if (
+    membershipResult.error
+    || !membership
+    || membership.role !== "owner"
+    || !membership.accepted_at
+    || approvalResult.error
+    || !approval
+    || approval.company_id !== submission.company_id
+    || approval.user_id !== user.id
+    || approval.entitlement_id !== entitlement?.id
+    || approval.income_year !== submission.income_year
+    || approval.obligation !== submission.obligation
+    || approval.case_profile !== submission.case_profile
+    || entitlementResult.error
+    || !entitlement
+    || entitlement.company_id !== submission.company_id
+    || entitlement.user_id !== user.id
+    || entitlement.income_year !== submission.income_year
+    || entitlement.obligation !== submission.obligation
+    || entitlement.case_profile !== submission.case_profile
+    || !entitlement.system_user_request_id
+    || companyResult.error
+    || !company
+  ) {
+    return { state: storedState, error: "Produksjonsgrunnlaget er ikke lenger gyldig.", requiresManualRetry: true };
+  }
+
+  const [{ data: systemUserRequest, error: requestError }, { data: preview, error: previewError }] = await Promise.all([
+    supabase
+      .from("system_user_requests")
+      .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+      .eq("id", entitlement.system_user_request_id)
+      .single(),
+    supabase
+      .from("filing_previews")
+      .select("id,company_id,income_year,hovedskjema_xml,underskjema_xml")
+      .eq("id", approval.preview_id)
+      .single(),
+  ]);
+  if (
+    requestError
+    || !systemUserRequest
+    || systemUserRequest.company_id !== submission.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== submission.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+    || previewError
+    || !preview
+    || preview.company_id !== submission.company_id
+    || preview.income_year !== submission.income_year
+    || !preview.hovedskjema_xml
+    || !submission.feedback_forsendelse_id
+  ) {
+    return { state: storedState, error: "Den verifiserte tilkoblingen eller innsendingen mangler.", requiresManualRetry: true };
+  }
+
+  let configuration;
+  let service;
+  try {
+    configuration = rf1086ProductionEnvironment();
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    return { state: storedState, error: "Statuskontrollen er ikke konfigurert.", requiresManualRetry: true };
+  }
+  if (!configuration) {
+    return { state: storedState, error: "Statuskontrollen er deaktivert.", requiresManualRetry: true };
+  }
+
+  const leaseId = randomUUID();
+  let claimed = false;
+  let delegatedToken: Awaited<ReturnType<typeof requestMaskinportenToken>> | null = null;
+  try {
+    const claim = await service.rpc("claim_production_feedback_reconciliation", {
+      p_submission_id: submission.id,
+      p_lease_id: leaseId,
+    });
+    if (claim.error) throw new Error("Tilbakemeldingskontrollen kunne ikke reserveres.");
+    claimed = claim.data === true;
+    if (!claimed) {
+      return { state: storedState, error: "En statuskontroll pågår allerede.", requiresManualRetry: true };
+    }
+    delegatedToken = await requestMaskinportenToken({
+      ...configuration,
+      systemUserOrgNumber: company.org_number,
+      systemUserExternalRef: systemUserRequest.external_ref,
+    });
+    const result = await reconcileJournaledRf1086Production(
+      createRf1086FeedbackJournal(service, {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        userId: user.id,
+        forsendelseId: submission.feedback_forsendelse_id,
+        leaseId,
+      }),
+      createRf1086AuthorityClient({
+        environment: "production",
+        accessToken: delegatedToken.accessToken,
+      }),
+      {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        forsendelseId: submission.feedback_forsendelse_id,
+        hovedskjemaXml: preview.hovedskjema_xml,
+        underskjemaXml: preview.underskjema_xml as Record<string, string>,
+      },
+      { initialPoll: false },
+    );
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return { state: result.state, error: null, requiresManualRetry: false };
+  } catch {
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return { state: storedState, error: "Statusen kunne ikke kontrolleres nå. Prøv igjen manuelt.", requiresManualRetry: true };
+  } finally {
+    if (delegatedToken) delegatedToken.accessToken = "";
+    if (claimed) {
+      await service.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submission.id,
+        p_lease_id: leaseId,
+      });
+    }
+  }
 }
 
 export async function postManualJournal(formData: FormData) {

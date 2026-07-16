@@ -34,9 +34,21 @@ export type Rf1086AuthoritySubmissionResult = {
     totalItems: number;
     totalPages: number;
     currentPage: number;
-    documents: string[];
+    documents: Rf1086ArchiveDocument[];
   };
   calls: Rf1086AuthorityCallEvidence[];
+};
+
+export type Rf1086ArchiveDocumentReference = {
+  reference: string;
+};
+
+export type Rf1086ArchiveDocument = string | Rf1086ArchiveDocumentReference;
+
+export type Rf1086AuthorityDocument = {
+  reference: string;
+  contentType: string;
+  bytes: Uint8Array;
 };
 
 type FetchLike = (
@@ -62,6 +74,14 @@ const BASE_URLS: Record<Rf1086AuthorityEnvironment, string> = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_CONTENT_TYPES = new Set([
+  "application/xml",
+  "text/xml",
+  "application/pdf",
+  "text/plain",
+  "application/octet-stream",
+]);
 
 export class Rf1086AuthorityError extends Error {
   readonly status: number | null;
@@ -158,6 +178,57 @@ function parseAuthorityError(status: number, parsed: unknown): Rf1086AuthorityEr
     specificationCodes: specificationObjects.map((value) => safeString(value.kode)).filter(Boolean),
     retryable: retryableFailure(status, code),
   });
+}
+
+async function boundedResponseBytes(response: Response, maximumBytes = MAX_DOCUMENT_BYTES) {
+  const statedLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(statedLength) && statedLength > maximumBytes) {
+    throw new Rf1086AuthorityError("RF-1086 authority document exceeds the permitted response size.", {
+      status: response.status,
+      code: "RF1086_DOCUMENT_TOO_LARGE",
+      retryable: false,
+    });
+  }
+  if (!response.body) return new Uint8Array();
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > maximumBytes) {
+        await reader.cancel();
+        throw new Rf1086AuthorityError("RF-1086 authority document exceeds the permitted response size.", {
+          status: response.status,
+          code: "RF1086_DOCUMENT_TOO_LARGE",
+          retryable: false,
+        });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function strictDocumentReference(value: unknown): Rf1086ArchiveDocumentReference | null {
+  const object = safeObject(value);
+  const keys = Object.keys(object);
+  if (keys.length !== 1 || !["dokumentId", "documentId"].includes(keys[0])) return null;
+  const reference = object[keys[0]];
+  return typeof reference === "string" && UUID_PATTERN.test(reference)
+    ? { reference }
+    : null;
 }
 
 export type Rf1086AuthorityClient = ReturnType<typeof createRf1086AuthorityClient>;
@@ -303,16 +374,95 @@ export function createRf1086AuthorityClient(input: AuthorityClientInput) {
         method: "GET",
         endpoint: `${baseUrl}/${year}/forsendelser/${referenceId}/dokumenter?page=${page}&size=${size}`,
       });
-      const documents = Array.isArray(result.data.dokumenter)
-        ? result.data.dokumenter.filter((value): value is string => typeof value === "string")
-        : [];
+      const rawDocuments = result.data.dokumenter;
+      const documents: Rf1086ArchiveDocument[] = [];
+      let documentShapeValid = Array.isArray(rawDocuments);
+      if (Array.isArray(rawDocuments)) {
+        for (const value of rawDocuments) {
+          if (typeof value === "string" && value.trim()) {
+            documents.push(value);
+            continue;
+          }
+          const reference = strictDocumentReference(value);
+          if (reference) {
+            documents.push(reference);
+            continue;
+          }
+          documentShapeValid = false;
+        }
+      }
+      const totalItems = Number(result.data.totalItems ?? documents.length);
+      const totalPages = Number(result.data.totalPages ?? (documents.length ? 1 : 0));
+      const currentPage = Number(result.data.currentPage ?? page);
+      documentShapeValid = documentShapeValid
+        && Number.isInteger(totalItems) && totalItems >= documents.length
+        && Number.isInteger(totalPages) && totalPages >= 0
+        && Number.isInteger(currentPage) && currentPage >= 0;
       return {
-        totalItems: Number(result.data.totalItems ?? documents.length),
-        totalPages: Number(result.data.totalPages ?? (documents.length ? 1 : 0)),
-        currentPage: Number(result.data.currentPage ?? page),
+        totalItems,
+        totalPages,
+        currentPage,
         documents,
+        documentShapeValid,
         call: result.call,
       };
+    },
+
+    async getDocument(options: {
+      incomeYear: number;
+      forsendelseId: string;
+      documentId: string;
+    }): Promise<Rf1086AuthorityDocument> {
+      const year = incomeYear(options.incomeYear);
+      const forsendelseId = requiredUuid(options.forsendelseId, "RF-1086 forsendelse id");
+      const documentId = requiredUuid(options.documentId, "RF-1086 document id");
+      let response: Response;
+      try {
+        response = await fetchImplementation(
+          `${baseUrl}/${encodeURIComponent(String(year))}/forsendelser/${encodeURIComponent(forsendelseId)}/dokumenter/${encodeURIComponent(documentId)}`,
+          {
+            method: "GET",
+            headers: {
+              accept: [...DOCUMENT_CONTENT_TYPES].join(", "),
+              authorization: `Bearer ${accessToken}`,
+            },
+            signal: AbortSignal.timeout(timeoutMs),
+          },
+        );
+      } catch (cause) {
+        throw new Rf1086AuthorityError("RF-1086 authority request failed before a response was received.", {
+          code: "RF1086_NETWORK_ERROR",
+          retryable: true,
+          cause,
+        });
+      }
+
+      const bytes = await boundedResponseBytes(response);
+      if (!response.ok) {
+        let parsed: unknown = {};
+        try {
+          parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+        } catch {
+          parsed = {};
+        }
+        throw parseAuthorityError(response.status, parsed);
+      }
+      const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+      if (!DOCUMENT_CONTENT_TYPES.has(contentType)) {
+        throw new Rf1086AuthorityError("RF-1086 authority document has a disallowed content type.", {
+          status: response.status,
+          code: "RF1086_DOCUMENT_CONTENT_TYPE",
+          retryable: false,
+        });
+      }
+      if (bytes.byteLength < 1) {
+        throw new Rf1086AuthorityError("RF-1086 authority document was empty.", {
+          status: response.status,
+          code: "RF1086_DOCUMENT_EMPTY",
+          retryable: false,
+        });
+      }
+      return { reference: documentId, contentType, bytes };
     },
   };
 }

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { Rf1086AuthorityError } from "../app/lib/rf1086-authority-client.ts";
-import { executeJournaledRf1086Production } from "../app/lib/rf1086-production.ts";
+import {
+  executeJournaledRf1086Production,
+  reconcileJournaledRf1086Production,
+} from "../app/lib/rf1086-production.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
@@ -90,6 +93,23 @@ test("persists stable prepared keys before each authority mutation and reports p
   assert.equal(result.status, "processing");
   assert.equal(result.forsendelseId, "30000000-0000-4000-8000-000000000003");
   assert.equal(result.finalAuthorityDecision, null);
+});
+
+test("confirmation remains journaled when the first archive read is still pending", async () => {
+  const journal = createJournal();
+  const authorityClient = createAuthorityClient();
+  authorityClient.listDocuments = async () => {
+    throw pendingError();
+  };
+
+  const result = await executeJournaledRf1086Production(input, { journal, authorityClient });
+
+  assert.equal(result.status, "received");
+  assert.equal(result.documentCount, 0);
+  assert.deepEqual(journal.operations.map((operation) => [operation.name, operation.state]).slice(-2), [
+    ["confirm", "succeeded"],
+    ["list_documents", "succeeded"],
+  ]);
 });
 
 test("resumes succeeded mutations without sending them twice", async () => {
@@ -180,4 +200,209 @@ test("records an explicit authority rejection as blocked without leaking XML", a
   await assert.rejects(executeJournaledRf1086Production(input, { journal, authorityClient }), /validation rejected/u);
   assert.equal(journal.operations[0].failureClassification, "blocked");
   assert.doesNotMatch(JSON.stringify(journal.operations), /<H|<U/u);
+});
+
+const FEEDBACK_NS = "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2";
+const forsendelseId = "30000000-0000-4000-8000-000000000003";
+const acceptedFeedback = `
+  <tilbakemelding xmlns="${FEEDBACK_NS}">
+    <innsending><forsendelseid>${forsendelseId}</forsendelseid></innsending>
+    <fil><leveranse><leveransestatus>godkjent</leveransestatus><inntektsaar>2025</inntektsaar></leveranse></fil>
+  </tilbakemelding>`;
+
+function createReconciliationJournal(state = "sent") {
+  const artifacts = new Map();
+  const events = [];
+  let snapshot = { state, artifactHashes: [], safeErrorCode: null, correlationId: null };
+  return {
+    artifacts,
+    events,
+    async readReconciliationState() {
+      return { ...snapshot, artifactHashes: [...snapshot.artifactHashes] };
+    },
+    async recordArtifact(artifact) {
+      artifacts.set(artifact.sha256, { ...artifact, bytes: new Uint8Array(artifact.bytes) });
+      return artifact.sha256;
+    },
+    async appendReconciliation(event) {
+      const artifactHashes = [...event.artifactHashes].sort();
+      if (
+        snapshot.state === event.state
+        && JSON.stringify(snapshot.artifactHashes) === JSON.stringify(artifactHashes)
+        && snapshot.safeErrorCode === event.safeErrorCode
+        && snapshot.correlationId === event.correlationId
+      ) return false;
+      snapshot = { ...event, artifactHashes };
+      events.push({ kind: "reconciliation", ...event, artifactHashes });
+      return true;
+    },
+  };
+}
+
+function pendingError(specificationCodes = ["GLD_1017"]) {
+  return new Rf1086AuthorityError("pending", {
+    status: 404,
+    code: "GLD_021",
+    specificationCodes,
+    retryable: false,
+  });
+}
+
+test("initial reconciliation polls five times without another POST", async () => {
+  const journal = createReconciliationJournal("sent");
+  const sequence = [
+    pendingError(),
+    { totalItems: 0, totalPages: 0, currentPage: 0, documents: [], documentShapeValid: true },
+    pendingError(),
+    { totalItems: 0, totalPages: 0, currentPage: 0, documents: [], documentShapeValid: true },
+    { totalItems: 1, totalPages: 1, currentPage: 0, documents: [acceptedFeedback], documentShapeValid: true },
+  ];
+  const authority = {
+    postCalls: 0,
+    async listDocuments() {
+      const next = sequence.shift();
+      if (next instanceof Error) throw next;
+      return next;
+    },
+    async getDocument() {
+      throw new Error("not expected");
+    },
+  };
+
+  const result = await reconcileJournaledRf1086Production(journal, authority, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    forsendelseId,
+    hovedskjemaXml: "<H />",
+    underskjemaXml: { owner: "<U />" },
+  }, { initialPoll: true, sleep: async () => {} });
+
+  assert.equal(result.state, "accepted");
+  assert.equal(result.archiveReads, 5);
+  assert.equal(authority.postCalls, 0);
+  assert.equal(journal.events.length, 1);
+  assert.equal(journal.artifacts.size, 1);
+  assert.doesNotMatch(JSON.stringify(journal.events), /tilbakemelding|<H|<U/u);
+});
+
+test("later reconciliation reads once and appends only state or artifact changes", async () => {
+  const journal = createReconciliationJournal("sent");
+  let archiveReads = 0;
+  const authority = {
+    async listDocuments() {
+      archiveReads += 1;
+      return { totalItems: 0, totalPages: 0, currentPage: 0, documents: [], documentShapeValid: true };
+    },
+    async getDocument() {
+      throw new Error("not expected");
+    },
+  };
+  const reconciliationInput = {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    forsendelseId,
+    hovedskjemaXml: "<H />",
+    underskjemaXml: { owner: "<U />" },
+  };
+
+  await reconcileJournaledRf1086Production(journal, authority, reconciliationInput, { initialPoll: false });
+  await reconcileJournaledRf1086Production(journal, authority, reconciliationInput, { initialPoll: false });
+
+  assert.equal(archiveReads, 2);
+  assert.equal(journal.events.filter((event) => event.kind === "reconciliation").length, 1);
+  assert.equal(journal.events[0].state, "processing");
+});
+
+test("submitted XML hashes are ignored while strict references are downloaded and classified", async () => {
+  const journal = createReconciliationJournal("processing");
+  let documentReads = 0;
+  const authority = {
+    async listDocuments() {
+      return {
+        totalItems: 3,
+        totalPages: 1,
+        currentPage: 0,
+        documents: ["<H />", "<U />", { reference: "40000000-0000-4000-8000-000000000004" }],
+        documentShapeValid: true,
+      };
+    },
+    async getDocument({ documentId }) {
+      documentReads += 1;
+      return {
+        reference: documentId,
+        contentType: "application/xml",
+        bytes: new TextEncoder().encode(acceptedFeedback),
+      };
+    },
+  };
+  const result = await reconcileJournaledRf1086Production(journal, authority, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    forsendelseId,
+    hovedskjemaXml: "<H />",
+    underskjemaXml: { owner: "<U />" },
+  }, { initialPoll: false });
+
+  assert.equal(result.state, "accepted");
+  assert.equal(documentReads, 1);
+  assert.equal(journal.artifacts.size, 1);
+});
+
+test("unknown archive shapes and malformed or mismatched feedback require action", async () => {
+  for (const response of [
+    { totalItems: 1, totalPages: 1, currentPage: 0, documents: [], documentShapeValid: false },
+    {
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 0,
+      documents: [acceptedFeedback.replace(forsendelseId, "40000000-0000-4000-8000-000000000004")],
+      documentShapeValid: true,
+    },
+  ]) {
+    const journal = createReconciliationJournal("processing");
+    const authority = {
+      async listDocuments() { return response; },
+      async getDocument() { throw new Error("not expected"); },
+    };
+    const result = await reconcileJournaledRf1086Production(journal, authority, {
+      submissionId: "submission-id",
+      companyId: "company-id",
+      incomeYear: 2025,
+      forsendelseId,
+      hovedskjemaXml: "<H />",
+      underskjemaXml: { owner: "<U />" },
+    }, { initialPoll: false });
+    assert.equal(result.state, "action_required");
+  }
+});
+
+test("transport uncertainty is durable unknown with safe codes only", async () => {
+  const journal = createReconciliationJournal("processing");
+  const authority = {
+    async listDocuments() {
+      throw new Rf1086AuthorityError("raw transport details", {
+        status: null,
+        code: "RF1086_NETWORK_ERROR",
+        correlationId: "safe-correlation-1",
+        retryable: true,
+      });
+    },
+    async getDocument() { throw new Error("not expected"); },
+  };
+  const result = await reconcileJournaledRf1086Production(journal, authority, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    forsendelseId,
+    hovedskjemaXml: "<H />",
+    underskjemaXml: { owner: "<U />" },
+  }, { initialPoll: false });
+
+  assert.equal(result.state, "unknown");
+  assert.equal(journal.events[0].safeErrorCode, "RF1086_NETWORK_ERROR");
+  assert.equal(journal.events[0].correlationId, "safe-correlation-1");
+  assert.doesNotMatch(JSON.stringify(journal.events), /raw transport details/u);
 });
