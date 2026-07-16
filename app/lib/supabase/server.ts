@@ -51,6 +51,19 @@ export type LaunchSignoffRow = {
   updated_at: string;
 };
 
+export type AuthorityOperationRow = {
+  id: string;
+  operation: "register_rf1086_system";
+  actor_id: string;
+  status: "started" | "succeeded" | "failed" | "conflict";
+  request_hash: string;
+  result_code: string;
+  authority_http_status: number | null;
+  metadata: { systemId?: string; clientId?: string; right?: string };
+  created_at: string;
+  completed_at: string | null;
+};
+
 export type DocumentRow = {
   id: string;
   company_id: string;
@@ -1214,6 +1227,36 @@ export async function listLaunchSignoffs(actorId?: string | null) {
     isOperator,
     isAdminOperator,
     error: error?.message ?? null,
+  };
+}
+
+export async function listAuthorityOperations(actorId?: string | null) {
+  if (!hasSupabaseEnv() || !actorId) {
+    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", actorId)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError) {
+    return {
+      operations: [] as AuthorityOperationRow[],
+      isAdminOperator: false,
+      error: "authority_operator_lookup_failed",
+    };
+  }
+  if (!operator) {
+    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+  }
+  const { data, error } = await supabase.from("authority_operations").select("*").order("created_at", { ascending: false }).limit(10);
+  return {
+    operations: (data ?? []) as AuthorityOperationRow[],
+    isAdminOperator: true,
+    error: error ? "authority_operations_query_failed" : null,
   };
 }
 

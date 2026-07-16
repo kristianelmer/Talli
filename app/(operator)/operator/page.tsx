@@ -1,4 +1,8 @@
-import { recordLaunchSignoff, upsertProductionPilotEntitlement } from "../../actions";
+import {
+  recordLaunchSignoff,
+  runProductionAuthorityOperation,
+  upsertProductionPilotEntitlement,
+} from "../../actions";
 import {
   buildLaunchSignoffGate,
   launchSignoffKeys,
@@ -6,12 +10,38 @@ import {
 } from "../../lib/launch-signoff";
 import {
   getCurrentUser,
+  listAuthorityOperations,
   listLaunchSignoffs,
   searchOperatorSupportDashboard,
 } from "../../lib/supabase/server";
 
 type OperatorProps = {
-  searchParams?: Promise<{ operatorOrg?: string; error?: string; pilot?: string }>;
+  searchParams?: Promise<{
+    operatorOrg?: string;
+    error?: string;
+    pilot?: string;
+    authority?: string;
+  }>;
+};
+
+const authorityResultMessages: Record<string, string> = {
+  created_and_verified: "Systemet ble opprettet og verifisert i produksjon.",
+  already_verified: "Systemet finnes allerede og samsvarer med den faste definisjonen.",
+  definition_conflict: "Eksisterende system avviker. Ingen overskriving ble utført.",
+  authority_ops_disabled: "Produksjonsoperasjoner er deaktivert.",
+  authority_step_up_required: "Fersk AAL2/MFA kreves før operasjonen kan kjøres.",
+  authority_step_up_failed: "AAL2/MFA-kontrollen kunne ikke fullføres.",
+  authority_operation_invalid: "Operasjonen eller bekreftelsesfrasen var ugyldig.",
+  admin_operator_required: "Aktiv admin-operatør kreves.",
+  authority_environment_invalid: "Produksjonsmiljøet er ugyldig konfigurert.",
+  authority_audit_unavailable: "Revisjonsloggen er ikke tilgjengelig.",
+  authority_audit_start_failed: "Operasjonen ble ikke startet fordi revisjonsloggen feilet.",
+  authority_audit_completion_failed: "Resultatet kunne ikke ferdigstilles i revisjonsloggen.",
+  authority_token_error: "Maskinporten-token kunne ikke hentes.",
+  authority_network_error: "Nettverkskallet til Altinn feilet.",
+  authority_http_error: "Altinn avviste operasjonen.",
+  authority_response_invalid: "Altinn returnerte et ugyldig svar.",
+  authority_operation_failed: "Produksjonsoperasjonen feilet.",
 };
 
 export default async function OperatorPage({ searchParams }: OperatorProps) {
@@ -24,6 +54,10 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
   const launchSignoffState = user
     ? await listLaunchSignoffs(user.id)
     : { launchSignoffs: [], isOperator: false, isAdminOperator: false, error: null };
+  const authorityState = user
+    ? await listAuthorityOperations(user.id)
+    : { operations: [], isAdminOperator: false, error: null };
+  const authorityOpsEnabled = process.env.TALLI_AUTHORITY_OPS_ENABLED === "true";
   const launchSignoffGate = buildLaunchSignoffGate({
     signoffs: launchSignoffState.launchSignoffs.map((signoff) => ({
       key: signoff.key,
@@ -49,6 +83,11 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
         </div>
         {params?.error ? <p className="errorText">{params.error}</p> : null}
         {params?.pilot === "updated" ? <p className="successText">Produksjonspiloten er oppdatert.</p> : null}
+        {params?.authority ? (
+          <p className={params.authority === "created_and_verified" || params.authority === "already_verified" ? "successText" : "errorText"}>
+            {authorityResultMessages[params.authority] ?? "Ukjent resultat fra produksjonsoperasjonen."}
+          </p>
+        ) : null}
         <form className="dataPanel formPanel widePanel" method="get">
           <label>
             Org.nr eller navn
@@ -148,6 +187,42 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                 <label><input name="billingExempt" type="checkbox" defaultChecked /> Gratis, invitert beta</label>
                 <button className="secondaryButton" type="submit">Lagre eksakt entitlement</button>
               </form>
+              <form className="dataPanel formPanel widePanel" action={runProductionAuthorityOperation}>
+                <h3>Produksjon · Systemregister</h3>
+                <p>
+                  Status: <strong>{authorityOpsEnabled ? "Midlertidig aktivert" : "Deaktivert"}</strong>
+                </p>
+                <p>System: <code>930835978_talli</code></p>
+                <p>Rettighet: <code>ske-innrapportering-aksjonaerregisteroppgave</code></p>
+                <p>Operasjonen verifiserer eksisterende definisjon og overskriver aldri en konflikt.</p>
+                <input type="hidden" name="operation" value="register_rf1086_system" />
+                <label>
+                  Skriv REGISTER TALLI RF1086 SYSTEM
+                  <input name="confirmation" autoComplete="off" required />
+                </label>
+                <button className="secondaryButton" type="submit" disabled={!authorityOpsEnabled}>
+                  Registrer eller verifiser system
+                </button>
+              </form>
+              {authorityState.error ? (
+                <p className="errorText">Kunne ikke lese revisjonsloggen for produksjonsoperasjoner.</p>
+              ) : null}
+              <div className="readinessGrid">
+                {authorityState.operations.map((operation) => (
+                  <div className="readinessItem" key={operation.id}>
+                    <span>{operation.operation}</span>
+                    <strong data-status={operation.status === "succeeded" ? "ready" : "warning"}>
+                      {operation.status} · {operation.result_code}
+                    </strong>
+                    <p>HTTP: {operation.authority_http_status ?? "–"}</p>
+                    <p>System: {operation.metadata.systemId ?? "–"}</p>
+                    <p>Klient: {operation.metadata.clientId ?? "–"}</p>
+                    <p>Rettighet: {operation.metadata.right ?? "–"}</p>
+                    <p>Startet: {new Date(operation.created_at).toLocaleString("nb-NO")}</p>
+                    <p>Fullført: {operation.completed_at ? new Date(operation.completed_at).toLocaleString("nb-NO") : "Pågår"}</p>
+                  </div>
+                ))}
+              </div>
               </>
             ) : null}
           </>
