@@ -6,14 +6,19 @@ const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf
 const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
 const operatorPage = readFileSync(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8");
 const supabaseServer = readFileSync(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8");
+const systemUserFlow = readFileSync(new URL("../app/lib/system-user-flow.ts", import.meta.url), "utf8");
 
 test("operator entitlement action is exact and database-authorized", () => {
   assert.match(actions, /export async function upsertProductionPilotEntitlement/u);
   assert.match(actions, /requiredFormUuid\(formData, "companyId"\)/u);
   assert.match(actions, /requiredFormUuid\(formData, "ownerUserId"\)/u);
   assert.match(actions, /manage_production_pilot_entitlement/u);
-  assert.match(actions, /p_system_user_external_reference/u);
+  assert.match(actions, /requiredFormUuid\(formData, "systemUserRequestId"\)/u);
+  assert.match(actions, /p_system_user_request_id:\s*systemUserRequestId/u);
+  assert.doesNotMatch(actions, /p_system_user_external_reference/u);
   assert.match(operatorPage, /Eksakt RF-1086-produksjonspilot/u);
+  assert.match(operatorPage, /name="systemUserRequestId"/u);
+  assert.doesNotMatch(operatorPage, /name="systemUserExternalReference"/u);
   assert.doesNotMatch(operatorPage, /skattemelding.*produksjonspilot|årsregnskap.*produksjonspilot/iu);
 });
 
@@ -34,10 +39,23 @@ test("send action rechecks approval, uses production-only credentials, and journ
   assert.match(actions, /rf1086ProductionEnvironment\(\)/u);
   assert.match(actions, /requestMaskinportenToken/u);
   assert.match(actions, /begin_production_filing/u);
+  assert.match(actions, /entitlement\.system_user_request_id/u);
+  assert.match(actions, /from\("system_user_requests"\)/u);
+  assert.match(actions, /systemUserRequest\.company_id !== approval\.company_id/u);
+  assert.match(actions, /systemUserRequest\.initiating_owner_user_id !== user\.id/u);
+  assert.match(actions, /systemUserRequest\.obligation !== approval\.obligation/u);
+  assert.match(actions, /systemUserRequest\.status !== "accepted"/u);
+  assert.match(actions, /!systemUserRequest\.preflight_verified_at/u);
+  assert.match(actions, /systemUserRequest\.external_ref !== entitlement\.system_user_external_reference/u);
+  assert.match(actions, /systemUserExternalRef:\s*systemUserRequest\.external_ref/u);
   assert.match(actions, /createSupabaseServiceRoleClient/u);
   assert.ok(
     actions.indexOf("createSupabaseServiceRoleClient()") < actions.indexOf('rpc("begin_production_filing"'),
     "service-role journal configuration must fail before a sending row is created",
+  );
+  assert.ok(
+    actions.indexOf('rpc("begin_production_filing"') < actions.indexOf("requestMaskinportenToken({", actions.indexOf("sendApprovedRf1086ProductionFiling")),
+    "the database release gate must pass before requesting a delegated filing token",
   );
   assert.match(actions, /order\("created_at", \{ ascending: false \}\)[\s\S]{0,100}limit\(1\)/u);
   assert.match(actions, /retryableFailure = latest\.operation_state === "failed"[\s\S]{0,80}latest\.failure_class === "retryable"/u);
@@ -46,6 +64,27 @@ test("send action rechecks approval, uses production-only credentials, and journ
   assert.match(actions, /executeJournaledRf1086Production/u);
   assert.match(actions, /environment: "production"/u);
   assert.doesNotMatch(actions, /executeJournaledRf1086Production[\s\S]{0,1200}environment: "test"/u);
+});
+
+test("owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration", () => {
+  const ownerConnectionActions = actions.slice(
+    actions.indexOf("export async function startSystemUserRequestAction"),
+    actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
+  );
+  assert.match(ownerConnectionActions, /export async function startSystemUserRequestAction/u);
+  assert.match(ownerConnectionActions, /export async function refreshSystemUserRequestAction/u);
+  assert.match(ownerConnectionActions, /requiredFormUuid\(formData, "companyId"\)/u);
+  assert.match(ownerConnectionActions, /requiredFormUuid\(formData, "requestId"\)/u);
+  assert.match(ownerConnectionActions, /randomUUID\(\)/u);
+  assert.match(ownerConnectionActions, /requireSensitiveActionStepUp\([\s\S]{0,160}"system_user_connection"\)/u);
+  assert.match(systemUserFlow, /begin_system_user_request/u);
+  assert.match(systemUserFlow, /talli_system_user_request/u);
+  assert.match(systemUserFlow, /httpOnly:\s*true/u);
+  assert.match(systemUserFlow, /secure:\s*true/u);
+  assert.match(systemUserFlow, /sameSite:\s*"lax"/u);
+  assert.match(systemUserFlow, /path:\s*"\/auth\/systembruker\/confirm"/u);
+  assert.match(systemUserFlow, /maxAge:\s*3600/u);
+  assert.doesNotMatch(ownerConnectionActions, /formString\(formData, "(?:orgNumber|ownerId|externalRef|altinnRequestId)"\)/u);
 });
 
 test("production UI never equates receipt transport with final acceptance", () => {

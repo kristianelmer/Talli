@@ -1,7 +1,8 @@
 "use server";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AdminCostCategory,
@@ -130,6 +131,15 @@ import {
 } from "./lib/rf1086-production";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
 import { requestMaskinportenToken } from "./lib/maskinporten";
+import {
+  SYSTEM_USER_COOKIE,
+  callbackStateForResult,
+  createProductionSystemUserFlowDependencies,
+  reconcileSystemUserRequest,
+  retrySystemUserRequest,
+  startSystemUserRequest,
+  systemUserRequestRecordFromRow,
+} from "./lib/system-user-flow";
 import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
 import {
@@ -4482,6 +4492,155 @@ export async function runProductionSystembrukerCallbackOperation(formData: FormD
   redirect(`/operator?authority=${result.resultCode}`);
 }
 
+function systemUserConnectionTarget(
+  companyId: string | null,
+  state: ReturnType<typeof callbackStateForResult> = "manual",
+) {
+  const query = new URLSearchParams({ systembruker: state });
+  if (companyId) query.set("company", companyId);
+  return `/connections?${query.toString()}`;
+}
+
+async function loadOwnedSystemUserContext(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  companyId: string;
+  requestId?: string;
+}) {
+  const [{ data: company, error: companyError }, { data: membership, error: membershipError }] = await Promise.all([
+    input.supabase
+      .from("companies")
+      .select("id,org_number")
+      .eq("id", input.companyId)
+      .maybeSingle(),
+    input.supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", input.companyId)
+      .eq("user_id", input.userId)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+  ]);
+  if (
+    companyError
+    || membershipError
+    || !company
+    || !membership
+    || company.id !== input.companyId
+    || membership.company_id !== input.companyId
+    || membership.user_id !== input.userId
+    || !/^\d{9}$/u.test(company.org_number)
+  ) {
+    return null;
+  }
+
+  if (!input.requestId) return { company, request: null };
+  const { data: request, error: requestError } = await input.supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code")
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId)
+    .eq("initiating_owner_user_id", input.userId)
+    .maybeSingle();
+  if (requestError || !request) return null;
+  return { company, request };
+}
+
+export async function startSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({ supabase, userId: user.id, companyId });
+  if (!context) redirect(systemUserConnectionTarget(companyId));
+
+  let confirmUrl: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const result = await startSystemUserRequest(dependencies, {
+      companyId: context.company.id,
+      requestId: randomUUID(),
+      ownerId: user.id,
+      orgNumber: context.company.org_number,
+    });
+    if (!result.confirmUrl || result.status !== "new") {
+      throw new Error("system_user_confirmation_unavailable");
+    }
+    const cookieStore = await cookies();
+    cookieStore.set(SYSTEM_USER_COOKIE.name, result.requestId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/systembruker/confirm",
+      maxAge: 3600,
+    });
+    confirmUrl = result.confirmUrl;
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(confirmUrl);
+}
+
+export async function refreshSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  let requestId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    requestId = requiredFormUuid(formData, "requestId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({
+    supabase,
+    userId: user.id,
+    companyId,
+    requestId,
+  });
+  if (!context?.request) redirect(systemUserConnectionTarget(companyId));
+
+  let destination: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const request = systemUserRequestRecordFromRow(
+      context.request,
+      context.company.org_number,
+    );
+    const result = request.status === "creating"
+      ? await retrySystemUserRequest(dependencies, request)
+      : await reconcileSystemUserRequest(dependencies, request);
+    revalidatePath("/connections");
+    destination = systemUserConnectionTarget(companyId, callbackStateForResult(result));
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(destination);
+}
+
 const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";
 
 function sha256(value: string) {
@@ -4495,10 +4654,12 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   if (!user) redirect("/login");
   let companyId: string;
   let ownerUserId: string;
+  let systemUserRequestId: string;
   let entitlementId: string | null;
   try {
     companyId = requiredFormUuid(formData, "companyId");
     ownerUserId = requiredFormUuid(formData, "ownerUserId");
+    systemUserRequestId = requiredFormUuid(formData, "systemUserRequestId");
     entitlementId = formString(formData, "entitlementId")
       ? requiredFormUuid(formData, "entitlementId")
       : null;
@@ -4510,13 +4671,11 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   const startsAt = new Date(formString(formData, "startsAt"));
   const expiresAt = new Date(formString(formData, "expiresAt"));
   const evidenceReference = formString(formData, "evidenceReference");
-  const systemUserExternalReference = formString(formData, "systemUserExternalReference");
   if (
     !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100
     || !["pending", "active", "suspended", "completed", "revoked"].includes(status)
     || Number.isNaN(startsAt.valueOf()) || Number.isNaN(expiresAt.valueOf()) || startsAt >= expiresAt
     || !evidenceReference || evidenceReference.length > 1000
-    || !systemUserExternalReference || systemUserExternalReference.length > 200
   ) {
     redirect("/operator?error=Ugyldig%20produksjonspilot-entitlement");
   }
@@ -4527,7 +4686,7 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
     p_income_year: incomeYear,
     p_status: status,
     p_billing_exempt: formData.get("billingExempt") === "on",
-    p_system_user_external_reference: systemUserExternalReference,
+    p_system_user_request_id: systemUserRequestId,
     p_starts_at: startsAt.toISOString(),
     p_expires_at: expiresAt.toISOString(),
     p_evidence_reference: evidenceReference,
@@ -4699,6 +4858,25 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
     redirect(`${returnTo}?error=Produksjonsgrunnlaget%20er%20ufullstendig`);
   }
+  if (!entitlement.system_user_request_id) {
+    redirect(`${returnTo}?error=Systembrukerforesp%C3%B8rselen%20mangler`);
+  }
+  const { data: systemUserRequest } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+    .eq("id", entitlement.system_user_request_id)
+    .single();
+  if (
+    !systemUserRequest
+    || systemUserRequest.company_id !== approval.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== approval.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+  ) {
+    redirect(`${returnTo}?error=Systembrukerforbindelsen%20er%20ikke%20gyldig`);
+  }
   const currentManifest = buildProductionApprovalManifest({
     companyId: preview.company_id, userId: user.id, organizationNumber: company.org_number,
     incomeYear: preview.income_year, obligation: "aksjonaerregisteroppgaven",
@@ -4721,13 +4899,13 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   } catch (error) {
     redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsjournalen er ikke konfigurert.")}`);
   }
+  const { data: submission, error: beginError } = await supabase.rpc("begin_production_filing", { p_approval_id: approval.id });
+  if (beginError || !submission) redirect(`${returnTo}?error=${encodeURIComponent(beginError?.message ?? "Produksjonsinnsendingen kunne ikke startes.")}`);
   const token = await requestMaskinportenToken({
     ...configuration,
     systemUserOrgNumber: company.org_number,
-    systemUserExternalRef: entitlement.system_user_external_reference,
+    systemUserExternalRef: systemUserRequest.external_ref,
   });
-  const { data: submission, error: beginError } = await supabase.rpc("begin_production_filing", { p_approval_id: approval.id });
-  if (beginError || !submission) redirect(`${returnTo}?error=${encodeURIComponent(beginError?.message ?? "Produksjonsinnsendingen kunne ikke startes.")}`);
   try {
     await executeJournaledRf1086Production({
       submissionId: submission.id,

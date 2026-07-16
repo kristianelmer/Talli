@@ -201,7 +201,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                     <option value="revoked">Revoked</option>
                   </select>
                 </label>
-                <label>Systembruker externalRef<input name="systemUserExternalReference" required /></label>
+                <label>Systembrukerforespørsel-ID<input name="systemUserRequestId" required placeholder="Verifisert request UUID" /></label>
                 <label>Aktiv fra<input name="startsAt" type="datetime-local" required /></label>
                 <label>Utløper<input name="expiresAt" type="datetime-local" required /></label>
                 <label>Evidensreferanse<input name="evidenceReference" required placeholder="Sak/avtale/runbook-referanse" /></label>

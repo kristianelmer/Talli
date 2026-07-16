@@ -1,5 +1,6 @@
 export type SensitiveAction =
   | "authority_operations"
+  | "system_user_connection"
   | "production_filing"
   | "approve_corporate_facts"
   | "attest_signed_corporate_document"
@@ -62,6 +63,12 @@ export const sensitiveActionRequirements: StepUpRequirement[] = [
     requiresMfa: true,
     maxMfaAgeMinutes: 15,
     label: "Produksjonsoperasjon mot myndighet",
+  },
+  {
+    action: "system_user_connection",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Koble selskapet til Altinn Systembruker",
   },
   {
     action: "production_filing",

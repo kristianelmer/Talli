@@ -6,6 +6,7 @@ import {
   MASKINPORTEN_JWT_BEARER_GRANT_TYPE,
   MaskinportenTokenError,
   buildMaskinportenGrant,
+  productionMaskinportenCredentials,
   requestMaskinportenToken,
   signMaskinportenGrant,
   summarizeMaskinportenToken,
@@ -181,5 +182,57 @@ test("fails closed on invalid environment, identifiers, scope, and key material"
       privateKeyPem: "not-a-private-key",
     }),
     /sign Maskinporten grant/i,
+  );
+});
+
+test("loads one production credential set without treating an operations switch as an owner feature gate", () => {
+  const { privateKey } = keyPair();
+  const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+  const environment = {
+    TALLI_AUTHORITY_OPS_ENABLED: "false",
+    TALLI_RF1086_PRODUCTION_ENABLED: "false",
+    TALLI_PROD_MASKINPORTEN_CLIENT_ID: clientId,
+    TALLI_PROD_MASKINPORTEN_KEY_ID: keyId,
+    TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: privateKeyPem,
+  };
+
+  assert.deepEqual(productionMaskinportenCredentials(environment), {
+    environment: "production",
+    clientId,
+    keyId,
+    privateKeyPem,
+  });
+  for (const invalid of [
+    {},
+    { ...environment, TALLI_PROD_MASKINPORTEN_CLIENT_ID: "tt02-client" },
+    { ...environment, TALLI_PROD_MASKINPORTEN_KEY_ID: "" },
+    { ...environment, TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: "/tmp/test.key" },
+  ]) {
+    assert.throws(() => productionMaskinportenCredentials(invalid), /production|credential|PEM|required/i);
+  }
+});
+
+test("rejects a token response that broadens or changes the requested scope", async () => {
+  const { privateKey } = keyPair();
+  await assert.rejects(
+    requestMaskinportenToken({
+      environment: "test",
+      clientId,
+      keyId,
+      scope,
+      systemUserOrgNumber,
+      systemUserExternalRef: "A".repeat(43),
+      privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+    }, {
+      fetch: async () => new Response(JSON.stringify({
+        access_token: "opaque-secret-token",
+        token_type: "Bearer",
+        expires_in: 599,
+        scope: `${scope} extra:scope`,
+      }), { status: 200 }),
+    }),
+    (error) => error instanceof MaskinportenTokenError
+      && error.code === "maskinporten_response_invalid"
+      && !error.message.includes("opaque-secret-token"),
   );
 });
