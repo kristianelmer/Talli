@@ -1,6 +1,7 @@
 # Production E2E verification — 2026-07-16
 
-Status: in progress; Tasks 1–5 passed, Task 6 pending
+Status: complete; CONDITIONAL GO for continued hand-held invited free beta,
+NO-GO for an actual end-to-end production filing today
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -179,7 +180,7 @@ result, deployed-surface observation, or production-readiness verdict.
   and verify test-process cleanup.
 - [x] Task 5 — smoke-test only the deployed public surface through read-only
   Computer Use, without manual credential entry or post-redirect interaction.
-- [ ] Task 6 — rerun decisive gates, reconcile local evidence with read-only
+- [x] Task 6 — rerun decisive gates, reconcile local evidence with read-only
   deployed evidence, grade the result, and list every remaining external gate.
 
 ## Full repository release rehearsal and production build
@@ -679,3 +680,208 @@ login limitation. It does not add evidence that production authority access,
 direct filing, payment, named-company eligibility, delegation, or monitored
 first-filing operations are live; the deployed copy expressly says direct
 production submission is not open.
+
+## Final decisive verification
+
+The decisive Task 6 command ran from `2026-07-16T22:13:06Z` through
+`2026-07-16T22:13:22Z` UTC:
+
+~~~sh
+node --test tests/ci_release_gate.test.mjs tests/filing_release_gate.test.mjs tests/rf1086_production_runbook.test.mjs && npm run typecheck && env -u TALLI_AUTHORITY_OPS_ENABLED -u TALLI_RF1086_PRODUCTION_ENABLED npm run build
+~~~
+
+Result: exit `0`.
+
+- The focused release, filing-gate, and production-runbook tests passed 14/14,
+  with 0 failures, cancellations, skips, or todo tests in `190.070667 ms`.
+- Node emitted the known non-failing `MODULE_TYPELESS_PACKAGE_JSON` warning
+  while reparsing `app/lib/filing-release-gate.ts` as an ES module.
+- `npm run typecheck` completed with no TypeScript diagnostic.
+- Next.js `16.2.9` compiled successfully, completed its TypeScript pass,
+  generated 19/19 static pages, and finalized optimization.
+- The build process received neither production switch because both were
+  removed explicitly with `env -u`.
+- A fresh `git status --short` and `git diff -- next-env.d.ts` produced no
+  output. Next.js did not rewrite the generated file during this run, so no
+  restoration was necessary.
+
+This final local gate used Node `v25.6.1`, while the release workflow uses
+Node 24. The green post-merge workflow below is the runtime-matched CI evidence;
+the local module-type warning remains a quality caveat.
+
+## Post-merge CI and production deployment reconciliation
+
+All external inspection in this section was read-only. It did not inspect
+production environment values, retrieve credentials, change an alias or
+environment, deploy, promote, redeploy, roll back, or incur a charge.
+
+### Customer-ready release gate
+
+The named post-merge run was inspected with:
+
+~~~sh
+gh run view 29528789052 --json databaseId,name,workflowName,displayTitle,status,conclusion,headSha,headBranch,event,url,createdAt,startedAt,updatedAt,jobs
+~~~
+
+Result: exit `0`.
+
+- Workflow and run: `Customer-ready release gate`, run `29528789052`.
+- Event and branch: `push` to `main`.
+- Commit: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`, exactly the
+  immutable release under test.
+- Run status/conclusion: `completed` / `success`.
+- Created and started: `2026-07-16T19:38:14Z`; updated:
+  `2026-07-16T19:42:19Z`.
+- Run URL:
+  `https://github.com/kristianelmer/Talli/actions/runs/29528789052`.
+- `Application`: success, `2026-07-16T19:38:17Z` through
+  `2026-07-16T19:40:33Z`.
+- `Database isolation`: success, `2026-07-16T19:38:17Z` through
+  `2026-07-16T19:42:11Z`.
+- `Release gate`: success, `2026-07-16T19:42:14Z` through
+  `2026-07-16T19:42:18Z`.
+
+Every listed job and step concluded successfully. The application job used
+Node 24 and Python 3.12, scanned tracked source for committed credentials,
+type-checked, ran the complete rehearsal, built, audited production
+dependencies, and rejected whitespace errors. The database-isolation job
+completed its migration/RLS/storage/owner-persistence rehearsal before the
+final release job required both upstream results.
+
+### Vercel production deployment
+
+The current read-only CLI syntax was discovered before inspection:
+
+~~~sh
+npx --yes vercel@latest --version
+npx --yes vercel@latest inspect --help
+~~~
+
+The version command exited `0` and reported Vercel CLI `56.3.0`. The help
+command printed the current `vercel inspect url|deploymentId` syntax and
+`--format=json` option, then exited `2`. During the help invocation, npm
+also emitted a non-failing engine warning because one CLI dependency supports
+Node 20, 22, or 24 while the local runtime is Node 25.
+
+Only the requested production origin was inspected:
+
+~~~sh
+npx --yes vercel@latest inspect https://talli.no --no-color
+~~~
+
+The command ran from `2026-07-16T22:14:09Z` through
+`2026-07-16T22:14:13Z` UTC and exited `0`. It resolved `talli.no` to:
+
+- deployment `dpl_ABtnjv2o7bedEo263zBPgzzTDMsf`;
+- project `talli-web`;
+- target `production`;
+- status `Ready`;
+- deployment URL
+  `https://talli-53qebehz4-kristianelmers-projects.vercel.app`;
+- created `2026-07-16 21:38:15 CEST`;
+- aliases including `https://talli.no` and `https://www.talli.no`.
+
+A value-limited JSON projection of the same `https://talli.no` inspection
+returned `readyState: READY` and did not expose environment configuration.
+That CLI projection did not return Git metadata. The deployment-to-commit link
+was therefore verified separately through the target commit's read-only GitHub
+status:
+
+~~~sh
+gh api repos/kristianelmer/Talli/commits/2ac6ca69b10e00411fbb7bdd3578bf9be0e64297/status --jq '{state,sha,total_count,statuses:[.statuses[]|{context,state,target_url,created_at,updated_at}]}'
+~~~
+
+Result: exit `0`. Commit
+`2ac6ca69b10e00411fbb7bdd3578bf9be0e64297` has a successful `Vercel`
+status at `2026-07-16T19:39:09Z` whose target URL ends in deployment
+`ABtnjv2o7bedEo263zBPgzzTDMsf`, the same identifier resolved from
+`https://talli.no`. This reconciles the immutable release with the current
+Ready production deployment without reading environment values or making a
+deployment change.
+
+The CI and deployment results prove the intended release built and is the
+Ready deployment behind the production alias. They do not prove hosted
+migrations, restore readiness, production switch values, credentials,
+delegation, monitored service quality, or an authority filing.
+
+## Production-readiness verdict
+
+**CONDITIONAL GO** for continued hand-held invited free beta focused on
+preparation/export and Talli-vs-Fiken comparison for an eligible simple
+company. **NO-GO** for an actual end-to-end production filing today.
+
+This is deliberately not an unqualified GO for live filing. The deployed copy
+says direct production submission is not open, both switches remain
+version-controlled fail-closed by default, and the verification performed no
+live mutation.
+
+### Blockers before a real filing
+
+Every item below must be evidenced for the exact pilot case before Send:
+
+1. **Named-company eligibility.** Select the named customer, company, owner,
+   income year, and exact `rf1086_no_activity_v1` profile; exclude purchase,
+   sale, dividend, foreign shareholder, multiple-share-class, and correction
+   cases. Safe next step: perform and record this eligibility review; keep the
+   case in preparation/export if any condition is unmet.
+2. **Production credentials and delegation.** Evidence the production
+   Maskinporten/Skatteetaten permission, Systembruker delegation, credential
+   fingerprint, rotation owner, revocation route, and approved callback result
+   without recording a secret. Safe next step: verify these under a separately
+   approved fresh-AAL2 maintenance window; never use a statutory filing as a
+   connectivity probe.
+3. **Controlled entitlement and approval.** Create the exact time-bounded
+   company/user/year/obligation/profile entitlement only after accepted
+   preflight, then capture fresh owner AAL2 and immutable approval/payload,
+   document, and adapter hashes. Safe next step: record these through the
+   operator and owner approval flow with Send still unavailable.
+4. **Both required switch states under operator authorization.** Keep
+   `TALLI_AUTHORITY_OPS_ENABLED=false` outside the fixed callback maintenance
+   operation; enable `TALLI_RF1086_PRODUCTION_ENABLED` only for the separately
+   authorized approved filing, with the kill switch ready, and verify both
+   switches returned to `false` after closeout. Safe next step: write the
+   named operator, approval window, expected state transitions, and
+   independent verification into the pilot case before changing either value.
+5. **Fresh hosted migration, restore, and monitoring evidence.** Prove the
+   deployed migrations, tenant isolation/private storage, a fresh isolated
+   restore with matching hashes, alerting, production log flow, error rate, and
+   latency dashboards. Safe next step: run the documented hosted
+   migration/isolation and restore rehearsals in an approved non-customer
+   target, preserve sanitized results, and do not grant a filing entitlement
+   until they are reviewed.
+6. **Incumbent-output comparison and discrepancy review.** Produce the same
+   eligible simple-company result with Talli and Fiken, compare every material
+   figure/document, resolve discrepancies, and obtain named accounting review
+   or explicit risk acceptance. Safe next step: perform this as preparation
+   and export only; do not submit either output through Talli.
+7. **Monitored first-filing runbook and rollback.** Name the founder/operator,
+   owner, on-call observer, stop conditions, kill switch, read-only
+   reconciliation route, rollback steps, and authority-approved alternative
+   before the statutory deadline. Safe next step: rehearse the runbook and
+   rollback without a live authority write, then schedule a separately
+   authorized founder-assisted filing window.
+8. **Final authority receipt and feedback.** A successful transport reference
+   is not content acceptance. Safe next step: only after items 1–7 and the
+   required human/founder signoffs pass, execute at most one authorized,
+   monitored filing, archive the official receipt and final accepted/rejected
+   feedback, and quarantine any unknown outcome without repeating a POST.
+
+### Remaining quality caveats
+
+- Local verification used Node `v25.6.1` rather than workflow Node 24 and
+  emitted the module-type warning; Vercel CLI also emitted the Node-engine
+  compatibility warning described above.
+- The local Supabase advisor gate reported 0 blocking findings but 15
+  performance warnings; they remain unresolved quality work.
+- The deployed smoke test did not prove anonymous login in a clean browser
+  because an existing Chrome session redirected to the dashboard.
+- No Core Web Vitals, representative load, production error-rate, production
+  latency, or production log-flow evidence was collected.
+- No real authority call, production callback, production credential use,
+  entitlement, approval, filing, receipt, or final authority feedback occurred.
+
+Across Tasks 1–6, no live authority mutation, statutory filing, production
+configuration change, entitlement, customer-data mutation, deployment,
+promotion, rollback, payment, or charge was performed. The safe present action
+is the hand-held preparation/export comparison beta only; live filing remains
+fail-closed pending every blocker above.
