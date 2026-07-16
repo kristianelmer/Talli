@@ -3,11 +3,16 @@ import test from "node:test";
 
 import {
   AuthorityOperationError,
+  SYSTEMBRUKER_CALLBACK_CONFIRMATION,
+  SYSTEMBRUKER_CALLBACK_OPERATION,
   authorityOperationEnvironmentFailureCode,
   assertAuthorityOperationIntent,
+  assertSystembrukerCallbackOperationIntent,
   authorityOperationRequestHash,
   buildRf1086SystemDefinition,
+  buildRf1086SystembrukerCallbackDefinition,
   executeRf1086SystemRegistration,
+  executeRf1086SystembrukerCallbackUpdate,
   productionAuthorityOperationEnvironment,
 } from "../app/lib/authority-operations.ts";
 
@@ -40,6 +45,31 @@ function jsonResponse(value, status = 200) {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function exactCallbackDefinition(callbacks = []) {
+  const definition = buildRf1086SystemDefinition(
+    productionEnvironment.TALLI_PROD_MASKINPORTEN_CLIENT_ID,
+  );
+  const { allowedredirecturls: _allowedRedirectUrls, ...fixedDefinition } = definition;
+  return {
+    ...fixedDefinition,
+    vendor: { ID: definition.vendor.ID },
+    allowedRedirectUrls: callbacks,
+    isDeleted: false,
+  };
+}
+
+function callbackDependencies(responses, requests) {
+  return {
+    requestToken: async () => token(),
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), ...init });
+      const response = responses.shift();
+      assert.ok(response, "unexpected authority request");
+      return response;
+    },
+  };
 }
 
 test("authority operation environment fails closed and rejects test credentials", () => {
@@ -135,6 +165,125 @@ test("requires the exact immutable operation and confirmation phrase", () => {
   ]) {
     assert.throws(() => assertAuthorityOperationIntent(input), /authority_operation_invalid/u);
   }
+});
+
+test("requires the separate exact callback operation and confirmation phrase", () => {
+  assert.equal(SYSTEMBRUKER_CALLBACK_OPERATION, "set_rf1086_systembruker_callback");
+  assert.equal(SYSTEMBRUKER_CALLBACK_CONFIRMATION, "SET TALLI SYSTEMBRUKER CALLBACK");
+  assert.doesNotThrow(() =>
+    assertSystembrukerCallbackOperationIntent({
+      operation: "set_rf1086_systembruker_callback",
+      confirmation: "SET TALLI SYSTEMBRUKER CALLBACK",
+    }),
+  );
+  for (const input of [
+    { operation: "register_rf1086_system", confirmation: "SET TALLI SYSTEMBRUKER CALLBACK" },
+    { operation: "set_rf1086_systembruker_callback", confirmation: "set talli systembruker callback" },
+    { operation: "set_rf1086_systembruker_callback", confirmation: " SET TALLI SYSTEMBRUKER CALLBACK" },
+  ]) {
+    assert.throws(
+      () => assertSystembrukerCallbackOperationIntent(input),
+      /authority_operation_invalid/u,
+    );
+  }
+});
+
+test("callback update performs a full PUT only from the exact empty-callback definition", async () => {
+  const requests = [];
+  const callbackDefinition = buildRf1086SystembrukerCallbackDefinition(
+    productionEnvironment.TALLI_PROD_MASKINPORTEN_CLIENT_ID,
+  );
+  const result = await executeRf1086SystembrukerCallbackUpdate(
+    environment(),
+    callbackDependencies([
+      jsonResponse(exactCallbackDefinition([])),
+      jsonResponse(exactCallbackDefinition(["https://talli.no/auth/systembruker/confirm"])),
+      jsonResponse(exactCallbackDefinition(["https://talli.no/auth/systembruker/confirm"])),
+    ], requests),
+  );
+
+  assert.equal(result.resultCode, "callback_updated_and_verified");
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "PUT", "GET"]);
+  assert.equal(requests[0].url, requests[1].url);
+  assert.equal(requests[1].url, requests[2].url);
+  assert.deepEqual(JSON.parse(requests[1].body), callbackDefinition);
+  assert.deepEqual(
+    JSON.parse(requests[1].body).allowedRedirectUrls,
+    ["https://talli.no/auth/systembruker/confirm"],
+  );
+  assert.equal(JSON.parse(requests[1].body).isDeleted, false);
+});
+
+test("an exact callback definition is already verified with GET only", async () => {
+  const requests = [];
+  const result = await executeRf1086SystembrukerCallbackUpdate(
+    environment(),
+    callbackDependencies([
+      jsonResponse(exactCallbackDefinition(["https://talli.no/auth/systembruker/confirm"])),
+    ], requests),
+  );
+
+  assert.equal(result.resultCode, "callback_already_verified");
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(requests.map((request) => request.method), ["GET"]);
+});
+
+test("a missing system is a definition conflict and never creates or updates", async () => {
+  const requests = [];
+  const result = await executeRf1086SystembrukerCallbackUpdate(
+    environment(),
+    callbackDependencies([new Response(null, { status: 404 })], requests),
+  );
+
+  assert.equal(result.resultCode, "definition_conflict");
+  assert.equal(result.status, "conflict");
+  assert.deepEqual(requests.map((request) => request.method), ["GET"]);
+});
+
+test("any non-callback definition drift blocks without a write", async () => {
+  const exact = exactCallbackDefinition([]);
+  const conflicts = [
+    { ...exact, id: "930835978_other" },
+    { ...exact, vendor: { ID: "0192:999999999" } },
+    { ...exact, vendor: { authority: null, ID: exact.vendor.ID } },
+    { ...exact, name: { ...exact.name, nb: "Other" } },
+    { ...exact, description: { ...exact.description, en: "Other" } },
+    { ...exact, rights: [] },
+    { ...exact, accessPackages: ["other"] },
+    { ...exact, clientId: ["unexpected-client"] },
+    { ...exact, isVisible: false },
+    { ...exact, isDeleted: true },
+    { ...exact, allowedRedirectUrls: ["https://talli.no/other"] },
+  ];
+
+  for (const conflict of conflicts) {
+    const requests = [];
+    const result = await executeRf1086SystembrukerCallbackUpdate(
+      environment(),
+      callbackDependencies([jsonResponse(conflict)], requests),
+    );
+    assert.equal(result.resultCode, "definition_conflict");
+    assert.deepEqual(requests.map((request) => request.method), ["GET"]);
+  }
+});
+
+test("callback verification drift is reported as conflict after the one allowed PUT", async () => {
+  const requests = [];
+  const result = await executeRf1086SystembrukerCallbackUpdate(
+    environment(),
+    callbackDependencies([
+      jsonResponse(exactCallbackDefinition([])),
+      jsonResponse(exactCallbackDefinition(["https://talli.no/auth/systembruker/confirm"])),
+      jsonResponse({
+        ...exactCallbackDefinition(["https://talli.no/auth/systembruker/confirm"]),
+        isVisible: false,
+      }),
+    ], requests),
+  );
+
+  assert.equal(result.resultCode, "definition_conflict");
+  assert.deepEqual(requests.map((request) => request.method), ["GET", "PUT", "GET"]);
 });
 
 test("creates a missing system then verifies it without leaking the token", async () => {

@@ -32,11 +32,16 @@ import {
   AUTHORITY_OPERATION,
   AuthorityOperationError,
   RF1086_RIGHT,
+  SYSTEMBRUKER_CALLBACK_OPERATION,
+  SYSTEMBRUKER_CALLBACK_PATH,
   assertAuthorityOperationIntent,
+  assertSystembrukerCallbackOperationIntent,
   authorityOperationEnvironmentFailureCode,
   authorityOperationRequestHash,
   buildRf1086SystemDefinition,
+  buildRf1086SystembrukerCallbackDefinition,
   executeRf1086SystemRegistration,
+  executeRf1086SystembrukerCallbackUpdate,
   productionAuthorityOperationEnvironment,
 } from "./lib/authority-operations";
 import { buildCompanyTaxReturnEvidencePersistence } from "./lib/company-tax-return-submission";
@@ -4360,6 +4365,120 @@ export async function runProductionAuthorityOperation(formData: FormData) {
   }
   revalidatePath("/operator");
   redirect(`/operator?authority=${result.code}`);
+}
+
+export async function runProductionSystembrukerCallbackOperation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/operator?authority=authority_ops_unavailable");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError || !operator) {
+    redirect("/operator?authority=admin_operator_required");
+  }
+
+  try {
+    const stepUp = await loadTrustedStepUpContext(supabase, user.id);
+    assertStepUpAllowed("authority_operations", stepUp);
+  } catch (error) {
+    const code = error instanceof SensitiveActionStepUpError
+      ? "authority_step_up_required"
+      : "authority_step_up_failed";
+    redirect(`/operator?authority=${code}`);
+  }
+
+  try {
+    assertSystembrukerCallbackOperationIntent({
+      operation: formRawString(formData, "operation"),
+      confirmation: formRawString(formData, "confirmation"),
+    });
+  } catch {
+    redirect("/operator?authority=authority_operation_invalid");
+  }
+
+  let environment;
+  try {
+    environment = productionAuthorityOperationEnvironment();
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
+  }
+  if (!environment) {
+    redirect("/operator?authority=authority_ops_disabled");
+  }
+
+  const definition = buildRf1086SystembrukerCallbackDefinition(environment.clientId);
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    redirect("/operator?authority=authority_audit_unavailable");
+  }
+  const { data: started, error: startError } = await service.from("authority_operations").insert({
+    operation: SYSTEMBRUKER_CALLBACK_OPERATION,
+    actor_id: user.id,
+    status: "started",
+    request_hash: authorityOperationRequestHash(definition),
+    result_code: "started",
+    metadata: {
+      systemId: definition.id,
+      callbackPath: SYSTEMBRUKER_CALLBACK_PATH,
+    },
+  }).select("id").single();
+  if (startError || !started) {
+    redirect("/operator?authority=authority_audit_start_failed");
+  }
+
+  let result;
+  try {
+    result = await executeRf1086SystembrukerCallbackUpdate(environment);
+  } catch (error) {
+    const resultCode = authorityOperationFailureCode(error);
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    const { error: failureAuditError } = await service
+      .from("authority_operations")
+      .update({
+        status: "failed",
+        result_code: resultCode,
+        authority_http_status: authorityStatus,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", started.id);
+    if (failureAuditError) {
+      redirect("/operator?authority=authority_audit_completion_failed");
+    }
+    revalidatePath("/operator");
+    redirect(`/operator?authority=${resultCode}`);
+  }
+
+  const { error: completionError } = await service
+    .from("authority_operations")
+    .update({
+      status: result.status,
+      result_code: result.resultCode,
+      authority_http_status: result.authorityStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", started.id);
+  if (completionError) {
+    redirect("/operator?authority=authority_audit_completion_failed");
+  }
+  revalidatePath("/operator");
+  redirect(`/operator?authority=${result.resultCode}`);
 }
 
 const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";

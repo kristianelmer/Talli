@@ -4,6 +4,21 @@ import {
   requiredNonAffiliationCopy,
 } from "./launch-copy";
 
+export const operatorAuthorityCopy = {
+  systembrukerCallback: {
+    title: "Produksjon · Systemregister-callback",
+    gateLabel: "Operasjonsport",
+    enabled: "Midlertidig aktivert",
+    disabled: "Deaktivert",
+    body:
+      "Denne operasjonen legger bare den faste callback-adressen til den eksisterende Systemregister-definisjonen. Den oppretter ikke en Systembruker og åpner ikke for produksjonsinnsending.",
+    callbackLabel: "Fast callback",
+    callback: "https://talli.no/auth/systembruker/confirm",
+    confirmationLabel: "Skriv SET TALLI SYSTEMBRUKER CALLBACK",
+    cta: "Legg til eller verifiser callback",
+  },
+} as const;
+
 /**
  * Central owner-facing copy — Norwegian first.
  *

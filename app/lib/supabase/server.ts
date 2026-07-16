@@ -54,13 +54,13 @@ export type LaunchSignoffRow = {
 
 export type AuthorityOperationRow = {
   id: string;
-  operation: "register_rf1086_system";
+  operation: "register_rf1086_system" | "set_rf1086_systembruker_callback";
   actor_id: string;
   status: "started" | "succeeded" | "failed" | "conflict";
   request_hash: string;
   result_code: string;
   authority_http_status: number | null;
-  metadata: { systemId?: string; clientId?: string; right?: string };
+  metadata: { systemId?: string; clientId?: string; right?: string; callbackPath?: string };
   created_at: string;
   completed_at: string | null;
 };
