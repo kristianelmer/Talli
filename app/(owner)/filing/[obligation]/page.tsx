@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
-  confirmAuthorityPermission,
   confirmSimulatedRf1086Submission,
   approveProductionFiling,
   generateRf1086Preview,
@@ -24,7 +23,12 @@ import {
 import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-document-readiness";
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
+import {
+  loadSystemUserRequestPresentations,
+  systemUserFilingPresentation,
+} from "../../connections/_presentation";
 import {
   buildReadinessInput,
   isFilingObligation,
@@ -277,14 +281,30 @@ export default async function FilingObligationPage({
   }
 
   // --- Aksjonærregisteroppgaven: full guided flow. ---
+  let systemUserConnection = null;
+  let systemUserConnectionLoadFailed = false;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const connections = await loadSystemUserRequestPresentations(
+      supabase,
+      [input.company.id],
+      ownerCopy.connections,
+    );
+    systemUserConnection = connections.find(
+      (connection) => connection.companyId === input.company.id,
+    ) ?? null;
+  } catch {
+    systemUserConnectionLoadFailed = true;
+  }
+  const systemUserFiling = systemUserConnectionLoadFailed
+    ? ownerCopy.connections.filing.action
+    : systemUserFilingPresentation(systemUserConnection, ownerCopy.connections);
+  const systemUserConnectionHref = `/connections?company=${input.company.id}`;
+
   const preview = input.filingPreviews.find(
     (item) => item.filing === filingString && item.income_year === input.incomeYear,
   );
   const previewReady = preview?.status === "ready";
-  const permission = input.authorityPermissions.find(
-    (item) => item.obligation === obligation,
-  );
-  const authorityConfirmed = Boolean(permission?.confirmed_at && permission?.production_enabled);
   const pilotEntitlement = data.productionPilotEntitlements.find(
     (item) => item.company_id === input.company.id
       && item.user_id === data.user?.id
@@ -326,7 +346,7 @@ export default async function FilingObligationPage({
   const confirmReady =
     prerequisitesClear &&
     previewReady &&
-    authorityConfirmed &&
+    systemUserFiling.ready &&
     storedReady &&
     !hasBlockingOverride &&
     !hasHardReviewBlock;
@@ -337,7 +357,7 @@ export default async function FilingObligationPage({
       ? 0
       : !previewReady
         ? 1
-        : !authorityConfirmed
+        : !systemUserFiling.ready
           ? 2
           : 3;
 
@@ -377,7 +397,7 @@ export default async function FilingObligationPage({
                 Dette er en reell innsending til Skatteetaten med juridiske konsekvenser. HTTP-svar eller kvitteringsreferanse betyr ikke at innholdet er endelig godkjent.
               </Banner>
               <p className="cardNote">
-                Selskap: {input.company.name} ({input.company.org_number})<br />
+                Selskap: {input.company.name}<br />
                 Inntektsår: {input.incomeYear}<br />
                 Støttet profil: Ingen aktivitet / stiftelse (`rf1086_no_activity_v1`)<br />
                 Payload-hash: <code>{productionApproval?.payload_hash ?? "opprettes ved godkjenning"}</code>
@@ -485,36 +505,22 @@ export default async function FilingObligationPage({
         {/* Step 3 — authority */}
         <section className="filingStep">
           <div className="filingStepHead">
-            <h2 className="filingStepTitle">{f.authority.title}</h2>
-            {authorityConfirmed ? (
-              <StatusBadge variant="success" label={f.authority.confirmed} icon="check" />
-            ) : null}
+            <h2 className="filingStepTitle">{f.authority.connectionTitle}</h2>
+            <StatusBadge
+              variant={systemUserFiling.variant}
+              label={systemUserFiling.label}
+              icon={systemUserFiling.ready ? "check" : "alert"}
+            />
           </div>
           <div className="filingStepBody">
-            {!prerequisitesClear || !previewReady ? (
-              <p className="filingLockNote">{f.authority.lockedNote}</p>
-            ) : authorityConfirmed ? (
-              <p className="cardNote">{f.authority.confirmed}</p>
-            ) : (
-              <>
-                <p className="cardNote">{f.authority.intro}</p>
-                {presentation.showProductionSubmitControl ? (
-                  <form action={confirmAuthorityPermission} className="filingConfirmForm">
-                    <input type="hidden" name="returnTo" value={returnTo} />
-                    <input type="hidden" name="companyId" value={input.company.id} />
-                    <input type="hidden" name="obligation" value={obligation} />
-                    <input type="hidden" name="productionEnabled" value="on" />
-                    <label className="filingCheck">
-                      <input type="checkbox" name="ack" required />
-                      {f.authority.confirmLabel}
-                    </label>
-                    <SubmitButton pendingLabel={f.authority.pending}>
-                      {f.authority.cta}
-                    </SubmitButton>
-                  </form>
-                ) : null}
-              </>
-            )}
+            <p className="cardNote">
+              {systemUserConnectionLoadFailed
+                ? f.authority.connectionLoadError
+                : systemUserFiling.body}
+            </p>
+            <LinkButton variant="secondary" href={systemUserConnectionHref}>
+              {f.authority.connectionCta}
+            </LinkButton>
           </div>
         </section>
 
@@ -525,7 +531,7 @@ export default async function FilingObligationPage({
               <h2 className="filingStepTitle">{f.confirm.title}</h2>
             </div>
             <div className="filingStepBody">
-              {!(prerequisitesClear && previewReady && authorityConfirmed) ? (
+              {!(prerequisitesClear && previewReady && systemUserFiling.ready) ? (
                 <p className="filingLockNote">{f.confirm.lockedNote}</p>
               ) : !confirmReady ? (
                 <>

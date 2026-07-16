@@ -112,12 +112,120 @@ export const ownerCopy = {
     transactions: "Transaksjoner",
     yearEnd: "Årsavslutning",
     filing: "Innsending",
+    connections: "Tilkoblinger",
     documents: "Dokumenter",
     billing: "Abonnement",
     workspace: "Arbeidsflate",
     operator: "Operatør",
     menu: "Meny",
     signOut: "Logg ut",
+  },
+
+  connections: {
+    title: "Altinn-tilkobling",
+    intro:
+      "Koble et selskap til Altinn Systembruker, og følg den lagrede statusen før kontrollert innsending.",
+    companyHeading: "Velg selskap",
+    statusHeading: (companyName: string) => `Status for ${companyName}`,
+    noCompaniesTitle: "Sett opp selskapet først",
+    noCompaniesBody:
+      "Du må sette opp et holdingselskap før du kan opprette en Altinn-tilkobling.",
+    noCompaniesCta: "Kom i gang",
+    noRequestTitle: "Ingen tilkoblingsforespørsel",
+    noRequestBody:
+      "Opprett en forespørsel for å godkjenne Talli som Systembruker for selskapet i Altinn.",
+    loadErrorTitle: "Statusen er midlertidig utilgjengelig",
+    loadErrorBody:
+      "Vi kunne ikke hente den lagrede tilkoblingsstatusen. Prøv igjen om litt.",
+    states: {
+      creating: {
+        title: "Vi gjør forespørselen klar",
+        body:
+          "Forespørselen er lagret, men opprettelsen er ikke ferdig. Sjekk status for å prøve videre.",
+      },
+      new: {
+        title: "Venter på godkjenning i Altinn",
+        body:
+          "Forespørselen er opprettet, men ikke godkjent. Fortsett til Altinn og godkjenn den der.",
+      },
+      accepted: {
+        title: "Verifiserer tilkoblingen",
+        body:
+          "Altinn har godkjent forespørselen. Talli kontrollerer at Systembrukeren kan brukes til innsending før tilkoblingen markeres som klar.",
+      },
+      rejected: {
+        title: "Forespørselen ble avslått",
+        body:
+          "Forespørselen er avsluttet og kan ikke endres. Du kan opprette en ny forespørsel.",
+      },
+      denied: {
+        title: "Altinn nektet forespørselen",
+        body:
+          "Forespørselen er avsluttet og kan ikke endres. Du kan opprette en ny forespørsel.",
+      },
+      timedout: {
+        title: "Forespørselen utløp",
+        body:
+          "Godkjenningsfristen er passert. Du kan opprette en ny forespørsel.",
+      },
+      verification_failed: {
+        title: "Godkjent, men kunne ikke verifiseres for innsending",
+        body:
+          "Altinn har godkjent forespørselen, men Talli kunne ikke bekrefte at Systembrukeren kan brukes til innsending. Prøv verifiseringen på nytt.",
+      },
+    },
+    verified: {
+      title: "Tilkoblingen er godkjent og verifisert",
+      body:
+        "Talli har kontrollert at Systembrukeren kan brukes til kontrollert innsending for selskapet.",
+    },
+    actions: {
+      create: "Opprett tilkobling",
+      createPending: "Oppretter …",
+      continue: "Fortsett i Altinn",
+      refresh: "Sjekk status",
+      refreshPending: "Sjekker …",
+      retryVerification: "Prøv verifisering på nytt",
+      retryVerificationPending: "Verifiserer …",
+      createNew: "Opprett ny forespørsel",
+      createNewPending: "Oppretter …",
+    },
+    filing: {
+      missing: {
+        label: "Systembruker mangler",
+        body: "Selskapet har ingen aktiv Systembruker-tilkobling i Talli.",
+        variant: "danger",
+        ready: false,
+      },
+      waiting: {
+        label: "Venter på Altinn",
+        body: "Forespørselen venter på godkjenning i Altinn.",
+        variant: "warning",
+        ready: false,
+      },
+      ready: {
+        label: "Klar for kontrollert innsending",
+        body: "Systembruker-tilkoblingen er godkjent og verifisert.",
+        variant: "success",
+        ready: true,
+      },
+      action: {
+        label: "Tilkoblingen krever handling",
+        body: "Åpne tilkoblinger for å se lagret status og gyldige neste steg.",
+        variant: "danger",
+        ready: false,
+      },
+    },
+    callbackNotices: {
+      pending: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      verifying: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      connected: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      rejected: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      denied: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      timedout: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      manual:
+        "Vi kunne ikke knytte returen fra Altinn til en aktiv forespørsel. Sjekk den lagrede statusen nedenfor.",
+    },
   },
 
   auth: {
@@ -930,6 +1038,10 @@ export const ownerCopy = {
       pending: "Bekrefter …",
       confirmed: "Innsendingsrett er bekreftet.",
       lockedNote: "Lag forhåndsvisningen først.",
+      connectionTitle: "Altinn-tilkobling",
+      connectionCta: "Åpne tilkoblinger",
+      connectionLoadError:
+        "Vi kunne ikke hente den lagrede tilkoblingsstatusen. Åpne tilkoblinger og prøv igjen.",
     },
     confirm: {
       title: "Bekreft og arkiver",
