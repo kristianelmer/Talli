@@ -1,6 +1,8 @@
 # Production E2E verification — 2026-07-16
 
-Status: blocked at Task 3; Tasks 1–2 passed, Task 3 failed, Tasks 4–6 pending
+Status: blocked at Task 3; Tasks 1–2 and the corrected Task 3 suite passed, but
+the explicit advisor rerun could not connect after clean teardown; Tasks 4–6
+pending
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -171,9 +173,10 @@ result, deployed-surface observation, or production-readiness verdict.
 - [x] Task 1 — freeze release target and audit the verification contract.
 - [x] Task 2 — run the full repository release rehearsal, type-check, and
   production build with production authority switches absent.
-- [ ] Task 3 — **BLOCKED**: the local Supabase suite reached the authenticated
-  owner-persistence test but failed because `TALLI_PYTHON_BIN` was not
-  configured. The passing subtests and advisor result are recorded below.
+- [ ] Task 3 — **BLOCKED**: the corrected local Supabase/database/browser suite
+  and explicit static grant gate passed, but the final advisor rerun could not
+  connect because the suite had cleanly stopped local Postgres. Both attempts
+  and the root-cause correction are recorded below.
 - [ ] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
   and verify test-process cleanup.
 - [ ] Task 5 — smoke-test only the deployed public surface through read-only
@@ -377,8 +380,98 @@ found no `talli`/Supabase containers, no listeners on configured Supabase ports
 port 3217, and no matching owner-browser or Next test process. Local Supabase
 status was unavailable as expected after teardown.
 
-Task 3 therefore provides partial positive local evidence for migrations,
-grants, RLS, authenticated recovery, and the repository advisor gate, but it
-does not provide a passing owner-persistence/browser loop or the explicit
-post-suite static-grant and advisor rerun. It adds no hosted or production
-evidence and does not change the fail-closed production-readiness verdict.
+At the end of the initial attempt, Task 3 therefore provided partial positive
+local evidence for migrations, grants, RLS, authenticated recovery, and the
+repository advisor gate, but not a passing owner-persistence/browser loop or
+the explicit post-suite static-grant and advisor rerun. It added no hosted or
+production evidence and did not change the fail-closed production-readiness
+verdict. The corrected rerun below supersedes that initial execution status
+while preserving its failure evidence.
+
+### Corrected rerun and Python root cause
+
+Systematic diagnosis after the first attempt found that
+`resolveTalliPythonBinary` checks an explicit `TALLI_PYTHON_BIN` first and then
+only `.venv/bin/python` or `.venv/Scripts/python.exe` below its current working
+directory. This isolated worktree has no local `.venv`; the existing project
+runtime is instead
+`/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python` (Python `3.12.11`).
+Plan correction `e879722aa0110be292b9191566cf81c2e8d82fa3` therefore changed only
+the documented Task 3 invocation to pass that existing runtime explicitly.
+
+A focused resolver comparison ran at `2026-07-16T21:30:24Z` UTC with exit `0`.
+An empty environment reproduced the exact missing-runtime error from the first
+attempt, while an environment containing the corrected `TALLI_PYTHON_BIN`
+resolved the external project runtime path. Node emitted one non-failing
+`MODULE_TYPELESS_PACKAGE_JSON` warning while loading `python-runtime.ts` for
+that diagnostic.
+
+The corrected isolated suite ran from `2026-07-16T21:27:49Z` through
+`2026-07-16T21:29:05Z` UTC:
+
+```sh
+TALLI_PYTHON_BIN=/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python npm run test:supabase:local
+```
+
+Result: exit `0`. All 14 listed migrations applied, with non-failing Postgres
+notices for already-present objects and absent objects skipped by guarded
+cleanup statements. The local CLI also warned that development services bind
+to `0.0.0.0`, use shared default keys/secrets, and must not be used in
+production; this local stack was isolated to the prescribed synthetic test and
+was torn down immediately afterward.
+
+The repository advisor wrapper reported 0 blocking security/error findings and
+15 performance warnings. The database TAP summary reported 9 tests passed, 0
+failed, 0 cancelled, 0 skipped, and 0 todo in `5987.585584 ms`, including the
+previously failing authenticated owner-persistence/outsider-denial test. The
+owner-browser TAP summary then reported 1 test passed, 0 failed, 0 cancelled, 0
+skipped, and 0 todo in `14960.76275 ms`; persisted state survived reload.
+
+The passing run emitted one non-failing `MODULE_TYPELESS_PACKAGE_JSON` warning
+for `app/lib/archive.ts` and a React warning that a form using a function action
+must not specify `encType` or `method` because React supplies them. Next.js
+rewrote tracked `next-env.d.ts` from the production route types path to the dev
+route types path during the owner-browser run; that generated one-line change
+was restored exactly, leaving no product-code diff.
+
+Automatic teardown was verified from `2026-07-16T21:29:19Z` through
+`2026-07-16T21:29:20Z` UTC with exit `0`. It left no `talli`/Supabase container,
+configured Supabase listener, port-3217 listener, owner-browser process, or
+matching Next test process, and local Supabase status was unavailable as
+expected.
+
+### Explicit grant and advisor rerun
+
+The exact combined gate then ran from `2026-07-16T21:29:29Z` through
+`2026-07-16T21:29:31Z` UTC:
+
+```sh
+npm run test:supabase-grants && npm run test:supabase-advisors
+```
+
+Result: exit `1`. The static grant gate passed all 3 tests with 0 failures,
+cancellations, skips, or todo tests in `111.506958 ms`. It covered fail-closed
+anon Data API grants with explicit `service_role` access, denial of anonymous
+authenticated mutation RPCs, and explicit least-privilege grants for
+Systembruker request objects.
+
+The chained advisor gate then failed before producing findings. Its local CLI
+process reported `Failed to connect` to Postgres, and the wrapper asserted
+process status `1` instead of `0`. This is a sequencing blocker between the
+suite's required clean automatic teardown and the later advisor command's need
+for a running local database; it is not a new advisor security or performance
+finding. The only completed advisor result remains the successful in-suite
+result of 0 blocking findings and 15 performance warnings.
+
+A post-failure safety and residue check ran from `2026-07-16T21:29:48Z` through
+`2026-07-16T21:29:49Z` UTC with exit `0`. The local database remained stopped;
+no test-owned container, configured listener, or browser/Next process remained,
+and both production authority switches were absent. No manual teardown was
+needed for the corrected rerun.
+
+Task 3 therefore remains blocked only on obtaining the explicitly repeated
+advisor result under a plan that also requires the suite to leave the local
+stack stopped. The corrected suite itself supplies passing local evidence for
+migrations, grants, authenticated RLS and role-abuse boundaries, database
+runtimes, owner persistence, outsider denial, browser persistence/reload, and
+the in-suite advisor gate. It still adds no hosted or production evidence.
