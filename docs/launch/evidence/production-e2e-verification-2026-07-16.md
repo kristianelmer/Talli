@@ -1,6 +1,6 @@
 # Production E2E verification — 2026-07-16
 
-Status: in progress; Task 1 contract audit passed, Tasks 2–6 pending
+Status: in progress; Tasks 1–2 passed, Tasks 3–6 pending
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -169,7 +169,7 @@ result, deployed-surface observation, or production-readiness verdict.
 ## Verification progress
 
 - [x] Task 1 — freeze release target and audit the verification contract.
-- [ ] Task 2 — run the full repository release rehearsal, type-check, and
+- [x] Task 2 — run the full repository release rehearsal, type-check, and
   production build with production authority switches absent.
 - [ ] Task 3 — exercise local Supabase migrations, grants, authenticated RLS,
   storage, owner persistence, and advisors.
@@ -179,3 +179,100 @@ result, deployed-surface observation, or production-readiness verdict.
   Computer Use, without login or mutation.
 - [ ] Task 6 — rerun decisive gates, reconcile local evidence with read-only
   deployed evidence, grade the result, and list every remaining external gate.
+
+## Full repository release rehearsal and production build
+
+Task 2 used only local, lockfile-pinned dependencies and the already-present
+Python and official-schema inputs. It did not enable production authority
+operations, run an authority smoke-test entry point, use production credentials,
+or perform a live filing, payment, customer-data operation, or production
+environment mutation.
+
+### Local inputs and invocation boundary
+
+A value-free prerequisite and environment check started and ended at
+`2026-07-16T21:08:19Z` UTC:
+
+```sh
+test -x /Users/kristianelmer/Documents/Work/Talli/.venv/bin/python && test -d /tmp/talli-skattemeldingen-v1.62.47/src/resources/xsd && test -z "${TALLI_AUTHORITY_OPS_ENABLED+x}" && test -z "${TALLI_RF1086_PRODUCTION_ENABLED+x}"
+node --version
+npm --version
+/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python --version
+```
+
+Result: exit `0`. The pinned Python executable and v1.62.47 XSD directory were
+present; both production switches were absent from the inherited environment.
+The local versions were Node `v25.6.1`, npm `11.9.0`, and Python `3.12.11`.
+No switch value or secret was printed. In addition, the rehearsal and build
+commands below explicitly used `env -u` so both switches were absent from the
+invoked process even if a caller's environment were to differ.
+
+`node_modules` was initially absent. Dependency installation ran from
+`2026-07-16T21:05:03Z` through `2026-07-16T21:05:08Z` UTC:
+
+```sh
+npm ci
+```
+
+Result: exit `0`; npm added 65 packages, audited 66 packages, and reported 0
+vulnerabilities. It also reported that 11 packages have funding links. No
+funding command, paid service, or other chargeable operation was invoked, and
+neither `package.json` nor `package-lock.json` changed.
+
+### Complete launch rehearsal
+
+The complete rehearsal ran from `2026-07-16T21:05:35Z` through
+`2026-07-16T21:06:01Z` UTC:
+
+```sh
+env -u TALLI_AUTHORITY_OPS_ENABLED -u TALLI_RF1086_PRODUCTION_ENABLED TALLI_PYTHON_BIN=/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python TALLI_SKATTE_XSD_DIR=/tmp/talli-skattemeldingen-v1.62.47/src/resources/xsd npm run test:launch-rehearsal
+```
+
+Result: exit `0`. All 54 chained test commands reached a passing TAP summary.
+Their reported summaries aggregate to 391 tests passed, 0 failed, 0 cancelled,
+0 skipped, and 0 todo. The supplied pinned XSD directory was therefore
+available to the schema-backed tests rather than taking their optional no-XSD
+path.
+
+Node emitted 53 non-failing `MODULE_TYPELESS_PACKAGE_JSON` warnings while
+loading TypeScript modules. Each warning said Node reparsed the relevant file as
+an ES module and noted a performance overhead because `package.json` does not
+declare `"type": "module"`. No warning changed a test result. No authority smoke
+script was run, no live authority call or production mutation was observed, and
+no production credential was supplied or read.
+
+### Compiler and production build gates
+
+Type-checking ran from `2026-07-16T21:06:46Z` through
+`2026-07-16T21:06:52Z` UTC:
+
+```sh
+npm run typecheck
+```
+
+Result: exit `0`; `tsc --noEmit` produced no diagnostic or warning.
+
+The production build ran from `2026-07-16T21:07:04Z` through
+`2026-07-16T21:07:16Z` UTC:
+
+```sh
+env -u TALLI_AUTHORITY_OPS_ENABLED -u TALLI_RF1086_PRODUCTION_ENABLED npm run build
+```
+
+Result: exit `0`. Next.js `16.2.9` with Turbopack compiled successfully,
+completed its TypeScript pass, generated all 19 static pages, and finalized page
+optimization without a reported warning.
+
+### Scope and limitations
+
+- The repository release-gate workflow specifies Node 24, while this local run
+  used Node `v25.6.1`; the successful local result does not replace CI evidence
+  on the workflow's exact Node version.
+- The 391-test total is the arithmetic sum of 54 TAP summary blocks emitted by
+  the chained npm scripts, not a single global test-runner total.
+- Task 2 did not run the workflow's production-dependency audit, local Supabase
+  rehearsal, browser system-user flow, or any deployed-surface observation;
+  those are separate gates or later verification tasks.
+- These local deterministic checks do not prove hosted database isolation,
+  restore readiness, production delegation or credentials, authority
+  acceptance, human signoff, or production filing readiness.
