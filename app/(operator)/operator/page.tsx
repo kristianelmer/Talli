@@ -14,6 +14,7 @@ import {
   listLaunchSignoffs,
   searchOperatorSupportDashboard,
 } from "../../lib/supabase/server";
+import { OperatorMfa } from "./operator-mfa";
 
 type OperatorProps = {
   searchParams?: Promise<{
@@ -42,6 +43,7 @@ const authorityResultMessages: Record<string, string> = {
   authority_http_error: "Altinn avviste operasjonen.",
   authority_response_invalid: "Altinn returnerte et ugyldig svar.",
   authority_operation_failed: "Produksjonsoperasjonen feilet.",
+  authority_mfa_ready: "AAL2 er aktiv for denne operatørøkten.",
 };
 
 export default async function OperatorPage({ searchParams }: OperatorProps) {
@@ -128,6 +130,12 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
             </div>
             {launchSignoffState.isAdminOperator ? (
               <>
+              {process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? (
+                <OperatorMfa
+                  supabaseUrl={process.env.SUPABASE_URL}
+                  supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
+                />
+              ) : null}
               <form className="dataPanel formPanel widePanel" action={recordLaunchSignoff}>
                 <label>
                   Signoff
