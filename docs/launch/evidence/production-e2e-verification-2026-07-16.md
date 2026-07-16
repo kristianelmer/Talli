@@ -672,8 +672,11 @@ controller manually entering or explicitly submitting credentials, but could
 only be classified as an existing-session redirect, not an anonymous login-form
 pass. Stored authentication material may have been sent automatically. The
 controller manually entered or explicitly submitted no credential or customer
-data, performed no representational communication, and changed no production
-or account state.
+data, performed no representational communication, and initiated or observed
+no production or account-state change. The stored session may nevertheless
+have refreshed authentication or caused another unobserved account-state side
+effect automatically. The controller performed no explicit user action after
+the redirect.
 
 Task 5 therefore passes as a bounded public-surface smoke test with the stated
 login limitation. It does not add evidence that production authority access,
@@ -812,8 +815,10 @@ company. **NO-GO** for an actual end-to-end production filing today.
 
 This is deliberately not an unqualified GO for live filing. The deployed copy
 says direct production submission is not open, both switches remain
-version-controlled fail-closed by default, and the verification performed no
-live mutation.
+version-controlled fail-closed by default, and the controller initiated or
+observed no live mutation. Task 5's stored authentication may nevertheless
+have caused an unobserved session refresh or other account-state side effect;
+the controller performed no explicit user action after the redirect.
 
 ### Blockers before a real filing
 
@@ -830,11 +835,15 @@ Every item below must be evidenced for the exact pilot case before Send:
    without recording a secret. Safe next step: verify these under a separately
    approved fresh-AAL2 maintenance window; never use a statutory filing as a
    connectivity probe.
-3. **Controlled entitlement and approval.** Create the exact time-bounded
+3. **Controlled entitlement, agreement, billing, and approval.** Obtain the
+   signed customer agreement and DPA, then create the exact time-bounded
    company/user/year/obligation/profile entitlement only after accepted
-   preflight, then capture fresh owner AAL2 and immutable approval/payload,
-   document, and adapter hashes. Safe next step: record these through the
-   operator and owner approval flow with Send still unavailable.
+   preflight. The billing path must be either an exact active
+   `billing_exempt=true` pilot entitlement or complete live billing/refund
+   evidence. Capture fresh owner AAL2 and immutable approval/payload, document,
+   and adapter hashes. Safe next step: record the signed agreement/DPA and the
+   chosen billing path through the operator and owner approval flow with Send
+   still unavailable.
 4. **Both required switch states under operator authorization.** Keep
    `TALLI_AUTHORITY_OPS_ENABLED=false` outside the fixed callback maintenance
    operation; enable `TALLI_RF1086_PRODUCTION_ENABLED` only for the separately
@@ -873,6 +882,9 @@ Every item below must be evidenced for the exact pilot case before Send:
   compatibility warning described above.
 - The local Supabase advisor gate reported 0 blocking findings but 15
   performance warnings; they remain unresolved quality work.
+- The local Supabase owner/browser rehearsal emitted an unresolved React
+  warning that `encType` and `method` are ignored on a form using a function
+  action because React supplies them.
 - The deployed smoke test did not prove anonymous login in a clean browser
   because an existing Chrome session redirected to the dashboard.
 - No Core Web Vitals, representative load, production error-rate, production
@@ -880,8 +892,11 @@ Every item below must be evidenced for the exact pilot case before Send:
 - No real authority call, production callback, production credential use,
   entitlement, approval, filing, receipt, or final authority feedback occurred.
 
-Across Tasks 1–6, no live authority mutation, statutory filing, production
-configuration change, entitlement, customer-data mutation, deployment,
-promotion, rollback, payment, or charge was performed. The safe present action
-is the hand-held preparation/export comparison beta only; live filing remains
-fail-closed pending every blocker above.
+Across Tasks 1–6, the controller initiated or observed no live authority
+mutation, statutory filing, production configuration change, entitlement,
+customer-data mutation, deployment, promotion, rollback, payment, or charge.
+Task 5's stored authentication may nevertheless have caused an unobserved
+session refresh or other account-state side effect automatically; the
+controller performed no explicit user action after the redirect. The safe
+present action is the hand-held preparation/export comparison beta only; live
+filing remains fail-closed pending every blocker above.
