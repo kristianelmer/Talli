@@ -43,6 +43,10 @@ test("uses explicit authority feedback for terminal outcomes", () => {
 const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
 const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
 const documents = readFileSync(new URL("../app/lib/documents.ts", import.meta.url), "utf8");
+const feedbackPersistence = readFileSync(
+  new URL("../app/lib/rf1086-feedback-persistence.ts", import.meta.url),
+  "utf8",
+);
 let reconciliationControl = "";
 try {
   reconciliationControl = readFileSync(
@@ -85,19 +89,21 @@ test("initial send performs bounded feedback polling only after the journaled co
   assert.match(send, /initialPoll:\s*true/u);
 });
 
-test("private artifact persistence uses deterministic keys and removes object and metadata after DB failure", () => {
+test("private artifact persistence verifies receipts and cleans up only after authoritative absence", () => {
   assert.match(documents, /authority-feedback\/\$\{companyId\}\/\$\{submissionId\}\/\$\{sha256\}/u);
-  assert.match(actions, /document_type:\s*"authority_feedback"/u);
-  assert.match(actions, /record_production_feedback_artifact/u);
-  assert.match(actions, /storage[\s\S]+\.remove\(\[storageKey\]\)/u);
-  assert.match(actions, /from\("documents"\)\.delete\(\)/u);
-  assert.match(actions, /bucket\.download\(storageKey\)/u);
-  assert.match(actions, /existingBytes\.byteLength !== artifact\.byteLength/u);
-  assert.match(actions, /existingHash !== artifact\.sha256/u);
-  assert.match(actions, /Rf1086FeedbackArtifactPersistenceError/u);
+  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input\)/u);
+  assert.match(feedbackPersistence, /document_type:\s*"authority_feedback"/u);
+  assert.match(feedbackPersistence, /record_production_feedback_artifact/u);
+  assert.match(feedbackPersistence, /bucket\.remove\(\[storageKey\]\)/u);
+  assert.match(feedbackPersistence, /from\("documents"\)\.delete\(\)/u);
+  assert.match(feedbackPersistence, /bucket\.download\(storageKey\)/u);
+  assert.match(feedbackPersistence, /bytes\.byteLength !== artifact\.byteLength/u);
+  assert.match(feedbackPersistence, /hash !== artifact\.sha256/u);
+  assert.match(feedbackPersistence, /if \(persisted\.error\)[\s\S]+if \(persisted\.data\)[\s\S]+bucket\.remove/u);
+  assert.match(feedbackPersistence, /Rf1086FeedbackArtifactPersistenceError/u);
   assert.match(actions, /createRf1086FeedbackArtifactPersistenceError/u);
   assert.doesNotMatch(actions, /databaseTerminalFailure/u);
-  assert.doesNotMatch(actions, /getPublicUrl/u);
+  assert.doesNotMatch(feedbackPersistence, /getPublicUrl/u);
 });
 
 test("filing page auto-resumes pending reconciliation and always exposes manual retry", () => {

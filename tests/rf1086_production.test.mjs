@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { Rf1086AuthorityError } from "../app/lib/rf1086-authority-client.ts";
+import { createRf1086FeedbackArtifactRecorder } from "../app/lib/rf1086-feedback-persistence.ts";
 import {
   Rf1086FeedbackArtifactPersistenceError,
   createRf1086FeedbackArtifactPersistenceError,
@@ -614,5 +616,182 @@ test("Supabase constraint and schema failures remain terminal through the real p
 
     assert.equal(result.state, "action_required", code);
     assert.equal(result.safeErrorCode, "RF1086_FEEDBACK_ARTIFACT_PERSIST_FAILED", code);
+  }
+});
+
+function feedbackPersistenceFixture(options = {}) {
+  const state = {
+    metadata: options.metadata ?? null,
+    objects: new Map(options.objects ?? []),
+    documents: new Map(),
+    metadataReads: 0,
+    rpcCalls: 0,
+    documentDeletes: 0,
+    objectRemovals: 0,
+  };
+  const service = {
+    storage: {
+      from() {
+        return {
+          async upload(key, bytes) {
+            if (state.objects.has(key)) {
+              return { error: { code: "Duplicate", message: "object exists" } };
+            }
+            state.objects.set(key, new Uint8Array(bytes));
+            return { error: null };
+          },
+          async download(key) {
+            const bytes = state.objects.get(key);
+            return bytes
+              ? { data: new Blob([bytes]), error: null }
+              : { data: null, error: { code: "NoSuchKey", message: "missing" } };
+          },
+          async remove(keys) {
+            state.objectRemovals += 1;
+            for (const key of keys) state.objects.delete(key);
+            return { error: null };
+          },
+        };
+      },
+    },
+    from(table) {
+      if (table === "production_feedback_artifacts") {
+        const query = {
+          select() { return query; },
+          eq() { return query; },
+          async maybeSingle() {
+            state.metadataReads += 1;
+            const error = options.metadataReadErrors?.get(state.metadataReads) ?? null;
+            return error ? { data: null, error } : { data: state.metadata, error: null };
+          },
+        };
+        return query;
+      }
+      if (table === "documents") {
+        return {
+          async insert(document) {
+            state.documents.set(document.id, document);
+            return { error: null };
+          },
+          delete() {
+            return {
+              async eq(_column, documentId) {
+                state.documentDeletes += 1;
+                state.documents.delete(documentId);
+                return { error: null };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`unexpected table ${table}`);
+    },
+    async rpc(name, payload) {
+      assert.equal(name, "record_production_feedback_artifact");
+      state.rpcCalls += 1;
+      if (options.commitThenLoseResponse) {
+        state.metadata = {
+          document_id: payload.p_document_id,
+          sha256: payload.p_sha256,
+        };
+      }
+      return options.rpcResult ?? {
+        data: null,
+        error: { code: "PGRST000", message: "response lost" },
+      };
+    },
+  };
+  return { service, state };
+}
+
+function persistenceArtifact() {
+  const bytes = new TextEncoder().encode(acceptedFeedback);
+  return {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    authorityReference: "authority-document-id",
+    contentType: "application/xml",
+    bytes,
+    byteLength: bytes.byteLength,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    classification: "accepted",
+  };
+}
+
+function feedbackStorageKey(artifact) {
+  return `authority-feedback/company-id/submission-id/${artifact.sha256}`;
+}
+
+test("ambiguous metadata commit preserves the receipt and the next read-only attempt verifies it", async () => {
+  const artifact = persistenceArtifact();
+  const { service, state } = feedbackPersistenceFixture({
+    commitThenLoseResponse: true,
+    metadataReadErrors: new Map([[2, {
+      code: "PGRST003",
+      details: "pool unavailable",
+      hint: null,
+      message: "connection pool timeout",
+    }]]),
+  });
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    userId: "user-id",
+  });
+
+  await assert.rejects(
+    recordArtifact(artifact),
+    (error) => error instanceof Rf1086FeedbackArtifactPersistenceError && error.retryable,
+  );
+  assert.equal(state.objectRemovals, 0);
+  assert.equal(state.documentDeletes, 0);
+  assert.equal(state.objects.has(feedbackStorageKey(artifact)), true);
+  assert.equal(state.rpcCalls, 1);
+
+  assert.equal(await recordArtifact(artifact), artifact.sha256);
+  assert.equal(state.rpcCalls, 1, "existing metadata recovery must not repeat the RPC or filing POST");
+  assert.equal(state.objectRemovals, 0);
+});
+
+test("authoritative metadata absence permits cleanup of resources owned by the failed attempt", async () => {
+  const artifact = persistenceArtifact();
+  const { service, state } = feedbackPersistenceFixture();
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    userId: "user-id",
+  });
+
+  await assert.rejects(recordArtifact(artifact), Rf1086FeedbackArtifactPersistenceError);
+  assert.equal(state.documentDeletes, 1);
+  assert.equal(state.objectRemovals, 1);
+  assert.equal(state.objects.has(feedbackStorageKey(artifact)), false);
+});
+
+test("existing metadata cannot accept a missing or mismatched private receipt", async () => {
+  const artifact = persistenceArtifact();
+  for (const [label, objects, retryable] of [
+    ["missing", [], true],
+    ["mismatched", [[feedbackStorageKey(artifact), new TextEncoder().encode("wrong")]], false],
+  ]) {
+    const { service } = feedbackPersistenceFixture({
+      metadata: { document_id: "document-id", sha256: artifact.sha256 },
+      objects,
+    });
+    const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
+      submissionId: "submission-id",
+      companyId: "company-id",
+      incomeYear: 2025,
+      userId: "user-id",
+    });
+
+    await assert.rejects(
+      recordArtifact(artifact),
+      (error) => error instanceof Rf1086FeedbackArtifactPersistenceError
+        && error.retryable === retryable,
+      label,
+    );
   }
 });

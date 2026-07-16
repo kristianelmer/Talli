@@ -53,8 +53,6 @@ import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/dea
 import {
   COMPANY_DOCUMENTS_BUCKET,
   documentStorageKey,
-  rf1086FeedbackFileName,
-  rf1086FeedbackStorageKey,
   validateDocumentUpload,
 } from "./lib/documents";
 import {
@@ -127,7 +125,6 @@ import {
   productionApprovalHash,
 } from "./lib/production-approval";
 import {
-  Rf1086FeedbackArtifactPersistenceError,
   createRf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   executeRf1086ProductionRelease,
@@ -137,6 +134,7 @@ import {
   type Rf1086ProductionJournal,
   type Rf1086ReconciliationState,
 } from "./lib/rf1086-production";
+import { createRf1086FeedbackArtifactRecorder } from "./lib/rf1086-feedback-persistence";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
 import {
   buildRf1086OwnerReconciliationActionState,
@@ -4895,7 +4893,7 @@ function createRf1086FeedbackJournal(
     cause: unknown,
     options: { integrityFailure?: boolean } = {},
   ) => createRf1086FeedbackArtifactPersistenceError(message, cause, options);
-  const bucket = service.storage.from(COMPANY_DOCUMENTS_BUCKET);
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, input);
 
   return {
     async readReconciliationState() {
@@ -4925,103 +4923,7 @@ function createRf1086FeedbackJournal(
         correlationId: submission.data.feedback_correlation_id,
       };
     },
-    async recordArtifact(artifact) {
-      const { data: existing, error: existingError } = await service
-        .from("production_feedback_artifacts")
-        .select("sha256")
-        .eq("submission_id", input.submissionId)
-        .eq("sha256", artifact.sha256)
-        .maybeSingle();
-      if (existingError) {
-        throw persistenceError("Kunne ikke kontrollere tilbakemeldingsarkivet.", existingError);
-      }
-      if (existing) return existing.sha256;
-
-      const storageKey = rf1086FeedbackStorageKey(input.companyId, input.submissionId, artifact.sha256);
-      const documentId = randomUUID();
-      const upload = await bucket.upload(
-        storageKey,
-        artifact.bytes,
-        { contentType: artifact.contentType, upsert: false },
-      );
-      if (upload.error) {
-        const existingObject = await bucket.download(storageKey);
-        if (existingObject.error || !existingObject.data) {
-          throw persistenceError(
-            "Kunne ikke lagre tilbakemeldingsdokumentet.",
-            upload.error,
-          );
-        }
-        const existingBytes = new Uint8Array(await existingObject.data.arrayBuffer());
-        const existingHash = createHash("sha256").update(existingBytes).digest("hex");
-        if (existingBytes.byteLength !== artifact.byteLength || existingHash !== artifact.sha256) {
-          throw persistenceError(
-            "Eksisterende tilbakemeldingsdokument samsvarer ikke med forventet innhold.",
-            upload.error,
-            { integrityFailure: true },
-          );
-        }
-      }
-
-      let documentInserted = false;
-      try {
-        const { error: documentError } = await service.from("documents").insert({
-          id: documentId,
-          company_id: input.companyId,
-          income_year: input.incomeYear,
-          document_type: "authority_feedback",
-          name: rf1086FeedbackFileName(artifact.contentType, artifact.sha256),
-          linked_to: `production_filing_submission:${input.submissionId}`,
-          status: "attached",
-          retention_years: 5,
-          storage_key: storageKey,
-          created_by: input.userId,
-        });
-        if (documentError) {
-          throw persistenceError(
-            "Kunne ikke registrere tilbakemeldingsdokumentet.",
-            documentError,
-          );
-        }
-        documentInserted = true;
-
-        const { data, error } = await service.rpc("record_production_feedback_artifact", {
-          p_company_id: input.companyId,
-          p_submission_id: input.submissionId,
-          p_document_id: documentId,
-          p_authority_reference: artifact.authorityReference,
-          p_content_type: artifact.contentType,
-          p_byte_length: artifact.byteLength,
-          p_sha256: artifact.sha256,
-          p_classification: artifact.classification,
-        });
-        if (error || !data) {
-          throw persistenceError(
-            "Kunne ikke registrere tilbakemeldingsmetadata.",
-            error,
-          );
-        }
-        return artifact.sha256;
-      } catch (error) {
-        const persisted = await service
-          .from("production_feedback_artifacts")
-          .select("document_id,sha256")
-          .eq("submission_id", input.submissionId)
-          .eq("sha256", artifact.sha256)
-          .maybeSingle();
-        if (!persisted.error && persisted.data?.document_id === documentId) {
-          return persisted.data.sha256;
-        }
-        if (documentInserted) {
-          await service.from("documents").delete().eq("id", documentId);
-        }
-        if (!persisted.data) {
-          await bucket.remove([storageKey]);
-        }
-        if (error instanceof Rf1086FeedbackArtifactPersistenceError) throw error;
-        throw persistenceError("Tilbakemeldingen kunne ikke arkiveres sikkert.", error);
-      }
-    },
+    recordArtifact,
     async appendReconciliation(event) {
       const { data, error } = await service.rpc("append_production_feedback_reconciliation", {
         p_submission_id: input.submissionId,
