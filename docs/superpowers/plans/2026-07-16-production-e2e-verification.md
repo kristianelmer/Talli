@@ -98,9 +98,9 @@ Expected: local tooling is available without connecting to a hosted customer pro
 
 - [ ] **Step 2: Run the isolated migration and authenticated database suite**
 
-Run: `npm run test:supabase:local`
+Run: `TALLI_PYTHON_BIN=/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python npm run test:supabase:local`
 
-Expected: migrations, grants, role-abuse/RLS checks, database runtimes, advisors, and the owner browser loop pass; teardown leaves no conflicting local service.
+Expected: migrations, grants, role-abuse/RLS checks, database runtimes, advisors, and the owner browser loop pass using the existing project virtualenv; teardown leaves no conflicting local service.
 
 - [ ] **Step 3: Re-run explicit static grant and advisor gates**
 
