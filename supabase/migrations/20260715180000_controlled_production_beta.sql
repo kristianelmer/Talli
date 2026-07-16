@@ -333,7 +333,8 @@ begin
   if v_preview.status <> 'ready'
     or v_preview.filing <> 'aksjonaerregisteroppgaven'
     or v_preview.hovedskjema_xml is null
-    or jsonb_object_length(v_preview.underskjema_xml) < 1
+    or jsonb_typeof(v_preview.underskjema_xml) is distinct from 'object'
+    or v_preview.underskjema_xml = '{}'::jsonb
     or jsonb_typeof(p_manifest) <> 'object'
     or p_manifest_hash !~ '^[0-9a-f]{64}$'
     or length(trim(coalesce(p_adapter_version, ''))) not between 1 and 100

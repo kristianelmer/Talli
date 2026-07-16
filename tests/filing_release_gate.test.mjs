@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { buildFilingReleaseGates } from "../app/lib/filing-release-gate.ts";
+
+const liveReleaseGate = readFileSync(
+  new URL("../docs/filing/rf1086-live-release-gate.md", import.meta.url),
+  "utf8",
+);
+const systemregisterEvidence = readFileSync(
+  new URL("../docs/launch/evidence/production-systemregister-2026-07-16.md", import.meta.url),
+  "utf8",
+);
 
 const readyBilling = {
   company_id: "company-id",
@@ -82,6 +92,21 @@ const rfPilotEntitlement = {
   starts_at: "2026-06-01T00:00:00.000Z",
   expires_at: "2026-07-01T00:00:00.000Z",
 };
+
+test("release evidence keeps authority and filing switches off after local browser proof", () => {
+  for (const document of [liveReleaseGate, systemregisterEvidence]) {
+    assert.match(document, /TALLI_AUTHORITY_OPS_ENABLED=false/);
+    assert.match(document, /TALLI_RF1086_PRODUCTION_ENABLED=false/);
+    assert.match(document, /callback_already_verified|callback_updated_and_verified/);
+  }
+  assert.match(liveReleaseGate, /mocked\/local flow/i);
+  assert.match(liveReleaseGate, /separately authorize any production filing/i);
+  assert.match(liveReleaseGate, /local mock[^\n]*not[^\n]*production callback/i);
+  assert.match(
+    systemregisterEvidence,
+    /did not make a live request, change Systemregister, enable a switch, grant an entitlement, or submit a filing/i,
+  );
+});
 
 test("keeps all production filing gates disabled without authority, billing, step-up, and human review", () => {
   const gates = buildFilingReleaseGates({

@@ -5,9 +5,13 @@ import {
   type MaskinportenAccessToken,
   type RequestMaskinportenTokenInput,
 } from "./maskinporten.ts";
+import { SYSTEM_USER_CALLBACK_URL } from "./system-user-requests.ts";
 
 export const AUTHORITY_OPERATION = "register_rf1086_system" as const;
 export const AUTHORITY_CONFIRMATION = "REGISTER TALLI RF1086 SYSTEM" as const;
+export const SYSTEMBRUKER_CALLBACK_OPERATION = "set_rf1086_systembruker_callback" as const;
+export const SYSTEMBRUKER_CALLBACK_CONFIRMATION = "SET TALLI SYSTEMBRUKER CALLBACK" as const;
+export const SYSTEMBRUKER_CALLBACK_PATH = "/auth/systembruker/confirm" as const;
 export const TALLI_SYSTEM_ID = "930835978_talli" as const;
 export const RF1086_RIGHT = "ske-innrapportering-aksjonaerregisteroppgave" as const;
 
@@ -38,12 +42,33 @@ export type Rf1086SystemDefinition = {
   isVisible: true;
 };
 
+export type Rf1086SystembrukerCallbackDefinition = Omit<
+  Rf1086SystemDefinition,
+  "allowedredirecturls"
+> & {
+  allowedRedirectUrls: Array<typeof SYSTEM_USER_CALLBACK_URL>;
+  isDeleted: false;
+};
+
 export type AuthorityOperationResult = {
   status: "succeeded" | "conflict";
   code: "created_and_verified" | "already_verified" | "definition_conflict";
   systemId: typeof TALLI_SYSTEM_ID;
   clientId: string;
   right: typeof RF1086_RIGHT;
+  authorityStatus: number;
+};
+
+export type SystembrukerCallbackResultCode =
+  | "callback_already_verified"
+  | "callback_updated_and_verified"
+  | "definition_conflict";
+
+export type SystembrukerCallbackOperationResult = {
+  status: "succeeded" | "conflict";
+  resultCode: SystembrukerCallbackResultCode;
+  systemId: typeof TALLI_SYSTEM_ID;
+  callbackPath: typeof SYSTEMBRUKER_CALLBACK_PATH;
   authorityStatus: number;
 };
 
@@ -155,6 +180,25 @@ export function buildRf1086SystemDefinition(clientId: string): Rf1086SystemDefin
   };
 }
 
+function buildSystembrukerCallbackDefinition(
+  clientId: string,
+  allowedRedirectUrls: Array<typeof SYSTEM_USER_CALLBACK_URL>,
+): Rf1086SystembrukerCallbackDefinition {
+  const { allowedredirecturls: _allowedRedirectUrls, ...fixedDefinition } =
+    buildRf1086SystemDefinition(clientId);
+  return {
+    ...fixedDefinition,
+    allowedRedirectUrls,
+    isDeleted: false,
+  };
+}
+
+export function buildRf1086SystembrukerCallbackDefinition(
+  clientId: string,
+): Rf1086SystembrukerCallbackDefinition {
+  return buildSystembrukerCallbackDefinition(clientId, [SYSTEM_USER_CALLBACK_URL]);
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
@@ -168,7 +212,9 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function authorityOperationRequestHash(definition: Rf1086SystemDefinition): string {
+export function authorityOperationRequestHash(
+  definition: Rf1086SystemDefinition | Rf1086SystembrukerCallbackDefinition,
+): string {
   return createHash("sha256").update(canonicalJson(definition), "utf8").digest("hex");
 }
 
@@ -179,6 +225,18 @@ export function assertAuthorityOperationIntent(input: {
   if (
     input.operation !== AUTHORITY_OPERATION ||
     input.confirmation !== AUTHORITY_CONFIRMATION
+  ) {
+    throw new AuthorityOperationError("authority_operation_invalid");
+  }
+}
+
+export function assertSystembrukerCallbackOperationIntent(input: {
+  operation: unknown;
+  confirmation: unknown;
+}): void {
+  if (
+    input.operation !== SYSTEMBRUKER_CALLBACK_OPERATION ||
+    input.confirmation !== SYSTEMBRUKER_CALLBACK_CONFIRMATION
   ) {
     throw new AuthorityOperationError("authority_operation_invalid");
   }
@@ -206,6 +264,135 @@ function definitionProjection(value: unknown): Rf1086SystemDefinition | null {
 
 function definitionsMatch(actual: unknown, expected: Rf1086SystemDefinition): boolean {
   const projected = definitionProjection(actual);
+  return projected !== null && canonicalJson(projected) === canonicalJson(expected);
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const actualKeys = Object.keys(value).sort();
+  const expectedKeys = [...expected].sort();
+  return actualKeys.length === expectedKeys.length &&
+    actualKeys.every((key, index) => key === expectedKeys[index]);
+}
+
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function localizedTextProjection(value: unknown): LocalizedText | null {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ["nb", "nn", "en"]) ||
+    typeof value.nb !== "string" ||
+    typeof value.nn !== "string" ||
+    typeof value.en !== "string"
+  ) {
+    return null;
+  }
+  return { nb: value.nb, nn: value.nn, en: value.en };
+}
+
+function callbackRightsProjection(value: unknown): Rf1086SystemDefinition["rights"] | null {
+  if (!Array.isArray(value)) return null;
+  const rights: Rf1086SystemDefinition["rights"] = [];
+  for (const right of value) {
+    if (!isRecord(right) || !hasExactKeys(right, ["resource"]) || !Array.isArray(right.resource)) {
+      return null;
+    }
+    const resources: Rf1086SystemDefinition["rights"][number]["resource"] = [];
+    for (const resource of right.resource) {
+      if (
+        !isRecord(resource) ||
+        !hasExactKeys(resource, ["id", "value"]) ||
+        typeof resource.id !== "string" ||
+        typeof resource.value !== "string"
+      ) {
+        return null;
+      }
+      resources.push(resource as Rf1086SystemDefinition["rights"][number]["resource"][number]);
+    }
+    rights.push({ resource: resources });
+  }
+  return rights;
+}
+
+function callbackDefinitionProjection(
+  value: unknown,
+): Rf1086SystembrukerCallbackDefinition | null {
+  if (!isRecord(value)) return null;
+  const hasCamelCaseCallbacks = hasOwn(value, "allowedRedirectUrls");
+  const hasLegacyCallbacks = hasOwn(value, "allowedredirecturls");
+  if (
+    hasCamelCaseCallbacks === hasLegacyCallbacks ||
+    !hasExactKeys(value, [
+      "id",
+      "vendor",
+      "name",
+      "description",
+      "rights",
+      "accessPackages",
+      "clientId",
+      hasCamelCaseCallbacks ? "allowedRedirectUrls" : "allowedredirecturls",
+      "isVisible",
+      "isDeleted",
+    ]) ||
+    !isRecord(value.vendor)
+  ) {
+    return null;
+  }
+  const vendorHasAuthority = hasOwn(value.vendor, "authority");
+  if (
+    !hasExactKeys(value.vendor, vendorHasAuthority ? ["authority", "ID"] : ["ID"]) ||
+    typeof value.vendor.ID !== "string" ||
+    (vendorHasAuthority && typeof value.vendor.authority !== "string")
+  ) {
+    return null;
+  }
+  const name = localizedTextProjection(value.name);
+  const description = localizedTextProjection(value.description);
+  const rights = callbackRightsProjection(value.rights);
+  const callbacks = hasCamelCaseCallbacks
+    ? value.allowedRedirectUrls
+    : value.allowedredirecturls;
+  if (
+    name === null ||
+    description === null ||
+    rights === null ||
+    !Array.isArray(value.accessPackages) ||
+    value.accessPackages.length !== 0 ||
+    !Array.isArray(value.clientId) ||
+    !value.clientId.every((clientId) => typeof clientId === "string") ||
+    !Array.isArray(callbacks) ||
+    !callbacks.every((callback) => typeof callback === "string") ||
+    typeof value.id !== "string" ||
+    typeof value.isVisible !== "boolean" ||
+    typeof value.isDeleted !== "boolean"
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    vendor: {
+      authority: value.vendor.authority === undefined
+        ? "iso6523-actorid-upis"
+        : value.vendor.authority,
+      ID: value.vendor.ID,
+    },
+    name,
+    description,
+    rights,
+    accessPackages: [],
+    clientId: value.clientId,
+    allowedRedirectUrls: callbacks,
+    isVisible: value.isVisible,
+    isDeleted: value.isDeleted,
+  } as Rf1086SystembrukerCallbackDefinition;
+}
+
+function callbackDefinitionsMatch(
+  actual: unknown,
+  expected: Rf1086SystembrukerCallbackDefinition,
+): boolean {
+  const projected = callbackDefinitionProjection(actual);
   return projected !== null && canonicalJson(projected) === canonicalJson(expected);
 }
 
@@ -254,6 +441,69 @@ async function parseAuthorityCreateResponse(response: Response): Promise<void> {
   ) {
     throw new AuthorityOperationError("authority_response_invalid", response.status);
   }
+}
+
+type CappedAuthorityResponse = {
+  status: number;
+  contentType: string;
+  text: string;
+};
+
+async function readCappedCallbackAuthorityResponse(
+  response: Response,
+): Promise<CappedAuthorityResponse> {
+  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_AUTHORITY_RESPONSE_BYTES) {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    if (response.body) {
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_AUTHORITY_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw new AuthorityOperationError("authority_response_invalid", response.status);
+        }
+        chunks.push(value);
+      }
+    }
+  } catch {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+
+  const text = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString("utf8");
+  if (Buffer.byteLength(text, "utf8") > MAX_AUTHORITY_RESPONSE_BYTES) {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+  return {
+    status: response.status,
+    contentType: response.headers.get("content-type") ?? "",
+    text,
+  };
+}
+
+function parseCappedCallbackAuthorityObject(
+  response: CappedAuthorityResponse,
+): Record<string, unknown> {
+  if (!response.contentType.toLowerCase().includes("application/json")) {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(response.text);
+  } catch {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+  if (!isRecord(parsed)) {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
+  return parsed;
 }
 
 async function authorityFetch(
@@ -348,4 +598,113 @@ export async function executeRf1086SystemRegistration(
   return definitionsMatch(verified, definition)
     ? result(environment, "succeeded", "created_and_verified", verifyResponse.status)
     : result(environment, "conflict", "definition_conflict", verifyResponse.status);
+}
+
+function callbackResult(
+  status: SystembrukerCallbackOperationResult["status"],
+  resultCode: SystembrukerCallbackResultCode,
+  authorityStatus: number,
+): SystembrukerCallbackOperationResult {
+  return {
+    status,
+    resultCode,
+    systemId: TALLI_SYSTEM_ID,
+    callbackPath: SYSTEMBRUKER_CALLBACK_PATH,
+    authorityStatus,
+  };
+}
+
+export async function executeRf1086SystembrukerCallbackUpdate(
+  environment: AuthorityOperationEnvironment,
+  dependencies: { requestToken?: TokenRequester; fetch?: FetchLike } = {},
+): Promise<SystembrukerCallbackOperationResult> {
+  const emptyDefinition = buildSystembrukerCallbackDefinition(environment.clientId, []);
+  const callbackDefinition = buildRf1086SystembrukerCallbackDefinition(environment.clientId);
+  let accessToken: MaskinportenAccessToken;
+  try {
+    accessToken = await (dependencies.requestToken ?? requestMaskinportenToken)({
+      environment: "production",
+      clientId: environment.clientId,
+      keyId: environment.keyId,
+      privateKeyPem: environment.privateKeyPem,
+      scope: SYSTEMREGISTER_SCOPE,
+    });
+  } catch {
+    throw new AuthorityOperationError("authority_token_error");
+  }
+
+  const fetcher = dependencies.fetch ?? fetch;
+  const headers = {
+    authorization: `Bearer ${accessToken.accessToken}`,
+    accept: "application/json",
+  };
+  const systemUrl = `${SYSTEMREGISTER_BASE_URL}/${TALLI_SYSTEM_ID}`;
+  const currentResponse = await readCappedCallbackAuthorityResponse(
+    await authorityFetch(fetcher, systemUrl, {
+      method: "GET",
+      headers,
+    }),
+  );
+  if (currentResponse.status === 404) {
+    return callbackResult("conflict", "definition_conflict", currentResponse.status);
+  }
+  if (currentResponse.status !== 200) {
+    throw new AuthorityOperationError("authority_http_error", currentResponse.status);
+  }
+
+  const current = parseCappedCallbackAuthorityObject(currentResponse);
+  if (callbackDefinitionsMatch(current, callbackDefinition)) {
+    return callbackResult("succeeded", "callback_already_verified", currentResponse.status);
+  }
+  if (!callbackDefinitionsMatch(current, emptyDefinition)) {
+    return callbackResult("conflict", "definition_conflict", currentResponse.status);
+  }
+
+  let updateFailure: AuthorityOperationError | null = null;
+  try {
+    const updateResponse = await readCappedCallbackAuthorityResponse(
+      await authorityFetch(fetcher, systemUrl, {
+        method: "PUT",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(callbackDefinition),
+      }),
+    );
+    if (updateResponse.status !== 200 && updateResponse.status !== 204) {
+      throw new AuthorityOperationError("authority_http_error", updateResponse.status);
+    }
+    if (updateResponse.status === 200) {
+      parseCappedCallbackAuthorityObject(updateResponse);
+    }
+  } catch (error) {
+    updateFailure = error instanceof AuthorityOperationError
+      ? error
+      : new AuthorityOperationError("authority_response_invalid");
+  }
+
+  let verifyResponse: CappedAuthorityResponse;
+  let verified: Record<string, unknown>;
+  try {
+    verifyResponse = await readCappedCallbackAuthorityResponse(
+      await authorityFetch(fetcher, systemUrl, {
+        method: "GET",
+        headers,
+      }),
+    );
+    if (verifyResponse.status !== 200) {
+      throw new AuthorityOperationError("authority_http_error", verifyResponse.status);
+    }
+    verified = parseCappedCallbackAuthorityObject(verifyResponse);
+  } catch (error) {
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    throw new AuthorityOperationError("authority_verification_error", authorityStatus);
+  }
+  if (callbackDefinitionsMatch(verified, callbackDefinition)) {
+    return callbackResult("succeeded", "callback_updated_and_verified", verifyResponse.status);
+  }
+  if (callbackDefinitionsMatch(verified, emptyDefinition) && updateFailure !== null) {
+    throw updateFailure;
+  }
+  return callbackResult("conflict", "definition_conflict", verifyResponse.status);
 }

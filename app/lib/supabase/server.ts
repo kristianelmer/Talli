@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type {
   YearEndInterviewAnswers,
 } from "../annual-data";
@@ -16,6 +16,7 @@ import type {
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
+import type { SystemUserRequestStatus } from "../system-user-requests";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -53,13 +54,13 @@ export type LaunchSignoffRow = {
 
 export type AuthorityOperationRow = {
   id: string;
-  operation: "register_rf1086_system";
+  operation: "register_rf1086_system" | "set_rf1086_systembruker_callback";
   actor_id: string;
   status: "started" | "succeeded" | "failed" | "conflict";
   request_hash: string;
   result_code: string;
   authority_http_status: number | null;
-  metadata: { systemId?: string; clientId?: string; right?: string };
+  metadata: { systemId?: string; clientId?: string; right?: string; callbackPath?: string };
   created_at: string;
   completed_at: string | null;
 };
@@ -299,6 +300,7 @@ export type ProductionPilotEntitlementRow = {
   case_profile: "rf1086_no_activity_v1";
   status: "pending" | "active" | "suspended" | "completed" | "revoked";
   billing_exempt: boolean;
+  system_user_request_id: string | null;
   system_user_external_reference: string;
   starts_at: string;
   expires_at: string;
@@ -306,6 +308,26 @@ export type ProductionPilotEntitlementRow = {
   approved_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type SystemUserRequestRow = {
+  id: string;
+  company_id: string;
+  initiating_owner_user_id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  external_ref: string;
+  altinn_request_id: string | null;
+  status: SystemUserRequestStatus;
+  confirm_url: string | null;
+  preflight_verified_at: string | null;
+  failure_code: string | null;
+  operator_evidence_id: string | null;
+  requested_at: string | null;
+  last_status_checked_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
 };
 
 export type FilingApprovalSnapshotRow = {
@@ -344,8 +366,26 @@ export type ProductionFilingSubmissionRow = {
   failure_class: string | null;
   supersedes_submission_id: string | null;
   submitted_by: string;
+  feedback_state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  feedback_artifact_count: number;
+  feedback_last_checked_at: string | null;
+  feedback_last_changed_at: string | null;
+  feedback_safe_error_code: string | null;
+  feedback_correlation_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ProductionFeedbackArtifactRow = {
+  id: string;
+  company_id: string;
+  submission_id: string;
+  document_id: string;
+  content_type: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  byte_length: number;
+  sha256: string;
+  retrieved_at: string;
+  classification: "accepted" | "rejected" | "action_required";
 };
 
 export type FilingOverrideRow = {
@@ -874,8 +914,24 @@ function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message
   return errors.some((error) => error != null && (
     error.code === "PGRST205"
     || error.code === "42P01"
-    || /production_(?:pilot|filing)|filing_approval_snapshots/iu.test(error.message ?? "")
+    || /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(error.message ?? "")
   ));
+}
+
+export async function listSystemUserRequests(
+  supabase: SupabaseClient,
+  companyIds: string[],
+): Promise<SystemUserRequestRow[]> {
+  if (companyIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code,operator_evidence_id,requested_at,last_status_checked_at,accepted_at,created_at,updated_at,resolved_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as SystemUserRequestRow[];
 }
 
 export async function listProductionFilingState(companyIds: string[]) {
@@ -884,25 +940,34 @@ export async function listProductionFilingState(companyIds: string[]) {
       productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
       filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
       productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
+      productionFeedbackArtifacts: [] as ProductionFeedbackArtifactRow[],
       error: null,
     };
   }
   const supabase = await createSupabaseServerClient();
-  const [entitlements, approvals, submissions] = await Promise.all([
+  const [entitlements, approvals, submissions, artifacts] = await Promise.all([
     supabase.from("production_pilot_entitlements").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
     supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
-    supabase.from("production_filing_submissions").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+    supabase.from("production_filing_submissions")
+      .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,payload_hash,adapter_version,environment,status,supersedes_submission_id,submitted_by,feedback_state,feedback_artifact_count,feedback_last_checked_at,feedback_last_changed_at,feedback_safe_error_code,feedback_correlation_id,created_at,updated_at")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false }),
+    supabase.from("production_feedback_artifacts")
+      .select("id,company_id,submission_id,document_id,content_type,byte_length,sha256,retrieved_at,classification")
+      .in("company_id", companyIds)
+      .order("retrieved_at", { ascending: false }),
   ]);
-  const errors = [entitlements.error, approvals.error, submissions.error];
+  const errors = [entitlements.error, approvals.error, submissions.error, artifacts.error];
   const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
     && productionPilotSchemaUnavailable(errors);
   return {
     productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
     filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
     productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
+    productionFeedbackArtifacts: (artifacts.data ?? []) as ProductionFeedbackArtifactRow[],
     error: rolloutSchemaPending
       ? null
-      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? null,
+      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
   };
 }
 

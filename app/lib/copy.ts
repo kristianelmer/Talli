@@ -4,6 +4,21 @@ import {
   requiredNonAffiliationCopy,
 } from "./launch-copy";
 
+export const operatorAuthorityCopy = {
+  systembrukerCallback: {
+    title: "Produksjon · Systemregister-callback",
+    gateLabel: "Operasjonsport",
+    enabled: "Midlertidig aktivert",
+    disabled: "Deaktivert",
+    body:
+      "Denne operasjonen legger bare den faste callback-adressen til den eksisterende Systemregister-definisjonen. Den oppretter ikke en Systembruker og åpner ikke for produksjonsinnsending.",
+    callbackLabel: "Fast callback",
+    callback: "https://talli.no/auth/systembruker/confirm",
+    confirmationLabel: "Skriv SET TALLI SYSTEMBRUKER CALLBACK",
+    cta: "Legg til eller verifiser callback",
+  },
+} as const;
+
 /**
  * Central owner-facing copy — Norwegian first.
  *
@@ -97,12 +112,121 @@ export const ownerCopy = {
     transactions: "Transaksjoner",
     yearEnd: "Årsavslutning",
     filing: "Innsending",
+    connections: "Tilkoblinger",
     documents: "Dokumenter",
     billing: "Abonnement",
     workspace: "Arbeidsflate",
     operator: "Operatør",
     menu: "Meny",
     signOut: "Logg ut",
+  },
+
+  connections: {
+    title: "Altinn-tilkobling",
+    intro:
+      "Koble et selskap til Altinn Systembruker, og følg den lagrede statusen før kontrollert innsending.",
+    companyHeading: "Velg selskap",
+    statusHeading: (companyName: string) => `Status for ${companyName}`,
+    noCompaniesTitle: "Sett opp selskapet først",
+    noCompaniesBody:
+      "Du må sette opp et holdingselskap før du kan opprette en Altinn-tilkobling.",
+    noCompaniesCta: "Kom i gang",
+    noRequestTitle: "Ingen tilkoblingsforespørsel",
+    noRequestBody:
+      "Opprett en forespørsel for å godkjenne Talli som Systembruker for selskapet i Altinn.",
+    loadErrorTitle: "Statusen er midlertidig utilgjengelig",
+    loadErrorBody:
+      "Vi kunne ikke hente den lagrede tilkoblingsstatusen. Prøv igjen om litt.",
+    states: {
+      creating: {
+        title: "Vi gjør forespørselen klar",
+        body:
+          "Forespørselen er lagret, men opprettelsen er ikke ferdig. Sjekk status for å prøve videre.",
+      },
+      new: {
+        title: "Venter på godkjenning i Altinn",
+        body:
+          "Forespørselen er opprettet, men ikke godkjent. Fortsett til Altinn og godkjenn den der.",
+      },
+      accepted: {
+        title: "Verifiserer tilkoblingen",
+        body:
+          "Altinn har godkjent forespørselen. Talli kontrollerer at Systembrukeren kan brukes til innsending før tilkoblingen markeres som klar.",
+      },
+      rejected: {
+        title: "Forespørselen ble avslått",
+        body:
+          "Forespørselen er avsluttet og kan ikke endres. Du kan opprette en ny forespørsel.",
+      },
+      denied: {
+        title: "Altinn nektet forespørselen",
+        body:
+          "Forespørselen er avsluttet og kan ikke endres. Du kan opprette en ny forespørsel.",
+      },
+      timedout: {
+        title: "Forespørselen utløp",
+        body:
+          "Godkjenningsfristen er passert. Du kan opprette en ny forespørsel.",
+      },
+      verification_failed: {
+        title: "Godkjent, men kunne ikke verifiseres for innsending",
+        body:
+          "Altinn har godkjent forespørselen, men Talli kunne ikke bekrefte at Systembrukeren kan brukes til innsending. Prøv verifiseringen på nytt.",
+      },
+    },
+    verified: {
+      title: "Tilkoblingen er godkjent og verifisert",
+      body:
+        "Talli har kontrollert at Systembrukeren kan brukes til kontrollert innsending for selskapet.",
+    },
+    actions: {
+      create: "Opprett tilkobling",
+      createPending: "Oppretter …",
+      continue: "Fortsett i Altinn",
+      refresh: "Sjekk status",
+      refreshPending: "Sjekker …",
+      retryVerification: "Prøv verifisering på nytt",
+      retryVerificationPending: "Verifiserer …",
+      createNew: "Opprett ny forespørsel",
+      createNewPending: "Oppretter …",
+    },
+    actionsLabel: "Handlinger for Altinn-tilkoblingen",
+    filing: {
+      missing: {
+        label: "Systembruker mangler",
+        body: "Selskapet har ingen aktiv Systembruker-tilkobling i Talli.",
+        variant: "danger",
+        ready: false,
+      },
+      waiting: {
+        label: "Venter på Altinn",
+        body: "Forespørselen venter på godkjenning i Altinn.",
+        variant: "warning",
+        ready: false,
+      },
+      ready: {
+        label: "Klar for kontrollert innsending",
+        body: "Systembruker-tilkoblingen er godkjent og verifisert.",
+        variant: "success",
+        ready: true,
+      },
+      action: {
+        label: "Tilkoblingen krever handling",
+        body: "Åpne tilkoblinger for å se lagret status og gyldige neste steg.",
+        variant: "danger",
+        ready: false,
+      },
+    },
+    callbackNotices: {
+      pending: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      verifying: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      connected: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      rejected: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      denied: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      timedout: "Returen fra Altinn er behandlet. Se den lagrede statusen nedenfor.",
+      manual:
+        "Vi kunne ikke knytte returen fra Altinn til en aktiv forespørsel. Sjekk den lagrede statusen nedenfor.",
+    },
   },
 
   auth: {
@@ -848,6 +972,93 @@ export const ownerCopy = {
       submitted: "Sendt (simulert)",
       preparing: "Under arbeid",
     },
+    production: {
+      title: "Reell innsending av aksjonærregisteroppgaven",
+      warning:
+        "Dette er en reell innsending til Skatteetaten med juridiske konsekvenser. En mottakskvittering betyr ikke at innholdet er endelig godkjent.",
+      companyLabel: "Selskap",
+      yearLabel: "Inntektsår",
+      caseLabel: "Sakstype",
+      supportedCase: "Selskap uten aktivitet eller i stiftelsesåret",
+      privateFeedback:
+        "Tilbakemeldinger lagres privat og kan lastes ned med kortvarig tilgang.",
+      approveCheck:
+        "Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell aksjonærregisteroppgave.",
+      approvePending: "Lagrer godkjenningen …",
+      approveCta: "Godkjenn innholdet",
+      sendPending: "Sender sikkert …",
+      sendCta: "Send aksjonærregisteroppgaven",
+      reconciliation: {
+        checkPending: "Sjekker status …",
+        checkCta: "Sjekk status på nytt",
+      },
+      states: {
+        sending: {
+          label: "Sender",
+          body: "Vi sender oppgaven og lagrer mottaksstatusen.",
+          variant: "warning",
+        },
+        sent: {
+          label: "Mottatt",
+          body: "Skatteetaten har mottatt oppgaven. Vi venter på den endelige tilbakemeldingen.",
+          variant: "warning",
+        },
+        processing: {
+          label: "Til behandling",
+          body: "Skatteetaten behandler oppgaven. Du kan sjekke statusen på nytt.",
+          variant: "warning",
+        },
+        unknown: {
+          label: "Vi sjekker statusen på nytt",
+          body: "Vi kunne ikke bekrefte statusen nå. Prøv igjen om litt.",
+          variant: "warning",
+        },
+        accepted: {
+          label: "Godkjent",
+          body: "Skatteetaten har godkjent oppgaven.",
+          variant: "success",
+        },
+        rejected: {
+          label: "Avvist",
+          body: "Skatteetaten har avvist oppgaven. Se tilbakemeldingen før du går videre.",
+          variant: "danger",
+        },
+        action_required: {
+          label: "Trenger oppfølging",
+          body: "Tilbakemeldingen må følges opp før saken kan avsluttes.",
+          variant: "danger",
+        },
+        approved: {
+          label: "Godkjent av deg",
+          body: "Innholdet er godkjent og klart til innsending.",
+          variant: "info",
+        },
+        ready: {
+          label: "Klar til gjennomgang",
+          body: "Se over innholdet før du godkjenner innsendingen.",
+          variant: "info",
+        },
+      },
+      artifacts: {
+        accepted: "Last ned godkjent tilbakemelding",
+        rejected: "Last ned tilbakemelding om avvisning",
+        action_required: "Last ned tilbakemelding som må følges opp",
+        unknown: "Last ned tilbakemelding",
+      },
+      errors: {
+        invalid_request: "Forespørselen kunne ikke behandles. Last inn siden på nytt og prøv igjen.",
+        authentication_required: "Du må logge inn på nytt før du kan fortsette.",
+        configuration_unavailable: "Reell innsending er midlertidig utilgjengelig.",
+        approval_expired: "Godkjenningen er utdatert. Se over innholdet og godkjenn på nytt.",
+        basis_unavailable: "Grunnlaget for innsendingen er ikke tilgjengelig nå.",
+        connection_unavailable: "Altinn-tilkoblingen er ikke klar for innsending.",
+        payload_changed: "Dataene er endret. Se over innholdet og godkjenn på nytt.",
+        send_unavailable: "Innsendingen kunne ikke fullføres nå. Kontroller statusen før du prøver igjen.",
+        status_unavailable: "Statusen kunne ikke kontrolleres nå. Prøv igjen om litt.",
+        status_busy: "En statuskontroll pågår allerede. Vent litt før du prøver igjen.",
+        unavailable: "Handlingen er midlertidig utilgjengelig. Prøv igjen om litt.",
+      },
+    },
     obligations: {
       aksjonaerregisteroppgaven: {
         label: "Aksjonærregisteroppgaven",
@@ -915,6 +1126,10 @@ export const ownerCopy = {
       pending: "Bekrefter …",
       confirmed: "Innsendingsrett er bekreftet.",
       lockedNote: "Lag forhåndsvisningen først.",
+      connectionTitle: "Altinn-tilkobling",
+      connectionCta: "Åpne tilkoblinger",
+      connectionLoadError:
+        "Vi kunne ikke hente den lagrede tilkoblingsstatusen. Åpne tilkoblinger og prøv igjen.",
     },
     confirm: {
       title: "Bekreft og arkiver",

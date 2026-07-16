@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -14,6 +15,15 @@ import {
 
 const owner = { id: "owner", role: roles.owner, companyOrgNumbers: ["314259521"] };
 const reviewer = { id: "reviewer", role: roles.reviewer, companyOrgNumbers: ["314259521"] };
+
+const ownerNavSource = readFileSync(
+  new URL("../app/(owner)/AppNav.tsx", import.meta.url),
+  "utf8",
+);
+const filingPageSource = readFileSync(
+  new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+  "utf8",
+);
 
 test("company setup accepts AS and blocks non-AS", () => {
   const supported = createCompanyWorkspace({
@@ -110,4 +120,18 @@ test("optional accountant review allows advisory acknowledgement but blocks hard
   });
 
   assert.throws(() => acknowledgeReviewComment(blocked, owner, "comment-2"), /Hard systemblokk/);
+});
+
+test("owner navigation adds connections without changing the operator-only branch", () => {
+  assert.match(ownerNavSource, /href: "\/connections"/u);
+  assert.match(ownerNavSource, /ownerCopy\.nav\.connections/u);
+  assert.match(ownerNavSource, /if \(isOperator\) \{[\s\S]*href: "\/operator"/u);
+});
+
+test("RF-1086 filing uses durable Systembruker readiness and a local company link", () => {
+  assert.match(filingPageSource, /systemUserFilingPresentation/u);
+  assert.match(filingPageSource, /systemUserFiling\.ready/u);
+  assert.match(filingPageSource, /systemUserConnectionHref = `\/connections\?company=\$\{input\.company\.id\}`/u);
+  assert.doesNotMatch(filingPageSource, /systemUserConnection\.(?:externalRef|confirmUrl|failureCode)/u);
+  assert.doesNotMatch(filingPageSource, /input\.company\.org_number/u);
 });

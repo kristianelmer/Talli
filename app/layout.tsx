@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="no" className={inter.variable}>
+    <html lang="no" className={inter.variable} data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );

@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 
 const sql = readFileSync(new URL("../supabase/migrations/20260715180000_controlled_production_beta.sql", import.meta.url), "utf8");
+const bindingSql = readFileSync(
+  new URL(
+    `../supabase/migrations/${readdirSync(new URL("../supabase/migrations/", import.meta.url)).find((file) => file.endsWith("_rf1086_system_user_requests.sql"))}`,
+    import.meta.url,
+  ),
+  "utf8",
+);
 const rollback = readFileSync(new URL("../supabase/rollback/controlled_production_beta.sql", import.meta.url), "utf8");
+
+test("all migrations use portable JSONB object checks", () => {
+  for (const migration of readdirSync(new URL("../supabase/migrations/", import.meta.url))) {
+    if (!migration.endsWith(".sql")) continue;
+    const migrationSql = readFileSync(new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8");
+    assert.doesNotMatch(migrationSql, /jsonb_object_length/iu, migration);
+  }
+});
 
 test("creates a separate production-only aggregate with constrained states", () => {
   for (const table of [
@@ -62,4 +77,42 @@ test("rollback revokes RPC access before dropping additive objects", () => {
   const dropIndex = rollback.indexOf("drop table if exists public.production_filing_events");
   assert.ok(revokeIndex >= 0 && dropIndex > revokeIndex);
   assert.match(rollback, /drop function if exists public\.assert_fresh_production_owner/u);
+});
+
+test("Systembruker binding preserves every existing production filing gate", () => {
+  assert.match(
+    bindingSql,
+    /drop function if exists public\.manage_production_pilot_entitlement\(uuid, uuid, uuid, integer, text, boolean, text, timestamptz, timestamptz, text\)/iu,
+  );
+  assert.match(
+    bindingSql,
+    /p_system_user_request_id uuid[\s\S]+v_request\.preflight_verified_at is null/iu,
+  );
+  assert.doesNotMatch(
+    bindingSql,
+    /p_system_user_external_reference text/iu,
+  );
+
+  const beginSql = bindingSql.match(
+    /create or replace function public\.begin_production_filing\(p_approval_id uuid\)[\s\S]+?\n\$\$;/iu,
+  )?.[0] ?? "";
+  for (const gate of [
+    "public.assert_fresh_production_owner",
+    "public.authority_permissions",
+    "public.filing_readiness_snapshots",
+    "public.filing_overrides",
+    "public.filing_review_comments",
+    "public.launch_signoffs",
+    "founder_production_go_live",
+    "rf1086_authority",
+    "security_restore",
+    "interval '30 days'",
+  ]) {
+    assert.match(beginSql, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+  }
+  assert.match(beginSql, /from public\.system_user_requests r[\s\S]+for update/iu);
+  assert.match(beginSql, /from public\.production_pilot_entitlements e[\s\S]+for update/iu);
+  assert.match(beginSql, /v_entitlement\.system_user_request_id is distinct from v_request\.id/iu);
+  assert.match(beginSql, /v_request\.status <> 'accepted'/iu);
+  assert.match(beginSql, /v_request\.preflight_verified_at is null/iu);
 });

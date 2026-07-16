@@ -1,7 +1,8 @@
 "use server";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AdminCostCategory,
@@ -32,11 +33,16 @@ import {
   AUTHORITY_OPERATION,
   AuthorityOperationError,
   RF1086_RIGHT,
+  SYSTEMBRUKER_CALLBACK_OPERATION,
+  SYSTEMBRUKER_CALLBACK_PATH,
   assertAuthorityOperationIntent,
+  assertSystembrukerCallbackOperationIntent,
   authorityOperationEnvironmentFailureCode,
   authorityOperationRequestHash,
   buildRf1086SystemDefinition,
+  buildRf1086SystembrukerCallbackDefinition,
   executeRf1086SystemRegistration,
+  executeRf1086SystembrukerCallbackUpdate,
   productionAuthorityOperationEnvironment,
 } from "./lib/authority-operations";
 import { buildCompanyTaxReturnEvidencePersistence } from "./lib/company-tax-return-submission";
@@ -119,12 +125,32 @@ import {
   productionApprovalHash,
 } from "./lib/production-approval";
 import {
+  createRf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
+  executeRf1086ProductionRelease,
+  reconcileJournaledRf1086Production,
   type ProductionOperation,
   type ProductionOperationJournal,
+  type Rf1086ProductionJournal,
+  type Rf1086ReconciliationState,
 } from "./lib/rf1086-production";
+import { createRf1086FeedbackArtifactRecorder } from "./lib/rf1086-feedback-persistence";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
+import {
+  buildRf1086OwnerReconciliationActionState,
+  type Rf1086OwnerActionErrorCode,
+  type Rf1086OwnerReconciliationActionState,
+} from "./lib/rf1086-production-presentation";
 import { requestMaskinportenToken } from "./lib/maskinporten";
+import {
+  SYSTEM_USER_COOKIE,
+  callbackStateForResult,
+  createProductionSystemUserFlowDependencies,
+  reconcileSystemUserRequest,
+  retrySystemUserRequest,
+  startSystemUserRequest,
+  systemUserRequestRecordFromRow,
+} from "./lib/system-user-flow";
 import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
 import {
@@ -4241,6 +4267,7 @@ function authorityOperationFailureCode(error: unknown) {
     case "authority_network_error":
     case "authority_http_error":
     case "authority_response_invalid":
+    case "authority_verification_error":
       return error.code;
     default:
       return "authority_operation_failed" as const;
@@ -4362,10 +4389,290 @@ export async function runProductionAuthorityOperation(formData: FormData) {
   redirect(`/operator?authority=${result.code}`);
 }
 
+export async function runProductionSystembrukerCallbackOperation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/operator?authority=authority_ops_unavailable");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError || !operator) {
+    redirect("/operator?authority=admin_operator_required");
+  }
+
+  try {
+    const stepUp = await loadTrustedStepUpContext(supabase, user.id);
+    assertStepUpAllowed("authority_operations", stepUp);
+  } catch (error) {
+    const code = error instanceof SensitiveActionStepUpError
+      ? "authority_step_up_required"
+      : "authority_step_up_failed";
+    redirect(`/operator?authority=${code}`);
+  }
+
+  try {
+    assertSystembrukerCallbackOperationIntent({
+      operation: formRawString(formData, "operation"),
+      confirmation: formRawString(formData, "confirmation"),
+    });
+  } catch {
+    redirect("/operator?authority=authority_operation_invalid");
+  }
+
+  let environment;
+  try {
+    environment = productionAuthorityOperationEnvironment();
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
+  }
+  if (!environment) {
+    redirect("/operator?authority=authority_ops_disabled");
+  }
+
+  const definition = buildRf1086SystembrukerCallbackDefinition(environment.clientId);
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    redirect("/operator?authority=authority_audit_unavailable");
+  }
+  const { data: started, error: startError } = await service.from("authority_operations").insert({
+    operation: SYSTEMBRUKER_CALLBACK_OPERATION,
+    actor_id: user.id,
+    status: "started",
+    request_hash: authorityOperationRequestHash(definition),
+    result_code: "started",
+    metadata: {
+      systemId: definition.id,
+      callbackPath: SYSTEMBRUKER_CALLBACK_PATH,
+    },
+  }).select("id").single();
+  if (startError || !started) {
+    redirect("/operator?authority=authority_audit_start_failed");
+  }
+
+  let result;
+  try {
+    result = await executeRf1086SystembrukerCallbackUpdate(environment);
+  } catch (error) {
+    const resultCode = authorityOperationFailureCode(error);
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    const { error: failureAuditError } = await service
+      .from("authority_operations")
+      .update({
+        status: "failed",
+        result_code: resultCode,
+        authority_http_status: authorityStatus,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", started.id);
+    if (failureAuditError) {
+      redirect("/operator?authority=authority_audit_completion_failed");
+    }
+    revalidatePath("/operator");
+    redirect(`/operator?authority=${resultCode}`);
+  }
+
+  const { error: completionError } = await service
+    .from("authority_operations")
+    .update({
+      status: result.status,
+      result_code: result.resultCode,
+      authority_http_status: result.authorityStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", started.id);
+  if (completionError) {
+    redirect("/operator?authority=authority_audit_completion_failed");
+  }
+  revalidatePath("/operator");
+  redirect(`/operator?authority=${result.resultCode}`);
+}
+
+function systemUserConnectionTarget(
+  companyId: string | null,
+  state: ReturnType<typeof callbackStateForResult> = "manual",
+) {
+  const query = new URLSearchParams({ systembruker: state });
+  if (companyId) query.set("company", companyId);
+  return `/connections?${query.toString()}`;
+}
+
+async function loadOwnedSystemUserContext(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  companyId: string;
+  requestId?: string;
+}) {
+  const [{ data: company, error: companyError }, { data: membership, error: membershipError }] = await Promise.all([
+    input.supabase
+      .from("companies")
+      .select("id,org_number")
+      .eq("id", input.companyId)
+      .maybeSingle(),
+    input.supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", input.companyId)
+      .eq("user_id", input.userId)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+  ]);
+  if (
+    companyError
+    || membershipError
+    || !company
+    || !membership
+    || company.id !== input.companyId
+    || membership.company_id !== input.companyId
+    || membership.user_id !== input.userId
+    || !/^\d{9}$/u.test(company.org_number)
+  ) {
+    return null;
+  }
+
+  if (!input.requestId) return { company, request: null };
+  const { data: request, error: requestError } = await input.supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code")
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId)
+    .eq("initiating_owner_user_id", input.userId)
+    .maybeSingle();
+  if (requestError || !request) return null;
+  return { company, request };
+}
+
+export async function startSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({ supabase, userId: user.id, companyId });
+  if (!context) redirect(systemUserConnectionTarget(companyId));
+
+  let confirmUrl: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const result = await startSystemUserRequest(dependencies, {
+      companyId: context.company.id,
+      requestId: randomUUID(),
+      ownerId: user.id,
+      orgNumber: context.company.org_number,
+    });
+    if (!result.confirmUrl || result.status !== "new") {
+      throw new Error("system_user_confirmation_unavailable");
+    }
+    const cookieStore = await cookies();
+    cookieStore.set(SYSTEM_USER_COOKIE.name, result.requestId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/systembruker/confirm",
+      maxAge: 3600,
+    });
+    confirmUrl = result.confirmUrl;
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(confirmUrl);
+}
+
+export async function refreshSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  let requestId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    requestId = requiredFormUuid(formData, "requestId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({
+    supabase,
+    userId: user.id,
+    companyId,
+    requestId,
+  });
+  if (!context?.request) redirect(systemUserConnectionTarget(companyId));
+
+  let destination: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const request = systemUserRequestRecordFromRow(
+      context.request,
+      context.company.org_number,
+    );
+    const result = request.status === "creating"
+      ? await retrySystemUserRequest(dependencies, request)
+      : await reconcileSystemUserRequest(dependencies, request);
+    revalidatePath("/connections");
+    destination = systemUserConnectionTarget(companyId, callbackStateForResult(result));
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(destination);
+}
+
 const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";
 
 function sha256(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function rf1086ProductionErrorTarget(
+  returnTo: string,
+  productionError: Rf1086OwnerActionErrorCode,
+) {
+  return `${returnTo}?productionError=${productionError}`;
+}
+
+function reportRf1086ProductionFailure(operation: string, error: unknown) {
+  const candidateCode = typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : "UNCLASSIFIED";
+  const code = /^[A-Za-z0-9_:-]{1,100}$/u.test(candidateCode)
+    ? candidateCode
+    : "UNCLASSIFIED";
+  console.error("RF-1086 production operation failed.", { operation, code });
 }
 
 export async function upsertProductionPilotEntitlement(formData: FormData) {
@@ -4375,10 +4682,12 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   if (!user) redirect("/login");
   let companyId: string;
   let ownerUserId: string;
+  let systemUserRequestId: string;
   let entitlementId: string | null;
   try {
     companyId = requiredFormUuid(formData, "companyId");
     ownerUserId = requiredFormUuid(formData, "ownerUserId");
+    systemUserRequestId = requiredFormUuid(formData, "systemUserRequestId");
     entitlementId = formString(formData, "entitlementId")
       ? requiredFormUuid(formData, "entitlementId")
       : null;
@@ -4390,13 +4699,11 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   const startsAt = new Date(formString(formData, "startsAt"));
   const expiresAt = new Date(formString(formData, "expiresAt"));
   const evidenceReference = formString(formData, "evidenceReference");
-  const systemUserExternalReference = formString(formData, "systemUserExternalReference");
   if (
     !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100
     || !["pending", "active", "suspended", "completed", "revoked"].includes(status)
     || Number.isNaN(startsAt.valueOf()) || Number.isNaN(expiresAt.valueOf()) || startsAt >= expiresAt
     || !evidenceReference || evidenceReference.length > 1000
-    || !systemUserExternalReference || systemUserExternalReference.length > 200
   ) {
     redirect("/operator?error=Ugyldig%20produksjonspilot-entitlement");
   }
@@ -4407,7 +4714,7 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
     p_income_year: incomeYear,
     p_status: status,
     p_billing_exempt: formData.get("billingExempt") === "on",
-    p_system_user_external_reference: systemUserExternalReference,
+    p_system_user_request_id: systemUserRequestId,
     p_starts_at: startsAt.toISOString(),
     p_expires_at: expiresAt.toISOString(),
     p_evidence_reference: evidenceReference,
@@ -4420,22 +4727,34 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
 
 export async function approveProductionFiling(formData: FormData) {
   const returnTo = returnTarget(formData);
-  if (!hasSupabaseEnv()) redirect(`${returnTo}?error=Supabase%20env%20mangler`);
-  if (formData.get("realFilingConfirmed") !== "on") {
-    redirect(`${returnTo}?error=${encodeURIComponent("Bekreft at dette er en reell innsending med juridiske konsekvenser.")}`);
+  if (!hasSupabaseEnv()) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
-  const previewId = requiredFormUuid(formData, "previewId");
-  const entitlementId = requiredFormUuid(formData, "entitlementId");
+  if (formData.get("realFilingConfirmed") !== "on") {
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
+  let previewId: string;
+  let entitlementId: string;
+  try {
+    previewId = requiredFormUuid(formData, "previewId");
+    entitlementId = requiredFormUuid(formData, "entitlementId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval_basis", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: preview, error: previewError } = await supabase
     .from("filing_previews").select("*").eq("id", previewId).single();
-  if (previewError || !preview) redirect(`${returnTo}?error=${encodeURIComponent("Fant ikke forhåndsvisningen.")}`);
+  if (previewError || !preview) {
+    reportRf1086ProductionFailure("load_approval_preview", previewError);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
   await requireSensitiveActionStepUp(supabase, user.id, preview.company_id, "production_filing");
   const { data: company } = await supabase.from("companies").select("id, org_number").eq("id", preview.company_id).single();
   if (!company || preview.status !== "ready" || !preview.hovedskjema_xml) {
-    redirect(`${returnTo}?error=${encodeURIComponent("RF-1086 er ikke klar for produksjonsgodkjenning.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
   }
   const documentHashes = {
     hovedskjema: sha256(preview.hovedskjema_xml),
@@ -4464,7 +4783,10 @@ export async function approveProductionFiling(formData: FormData) {
     p_manifest_hash: productionApprovalHash(manifest),
     p_adapter_version: RF1086_PRODUCTION_ADAPTER_VERSION,
   });
-  if (error) redirect(`${returnTo}?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    reportRf1086ProductionFailure("approve", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "unavailable"));
+  }
   revalidatePath(returnTo);
   redirect(`${returnTo}?approved=1`);
 }
@@ -4555,21 +4877,138 @@ function createRf1086DatabaseJournal(
   };
 }
 
+function createRf1086FeedbackJournal(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  input: {
+    submissionId: string;
+    companyId: string;
+    incomeYear: number;
+    userId: string;
+    forsendelseId: string;
+    leaseId: string;
+  },
+): Rf1086ProductionJournal {
+  const persistenceError = (
+    message: string,
+    cause: unknown,
+    options: { integrityFailure?: boolean } = {},
+  ) => createRf1086FeedbackArtifactPersistenceError(message, cause, options);
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, input);
+
+  return {
+    async readReconciliationState() {
+      const [submission, artifacts] = await Promise.all([
+        service
+          .from("production_filing_submissions")
+          .select("feedback_state,feedback_safe_error_code,feedback_correlation_id")
+          .eq("id", input.submissionId)
+          .eq("company_id", input.companyId)
+          .single(),
+        service
+          .from("production_feedback_artifacts")
+          .select("sha256")
+          .eq("submission_id", input.submissionId)
+          .order("sha256", { ascending: true }),
+      ]);
+      if (submission.error || !submission.data || artifacts.error) {
+        throw persistenceError(
+          "Kunne ikke lese tilbakemeldingsjournalen.",
+          submission.error ?? artifacts.error,
+        );
+      }
+      return {
+        state: submission.data.feedback_state as Rf1086ReconciliationState,
+        artifactHashes: (artifacts.data ?? []).map((artifact) => artifact.sha256),
+        safeErrorCode: submission.data.feedback_safe_error_code,
+        correlationId: submission.data.feedback_correlation_id,
+      };
+    },
+    recordArtifact,
+    async appendReconciliation(event) {
+      const { data, error } = await service.rpc("append_production_feedback_reconciliation", {
+        p_submission_id: input.submissionId,
+        p_lease_id: input.leaseId,
+        p_forsendelse_id: input.forsendelseId,
+        p_state: event.state,
+        p_artifact_hashes: event.artifactHashes,
+        p_safe_error_code: event.safeErrorCode,
+        p_correlation_id: event.correlationId,
+      });
+      if (error || typeof data !== "boolean") {
+        throw new Error("Kunne ikke oppdatere tilbakemeldingsstatusen.");
+      }
+      return data;
+    },
+  };
+}
+
+async function claimRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service.rpc("claim_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+  if (error) throw new Error("Kunne ikke reservere tilbakemeldingskontrollen.");
+  return data === true;
+}
+
+async function readClaimedRf1086ForsendelseId(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service
+    .from("production_filing_submissions")
+    .select("feedback_forsendelse_id")
+    .eq("id", submissionId)
+    .eq("feedback_reconciliation_lease_id", leaseId)
+    .single();
+  if (error || !data?.feedback_forsendelse_id) {
+    throw new Error("Innsendingsreferansen kunne ikke gjenopprettes sikkert.");
+  }
+  return data.feedback_forsendelse_id;
+}
+
+async function releaseRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  await service.rpc("release_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+}
+
 export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   const returnTo = returnTarget(formData);
-  const approvalId = requiredFormUuid(formData, "approvalId");
+  let approvalId: string;
+  try {
+    approvalId = requiredFormUuid(formData, "approvalId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
   let configuration;
   try {
     configuration = rf1086ProductionEnvironment();
   } catch (error) {
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsmiljøet er ugyldig.")}`);
+    reportRf1086ProductionFailure("load_configuration", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
-  if (!configuration) redirect(`${returnTo}?error=${encodeURIComponent("RF-1086 produksjonsadapter er deaktivert.")}`);
+  if (!configuration) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: approval } = await supabase.from("filing_approval_snapshots").select("*").eq("id", approvalId).single();
-  if (!approval || approval.invalidated_at) redirect(`${returnTo}?error=Godkjenningen%20er%20utdatert`);
+  if (!approval || approval.invalidated_at) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
+  }
   await requireSensitiveActionStepUp(supabase, user.id, approval.company_id, "production_filing");
   const [{ data: preview }, { data: entitlement }, { data: company }] = await Promise.all([
     supabase.from("filing_previews").select("*").eq("id", approval.preview_id).single(),
@@ -4577,7 +5016,26 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     supabase.from("companies").select("id, org_number").eq("id", approval.company_id).single(),
   ]);
   if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
-    redirect(`${returnTo}?error=Produksjonsgrunnlaget%20er%20ufullstendig`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
+  if (!entitlement.system_user_request_id) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
+  }
+  const { data: systemUserRequest } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+    .eq("id", entitlement.system_user_request_id)
+    .single();
+  if (
+    !systemUserRequest
+    || systemUserRequest.company_id !== approval.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== approval.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+  ) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
   }
   const currentManifest = buildProductionApprovalManifest({
     companyId: preview.company_id, userId: user.id, organizationNumber: company.org_number,
@@ -4593,37 +5051,321 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
       .filter((issue) => issue.level === "warning").map((issue) => issue.message),
   });
   if (!approvalMatchesCurrentPayload(currentManifest, approval.manifest_hash)) {
-    redirect(`${returnTo}?error=${encodeURIComponent("Dataene er endret. Se over og godkjenn på nytt.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "payload_changed"));
   }
   let service;
   try {
     service = createSupabaseServiceRoleClient();
   } catch (error) {
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsjournalen er ikke konfigurert.")}`);
+    reportRf1086ProductionFailure("load_private_journal", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
-  const token = await requestMaskinportenToken({
-    ...configuration,
-    systemUserOrgNumber: company.org_number,
-    systemUserExternalRef: entitlement.system_user_external_reference,
-  });
-  const { data: submission, error: beginError } = await supabase.rpc("begin_production_filing", { p_approval_id: approval.id });
-  if (beginError || !submission) redirect(`${returnTo}?error=${encodeURIComponent(beginError?.message ?? "Produksjonsinnsendingen kunne ikke startes.")}`);
   try {
-    await executeJournaledRf1086Production({
-      submissionId: submission.id,
-      incomeYear: preview.income_year,
-      hovedskjemaXml: preview.hovedskjema_xml,
-      underskjemaXml: preview.underskjema_xml as Record<string, string>,
-    }, {
-      journal: createRf1086DatabaseJournal(service),
-      authorityClient: createRf1086AuthorityClient({ environment: "production", accessToken: token.accessToken }),
+    await executeRf1086ProductionRelease({
+      async acquireDelegatedToken() {
+        return requestMaskinportenToken({
+          ...configuration,
+          systemUserOrgNumber: company.org_number,
+          systemUserExternalRef: systemUserRequest.external_ref,
+        });
+      },
+      async beginProductionFiling() {
+        const { data: submission, error } = await supabase.rpc("begin_production_filing", {
+          p_approval_id: approval.id,
+        });
+        if (error || !submission) {
+          throw new Error("Produksjonsinnsendingen kunne ikke startes.");
+        }
+        return submission;
+      },
+      async executeExternalSubmission({ token, submission }) {
+        const authorityClient = createRf1086AuthorityClient({
+          environment: "production",
+          accessToken: token.accessToken,
+        });
+        const submitted = await executeJournaledRf1086Production({
+          submissionId: submission.id,
+          incomeYear: preview.income_year,
+          hovedskjemaXml: preview.hovedskjema_xml,
+          underskjemaXml: preview.underskjema_xml as Record<string, string>,
+        }, {
+          journal: createRf1086DatabaseJournal(service),
+          authorityClient,
+        });
+        const leaseId = randomUUID();
+        if (await claimRf1086FeedbackLease(service, submission.id, leaseId)) {
+          try {
+            const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+              service,
+              submission.id,
+              leaseId,
+            );
+            if (authoritativeForsendelseId !== submitted.forsendelseId) {
+              throw new Error("Den bekreftede innsendingsreferansen samsvarer ikke med produksjonsjournalen.");
+            }
+            await reconcileJournaledRf1086Production(
+              createRf1086FeedbackJournal(service, {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                userId: user.id,
+                forsendelseId: authoritativeForsendelseId,
+                leaseId,
+              }),
+              authorityClient,
+              {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                forsendelseId: authoritativeForsendelseId,
+                hovedskjemaXml: preview.hovedskjema_xml,
+                underskjemaXml: preview.underskjema_xml as Record<string, string>,
+              },
+              { initialPoll: true },
+            );
+          } finally {
+            await releaseRf1086FeedbackLease(service, submission.id, leaseId);
+          }
+        }
+      },
+      discardToken(token) {
+        token.accessToken = "";
+      },
     });
   } catch (error) {
+    reportRf1086ProductionFailure("send_or_reconcile", error);
     revalidatePath(returnTo);
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086 innsendingen stoppet.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "send_unavailable"));
   }
   revalidatePath(returnTo);
   redirect(`${returnTo}?sent=1`);
+}
+
+export async function reconcileRf1086ProductionAction(
+  _previousState: Rf1086OwnerReconciliationActionState,
+  formData: FormData,
+): Promise<Rf1086OwnerReconciliationActionState> {
+  let submissionId: string;
+  try {
+    submissionId = requiredFormUuid(formData, "submissionId");
+  } catch {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "invalid_request",
+      requiresManualRetry: true,
+    });
+  }
+  if (!hasSupabaseEnv()) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "authentication_required",
+      requiresManualRetry: true,
+    });
+  }
+
+  const { data: submission, error: submissionError } = await supabase
+    .from("production_filing_submissions")
+    .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,environment,feedback_state")
+    .eq("id", submissionId)
+    .single();
+  if (
+    submissionError
+    || !submission
+    || submission.user_id !== user.id
+    || submission.obligation !== "aksjonaerregisteroppgaven"
+    || submission.case_profile !== "rf1086_no_activity_v1"
+    || submission.environment !== "production"
+  ) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+  const storedState = submission.feedback_state as Rf1086ReconciliationState;
+  if (["accepted", "rejected", "action_required"].includes(storedState)) {
+    return buildRf1086OwnerReconciliationActionState(storedState);
+  }
+
+  const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
+    supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", submission.company_id)
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+    supabase
+      .from("filing_approval_snapshots")
+      .select("id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,invalidated_at")
+      .eq("id", submission.approval_id)
+      .single(),
+    supabase
+      .from("production_pilot_entitlements")
+      .select("id,company_id,user_id,income_year,obligation,case_profile,system_user_request_id,system_user_external_reference")
+      .eq("id", submission.entitlement_id)
+      .single(),
+    supabase.from("companies").select("id,org_number").eq("id", submission.company_id).single(),
+  ]);
+  const membership = membershipResult.data;
+  const approval = approvalResult.data;
+  const entitlement = entitlementResult.data;
+  const company = companyResult.data;
+  if (
+    membershipResult.error
+    || !membership
+    || membership.role !== "owner"
+    || !membership.accepted_at
+    || approvalResult.error
+    || !approval
+    || approval.company_id !== submission.company_id
+    || approval.user_id !== user.id
+    || approval.entitlement_id !== entitlement?.id
+    || approval.income_year !== submission.income_year
+    || approval.obligation !== submission.obligation
+    || approval.case_profile !== submission.case_profile
+    || entitlementResult.error
+    || !entitlement
+    || entitlement.company_id !== submission.company_id
+    || entitlement.user_id !== user.id
+    || entitlement.income_year !== submission.income_year
+    || entitlement.obligation !== submission.obligation
+    || entitlement.case_profile !== submission.case_profile
+    || !entitlement.system_user_request_id
+    || companyResult.error
+    || !company
+  ) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const [{ data: systemUserRequest, error: requestError }, { data: preview, error: previewError }] = await Promise.all([
+    supabase
+      .from("system_user_requests")
+      .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+      .eq("id", entitlement.system_user_request_id)
+      .single(),
+    supabase
+      .from("filing_previews")
+      .select("id,company_id,income_year,hovedskjema_xml,underskjema_xml")
+      .eq("id", approval.preview_id)
+      .single(),
+  ]);
+  if (
+    requestError
+    || !systemUserRequest
+    || systemUserRequest.company_id !== submission.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== submission.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+    || previewError
+    || !preview
+    || preview.company_id !== submission.company_id
+    || preview.income_year !== submission.income_year
+    || !preview.hovedskjema_xml
+  ) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "connection_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  let configuration;
+  let service;
+  try {
+    configuration = rf1086ProductionEnvironment();
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+  if (!configuration) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const leaseId = randomUUID();
+  let claimed = false;
+  let delegatedToken: Awaited<ReturnType<typeof requestMaskinportenToken>> | null = null;
+  try {
+    const claim = await service.rpc("claim_production_feedback_reconciliation", {
+      p_submission_id: submission.id,
+      p_lease_id: leaseId,
+    });
+    if (claim.error) throw new Error("Tilbakemeldingskontrollen kunne ikke reserveres.");
+    claimed = claim.data === true;
+    if (!claimed) {
+      return buildRf1086OwnerReconciliationActionState(storedState, {
+        errorCode: "status_busy",
+        requiresManualRetry: true,
+      });
+    }
+    const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+      service,
+      submission.id,
+      leaseId,
+    );
+    delegatedToken = await requestMaskinportenToken({
+      ...configuration,
+      systemUserOrgNumber: company.org_number,
+      systemUserExternalRef: systemUserRequest.external_ref,
+    });
+    const result = await reconcileJournaledRf1086Production(
+      createRf1086FeedbackJournal(service, {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        userId: user.id,
+        forsendelseId: authoritativeForsendelseId,
+        leaseId,
+      }),
+      createRf1086AuthorityClient({
+        environment: "production",
+        accessToken: delegatedToken.accessToken,
+      }),
+      {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        forsendelseId: authoritativeForsendelseId,
+        hovedskjemaXml: preview.hovedskjema_xml,
+        underskjemaXml: preview.underskjema_xml as Record<string, string>,
+      },
+      { initialPoll: false },
+    );
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return buildRf1086OwnerReconciliationActionState(result.state);
+  } catch (error) {
+    reportRf1086ProductionFailure("reconcile", error);
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
+  } finally {
+    if (delegatedToken) delegatedToken.accessToken = "";
+    if (claimed) {
+      await service.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submission.id,
+        p_lease_id: leaseId,
+      });
+    }
+  }
 }
 
 export async function postManualJournal(formData: FormData) {

@@ -66,7 +66,13 @@ export async function loadWorkspaceData() {
   const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
   const { error: productionStateError, ...productionState } = user
     ? await listProductionFilingState(companies.map((company) => company.id))
-    : { productionPilotEntitlements: [], filingApprovalSnapshots: [], productionFilingSubmissions: [], error: null };
+    : {
+        productionPilotEntitlements: [],
+        filingApprovalSnapshots: [],
+        productionFilingSubmissions: [],
+        productionFeedbackArtifacts: [],
+        error: null,
+      };
   const { overrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
   const { readinessSnapshots } = user ? await listFilingReadinessSnapshots(companies.map((company) => company.id)) : { readinessSnapshots: [] };
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };

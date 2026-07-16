@@ -23,6 +23,7 @@ export function AppNav({ isOperator, children }: AppNavProps) {
     { href: "/transactions", label: ownerCopy.nav.transactions },
     { href: "/year-end", label: ownerCopy.nav.yearEnd },
     { href: "/filing", label: ownerCopy.nav.filing },
+    { href: "/connections", label: ownerCopy.nav.connections },
     { href: "/documents", label: ownerCopy.nav.documents },
     { href: "/billing", label: ownerCopy.nav.billing },
     { href: "/workspace", label: ownerCopy.nav.workspace },

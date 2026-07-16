@@ -98,3 +98,11 @@ test("launch validator rejects beta overclaims about review, payment, and delive
     assert.ok(result.violations.length >= 1, overclaim);
   }
 });
+
+test("owner Systembruker copy distinguishes approval from verified readiness", () => {
+  assert.match(ownerCopySource, /Verifiserer tilkoblingen/u);
+  assert.match(ownerCopySource, /Tilkoblingen er godkjent og verifisert/u);
+  assert.match(ownerCopySource, /Godkjent, men kunne ikke verifiseres for innsending/u);
+  assert.match(ownerCopySource, /Klar for kontrollert innsending/u);
+  assert.doesNotMatch(ownerCopySource, /new[^\n]+klar til innsending/iu);
+});

@@ -107,13 +107,34 @@ a `Tilgang mangler` marker.
 ## Closed boundaries and cost
 
 - `TALLI_AUTHORITY_OPS_ENABLED=false` after the one-time verification.
-- `TALLI_RF1086_PRODUCTION_ENABLED` was not changed and remains false.
+- `TALLI_RF1086_PRODUCTION_ENABLED=false`; it was not changed by this work.
 - No customer production Systembruker was created or approved.
 - No Skatteetaten filing, Altinn instance creation, signing, submission, inbox,
   or archive endpoint was called.
 - No paid plan, certificate, API, add-on, or service was purchased. Altinn and
   Maskinporten charged NOK 0. Vercel used the existing Free plan's included
   build/runtime quota; no upgrade or overage prompt appeared.
+
+## Task 7 local browser evidence
+
+The later self-service browser proof was a mocked/local flow with synthetic
+owners and companies. Every authority request was hard-routed to an in-memory
+server bound to loopback; unexpected non-loopback server requests failed closed.
+It proved the accepted request, cookie-bound callback, exact preflight,
+reconciliation, private signed feedback, cross-owner isolation, keyboard order,
+responsive layouts, clean teardown, and zero browser console warnings/errors.
+
+Its callback prerequisite used only an isolated local audit fixture with the
+allowlisted result `callback_already_verified` or
+`callback_updated_and_verified`. That local fixture is not a new production
+callback verification and does not alter the earlier live Systemregister record.
+The test's child-only filing adapter switch was constrained to the loopback mock;
+the parent process and deployed configuration remained:
+
+- `TALLI_AUTHORITY_OPS_ENABLED=false`
+- `TALLI_RF1086_PRODUCTION_ENABLED=false`
+
+This implementation did not make a live request, change Systemregister, enable a switch, grant an entitlement, or submit a filing.
 
 ## Remaining gate
 

@@ -1001,6 +1001,7 @@ h2 {
   font-size: var(--font-display);
   line-height: var(--leading-tight);
   margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
 }
 
 .pageLede {
@@ -1043,6 +1044,11 @@ h2 {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   margin: 0;
+}
+
+.cardNote code {
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .nbaCard {

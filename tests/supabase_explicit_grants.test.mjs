@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const migrationUrl = new URL(
@@ -56,4 +56,34 @@ test("anonymous sessions cannot invoke authenticated mutation RPCs", async () =>
     /revoke all on function public\.accept_bank_transaction_suggestion\(uuid, text, text\)\s+from public, anon;/i,
   );
   assert.equal((sql.match(/to authenticated, service_role;/gi) ?? []).length, 3);
+});
+
+test("Systembruker request objects have explicit least-privilege grants", async () => {
+  const files = await readdir(new URL("../supabase/migrations/", import.meta.url));
+  const migration = files.find((file) => file.endsWith("_rf1086_system_user_requests.sql"));
+  assert.ok(migration);
+  const sql = await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8");
+
+  assert.match(
+    sql,
+    /revoke all on (?:table )?public\.system_user_requests from public, anon, authenticated, service_role/iu,
+  );
+  assert.match(sql, /grant select on (?:table )?public\.system_user_requests to authenticated/iu);
+  assert.doesNotMatch(sql, /grant\s+[^;]+system_user_requests[^;]+to anon/iu);
+  assert.match(
+    sql,
+    /revoke all on function public\.begin_system_user_request\(uuid, uuid, text\)\s+from public, anon, authenticated, service_role/iu,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.begin_system_user_request\(uuid, uuid, text\)\s+to authenticated/iu,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.record_system_user_authority_state\(uuid, uuid, uuid, text, text, text, text, uuid\)\s+to service_role/iu,
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.verify_system_user_preflight\(uuid, text\)\s+to service_role/iu,
+  );
 });

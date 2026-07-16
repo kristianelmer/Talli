@@ -8,6 +8,11 @@ Blockers resolved: #76 real payment collection (closed), #80 code evidence decis
 This checklist must pass before Talli can enable live RF-1086 submission. It does
 not enable production by itself.
 
+Current deployed switch state:
+
+- `TALLI_AUTHORITY_OPS_ENABLED=false`
+- `TALLI_RF1086_PRODUCTION_ENABLED=false`
+
 Latest deployed fail-closed verification:
 [`rf1086-controlled-beta-deployment-2026-07-15.md`](../launch/evidence/rf1086-controlled-beta-deployment-2026-07-15.md).
 
@@ -67,6 +72,23 @@ Code and evidence gate anchors:
 - `tests/rf1086_tt02_evidence.test.mjs` checks that accepted evidence has the
   required references/hashes and contains no token, private key, raw XML, or
   synthetic personal identifier.
+
+## Self-service browser proof boundary
+
+`npm run test:browser-system-user` proves the mocked/local flow with synthetic
+owners, synthetic companies, loopback-only authority responses, and private
+feedback hash verification. It also proves that a tampered callback query cannot
+select another pending request and that another owner cannot read the request or
+feedback. The callback prerequisite remains an audited result of
+`callback_already_verified` or `callback_updated_and_verified`.
+
+The local mock is not a production callback and cannot replace production
+Systemregister evidence, customer approval, preflight, or entitlement. Reviewers
+must separately authorize any production filing after every gate in this document
+and the pilot runbook passes. The local browser proof leaves
+`TALLI_AUTHORITY_OPS_ENABLED=false` and
+`TALLI_RF1086_PRODUCTION_ENABLED=false`; its isolated child-only filing switch is
+hard-routed to loopback authority mocks and is not a deployed enablement.
 
 ## Required Test Run
 

@@ -5,6 +5,13 @@ export const MASKINPORTEN_JWT_BEARER_GRANT_TYPE =
 
 export type MaskinportenEnvironment = "test" | "production";
 
+export type ProductionMaskinportenCredentials = {
+  environment: "production";
+  clientId: string;
+  keyId: string;
+  privateKeyPem: string;
+};
+
 export type MaskinportenGrantHeader = {
   alg: "RS256";
   kid: string;
@@ -94,6 +101,32 @@ const ENDPOINTS: Record<MaskinportenEnvironment, { issuer: string; tokenEndpoint
     tokenEndpoint: "https://maskinporten.no/token",
   },
 };
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+export function productionMaskinportenCredentials(
+  environment: Record<string, string | undefined> = process.env,
+): ProductionMaskinportenCredentials {
+  const clientId = environment.TALLI_PROD_MASKINPORTEN_CLIENT_ID ?? "";
+  const keyId = environment.TALLI_PROD_MASKINPORTEN_KEY_ID ?? "";
+  const privateKeyPem = environment.TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM ?? "";
+  if (
+    !UUID_PATTERN.test(clientId)
+    || !UUID_PATTERN.test(keyId)
+    || /(?:test|tt02)/iu.test(clientId)
+    || /(?:test|tt02)/iu.test(keyId)
+  ) {
+    throw new Error("Production Maskinporten credential identifiers are required.");
+  }
+  if (
+    /(?:test|tt02)/iu.test(privateKeyPem)
+    || !/^-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]+-----END (?:RSA )?PRIVATE KEY-----\s*$/u
+      .test(privateKeyPem)
+  ) {
+    throw new Error("Production Maskinporten private key must be an inline PEM credential.");
+  }
+  return { environment: "production", clientId, keyId, privateKeyPem };
+}
 
 function requiredIdentifier(value: string, label: string): string {
   const trimmed = value?.trim() ?? "";
@@ -259,12 +292,18 @@ export async function requestMaskinportenToken(
       code: "maskinporten_response_invalid",
     });
   }
+  if (data.scope !== undefined && data.scope !== grant.claims.scope) {
+    throw new MaskinportenTokenError("Maskinporten token response scope does not match the request.", {
+      status: response.status,
+      code: "maskinporten_response_invalid",
+    });
+  }
 
   return {
     accessToken,
     tokenType: safeText(data.token_type, "Bearer"),
     expiresIn,
-    scope: safeText(data.scope, grant.claims.scope),
+    scope: grant.claims.scope,
     environment: grant.environment,
   };
 }

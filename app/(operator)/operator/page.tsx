@@ -1,8 +1,10 @@
 import {
   recordLaunchSignoff,
   runProductionAuthorityOperation,
+  runProductionSystembrukerCallbackOperation,
   upsertProductionPilotEntitlement,
 } from "../../actions";
+import { operatorAuthorityCopy } from "../../lib/copy";
 import {
   buildLaunchSignoffGate,
   launchSignoffKeys,
@@ -28,6 +30,8 @@ type OperatorProps = {
 const authorityResultMessages: Record<string, string> = {
   created_and_verified: "Systemet ble opprettet og verifisert i produksjon.",
   already_verified: "Systemet finnes allerede og samsvarer med den faste definisjonen.",
+  callback_already_verified: "Den faste Systembruker-callbacken er allerede verifisert.",
+  callback_updated_and_verified: "Den faste Systembruker-callbacken ble lagt til og verifisert.",
   definition_conflict: "Eksisterende system avviker. Ingen overskriving ble utført.",
   authority_ops_disabled: "Produksjonsoperasjoner er deaktivert.",
   authority_step_up_required: "Fersk AAL2/MFA kreves før operasjonen kan kjøres.",
@@ -45,6 +49,7 @@ const authorityResultMessages: Record<string, string> = {
   authority_network_error: "Nettverkskallet til Altinn feilet.",
   authority_http_error: "Altinn avviste operasjonen.",
   authority_response_invalid: "Altinn returnerte et ugyldig svar.",
+  authority_verification_error: "Systemregister-resultatet kunne ikke verifiseres med en ny avlesning.",
   authority_operation_failed: "Produksjonsoperasjonen feilet.",
   authority_mfa_ready: "AAL2 er aktiv for denne operatørøkten.",
 };
@@ -89,7 +94,12 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
         {params?.error ? <p className="errorText">{params.error}</p> : null}
         {params?.pilot === "updated" ? <p className="successText">Produksjonspiloten er oppdatert.</p> : null}
         {params?.authority ? (
-          <p className={params.authority === "created_and_verified" || params.authority === "already_verified" ? "successText" : "errorText"}>
+          <p className={[
+            "created_and_verified",
+            "already_verified",
+            "callback_already_verified",
+            "callback_updated_and_verified",
+          ].includes(params.authority) ? "successText" : "errorText"}>
             {authorityResultMessages[params.authority] ?? "Ukjent resultat fra produksjonsoperasjonen."}
           </p>
         ) : null}
@@ -191,7 +201,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                     <option value="revoked">Revoked</option>
                   </select>
                 </label>
-                <label>Systembruker externalRef<input name="systemUserExternalReference" required /></label>
+                <label>Systembrukerforespørsel-ID<input name="systemUserRequestId" required placeholder="Verifisert request UUID" /></label>
                 <label>Aktiv fra<input name="startsAt" type="datetime-local" required /></label>
                 <label>Utløper<input name="expiresAt" type="datetime-local" required /></label>
                 <label>Evidensreferanse<input name="evidenceReference" required placeholder="Sak/avtale/runbook-referanse" /></label>
@@ -215,6 +225,37 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                   Registrer eller verifiser system
                 </button>
               </form>
+              <form
+                className="dataPanel formPanel widePanel"
+                action={runProductionSystembrukerCallbackOperation}
+              >
+                <h3>{operatorAuthorityCopy.systembrukerCallback.title}</h3>
+                <p>
+                  {operatorAuthorityCopy.systembrukerCallback.gateLabel}:{" "}
+                  <strong>
+                    {authorityOpsEnabled
+                      ? operatorAuthorityCopy.systembrukerCallback.enabled
+                      : operatorAuthorityCopy.systembrukerCallback.disabled}
+                  </strong>
+                </p>
+                <p>{operatorAuthorityCopy.systembrukerCallback.body}</p>
+                <p>
+                  {operatorAuthorityCopy.systembrukerCallback.callbackLabel}:{" "}
+                  <code>{operatorAuthorityCopy.systembrukerCallback.callback}</code>
+                </p>
+                <input
+                  type="hidden"
+                  name="operation"
+                  value="set_rf1086_systembruker_callback"
+                />
+                <label>
+                  {operatorAuthorityCopy.systembrukerCallback.confirmationLabel}
+                  <input name="confirmation" autoComplete="off" required />
+                </label>
+                <button className="secondaryButton" type="submit" disabled={!authorityOpsEnabled}>
+                  {operatorAuthorityCopy.systembrukerCallback.cta}
+                </button>
+              </form>
               {authorityState.error ? (
                 <p className="errorText">Kunne ikke lese revisjonsloggen for produksjonsoperasjoner.</p>
               ) : null}
@@ -229,6 +270,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                     <p>System: {operation.metadata.systemId ?? "–"}</p>
                     <p>Klient: {operation.metadata.clientId ?? "–"}</p>
                     <p>Rettighet: {operation.metadata.right ?? "–"}</p>
+                    <p>Callback: {operation.metadata.callbackPath ?? "–"}</p>
                     <p>Startet: {new Date(operation.created_at).toLocaleString("nb-NO")}</p>
                     <p>Fullført: {operation.completed_at ? new Date(operation.completed_at).toLocaleString("nb-NO") : "Pågår"}</p>
                   </div>

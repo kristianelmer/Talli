@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
-  confirmAuthorityPermission,
   confirmSimulatedRf1086Submission,
   approveProductionFiling,
   generateRf1086Preview,
+  reconcileRf1086ProductionAction,
   refreshAnnualReadinessSnapshots,
   sendApprovedRf1086ProductionFiling,
 } from "../../../actions";
@@ -24,12 +24,24 @@ import {
 import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-document-readiness";
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
+import {
+  buildRf1086OwnerReconciliationActionState,
+  buildRf1086OwnerProductionPresentation,
+  rf1086OwnerActionErrorMessage,
+  selectLatestRf1086ProductionSubmission,
+} from "../../../lib/rf1086-production-presentation";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
+import {
+  loadSystemUserRequestPresentations,
+  systemUserFilingPresentation,
+} from "../../connections/_presentation";
 import {
   buildReadinessInput,
   isFilingObligation,
 } from "../_readiness";
 import { buildOwnerFilingPresentation } from "../_presentation";
+import { Rf1086ReconciliationControl } from "../_submission-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +106,7 @@ function Blockers({ issues }: { issues: AnnualReadinessIssue[] }) {
 
 type FilingFlowProps = {
   params: Promise<{ obligation: string }>;
-  searchParams?: Promise<{ error?: string; posted?: string }>;
+  searchParams?: Promise<{ error?: string; posted?: string; productionError?: string }>;
 };
 
 export default async function FilingObligationPage({
@@ -153,7 +165,9 @@ export default async function FilingObligationPage({
     incomeYear: input.incomeYear,
     submissions: input.filingSubmissions,
     posted: Boolean(query?.posted),
-    error: query?.error,
+    error: query?.productionError
+      ? rf1086OwnerActionErrorMessage(query.productionError, f.production.errors)
+      : query?.error,
   });
   const filingString = presentation.filing;
   const submission = presentation.primarySubmission;
@@ -277,14 +291,30 @@ export default async function FilingObligationPage({
   }
 
   // --- Aksjonærregisteroppgaven: full guided flow. ---
+  let systemUserConnection = null;
+  let systemUserConnectionLoadFailed = false;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const connections = await loadSystemUserRequestPresentations(
+      supabase,
+      [input.company.id],
+      ownerCopy.connections,
+    );
+    systemUserConnection = connections.find(
+      (connection) => connection.companyId === input.company.id,
+    ) ?? null;
+  } catch {
+    systemUserConnectionLoadFailed = true;
+  }
+  const systemUserFiling = systemUserConnectionLoadFailed
+    ? ownerCopy.connections.filing.action
+    : systemUserFilingPresentation(systemUserConnection, ownerCopy.connections);
+  const systemUserConnectionHref = `/connections?company=${input.company.id}`;
+
   const preview = input.filingPreviews.find(
     (item) => item.filing === filingString && item.income_year === input.incomeYear,
   );
   const previewReady = preview?.status === "ready";
-  const permission = input.authorityPermissions.find(
-    (item) => item.obligation === obligation,
-  );
-  const authorityConfirmed = Boolean(permission?.confirmed_at && permission?.production_enabled);
   const pilotEntitlement = data.productionPilotEntitlements.find(
     (item) => item.company_id === input.company.id
       && item.user_id === data.user?.id
@@ -300,9 +330,26 @@ export default async function FilingObligationPage({
       (item) => item.preview_id === preview.id && item.invalidated_at === null,
     )
     : null;
-  const productionSubmission = productionApproval
-    ? data.productionFilingSubmissions.find((item) => item.approval_id === productionApproval.id)
-    : null;
+  const productionSubmission = selectLatestRf1086ProductionSubmission(
+    data.productionFilingSubmissions,
+    {
+      companyId: input.company.id,
+      userId: data.user?.id ?? "",
+      incomeYear: input.incomeYear,
+      obligation,
+      caseProfile: "rf1086_no_activity_v1",
+      environment: "production",
+    },
+  );
+  const productionFeedbackArtifacts = productionSubmission
+    ? data.productionFeedbackArtifacts.filter((artifact) => artifact.submission_id === productionSubmission.id)
+    : [];
+  const productionPresentation = buildRf1086OwnerProductionPresentation({
+    feedbackState: productionSubmission?.feedback_state,
+    submissionStatus: productionSubmission?.status,
+    approved: Boolean(productionApproval),
+    artifacts: productionFeedbackArtifacts,
+  }, f.production);
 
   const setup = input.setups.find((item) => item.income_year === input.incomeYear);
   const storedReady = data.primaryReadinessSnapshots.some(
@@ -326,7 +373,7 @@ export default async function FilingObligationPage({
   const confirmReady =
     prerequisitesClear &&
     previewReady &&
-    authorityConfirmed &&
+    systemUserFiling.ready &&
     storedReady &&
     !hasBlockingOverride &&
     !hasHardReviewBlock;
@@ -337,7 +384,7 @@ export default async function FilingObligationPage({
       ? 0
       : !previewReady
         ? 1
-        : !authorityConfirmed
+        : !systemUserFiling.ready
           ? 2
           : 3;
 
@@ -356,52 +403,66 @@ export default async function FilingObligationPage({
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">
-        {pilotEntitlement && previewReady ? (
+        {productionSubmission || (pilotEntitlement && previewReady) ? (
           <section className="filingStep">
             <div className="filingStepHead">
-              <h2 className="filingStepTitle">Reell RF-1086-produksjonspilot</h2>
+              <h2 className="filingStepTitle">{f.production.title}</h2>
               <StatusBadge
-                variant={productionSubmission?.status === "accepted" ? "success" : productionSubmission ? "warning" : productionApproval ? "info" : "danger"}
-                label={productionSubmission?.status === "accepted" ? "Godkjent"
-                  : productionSubmission?.status === "sending" ? "Sender"
-                  : productionSubmission?.status === "processing" ? "Til behandling"
-                  : productionSubmission?.status === "received" ? "Mottatt"
-                  : productionSubmission?.status === "unknown" ? "Uavklart – kontakt support"
-                  : productionSubmission?.status === "rejected" ? "Avvist"
-                  : productionSubmission?.status === "action_required" ? "Krever handling"
-                  : productionApproval ? "Godkjent av deg" : "Klar til gjennomgang"}
+                variant={productionPresentation.status.variant}
+                label={productionPresentation.status.label}
               />
             </div>
             <div className="filingStepBody">
               <Banner variant="warning">
-                Dette er en reell innsending til Skatteetaten med juridiske konsekvenser. HTTP-svar eller kvitteringsreferanse betyr ikke at innholdet er endelig godkjent.
+                {f.production.warning}
               </Banner>
               <p className="cardNote">
-                Selskap: {input.company.name} ({input.company.org_number})<br />
-                Inntektsår: {input.incomeYear}<br />
-                Støttet profil: Ingen aktivitet / stiftelse (`rf1086_no_activity_v1`)<br />
-                Payload-hash: <code>{productionApproval?.payload_hash ?? "opprettes ved godkjenning"}</code>
+                {f.production.companyLabel}: {input.company.name}<br />
+                {f.production.yearLabel}: {input.incomeYear}<br />
+                {f.production.caseLabel}: {f.production.supportedCase}
               </p>
-              <pre className="filingPreview">{preview?.preview}</pre>
-              {!productionApproval ? (
+              {preview ? <pre className="filingPreview">{preview.preview}</pre> : null}
+              {productionSubmission ? (
+                <>
+                  <p className="cardNote">
+                    {productionPresentation.status.body} {f.production.privateFeedback}
+                  </p>
+                  <Rf1086ReconciliationControl
+                    action={reconcileRf1086ProductionAction}
+                    submissionId={productionSubmission.id}
+                    initialState={buildRf1086OwnerReconciliationActionState(
+                      productionSubmission.feedback_state,
+                    )}
+                  />
+                  {productionPresentation.artifacts.length > 0 ? (
+                    <ul className="blockerList">
+                      {productionPresentation.artifacts.map((artifact) => (
+                        <li key={artifact.id} className="blockerItem">
+                          <Link href={`/documents/${artifact.documentId}/download`}>
+                            {artifact.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : !productionApproval ? (
                 <form action={approveProductionFiling} className="filingConfirmForm">
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="previewId" value={preview?.id ?? ""} />
-                  <input type="hidden" name="entitlementId" value={pilotEntitlement.id} />
+                  <input type="hidden" name="entitlementId" value={pilotEntitlement?.id ?? ""} />
                   <label className="filingCheck">
                     <input type="checkbox" name="realFilingConfirmed" required />
-                    Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell RF-1086.
+                    {f.production.approveCheck}
                   </label>
-                  <SubmitButton pendingLabel="Lagrer godkjenningen …">Godkjenn eksakt innhold</SubmitButton>
+                  <SubmitButton pendingLabel={f.production.approvePending}>{f.production.approveCta}</SubmitButton>
                 </form>
-              ) : !productionSubmission ? (
+              ) : (
                 <form action={sendApprovedRf1086ProductionFiling} className="filingConfirmForm">
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="approvalId" value={productionApproval.id} />
-                  <SubmitButton pendingLabel="Sender sikkert …">Send reell RF-1086</SubmitButton>
+                  <SubmitButton pendingLabel={f.production.sendPending}>{f.production.sendCta}</SubmitButton>
                 </form>
-              ) : (
-                <p className="cardNote">Autoritetsstatus: {productionSubmission.status}. Referanser lagres i den append-only produksjonsjournalen.</p>
               )}
             </div>
           </section>
@@ -485,36 +546,22 @@ export default async function FilingObligationPage({
         {/* Step 3 — authority */}
         <section className="filingStep">
           <div className="filingStepHead">
-            <h2 className="filingStepTitle">{f.authority.title}</h2>
-            {authorityConfirmed ? (
-              <StatusBadge variant="success" label={f.authority.confirmed} icon="check" />
-            ) : null}
+            <h2 className="filingStepTitle">{f.authority.connectionTitle}</h2>
+            <StatusBadge
+              variant={systemUserFiling.variant}
+              label={systemUserFiling.label}
+              icon={systemUserFiling.ready ? "check" : "alert"}
+            />
           </div>
           <div className="filingStepBody">
-            {!prerequisitesClear || !previewReady ? (
-              <p className="filingLockNote">{f.authority.lockedNote}</p>
-            ) : authorityConfirmed ? (
-              <p className="cardNote">{f.authority.confirmed}</p>
-            ) : (
-              <>
-                <p className="cardNote">{f.authority.intro}</p>
-                {presentation.showProductionSubmitControl ? (
-                  <form action={confirmAuthorityPermission} className="filingConfirmForm">
-                    <input type="hidden" name="returnTo" value={returnTo} />
-                    <input type="hidden" name="companyId" value={input.company.id} />
-                    <input type="hidden" name="obligation" value={obligation} />
-                    <input type="hidden" name="productionEnabled" value="on" />
-                    <label className="filingCheck">
-                      <input type="checkbox" name="ack" required />
-                      {f.authority.confirmLabel}
-                    </label>
-                    <SubmitButton pendingLabel={f.authority.pending}>
-                      {f.authority.cta}
-                    </SubmitButton>
-                  </form>
-                ) : null}
-              </>
-            )}
+            <p className="cardNote">
+              {systemUserConnectionLoadFailed
+                ? f.authority.connectionLoadError
+                : systemUserFiling.body}
+            </p>
+            <LinkButton variant="secondary" href={systemUserConnectionHref}>
+              {f.authority.connectionCta}
+            </LinkButton>
           </div>
         </section>
 
@@ -525,7 +572,7 @@ export default async function FilingObligationPage({
               <h2 className="filingStepTitle">{f.confirm.title}</h2>
             </div>
             <div className="filingStepBody">
-              {!(prerequisitesClear && previewReady && authorityConfirmed) ? (
+              {!(prerequisitesClear && previewReady && systemUserFiling.ready) ? (
                 <p className="filingLockNote">{f.confirm.lockedNote}</p>
               ) : !confirmReady ? (
                 <>
