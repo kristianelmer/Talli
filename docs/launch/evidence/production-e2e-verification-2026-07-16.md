@@ -1,8 +1,6 @@
 # Production E2E verification — 2026-07-16
 
-Status: blocked at Task 3; Tasks 1–2 and the corrected Task 3 suite passed, but
-the explicit advisor rerun could not connect after clean teardown; Tasks 4–6
-pending
+Status: in progress; Tasks 1–3 passed, Tasks 4–6 pending
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -173,10 +171,10 @@ result, deployed-surface observation, or production-readiness verdict.
 - [x] Task 1 — freeze release target and audit the verification contract.
 - [x] Task 2 — run the full repository release rehearsal, type-check, and
   production build with production authority switches absent.
-- [ ] Task 3 — **BLOCKED**: the corrected local Supabase/database/browser suite
-  and explicit static grant gate passed, but the final advisor rerun could not
-  connect because the suite had cleanly stopped local Postgres. Both attempts
-  and the root-cause correction are recorded below.
+- [x] Task 3 — corrected local Supabase/database/browser suite and standalone
+  static grant gate passed; the fresh in-suite advisor result was 0 blocking
+  findings and 15 performance warnings. Both diagnosed plan gaps and their
+  corrections are recorded below.
 - [ ] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
   and verify test-process cleanup.
 - [ ] Task 5 — smoke-test only the deployed public surface through read-only
@@ -469,9 +467,55 @@ no test-owned container, configured listener, or browser/Next process remained,
 and both production authority switches were absent. No manual teardown was
 needed for the corrected rerun.
 
-Task 3 therefore remains blocked only on obtaining the explicitly repeated
-advisor result under a plan that also requires the suite to leave the local
-stack stopped. The corrected suite itself supplies passing local evidence for
-migrations, grants, authenticated RLS and role-abuse boundaries, database
-runtimes, owner persistence, outsider denial, browser persistence/reload, and
-the in-suite advisor gate. It still adds no hosted or production evidence.
+Under the then-current plan, Task 3 remained blocked only on obtaining the
+explicitly repeated advisor result after the suite had stopped the local stack.
+The corrected suite itself supplied passing local evidence for migrations,
+grants, authenticated RLS and role-abuse boundaries, database runtimes, owner
+persistence, outsider denial, browser persistence/reload, and the in-suite
+advisor gate. It added no hosted or production evidence. The final plan
+correction and completion result follow below.
+
+### Final static grant reconciliation and Task 3 completion
+
+The second diagnosis confirmed that
+`scripts/assert-supabase-advisors.mjs` explicitly targets `--local`, while the
+corrected Step 2 properly stops the local database it starts. Restarting the
+stack solely to duplicate the advisor command would add no new signal because
+the same wrapper had already completed successfully inside Step 2 while local
+Postgres was available. Plan-only correction
+`c55211f7de9971da094b8198c789d6cc7a4a27bc` therefore changed Step 3 to run the
+static grant gate alone and reconcile it with that fresh in-suite advisor
+result.
+
+From a clean stopped-stack state, the final corrected Step 3 ran from
+`2026-07-16T21:35:14Z` through `2026-07-16T21:35:15Z` UTC:
+
+```sh
+npm run test:supabase-grants
+```
+
+Result: exit `0`; all 3 static grant tests passed with 0 failures,
+cancellations, skips, or todo tests in `107.943292 ms`. No warning was emitted.
+The tests confirmed fail-closed anon Data API grants with explicit
+`service_role` access, denial of anonymous authenticated mutation RPCs, and
+explicit least-privilege grants for Systembruker request objects.
+
+Reconciled with corrected Step 2, the final Task 3 result is passing: all 14
+migrations applied; all 9 database/RLS/runtime tests passed; the 1 owner-browser
+persistence/reload test passed; all 3 final static grant tests passed; and the
+fresh in-suite advisor wrapper reported 0 blocking security/error findings and
+15 performance warnings. The performance findings remain recorded separately
+and were not hidden.
+
+A final residue and safety check ran from `2026-07-16T21:35:25Z` through
+`2026-07-16T21:35:26Z` UTC with exit `0`. Supabase remained stopped, with no
+test-owned container, configured listener, owner-browser/Next process, tracked
+file change, or production authority switch. Step 2 was not rerun and no local
+stack was restarted for this correction.
+
+The two diagnosed plan gaps were therefore resolved in documentation only:
+Step 2 now supplies the existing project Python runtime explicitly, and Step 3
+no longer asks a stopped local database to repeat an advisor result already
+obtained inside Step 2. Task 3 is complete under corrected plan `c55211f`; no
+product code, test, migration, hosted project, production environment, customer
+data, authority operation, or paid service was changed or accessed.
