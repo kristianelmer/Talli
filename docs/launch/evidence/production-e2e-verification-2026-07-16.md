@@ -610,3 +610,68 @@ no output. It found no tracked change, no listener on ports 3100 or 54321, and
 no process matching the browser system-user test, its Next test child, or its
 authority mock. Task 4 therefore passed with clean local teardown and adds no
 deployed or production-readiness evidence.
+
+## Deployed public-surface smoke test with Computer Use
+
+The controller used the Computer Use skill with Google Chrome to perform a
+read-only smoke observation of `https://talli.no`. The observation was complete
+by `2026-07-16T22:02:29Z` UTC. Computer Use calls did not expose per-action UTC
+timestamps, so the evidence does not invent a more precise start time.
+
+The controller opened a new tab rather than disturbing the user's existing
+tab, navigated to the exact HTTPS origin, and refreshed the accessibility tree
+after every navigation or state change. Chrome showed no HTTPS interstitial,
+browser error page, or unresolved loading state.
+
+### Public routes observed
+
+- `/` rendered with the title `Talli – enkelt årsoppgjør for holdingselskaper`,
+  an invitation-based free-beta label, a primary `Gå til Talli` action, product
+  explanation, supported-company boundary, and footer navigation.
+- The deployed landing copy explicitly says Talli helps invited beta users
+  prepare and check drafts for supported simple Norwegian companies. It also
+  says production submission and live payment are unavailable in the beta and
+  that direct production delivery is not open. This deployed observation is
+  evidence against treating the current production site as an end-to-end live
+  filing service.
+- `/vilkar` rendered the `Brukervilkår` heading and a last-updated date of
+  15 July 2026. The page says the beta is free and live payment is unavailable.
+- `/personvern` rendered the `Personvernerklæring` heading and a last-updated
+  date of 15 July 2026, including controller, data-category, processor,
+  retention, rights, cookie, security, and contact sections.
+
+The landing-page screenshot was visually inspected. It was not retained or
+committed because the Chrome window included unrelated tab titles and browser
+profile context; preserving it would have violated the instruction not to copy
+unrelated session information into evidence.
+
+### Login boundary
+
+The `Tilbake til innlogging` link reached `/login` without the controller
+entering credentials. The first accessibility state contained only the Talli
+shell. After a short re-read, the existing Chrome session automatically
+redirected to `/dashboard`, proving that this browser already held an
+authenticated Talli session. The controller stopped immediately and did not
+click any authenticated navigation, field, logout, company, filing, payment,
+upload, entitlement, environment, or authority action.
+
+No account identifier, company identifier, company name, or authenticated page
+content is copied into this evidence. Because the existing session bypassed the
+anonymous login UI, this smoke test does not prove that the logged-out login
+form renders or that authentication succeeds from a clean browser. It also does
+not inspect any customer workflow or authorize a production filing.
+
+### Task 5 result and boundary
+
+The deployed public surface, terms, and privacy routes rendered and navigated
+without an observed broken state. The login route was reachable without
+credential submission but could only be classified as an existing-session
+redirect, not an anonymous login-form pass. No user data was submitted, no
+representational communication occurred, and no production or account state
+was changed.
+
+Task 5 therefore passes as a bounded public-surface smoke test with the stated
+login limitation. It does not add evidence that production authority access,
+direct filing, payment, named-company eligibility, delegation, or monitored
+first-filing operations are live; the deployed copy expressly says direct
+production submission is not open.
