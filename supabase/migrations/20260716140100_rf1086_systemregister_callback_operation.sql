@@ -51,7 +51,7 @@ alter table public.authority_operations
       or (
         operation = 'set_rf1086_systembruker_callback'
         and metadata - array['systemId', 'callbackPath'] = '{}'::jsonb
-        and jsonb_object_length(metadata) = 2
+        and metadata ?& array['systemId', 'callbackPath']
         and metadata ->> 'systemId' = '930835978_talli'
         and metadata ->> 'callbackPath' = '/auth/systembruker/confirm'
       )

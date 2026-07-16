@@ -71,6 +71,8 @@ test("callback operation migration expands only the constrained safe audit contr
   assert.match(sql, /callbackPath/u);
   assert.match(sql, /\/auth\/systembruker\/confirm/u);
   assert.match(sql, /metadata - array\['systemId', 'callbackPath'\]/u);
+  assert.match(sql, /metadata \?& array\['systemId', 'callbackPath'\]/u);
+  assert.doesNotMatch(sql, /jsonb_object_length/iu);
   assert.doesNotMatch(sql, /grant\s+(?:insert|update|delete|all)/iu);
   assert.doesNotMatch(sql, /anon|authenticated/iu);
 });
