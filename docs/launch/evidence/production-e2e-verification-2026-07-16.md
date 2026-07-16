@@ -106,7 +106,7 @@ The passing assertions cover:
 - authority and filing switches remaining off after local browser proof;
 - the combined absence of authority, billing, accepted test evidence, and
   required signoffs leaving every production gate disabled;
-- unimplemented or disabled adapters, stale restore evidence, and missing final
+- unimplemented adapters, stale restore evidence, and missing final
   founder confirmation blocking production readiness;
 - production readiness applying only to the exactly entitled RF obligation;
 - the hand-held first-filing, callback-verification, activation-order, recovery,
