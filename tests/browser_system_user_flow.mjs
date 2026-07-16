@@ -16,7 +16,11 @@ import { chromium } from "playwright";
 import pg from "pg";
 
 import { SYSTEM_USER_SYSTEM_ID } from "../app/lib/system-user-requests.ts";
-import { startSystemUserAuthorityMock } from "./fixtures/system-user-authority-mock.mjs";
+import {
+  installBrowserEgressGuard,
+  LOOPBACK_HOSTS,
+  startSystemUserAuthorityMock,
+} from "./fixtures/system-user-authority-mock.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MOCK_PRELOAD = fileURLToPath(
@@ -40,7 +44,7 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
   let nextServer;
   let browser;
   const browserProblems = [];
-  const externalBrowserRequests = [];
+  const browserEgressViolations = [];
 
   try {
     localSupabase = ensureLocalSupabase();
@@ -70,8 +74,12 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     const ownerContext = await browser.newContext({
       viewport: { width: 1440, height: 900 },
     });
-    captureBrowserHealth(ownerContext, browserProblems, externalBrowserRequests);
-    await routeMockApproval(ownerContext, mock.baseUrl);
+    captureBrowserHealth(ownerContext, browserProblems);
+    await installBrowserEgressGuard(ownerContext, {
+      approvalEnabled: true,
+      blockedRequests: browserEgressViolations,
+      mockBaseUrl: mock.baseUrl,
+    });
     const ownerPage = await ownerContext.newPage();
 
     await login(ownerPage, siteOrigin, fixture.ownerEmail, fixture.ownerPassword);
@@ -115,7 +123,7 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
 
     await ownerPage.reload();
     await ownerPage.getByText("Tilkoblingen er godkjent og verifisert", { exact: true }).waitFor();
-    await verifyResponsiveViewports(ownerPage);
+    await verifyConnectionsResponsiveViewports(ownerPage);
 
     const production = await seedProcessingProductionFiling(admin, fixture, primaryRequest);
     mock.setForsendelseId(production.forsendelseId);
@@ -128,6 +136,7 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     });
     await productionSection.getByText("Til behandling", { exact: true }).waitFor();
     await productionSection.getByRole("button", { name: "Sjekk status på nytt" }).click();
+    await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     await waitForDatabaseState(admin, production.submissionId, "accepted");
 
     await ownerPage.reload();
@@ -142,20 +151,38 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
       .single();
     assert.ifError(artifactResult.error);
     assert.ok(artifactResult.data);
+    await verifyRf1086ResponsiveViewports(ownerPage);
 
     const feedbackHref = await productionSection
       .getByRole("link", { name: /Last ned tilbakemelding/u })
       .getAttribute("href");
     assert.equal(typeof feedbackHref, "string");
-    const signedDownload = await ownerContext.request.get(new URL(feedbackHref, siteOrigin).href, {
+    const appDownloadUrl = new URL(feedbackHref, siteOrigin);
+    const appDownload = await ownerContext.request.get(appDownloadUrl.href, {
       failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+    assert.equal(appDownload.status(), 307);
+    const signedLocation = appDownload.headers().location;
+    assert.equal(typeof signedLocation, "string");
+    const signedUrl = new URL(signedLocation, appDownloadUrl);
+    assert.equal(LOOPBACK_HOSTS.has(signedUrl.hostname), true);
+    assert.equal(signedUrl.searchParams.has("token"), true);
+    const signedDownload = await ownerContext.request.get(signedUrl.href, {
+      failOnStatusCode: false,
+      maxRedirects: 0,
     });
     assert.equal(signedDownload.status(), 200);
-    assert.equal(new URL(signedDownload.url()).searchParams.has("token"), true);
+    assert.equal(signedDownload.url(), signedUrl.href);
     assert.equal(sha256(await signedDownload.body()), artifactResult.data.sha256);
 
     const otherContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    captureBrowserHealth(otherContext, browserProblems, externalBrowserRequests);
+    captureBrowserHealth(otherContext, browserProblems);
+    await installBrowserEgressGuard(otherContext, {
+      approvalEnabled: false,
+      blockedRequests: browserEgressViolations,
+      mockBaseUrl: mock.baseUrl,
+    });
     const otherPage = await otherContext.newPage();
     await login(otherPage, siteOrigin, fixture.otherOwnerEmail, fixture.otherOwnerPassword);
     await otherPage.goto(`${siteOrigin}/connections?company=${fixture.primaryCompanyId}`);
@@ -167,13 +194,14 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     );
     const forbiddenArtifact = await otherContext.request.get(
       `${siteOrigin}/documents/${artifactResult.data.document_id}/download`,
-      { failOnStatusCode: false },
+      { failOnStatusCode: false, maxRedirects: 0 },
     );
     assert.equal(forbiddenArtifact.status(), 404);
     await otherContext.close();
+    await ownerContext.close();
 
     assert.deepEqual(browserProblems, []);
-    assert.deepEqual(externalBrowserRequests, []);
+    assert.deepEqual(browserEgressViolations, []);
     const calls = mock.snapshot();
     assert.equal(calls.some((call) => call.operation === "request_rejected"), false);
     for (const expected of [
@@ -209,7 +237,9 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
       await teardownStep(() => cleanupFixture(admin, database, fixture), cleanupErrors);
     }
     if (database) await teardownStep(() => database.end(), cleanupErrors);
-    if (localSupabase?.startedHere) stopLocalSupabase();
+    if (localSupabase?.startedHere) {
+      await teardownStep(() => stopLocalSupabase(), cleanupErrors);
+    }
     assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true");
     assert.notEqual(process.env.TALLI_RF1086_PRODUCTION_ENABLED, "true");
     if (cleanupErrors.length) throw cleanupErrors[0];
@@ -523,36 +553,7 @@ async function establishSyntheticAal2(page, siteOrigin) {
   await page.getByText("Denne økten er bekreftet med AAL2.", { exact: true }).waitFor();
 }
 
-async function routeMockApproval(context, mockBaseUrl) {
-  await context.route("https://am.ui.altinn.no/**", async (route) => {
-    const request = route.request();
-    const authorityUrl = new URL(request.url());
-    const localPath = authorityUrl.pathname.endsWith("/request")
-      ? `/approval${authorityUrl.search}`
-      : authorityUrl.pathname.endsWith("/approve")
-        ? "/approval/complete"
-        : null;
-    if (!localPath) {
-      await route.abort("blockedbyclient");
-      return;
-    }
-    const contentType = await request.headerValue("content-type");
-    const localResponse = await context.request.fetch(new URL(localPath, mockBaseUrl).href, {
-      method: request.method(),
-      data: request.postDataBuffer() ?? undefined,
-      headers: contentType ? { "content-type": contentType } : undefined,
-      failOnStatusCode: false,
-      maxRedirects: 0,
-    });
-    await route.fulfill({
-      status: localResponse.status(),
-      headers: localResponse.headers(),
-      body: await localResponse.body(),
-    });
-  });
-}
-
-function captureBrowserHealth(context, browserProblems, externalRequests) {
+function captureBrowserHealth(context, browserProblems) {
   context.on("page", (page) => {
     page.on("console", (message) => {
       if (message.type() === "warning" || message.type() === "error") {
@@ -562,12 +563,6 @@ function captureBrowserHealth(context, browserProblems, externalRequests) {
       }
     });
     page.on("pageerror", () => browserProblems.push("page_error"));
-  });
-  context.on("request", (request) => {
-    const hostname = new URL(request.url()).hostname;
-    if (!new Set(["localhost", "127.0.0.1", "am.ui.altinn.no"]).has(hostname)) {
-      externalRequests.push("unexpected_external_browser_request");
-    }
   });
 }
 
@@ -589,7 +584,7 @@ async function assertKeyboardFocusOrder(page, accessibleNames) {
   }
 }
 
-async function verifyResponsiveViewports(page) {
+async function verifyConnectionsResponsiveViewports(page) {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.reload();
   await page.getByRole("heading", { name: "Altinn-tilkobling" }).waitFor();
@@ -608,6 +603,62 @@ async function verifyResponsiveViewports(page) {
   await page.reload();
   await page.getByRole("heading", { name: "Altinn-tilkobling" }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+}
+
+async function verifyRf1086ResponsiveViewports(page) {
+  const focusControl = async (control, name) => {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      await page.keyboard.press("Tab");
+      if (await control.evaluate((element) => element === document.activeElement)) return;
+    }
+    assert.fail(`Keyboard focus did not reach ${name}.`);
+  };
+
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.reload();
+    await page.getByRole("heading", { name: "Aksjonærregisteroppgaven" }).waitFor();
+    const productionSection = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Reell RF-1086-produksjonspilot" }),
+    });
+    await productionSection.getByText("Godkjent", { exact: true }).waitFor();
+    const overflow = await page.evaluate(() => {
+      if (document.documentElement.scrollWidth <= window.innerWidth) return [];
+      return Array.from(document.body.querySelectorAll("*"))
+        .filter((element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.left < -0.5 || rect.right > window.innerWidth + 0.5;
+        })
+        .map((element) => ({
+          className: String(element.className).slice(0, 80),
+          tag: element.tagName.toLowerCase(),
+        }))
+        .slice(0, 12);
+    });
+    assert.deepEqual(overflow, []);
+    assert.equal(
+      await productionSection.evaluate((element) => element.scrollWidth <= element.clientWidth),
+      true,
+    );
+    if (width === 320) {
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await page.getByRole("button", { name: "Meny" }).evaluate(
+          (element) => element === document.activeElement,
+        ),
+        true,
+      );
+      await page.keyboard.press("Enter");
+    }
+    await focusControl(
+      productionSection.getByRole("button", { name: "Sjekk status på nytt" }),
+      "Sjekk status på nytt",
+    );
+    await focusControl(
+      productionSection.getByRole("link", { name: /Last ned tilbakemelding/u }),
+      "Last ned tilbakemelding",
+    );
+  }
 }
 
 async function waitForDatabaseState(admin, submissionId, expected) {
@@ -654,7 +705,8 @@ function ensureLocalSupabase() {
 }
 
 function stopLocalSupabase() {
-  supabaseCommand(["stop", "--no-backup"]);
+  const stopped = supabaseCommand(["stop", "--no-backup"]);
+  if (stopped.status !== 0) throw new Error("local_supabase_stop_failed");
 }
 
 function supabaseCommand(args) {

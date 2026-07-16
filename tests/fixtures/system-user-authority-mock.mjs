@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
-const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+export const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+const ALTINN_APPROVAL_ORIGIN = "https://am.ui.altinn.no";
+const ALTINN_APPROVAL_GET_PATH = "/accessmanagement/ui/systemuser/request";
+const ALTINN_APPROVAL_POST_PATH = "/accessmanagement/ui/systemuser/approve";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SYSTEM_USER_RIGHT = "ske-innrapportering-aksjonaerregisteroppgave";
 const CALLBACK_URL = "https://talli.no/auth/systembruker/confirm";
 const FEEDBACK_NAMESPACE =
@@ -47,6 +51,86 @@ export function installLoopbackAuthorityFetch(baseUrl) {
     return localFetch(mapped, init);
   };
   globalThis[guard] = true;
+}
+
+export async function installBrowserEgressGuard(context, {
+  approvalEnabled,
+  blockedRequests,
+  mockBaseUrl,
+}) {
+  assert.ok(Array.isArray(blockedRequests));
+  const mock = new URL(mockBaseUrl);
+  assert.equal(mock.protocol, "http:");
+  assert.equal(mock.hostname, "127.0.0.1");
+  let expectedApprovalRequestId = null;
+
+  await context.route("**/*", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (LOOPBACK_HOSTS.has(url.hostname)) {
+      await route.continue();
+      return;
+    }
+
+    const localPath = approvalEnabled
+      ? expectedApprovalMockPath({ request, url, expectedApprovalRequestId })
+      : null;
+    if (!localPath) {
+      blockedRequests.push("blocked_nonloopback_browser_request");
+      await route.abort("blockedbyclient");
+      return;
+    }
+    if (request.method() === "GET") {
+      expectedApprovalRequestId = url.searchParams.get("id");
+    }
+
+    const contentType = await request.headerValue("content-type");
+    if (
+      request.method() === "POST"
+      && !contentType?.startsWith("application/x-www-form-urlencoded")
+    ) {
+      blockedRequests.push("blocked_nonloopback_browser_request");
+      await route.abort("blockedbyclient");
+      return;
+    }
+    const localResponse = await context.request.fetch(new URL(localPath, mock).href, {
+      method: request.method(),
+      data: request.postDataBuffer() ?? undefined,
+      headers: contentType ? { "content-type": contentType } : undefined,
+      failOnStatusCode: false,
+      maxRedirects: 0,
+    });
+    await route.fulfill({
+      status: localResponse.status(),
+      headers: localResponse.headers(),
+      body: await localResponse.body(),
+    });
+  });
+}
+
+function expectedApprovalMockPath({ request, url, expectedApprovalRequestId }) {
+  if (url.origin !== ALTINN_APPROVAL_ORIGIN) return null;
+  if (
+    request.method() === "GET"
+    && url.pathname === ALTINN_APPROVAL_GET_PATH
+    && url.searchParams.size === 1
+  ) {
+    const requestId = url.searchParams.get("id");
+    if (!UUID_PATTERN.test(requestId ?? "")) return null;
+    if (expectedApprovalRequestId && expectedApprovalRequestId !== requestId) return null;
+    return `/approval?id=${encodeURIComponent(requestId)}`;
+  }
+  if (
+    request.method() !== "POST"
+    || url.pathname !== ALTINN_APPROVAL_POST_PATH
+    || url.search !== ""
+    || !expectedApprovalRequestId
+  ) {
+    return null;
+  }
+  const form = new URLSearchParams(request.postData() ?? "");
+  if (form.size !== 1 || form.get("id") !== expectedApprovalRequestId) return null;
+  return "/approval/complete";
 }
 
 export async function startSystemUserAuthorityMock({ callbackOrigin }) {

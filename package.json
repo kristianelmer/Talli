@@ -22,7 +22,7 @@
     "test:bank-suggestions": "node --experimental-strip-types --test tests/bank_suggestions.test.mjs tests/bank_suggestion_schema.test.mjs tests/bank_suggestion_integration.test.mjs",
     "test:backup-restore": "node --experimental-strip-types --test tests/backup_restore.test.mjs",
     "test:browser-owner": "node tests/browser_owner_annual_loop.mjs",
-    "test:browser-system-user": "node tests/browser_system_user_flow.mjs",
+    "test:browser-system-user": "node --test tests/browser_system_user_flow_contract.test.mjs tests/browser_system_user_flow.mjs",
     "test:billing": "node --experimental-strip-types --test tests/billing_persisted.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs",
