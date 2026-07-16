@@ -28,6 +28,17 @@ import {
   type AuthorityTestRunStatus,
 } from "./lib/authority-test-evidence";
 import { validateAuthorityObligation } from "./lib/authority-permission";
+import {
+  AUTHORITY_OPERATION,
+  AuthorityOperationError,
+  RF1086_RIGHT,
+  assertAuthorityOperationIntent,
+  authorityOperationEnvironmentFailureCode,
+  authorityOperationRequestHash,
+  buildRf1086SystemDefinition,
+  executeRf1086SystemRegistration,
+  productionAuthorityOperationEnvironment,
+} from "./lib/authority-operations";
 import { buildCompanyTaxReturnEvidencePersistence } from "./lib/company-tax-return-submission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { buildAnnualAccountsPayload } from "./lib/annual-accounts";
@@ -116,7 +127,13 @@ import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
 import { requestMaskinportenToken } from "./lib/maskinporten";
 import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
-import { requireStepUpForAction, SensitiveAction, SensitiveActionStepUpError } from "./lib/security";
+import {
+  assertStepUpAllowed,
+  loadTrustedStepUpContext,
+  requireStepUpForAction,
+  SensitiveAction,
+  SensitiveActionStepUpError,
+} from "./lib/security";
 import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
 import { ShareSaleValidationError, validateShareSale } from "./lib/share-sale";
 import {
@@ -141,6 +158,11 @@ import {
 function formString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function formRawString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
 }
 
 function formStrings(formData: FormData, key: string) {
@@ -4208,6 +4230,136 @@ export async function recordLaunchSignoff(formData: FormData) {
 
   revalidatePath("/");
   redirect("/workspace");
+}
+
+function authorityOperationFailureCode(error: unknown) {
+  if (!(error instanceof AuthorityOperationError)) {
+    return "authority_operation_failed" as const;
+  }
+  switch (error.code) {
+    case "authority_token_error":
+    case "authority_network_error":
+    case "authority_http_error":
+    case "authority_response_invalid":
+      return error.code;
+    default:
+      return "authority_operation_failed" as const;
+  }
+}
+
+export async function runProductionAuthorityOperation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/operator?authority=authority_ops_unavailable");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError || !operator) {
+    redirect("/operator?authority=admin_operator_required");
+  }
+
+  try {
+    const stepUp = await loadTrustedStepUpContext(supabase, user.id);
+    assertStepUpAllowed("authority_operations", stepUp);
+  } catch (error) {
+    const code = error instanceof SensitiveActionStepUpError
+      ? "authority_step_up_required"
+      : "authority_step_up_failed";
+    redirect(`/operator?authority=${code}`);
+  }
+
+  try {
+    assertAuthorityOperationIntent({
+      operation: formRawString(formData, "operation"),
+      confirmation: formRawString(formData, "confirmation"),
+    });
+  } catch {
+    redirect("/operator?authority=authority_operation_invalid");
+  }
+
+  let environment;
+  try {
+    environment = productionAuthorityOperationEnvironment();
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
+  }
+  if (!environment) {
+    redirect("/operator?authority=authority_ops_disabled");
+  }
+
+  const definition = buildRf1086SystemDefinition(environment.clientId);
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    redirect("/operator?authority=authority_audit_unavailable");
+  }
+  const { data: started, error: startError } = await service.from("authority_operations").insert({
+    operation: AUTHORITY_OPERATION,
+    actor_id: user.id,
+    status: "started",
+    request_hash: authorityOperationRequestHash(definition),
+    result_code: "started",
+    metadata: {
+      systemId: definition.id,
+      clientId: environment.clientId,
+      right: RF1086_RIGHT,
+    },
+  }).select("id").single();
+  if (startError || !started) {
+    redirect("/operator?authority=authority_audit_start_failed");
+  }
+
+  let result;
+  try {
+    result = await executeRf1086SystemRegistration(environment);
+  } catch (error) {
+    const resultCode = authorityOperationFailureCode(error);
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    const { error: failureAuditError } = await service
+      .from("authority_operations")
+      .update({
+        status: "failed",
+        result_code: resultCode,
+        authority_http_status: authorityStatus,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", started.id);
+    if (failureAuditError) {
+      redirect("/operator?authority=authority_audit_completion_failed");
+    }
+    revalidatePath("/operator");
+    redirect(`/operator?authority=${resultCode}`);
+  }
+
+  const { error: completionError } = await service
+    .from("authority_operations")
+    .update({
+      status: result.status,
+      result_code: result.code,
+      authority_http_status: result.authorityStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", started.id);
+  if (completionError) {
+    redirect("/operator?authority=authority_audit_completion_failed");
+  }
+  revalidatePath("/operator");
+  redirect(`/operator?authority=${result.code}`);
 }
 
 const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";

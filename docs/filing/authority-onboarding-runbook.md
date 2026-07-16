@@ -13,6 +13,12 @@ The actual account registrations, certificate purchases, and authority delegatio
 real-world actions only the founder/org can perform. Talli's role is this runbook plus the
 in-app evidence records described in [How this maps to Talli's gates](#how-this-maps-to-tallis-gates).
 
+> **Cost approval gate (founder instruction, 2026-07-16):** Before any onboarding action that
+> could incur a charge, stop and obtain Kristian's explicit approval. State the provider, expected
+> amount or best estimate, whether the cost is one-time, recurring, or usage-based, and any viable
+> free or cheaper alternative. If the price is uncertain, treat the action as potentially paid.
+> General permission to continue the onboarding or product build does not authorize spending.
+
 ## Official Anchors
 
 - Maskinporten docs: https://docs.digdir.no/docs/Maskinporten/
@@ -269,6 +275,18 @@ Send it once `altinn:authentication/systemregister.write` is granted and the org
 > `ske-innrapportering-aksjonaerregisteroppgave`, `clientId` = `7166e743-…`, `isVisible: true`,
 > `isDeleted: false`). Token minted locally via `/tmp/talli-mp-token.py` (signs a `private_key_jwt`
 > with `~/talli-test.key` + kid `2d275f93-…`). To edit later, GET → modify → **PUT** the full payload.
+
+> ✅ **PRODUCTION SYSTEM DEFINITION VERIFIED 2026-07-16.** Production client
+> `4a42d9fe-9759-4d4e-a07a-84ebc80a5a1b` registered system
+> `930835978_talli` with only the RF-1086 right
+> `ske-innrapportering-aksjonaerregisteroppgave`. A subsequent authenticated
+> `GET` returned HTTP 200 and matched the immutable definition. The first
+> successful create response exposed an implementation mismatch: Altinn returns
+> the new internal system UUID as a JSON string, not the system object. Talli
+> failed closed, was corrected against Altinn's documented response contract,
+> and then verified the existing definition without issuing `PUT`. The temporary
+> founder-only/AAL2 operations gate was disabled immediately after verification.
+> See `docs/launch/evidence/production-systemregister-2026-07-16.md`.
 
 **Extending to #87 / #84 later (PUT full payload):** add the skattemelding submission resource
 `app_skd_formueinntekt-skattemelding-v2` and the Regnskapsregisteret årsregnskap right/package as
@@ -629,3 +647,11 @@ rehearsal target without deleting that historical onboarding record:
 Steps 7–9 remain runtime/human gates: record the owner authority permission and
 accepted test run in the deployed app, then obtain the named
 `rf1086_authority` production review. No production feature switch is enabled.
+
+Production Systemregister status (updated 2026-07-16): supplier-side Step 4a is
+complete for RF-1086. Customer-side Step 4b still requires a real pilot company
+to approve a production system user before any delegated pre-flight or filing.
+`TALLI_RF1086_PRODUCTION_ENABLED` remains false. The production client is still
+missing `altinn:instances.write` in Digdir's picker despite the approval email;
+follow that scope up separately and do not infer it from the Systemregister
+success.

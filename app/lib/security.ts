@@ -1,4 +1,5 @@
 export type SensitiveAction =
+  | "authority_operations"
   | "production_filing"
   | "approve_corporate_facts"
   | "attest_signed_corporate_document"
@@ -56,6 +57,12 @@ export class SensitiveActionStepUpError extends Error {
 }
 
 export const sensitiveActionRequirements: StepUpRequirement[] = [
+  {
+    action: "authority_operations",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Produksjonsoperasjon mot myndighet",
+  },
   {
     action: "production_filing",
     requiresMfa: true,
