@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
+import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
 const files = await readdir(new URL("../supabase/migrations/", import.meta.url));
@@ -20,6 +22,53 @@ function isLocalDatabase() {
   } catch {
     return false;
   }
+}
+
+function isLocalRuntime() {
+  if (!isLocalDatabase()) return false;
+  if (!["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"].every((key) => process.env[key])) {
+    return false;
+  }
+  try {
+    return ["127.0.0.1", "localhost"].includes(new URL(process.env.SUPABASE_URL).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function serviceClient() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+function anonClient() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function createConfirmedUser(admin, label) {
+  const user = {
+    email: `talli-feedback-${label}-${randomUUID()}@example.test`,
+    password: `Talli-${randomUUID()}!`,
+  };
+  const { data, error } = await admin.auth.admin.createUser({
+    ...user,
+    email_confirm: true,
+  });
+  assert.ifError(error);
+  return { ...user, id: data.user.id };
+}
+
+async function signIn(user) {
+  const client = anonClient();
+  const { error } = await client.auth.signInWithPassword({
+    email: user.email,
+    password: user.password,
+  });
+  assert.ifError(error);
+  return client;
 }
 
 test("creates private, constrained feedback metadata and durable reconciliation state", () => {
@@ -48,6 +97,14 @@ test("uses explicit least privilege grants and owner/operator read policies", ()
   assert.doesNotMatch(sql, /grant (?:insert|update|delete)[^;]+production_feedback_artifacts[^;]+authenticated/iu);
   assert.match(sql, /company_memberships[\s\S]+role = 'owner'[\s\S]+accepted_at is not null/iu);
   assert.match(sql, /support_operators[\s\S]+active/iu);
+  assert.match(
+    sql,
+    /company members can read document metadata[\s\S]+document_type = 'authority_feedback'[\s\S]+role = 'owner'[\s\S]+accepted_at is not null[\s\S]+support_operators[\s\S]+active/iu,
+  );
+  assert.match(
+    sql,
+    /company members can read company document objects[\s\S]+authority-feedback[\s\S]+role = 'owner'[\s\S]+accepted_at is not null[\s\S]+support_operators[\s\S]+active/iu,
+  );
   assert.match(sql, /create or replace function public\.record_production_feedback_artifact/iu);
   assert.match(sql, /grant execute on function public\.record_production_feedback_artifact[^;]+to service_role/isu);
   assert.doesNotMatch(sql, /grant execute on function public\.record_production_feedback_artifact[^;]+to authenticated/isu);
@@ -95,6 +152,16 @@ test("rollback revokes functions first and restores only feature-owned schema an
   assert.match(rollback, /drop column if exists feedback_state/iu);
   assert.match(rollback, /drop column if exists artifact_hashes/iu);
   assert.match(rollback, /company members can read company document objects/iu);
+  assert.match(rollback, /company members can read document metadata/iu);
+  const restoredDocumentPolicy = rollback.match(
+    /create policy "company members can read document metadata"[\s\S]+?\n\);/iu,
+  )?.[0] ?? "";
+  assert.match(restoredDocumentPolicy, /company_memberships/iu);
+  assert.doesNotMatch(restoredDocumentPolicy, /authority_feedback|role = 'owner'|support_operators/iu);
+  const restoredStoragePolicy = rollback.match(
+    /create policy "company members can read company document objects"[\s\S]+?\n\);/iu,
+  )?.[0] ?? "";
+  assert.doesNotMatch(restoredStoragePolicy, /authority-feedback|role = 'owner'|support_operators/iu);
 });
 
 test(
@@ -162,6 +229,189 @@ test(
         assert.ok(bucket.allowed_mime_types.includes(contentType));
       }
     } finally {
+      await database.end();
+    }
+  },
+);
+
+test(
+  "local Supabase limits feedback metadata, objects, and signed URLs to accepted owners and active operators",
+  { skip: isLocalRuntime() ? false : "local Supabase runtime variables are required", timeout: 120_000 },
+  async () => {
+    const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+    await database.connect();
+    const admin = serviceClient();
+    const users = [];
+    const clients = [];
+    const companyId = randomUUID();
+    const previewId = randomUUID();
+    const entitlementId = randomUUID();
+    const approvalId = randomUUID();
+    const submissionId = randomUUID();
+    const feedbackDocumentId = randomUUID();
+    const normalDocumentId = randomUUID();
+    const feedbackHash = "a".repeat(64);
+    const feedbackKey = `authority-feedback/${companyId}/${submissionId}/${feedbackHash}`;
+    const normalKey = `${companyId}/2025/${normalDocumentId}/ordinary.pdf`;
+
+    try {
+      const ownerUser = await createConfirmedUser(admin, "owner");
+      const reviewerUser = await createConfirmedUser(admin, "reviewer");
+      const readOnlyUser = await createConfirmedUser(admin, "read-only");
+      const operatorUser = await createConfirmedUser(admin, "operator");
+      users.push(ownerUser, reviewerUser, readOnlyUser, operatorUser);
+
+      const owner = await signIn(ownerUser);
+      const reviewer = await signIn(reviewerUser);
+      const readOnly = await signIn(readOnlyUser);
+      const operator = await signIn(operatorUser);
+      clients.push(owner, reviewer, readOnly, operator);
+
+      await database.query(
+        `insert into public.companies (id, org_number, name, entity_type, created_by)
+         values ($1, $2, 'Feedback RLS Company', 'AS', $3)`,
+        [companyId, String(100_000_000 + Math.floor(Math.random() * 899_999_999)), ownerUser.id],
+      );
+      await database.query(
+        `insert into public.company_memberships (company_id, user_id, role, accepted_at)
+         values ($1, $2, 'owner', now()), ($1, $3, 'reviewer', now()), ($1, $4, 'read_only', now())`,
+        [companyId, ownerUser.id, reviewerUser.id, readOnlyUser.id],
+      );
+      await database.query(
+        `insert into public.support_operators (user_id, role, active) values ($1, 'support', true)`,
+        [operatorUser.id],
+      );
+      await database.query(
+        `insert into public.filing_previews (
+           id, company_id, income_year, filing, status, issues, preview,
+           hovedskjema_xml, underskjema_xml, created_by
+         ) values ($1, $2, 2025, 'RF-1086', 'ready', '[]', 'preview', '<xml/>', '{}', $3)`,
+        [previewId, companyId, ownerUser.id],
+      );
+      await database.query(
+        `insert into public.production_pilot_entitlements (
+           id, company_id, user_id, income_year, obligation, case_profile, status,
+           billing_exempt, system_user_external_reference, starts_at, expires_at,
+           evidence_reference, approved_by
+         ) values (
+           $1, $2, $3, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1', 'revoked',
+           true, 'feedback-rls-test', now() - interval '2 hours', now() - interval '1 hour',
+           'local feedback RLS test', $3
+         )`,
+        [entitlementId, companyId, ownerUser.id],
+      );
+      await database.query(
+        `insert into public.filing_approval_snapshots (
+           id, entitlement_id, preview_id, company_id, user_id, income_year,
+           obligation, case_profile, adapter_version, payload_hash, manifest_hash,
+           manifest, approved_by, invalidated_at, invalidation_reason
+         ) values (
+           $1, $2, $3, $4, $5, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1',
+           'test-v1', $6, $7, '{}', $5, now(), 'entitlement revoked'
+         )`,
+        [approvalId, entitlementId, previewId, companyId, ownerUser.id, "b".repeat(64), "c".repeat(64)],
+      );
+      await database.query(
+        `insert into public.production_filing_submissions (
+           id, approval_id, entitlement_id, company_id, user_id, income_year,
+           obligation, case_profile, payload_hash, adapter_version, environment,
+           status, submitted_by
+         ) values (
+           $1, $2, $3, $4, $5, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1',
+           $6, 'test-v1', 'production', 'received', $5
+         )`,
+        [submissionId, approvalId, entitlementId, companyId, ownerUser.id, "b".repeat(64)],
+      );
+      await database.query(
+        `insert into public.documents (
+           id, company_id, income_year, document_type, name, linked_to, status,
+           storage_key, created_by
+         ) values
+           ($1, $3, 2025, 'authority_feedback', 'authority-feedback-aaaaaaaaaaaa.xml', $4, 'attached', $5, $6),
+           ($2, $3, 2025, 'annual_accounts', 'ordinary.pdf', 'annual_accounts:2025', 'attached', $7, $6)`,
+        [
+          feedbackDocumentId,
+          normalDocumentId,
+          companyId,
+          `production_filing_submission:${submissionId}`,
+          feedbackKey,
+          ownerUser.id,
+          normalKey,
+        ],
+      );
+      await database.query(
+        `insert into public.production_feedback_artifacts (
+           company_id, submission_id, document_id, authority_reference,
+           content_type, byte_length, sha256, classification
+         ) values ($1, $2, $3, 'authority-reference', 'application/xml', 8, $4, 'accepted')`,
+        [companyId, submissionId, feedbackDocumentId, feedbackHash],
+      );
+
+      const uploads = [
+        await admin.storage.from("company-documents").upload(feedbackKey, "feedback", {
+          contentType: "application/xml",
+        }),
+        await admin.storage.from("company-documents").upload(normalKey, "ordinary", {
+          contentType: "application/pdf",
+        }),
+      ];
+      for (const upload of uploads) assert.ifError(upload.error);
+
+      for (const client of [owner, operator]) {
+        const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
+        assert.ifError(feedbackDocument.error);
+        assert.equal(feedbackDocument.data?.id, feedbackDocumentId);
+        const artifact = await client
+          .from("production_feedback_artifacts")
+          .select("document_id")
+          .eq("document_id", feedbackDocumentId)
+          .maybeSingle();
+        assert.ifError(artifact.error);
+        assert.equal(artifact.data?.document_id, feedbackDocumentId);
+        const download = await client.storage.from("company-documents").download(feedbackKey);
+        assert.ifError(download.error);
+        assert.equal(await download.data.text(), "feedback");
+        const signed = await client.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+        assert.ifError(signed.error);
+        assert.match(signed.data.signedUrl, /\/storage\/v1\/object\/sign\/company-documents\//u);
+      }
+
+      for (const client of [reviewer, readOnly]) {
+        const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
+        assert.ifError(feedbackDocument.error);
+        assert.equal(feedbackDocument.data, null);
+        const artifact = await client
+          .from("production_feedback_artifacts")
+          .select("document_id")
+          .eq("document_id", feedbackDocumentId)
+          .maybeSingle();
+        assert.ifError(artifact.error);
+        assert.equal(artifact.data, null);
+        const download = await client.storage.from("company-documents").download(feedbackKey);
+        assert.ok(download.error);
+        const signed = await client.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+        assert.ok(signed.error);
+
+        const normalDocument = await client.from("documents").select("id").eq("id", normalDocumentId).single();
+        assert.ifError(normalDocument.error);
+        assert.equal(normalDocument.data.id, normalDocumentId);
+        const normalDownload = await client.storage.from("company-documents").download(normalKey);
+        assert.ifError(normalDownload.error);
+        assert.equal(await normalDownload.data.text(), "ordinary");
+      }
+    } finally {
+      await admin.storage.from("company-documents").remove([feedbackKey, normalKey]);
+      await database.query("delete from public.production_feedback_artifacts where company_id = $1", [companyId]);
+      await database.query("delete from public.production_filing_submissions where company_id = $1", [companyId]);
+      await database.query("delete from public.filing_approval_snapshots where company_id = $1", [companyId]);
+      await database.query("delete from public.production_pilot_entitlements where company_id = $1", [companyId]);
+      await database.query("delete from public.documents where company_id = $1", [companyId]);
+      await database.query("delete from public.filing_previews where company_id = $1", [companyId]);
+      await database.query("delete from public.support_operators where user_id = any($1::uuid[])", [users.map((user) => user.id)]);
+      await database.query("delete from public.company_memberships where company_id = $1", [companyId]);
+      await database.query("delete from public.companies where id = $1", [companyId]);
+      for (const client of clients) await client.auth.signOut();
+      for (const user of users) await admin.auth.admin.deleteUser(user.id);
       await database.end();
     }
   },

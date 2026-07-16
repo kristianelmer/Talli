@@ -92,6 +92,31 @@ test("missing, duplicate, and ambiguous relationship fields cannot yield accepta
   }
 });
 
+test("wrapped or off-path official fields cannot yield acceptance", () => {
+  const wrappedInnsending = `
+    <tilbakemelding xmlns="${INNSENDING_NS}">
+      <innpakning>
+        <innsending><forsendelseid>${context.forsendelseId}</forsendelseid></innsending>
+        <leveranse>
+          <leveransestatus>godkjent</leveransestatus>
+          <inntektsaar>${context.incomeYear}</inntektsaar>
+        </leveranse>
+      </innpakning>
+    </tilbakemelding>`;
+  const wrappedLeveranse = `
+    <tilbakemelding xmlns="${LEVERANSE_NS}">
+      <innsending><forsendelseid>${context.forsendelseId}</forsendelseid></innsending>
+      <innpakning>
+        <leveranse><inntektsaar>${context.incomeYear}</inntektsaar></leveranse>
+        <leveranseoppsummering><leveransestatus>godkjent</leveransestatus></leveranseoppsummering>
+      </innpakning>
+    </tilbakemelding>`;
+
+  for (const xml of [wrappedInnsending, wrappedLeveranse]) {
+    assert.equal(classifyRf1086Feedback(bytes(xml), context).classification, "action_required");
+  }
+});
+
 test("feedback larger than 10 MiB is rejected before decoding", () => {
   const oversized = new Uint8Array((10 * 1024 * 1024) + 1);
   assert.deepEqual(classifyRf1086Feedback(oversized, context), {

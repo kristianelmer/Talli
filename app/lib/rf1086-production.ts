@@ -352,10 +352,7 @@ type ReadOnlyRf1086Authority = Pick<Rf1086AuthorityClient, "listDocuments" | "ge
 
 function pendingArchiveError(error: unknown) {
   return error instanceof Rf1086AuthorityError
-    && (
-      error.code === "GLD_1017"
-      || (error.code === "GLD_021" && error.specificationCodes.includes("GLD_1017"))
-    );
+    && (error.code === "GLD_021" || error.code === "GLD_1017");
 }
 
 function safeReconciliationFailure(error: unknown) {

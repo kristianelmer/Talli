@@ -19,6 +19,19 @@ drop policy if exists production_feedback_artifacts_operator_read on public.prod
 drop policy if exists production_feedback_artifacts_owner_read on public.production_feedback_artifacts;
 drop table if exists public.production_feedback_artifacts;
 
+drop policy if exists "company members can read document metadata" on public.documents;
+create policy "company members can read document metadata"
+on public.documents for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.company_memberships m
+    where m.company_id = documents.company_id
+      and m.user_id = (select auth.uid())
+  )
+);
+
 drop policy if exists "company members can read company document objects" on storage.objects;
 create policy "company members can read company document objects"
 on storage.objects for select

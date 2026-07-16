@@ -24,6 +24,7 @@ import {
 import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-document-readiness";
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
+import { selectLatestRf1086ProductionSubmission } from "../../../lib/rf1086-production-presentation";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
 import {
@@ -322,9 +323,17 @@ export default async function FilingObligationPage({
       (item) => item.preview_id === preview.id && item.invalidated_at === null,
     )
     : null;
-  const productionSubmission = productionApproval
-    ? data.productionFilingSubmissions.find((item) => item.approval_id === productionApproval.id)
-    : null;
+  const productionSubmission = selectLatestRf1086ProductionSubmission(
+    data.productionFilingSubmissions,
+    {
+      companyId: input.company.id,
+      userId: data.user?.id ?? "",
+      incomeYear: input.incomeYear,
+      obligation,
+      caseProfile: "rf1086_no_activity_v1",
+      environment: "production",
+    },
+  );
   const productionFeedbackState = productionSubmission?.feedback_state;
   const productionFeedbackArtifacts = productionSubmission
     ? data.productionFeedbackArtifacts.filter((artifact) => artifact.submission_id === productionSubmission.id)
@@ -382,7 +391,7 @@ export default async function FilingObligationPage({
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">
-        {pilotEntitlement && previewReady ? (
+        {productionSubmission || (pilotEntitlement && previewReady) ? (
           <section className="filingStep">
             <div className="filingStepHead">
               <h2 className="filingStepTitle">Reell RF-1086-produksjonspilot</h2>
@@ -406,27 +415,10 @@ export default async function FilingObligationPage({
                 Selskap: {input.company.name}<br />
                 Inntektsår: {input.incomeYear}<br />
                 Støttet profil: Ingen aktivitet / stiftelse (`rf1086_no_activity_v1`)<br />
-                Payload-hash: <code>{productionApproval?.payload_hash ?? "opprettes ved godkjenning"}</code>
+                Payload-hash: <code>{productionSubmission?.payload_hash ?? productionApproval?.payload_hash ?? "opprettes ved godkjenning"}</code>
               </p>
-              <pre className="filingPreview">{preview?.preview}</pre>
-              {!productionApproval ? (
-                <form action={approveProductionFiling} className="filingConfirmForm">
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <input type="hidden" name="previewId" value={preview?.id ?? ""} />
-                  <input type="hidden" name="entitlementId" value={pilotEntitlement.id} />
-                  <label className="filingCheck">
-                    <input type="checkbox" name="realFilingConfirmed" required />
-                    Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell RF-1086.
-                  </label>
-                  <SubmitButton pendingLabel="Lagrer godkjenningen …">Godkjenn eksakt innhold</SubmitButton>
-                </form>
-              ) : !productionSubmission ? (
-                <form action={sendApprovedRf1086ProductionFiling} className="filingConfirmForm">
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <input type="hidden" name="approvalId" value={productionApproval.id} />
-                  <SubmitButton pendingLabel="Sender sikkert …">Send reell RF-1086</SubmitButton>
-                </form>
-              ) : (
+              {preview ? <pre className="filingPreview">{preview.preview}</pre> : null}
+              {productionSubmission ? (
                 <>
                   <p className="cardNote">
                     Autoritetsstatus: {productionFeedbackState}. Tilbakemeldinger lagres privat og kan lastes ned med kortvarig tilgang.
@@ -452,6 +444,23 @@ export default async function FilingObligationPage({
                     </ul>
                   ) : null}
                 </>
+              ) : !productionApproval ? (
+                <form action={approveProductionFiling} className="filingConfirmForm">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="previewId" value={preview?.id ?? ""} />
+                  <input type="hidden" name="entitlementId" value={pilotEntitlement?.id ?? ""} />
+                  <label className="filingCheck">
+                    <input type="checkbox" name="realFilingConfirmed" required />
+                    Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell RF-1086.
+                  </label>
+                  <SubmitButton pendingLabel="Lagrer godkjenningen …">Godkjenn eksakt innhold</SubmitButton>
+                </form>
+              ) : (
+                <form action={sendApprovedRf1086ProductionFiling} className="filingConfirmForm">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="approvalId" value={productionApproval.id} />
+                  <SubmitButton pendingLabel="Sender sikkert …">Send reell RF-1086</SubmitButton>
+                </form>
               )}
             </div>
           </section>

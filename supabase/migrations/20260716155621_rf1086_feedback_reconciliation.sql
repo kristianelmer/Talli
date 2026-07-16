@@ -56,6 +56,39 @@ alter table public.production_feedback_artifacts enable row level security;
 revoke all on table public.production_feedback_artifacts from public, anon, authenticated, service_role;
 grant select on table public.production_feedback_artifacts to authenticated, service_role;
 
+-- Authority feedback is private to accepted owners and active operators. Keep the
+-- pre-existing membership behavior unchanged for every other document type.
+drop policy if exists "company members can read document metadata" on public.documents;
+create policy "company members can read document metadata"
+on public.documents for select
+to authenticated
+using (
+  case
+    when documents.document_type = 'authority_feedback' then
+      exists (
+        select 1
+        from public.company_memberships m
+        where m.company_id = documents.company_id
+          and m.user_id = (select auth.uid())
+          and m.role = 'owner'
+          and m.accepted_at is not null
+      )
+      or exists (
+        select 1
+        from public.support_operators o
+        where o.user_id = (select auth.uid())
+          and o.active
+      )
+    else
+      exists (
+        select 1
+        from public.company_memberships m
+        where m.company_id = documents.company_id
+          and m.user_id = (select auth.uid())
+      )
+  end
+);
+
 drop policy if exists production_feedback_artifacts_owner_read on public.production_feedback_artifacts;
 create policy production_feedback_artifacts_owner_read
 on public.production_feedback_artifacts for select to authenticated
@@ -94,16 +127,35 @@ on storage.objects for select
 to authenticated
 using (
   bucket_id = 'company-documents'
-  and exists (
-    select 1
-    from public.company_memberships m
-    where m.company_id::text = case
-        when (storage.foldername(name))[1] = 'authority-feedback'
-          then (storage.foldername(name))[2]
-        else (storage.foldername(name))[1]
-      end
-      and m.user_id = (select auth.uid())
-      and m.accepted_at is not null
+  and (
+    (
+      (storage.foldername(name))[1] = 'authority-feedback'
+      and (
+        exists (
+          select 1
+          from public.company_memberships m
+          where m.company_id::text = (storage.foldername(name))[2]
+            and m.user_id = (select auth.uid())
+            and m.role = 'owner'
+            and m.accepted_at is not null
+        )
+        or exists (
+          select 1
+          from public.support_operators o
+          where o.user_id = (select auth.uid())
+            and o.active
+        )
+      )
+    )
+    or (
+      (storage.foldername(name))[1] <> 'authority-feedback'
+      and exists (
+        select 1
+        from public.company_memberships m
+        where m.company_id::text = (storage.foldername(name))[1]
+          and m.user_id = (select auth.uid())
+      )
+    )
   )
   and not exists (
     select 1

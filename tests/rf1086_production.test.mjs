@@ -207,7 +207,7 @@ const forsendelseId = "30000000-0000-4000-8000-000000000003";
 const acceptedFeedback = `
   <tilbakemelding xmlns="${FEEDBACK_NS}">
     <innsending><forsendelseid>${forsendelseId}</forsendelseid></innsending>
-    <fil><leveranse><leveransestatus>godkjent</leveransestatus><inntektsaar>2025</inntektsaar></leveranse></fil>
+    <leveranse><leveransestatus>godkjent</leveransestatus><inntektsaar>2025</inntektsaar></leveranse>
   </tilbakemelding>`;
 
 function createReconciliationJournal(state = "sent") {
@@ -405,4 +405,32 @@ test("transport uncertainty is durable unknown with safe codes only", async () =
   assert.equal(journal.events[0].safeErrorCode, "RF1086_NETWORK_ERROR");
   assert.equal(journal.events[0].correlationId, "safe-correlation-1");
   assert.doesNotMatch(JSON.stringify(journal.events), /raw transport details/u);
+});
+
+test("bare GLD_021 and bare GLD_1017 archive responses remain processing", async () => {
+  for (const code of ["GLD_021", "GLD_1017"]) {
+    const journal = createReconciliationJournal("processing");
+    const authority = {
+      async listDocuments() {
+        throw new Rf1086AuthorityError("archive pending", {
+          status: 404,
+          code,
+          specificationCodes: [],
+          retryable: false,
+        });
+      },
+      async getDocument() { throw new Error("not expected"); },
+    };
+    const result = await reconcileJournaledRf1086Production(journal, authority, {
+      submissionId: "submission-id",
+      companyId: "company-id",
+      incomeYear: 2025,
+      forsendelseId,
+      hovedskjemaXml: "<H />",
+      underskjemaXml: { owner: "<U />" },
+    }, { initialPoll: false });
+
+    assert.equal(result.state, "processing", code);
+    assert.equal(result.safeErrorCode, null, code);
+  }
 });

@@ -23,10 +23,12 @@ const ACTION_REQUIRED: Rf1086FeedbackResult = {
 
 type CapturedField = "leveransestatus" | "forsendelseid" | "inntektsaar";
 
-function expectedParent(schema: Exclude<Rf1086FeedbackSchema, "unknown">, field: CapturedField) {
-  if (field === "forsendelseid") return "innsending";
-  if (field === "inntektsaar") return "leveranse";
-  return schema === "innsendingstilbakemelding-v2" ? "leveranse" : "leveranseoppsummering";
+function expectedPath(schema: Exclude<Rf1086FeedbackSchema, "unknown">, field: CapturedField) {
+  if (field === "forsendelseid") return "tilbakemelding/innsending/forsendelseid";
+  if (field === "inntektsaar") return "tilbakemelding/leveranse/inntektsaar";
+  return schema === "innsendingstilbakemelding-v2"
+    ? "tilbakemelding/leveranse/leveransestatus"
+    : "tilbakemelding/leveranseoppsummering/leveransestatus";
 }
 
 export function classifyRf1086Feedback(
@@ -84,8 +86,8 @@ export function classifyRf1086Feedback(
       if (activeCapture) invalid = true;
       const field = local as CapturedField;
       if (field === "leveransestatus" || field === "forsendelseid" || field === "inntektsaar") {
-        const parent = elementStack.at(-1);
-        if (schema === "unknown" || parent !== expectedParent(schema, field)) {
+        const path = [...elementStack, local].join("/");
+        if (schema === "unknown" || path !== expectedPath(schema, field)) {
           invalid = true;
         }
         activeCapture = { field, depth, text: "" };
