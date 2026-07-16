@@ -103,8 +103,8 @@ export function productionAuthorityOperationEnvironment(
     throw new AuthorityOperationError("authority_private_key must not reference test");
   }
   if (
-    !privateKeyPem.startsWith("-----BEGIN PRIVATE KEY-----\n") ||
-    !privateKeyPem.endsWith("\n-----END PRIVATE KEY-----")
+    !/^-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]+-----END (?:RSA )?PRIVATE KEY-----\s*$/u
+      .test(privateKeyPem)
   ) {
     throw new AuthorityOperationError("authority_private_key_invalid");
   }

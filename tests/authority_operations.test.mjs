@@ -61,6 +61,18 @@ test("authority operation environment fails closed and rejects test credentials"
   );
 });
 
+test("authority environment accepts the proven RSA PEM shape used by production filing", () => {
+  const rsaPem =
+    "-----BEGIN RSA PRIVATE KEY-----\nZmFrZS1wcm9kdWN0aW9uLXJzYS1rZXk=\n-----END RSA PRIVATE KEY-----\n";
+  const result = productionAuthorityOperationEnvironment({
+    ...productionEnvironment,
+    TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: rsaPem,
+  });
+
+  assert.ok(result);
+  assert.equal(result.privateKeyPem, rsaPem);
+});
+
 test("environment diagnostics expose only the invalid field", () => {
   assert.equal(
     authorityOperationEnvironmentFailureCode(
