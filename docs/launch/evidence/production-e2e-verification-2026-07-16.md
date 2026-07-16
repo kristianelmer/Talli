@@ -1,6 +1,6 @@
 # Production E2E verification — 2026-07-16
 
-Status: in progress; Tasks 1–2 passed, Tasks 3–6 pending
+Status: blocked at Task 3; Tasks 1–2 passed, Task 3 failed, Tasks 4–6 pending
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -171,8 +171,9 @@ result, deployed-surface observation, or production-readiness verdict.
 - [x] Task 1 — freeze release target and audit the verification contract.
 - [x] Task 2 — run the full repository release rehearsal, type-check, and
   production build with production authority switches absent.
-- [ ] Task 3 — exercise local Supabase migrations, grants, authenticated RLS,
-  storage, owner persistence, and advisors.
+- [ ] Task 3 — **BLOCKED**: the local Supabase suite reached the authenticated
+  owner-persistence test but failed because `TALLI_PYTHON_BIN` was not
+  configured. The passing subtests and advisor result are recorded below.
 - [ ] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
   and verify test-process cleanup.
 - [ ] Task 5 — smoke-test only the deployed public surface through read-only
@@ -279,3 +280,105 @@ optimization without a reported warning.
 - These local deterministic checks do not prove hosted database isolation,
   restore readiness, production delegation or credentials, authority
   acceptance, human signoff, or production filing readiness.
+
+## Local Supabase migrations, grants, RLS, and advisors
+
+Task 3 used the repository's local Supabase scripts and Docker only. Inspection
+before execution confirmed that `scripts/test-supabase-local.sh` uses
+`supabase start`/`status`, generated local development keys and `DB_URL`, and a
+local-stack teardown; `scripts/assert-supabase-advisors.mjs` invokes
+`supabase db advisors --local`. No hosted project was linked or queried, no
+hosted secret or customer data was read, and neither production authority
+switch was enabled.
+
+### Local-only prerequisites
+
+The prerequisite check ran from `2026-07-16T21:21:24Z` through
+`2026-07-16T21:21:25Z` UTC:
+
+```sh
+supabase --version && docker info --format '{{.ServerVersion}}'
+```
+
+Result: exit `0`; Supabase CLI `2.62.5` and Docker Server `28.4.0` were
+available. A value-free assertion in the same shell also confirmed that
+`TALLI_AUTHORITY_OPS_ENABLED` and `TALLI_RF1086_PRODUCTION_ENABLED` were absent.
+
+The CLI emitted an update notice for `2.109.1`. Version `2.62.5` is below the
+Supabase skill's `2.81.3` threshold for relying directly on raw
+`supabase db advisors`; tools were not upgraded. This task instead exercised
+the repository-owned advisor wrapper required by the verification plan, which
+successfully invoked its local advisor command before the later test failure.
+
+### Isolated local suite
+
+The isolated suite ran from `2026-07-16T21:21:31Z` through
+`2026-07-16T21:21:43Z` UTC:
+
+```sh
+npm run test:supabase:local
+```
+
+Result: exit `1`; **Task 3 is blocked**. Before the failure, the repository
+advisor gate reported 0 blocking security/error findings and 15 performance
+warnings. The database TAP summary reported 9 tests: 8 passed, 1 failed, 0
+cancelled, 0 skipped, and 0 todo, with a reported duration of
+`3769.813416 ms`.
+
+The passing checks included private and constrained feedback metadata,
+least-privilege grants and owner/operator read policies, relationship and key
+validation, serialized change-only reconciliation, confirmation-reference
+claiming, rollback revocations, read-only RLS metadata with service-only
+mutation RPCs, and authenticated recovery with access limited to authorized
+readers.
+
+The failing test was
+`Supabase authenticated workspace persists owner data and denies outsider`.
+It stopped while rendering the RF-1086 preview with:
+
+```text
+Error: TALLI_PYTHON_BIN must point to a Python runtime with the Talli project dependencies installed.
+```
+
+The failure occurred before the suite could invoke `test:browser-owner`.
+Following the task's stop-on-failure rule, the command was not repaired or
+rerun, and the separate planned commands below were not executed:
+
+```sh
+npm run test:supabase-grants && npm run test:supabase-advisors
+```
+
+The run also emitted one non-failing `MODULE_TYPELESS_PACKAGE_JSON` warning for
+`app/lib/archive.ts`, which Node reparsed as an ES module with a reported
+performance overhead. The 15 advisor performance findings were reported as a
+count by the repository wrapper; because execution stopped at the failing
+suite, no later raw advisor output was collected.
+
+### Teardown and residue
+
+The suite's automatic EXIT cleanup did not fully remove its local stack. The
+first post-failure inspection found five remaining containers
+(`supabase_db_talli`, `supabase_storage_talli`, `supabase_rest_talli`,
+`supabase_auth_talli`, and `supabase_kong_talli`) and Docker listeners on local
+ports 54321 and 54322. The local status command still succeeded, so that
+residue check intentionally exited `1` rather than claiming teardown success.
+
+The script's own local teardown command was then run manually from
+`2026-07-16T21:22:26Z` through `2026-07-16T21:22:37Z` UTC:
+
+```sh
+npm exec -- supabase stop --no-backup
+```
+
+Result: exit `0`; the CLI reported that it stopped the local development
+setup. Fresh checks completed at `2026-07-16T21:22:56Z` UTC with exit `0` and
+found no `talli`/Supabase containers, no listeners on configured Supabase ports
+54320, 54321, 54322, 54323, 54324, 54327, or 54329, no listener on owner-browser
+port 3217, and no matching owner-browser or Next test process. Local Supabase
+status was unavailable as expected after teardown.
+
+Task 3 therefore provides partial positive local evidence for migrations,
+grants, RLS, authenticated recovery, and the repository advisor gate, but it
+does not provide a passing owner-persistence/browser loop or the explicit
+post-suite static-grant and advisor rerun. It adds no hosted or production
+evidence and does not change the fail-closed production-readiness verdict.
