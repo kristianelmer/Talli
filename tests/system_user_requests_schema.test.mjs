@@ -19,6 +19,12 @@ const server = readFileSync(
   "utf8",
 );
 
+function functionSql(name) {
+  return sql.match(
+    new RegExp(`create or replace function public\\.${name}\\([\\s\\S]+?\\n\\$\\$;`, "iu"),
+  )?.[0] ?? "";
+}
+
 test("request persistence is owner-readable and mutation is RPC-only", () => {
   assert.match(sql, /create table (?:if not exists )?public\.system_user_requests/iu);
   assert.match(sql, /initiating_owner_user_id uuid not null/iu);
@@ -71,11 +77,9 @@ test("request RPCs use fixed signatures, safe search paths, and least privilege"
     "record_system_user_authority_state",
     "verify_system_user_preflight",
   ]) {
-    const functionSql = sql.match(
-      new RegExp(`create or replace function public\\.${functionName}\\([\\s\\S]+?\\n\\$\\$;`, "iu"),
-    )?.[0] ?? "";
-    assert.match(functionSql, /security definer/iu);
-    assert.match(functionSql, /set search_path = ''/iu);
+    const source = functionSql(functionName);
+    assert.match(source, /security definer/iu);
+    assert.match(source, /set search_path = ''/iu);
   }
   assert.match(
     sql,
@@ -108,25 +112,55 @@ test("request RPCs use fixed signatures, safe search paths, and least privilege"
 });
 
 test("state reconciliation locks one request and enforces exact relationships and transitions", () => {
-  const functionSql = sql.match(
-    /create or replace function public\.record_system_user_authority_state\([\s\S]+?\n\$\$;/iu,
-  )?.[0] ?? "";
-  assert.match(functionSql, /where r\.id = p_request_id[\s\S]+for update/iu);
-  assert.match(functionSql, /v_request\.company_id is distinct from p_company_id/iu);
-  assert.match(functionSql, /v_request\.external_ref is distinct from p_external_ref/iu);
-  assert.match(functionSql, /v_request\.altinn_request_id is not null[\s\S]+p_altinn_request_id/iu);
-  assert.match(functionSql, /from public\.company_memberships[\s\S]+m\.user_id = v_request\.initiating_owner_user_id/iu);
-  assert.match(functionSql, /v_request\.status = 'creating'[\s\S]+p_status in \([^)]*'new'[^)]*'accepted'/iu);
-  assert.match(functionSql, /v_request\.status = 'accepted'[\s\S]+p_status in \('accepted', 'verification_failed'\)/iu);
-  assert.match(functionSql, /v_request\.status = 'verification_failed'[\s\S]+p_status in \('verification_failed', 'accepted'\)/iu);
-  assert.match(functionSql, /invalid_system_user_transition/iu);
-  assert.match(functionSql, /p_failure_code not in \(/iu);
-  assert.match(functionSql, /public\.authority_operations/iu);
-  assert.match(functionSql, /requested_at =/iu);
-  assert.match(functionSql, /last_status_checked_at =/iu);
-  assert.match(functionSql, /accepted_at =/iu);
-  assert.match(functionSql, /resolved_at =/iu);
-  assert.match(functionSql, /updated_at =/iu);
+  const source = functionSql("record_system_user_authority_state");
+  assert.match(source, /where r\.id = p_request_id[\s\S]+for update/iu);
+  assert.match(source, /v_request\.company_id is distinct from p_company_id/iu);
+  assert.match(source, /v_request\.external_ref is distinct from p_external_ref/iu);
+  assert.match(source, /v_request\.altinn_request_id is not null[\s\S]+p_altinn_request_id/iu);
+  assert.match(source, /from public\.company_memberships[\s\S]+m\.user_id = v_request\.initiating_owner_user_id/iu);
+  assert.match(source, /v_request\.status = 'creating'[\s\S]+p_status in \([^)]*'new'[^)]*'accepted'/iu);
+  assert.match(source, /v_request\.status = 'accepted'[\s\S]+p_status in \('accepted', 'verification_failed'\)/iu);
+  assert.match(source, /v_request\.status = 'verification_failed'[\s\S]+p_status in \('verification_failed', 'accepted'\)/iu);
+  assert.match(source, /invalid_system_user_transition/iu);
+  assert.match(source, /p_failure_code not in \(/iu);
+  assert.match(source, /public\.authority_operations/iu);
+  assert.match(source, /requested_at =/iu);
+  assert.match(source, /last_status_checked_at =/iu);
+  assert.match(source, /accepted_at =/iu);
+  assert.match(source, /resolved_at =/iu);
+  assert.match(source, /updated_at =/iu);
+});
+
+test("confirmation URLs are reconstructed as one exact production URL", () => {
+  const source = functionSql("record_system_user_authority_state");
+  assert.match(
+    sql,
+    /add constraint system_user_requests_confirm_url_canonical[\s\S]+confirm_url = \(\s*'https:\/\/am\.ui\.altinn\.no\/accessmanagement\/ui\/systemuser\/request\?id='\s*\|\| altinn_request_id::text/iu,
+  );
+  assert.match(
+    source,
+    /v_canonical_confirm_url :=\s*'https:\/\/am\.ui\.altinn\.no\/accessmanagement\/ui\/systemuser\/request\?id='\s*\|\| v_effective_altinn_request_id::text/iu,
+  );
+  assert.match(source, /p_confirm_url is distinct from v_canonical_confirm_url/iu);
+  assert.match(source, /confirm_url = case[\s\S]+v_canonical_confirm_url/iu);
+  assert.doesNotMatch(source, /at22|tt02|regexp_count/iu);
+});
+
+test("terminal self-reconciliation only refreshes safe timestamps", () => {
+  const source = functionSql("record_system_user_authority_state");
+  const terminalGuard = source.indexOf("v_request.status in ('rejected', 'denied', 'timedout')");
+  const generalUpdate = source.indexOf("set altinn_request_id = v_effective_altinn_request_id");
+  assert.ok(terminalGuard >= 0, "terminal self-transition guard is present");
+  assert.ok(generalUpdate > terminalGuard, "terminal guard runs before the general evidence update");
+  assert.match(source.slice(terminalGuard, generalUpdate), /p_altinn_request_id is distinct from v_request\.altinn_request_id/iu);
+  assert.match(source.slice(terminalGuard, generalUpdate), /p_confirm_url is distinct from v_request\.confirm_url/iu);
+  assert.match(source.slice(terminalGuard, generalUpdate), /p_failure_code is distinct from v_request\.failure_code/iu);
+  assert.match(source.slice(terminalGuard, generalUpdate), /p_operator_evidence_id is distinct from v_request\.operator_evidence_id/iu);
+  assert.match(source.slice(terminalGuard, generalUpdate), /system_user_request_terminal_evidence_immutable/iu);
+  assert.match(
+    source.slice(terminalGuard, generalUpdate),
+    /set last_status_checked_at = v_now,\s*updated_at = v_now/iu,
+  );
 });
 
 test("foreign keys and RLS join predicates have supporting indexes", () => {
@@ -160,16 +194,47 @@ test("active entitlements bind to the exact accepted preflight-verified request"
   assert.match(sql, /v_request\.preflight_verified_at is null/iu);
   assert.match(sql, /system_user_external_reference[\s\S]+v_request\.external_ref/iu);
 
-  const beginSql = sql.match(
-    /create or replace function public\.begin_production_filing\(p_approval_id uuid\)[\s\S]+?\n\$\$;/iu,
+  const beginSql = functionSql("begin_production_filing");
+  assert.match(beginSql, /v_request\.initiating_owner_user_id <> v_actor_id/iu);
+  assert.match(beginSql, /v_request\.company_id <> v_approval\.company_id/iu);
+  assert.match(beginSql, /v_request\.obligation <> v_approval\.obligation/iu);
+  assert.match(beginSql, /v_request\.status <> 'accepted'/iu);
+  assert.match(beginSql, /v_request\.preflight_verified_at is null/iu);
+  assert.match(beginSql, /v_request\.external_ref <> v_entitlement\.system_user_external_reference/iu);
+});
+
+test("authorization RPCs serialize request invalidation, entitlement changes, and begin", () => {
+  const recordSql = functionSql("record_system_user_authority_state");
+  const manageSql = functionSql("manage_production_pilot_entitlement");
+  const beginSql = functionSql("begin_production_filing");
+
+  const recordRequestLock = recordSql.indexOf("where r.id = p_request_id");
+  const recordSuspend = recordSql.indexOf("update public.production_pilot_entitlements");
+  assert.ok(recordRequestLock >= 0 && recordSuspend > recordRequestLock);
+  assert.match(recordSql.slice(recordRequestLock, recordSuspend), /for update/iu);
+  assert.match(recordSql.slice(recordSuspend), /where system_user_request_id = v_request\.id\s+and status = 'active'/iu);
+
+  const manageRequestLock = manageSql.indexOf("where r.id = p_system_user_request_id");
+  const manageEntitlementLock = manageSql.indexOf("from public.production_pilot_entitlements e");
+  assert.ok(manageRequestLock >= 0 && manageEntitlementLock > manageRequestLock);
+  assert.match(manageSql.slice(manageRequestLock, manageEntitlementLock), /for update/iu);
+  assert.match(manageSql.slice(manageEntitlementLock), /for update/iu);
+  assert.doesNotMatch(manageSql, /for key share/iu);
+
+  const beginRequestLockSql = beginSql.match(
+    /select r\.\*\s+into v_request\s+from public\.system_user_requests r[\s\S]+?for update;/iu,
   )?.[0] ?? "";
-  assert.match(beginSql, /join public\.system_user_requests r on r\.id = e\.system_user_request_id/iu);
-  assert.match(beginSql, /r\.initiating_owner_user_id = v_actor_id/iu);
-  assert.match(beginSql, /r\.company_id = v_approval\.company_id/iu);
-  assert.match(beginSql, /r\.obligation = v_approval\.obligation/iu);
-  assert.match(beginSql, /r\.status = 'accepted'/iu);
-  assert.match(beginSql, /r\.preflight_verified_at is not null/iu);
-  assert.match(beginSql, /r\.external_ref = e\.system_user_external_reference/iu);
+  const beginEntitlementLockSql = beginSql.match(
+    /select e\.\*\s+into v_entitlement\s+from public\.production_pilot_entitlements e[\s\S]+?for update;/iu,
+  )?.[0] ?? "";
+  const beginRequestLock = beginSql.indexOf(beginRequestLockSql);
+  const beginEntitlementLock = beginSql.indexOf(beginEntitlementLockSql);
+  const beginInsert = beginSql.indexOf("insert into public.production_filing_submissions");
+  assert.ok(beginRequestLockSql && beginEntitlementLockSql);
+  assert.ok(beginRequestLock >= 0 && beginEntitlementLock > beginRequestLock);
+  assert.ok(beginInsert > beginEntitlementLock);
+  assert.match(beginRequestLockSql, /for update;/iu);
+  assert.match(beginEntitlementLockSql, /for update;/iu);
 });
 
 test("rollback revokes first, restores old controlled-beta functions, then drops dependencies", () => {

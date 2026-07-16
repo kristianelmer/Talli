@@ -11,7 +11,7 @@ create table if not exists public.system_user_requests (
   status text not null check (
     status in ('creating', 'new', 'accepted', 'rejected', 'denied', 'timedout', 'verification_failed')
   ),
-  confirm_url text check (confirm_url is null or length(confirm_url) <= 2048),
+  confirm_url text,
   preflight_verified_at timestamptz,
   failure_code text check (failure_code is null or failure_code ~ '^[a-z0-9_]{1,64}$'),
   operator_evidence_id uuid references public.authority_operations(id) on delete set null,
@@ -23,6 +23,37 @@ create table if not exists public.system_user_requests (
   resolved_at timestamptz,
   check (preflight_verified_at is null or status = 'accepted')
 );
+
+-- Earlier feature-branch rehearsals accepted multiple authority hosts and query
+-- shapes. Clear any such draft metadata before enforcing the one safe value.
+update public.system_user_requests
+set confirm_url = null,
+    updated_at = pg_catalog.now()
+where confirm_url is not null
+  and (
+    altinn_request_id is null
+    or confirm_url is distinct from (
+      'https://am.ui.altinn.no/accessmanagement/ui/systemuser/request?id='
+      || altinn_request_id::text
+    )
+  );
+
+alter table public.system_user_requests
+  drop constraint if exists system_user_requests_confirm_url_check;
+alter table public.system_user_requests
+  drop constraint if exists system_user_requests_confirm_url_canonical;
+alter table public.system_user_requests
+  add constraint system_user_requests_confirm_url_canonical
+  check (
+    confirm_url is null
+    or (
+      altinn_request_id is not null
+      and confirm_url = (
+        'https://am.ui.altinn.no/accessmanagement/ui/systemuser/request?id='
+        || altinn_request_id::text
+      )
+    )
+  );
 
 create unique index if not exists system_user_requests_one_live_company_obligation
 on public.system_user_requests(company_id, obligation)
@@ -133,6 +164,7 @@ as $$
 declare
   v_request public.system_user_requests%rowtype;
   v_effective_altinn_request_id uuid;
+  v_canonical_confirm_url text;
   v_transition_allowed boolean := false;
   v_now timestamptz := pg_catalog.now();
 begin
@@ -153,10 +185,6 @@ begin
   if v_request.company_id is distinct from p_company_id
     or v_request.external_ref is distinct from p_external_ref
     or v_request.obligation <> 'aksjonaerregisteroppgaven'
-    or (
-      v_request.altinn_request_id is not null
-      and v_request.altinn_request_id is distinct from p_altinn_request_id
-    )
     or not exists (
       select 1
       from public.company_memberships m
@@ -205,6 +233,30 @@ begin
     raise exception 'invalid_system_user_transition';
   end if;
 
+  if v_request.status in ('rejected', 'denied', 'timedout') then
+    if p_altinn_request_id is distinct from v_request.altinn_request_id
+      or p_confirm_url is distinct from v_request.confirm_url
+      or p_failure_code is distinct from v_request.failure_code
+      or p_operator_evidence_id is distinct from v_request.operator_evidence_id
+    then
+      raise exception 'system_user_request_terminal_evidence_immutable';
+    end if;
+
+    update public.system_user_requests
+    set last_status_checked_at = v_now,
+        updated_at = v_now
+    where id = p_request_id
+    returning * into v_request;
+
+    return v_request;
+  end if;
+
+  if v_request.altinn_request_id is not null
+    and v_request.altinn_request_id is distinct from p_altinn_request_id
+  then
+    raise exception 'system_user_request_relationship_mismatch';
+  end if;
+
   v_effective_altinn_request_id := coalesce(
     v_request.altinn_request_id,
     p_altinn_request_id
@@ -215,18 +267,21 @@ begin
     raise exception 'system_user_request_relationship_mismatch';
   end if;
 
-  if p_confirm_url is not null and (
-    v_effective_altinn_request_id is null
-    or length(p_confirm_url) > 2048
-    or p_confirm_url !~ '^https://(am[.]ui[.]altinn[.]no|am[.]ui[.]at22[.]altinn[.]cloud|authn[.]ui[.]tt02[.]altinn[.]no)/accessmanagement/ui/systemuser/request[?]'
-    or p_confirm_url ~ '[#@]'
-    or pg_catalog.regexp_count(p_confirm_url, '(^|[?&])id=') <> 1
-    or p_confirm_url !~ ('[?&]id=' || v_effective_altinn_request_id::text || '(&|$)')
-    or (
-      v_request.confirm_url is not null
-      and v_request.confirm_url is distinct from p_confirm_url
-    )
-  ) then
+  if v_effective_altinn_request_id is not null then
+    v_canonical_confirm_url :=
+      'https://am.ui.altinn.no/accessmanagement/ui/systemuser/request?id='
+      || v_effective_altinn_request_id::text;
+  end if;
+
+  if p_confirm_url is not null
+    and p_confirm_url is distinct from v_canonical_confirm_url
+  then
+    raise exception 'system_user_request_invalid_confirmation_url';
+  end if;
+
+  if v_request.confirm_url is not null
+    and v_request.confirm_url is distinct from v_canonical_confirm_url
+  then
     raise exception 'system_user_request_invalid_confirmation_url';
   end if;
 
@@ -273,10 +328,22 @@ begin
     raise exception 'system_user_request_operator_evidence_invalid';
   end if;
 
+  if v_request.status = 'accepted' and p_status = 'verification_failed' then
+    update public.production_pilot_entitlements
+    set status = 'suspended',
+        updated_at = v_now
+    where system_user_request_id = v_request.id
+      and status = 'active';
+  end if;
+
   update public.system_user_requests
   set altinn_request_id = v_effective_altinn_request_id,
       status = p_status,
-      confirm_url = coalesce(confirm_url, p_confirm_url),
+      confirm_url = case
+        when confirm_url is not null or p_confirm_url is not null
+          then v_canonical_confirm_url
+        else null
+      end,
       preflight_verified_at = case
         when p_status = 'accepted' then preflight_verified_at
         else null
@@ -412,6 +479,7 @@ as $$
 declare
   v_actor_id uuid := auth.uid();
   v_request public.system_user_requests%rowtype;
+  v_existing public.production_pilot_entitlements%rowtype;
   v_row public.production_pilot_entitlements%rowtype;
 begin
   if coalesce((select auth.jwt()) ->> 'role', '') <> 'authenticated'
@@ -430,7 +498,7 @@ begin
   into v_request
   from public.system_user_requests r
   where r.id = p_system_user_request_id
-  for key share;
+  for update;
 
   if v_request.id is null
     or v_request.company_id <> p_company_id
@@ -456,6 +524,24 @@ begin
     or length(trim(coalesce(p_evidence_reference, ''))) not between 1 and 1000
   then
     raise exception 'production_pilot_invalid_entitlement';
+  end if;
+
+  if p_id is not null then
+    select e.*
+    into v_existing
+    from public.production_pilot_entitlements e
+    where e.id = p_id
+    for update;
+
+    if v_existing.id is null
+      or v_existing.company_id <> p_company_id
+      or v_existing.user_id <> p_user_id
+      or v_existing.income_year <> p_income_year
+      or v_existing.obligation <> 'aksjonaerregisteroppgaven'
+      or v_existing.case_profile <> 'rf1086_no_activity_v1'
+    then
+      raise exception 'production_pilot_entitlement_not_found';
+    end if;
   end if;
 
   if p_id is null then
@@ -500,17 +586,8 @@ begin
         evidence_reference = trim(p_evidence_reference),
         approved_by = v_actor_id,
         updated_at = pg_catalog.now()
-    where id = p_id
-      and company_id = p_company_id
-      and user_id = p_user_id
-      and income_year = p_income_year
-      and obligation = 'aksjonaerregisteroppgaven'
-      and case_profile = 'rf1086_no_activity_v1'
+    where id = v_existing.id
     returning * into v_row;
-
-    if v_row.id is null then
-      raise exception 'production_pilot_entitlement_not_found';
-    end if;
   end if;
 
   return v_row;
@@ -526,6 +603,9 @@ as $$
 declare
   v_approval public.filing_approval_snapshots%rowtype;
   v_actor_id uuid;
+  v_system_user_request_id uuid;
+  v_request public.system_user_requests%rowtype;
+  v_entitlement public.production_pilot_entitlements%rowtype;
   v_row public.production_filing_submissions%rowtype;
 begin
   select *
@@ -538,27 +618,53 @@ begin
   end if;
 
   v_actor_id := public.assert_fresh_production_owner(v_approval.company_id);
-  if v_actor_id <> v_approval.user_id
-    or not exists (
-      select 1
-      from public.production_pilot_entitlements e
-      join public.system_user_requests r on r.id = e.system_user_request_id
-      where e.id = v_approval.entitlement_id
-        and e.company_id = v_approval.company_id
-        and e.user_id = v_actor_id
-        and e.income_year = v_approval.income_year
-        and e.obligation = v_approval.obligation
-        and e.case_profile = v_approval.case_profile
-        and e.status = 'active'
-        and e.starts_at <= pg_catalog.now()
-        and e.expires_at > pg_catalog.now()
-        and r.company_id = v_approval.company_id
-        and r.initiating_owner_user_id = v_actor_id
-        and r.obligation = v_approval.obligation
-        and r.status = 'accepted'
-        and r.preflight_verified_at is not null
-        and r.external_ref = e.system_user_external_reference
-    )
+  if v_actor_id <> v_approval.user_id then
+    raise exception 'production_filing_release_gate_blocked';
+  end if;
+
+  -- Discover the foreign key without locking, then acquire authorization locks
+  -- in one order everywhere: exact request first, linked entitlement second.
+  select e.system_user_request_id
+  into v_system_user_request_id
+  from public.production_pilot_entitlements e
+  where e.id = v_approval.entitlement_id;
+
+  if v_system_user_request_id is null then
+    raise exception 'production_filing_release_gate_blocked';
+  end if;
+
+  select r.*
+  into v_request
+  from public.system_user_requests r
+  where r.id = v_system_user_request_id
+  for update;
+
+  if v_request.id is null then
+    raise exception 'production_filing_release_gate_blocked';
+  end if;
+
+  select e.*
+  into v_entitlement
+  from public.production_pilot_entitlements e
+  where e.id = v_approval.entitlement_id
+  for update;
+
+  if v_entitlement.id is null
+    or v_entitlement.system_user_request_id is distinct from v_request.id
+    or v_entitlement.company_id <> v_approval.company_id
+    or v_entitlement.user_id <> v_actor_id
+    or v_entitlement.income_year <> v_approval.income_year
+    or v_entitlement.obligation <> v_approval.obligation
+    or v_entitlement.case_profile <> v_approval.case_profile
+    or v_entitlement.status <> 'active'
+    or v_entitlement.starts_at > pg_catalog.now()
+    or v_entitlement.expires_at <= pg_catalog.now()
+    or v_request.company_id <> v_approval.company_id
+    or v_request.initiating_owner_user_id <> v_actor_id
+    or v_request.obligation <> v_approval.obligation
+    or v_request.status <> 'accepted'
+    or v_request.preflight_verified_at is null
+    or v_request.external_ref <> v_entitlement.system_user_external_reference
     or not exists (
       select 1
       from public.authority_permissions p

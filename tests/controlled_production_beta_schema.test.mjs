@@ -102,5 +102,9 @@ test("Systembruker binding preserves every existing production filing gate", () 
   ]) {
     assert.match(beginSql, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
   }
-  assert.match(beginSql, /join public\.system_user_requests r/iu);
+  assert.match(beginSql, /from public\.system_user_requests r[\s\S]+for update/iu);
+  assert.match(beginSql, /from public\.production_pilot_entitlements e[\s\S]+for update/iu);
+  assert.match(beginSql, /v_entitlement\.system_user_request_id is distinct from v_request\.id/iu);
+  assert.match(beginSql, /v_request\.status <> 'accepted'/iu);
+  assert.match(beginSql, /v_request\.preflight_verified_at is null/iu);
 });
