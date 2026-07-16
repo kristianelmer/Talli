@@ -1,7 +1,8 @@
 # Production E2E verification — 2026-07-16
 
-Status: complete; CONDITIONAL GO for continued hand-held invited free beta,
-NO-GO for an actual end-to-end production filing today
+Status: complete; CONDITIONAL GO for continued hand-held invited free beta
+subject to the named-company beta-entry conditions below, NO-GO for an actual
+end-to-end production filing today
 
 Release under test: `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`
 
@@ -153,7 +154,9 @@ Task 1 performed repository-local, read-only inspection and deterministic
 contract tests only. It did not:
 
 - submit or prepare a live filing or call a live authority mutation;
-- read, submit, or change production credentials;
+- initiate or observe production credential use, submission, or change;
+  inherited credential presence or passive reads by invoked processes were not
+  checked and are not proven absent;
 - change production environment variables or enable either production switch;
 - create or change an entitlement, approval, customer, company, or production
   data record;
@@ -187,9 +190,10 @@ result, deployed-surface observation, or production-readiness verdict.
 
 Task 2 used only local, lockfile-pinned dependencies and the already-present
 Python and official-schema inputs. It did not enable production authority
-operations, run an authority smoke-test entry point, use production credentials,
-or perform a live filing, payment, customer-data operation, or production
-environment mutation.
+operations or run an authority smoke-test entry point. No production
+credential use was initiated or observed, but inherited credential presence
+or passive reads by invoked processes were not checked and are not proven
+absent. No live authority call or production mutation was observed.
 
 ### Local inputs and invocation boundary
 
@@ -245,7 +249,9 @@ loading TypeScript modules. Each warning said Node reparsed the relevant file as
 an ES module and noted a performance overhead because `package.json` does not
 declare `"type": "module"`. No warning changed a test result. No authority smoke
 script was run, no live authority call or production mutation was observed, and
-no production credential was supplied or read.
+no production credential use was initiated or observed. The commands scrubbed
+only the two production switches; inherited credential presence or passive
+reads by invoked processes are not proven absent.
 
 ### Compiler and production build gates
 
@@ -289,9 +295,10 @@ Task 3 used the repository's local Supabase scripts and Docker only. Inspection
 before execution confirmed that `scripts/test-supabase-local.sh` uses
 `supabase start`/`status`, generated local development keys and `DB_URL`, and a
 local-stack teardown; `scripts/assert-supabase-advisors.mjs` invokes
-`supabase db advisors --local`. No hosted project was linked or queried, no
-hosted secret or customer data was read, and neither production authority
-switch was enabled.
+`supabase db advisors --local`. No hosted project query or hosted-secret or
+customer-data use was initiated or observed, and neither production authority
+switch was enabled. Inherited credential presence or passive reads by invoked
+processes were not checked and are not proven absent.
 
 ### Local-only prerequisites
 
@@ -519,17 +526,22 @@ Step 2 now supplies the existing project Python runtime explicitly, and Step 3
 no longer asks a stopped local database to repeat an advisor result already
 obtained inside Step 2. Task 3 is complete under corrected plan `c55211f`. No
 product code, test, or migration file was changed. No hosted project,
-production resource, production credential, or customer data was accessed or
-changed, and no authority operation or paid service was invoked.
+production-resource, production-credential, or customer-data access or change
+was initiated or observed, and no authority operation or paid service was
+invoked. Inherited credential presence or passive reads by invoked processes
+were not checked and are not proven absent.
 
 ## Synthetic loopback-only RF-1086 browser system-user E2E
 
 Task 4 executed the repository's headless Playwright system-user journey with
 synthetic users and companies, local Supabase, a loopback Next.js server, and a
 loopback authority mock. It did not log in to a deployed service, read or
-change hosted or customer data, use production credentials, change an
-environment, make a live filing or authority mutation, or incur a payment or
-charge.
+change hosted or customer data, change an environment, make a live filing or
+authority mutation, or incur a payment or charge. No production credential use
+was initiated or observed, but inherited credential presence or passive reads
+by invoked processes were not checked and are not proven absent. The
+loopback-only egress boundary still establishes that no live authority call
+was observed.
 
 Before execution, `tests/browser_system_user_flow.mjs` and
 `tests/browser_system_user_flow_contract.test.mjs` were inspected. The flow
@@ -624,12 +636,14 @@ tab, navigated to the exact HTTPS origin, and refreshed the accessibility tree
 after every navigation or state change. Chrome showed no HTTPS interstitial,
 browser error page, or unresolved loading state.
 
-### Public routes observed
+### Deployed routes observed
 
 - `/` rendered with the title `Talli – enkelt årsoppgjør for holdingselskaper`,
   an invitation-based free-beta label, a primary `Gå til Talli` action, product
-  explanation, supported-company boundary, and footer navigation.
-- The deployed landing copy explicitly says Talli helps invited beta users
+  explanation, supported-company boundary, and footer navigation. Because the
+  Chrome profile already held a Talli session, this was the authenticated-home
+  variant, not proof of the anonymous home state.
+- The observed authenticated-home copy says Talli helps invited beta users
   prepare and check drafts for supported simple Norwegian companies. It also
   says production submission and live payment are unavailable in the beta and
   that direct production delivery is not open. This deployed observation is
@@ -641,7 +655,7 @@ browser error page, or unresolved loading state.
   date of 15 July 2026, including controller, data-category, processor,
   retention, rights, cookie, security, and contact sections.
 
-The landing-page screenshot was visually inspected. It was not retained or
+The authenticated-home screenshot was visually inspected. It was not retained or
 committed because the Chrome window included unrelated tab titles and browser
 profile context; preserving it would have violated the instruction not to copy
 unrelated session information into evidence.
@@ -660,9 +674,10 @@ authority action was clicked or submitted.
 
 No account identifier, company identifier, company name, or authenticated page
 content is copied into this evidence. Because the existing session bypassed the
-anonymous login UI, this smoke test does not prove that the logged-out login
-form renders or that authentication succeeds from a clean browser. It also does
-not inspect any customer workflow or authorize a production filing.
+anonymous home and login UI, this smoke test proves neither the anonymous home
+state nor that the logged-out login form renders or authenticates from a clean
+browser. It also does not inspect any customer workflow or authorize a
+production filing.
 
 ### Task 5 result and boundary
 
@@ -678,11 +693,12 @@ have refreshed authentication or caused another unobserved account-state side
 effect automatically. The controller performed no explicit user action after
 the redirect.
 
-Task 5 therefore passes as a bounded public-surface smoke test with the stated
-login limitation. It does not add evidence that production authority access,
-direct filing, payment, named-company eligibility, delegation, or monitored
-first-filing operations are live; the deployed copy expressly says direct
-production submission is not open.
+Task 5 therefore passes as a bounded deployed-surface smoke test with the
+stated authenticated-home and login limitations. It does not add evidence that
+the anonymous home or anonymous login state works, or that production authority
+access, direct filing, payment, named-company eligibility, delegation, or
+monitored first-filing operations are live; the deployed copy expressly says
+direct production submission is not open.
 
 ## Final decisive verification
 
@@ -714,9 +730,11 @@ the local module-type warning remains a quality caveat.
 
 ## Post-merge CI and production deployment reconciliation
 
-All external inspection in this section was read-only. It did not inspect
-production environment values, retrieve credentials, change an alias or
-environment, deploy, promote, redeploy, roll back, or incur a charge.
+All external inspection in this section was read-only. The controller did not
+request or print production environment values, initiate or observe production
+credential use, change an alias or environment, deploy, promote, redeploy, roll
+back, or incur a charge. Inherited credential presence or passive reads by
+invoked processes were not checked and are not proven absent.
 
 ### Customer-ready release gate
 
@@ -798,12 +816,18 @@ Result: exit `0`. Commit
 `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297` has a successful `Vercel`
 status at `2026-07-16T19:39:09Z` whose target URL ends in deployment
 `ABtnjv2o7bedEo263zBPgzzTDMsf`, the same identifier resolved from
-`https://talli.no`. This reconciles the immutable release with the current
-Ready production deployment without reading environment values or making a
-deployment change.
+`https://talli.no`. At inspection time, this reconciled the immutable release
+with the current Ready production deployment without requesting or printing
+production environment values or making a deployment change. The GitHub
+commit-status endpoint is a
+point-in-time, potentially transient observation; it is not durable proof by
+itself. The named Actions run remains the durable CI identifier, while the
+matching deployment identifier and Vercel inspection support the deployment
+association observed at that time.
 
-The CI and deployment results prove the intended release built and is the
-Ready deployment behind the production alias. They do not prove hosted
+The named CI run proves the intended release built successfully. At inspection
+time, the matching GitHub/Vercel identifiers showed that release as the Ready
+deployment behind the production alias. These observations do not prove hosted
 migrations, restore readiness, production switch values, credentials,
 delegation, monitored service quality, or an authority filing.
 
@@ -820,7 +844,23 @@ observed no live mutation. Task 5's stored authentication may nevertheless
 have caused an unobserved session refresh or other account-state side effect;
 the controller performed no explicit user action after the redirect.
 
-### Blockers before a real filing
+### Conditions before named-company beta entry
+
+Before any named-company data is entered or uploaded to Talli for the
+preparation/export comparison beta, both of these conditions must be approved
+and current:
+
+1. A signed customer agreement and DPA for the named company.
+2. Hosted tenant-isolation, private-storage, and restore evidence reviewed and
+   approved for the current deployed environment.
+
+This verification did not establish both conditions for a named company. Until
+both conditions pass, comparison and rehearsal are restricted to synthetic
+data or customer-controlled material that is not uploaded to Talli. The
+CONDITIONAL GO does not authorize named-company data entry or upload before
+these beta-entry conditions.
+
+### Additional blockers before a real filing
 
 Every item below must be evidenced for the exact pilot case before Send:
 
@@ -835,15 +875,14 @@ Every item below must be evidenced for the exact pilot case before Send:
    without recording a secret. Safe next step: verify these under a separately
    approved fresh-AAL2 maintenance window; never use a statutory filing as a
    connectivity probe.
-3. **Controlled entitlement, agreement, billing, and approval.** Obtain the
-   signed customer agreement and DPA, then create the exact time-bounded
-   company/user/year/obligation/profile entitlement only after accepted
-   preflight. The billing path must be either an exact active
+3. **Controlled entitlement, billing, and approval.** After the beta-entry
+   conditions above and accepted preflight, create the exact time-bounded
+   company/user/year/obligation/profile entitlement. The billing path must be
+   either an exact active
    `billing_exempt=true` pilot entitlement or complete live billing/refund
    evidence. Capture fresh owner AAL2 and immutable approval/payload, document,
-   and adapter hashes. Safe next step: record the signed agreement/DPA and the
-   chosen billing path through the operator and owner approval flow with Send
-   still unavailable.
+   and adapter hashes. Safe next step: record the chosen billing path through
+   the operator and owner approval flow with Send still unavailable.
 4. **Both required switch states under operator authorization.** Keep
    `TALLI_AUTHORITY_OPS_ENABLED=false` outside the fixed callback maintenance
    operation; enable `TALLI_RF1086_PRODUCTION_ENABLED` only for the separately
@@ -885,18 +924,24 @@ Every item below must be evidenced for the exact pilot case before Send:
 - The local Supabase owner/browser rehearsal emitted an unresolved React
   warning that `encType` and `method` are ignored on a form using a function
   action because React supplies them.
-- The deployed smoke test did not prove anonymous login in a clean browser
-  because an existing Chrome session redirected to the dashboard.
+- The deployed smoke test proved neither anonymous home nor anonymous login
+  state because the existing Chrome session rendered the authenticated-home
+  variant and redirected `/login` to the dashboard.
 - No Core Web Vitals, representative load, production error-rate, production
   latency, or production log-flow evidence was collected.
-- No real authority call, production callback, production credential use,
-  entitlement, approval, filing, receipt, or final authority feedback occurred.
+- No real authority call, production callback, entitlement, approval, filing,
+  receipt, or final authority feedback was observed. No production credential
+  use was initiated or observed; inherited credential presence or passive
+  reads by invoked processes were not checked and are not proven absent.
 
 Across Tasks 1–6, the controller initiated or observed no live authority
 mutation, statutory filing, production configuration change, entitlement,
 customer-data mutation, deployment, promotion, rollback, payment, or charge.
 Task 5's stored authentication may nevertheless have caused an unobserved
 session refresh or other account-state side effect automatically; the
-controller performed no explicit user action after the redirect. The safe
-present action is the hand-held preparation/export comparison beta only; live
-filing remains fail-closed pending every blocker above.
+controller performed no explicit user action after the redirect. Named-company
+data entry/upload remains blocked until the agreement/DPA and current hosted
+tenant-isolation/private-storage/restore conditions pass. Until then, the safe
+present action is synthetic comparison/rehearsal or customer-controlled
+material that is not uploaded to Talli. Live filing remains fail-closed pending
+every additional blocker above.

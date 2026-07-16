@@ -6,7 +6,14 @@
 
 **Architecture:** Test the exact `origin/main` release commit in an isolated worktree. Exercise the repository release gate, local database and browser flows, production build, and a read-only Computer Use smoke test of `https://talli.no`. Record a graded conclusion that separates verified behavior from live-authority and customer-specific prerequisites.
 
-**Tech Stack:** Next.js 15, TypeScript, Node test runner, Playwright, local Supabase CLI/PostgreSQL, Python runtime, GitHub Actions, Vercel, Computer Use.
+**Tech Stack:** Next.js 16.2.9, TypeScript, Node test runner, Playwright, local Supabase CLI/PostgreSQL, Python runtime, GitHub Actions, Vercel, Computer Use.
+
+**Execution status note (2026-07-16):** The unchecked task boxes below preserve
+the historical execution instructions; they are not the current progress
+record. The cumulative evidence in
+`docs/launch/evidence/production-e2e-verification-2026-07-16.md` is
+authoritative for completed work, corrections, results, warnings, and the
+graded verdict.
 
 ---
 
@@ -15,7 +22,17 @@
 - Target `origin/main` merge commit `2ac6ca69b10e00411fbb7bdd3578bf9be0e64297`; record any unexpected drift and stop rather than silently changing the target.
 - Do not submit a filing, invoke a live authority mutation, change production environment variables, change entitlements, alter customer/company data, upload production data, make a payment, or incur a charge.
 - Keep `TALLI_AUTHORITY_OPS_ENABLED` and `TALLI_RF1086_PRODUCTION_ENABLED` off in the parent environment. Authority behavior may be exercised only through tests' local mocks or fail-closed checks.
+- The prescribed commands explicitly scrub only those two switches. Report
+  production credential use only as not initiated or observed; inherited
+  credential presence or passive reads by invoked processes are not proven
+  absent. This limitation does not weaken the loopback/fail-closed evidence
+  that no live authority call was observed.
 - The Computer Use slice is public/read-only. Do not log in unless the user separately authorizes it at action time; do not rely on an existing authenticated session to make changes.
+- Before any named-company data is entered or uploaded for the conditional
+  preparation/export comparison beta, require a signed customer agreement and
+  DPA plus approved current hosted tenant-isolation, private-storage, and
+  restore evidence. Until then, use only synthetic data or customer-controlled
+  material that is not uploaded to Talli.
 - Treat production readiness as graded evidence, not a guarantee. A green run does not replace named-customer eligibility, delegation/credential checks, monitored first filing, or comparison against another provider's accepted output.
 - If any command fails, preserve its evidence and use systematic debugging before changing code or tests.
 - Record commands, UTC timestamps, exit codes, test counts when reported, target SHA, and unresolved limitations in `docs/launch/evidence/production-e2e-verification-2026-07-16.md`.
@@ -59,9 +76,11 @@ Run: `git add docs/launch/evidence/production-e2e-verification-2026-07-16.md && 
 - Verify: `package.json`
 - Verify: `.github/workflows/release-gate.yml`
 
-- [ ] **Step 1: Resolve pinned local runtimes without production credentials**
+- [ ] **Step 1: Resolve pinned local runtimes without initiating production credential use**
 
 Verify the existing project Python virtualenv and pinned Skatteetaten XSD directory. Use `TALLI_PYTHON_BIN=/Users/kristianelmer/Documents/Work/Talli/.venv/bin/python` and the existing v1.62.47 XSD path when present. Do not fetch paid resources or expose secrets.
+The task does not establish that inherited production credentials were absent
+or that invoked processes made no passive reads.
 
 - [ ] **Step 2: Run the complete launch rehearsal**
 
@@ -146,6 +165,13 @@ Run: `git add docs/launch/evidence/production-e2e-verification-2026-07-16.md && 
 **Files:**
 - Modify: `docs/launch/evidence/production-e2e-verification-2026-07-16.md`
 
+**Execution-result note:** The existing Chrome session made the observed
+`/` route the authenticated-home variant with the `Gå til Talli` action,
+and `/login` redirected to `/dashboard`. Neither the anonymous home state
+nor the anonymous login state was proven. Stored-auth uncertainty and the lack
+of any explicit controller action after redirect are recorded in the
+cumulative evidence.
+
 - [ ] **Step 1: Open `https://talli.no` in Chrome using Computer Use**
 
 Use the Computer Use skill and obtain a fresh accessibility tree and screenshot. Do not bypass browser security warnings.
@@ -179,7 +205,7 @@ Confirm the GitHub post-merge Customer-ready release gate is green for the targe
 
 - [ ] **Step 3: Grade the outcome**
 
-State one of: `GO for a hand-held eligible-company beta`, `CONDITIONAL GO`, or `NO-GO`. List every untested external dependency and the exact safe next step. A GO must still say that the first real filing needs named-company eligibility, production credentials/delegation, the controlled entitlement and approval flow, monitoring, comparison with an incumbent output, and explicit operator authorization.
+State one of: `GO for a hand-held eligible-company beta`, `CONDITIONAL GO`, or `NO-GO`. List every untested external dependency and the exact safe next step. Named-company entry into a conditional preparation/export beta first requires a signed customer agreement and DPA plus approved current hosted tenant-isolation, private-storage, and restore evidence; until then, use only synthetic or customer-controlled material that is not uploaded to Talli. A GO must still say that the first real filing needs named-company eligibility, production credentials/delegation, the controlled entitlement and approval flow, monitoring, comparison with an incumbent output, and explicit operator authorization.
 
 - [ ] **Step 4: Commit final evidence and request whole-branch review**
 
