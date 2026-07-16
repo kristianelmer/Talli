@@ -91,14 +91,18 @@ not broaden endpoints, rights, or filing capability.
 - `altinn:correspondence.read`
 - `altinn:events.subscribe`
 - `altinn:instances.read`
+- `altinn:instances.write`
 - `digdir:dialogporten`
 - `altinn:authentication/systemregister.write`
 - `altinn:authentication/systemuser.request.read`
 - `altinn:authentication/systemuser.request.write`
 
-`altinn:instances.write` is still missing from the production Digdir scope
-picker despite the approval email. This remains a separate follow-up and was not
-treated as present.
+Altinn Servicedesk confirmed that `altinn:instances.write` had accidentally not
+been added in production and corrected the grant on 2026-07-16. Digdir
+Selvbetjening then exposed the exact scope, and it was attached to production
+client `4a42d9fe-9759-4d4e-a07a-84ebc80a5a1b`. The client page confirmed
+`Scope lagt til på klient: altinn:instances.write`; the scope is visible without
+a `Tilgang mangler` marker.
 
 ## Closed boundaries and cost
 

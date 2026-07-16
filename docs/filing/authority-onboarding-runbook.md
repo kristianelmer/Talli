@@ -197,6 +197,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
 | 2026-06-30 | #84/#87 systembruker | Altinn | email `servicedesk@altinn.no` | (1) grant `altinn:authentication/systemregister.write` (TT02) + (2) enable real org 930835978 in TT02 systemregister, for client_id above | ✅ **granted 2026-07-01** — `systemregister.write` active (token 200); org 930835978 accepted (Step 4a POST succeeded, no separate enablement needed) |
 | 2026-06-30 | #81/#84/#87 systembruker (vendor-initiated) | Altinn | email `servicedesk@altinn.no` (same thread) | also grant `altinn:authentication/systemuser.request.write` + `…/systemuser.request.read` (TT02) for client_id above — required for vendor-initiated Step 4b `/systemuser/request/vendor`; **not** included in request above | ✅ **active 2026-07-01** — granted to org, added to the client in the Digdir portal, token requests return HTTP 200 |
 | 2026-07-14 | #84/#87 Altinn instances | Digdir Selvbetjening TT02 | authenticated self-service | add `altinn:instances.read` + `altinn:instances.write` to client `7166e743-…` | ✅ both added and visible on client; token/system-user rehearsal still requires the matching app resource right |
+| 2026-07-16 | Production Altinn instances | Altinn Servicedesk CRM:0351127 + Digdir Selvbetjening production | correct the omitted production grant and attach `altinn:instances.write` to client `4a42d9fe-…` | ✅ Servicedesk acknowledged the omission and corrected it; Digdir confirmed `Scope lagt til på klient: altinn:instances.write`, visible without `Tilgang mangler` |
 
 Current access applications for Skatteetaten reporting services, including test and production
 Skattemeldingen access, go through the authenticated External Jira support service. A leader or
@@ -651,7 +652,8 @@ accepted test run in the deployed app, then obtain the named
 Production Systemregister status (updated 2026-07-16): supplier-side Step 4a is
 complete for RF-1086. Customer-side Step 4b still requires a real pilot company
 to approve a production system user before any delegated pre-flight or filing.
-`TALLI_RF1086_PRODUCTION_ENABLED` remains false. The production client is still
-missing `altinn:instances.write` in Digdir's picker despite the approval email;
-follow that scope up separately and do not infer it from the Systemregister
-success.
+`TALLI_RF1086_PRODUCTION_ENABLED` remains false. The production client is
+configured with `altinn:instances.read` and, after Altinn corrected an omitted
+production grant on 2026-07-16, `altinn:instances.write`. Digdir Selvbetjening
+confirmed the write scope was attached without a `Tilgang mangler` marker. This
+scope attachment does not enable the RF-1086 production filing switch.
