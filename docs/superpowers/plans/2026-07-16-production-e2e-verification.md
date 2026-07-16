@@ -32,9 +32,9 @@
 
 - [ ] **Step 1: Prove target and workspace isolation**
 
-Run: `git rev-parse HEAD && git status --short --branch && git merge-base --is-ancestor HEAD origin/main`
+Run: `TARGET=2ac6ca69b10e00411fbb7bdd3578bf9be0e64297; test "$(git merge-base HEAD origin/main)" = "$TARGET" && git merge-base --is-ancestor "$TARGET" HEAD && git diff --quiet "$TARGET"..HEAD -- . ':(exclude)docs/superpowers/plans/2026-07-16-production-e2e-verification.md' && git status --short --branch`
 
-Expected: HEAD is the target SHA, the worktree is clean before evidence is added, and the ancestry command exits 0.
+Expected: the branch's merge base with `origin/main` is the immutable target release, the target is an ancestor of the documentation branch, no release code differs from the target, and status contains no unexpected changes before evidence is added. `HEAD` may be ahead of the target because it contains this verification plan and subsequent evidence commits.
 
 - [ ] **Step 2: Inventory the official release checks and fail-closed production switches**
 
