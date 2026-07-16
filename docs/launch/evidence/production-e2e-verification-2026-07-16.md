@@ -55,8 +55,8 @@ The contract was audited against `package.json`,
 
 The customer-ready workflow is triggered for pull requests, pushes to `main`,
 and manual dispatch with read-only repository-content permission. Its
-application job installs locked runtimes and dependencies, scans tracked source
-for committed credentials, type-checks, runs the complete launch rehearsal,
+application job installs specified runtimes and locked dependencies, scans
+tracked source for committed credentials, type-checks, runs the complete launch rehearsal,
 builds, audits production dependencies at high severity, and rejects whitespace
 errors. Its database-isolation job runs the local Supabase rehearsal. The final
 `Release gate` job uses `always()` and requires both upstream job results to be
@@ -104,8 +104,10 @@ The passing assertions cover:
 - the locked Python environment for database isolation;
 - direct ownership and cleanup of the browser-rehearsal Next.js process;
 - authority and filing switches remaining off after local browser proof;
-- missing authority, billing, step-up, human-review, adapter, restore-freshness,
-  and final-founder gates blocking production readiness;
+- the combined absence of authority, billing, accepted test evidence, and
+  required signoffs leaving every production gate disabled;
+- unimplemented or disabled adapters, stale restore evidence, and missing final
+  founder confirmation blocking production readiness;
 - production readiness applying only to the exactly entitled RF obligation;
 - the hand-held first-filing, callback-verification, activation-order, recovery,
   rollback, and local-proof boundaries in the runbooks.
