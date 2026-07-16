@@ -13,6 +13,12 @@ The actual account registrations, certificate purchases, and authority delegatio
 real-world actions only the founder/org can perform. Talli's role is this runbook plus the
 in-app evidence records described in [How this maps to Talli's gates](#how-this-maps-to-tallis-gates).
 
+> **Cost approval gate (founder instruction, 2026-07-16):** Before any onboarding action that
+> could incur a charge, stop and obtain Kristian's explicit approval. State the provider, expected
+> amount or best estimate, whether the cost is one-time, recurring, or usage-based, and any viable
+> free or cheaper alternative. If the price is uncertain, treat the action as potentially paid.
+> General permission to continue the onboarding or product build does not authorize spending.
+
 ## Official Anchors
 
 - Maskinporten docs: https://docs.digdir.no/docs/Maskinporten/
