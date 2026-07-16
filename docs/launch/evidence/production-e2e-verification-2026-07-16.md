@@ -175,7 +175,7 @@ result, deployed-surface observation, or production-readiness verdict.
   static grant gate passed; the fresh in-suite advisor result was 0 blocking
   findings and 15 performance warnings. Both diagnosed plan gaps and their
   corrections are recorded below.
-- [ ] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
+- [x] Task 4 — run the synthetic, loopback-only RF-1086 browser system-user flow
   and verify test-process cleanup.
 - [ ] Task 5 — smoke-test only the deployed public surface through read-only
   Computer Use, without login or mutation.
@@ -520,3 +520,88 @@ obtained inside Step 2. Task 3 is complete under corrected plan `c55211f`. No
 product code, test, or migration file was changed. No hosted project,
 production resource, production credential, or customer data was accessed or
 changed, and no authority operation or paid service was invoked.
+
+## Synthetic loopback-only RF-1086 browser system-user E2E
+
+Task 4 executed the repository's headless Playwright system-user journey with
+synthetic users and companies, local Supabase, a loopback Next.js server, and a
+loopback authority mock. It did not log in to a deployed service, read or
+change hosted or customer data, use production credentials, change an
+environment, make a live filing or authority mutation, or incur a payment or
+charge.
+
+Before execution, `tests/browser_system_user_flow.mjs` and
+`tests/browser_system_user_flow_contract.test.mjs` were inspected. The flow
+installs a catch-all browser route guard in both contexts, requires signed
+feedback redirects to remain loopback, and preloads a fetch shim that maps the
+child process's authority endpoints to a mock bound to `127.0.0.1`. Any other
+non-loopback child fetch throws, and any unapproved non-loopback browser request
+is aborted and recorded. The child-only filing-adapter switch is exercised with
+synthetic inline values behind that egress boundary; the parent command never
+inherits either production switch.
+
+### Parent fail-closed gate
+
+The exact prerequisite ran at `2026-07-16T21:48:09Z` UTC:
+
+```sh
+test "${TALLI_AUTHORITY_OPS_ENABLED-}" != true && test "${TALLI_RF1086_PRODUCTION_ENABLED-}" != true
+```
+
+Result: exit `0` with no output. Neither parent production switch was true.
+
+### Browser journey
+
+The exact browser command ran from `2026-07-16T21:48:18Z` through
+`2026-07-16T21:49:33Z` UTC:
+
+```sh
+env -u TALLI_AUTHORITY_OPS_ENABLED -u TALLI_RF1086_PRODUCTION_ENABLED npm run test:browser-system-user
+```
+
+Result: exit `0`; all 7 tests passed with 0 failures, cancellations, skips, or
+todo tests in `66387.937208 ms`. The end-to-end browser subtest passed in
+`65964.067 ms`; the other 6 passing tests were the focused browser-flow
+contracts.
+
+The passing assertions covered:
+
+- connections and RF-1086 reconciliation at `320x900` and `1440x900`, without
+  document or section overflow;
+- keyboard order through desktop navigation, the mobile menu, status refresh,
+  and receipt-download controls;
+- 0 browser-console warnings/errors and 0 page errors after both browser
+  contexts closed;
+- accepted owner status surviving reloads while the other owner saw neither
+  the company nor its accepted connection and received `404` for the feedback
+  artifact;
+- creation of the receipt/archive feedback artifact, a bounded `307` to a
+  tokenized loopback signed URL, a `200` download, and a byte hash equal to the
+  archived artifact hash;
+- a catch-all fail-closed browser egress guard, 0 recorded browser egress
+  violations, successful expected loopback-mock Altinn and Skatteetaten reads,
+  no rejected mock requests, and no Skatteetaten operation beginning `post_`.
+
+The process emitted one non-failing `MODULE_TYPELESS_PACKAGE_JSON` warning for
+`app/lib/system-user-requests.ts`; Node reparsed it as an ES module. This was a
+process warning, not a browser-console warning, and did not change the result.
+
+### Teardown and residue
+
+The exact post-run command ran from `2026-07-16T21:49:45Z` through
+`2026-07-16T21:49:46Z` UTC:
+
+```sh
+git status --short && (lsof -nP -iTCP:3100 -sTCP:LISTEN || true) && (lsof -nP -iTCP:54321 -sTCP:LISTEN || true)
+```
+
+Result: exit `0`. There was no listener on either port. The only output was
+` M next-env.d.ts`. Its diff was verified as the test-generated one-line change
+from `./.next/types/routes.d.ts` to `./.next/dev/types/routes.d.ts`, then that
+generated line alone was restored. No other tracked change was hidden.
+
+A post-restoration check ran at `2026-07-16T21:50:29Z` UTC and exited `0` with
+no output. It found no tracked change, no listener on ports 3100 or 54321, and
+no process matching the browser system-user test, its Next test child, or its
+authority mock. Task 4 therefore passed with clean local teardown and adds no
+deployed or production-readiness evidence.
