@@ -32,11 +32,6 @@ export function OperatorMfa({ supabaseUrl, supabaseAnonKey }: OperatorMfaProps) 
         setMode("idle");
         return;
       }
-      if (assurance.data.currentLevel === "aal2") {
-        setMode("verified");
-        return;
-      }
-
       const factors = await supabase.auth.mfa.listFactors();
       if (!active) return;
       if (factors.error) {
@@ -47,6 +42,12 @@ export function OperatorMfa({ supabaseUrl, supabaseAnonKey }: OperatorMfaProps) 
       const totpFactor = factors.data.totp[0];
       if (totpFactor) {
         setFactorId(totpFactor.id);
+      }
+      if (assurance.data.currentLevel === "aal2") {
+        setMode("verified");
+        return;
+      }
+      if (totpFactor) {
         setMode("challenge");
         return;
       }
@@ -101,7 +102,22 @@ export function OperatorMfa({ supabaseUrl, supabaseAnonKey }: OperatorMfaProps) 
       {error ? <p className="errorText">{error}</p> : null}
       {mode === "loading" ? <p>Kontrollerer MFA-status …</p> : null}
       {mode === "verified" ? (
-        <p className="successText">Denne økten er bekreftet med AAL2.</p>
+        <>
+          <p className="successText">Denne økten er bekreftet med AAL2.</p>
+          {factorId ? (
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => {
+                setError("");
+                setVerificationCode("");
+                setMode("challenge");
+              }}
+            >
+              Bekreft AAL2 på nytt
+            </button>
+          ) : null}
+        </>
       ) : null}
       {mode === "idle" ? (
         <button className="secondaryButton" type="button" onClick={startEnrollment} disabled={busy}>
