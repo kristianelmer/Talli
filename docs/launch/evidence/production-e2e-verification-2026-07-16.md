@@ -190,8 +190,9 @@ environment mutation.
 
 ### Local inputs and invocation boundary
 
-A value-free prerequisite and environment check started and ended at
-`2026-07-16T21:08:19Z` UTC:
+A value-free post-run confirmation of the local inputs and inherited environment
+started and ended at `2026-07-16T21:08:19Z` UTC, after the rehearsal and build
+had completed:
 
 ```sh
 test -x /Users/kristianelmer/Documents/Work/Talli/.venv/bin/python && test -d /tmp/talli-skattemeldingen-v1.62.47/src/resources/xsd && test -z "${TALLI_AUTHORITY_OPS_ENABLED+x}" && test -z "${TALLI_RF1086_PRODUCTION_ENABLED+x}"
@@ -200,12 +201,14 @@ npm --version
 /Users/kristianelmer/Documents/Work/Talli/.venv/bin/python --version
 ```
 
-Result: exit `0`. The pinned Python executable and v1.62.47 XSD directory were
-present; both production switches were absent from the inherited environment.
-The local versions were Node `v25.6.1`, npm `11.9.0`, and Python `3.12.11`.
-No switch value or secret was printed. In addition, the rehearsal and build
-commands below explicitly used `env -u` so both switches were absent from the
-invoked process even if a caller's environment were to differ.
+Result: exit `0`. At that post-run point, the pinned Python executable and
+v1.62.47 XSD directory were present and both production switches were absent
+from the inherited environment. The local versions were Node `v25.6.1`, npm
+`11.9.0`, and Python `3.12.11`. No switch value or secret was printed. This
+post-run observation is not evidence of the inherited environment before the
+gates. The process-level safety boundary for the rehearsal and build is instead
+the explicit `env -u` in each command below, which removed both switches from
+the invoked process regardless of the caller's environment.
 
 `node_modules` was initially absent. Dependency installation ran from
 `2026-07-16T21:05:03Z` through `2026-07-16T21:05:08Z` UTC:
