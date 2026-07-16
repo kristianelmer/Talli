@@ -144,7 +144,7 @@ test("creates a missing system then verifies it without leaking the token", asyn
   );
   const responses = [
     new Response(null, { status: 404 }),
-    jsonResponse(definition),
+    jsonResponse("772e52bc-63c3-45c0-80b7-f3bb1581469f"),
     jsonResponse({ ...definition, isDeleted: false }),
   ];
 
@@ -187,12 +187,18 @@ test("returns already_verified for an exactly matching existing definition", asy
   const definition = buildRf1086SystemDefinition(
     productionEnvironment.TALLI_PROD_MASKINPORTEN_CLIENT_ID,
   );
+  const { allowedredirecturls, ...documentedFields } = definition;
   let calls = 0;
   const result = await executeRf1086SystemRegistration(environment(), {
     requestToken: async () => token(),
     fetch: async () => {
       calls += 1;
-      return jsonResponse({ isDeleted: false, ...definition });
+      return jsonResponse({
+        ...documentedFields,
+        vendor: { ID: definition.vendor.ID },
+        allowedRedirectUrls: allowedredirecturls,
+        isDeleted: false,
+      });
     },
   });
 

@@ -186,15 +186,19 @@ export function assertAuthorityOperationIntent(input: {
 
 function definitionProjection(value: unknown): Rf1086SystemDefinition | null {
   if (!isRecord(value)) return null;
+  const vendor = isRecord(value.vendor) ? value.vendor : {};
   const projected = {
     id: value.id,
-    vendor: value.vendor,
+    vendor: {
+      authority: vendor.authority ?? "iso6523-actorid-upis",
+      ID: vendor.ID,
+    },
     name: value.name,
     description: value.description,
     rights: value.rights,
     accessPackages: value.accessPackages,
     clientId: value.clientId,
-    allowedredirecturls: value.allowedredirecturls,
+    allowedredirecturls: value.allowedredirecturls ?? value.allowedRedirectUrls,
     isVisible: value.isVisible,
   };
   return projected as Rf1086SystemDefinition;
@@ -205,7 +209,7 @@ function definitionsMatch(actual: unknown, expected: Rf1086SystemDefinition): bo
   return projected !== null && canonicalJson(projected) === canonicalJson(expected);
 }
 
-async function parseAuthorityObject(response: Response): Promise<Record<string, unknown>> {
+async function parseAuthorityJson(response: Response): Promise<unknown> {
   const contentType = response.headers.get("content-type") ?? "";
   const contentLength = Number(response.headers.get("content-length") ?? "0");
   if (
@@ -231,10 +235,25 @@ async function parseAuthorityObject(response: Response): Promise<Record<string, 
   } catch {
     throw new AuthorityOperationError("authority_response_invalid", response.status);
   }
+  return parsed;
+}
+
+async function parseAuthorityObject(response: Response): Promise<Record<string, unknown>> {
+  const parsed = await parseAuthorityJson(response);
   if (!isRecord(parsed)) {
     throw new AuthorityOperationError("authority_response_invalid", response.status);
   }
   return parsed;
+}
+
+async function parseAuthorityCreateResponse(response: Response): Promise<void> {
+  const parsed = await parseAuthorityJson(response);
+  if (
+    typeof parsed !== "string" ||
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iu.test(parsed)
+  ) {
+    throw new AuthorityOperationError("authority_response_invalid", response.status);
+  }
 }
 
 async function authorityFetch(
@@ -316,7 +335,7 @@ export async function executeRf1086SystemRegistration(
   if (createResponse.status !== 200 && createResponse.status !== 201) {
     throw new AuthorityOperationError("authority_http_error", createResponse.status);
   }
-  await parseAuthorityObject(createResponse);
+  await parseAuthorityCreateResponse(createResponse);
 
   const verifyResponse = await authorityFetch(fetcher, systemUrl, {
     method: "GET",
