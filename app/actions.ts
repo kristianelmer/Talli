@@ -127,6 +127,7 @@ import {
   productionApprovalHash,
 } from "./lib/production-approval";
 import {
+  Rf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   executeRf1086ProductionRelease,
   reconcileJournaledRf1086Production,
@@ -136,6 +137,7 @@ import {
   type Rf1086ReconciliationState,
 } from "./lib/rf1086-production";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
+import type { Rf1086OwnerActionErrorCode } from "./lib/rf1086-production-presentation";
 import { requestMaskinportenToken } from "./lib/maskinporten";
 import {
   SYSTEM_USER_COOKIE,
@@ -4653,6 +4655,23 @@ function sha256(value: string) {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+function rf1086ProductionErrorTarget(
+  returnTo: string,
+  productionError: Rf1086OwnerActionErrorCode,
+) {
+  return `${returnTo}?productionError=${productionError}`;
+}
+
+function reportRf1086ProductionFailure(operation: string, error: unknown) {
+  const candidateCode = typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : "UNCLASSIFIED";
+  const code = /^[A-Za-z0-9_:-]{1,100}$/u.test(candidateCode)
+    ? candidateCode
+    : "UNCLASSIFIED";
+  console.error("RF-1086 production operation failed.", { operation, code });
+}
+
 export async function upsertProductionPilotEntitlement(formData: FormData) {
   if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
   const supabase = await createSupabaseServerClient();
@@ -4705,22 +4724,34 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
 
 export async function approveProductionFiling(formData: FormData) {
   const returnTo = returnTarget(formData);
-  if (!hasSupabaseEnv()) redirect(`${returnTo}?error=Supabase%20env%20mangler`);
-  if (formData.get("realFilingConfirmed") !== "on") {
-    redirect(`${returnTo}?error=${encodeURIComponent("Bekreft at dette er en reell innsending med juridiske konsekvenser.")}`);
+  if (!hasSupabaseEnv()) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
-  const previewId = requiredFormUuid(formData, "previewId");
-  const entitlementId = requiredFormUuid(formData, "entitlementId");
+  if (formData.get("realFilingConfirmed") !== "on") {
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
+  let previewId: string;
+  let entitlementId: string;
+  try {
+    previewId = requiredFormUuid(formData, "previewId");
+    entitlementId = requiredFormUuid(formData, "entitlementId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval_basis", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: preview, error: previewError } = await supabase
     .from("filing_previews").select("*").eq("id", previewId).single();
-  if (previewError || !preview) redirect(`${returnTo}?error=${encodeURIComponent("Fant ikke forhåndsvisningen.")}`);
+  if (previewError || !preview) {
+    reportRf1086ProductionFailure("load_approval_preview", previewError);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
   await requireSensitiveActionStepUp(supabase, user.id, preview.company_id, "production_filing");
   const { data: company } = await supabase.from("companies").select("id, org_number").eq("id", preview.company_id).single();
   if (!company || preview.status !== "ready" || !preview.hovedskjema_xml) {
-    redirect(`${returnTo}?error=${encodeURIComponent("RF-1086 er ikke klar for produksjonsgodkjenning.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
   }
   const documentHashes = {
     hovedskjema: sha256(preview.hovedskjema_xml),
@@ -4749,7 +4780,10 @@ export async function approveProductionFiling(formData: FormData) {
     p_manifest_hash: productionApprovalHash(manifest),
     p_adapter_version: RF1086_PRODUCTION_ADAPTER_VERSION,
   });
-  if (error) redirect(`${returnTo}?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    reportRf1086ProductionFailure("approve", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "unavailable"));
+  }
   revalidatePath(returnTo);
   redirect(`${returnTo}?approved=1`);
 }
@@ -4851,6 +4885,22 @@ function createRf1086FeedbackJournal(
     leaseId: string;
   },
 ): Rf1086ProductionJournal {
+  const persistenceError = (
+    message: string,
+    cause: unknown,
+    options: { integrityFailure?: boolean } = {},
+  ) => new Rf1086FeedbackArtifactPersistenceError(message, {
+    retryable: !options.integrityFailure,
+    cause,
+  });
+  const databaseTerminalFailure = (error: unknown) => {
+    const code = typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : "";
+    return /^(?:22|23|3F|42|P0001|PGRST)/u.test(code);
+  };
+  const bucket = service.storage.from(COMPANY_DOCUMENTS_BUCKET);
+
   return {
     async readReconciliationState() {
       const [submission, artifacts] = await Promise.all([
@@ -4867,7 +4917,10 @@ function createRf1086FeedbackJournal(
           .order("sha256", { ascending: true }),
       ]);
       if (submission.error || !submission.data || artifacts.error) {
-        throw new Error("Kunne ikke lese tilbakemeldingsjournalen.");
+        throw persistenceError(
+          "Kunne ikke lese tilbakemeldingsjournalen.",
+          submission.error ?? artifacts.error,
+        );
       }
       return {
         state: submission.data.feedback_state as Rf1086ReconciliationState,
@@ -4883,17 +4936,36 @@ function createRf1086FeedbackJournal(
         .eq("submission_id", input.submissionId)
         .eq("sha256", artifact.sha256)
         .maybeSingle();
-      if (existingError) throw new Error("Kunne ikke kontrollere tilbakemeldingsarkivet.");
+      if (existingError) {
+        throw persistenceError("Kunne ikke kontrollere tilbakemeldingsarkivet.", existingError);
+      }
       if (existing) return existing.sha256;
 
       const storageKey = rf1086FeedbackStorageKey(input.companyId, input.submissionId, artifact.sha256);
       const documentId = randomUUID();
-      const upload = await service.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(
+      const upload = await bucket.upload(
         storageKey,
         artifact.bytes,
         { contentType: artifact.contentType, upsert: false },
       );
-      if (upload.error) throw new Error("Kunne ikke lagre tilbakemeldingsdokumentet.");
+      if (upload.error) {
+        const existingObject = await bucket.download(storageKey);
+        if (existingObject.error || !existingObject.data) {
+          throw persistenceError(
+            "Kunne ikke lagre tilbakemeldingsdokumentet.",
+            upload.error,
+          );
+        }
+        const existingBytes = new Uint8Array(await existingObject.data.arrayBuffer());
+        const existingHash = createHash("sha256").update(existingBytes).digest("hex");
+        if (existingBytes.byteLength !== artifact.byteLength || existingHash !== artifact.sha256) {
+          throw persistenceError(
+            "Eksisterende tilbakemeldingsdokument samsvarer ikke med forventet innhold.",
+            upload.error,
+            { integrityFailure: true },
+          );
+        }
+      }
 
       let documentInserted = false;
       try {
@@ -4909,7 +4981,13 @@ function createRf1086FeedbackJournal(
           storage_key: storageKey,
           created_by: input.userId,
         });
-        if (documentError) throw new Error("Kunne ikke registrere tilbakemeldingsdokumentet.");
+        if (documentError) {
+          throw persistenceError(
+            "Kunne ikke registrere tilbakemeldingsdokumentet.",
+            documentError,
+            { integrityFailure: databaseTerminalFailure(documentError) },
+          );
+        }
         documentInserted = true;
 
         const { data, error } = await service.rpc("record_production_feedback_artifact", {
@@ -4922,9 +5000,15 @@ function createRf1086FeedbackJournal(
           p_sha256: artifact.sha256,
           p_classification: artifact.classification,
         });
-        if (error || !data) throw new Error("Kunne ikke registrere tilbakemeldingsmetadata.");
+        if (error || !data) {
+          throw persistenceError(
+            "Kunne ikke registrere tilbakemeldingsmetadata.",
+            error,
+            { integrityFailure: databaseTerminalFailure(error) },
+          );
+        }
         return artifact.sha256;
-      } catch {
+      } catch (error) {
         const persisted = await service
           .from("production_feedback_artifacts")
           .select("document_id,sha256")
@@ -4938,9 +5022,10 @@ function createRf1086FeedbackJournal(
           await service.from("documents").delete().eq("id", documentId);
         }
         if (!persisted.data) {
-          await service.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+          await bucket.remove([storageKey]);
         }
-        throw new Error("Tilbakemeldingen kunne ikke arkiveres sikkert.");
+        if (error instanceof Rf1086FeedbackArtifactPersistenceError) throw error;
+        throw persistenceError("Tilbakemeldingen kunne ikke arkiveres sikkert.", error);
       }
     },
     async appendReconciliation(event) {
@@ -5004,19 +5089,30 @@ async function releaseRf1086FeedbackLease(
 
 export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   const returnTo = returnTarget(formData);
-  const approvalId = requiredFormUuid(formData, "approvalId");
+  let approvalId: string;
+  try {
+    approvalId = requiredFormUuid(formData, "approvalId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
   let configuration;
   try {
     configuration = rf1086ProductionEnvironment();
   } catch (error) {
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsmiljøet er ugyldig.")}`);
+    reportRf1086ProductionFailure("load_configuration", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
-  if (!configuration) redirect(`${returnTo}?error=${encodeURIComponent("RF-1086 produksjonsadapter er deaktivert.")}`);
+  if (!configuration) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: approval } = await supabase.from("filing_approval_snapshots").select("*").eq("id", approvalId).single();
-  if (!approval || approval.invalidated_at) redirect(`${returnTo}?error=Godkjenningen%20er%20utdatert`);
+  if (!approval || approval.invalidated_at) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
+  }
   await requireSensitiveActionStepUp(supabase, user.id, approval.company_id, "production_filing");
   const [{ data: preview }, { data: entitlement }, { data: company }] = await Promise.all([
     supabase.from("filing_previews").select("*").eq("id", approval.preview_id).single(),
@@ -5024,10 +5120,10 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     supabase.from("companies").select("id, org_number").eq("id", approval.company_id).single(),
   ]);
   if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
-    redirect(`${returnTo}?error=Produksjonsgrunnlaget%20er%20ufullstendig`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
   }
   if (!entitlement.system_user_request_id) {
-    redirect(`${returnTo}?error=Systembrukerforesp%C3%B8rselen%20mangler`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
   }
   const { data: systemUserRequest } = await supabase
     .from("system_user_requests")
@@ -5043,7 +5139,7 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     || !systemUserRequest.preflight_verified_at
     || systemUserRequest.external_ref !== entitlement.system_user_external_reference
   ) {
-    redirect(`${returnTo}?error=Systembrukerforbindelsen%20er%20ikke%20gyldig`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
   }
   const currentManifest = buildProductionApprovalManifest({
     companyId: preview.company_id, userId: user.id, organizationNumber: company.org_number,
@@ -5059,13 +5155,14 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
       .filter((issue) => issue.level === "warning").map((issue) => issue.message),
   });
   if (!approvalMatchesCurrentPayload(currentManifest, approval.manifest_hash)) {
-    redirect(`${returnTo}?error=${encodeURIComponent("Dataene er endret. Se over og godkjenn på nytt.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "payload_changed"));
   }
   let service;
   try {
     service = createSupabaseServiceRoleClient();
   } catch (error) {
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "Produksjonsjournalen er ikke konfigurert.")}`);
+    reportRf1086ProductionFailure("load_private_journal", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
   }
   try {
     await executeRf1086ProductionRelease({
@@ -5140,8 +5237,9 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
       },
     });
   } catch (error) {
+    reportRf1086ProductionFailure("send_or_reconcile", error);
     revalidatePath(returnTo);
-    redirect(`${returnTo}?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086 innsendingen stoppet.")}`);
+    redirect(rf1086ProductionErrorTarget(returnTo, "send_unavailable"));
   }
   revalidatePath(returnTo);
   redirect(`${returnTo}?sent=1`);
@@ -5149,7 +5247,7 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
 
 export type Rf1086ReconciliationActionState = {
   state: Rf1086ReconciliationState;
-  error: string | null;
+  errorCode: Rf1086OwnerActionErrorCode | null;
   requiresManualRetry: boolean;
 };
 
@@ -5161,16 +5259,16 @@ export async function reconcileRf1086ProductionAction(
   try {
     submissionId = requiredFormUuid(formData, "submissionId");
   } catch {
-    return { ...previousState, error: "Innsendingen kunne ikke identifiseres.", requiresManualRetry: true };
+    return { ...previousState, errorCode: "invalid_request", requiresManualRetry: true };
   }
   if (!hasSupabaseEnv()) {
-    return { ...previousState, error: "Statuskontrollen er midlertidig utilgjengelig.", requiresManualRetry: true };
+    return { ...previousState, errorCode: "status_unavailable", requiresManualRetry: true };
   }
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { ...previousState, error: "Innlogging kreves.", requiresManualRetry: true };
+    return { ...previousState, errorCode: "authentication_required", requiresManualRetry: true };
   }
 
   const { data: submission, error: submissionError } = await supabase
@@ -5186,11 +5284,11 @@ export async function reconcileRf1086ProductionAction(
     || submission.case_profile !== "rf1086_no_activity_v1"
     || submission.environment !== "production"
   ) {
-    return { ...previousState, error: "Innsendingen er ikke tilgjengelig.", requiresManualRetry: true };
+    return { ...previousState, errorCode: "basis_unavailable", requiresManualRetry: true };
   }
   const storedState = submission.feedback_state as Rf1086ReconciliationState;
   if (["accepted", "rejected", "action_required"].includes(storedState)) {
-    return { state: storedState, error: null, requiresManualRetry: false };
+    return { state: storedState, errorCode: null, requiresManualRetry: false };
   }
 
   const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
@@ -5242,7 +5340,7 @@ export async function reconcileRf1086ProductionAction(
     || companyResult.error
     || !company
   ) {
-    return { state: storedState, error: "Produksjonsgrunnlaget er ikke lenger gyldig.", requiresManualRetry: true };
+    return { state: storedState, errorCode: "basis_unavailable", requiresManualRetry: true };
   }
 
   const [{ data: systemUserRequest, error: requestError }, { data: preview, error: previewError }] = await Promise.all([
@@ -5272,7 +5370,7 @@ export async function reconcileRf1086ProductionAction(
     || preview.income_year !== submission.income_year
     || !preview.hovedskjema_xml
   ) {
-    return { state: storedState, error: "Den verifiserte tilkoblingen eller innsendingen mangler.", requiresManualRetry: true };
+    return { state: storedState, errorCode: "connection_unavailable", requiresManualRetry: true };
   }
 
   let configuration;
@@ -5281,10 +5379,10 @@ export async function reconcileRf1086ProductionAction(
     configuration = rf1086ProductionEnvironment();
     service = createSupabaseServiceRoleClient();
   } catch {
-    return { state: storedState, error: "Statuskontrollen er ikke konfigurert.", requiresManualRetry: true };
+    return { state: storedState, errorCode: "configuration_unavailable", requiresManualRetry: true };
   }
   if (!configuration) {
-    return { state: storedState, error: "Statuskontrollen er deaktivert.", requiresManualRetry: true };
+    return { state: storedState, errorCode: "configuration_unavailable", requiresManualRetry: true };
   }
 
   const leaseId = randomUUID();
@@ -5298,7 +5396,7 @@ export async function reconcileRf1086ProductionAction(
     if (claim.error) throw new Error("Tilbakemeldingskontrollen kunne ikke reserveres.");
     claimed = claim.data === true;
     if (!claimed) {
-      return { state: storedState, error: "En statuskontroll pågår allerede.", requiresManualRetry: true };
+      return { state: storedState, errorCode: "status_busy", requiresManualRetry: true };
     }
     const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
       service,
@@ -5334,10 +5432,11 @@ export async function reconcileRf1086ProductionAction(
       { initialPoll: false },
     );
     revalidatePath("/filing/aksjonaerregisteroppgaven");
-    return { state: result.state, error: null, requiresManualRetry: false };
-  } catch {
+    return { state: result.state, errorCode: null, requiresManualRetry: false };
+  } catch (error) {
+    reportRf1086ProductionFailure("reconcile", error);
     revalidatePath("/filing/aksjonaerregisteroppgaven");
-    return { state: storedState, error: "Statusen kunne ikke kontrolleres nå. Prøv igjen manuelt.", requiresManualRetry: true };
+    return { state: storedState, errorCode: "status_unavailable", requiresManualRetry: true };
   } finally {
     if (delegatedToken) delegatedToken.accessToken = "";
     if (claimed) {

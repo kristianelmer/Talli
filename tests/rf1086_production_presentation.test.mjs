@@ -68,10 +68,10 @@ test("owner page renders durable submissions before checking current approval or
   assert.match(ownerPage, /selectLatestRf1086ProductionSubmission/u);
   assert.match(ownerPage, /productionSubmission \|\| \(pilotEntitlement && previewReady\)/u);
   const section = ownerPage.slice(
-    ownerPage.indexOf("Reell RF-1086-produksjonspilot"),
+    ownerPage.indexOf("{productionSubmission || (pilotEntitlement && previewReady) ? ("),
     ownerPage.indexOf("{/* Step 1"),
   );
   assert.ok(section.indexOf("productionSubmission ? (") < section.indexOf("!productionApproval ? ("));
   assert.match(section, /Rf1086ReconciliationControl/u);
-  assert.match(section, /productionFeedbackArtifacts/u);
+  assert.match(section, /productionPresentation\.artifacts/u);
 });

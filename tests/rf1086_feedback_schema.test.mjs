@@ -293,6 +293,8 @@ test(
     const forsendelseId = randomUUID();
     const firstLeaseId = randomUUID();
     const competingLeaseId = randomUUID();
+    const persistenceFailureLeaseId = randomUUID();
+    const persistenceRetryLeaseId = randomUUID();
     const feedbackHash = "a".repeat(64);
     const feedbackKey = `authority-feedback/${companyId}/${submissionId}/${feedbackHash}`;
     const normalKey = `${companyId}/2025/${normalDocumentId}/ordinary.pdf`;
@@ -423,6 +425,42 @@ test(
       });
       assert.ifError(released.error);
       assert.equal(released.data, true);
+
+      const persistenceFailureClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: persistenceFailureLeaseId,
+      });
+      assert.ifError(persistenceFailureClaim.error);
+      assert.equal(persistenceFailureClaim.data, true);
+      const persistenceFailure = await admin.rpc("append_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: persistenceFailureLeaseId,
+        p_forsendelse_id: forsendelseId,
+        p_state: "unknown",
+        p_artifact_hashes: [],
+        p_safe_error_code: "RF1086_FEEDBACK_ARTIFACT_PERSIST_RETRY",
+        p_correlation_id: null,
+      });
+      assert.ifError(persistenceFailure.error);
+      assert.equal(persistenceFailure.data, true);
+      const persistenceFailureRelease = await admin.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: persistenceFailureLeaseId,
+      });
+      assert.ifError(persistenceFailureRelease.error);
+      assert.equal(persistenceFailureRelease.data, true);
+      const persistenceRetryClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: persistenceRetryLeaseId,
+      });
+      assert.ifError(persistenceRetryClaim.error);
+      assert.equal(persistenceRetryClaim.data, true);
+      const persistenceRetryRelease = await admin.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submissionId,
+        p_lease_id: persistenceRetryLeaseId,
+      });
+      assert.ifError(persistenceRetryRelease.error);
+      assert.equal(persistenceRetryRelease.data, true);
 
       await database.query(
         `update public.production_filing_submissions

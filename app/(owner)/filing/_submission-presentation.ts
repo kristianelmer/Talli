@@ -2,6 +2,7 @@
 
 import { createElement, startTransition, useActionState, useEffect } from "react";
 
+import { ownerCopy } from "../../lib/copy";
 import type {
   Rf1086ReconciliationActionState,
 } from "../../actions";
@@ -24,6 +25,7 @@ export function Rf1086ReconciliationControl({
   initialState,
 }: Rf1086ReconciliationControlProps) {
   const [state, dispatch, isPending] = useActionState(action, initialState);
+  const copy = ownerCopy.filing.production;
   const pending = PENDING_STATES.has(state.state);
   const terminal = TERMINAL_STATES.has(state.state);
 
@@ -40,8 +42,8 @@ export function Rf1086ReconciliationControl({
   return createElement(
     "div",
     { className: "filingConfirmForm" },
-    state.error
-      ? createElement("p", { className: "filingLockNote", role: "alert" }, state.error)
+    state.errorCode
+      ? createElement("p", { className: "filingLockNote", role: "alert" }, copy.errors[state.errorCode])
       : null,
     createElement(
       "form",
@@ -50,7 +52,7 @@ export function Rf1086ReconciliationControl({
       createElement(
         "button",
         { className: "btn btn--secondary", type: "submit", disabled: isPending },
-        isPending ? "Sjekker status …" : "Sjekk status på nytt",
+        isPending ? copy.reconciliation.checkPending : copy.reconciliation.checkCta,
       ),
     ),
   );

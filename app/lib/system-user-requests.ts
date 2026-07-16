@@ -39,6 +39,8 @@ export function assertSystemUserTransition(
   from: SystemUserRequestStatus,
   to: SystemUserRequestStatus,
 ) {
-  if (!allowedTransitions[from]?.has(to)) throw new Error("invalid_system_user_transition");
+  if (!Object.hasOwn(allowedTransitions, from) || !allowedTransitions[from].has(to)) {
+    throw new Error("invalid_system_user_transition");
+  }
   return to;
 }

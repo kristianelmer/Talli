@@ -130,9 +130,11 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
 
     await ownerPage.setViewportSize({ width: 1440, height: 900 });
     await ownerPage.goto(`${siteOrigin}/filing/aksjonaerregisteroppgaven`);
-    await ownerPage.getByRole("heading", { name: "Aksjonærregisteroppgaven" }).waitFor();
+    await ownerPage
+      .getByRole("heading", { name: "Aksjonærregisteroppgaven", exact: true })
+      .waitFor();
     const productionSection = ownerPage.locator("section").filter({
-      has: ownerPage.getByRole("heading", { name: "Reell RF-1086-produksjonspilot" }),
+      has: ownerPage.getByRole("heading", { name: "Reell innsending av aksjonærregisteroppgaven" }),
     });
     await productionSection.getByText("Til behandling", { exact: true }).waitFor();
     await productionSection.getByRole("button", { name: "Sjekk status på nytt" }).click();
@@ -154,7 +156,7 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     await verifyRf1086ResponsiveViewports(ownerPage);
 
     const feedbackHref = await productionSection
-      .getByRole("link", { name: /Last ned tilbakemelding/u })
+      .getByRole("link", { name: /Last ned .*tilbakemelding/u })
       .getAttribute("href");
     assert.equal(typeof feedbackHref, "string");
     const appDownloadUrl = new URL(feedbackHref, siteOrigin);
@@ -617,9 +619,11 @@ async function verifyRf1086ResponsiveViewports(page) {
   for (const width of [320, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.reload();
-    await page.getByRole("heading", { name: "Aksjonærregisteroppgaven" }).waitFor();
+    await page
+      .getByRole("heading", { name: "Aksjonærregisteroppgaven", exact: true })
+      .waitFor();
     const productionSection = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "Reell RF-1086-produksjonspilot" }),
+      has: page.getByRole("heading", { name: "Reell innsending av aksjonærregisteroppgaven" }),
     });
     await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     const overflow = await page.evaluate(() => {
@@ -655,7 +659,7 @@ async function verifyRf1086ResponsiveViewports(page) {
       "Sjekk status på nytt",
     );
     await focusControl(
-      productionSection.getByRole("link", { name: /Last ned tilbakemelding/u }),
+      productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }),
       "Last ned tilbakemelding",
     );
   }

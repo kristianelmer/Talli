@@ -89,7 +89,7 @@ owner and suspend affected entitlements.
 | failed preflight | Do not grant or retain an entitlement. Reconcile the exact Altinn request and Systembruker projection read-only; start a new approval only after the cause is understood. |
 | processing archive | Poll the documented read endpoints within the bounded window. Do not re-submit or repeat a POST. |
 | unknown feedback | Quarantine the submission, keep its idempotency state, disable the filing switch if the risk is systemic, and escalate to Skatteetaten/support. |
-| failed artifact persistence | Keep the authority outcome and hashes immutable, block closeout, restore private storage/database health, then repeat only the read-and-persist step. |
+| failed artifact persistence | Keep the authority outcome and hashes immutable. The submission remains recoverable as `unknown` with the safe code `RF1086_FEEDBACK_ARTIFACT_PERSIST_RETRY`; restore private storage/database health, then use **Sjekk status på nytt** to repeat only the read-and-persist step. If an interrupted attempt left the deterministic private object behind, verify its exact byte length and SHA-256 before reusing it. Never repeat a filing POST. |
 
 ## Monitoring and on-call questions
 

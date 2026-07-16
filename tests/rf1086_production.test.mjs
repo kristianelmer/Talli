@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { Rf1086AuthorityError } from "../app/lib/rf1086-authority-client.ts";
 import {
+  Rf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   reconcileJournaledRf1086Production,
 } from "../app/lib/rf1086-production.ts";
@@ -433,4 +434,65 @@ test("bare GLD_021 and bare GLD_1017 archive responses remain processing", async
     assert.equal(result.state, "processing", code);
     assert.equal(result.safeErrorCode, null, code);
   }
+});
+
+test("a transient artifact persistence failure remains reclaimable and retries read-only", async () => {
+  const journal = createReconciliationJournal("processing");
+  const persist = journal.recordArtifact.bind(journal);
+  let persistenceAttempts = 0;
+  journal.recordArtifact = async (artifact) => {
+    persistenceAttempts += 1;
+    if (persistenceAttempts === 1) {
+      throw new Rf1086FeedbackArtifactPersistenceError(
+        "temporary private storage outage",
+        { retryable: true },
+      );
+    }
+    return persist(artifact);
+  };
+  const authority = {
+    postCalls: 0,
+    archiveReads: 0,
+    async listDocuments() {
+      this.archiveReads += 1;
+      return {
+        totalItems: 1,
+        totalPages: 1,
+        currentPage: 0,
+        documents: [acceptedFeedback],
+        documentShapeValid: true,
+      };
+    },
+    async getDocument() { throw new Error("not expected"); },
+  };
+  const reconciliationInput = {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    forsendelseId,
+    hovedskjemaXml: "<H />",
+    underskjemaXml: { owner: "<U />" },
+  };
+
+  const failedPersistence = await reconcileJournaledRf1086Production(
+    journal,
+    authority,
+    reconciliationInput,
+    { initialPoll: false },
+  );
+  assert.equal(failedPersistence.state, "unknown");
+  assert.equal(failedPersistence.safeErrorCode, "RF1086_FEEDBACK_ARTIFACT_PERSIST_RETRY");
+  assert.equal(journal.artifacts.size, 0);
+
+  const recovered = await reconcileJournaledRf1086Production(
+    journal,
+    authority,
+    reconciliationInput,
+    { initialPoll: false },
+  );
+  assert.equal(recovered.state, "accepted");
+  assert.equal(recovered.artifactCount, 1);
+  assert.equal(authority.archiveReads, 2);
+  assert.equal(authority.postCalls, 0);
+  assert.equal(persistenceAttempts, 2);
 });

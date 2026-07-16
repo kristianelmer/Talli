@@ -20,7 +20,7 @@ export function SystemUserRequestControls({
   const canCreate = request === null || actions.includes("create");
 
   return (
-    <div className="filingConfirmForm" aria-label="Handlinger for Altinn-tilkoblingen">
+    <div className="filingConfirmForm" aria-label={ownerCopy.connections.actionsLabel}>
       {canCreate ? (
         <form action={startSystemUserRequestAction}>
           <input type="hidden" name="companyId" value={companyId} />

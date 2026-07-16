@@ -318,6 +318,16 @@ export type Rf1086ReconciliationArtifact = {
   classification: Rf1086FeedbackClassification;
 };
 
+export class Rf1086FeedbackArtifactPersistenceError extends Error {
+  readonly retryable: boolean;
+
+  constructor(message: string, options: { retryable: boolean; cause?: unknown }) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = "Rf1086FeedbackArtifactPersistenceError";
+    this.retryable = options.retryable;
+  }
+}
+
 export interface Rf1086ProductionJournal {
   readReconciliationState(): Promise<Rf1086ReconciliationSnapshot>;
   recordArtifact(artifact: Rf1086ReconciliationArtifact): Promise<string>;
@@ -475,7 +485,17 @@ async function readRf1086FeedbackOnce(
         classification: feedback.classification,
       });
       artifactHashes.add(persistedHash);
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof Rf1086FeedbackArtifactPersistenceError
+        && error.retryable
+      ) {
+        return {
+          state: "unknown" as const,
+          safeErrorCode: "RF1086_FEEDBACK_ARTIFACT_PERSIST_RETRY",
+          correlationId: null,
+        };
+      }
       return {
         state: "action_required" as const,
         safeErrorCode: "RF1086_FEEDBACK_ARTIFACT_PERSIST_FAILED",

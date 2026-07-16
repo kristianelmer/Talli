@@ -115,7 +115,8 @@ test("RF-1086 reconciliation controls have responsive overflow and focus coverag
   assert.match(helper, /\[320, 1440\]/u);
   assert.match(helper, /scrollWidth/u);
   assert.match(helper, /Sjekk status på nytt/u);
-  assert.match(helper, /Last ned tilbakemelding/u);
+  assert.match(helper, /Last ned/u);
+  assert.match(helper, /tilbakemelding/u);
   assert.match(helper, /document\.activeElement/u);
 });
 

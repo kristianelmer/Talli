@@ -29,7 +29,12 @@ test("terminal Altinn failures cannot be reopened", () => {
 });
 
 test("invalid runtime statuses use the stable transition error", () => {
-  for (const [from, to] of [["unknown", "new"], ["new", "unknown"]]) {
+  for (const [from, to] of [
+    ["unknown", "new"],
+    ["constructor", "new"],
+    ["__proto__", "new"],
+    ["new", "unknown"],
+  ]) {
     assert.throws(
       () => assertSystemUserTransition(from, to),
       (error) => error instanceof Error && error.message === "invalid_system_user_transition",

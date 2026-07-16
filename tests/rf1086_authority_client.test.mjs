@@ -75,6 +75,7 @@ test("executes the official hovedskjema, underskjema, confirmation, and archive 
     ids.bekreft,
   ]);
   assert.deepEqual(requests.map((request) => request.init.headers.authorization), Array(5).fill(`Bearer ${accessToken}`));
+  assert.deepEqual(requests.map((request) => request.init.redirect), Array(5).fill("error"));
   assert.equal(requests[0].init.headers["content-type"], "application/xml");
   assert.equal(requests[3].init.headers["content-type"], undefined);
   assert.equal(result.hovedskjemaId, "10000000-0000-4000-8000-000000000001");
@@ -261,6 +262,7 @@ test("retrieves an individual allowlisted document with a bounded GET", async ()
   assert.equal(requests.length, 1);
   assert.equal(requests[0].init.method, "GET");
   assert.equal(requests[0].init.body, undefined);
+  assert.equal(requests[0].init.redirect, "error");
   assert.equal(
     requests[0].url,
     `https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/30000000-0000-4000-8000-000000000003/dokumenter/${documentId}`,
@@ -335,4 +337,92 @@ test("document listing preserves inline XML and only strict UUID references", as
   });
   assert.equal(malformedPage.documentShapeValid, false);
   assert.deepEqual(malformedPage.documents, []);
+});
+
+test("all JSON authority responses are streamed with a global 64 KiB cap", async () => {
+  const oversizedSecret = "must-not-leak-" + "x".repeat(65 * 1024);
+  const archiveClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      totalItems: 0,
+      totalPages: 0,
+      currentPage: 0,
+      dokumenter: [],
+      oversizedSecret,
+    }),
+  });
+  await assert.rejects(
+    archiveClient.listDocuments({
+      incomeYear: 2025,
+      referenceId: "30000000-0000-4000-8000-000000000003",
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_TOO_LARGE");
+      assert.doesNotMatch(error.message, /must-not-leak/u);
+      return true;
+    },
+  );
+
+  const errorClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      kode: "GLD_017",
+      melding: oversizedSecret,
+    }, 503),
+  });
+  await assert.rejects(
+    errorClient.postHovedskjema({
+      incomeYear: 2025,
+      xml: "<Skjema />",
+      idempotencyKey: ids.hovedskjema,
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_TOO_LARGE");
+      assert.doesNotMatch(error.message, /must-not-leak/u);
+      return true;
+    },
+  );
+
+  const documentErrorClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({ kode: "GLD_017", melding: oversizedSecret }, 502),
+  });
+  await assert.rejects(
+    documentErrorClient.getDocument({
+      incomeYear: 2025,
+      forsendelseId: "30000000-0000-4000-8000-000000000003",
+      documentId: "40000000-0000-4000-8000-000000000004",
+    }),
+    (error) => error instanceof Rf1086AuthorityError
+      && error.code === "RF1086_JSON_TOO_LARGE"
+      && !error.message.includes("must-not-leak"),
+  );
+});
+
+test("JSON authority responses reject non-JSON media types without exposing their body", async () => {
+  const client = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => new Response("private upstream response", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  });
+
+  await assert.rejects(
+    client.listDocuments({
+      incomeYear: 2025,
+      referenceId: "30000000-0000-4000-8000-000000000003",
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_CONTENT_TYPE");
+      assert.doesNotMatch(error.message, /private upstream response/u);
+      return true;
+    },
+  );
 });

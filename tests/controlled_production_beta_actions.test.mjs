@@ -9,6 +9,7 @@ const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.
 const operatorPage = readFileSync(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8");
 const supabaseServer = readFileSync(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8");
 const systemUserFlow = readFileSync(new URL("../app/lib/system-user-flow.ts", import.meta.url), "utf8");
+const ownerCopy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
 
 test("operator entitlement action is exact and database-authorized", () => {
   assert.match(actions, /export async function upsertProductionPilotEntitlement/u);
@@ -31,8 +32,10 @@ test("owner approval binds persisted preview data and requires a real-filing ack
   assert.match(actions, /buildProductionApprovalManifest/u);
   assert.match(actions, /productionApprovalHash/u);
   assert.match(actions, /approve_production_filing/u);
-  assert.match(ownerPage, /juridiske konsekvenser/u);
-  assert.match(ownerPage, /Godkjenn eksakt innhold/u);
+  assert.match(ownerPage, /f\.production\.warning/u);
+  assert.match(ownerPage, /f\.production\.approveCta/u);
+  assert.match(ownerCopy, /juridiske konsekvenser/u);
+  assert.match(ownerCopy, /Godkjenn innholdet/u);
 });
 
 test("send action rechecks approval, uses production-only credentials, and journals authority calls", () => {
@@ -173,12 +176,12 @@ test("owner connection actions accept only local UUID selection and enforce fres
 });
 
 test("production UI never equates receipt transport with final acceptance", () => {
-  assert.match(ownerPage, /Mottatt/u);
-  assert.match(ownerPage, /Til behandling/u);
-  assert.match(ownerPage, /HTTP-svar eller kvitteringsreferanse betyr ikke/u);
-  assert.match(ownerPage, /productionFeedbackState === "accepted" \? "Godkjent"/u);
-  assert.match(ownerPage, /productionSubmission\?\.status === "sending" \? "Sender"/u);
-  assert.match(ownerPage, /productionFeedbackState === "action_required" \? "Krever handling"/u);
+  assert.match(ownerPage, /buildRf1086OwnerProductionPresentation/u);
+  assert.match(ownerPage, /productionPresentation\.status\.label/u);
+  assert.match(ownerCopy, /Mottatt/u);
+  assert.match(ownerCopy, /Til behandling/u);
+  assert.match(ownerCopy, /mottakskvittering betyr ikke at innholdet er endelig godkjent/u);
+  assert.doesNotMatch(ownerPage, /\{productionSubmission\?\.feedback_state\}|\{artifact\.classification\}/u);
 });
 
 test("a disabled production adapter tolerates an unapplied additive schema during rollout", () => {

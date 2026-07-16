@@ -91,17 +91,23 @@ test("private artifact persistence uses deterministic keys and removes object an
   assert.match(actions, /record_production_feedback_artifact/u);
   assert.match(actions, /storage[\s\S]+\.remove\(\[storageKey\]\)/u);
   assert.match(actions, /from\("documents"\)\.delete\(\)/u);
+  assert.match(actions, /bucket\.download\(storageKey\)/u);
+  assert.match(actions, /existingBytes\.byteLength !== artifact\.byteLength/u);
+  assert.match(actions, /existingHash !== artifact\.sha256/u);
+  assert.match(actions, /Rf1086FeedbackArtifactPersistenceError/u);
+  assert.match(actions, /\(\?:22\|23\|3F\|42\|P0001\|PGRST\)/u);
   assert.doesNotMatch(actions, /getPublicUrl/u);
 });
 
 test("filing page auto-resumes pending reconciliation and always exposes manual retry", () => {
   assert.match(ownerPage, /Rf1086ReconciliationControl/u);
   assert.match(ownerPage, /productionFeedbackArtifacts/u);
-  assert.match(ownerPage, /\/documents\/\$\{artifact\.document_id\}\/download/u);
+  assert.match(ownerPage, /\/documents\/\$\{artifact\.documentId\}\/download/u);
   assert.match(reconciliationControl, /"use client"/u);
   assert.match(reconciliationControl, /useActionState/u);
   assert.match(reconciliationControl, /setTimeout/u);
   assert.match(reconciliationControl, /sent.*processing.*unknown/su);
   assert.match(reconciliationControl, /accepted.*rejected.*action_required/su);
-  assert.match(reconciliationControl, /Sjekk status på nytt/u);
+  assert.match(reconciliationControl, /ownerCopy\.filing\.production/u);
+  assert.match(reconciliationControl, /copy\.reconciliation\.checkCta/u);
 });

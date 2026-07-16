@@ -74,6 +74,7 @@ const BASE_URLS: Record<Rf1086AuthorityEnvironment, string> = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const MAX_JSON_RESPONSE_BYTES = 64 * 1024;
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_CONTENT_TYPES = new Set([
   "application/xml",
@@ -180,12 +181,19 @@ function parseAuthorityError(status: number, parsed: unknown): Rf1086AuthorityEr
   });
 }
 
-async function boundedResponseBytes(response: Response, maximumBytes = MAX_DOCUMENT_BYTES) {
+async function boundedResponseBytes(
+  response: Response,
+  options: {
+    maximumBytes: number;
+    code: string;
+    message: string;
+  },
+) {
   const statedLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(statedLength) && statedLength > maximumBytes) {
-    throw new Rf1086AuthorityError("RF-1086 authority document exceeds the permitted response size.", {
+  if (Number.isFinite(statedLength) && statedLength > options.maximumBytes) {
+    throw new Rf1086AuthorityError(options.message, {
       status: response.status,
-      code: "RF1086_DOCUMENT_TOO_LARGE",
+      code: options.code,
       retryable: false,
     });
   }
@@ -199,11 +207,11 @@ async function boundedResponseBytes(response: Response, maximumBytes = MAX_DOCUM
       const { done, value } = await reader.read();
       if (done) break;
       byteLength += value.byteLength;
-      if (byteLength > maximumBytes) {
+      if (byteLength > options.maximumBytes) {
         await reader.cancel();
-        throw new Rf1086AuthorityError("RF-1086 authority document exceeds the permitted response size.", {
+        throw new Rf1086AuthorityError(options.message, {
           status: response.status,
-          code: "RF1086_DOCUMENT_TOO_LARGE",
+          code: options.code,
           retryable: false,
         });
       }
@@ -219,6 +227,49 @@ async function boundedResponseBytes(response: Response, maximumBytes = MAX_DOCUM
     offset += chunk.byteLength;
   }
   return bytes;
+}
+
+function responseContentType(response: Response) {
+  return response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+}
+
+function isJsonContentType(contentType: string) {
+  return contentType === "application/json"
+    || (contentType.startsWith("application/") && contentType.endsWith("+json"));
+}
+
+async function parseAuthorityJson(response: Response): Promise<unknown> {
+  const contentType = responseContentType(response);
+  if (contentType && !isJsonContentType(contentType)) {
+    throw new Rf1086AuthorityError("RF-1086 authority response has a disallowed JSON content type.", {
+      status: response.status,
+      code: "RF1086_JSON_CONTENT_TYPE",
+      retryable: false,
+    });
+  }
+  const bytes = await boundedResponseBytes(response, {
+    maximumBytes: MAX_JSON_RESPONSE_BYTES,
+    code: "RF1086_JSON_TOO_LARGE",
+    message: "RF-1086 authority JSON response exceeds the permitted response size.",
+  });
+  if (bytes.byteLength === 0) return {};
+  if (!contentType) {
+    throw new Rf1086AuthorityError("RF-1086 authority response has a disallowed JSON content type.", {
+      status: response.status,
+      code: "RF1086_JSON_CONTENT_TYPE",
+      retryable: false,
+    });
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    if (!response.ok) return {};
+    throw new Rf1086AuthorityError("RF-1086 authority response contained invalid JSON.", {
+      status: response.status,
+      code: "RF1086_JSON_INVALID",
+      retryable: false,
+    });
+  }
 }
 
 function strictDocumentReference(value: unknown): Rf1086ArchiveDocumentReference | null {
@@ -264,6 +315,7 @@ export function createRf1086AuthorityClient(input: AuthorityClientInput) {
         method: options.method,
         headers,
         body: options.body,
+        redirect: "error",
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (cause) {
@@ -274,15 +326,7 @@ export function createRf1086AuthorityClient(input: AuthorityClientInput) {
       });
     }
 
-    const raw = await response.text();
-    let parsed: unknown = {};
-    if (raw) {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        if (!response.ok) parsed = {};
-      }
-    }
+    const parsed = await parseAuthorityJson(response);
     if (!response.ok) throw parseAuthorityError(response.status, parsed);
 
     return {
@@ -426,6 +470,7 @@ export function createRf1086AuthorityClient(input: AuthorityClientInput) {
               accept: [...DOCUMENT_CONTENT_TYPES].join(", "),
               authorization: `Bearer ${accessToken}`,
             },
+            redirect: "error",
             signal: AbortSignal.timeout(timeoutMs),
           },
         );
@@ -437,17 +482,16 @@ export function createRf1086AuthorityClient(input: AuthorityClientInput) {
         });
       }
 
-      const bytes = await boundedResponseBytes(response);
       if (!response.ok) {
-        let parsed: unknown = {};
-        try {
-          parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-        } catch {
-          parsed = {};
-        }
+        const parsed = await parseAuthorityJson(response);
         throw parseAuthorityError(response.status, parsed);
       }
-      const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+      const bytes = await boundedResponseBytes(response, {
+        maximumBytes: MAX_DOCUMENT_BYTES,
+        code: "RF1086_DOCUMENT_TOO_LARGE",
+        message: "RF-1086 authority document exceeds the permitted response size.",
+      });
+      const contentType = responseContentType(response);
       if (!DOCUMENT_CONTENT_TYPES.has(contentType)) {
         throw new Rf1086AuthorityError("RF-1086 authority document has a disallowed content type.", {
           status: response.status,

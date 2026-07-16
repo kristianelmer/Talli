@@ -190,6 +190,7 @@ export const ownerCopy = {
       createNew: "Opprett ny forespørsel",
       createNewPending: "Oppretter …",
     },
+    actionsLabel: "Handlinger for Altinn-tilkoblingen",
     filing: {
       missing: {
         label: "Systembruker mangler",
@@ -970,6 +971,93 @@ export const ownerCopy = {
       warning: "Klar – med merknader",
       submitted: "Sendt (simulert)",
       preparing: "Under arbeid",
+    },
+    production: {
+      title: "Reell innsending av aksjonærregisteroppgaven",
+      warning:
+        "Dette er en reell innsending til Skatteetaten med juridiske konsekvenser. En mottakskvittering betyr ikke at innholdet er endelig godkjent.",
+      companyLabel: "Selskap",
+      yearLabel: "Inntektsår",
+      caseLabel: "Sakstype",
+      supportedCase: "Selskap uten aktivitet eller i stiftelsesåret",
+      privateFeedback:
+        "Tilbakemeldinger lagres privat og kan lastes ned med kortvarig tilgang.",
+      approveCheck:
+        "Jeg har kontrollert opplysningene og forstår at dette kan bli sendt som en reell aksjonærregisteroppgave.",
+      approvePending: "Lagrer godkjenningen …",
+      approveCta: "Godkjenn innholdet",
+      sendPending: "Sender sikkert …",
+      sendCta: "Send aksjonærregisteroppgaven",
+      reconciliation: {
+        checkPending: "Sjekker status …",
+        checkCta: "Sjekk status på nytt",
+      },
+      states: {
+        sending: {
+          label: "Sender",
+          body: "Vi sender oppgaven og lagrer mottaksstatusen.",
+          variant: "warning",
+        },
+        sent: {
+          label: "Mottatt",
+          body: "Skatteetaten har mottatt oppgaven. Vi venter på den endelige tilbakemeldingen.",
+          variant: "warning",
+        },
+        processing: {
+          label: "Til behandling",
+          body: "Skatteetaten behandler oppgaven. Du kan sjekke statusen på nytt.",
+          variant: "warning",
+        },
+        unknown: {
+          label: "Vi sjekker statusen på nytt",
+          body: "Vi kunne ikke bekrefte statusen nå. Prøv igjen om litt.",
+          variant: "warning",
+        },
+        accepted: {
+          label: "Godkjent",
+          body: "Skatteetaten har godkjent oppgaven.",
+          variant: "success",
+        },
+        rejected: {
+          label: "Avvist",
+          body: "Skatteetaten har avvist oppgaven. Se tilbakemeldingen før du går videre.",
+          variant: "danger",
+        },
+        action_required: {
+          label: "Trenger oppfølging",
+          body: "Tilbakemeldingen må følges opp før saken kan avsluttes.",
+          variant: "danger",
+        },
+        approved: {
+          label: "Godkjent av deg",
+          body: "Innholdet er godkjent og klart til innsending.",
+          variant: "info",
+        },
+        ready: {
+          label: "Klar til gjennomgang",
+          body: "Se over innholdet før du godkjenner innsendingen.",
+          variant: "info",
+        },
+      },
+      artifacts: {
+        accepted: "Last ned godkjent tilbakemelding",
+        rejected: "Last ned tilbakemelding om avvisning",
+        action_required: "Last ned tilbakemelding som må følges opp",
+        unknown: "Last ned tilbakemelding",
+      },
+      errors: {
+        invalid_request: "Forespørselen kunne ikke behandles. Last inn siden på nytt og prøv igjen.",
+        authentication_required: "Du må logge inn på nytt før du kan fortsette.",
+        configuration_unavailable: "Reell innsending er midlertidig utilgjengelig.",
+        approval_expired: "Godkjenningen er utdatert. Se over innholdet og godkjenn på nytt.",
+        basis_unavailable: "Grunnlaget for innsendingen er ikke tilgjengelig nå.",
+        connection_unavailable: "Altinn-tilkoblingen er ikke klar for innsending.",
+        payload_changed: "Dataene er endret. Se over innholdet og godkjenn på nytt.",
+        send_unavailable: "Innsendingen kunne ikke fullføres nå. Kontroller statusen før du prøver igjen.",
+        status_unavailable: "Statusen kunne ikke kontrolleres nå. Prøv igjen om litt.",
+        status_busy: "En statuskontroll pågår allerede. Vent litt før du prøver igjen.",
+        unavailable: "Handlingen er midlertidig utilgjengelig. Prøv igjen om litt.",
+      },
     },
     obligations: {
       aksjonaerregisteroppgaven: {
