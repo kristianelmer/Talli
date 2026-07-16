@@ -516,6 +516,7 @@ stack was restarted for this correction.
 The two diagnosed plan gaps were therefore resolved in documentation only:
 Step 2 now supplies the existing project Python runtime explicitly, and Step 3
 no longer asks a stopped local database to repeat an advisor result already
-obtained inside Step 2. Task 3 is complete under corrected plan `c55211f`; no
-product code, test, migration, hosted project, production environment, customer
-data, authority operation, or paid service was changed or accessed.
+obtained inside Step 2. Task 3 is complete under corrected plan `c55211f`. No
+product code, test, or migration file was changed. No hosted project,
+production resource, production credential, or customer data was accessed or
+changed, and no authority operation or paid service was invoked.
