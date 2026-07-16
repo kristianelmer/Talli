@@ -49,6 +49,7 @@ const authorityResultMessages: Record<string, string> = {
   authority_network_error: "Nettverkskallet til Altinn feilet.",
   authority_http_error: "Altinn avviste operasjonen.",
   authority_response_invalid: "Altinn returnerte et ugyldig svar.",
+  authority_verification_error: "Systemregister-resultatet kunne ikke verifiseres med en ny avlesning.",
   authority_operation_failed: "Produksjonsoperasjonen feilet.",
   authority_mfa_ready: "AAL2 er aktiv for denne operatørøkten.",
 };

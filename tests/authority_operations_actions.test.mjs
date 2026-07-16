@@ -59,6 +59,8 @@ test("callback update has a separate admin, fresh-AAL2, ops-gated audited action
   assert.match(callbackAction, /executeRf1086SystembrukerCallbackUpdate/u);
   assert.match(callbackAction, /from\("authority_operations"\)\.insert/u);
   assert.match(callbackAction, /callbackPath: SYSTEMBRUKER_CALLBACK_PATH/u);
+  assert.match(actions, /case "authority_verification_error"/u);
+  assert.match(operatorPage, /authority_verification_error/u);
   assert.doesNotMatch(callbackAction, /clientId:|right:|accessToken|privateKeyPem|response\.body/iu);
 });
 

@@ -4246,6 +4246,7 @@ function authorityOperationFailureCode(error: unknown) {
     case "authority_network_error":
     case "authority_http_error":
     case "authority_response_invalid":
+    case "authority_verification_error":
       return error.code;
     default:
       return "authority_operation_failed" as const;

@@ -36,6 +36,7 @@ alter table public.authority_operations
         'authority_network_error',
         'authority_http_error',
         'authority_response_invalid',
+        'authority_verification_error',
         'authority_operation_failed'
       )
     )

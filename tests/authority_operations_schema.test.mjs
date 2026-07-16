@@ -56,6 +56,16 @@ test("callback operation migration expands only the constrained safe audit contr
   assert.match(sql, /set_rf1086_systembruker_callback/u);
   assert.match(sql, /callback_already_verified/u);
   assert.match(sql, /callback_updated_and_verified/u);
+  const registrationResultCodes = sql.slice(
+    sql.indexOf("operation = 'register_rf1086_system'"),
+    sql.indexOf("or (", sql.indexOf("operation = 'register_rf1086_system'")),
+  );
+  const callbackResultCodes = sql.slice(
+    sql.indexOf("operation = 'set_rf1086_systembruker_callback'"),
+    sql.indexOf("add constraint authority_operations_metadata_check"),
+  );
+  assert.doesNotMatch(registrationResultCodes, /authority_verification_error/u);
+  assert.match(callbackResultCodes, /authority_verification_error/u);
   assert.match(sql, /drop constraint if exists authority_operations_operation_check/iu);
   assert.match(sql, /add constraint authority_operations_operation_check/iu);
   assert.match(sql, /callbackPath/u);
