@@ -12,6 +12,14 @@ const bindingSql = readFileSync(
 );
 const rollback = readFileSync(new URL("../supabase/rollback/controlled_production_beta.sql", import.meta.url), "utf8");
 
+test("all migrations use portable JSONB object checks", () => {
+  for (const migration of readdirSync(new URL("../supabase/migrations/", import.meta.url))) {
+    if (!migration.endsWith(".sql")) continue;
+    const migrationSql = readFileSync(new URL(`../supabase/migrations/${migration}`, import.meta.url), "utf8");
+    assert.doesNotMatch(migrationSql, /jsonb_object_length/iu, migration);
+  }
+});
+
 test("creates a separate production-only aggregate with constrained states", () => {
   for (const table of [
     "production_pilot_entitlements",
