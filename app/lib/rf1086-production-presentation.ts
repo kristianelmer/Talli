@@ -75,6 +75,33 @@ export const RF1086_OWNER_ACTION_ERROR_CODES = [
 
 export type Rf1086OwnerActionErrorCode = typeof RF1086_OWNER_ACTION_ERROR_CODES[number];
 
+export type Rf1086OwnerReconciliationActionState = {
+  shouldPoll: boolean;
+  errorCode: Rf1086OwnerActionErrorCode | null;
+  requiresManualRetry: boolean;
+};
+
+const POLLABLE_FEEDBACK_STATES: ReadonlySet<string> = new Set([
+  "sent",
+  "processing",
+  "unknown",
+]);
+
+export function buildRf1086OwnerReconciliationActionState(
+  feedbackState: unknown,
+  options: {
+    errorCode?: Rf1086OwnerActionErrorCode | null;
+    requiresManualRetry?: boolean;
+  } = {},
+): Rf1086OwnerReconciliationActionState {
+  return {
+    shouldPoll: typeof feedbackState === "string"
+      && POLLABLE_FEEDBACK_STATES.has(feedbackState),
+    errorCode: options.errorCode ?? null,
+    requiresManualRetry: options.requiresManualRetry ?? false,
+  };
+}
+
 type OwnerProductionCopy = {
   states: Record<string, {
     label: string;

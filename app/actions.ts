@@ -128,6 +128,7 @@ import {
 } from "./lib/production-approval";
 import {
   Rf1086FeedbackArtifactPersistenceError,
+  createRf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   executeRf1086ProductionRelease,
   reconcileJournaledRf1086Production,
@@ -137,7 +138,11 @@ import {
   type Rf1086ReconciliationState,
 } from "./lib/rf1086-production";
 import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
-import type { Rf1086OwnerActionErrorCode } from "./lib/rf1086-production-presentation";
+import {
+  buildRf1086OwnerReconciliationActionState,
+  type Rf1086OwnerActionErrorCode,
+  type Rf1086OwnerReconciliationActionState,
+} from "./lib/rf1086-production-presentation";
 import { requestMaskinportenToken } from "./lib/maskinporten";
 import {
   SYSTEM_USER_COOKIE,
@@ -4889,16 +4894,7 @@ function createRf1086FeedbackJournal(
     message: string,
     cause: unknown,
     options: { integrityFailure?: boolean } = {},
-  ) => new Rf1086FeedbackArtifactPersistenceError(message, {
-    retryable: !options.integrityFailure,
-    cause,
-  });
-  const databaseTerminalFailure = (error: unknown) => {
-    const code = typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
-    return /^(?:22|23|3F|42|P0001|PGRST)/u.test(code);
-  };
+  ) => createRf1086FeedbackArtifactPersistenceError(message, cause, options);
   const bucket = service.storage.from(COMPANY_DOCUMENTS_BUCKET);
 
   return {
@@ -4985,7 +4981,6 @@ function createRf1086FeedbackJournal(
           throw persistenceError(
             "Kunne ikke registrere tilbakemeldingsdokumentet.",
             documentError,
-            { integrityFailure: databaseTerminalFailure(documentError) },
           );
         }
         documentInserted = true;
@@ -5004,7 +4999,6 @@ function createRf1086FeedbackJournal(
           throw persistenceError(
             "Kunne ikke registrere tilbakemeldingsmetadata.",
             error,
-            { integrityFailure: databaseTerminalFailure(error) },
           );
         }
         return artifact.sha256;
@@ -5245,30 +5239,33 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   redirect(`${returnTo}?sent=1`);
 }
 
-export type Rf1086ReconciliationActionState = {
-  state: Rf1086ReconciliationState;
-  errorCode: Rf1086OwnerActionErrorCode | null;
-  requiresManualRetry: boolean;
-};
-
 export async function reconcileRf1086ProductionAction(
-  previousState: Rf1086ReconciliationActionState,
+  _previousState: Rf1086OwnerReconciliationActionState,
   formData: FormData,
-): Promise<Rf1086ReconciliationActionState> {
+): Promise<Rf1086OwnerReconciliationActionState> {
   let submissionId: string;
   try {
     submissionId = requiredFormUuid(formData, "submissionId");
   } catch {
-    return { ...previousState, errorCode: "invalid_request", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "invalid_request",
+      requiresManualRetry: true,
+    });
   }
   if (!hasSupabaseEnv()) {
-    return { ...previousState, errorCode: "status_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
   }
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { ...previousState, errorCode: "authentication_required", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "authentication_required",
+      requiresManualRetry: true,
+    });
   }
 
   const { data: submission, error: submissionError } = await supabase
@@ -5284,11 +5281,14 @@ export async function reconcileRf1086ProductionAction(
     || submission.case_profile !== "rf1086_no_activity_v1"
     || submission.environment !== "production"
   ) {
-    return { ...previousState, errorCode: "basis_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
   }
   const storedState = submission.feedback_state as Rf1086ReconciliationState;
   if (["accepted", "rejected", "action_required"].includes(storedState)) {
-    return { state: storedState, errorCode: null, requiresManualRetry: false };
+    return buildRf1086OwnerReconciliationActionState(storedState);
   }
 
   const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
@@ -5340,7 +5340,10 @@ export async function reconcileRf1086ProductionAction(
     || companyResult.error
     || !company
   ) {
-    return { state: storedState, errorCode: "basis_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
   }
 
   const [{ data: systemUserRequest, error: requestError }, { data: preview, error: previewError }] = await Promise.all([
@@ -5370,7 +5373,10 @@ export async function reconcileRf1086ProductionAction(
     || preview.income_year !== submission.income_year
     || !preview.hovedskjema_xml
   ) {
-    return { state: storedState, errorCode: "connection_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "connection_unavailable",
+      requiresManualRetry: true,
+    });
   }
 
   let configuration;
@@ -5379,10 +5385,16 @@ export async function reconcileRf1086ProductionAction(
     configuration = rf1086ProductionEnvironment();
     service = createSupabaseServiceRoleClient();
   } catch {
-    return { state: storedState, errorCode: "configuration_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
   }
   if (!configuration) {
-    return { state: storedState, errorCode: "configuration_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
   }
 
   const leaseId = randomUUID();
@@ -5396,7 +5408,10 @@ export async function reconcileRf1086ProductionAction(
     if (claim.error) throw new Error("Tilbakemeldingskontrollen kunne ikke reserveres.");
     claimed = claim.data === true;
     if (!claimed) {
-      return { state: storedState, errorCode: "status_busy", requiresManualRetry: true };
+      return buildRf1086OwnerReconciliationActionState(storedState, {
+        errorCode: "status_busy",
+        requiresManualRetry: true,
+      });
     }
     const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
       service,
@@ -5432,11 +5447,14 @@ export async function reconcileRf1086ProductionAction(
       { initialPoll: false },
     );
     revalidatePath("/filing/aksjonaerregisteroppgaven");
-    return { state: result.state, errorCode: null, requiresManualRetry: false };
+    return buildRf1086OwnerReconciliationActionState(result.state);
   } catch (error) {
     reportRf1086ProductionFailure("reconcile", error);
     revalidatePath("/filing/aksjonaerregisteroppgaven");
-    return { state: storedState, errorCode: "status_unavailable", requiresManualRetry: true };
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
   } finally {
     if (delegatedToken) delegatedToken.accessToken = "";
     if (claimed) {

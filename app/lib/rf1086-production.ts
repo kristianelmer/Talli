@@ -328,6 +328,29 @@ export class Rf1086FeedbackArtifactPersistenceError extends Error {
   }
 }
 
+const RETRYABLE_SUPABASE_PERSISTENCE_CODES: ReadonlySet<string> = new Set([
+  "PGRST000",
+  "PGRST001",
+  "PGRST002",
+  "PGRST003",
+]);
+
+export function createRf1086FeedbackArtifactPersistenceError(
+  message: string,
+  cause: unknown,
+  options: { integrityFailure?: boolean } = {},
+) {
+  const code = typeof cause === "object" && cause !== null && "code" in cause
+    ? String(cause.code).toUpperCase()
+    : "";
+  const databaseContractFailure = !RETRYABLE_SUPABASE_PERSISTENCE_CODES.has(code)
+    && /^(?:22|23|3F|42|P0001|PGRST)/u.test(code);
+  return new Rf1086FeedbackArtifactPersistenceError(message, {
+    retryable: !options.integrityFailure && !databaseContractFailure,
+    cause,
+  });
+}
+
 export interface Rf1086ProductionJournal {
   readReconciliationState(): Promise<Rf1086ReconciliationSnapshot>;
   recordArtifact(artifact: Rf1086ReconciliationArtifact): Promise<string>;

@@ -25,6 +25,7 @@ import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-docum
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
 import {
+  buildRf1086OwnerReconciliationActionState,
   buildRf1086OwnerProductionPresentation,
   rf1086OwnerActionErrorMessage,
   selectLatestRf1086ProductionSubmission,
@@ -429,11 +430,9 @@ export default async function FilingObligationPage({
                   <Rf1086ReconciliationControl
                     action={reconcileRf1086ProductionAction}
                     submissionId={productionSubmission.id}
-                    initialState={{
-                      state: productionSubmission.feedback_state,
-                      errorCode: null,
-                      requiresManualRetry: false,
-                    }}
+                    initialState={buildRf1086OwnerReconciliationActionState(
+                      productionSubmission.feedback_state,
+                    )}
                   />
                   {productionPresentation.artifacts.length > 0 ? (
                     <ul className="blockerList">

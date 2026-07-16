@@ -4,6 +4,7 @@ import test from "node:test";
 import { Rf1086AuthorityError } from "../app/lib/rf1086-authority-client.ts";
 import {
   Rf1086FeedbackArtifactPersistenceError,
+  createRf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   reconcileJournaledRf1086Production,
 } from "../app/lib/rf1086-production.ts";
@@ -495,4 +496,123 @@ test("a transient artifact persistence failure remains reclaimable and retries r
   assert.equal(authority.archiveReads, 2);
   assert.equal(authority.postCalls, 0);
   assert.equal(persistenceAttempts, 2);
+});
+
+test("Supabase connection and pool failures remain retryable through the real persistence mapping", async () => {
+  for (const code of ["PGRST000", "PGRST003"]) {
+    const journal = createReconciliationJournal("processing");
+    const persist = journal.recordArtifact.bind(journal);
+    let persistenceAttempts = 0;
+    journal.recordArtifact = async (artifact) => {
+      persistenceAttempts += 1;
+      if (persistenceAttempts === 1) {
+        throw createRf1086FeedbackArtifactPersistenceError(
+          "private feedback persistence failed",
+          {
+            code,
+            details: "connection unavailable",
+            hint: null,
+            message: "raw Supabase infrastructure detail",
+          },
+        );
+      }
+      return persist(artifact);
+    };
+    const authority = {
+      postCalls: 0,
+      archiveReads: 0,
+      async listDocuments() {
+        this.archiveReads += 1;
+        return {
+          totalItems: 1,
+          totalPages: 1,
+          currentPage: 0,
+          documents: [acceptedFeedback],
+          documentShapeValid: true,
+        };
+      },
+      async getDocument() { throw new Error("not expected"); },
+    };
+
+    const result = await reconcileJournaledRf1086Production(
+      journal,
+      authority,
+      {
+        submissionId: "submission-id",
+        companyId: "company-id",
+        incomeYear: 2025,
+        forsendelseId,
+        hovedskjemaXml: "<H />",
+        underskjemaXml: { owner: "<U />" },
+      },
+      { initialPoll: false },
+    );
+
+    assert.equal(result.state, "unknown", code);
+    assert.equal(result.safeErrorCode, "RF1086_FEEDBACK_ARTIFACT_PERSIST_RETRY", code);
+
+    const recovered = await reconcileJournaledRf1086Production(
+      journal,
+      authority,
+      {
+        submissionId: "submission-id",
+        companyId: "company-id",
+        incomeYear: 2025,
+        forsendelseId,
+        hovedskjemaXml: "<H />",
+        underskjemaXml: { owner: "<U />" },
+      },
+      { initialPoll: false },
+    );
+    assert.equal(recovered.state, "accepted", code);
+    assert.equal(authority.archiveReads, 2, code);
+    assert.equal(authority.postCalls, 0, code);
+    assert.equal(persistenceAttempts, 2, code);
+  }
+});
+
+test("Supabase constraint and schema failures remain terminal through the real persistence mapping", async () => {
+  for (const code of ["23505", "42P01", "PGRST202"]) {
+    const journal = createReconciliationJournal("processing");
+    journal.recordArtifact = async () => {
+      throw createRf1086FeedbackArtifactPersistenceError(
+        "private feedback persistence failed",
+        {
+          code,
+          details: "database contract mismatch",
+          hint: null,
+          message: "raw Supabase constraint or schema detail",
+        },
+      );
+    };
+    const authority = {
+      async listDocuments() {
+        return {
+          totalItems: 1,
+          totalPages: 1,
+          currentPage: 0,
+          documents: [acceptedFeedback],
+          documentShapeValid: true,
+        };
+      },
+      async getDocument() { throw new Error("not expected"); },
+    };
+
+    const result = await reconcileJournaledRf1086Production(
+      journal,
+      authority,
+      {
+        submissionId: "submission-id",
+        companyId: "company-id",
+        incomeYear: 2025,
+        forsendelseId,
+        hovedskjemaXml: "<H />",
+        underskjemaXml: { owner: "<U />" },
+      },
+      { initialPoll: false },
+    );
+
+    assert.equal(result.state, "action_required", code);
+    assert.equal(result.safeErrorCode, "RF1086_FEEDBACK_ARTIFACT_PERSIST_FAILED", code);
+  }
 });

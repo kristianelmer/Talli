@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  buildRf1086OwnerReconciliationActionState,
   buildRf1086OwnerProductionPresentation,
   isRf1086OwnerActionErrorCode,
   rf1086OwnerActionErrorMessage,
@@ -51,6 +52,10 @@ const ownerPage = readFileSync(
 );
 const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
 const ownerCopySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+const productionPresentationSource = readFileSync(
+  new URL("../app/lib/rf1086-production-presentation.ts", import.meta.url),
+  "utf8",
+);
 const reconciliationControl = readFileSync(
   new URL("../app/(owner)/filing/_submission-presentation.ts", import.meta.url),
   "utf8",
@@ -97,7 +102,7 @@ test("production action errors use an allowlisted stable code and centralized sa
 
   const sendAction = actions.slice(
     actions.indexOf("export async function sendApprovedRf1086ProductionFiling"),
-    actions.indexOf("export type Rf1086ReconciliationActionState"),
+    actions.indexOf("export async function reconcileRf1086ProductionAction"),
   );
   const reconcileAction = actions.slice(
     actions.indexOf("export async function reconcileRf1086ProductionAction"),
@@ -113,6 +118,51 @@ test("production action errors use an allowlisted stable code and centralized sa
   assert.match(actions, /productionError=/u);
   assert.match(sendAction, /rf1086ProductionErrorTarget/u);
   assert.match(reconcileAction, /errorCode/u);
+});
+
+test("owner reconciliation serialization contains safe control fields only", () => {
+  for (const [feedbackState, shouldPoll] of [
+    ["sent", true],
+    ["processing", true],
+    ["unknown", true],
+    ["accepted", false],
+    ["rejected", false],
+    ["action_required", false],
+  ]) {
+    const state = buildRf1086OwnerReconciliationActionState(feedbackState);
+    assert.deepEqual(
+      Object.keys(state).sort(),
+      ["errorCode", "requiresManualRetry", "shouldPoll"],
+      feedbackState,
+    );
+    assert.equal(state.shouldPoll, shouldPoll, feedbackState);
+    assert.doesNotMatch(
+      JSON.stringify(state),
+      /sent|processing|unknown|accepted|rejected|action_required/iu,
+      feedbackState,
+    );
+  }
+});
+
+test("initial props and action responses never serialize raw feedback states", () => {
+  const reconcileAction = actions.slice(
+    actions.indexOf("export async function reconcileRf1086ProductionAction"),
+    actions.indexOf("export async function postManualJournal"),
+  );
+  const actionContract = productionPresentationSource.slice(
+    productionPresentationSource.indexOf("export type Rf1086OwnerReconciliationActionState"),
+    productionPresentationSource.indexOf("export function buildRf1086OwnerProductionPresentation"),
+  );
+
+  assert.match(actionContract, /shouldPoll:\s*boolean/u);
+  assert.doesNotMatch(actionContract, /\bstate\s*:/u);
+  assert.match(ownerPage, /initialState=\{buildRf1086OwnerReconciliationActionState/u);
+  assert.doesNotMatch(ownerPage, /initialState=\{\{[\s\S]{0,200}feedback_state/u);
+  assert.match(reconcileAction, /buildRf1086OwnerReconciliationActionState/u);
+  assert.doesNotMatch(reconcileAction, /return\s+\{\s*(?:\.\.\.[^,]+,\s*)?state\s*:/u);
+  assert.doesNotMatch(reconcileAction, /\.\.\._?previousState/u);
+  assert.match(reconciliationControl, /state\.shouldPoll/u);
+  assert.doesNotMatch(reconciliationControl, /PENDING_STATES|TERMINAL_STATES|state\.state/u);
 });
 
 test("owner production UI does not render operator-only RF-1086 diagnostics", () => {

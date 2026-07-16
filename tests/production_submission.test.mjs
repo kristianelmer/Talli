@@ -95,7 +95,8 @@ test("private artifact persistence uses deterministic keys and removes object an
   assert.match(actions, /existingBytes\.byteLength !== artifact\.byteLength/u);
   assert.match(actions, /existingHash !== artifact\.sha256/u);
   assert.match(actions, /Rf1086FeedbackArtifactPersistenceError/u);
-  assert.match(actions, /\(\?:22\|23\|3F\|42\|P0001\|PGRST\)/u);
+  assert.match(actions, /createRf1086FeedbackArtifactPersistenceError/u);
+  assert.doesNotMatch(actions, /databaseTerminalFailure/u);
   assert.doesNotMatch(actions, /getPublicUrl/u);
 });
 
@@ -106,8 +107,12 @@ test("filing page auto-resumes pending reconciliation and always exposes manual 
   assert.match(reconciliationControl, /"use client"/u);
   assert.match(reconciliationControl, /useActionState/u);
   assert.match(reconciliationControl, /setTimeout/u);
-  assert.match(reconciliationControl, /sent.*processing.*unknown/su);
-  assert.match(reconciliationControl, /accepted.*rejected.*action_required/su);
+  assert.match(reconciliationControl, /state\.shouldPoll/u);
+  assert.doesNotMatch(
+    reconciliationControl,
+    /"(?:sent|processing|unknown|accepted|rejected|action_required)"/u,
+  );
+  assert.match(ownerPage, /initialState=\{buildRf1086OwnerReconciliationActionState/u);
   assert.match(reconciliationControl, /ownerCopy\.filing\.production/u);
   assert.match(reconciliationControl, /copy\.reconciliation\.checkCta/u);
 });
