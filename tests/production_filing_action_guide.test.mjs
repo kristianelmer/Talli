@@ -128,6 +128,7 @@ test("guide preserves switch, evidence, and unknown-outcome stop rules", () => {
   const callbackStage = guideStage("verify-the-production-systemregister-callback");
   const closeoutStage = guideStage("save-the-final-result-and-closeout-evidence");
 
+  assert.match(guide, /legal pack is pending professional approval/i);
   assert.match(callbackStage, /TALLI_AUTHORITY_OPS_ENABLED=false/);
   assert.match(callbackStage, /Do not use a real filing as a connection test\./i);
   assert.match(closeoutStage, /TALLI_RF1086_PRODUCTION_ENABLED=false/);

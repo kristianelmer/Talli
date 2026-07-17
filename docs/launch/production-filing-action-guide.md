@@ -57,8 +57,8 @@ The founder owns this stage. A legal reviewer and a security reviewer must revie
 
 ### Preconditions
 
-The legal drafts are complete enough to review. The deployed suppliers and hosted
-security facts are known.
+The legal pack is pending professional approval. The legal drafts are complete
+enough to review. The deployed suppliers and hosted security facts are known.
 
 ### Exact actions
 
