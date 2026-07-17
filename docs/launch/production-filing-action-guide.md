@@ -660,13 +660,27 @@ Stage 9 passed. Every evidence link is durable and sanitized. The latest
 4. Record reviewer, date, evidence link, and decision for `support_rollback`.
 5. Record reviewer, date, evidence link, and decision for `rf1086_authority`.
 6. Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
-7. Choose the paid path or the exact billing-exempt path.
-8. Record an approved `billing_refund` signoff for the paid path.
-9. Record the founder's decision to create an exact billing-exempt pilot for the free path.
-10. Record the billing reviewer's approval of the chosen path.
-11. Check the expiry of every signoff that can expire.
-12. Check that every unconditional decision is approved.
-13. Save the chosen billing path with the gate result.
+7. Choose the free-pilot branch or the paid-filing branch below.
+
+The operator performs only one branch.
+
+#### If this is the free pilot
+
+1. Record the founder's decision to create one exact billing-exempt pilot.
+2. Record the billing reviewer's approval of the billing-exempt path.
+3. Save the billing-exempt path with the signoff review.
+
+#### If this is a paid filing
+
+1. Record reviewer, date, evidence link, and decision for `billing_refund`.
+2. Record the billing reviewer's approval of the paid path.
+3. Save the paid path with the signoff review.
+
+#### After the chosen branch
+
+1. Check the expiry of every signoff that can expire.
+2. Check that every unconditional decision is approved.
+3. Save the signoff review result.
 
 ### Evidence to retain
 
@@ -743,14 +757,27 @@ active. The exact case facts match stage 5.
 7. Set a short start time.
 8. Set a short expiry time.
 9. Read the billing path approved in stage 10.
-10. Set `billing_exempt=true` only for the approved free pilot.
-11. Set `billing_exempt=false` for the paid pilot.
-12. Check the approved `billing_refund` for the paid pilot.
-13. Create the entitlement only after preflight.
-14. Read the saved entitlement back.
-15. Run the full filing release gate for the exact case.
-16. Save the release-gate result.
-17. Save the entitlement's immutable reference.
+
+The operator performs only one branch.
+
+#### If this is the free pilot
+
+1. Set `billing_exempt=true`.
+2. Check the documented billing-exempt decision from stage 10.
+
+#### If this is a paid filing
+
+1. Set `billing_exempt=false`.
+2. Check the approved `billing_refund` from stage 10.
+3. Check the active billing account.
+
+#### After the chosen branch
+
+1. Create the entitlement only after preflight.
+2. Read the saved entitlement back.
+3. Verify the exact company, user, year, obligation, profile, and validity window.
+4. Verify the saved billing value matches the chosen branch.
+5. Save the entitlement's immutable reference.
 
 An active exact pilot entitlement is required.
 
@@ -767,24 +794,25 @@ and billing path. The founder and billing reviewer review it.
 The active entitlement matches the exact company, user, year, obligation, and
 profile. Its validity window is short. It was created after accepted delegation
 and preflight. The paid path has billing and an approved `billing_refund`, or the
-exact free pilot has `billing_exempt=true`. The final full filing release gate is
-ready for the exact case.
+exact free pilot has `billing_exempt=true`.
 
 ### Stop conditions
 
 Stop if the entitlement is broad, expired, or mismatched. Stop if it was created
 before preflight. Stop if neither billing nor an exact exemption is valid. Stop if
-the full filing release gate is not ready for the exact case.
+the saved billing value does not match the chosen branch.
 
 ### Runtime signoff or record
 
 Retain the production pilot entitlement. `billing_exempt=true` skips only the
 billing-account requirement and `billing_refund` for this exact active pilot.
+Fresh AAL2 and filing readiness are established in stage 12. The full filing
+release gate is checked in stage 13 after stage 12 passes.
 
 ### Capability unlocked
 
-This stage allows the owner to approve an exact immutable preview. It does not
-allow Send.
+This stage allows the owner to establish fresh AAL2, filing readiness, and approval
+for an exact immutable preview. It does not allow Send.
 
 ### Next stage
 
@@ -880,7 +908,7 @@ approved window are recorded. Both production switches are false before the wind
 4. Record the statutory deadline.
 5. Record the authority-approved alternative route.
 6. Record the approved start and end time.
-7. Verify every release gate again.
+7. Run the full filing release gate for the exact case.
 8. Verify the exact entitlement again.
 9. Verify the immutable approval hashes again.
 10. Verify the immediate kill switch.
@@ -971,13 +999,13 @@ unchanged.
 
 If the outcome is unknown, follow these instructions exactly:
 
-1. Stop the filing window.
-2. Set both production switches to false.
-3. Do not send again.
-4. Keep the idempotency record and journal.
-5. Reconcile the result through read-only authority calls and support.
-6. Redeploy the approved Git SHA.
-7. Verify both deployed values are false.
+1. Set both production switches to false.
+2. Redeploy the approved Git SHA.
+3. Verify both deployed values are false.
+4. Stop the filing window.
+5. Do not send again.
+6. Keep the idempotency record and journal.
+7. Reconcile the result through read-only authority calls and support.
 
 A transport reference is not final acceptance.
 
