@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
@@ -11,6 +12,10 @@ const requiredEnv = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "DATABASE_URL",
 ];
+const correctiveMigrationUrl = new URL(
+  "../supabase/migrations/20260717113000_restrict_customer_agreement_creation.sql",
+  import.meta.url,
+);
 
 function hasLocalEnvironment() {
   if (!requiredEnv.every((key) => Boolean(process.env[key]))) return false;
@@ -71,14 +76,100 @@ test(
     const admin = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
     const anonymous = client(process.env.SUPABASE_ANON_KEY);
     const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
-    const user = await createConfirmedUser(admin);
     const authenticated = client(process.env.SUPABASE_ANON_KEY);
     const createdCompanyIds = [];
     const successfulOrgNumber = String(700_000_000 + Math.floor(Math.random() * 99_000_000));
     const failedOrgNumber = String(Number(successfulOrgNumber) + 1);
+    let user;
 
     await database.connect();
     try {
+      await database.query(`
+        create or replace function public.create_company_workspace_with_acceptance(
+          p_org_number text,
+          p_name text,
+          p_entity_type text,
+          p_address text,
+          p_postal_code text,
+          p_city text,
+          p_status_text text,
+          p_source text,
+          p_business_terms_version text,
+          p_business_terms_effective_date date,
+          p_business_terms_path text,
+          p_business_terms_sha256 text,
+          p_dpa_version text,
+          p_dpa_effective_date date,
+          p_dpa_path text,
+          p_dpa_sha256 text,
+          p_authority_statement_version text,
+          p_acceptance_method text
+        )
+        returns uuid
+        language sql
+        security definer
+        set search_path = ''
+        as $$ select null::uuid $$;
+
+        grant execute on function public.create_company_workspace_with_acceptance(
+          text, text, text, text, text, text, text, text, text, date, text, text, text, date, text, text, text, text
+        ) to authenticated;
+
+        alter table public.customer_agreement_acceptances
+          drop constraint if exists customer_agreement_acceptances_company_id_fkey;
+        alter table public.customer_agreement_acceptances
+          add constraint customer_agreement_acceptances_company_id_fkey
+          foreign key (company_id) references public.companies(id) on delete cascade;
+
+        grant all privileges on table public.customer_agreement_acceptances to service_role;
+      `);
+      await database.query(await readFile(correctiveMigrationUrl, "utf8"));
+
+      const overloads = await database.query(`
+        select
+          oidvectortypes(p.proargtypes) as signature,
+          has_function_privilege('anon', p.oid, 'execute') as anon_execute,
+          has_function_privilege('authenticated', p.oid, 'execute') as authenticated_execute,
+          has_function_privilege('service_role', p.oid, 'execute') as service_role_execute
+        from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.proname = 'create_company_workspace_with_acceptance'
+        order by signature
+      `);
+      assert.deepEqual(overloads.rows, [{
+        signature: "uuid, text, text, text, text, text, text, text, text, text, date, text, text, text, date, text, text, text, text",
+        anon_execute: false,
+        authenticated_execute: false,
+        service_role_execute: true,
+      }]);
+
+      const foreignKey = await database.query(`
+        select c.confdeltype
+        from pg_constraint c
+        where c.conrelid = 'public.customer_agreement_acceptances'::regclass
+          and c.conname = 'customer_agreement_acceptances_company_id_fkey'
+      `);
+      assert.equal(foreignKey.rowCount, 1);
+      assert.ok(["a", "r"].includes(foreignKey.rows[0].confdeltype));
+
+      const tablePrivileges = await database.query(`
+        select
+          has_table_privilege('service_role', 'public.customer_agreement_acceptances', 'select') as can_select,
+          has_table_privilege('service_role', 'public.customer_agreement_acceptances', 'insert') as can_insert,
+          has_table_privilege('service_role', 'public.customer_agreement_acceptances', 'update') as can_update,
+          has_table_privilege('service_role', 'public.customer_agreement_acceptances', 'delete') as can_delete,
+          has_table_privilege('service_role', 'public.customer_agreement_acceptances', 'truncate') as can_truncate
+      `);
+      assert.deepEqual(tablePrivileges.rows[0], {
+        can_select: true,
+        can_insert: false,
+        can_update: false,
+        can_delete: false,
+        can_truncate: false,
+      });
+
+      user = await createConfirmedUser(admin);
       const { error: signInError } = await authenticated.auth.signInWithPassword({
         email: user.email,
         password: user.password,
@@ -182,17 +273,25 @@ test(
     } finally {
       await database.query("begin");
       await database.query("set local session_replication_role = replica");
-      if (createdCompanyIds.length > 0) {
+      if (user) {
+        const fixtureCompanies = await database.query(
+          "select id from public.companies where created_by = $1 and org_number = any($2::text[])",
+          [user.id, [successfulOrgNumber, failedOrgNumber]],
+        );
+        createdCompanyIds.push(...fixtureCompanies.rows.map(({ id }) => id));
+      }
+      const uniqueCompanyIds = [...new Set(createdCompanyIds)];
+      if (uniqueCompanyIds.length > 0) {
         await database.query("delete from public.customer_agreement_acceptances where company_id = any($1::uuid[])", [
-          createdCompanyIds,
+          uniqueCompanyIds,
         ]);
-        await database.query("delete from public.audit_events where company_id = any($1::uuid[])", [createdCompanyIds]);
-        await database.query("delete from public.company_memberships where company_id = any($1::uuid[])", [createdCompanyIds]);
-        await database.query("delete from public.companies where id = any($1::uuid[])", [createdCompanyIds]);
+        await database.query("delete from public.audit_events where company_id = any($1::uuid[])", [uniqueCompanyIds]);
+        await database.query("delete from public.company_memberships where company_id = any($1::uuid[])", [uniqueCompanyIds]);
+        await database.query("delete from public.companies where id = any($1::uuid[])", [uniqueCompanyIds]);
       }
       await database.query("commit");
       await authenticated.auth.signOut();
-      await admin.auth.admin.deleteUser(user.id);
+      if (user) await admin.auth.admin.deleteUser(user.id);
       await database.end();
     }
   },
