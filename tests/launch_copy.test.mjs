@@ -68,7 +68,7 @@ test("public legal copy identifies the real beta operator and contains no placeh
   assert.match(ownerCopySource, /ELMER WELFIS/);
   assert.match(ownerCopySource, /930 835 978/);
   assert.match(ownerCopySource, /post@talli\.no/);
-  assert.match(ownerCopySource, /Betaen er gratis/i);
+  assert.match(ownerCopySource, /En gratis plan medfører ingen betaling/i);
   assert.doesNotMatch(ownerCopySource, /\[Talli AS|XXX XXX XXX|\[Oslo tingrett\]/i);
   assert.doesNotMatch(ownerCopySource, /kontakt@talli\.no|personvern@talli\.no/i);
 });
