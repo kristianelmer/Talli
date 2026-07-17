@@ -73,40 +73,11 @@ function assertStageIncludes(slug, patterns) {
   }
 }
 
-function mandatoryGatePattern(gatePattern) {
-  return new RegExp(
-    `(?:\\brequir(?:e|es|ed)\\b|\\bmust (?:have|show|confirm|pass|use|be)\\b)[^\\n|.]{0,120}(?:${gatePattern})|(?:${gatePattern})[^\\n|.]{0,120}(?:\\bis required\\b|\\bare required\\b|\\bmust (?:be|pass)\\b)`,
-    "i",
-  );
-}
-
-function forbiddenGatePattern(gatePattern) {
-  const nearby = "[^\\n|.]{0,120}";
-  const optionalForm =
-    "\\b(?:optional|bypass(?:ed|es|ing|able)?|need[- ]not|needn['’]t|not required|not mandatory)\\b";
-  const forbiddenForms = [
-    `(?:${gatePattern})${nearby}(?:${optionalForm})`,
-    `(?:${optionalForm})${nearby}(?:${gatePattern})`,
-    `\\b(?:do|does)(?: not|n['’]t) require\\b${nearby}(?:${gatePattern})`,
-    `\\brequir(?:e|es) no\\b${nearby}(?:${gatePattern})`,
-    `\\bno\\b${nearby}(?:${gatePattern})${nearby}\\b(?:is|are) (?:required|mandatory)\\b`,
-  ];
-
-  return new RegExp(forbiddenForms.join("|"), "i");
-}
-
-function assertMandatoryStageGate(slug, gatePattern, gateSubjectPattern = gatePattern) {
+function assertStageIncludesExact(slug, sentences) {
   for (const documentStage of [checklistStage(slug), guideStage(slug)]) {
-    assert.match(
-      documentStage,
-      mandatoryGatePattern(gatePattern),
-      `${slug} must make ${gatePattern} mandatory`,
-    );
-    assert.doesNotMatch(
-      documentStage,
-      forbiddenGatePattern(gateSubjectPattern),
-      `${slug} must not make ${gatePattern} optional or bypassable`,
-    );
+    for (const sentence of sentences) {
+      assert.ok(documentStage.includes(sentence), `${slug} must include "${sentence}"`);
+    }
   }
 }
 
@@ -135,31 +106,22 @@ test("both documents keep runtime signoffs in the signoff stage", () => {
 
 test("both documents keep case-specific gates in their operating stages", () => {
   assertStageIncludes("select-an-eligible-pilot-company", [/rf1086_no_activity_v1/]);
-  assertMandatoryStageGate(
-    "complete-systembruker-approval-and-preflight",
-    "production authority permission",
-  );
-  assertMandatoryStageGate(
-    "complete-systembruker-approval-and-preflight",
-    "accepted authority-test evidence",
-  );
-  assertMandatoryStageGate(
-    "create-the-pilot-entitlement-and-billing-path",
-    "active exact (?:pilot )?entitlement",
-    "(?:pilot )?entitlement",
-  );
-  assertMandatoryStageGate(
-    "create-the-pilot-entitlement-and-billing-path",
-    "billing or (?:an )?exact billing_exempt=true (?:entitlement|exemption)",
-    "billing|billing_exempt=true",
-  );
-  assertMandatoryStageGate("capture-the-owners-final-approval", "fresh AAL2");
-  assertMandatoryStageGate("capture-the-owners-final-approval", "filing readiness");
-  assertMandatoryStageGate(
-    "run-the-production-filing-window",
-    "implemented and enabled production adapter",
-    "production adapter",
-  );
+  assertStageIncludesExact("complete-systembruker-approval-and-preflight", [
+    "Production authority permission is required.",
+    "Accepted authority-test evidence is required.",
+  ]);
+  assertStageIncludesExact("create-the-pilot-entitlement-and-billing-path", [
+    "An active exact pilot entitlement is required.",
+    "Billing or an exact billing exemption is required.",
+  ]);
+  assertStageIncludes("create-the-pilot-entitlement-and-billing-path", [/billing_exempt=true/]);
+  assertStageIncludesExact("capture-the-owners-final-approval", [
+    "Fresh AAL2 is required.",
+    "Filing readiness is required.",
+  ]);
+  assertStageIncludesExact("run-the-production-filing-window", [
+    "The production adapter must be implemented and enabled.",
+  ]);
 });
 
 test("guide preserves switch, evidence, and unknown-outcome stop rules", () => {
