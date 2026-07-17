@@ -59,6 +59,29 @@ The checklist uses one row per stage with these fields:
 - reviewer and review date; and
 - detailed-guide link.
 
+## Writing Style
+
+This is a functional document, not a document meant to sound impressive. Use the
+simplest words that remain accurate.
+
+- Write short sentences and short paragraphs.
+- Give one action per numbered instruction.
+- Start instructions with a clear verb, such as `Open`, `Check`, `Save`, `Ask`,
+  `Record`, or `Stop`.
+- Prefer familiar everyday words over formal, legal, or technical alternatives.
+- Explain required technical or legal terms the first time they appear.
+- Keep exact database keys, environment variable names, status codes, and button
+  labels unchanged so the reader can find them in the product.
+- Do not use jargon, abbreviations, or impressive-sounding words when a simpler
+  phrase says the same thing.
+- State plainly who does the work, what they do, what they save, and what must be
+  true before continuing.
+- Use direct stop messages such as `Stop here. Do not enable production filing.`
+
+The intended reading level is that of a practical operating checklist. A founder,
+customer owner, or external reviewer should be able to follow it without reading
+the source code or learning Talli's internal architecture.
+
 ## Ordered Stages
 
 The documentation covers these stages in order:
@@ -147,6 +170,8 @@ Documentation review must confirm:
 
 - every runtime gate appears in the checklist and detailed guide;
 - every stage has objective pass and stop criteria;
+- instructions use plain language, short sentences, and one action per step;
+- necessary technical terms are explained without changing exact system labels;
 - links resolve to current repository sources;
 - the switch and unknown-outcome instructions match the controlled pilot runbook;
 - the legal guide states that the pack is pending professional approval;
