@@ -81,12 +81,18 @@ function mandatoryGatePattern(gatePattern) {
 }
 
 function forbiddenGatePattern(gatePattern) {
+  const nearby = "[^\\n|.]{0,120}";
   const optionalForm =
     "\\b(?:optional|bypass(?:ed|es|ing|able)?|need[- ]not|needn['’]t|not required|not mandatory)\\b";
-  return new RegExp(
-    `(?:${gatePattern})[^\\n|.]{0,120}(?:${optionalForm})|(?:${optionalForm})[^\\n|.]{0,120}(?:${gatePattern})`,
-    "i",
-  );
+  const forbiddenForms = [
+    `(?:${gatePattern})${nearby}(?:${optionalForm})`,
+    `(?:${optionalForm})${nearby}(?:${gatePattern})`,
+    `\\b(?:do|does)(?: not|n['’]t) require\\b${nearby}(?:${gatePattern})`,
+    `\\brequir(?:e|es) no\\b${nearby}(?:${gatePattern})`,
+    `\\bno\\b${nearby}(?:${gatePattern})${nearby}\\b(?:is|are) (?:required|mandatory)\\b`,
+  ];
+
+  return new RegExp(forbiddenForms.join("|"), "i");
 }
 
 function assertMandatoryStageGate(slug, gatePattern, gateSubjectPattern = gatePattern) {
