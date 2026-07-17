@@ -297,15 +297,24 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 type="hidden"
                 value={currentCustomerAgreements.dpa.version}
               />
-              <label className="checkboxLabel">
-                <input name="agreementAccepted" type="checkbox" value="accepted" required />
-                <span>
-                  {ownerCopy.workspace.agreementAcceptance.authority}{" "}
+              <div className="checkboxLabel">
+                <input
+                  id="agreementAccepted"
+                  name="agreementAccepted"
+                  type="checkbox"
+                  value="accepted"
+                  aria-describedby="agreementAcceptedDescription"
+                  required
+                />
+                <p id="agreementAcceptedDescription">
+                  <label htmlFor="agreementAccepted">
+                    {ownerCopy.workspace.agreementAcceptance.authority}{" "}
+                  </label>
                   <Link href="/vilkar">{ownerCopy.workspace.agreementAcceptance.businessTerms}</Link>{" "}
                   {ownerCopy.workspace.agreementAcceptance.conjunction}{" "}
                   <Link href="/databehandleravtale">{ownerCopy.workspace.agreementAcceptance.dpa}</Link>
-                </span>
-              </label>
+                </p>
+              </div>
               <button className="primaryButton" type="submit">
                 {ownerCopy.workspace.createCta}
               </button>

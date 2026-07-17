@@ -21,11 +21,7 @@ import {
 } from "./lib/billing";
 import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
-import {
-  assertCurrentCustomerAgreementForm,
-  currentCustomerAgreements,
-  customerAgreementAuthorityStatementVersion,
-} from "./lib/customer-agreements";
+import { onboardCustomer } from "./lib/customer-onboarding";
 import { getSiteUrl } from "./lib/site-url";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -593,72 +589,31 @@ export async function createWorkspace(formData: FormData) {
     failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    failTo(returnTo, "Innlogging kreves.");
-  }
-
-  try {
-    assertCurrentCustomerAgreementForm({
+  const result = await onboardCustomer(
+    {
       agreementAccepted: formString(formData, "agreementAccepted"),
       businessTermsVersion: formString(formData, "businessTermsVersion"),
       dpaVersion: formString(formData, "dpaVersion"),
-    });
-  } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Avtaleaksept mangler.");
-  }
-
-  const orgNumber = formString(formData, "orgNumber");
-  if (!/^\d{9}$/.test(orgNumber)) {
-    failTo(returnTo, "Organisasjonsnummer må ha 9 sifre.");
-  }
-  let identity;
-  try {
-    identity = await fetchBrregEntity(orgNumber);
-  } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Brønnøysund-oppslag feilet");
-  }
-  try {
-    assertSupportedBrregIdentity(identity);
-  } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Selskapsform støttes ikke");
-  }
-
-  let workspaceCreationError = "";
-  try {
-    const serviceRoleClient = createSupabaseServiceRoleClient();
-    const { error } = await serviceRoleClient.rpc("create_company_workspace_with_acceptance", {
-      p_actor_id: user.id,
-      p_org_number: identity.orgNumber,
-      p_name: identity.name,
-      p_entity_type: identity.entityType,
-      p_address: identity.address,
-      p_postal_code: identity.postalCode,
-      p_city: identity.city,
-      p_status_text: identity.statusText,
-      p_source: identity.source,
-      p_business_terms_version: currentCustomerAgreements.businessTerms.version,
-      p_business_terms_effective_date: currentCustomerAgreements.businessTerms.effectiveDate,
-      p_business_terms_path: currentCustomerAgreements.businessTerms.path,
-      p_business_terms_sha256: currentCustomerAgreements.businessTerms.contentSha256,
-      p_dpa_version: currentCustomerAgreements.dpa.version,
-      p_dpa_effective_date: currentCustomerAgreements.dpa.effectiveDate,
-      p_dpa_path: currentCustomerAgreements.dpa.path,
-      p_dpa_sha256: currentCustomerAgreements.dpa.contentSha256,
-      p_authority_statement_version: customerAgreementAuthorityStatementVersion,
-      p_acceptance_method: "in_app_clickwrap",
-    });
-    if (error) {
-      workspaceCreationError = error.message;
-    }
-  } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Kunne ikke opprette selskap");
-  }
-  if (workspaceCreationError) {
-    failTo(returnTo, workspaceCreationError);
+      orgNumber: formString(formData, "orgNumber"),
+    },
+    {
+      getAuthenticatedUser: async () => {
+        const { data, error } = await supabase.auth.getUser();
+        return error ? null : data.user;
+      },
+      lookupCompanyIdentity: fetchBrregEntity,
+      assertSupportedCompanyIdentity: assertSupportedBrregIdentity,
+      createCompanyWorkspace: async (payload) => {
+        const serviceRoleClient = createSupabaseServiceRoleClient();
+        const { error } = await serviceRoleClient.rpc("create_company_workspace_with_acceptance", payload);
+        if (error) {
+          throw new Error(error.message);
+        }
+      },
+    },
+  );
+  if (!result.ok) {
+    failTo(returnTo, result.message);
   }
 
   revalidatePath("/");
