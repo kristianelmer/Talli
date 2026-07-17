@@ -45,11 +45,20 @@ function stageSection(document, slug, marker) {
 }
 
 function checklistStage(slug) {
-  return stageSection(
-    checklist,
-    slug,
-    (stageSlug) => `production-filing-action-guide.md#${stageSlug}`,
+  const link = `production-filing-action-guide.md#${slug}`;
+  const matchingRows = (checklist.match(/^\|[^\r\n]*\|$/gm) ?? []).filter((row) =>
+    row.includes(link),
   );
+
+  assert.equal(matchingRows.length, 1, `expected one checklist row for ${slug}`);
+  const row = matchingRows[0];
+  const cells = row.split("|");
+  const linkCellIndex = cells.findIndex((cell) => cell.includes(link));
+
+  assert.ok(linkCellIndex > 1, `missing fields before ${slug} link`);
+  assert.ok(linkCellIndex < cells.length - 2, `missing fields after ${slug} link`);
+  assert.doesNotMatch(row, /[\r\n]/, `multiple checklist rows found for ${slug}`);
+  return row;
 }
 
 function guideStage(slug) {
@@ -61,6 +70,37 @@ function assertStageIncludes(slug, patterns) {
     for (const pattern of patterns) {
       assert.match(documentStage, pattern, `${slug} must include ${pattern}`);
     }
+  }
+}
+
+function mandatoryGatePattern(gatePattern) {
+  return new RegExp(
+    `(?:\\brequir(?:e|es|ed)\\b|\\bmust (?:have|show|confirm|pass|use|be)\\b)[^\\n|.]{0,120}(?:${gatePattern})|(?:${gatePattern})[^\\n|.]{0,120}(?:\\bis required\\b|\\bare required\\b|\\bmust (?:be|pass)\\b)`,
+    "i",
+  );
+}
+
+function forbiddenGatePattern(gatePattern) {
+  const optionalForm =
+    "\\b(?:optional|bypass(?:ed|es|ing|able)?|need[- ]not|needn['’]t|not required|not mandatory)\\b";
+  return new RegExp(
+    `(?:${gatePattern})[^\\n|.]{0,120}(?:${optionalForm})|(?:${optionalForm})[^\\n|.]{0,120}(?:${gatePattern})`,
+    "i",
+  );
+}
+
+function assertMandatoryStageGate(slug, gatePattern, gateSubjectPattern = gatePattern) {
+  for (const documentStage of [checklistStage(slug), guideStage(slug)]) {
+    assert.match(
+      documentStage,
+      mandatoryGatePattern(gatePattern),
+      `${slug} must make ${gatePattern} mandatory`,
+    );
+    assert.doesNotMatch(
+      documentStage,
+      forbiddenGatePattern(gateSubjectPattern),
+      `${slug} must not make ${gatePattern} optional or bypassable`,
+    );
   }
 }
 
@@ -89,22 +129,31 @@ test("both documents keep runtime signoffs in the signoff stage", () => {
 
 test("both documents keep case-specific gates in their operating stages", () => {
   assertStageIncludes("select-an-eligible-pilot-company", [/rf1086_no_activity_v1/]);
-  assertStageIncludes("complete-systembruker-approval-and-preflight", [
-    /production authority permission/i,
-    /accepted authority-test evidence/i,
-  ]);
-  assertStageIncludes("create-the-pilot-entitlement-and-billing-path", [
-    /exact pilot entitlement/i,
-    /billing_exempt=true/,
-    /billing\/refund proof|billing or billing exemption/i,
-  ]);
-  assertStageIncludes("capture-the-owners-final-approval", [
-    /fresh AAL2/i,
-    /filing readiness/i,
-  ]);
-  assertStageIncludes("run-the-production-filing-window", [
-    /implemented and enabled production adapter/i,
-  ]);
+  assertMandatoryStageGate(
+    "complete-systembruker-approval-and-preflight",
+    "production authority permission",
+  );
+  assertMandatoryStageGate(
+    "complete-systembruker-approval-and-preflight",
+    "accepted authority-test evidence",
+  );
+  assertMandatoryStageGate(
+    "create-the-pilot-entitlement-and-billing-path",
+    "active exact (?:pilot )?entitlement",
+    "(?:pilot )?entitlement",
+  );
+  assertMandatoryStageGate(
+    "create-the-pilot-entitlement-and-billing-path",
+    "billing or (?:an )?exact billing_exempt=true (?:entitlement|exemption)",
+    "billing|billing_exempt=true",
+  );
+  assertMandatoryStageGate("capture-the-owners-final-approval", "fresh AAL2");
+  assertMandatoryStageGate("capture-the-owners-final-approval", "filing readiness");
+  assertMandatoryStageGate(
+    "run-the-production-filing-window",
+    "implemented and enabled production adapter",
+    "production adapter",
+  );
 });
 
 test("guide preserves switch, evidence, and unknown-outcome stop rules", () => {
