@@ -57,6 +57,24 @@ function rpcArguments(actorId, orgNumber, overrides = {}) {
   };
 }
 
+function reacceptanceArguments(actorId, companyId, overrides = {}) {
+  return {
+    p_actor_id: actorId,
+    p_company_id: companyId,
+    p_business_terms_version: "2026-07-17",
+    p_business_terms_effective_date: "2026-07-17",
+    p_business_terms_path: "/vilkar",
+    p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+    p_dpa_version: "2026-07-17",
+    p_dpa_effective_date: "2026-07-17",
+    p_dpa_path: "/databehandleravtale",
+    p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+    p_authority_statement_version: "authority-v1",
+    p_acceptance_method: "in_app_clickwrap",
+    ...overrides,
+  };
+}
+
 async function createConfirmedUser(admin) {
   const email = `agreement-runtime-${randomUUID()}@example.test`;
   const password = `Runtime-${randomUUID()}-Aa1!`;
@@ -169,6 +187,18 @@ test(
         can_truncate: false,
       });
 
+      const appendPrivileges = await database.query(`
+        select
+          has_function_privilege('anon', 'public.append_company_agreement_acceptance(uuid,uuid,text,date,text,text,text,date,text,text,text,text)', 'execute') as anon_execute,
+          has_function_privilege('authenticated', 'public.append_company_agreement_acceptance(uuid,uuid,text,date,text,text,text,date,text,text,text,text)', 'execute') as authenticated_execute,
+          has_function_privilege('service_role', 'public.append_company_agreement_acceptance(uuid,uuid,text,date,text,text,text,date,text,text,text,text)', 'execute') as service_role_execute
+      `);
+      assert.deepEqual(appendPrivileges.rows[0], {
+        anon_execute: false,
+        authenticated_execute: false,
+        service_role_execute: true,
+      });
+
       user = await createConfirmedUser(admin);
       const { error: signInError } = await authenticated.auth.signInWithPassword({
         email: user.email,
@@ -219,12 +249,91 @@ test(
         entitlements: 0,
       });
 
+      const { error: anonAppendError } = await anonymous.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId),
+      );
+      assert.ok(anonAppendError, "anonymous append execution must be denied");
+
+      const { error: authenticatedAppendError } = await authenticated.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId),
+      );
+      assert.ok(authenticatedAppendError, "authenticated append execution must be denied");
+
+      const { error: nonOwnerError } = await admin.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(randomUUID(), companyId),
+      );
+      assert.equal(nonOwnerError?.message, "accepted_owner_membership_required");
+
+      const { error: nullDigestError } = await admin.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId, { p_dpa_sha256: null }),
+      );
+      assert.equal(nullDigestError?.message, "stale_or_invalid_agreement_evidence");
+
+      const { error: staleVersionError } = await admin.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId, { p_business_terms_version: "stale" }),
+      );
+      assert.equal(staleVersionError?.message, "stale_or_invalid_agreement_evidence");
+
+      const beforeAppend = await database.query(
+        `select
+           (select count(*)::int from public.companies where id = $1) as companies,
+           (select count(*)::int from public.company_memberships where company_id = $1) as memberships,
+           (select count(*)::int from public.production_pilot_entitlements where company_id = $1) as entitlements`,
+        [companyId],
+      );
+      const { data: appendedId, error: appendError } = await admin.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId),
+      );
+      assert.ifError(appendError);
+      const { data: repeatedId, error: repeatError } = await admin.rpc(
+        "append_company_agreement_acceptance",
+        reacceptanceArguments(user.id, companyId),
+      );
+      assert.ifError(repeatError);
+      assert.equal(repeatedId, appendedId);
+
+      const afterAppend = await database.query(
+        `select
+           (select count(*)::int from public.companies where id = $1) as companies,
+           (select count(*)::int from public.company_memberships where company_id = $1) as memberships,
+           (select count(*)::int from public.production_pilot_entitlements where company_id = $1) as entitlements,
+           (select count(*)::int from public.customer_agreement_acceptances where company_id = $1) as acceptances,
+           (select count(*)::int from public.audit_events where company_id = $1 and action = 'customer_agreement_reaccepted') as reacceptance_audits`,
+        [companyId],
+      );
+      assert.deepEqual(afterAppend.rows[0], {
+        ...beforeAppend.rows[0],
+        acceptances: 2,
+        reacceptance_audits: 1,
+      });
+
+      const { data: latestEvidence, error: latestEvidenceError } = await authenticated
+        .from("customer_agreement_acceptances")
+        .select("id, business_terms_sha256, dpa_sha256")
+        .eq("company_id", companyId)
+        .order("accepted_at", { ascending: false })
+        .limit(1)
+        .single();
+      assert.ifError(latestEvidenceError);
+      assert.deepEqual(latestEvidence, {
+        id: appendedId,
+        business_terms_sha256: reacceptanceArguments(user.id, companyId).p_business_terms_sha256,
+        dpa_sha256: reacceptanceArguments(user.id, companyId).p_dpa_sha256,
+      });
+
       const { data: ownerEvidence, error: ownerReadError } = await authenticated
         .from("customer_agreement_acceptances")
         .select("company_id")
         .eq("company_id", companyId);
       assert.ifError(ownerReadError);
-      assert.deepEqual(ownerEvidence, [{ company_id: companyId }]);
+      assert.equal(ownerEvidence.length, 2);
+      assert.ok(ownerEvidence.every((row) => row.company_id === companyId));
 
       const { error: directInsertError } = await admin.from("customer_agreement_acceptances").insert({
         company_id: companyId,

@@ -14,6 +14,10 @@ const correctiveSql = readFileSync(
   new URL("../supabase/migrations/20260717113000_restrict_customer_agreement_creation.sql", import.meta.url),
   "utf8",
 );
+const reacceptanceSql = readFileSync(
+  new URL("../supabase/migrations/20260717120000_existing_company_agreement_reacceptance.sql", import.meta.url),
+  "utf8",
+);
 
 test("stores immutable company-scoped agreement evidence", () => {
   assert.match(sql, /create table public\.customer_agreement_acceptances/iu);
@@ -117,4 +121,22 @@ test("corrective migration removes the legacy overload and repairs deployed cons
     correctiveSql,
     /grant execute on function public\.create_company_workspace_with_acceptance[\s\S]+to (?:anon|authenticated)/iu,
   );
+});
+
+test("existing companies can append only exact current agreement evidence through service role", () => {
+  const fn = reacceptanceSql.match(/create or replace function public\.append_company_agreement_acceptance[\s\S]+?\n\$\$;/iu)?.[0] ?? "";
+  assert.match(fn, /p_actor_id uuid,\s*p_company_id uuid,\s*p_business_terms_version text,\s*p_business_terms_effective_date date,\s*p_business_terms_path text,\s*p_business_terms_sha256 text,\s*p_dpa_version text,\s*p_dpa_effective_date date,\s*p_dpa_path text,\s*p_dpa_sha256 text,\s*p_authority_statement_version text,\s*p_acceptance_method text/iu);
+  assert.match(fn, /security definer\s+set search_path = ''/iu);
+  assert.match(fn, /auth\.role\(\) is distinct from 'service_role'/iu);
+  assert.match(fn, /role = 'owner'[\s\S]+accepted_at is not null/iu);
+  assert.match(fn, /from public\.companies/iu);
+  assert.match(fn, /insert into public\.customer_agreement_acceptances/iu);
+  assert.match(fn, /insert into public\.audit_events/iu);
+  assert.match(fn, /return v_acceptance_id/iu);
+  assert.doesNotMatch(fn, /insert into public\.(companies|company_memberships|production_pilot_entitlements)/iu);
+  assert.match(reacceptanceSql, /revoke all on function public\.append_company_agreement_acceptance[\s\S]+from public, anon, authenticated, service_role/iu);
+  assert.match(reacceptanceSql, /grant execute on function public\.append_company_agreement_acceptance\(\s*uuid, uuid, text, date, text, text, text, date, text, text, text, text\s*\)\s*to service_role/iu);
+  assert.doesNotMatch(reacceptanceSql, /grant\s+(?:insert|all(?: privileges)?)[^;]+customer_agreement_acceptances/iu);
+  assert.match(rollbackSql, /revoke all on function public\.append_company_agreement_acceptance\(\s*uuid, uuid, text, date, text, text, text, date, text, text, text, text\s*\)/iu);
+  assert.match(rollbackSql, /drop function if exists public\.append_company_agreement_acceptance\(\s*uuid, uuid, text, date, text, text, text, date, text, text, text, text\s*\)/iu);
 });

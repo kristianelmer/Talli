@@ -1,6 +1,18 @@
 do $$
 begin
   if to_regprocedure(
+    'public.append_company_agreement_acceptance(uuid,uuid,text,date,text,text,text,date,text,text,text,text)'
+  ) is not null then
+    revoke all on function public.append_company_agreement_acceptance(
+      uuid, uuid, text, date, text, text, text, date, text, text, text, text
+    ) from public, anon, authenticated, service_role;
+
+    drop function if exists public.append_company_agreement_acceptance(
+      uuid, uuid, text, date, text, text, text, date, text, text, text, text
+    );
+  end if;
+
+  if to_regprocedure(
     'public.create_company_workspace_with_acceptance(text,text,text,text,text,text,text,text,text,date,text,text,text,date,text,text,text,text)'
   ) is not null then
     revoke all on function public.create_company_workspace_with_acceptance(

@@ -41,6 +41,15 @@ export type CompanyMembershipRow = {
   accepted_at: string | null;
 };
 
+export type CustomerAgreementAcceptanceRow = {
+  company_id: string;
+  business_terms_version: string;
+  business_terms_sha256: string;
+  dpa_version: string;
+  dpa_sha256: string;
+  accepted_at: string;
+};
+
 export type LaunchSignoffRow = {
   key: LaunchSignoffKey;
   status: LaunchSignoffStatus;
@@ -741,6 +750,44 @@ export async function listCompanyWorkspaces() {
 
   return {
     companies: (data ?? []) as CompanyWorkspaceRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listOwnedCompanyWorkspaces(userId: string) {
+  if (!hasSupabaseEnv()) {
+    return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: memberships, error: membershipError } = await supabase
+    .from("company_memberships")
+    .select("company_id")
+    .eq("user_id", userId)
+    .eq("role", "owner")
+    .not("accepted_at", "is", null);
+  if (membershipError || !memberships?.length) {
+    return { companies: [] as CompanyWorkspaceRow[], error: membershipError?.message ?? null };
+  }
+  const { data, error } = await supabase
+    .from("companies")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .in("id", memberships.map(({ company_id }) => company_id))
+    .order("created_at", { ascending: false });
+  return { companies: (data ?? []) as CompanyWorkspaceRow[], error: error?.message ?? null };
+}
+
+export async function listCustomerAgreementAcceptances(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { acceptances: [] as CustomerAgreementAcceptanceRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("customer_agreement_acceptances")
+    .select("company_id, business_terms_version, business_terms_sha256, dpa_version, dpa_sha256, accepted_at")
+    .in("company_id", companyIds)
+    .order("accepted_at", { ascending: false });
+  return {
+    acceptances: (data ?? []) as CustomerAgreementAcceptanceRow[],
     error: error?.message ?? null,
   };
 }

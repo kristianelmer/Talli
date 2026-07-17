@@ -32,6 +32,11 @@ experience.
   count as acceptance. Every material new agreement version requires explicit
   re-acceptance by an authorized representative and a new immutable acceptance
   record before it binds the customer.
+- For existing companies, the owner layout compares tenant-readable evidence
+  with the pinned current versions and digests and replaces owner-route content
+  with an explicit re-acceptance control until an accepted owner appends exact
+  current evidence. This is a service-access gate, not a filing, billing, or
+  entitlement switch.
 - DocuSign, BankID signing, negotiated order forms, and enterprise amendments
   remain optional later paths, not dependencies of self-service onboarding.
 

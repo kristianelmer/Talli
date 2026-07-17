@@ -34,7 +34,10 @@ acceptance.
 Every material new agreement version requires explicit authorized re-acceptance
 and new immutable evidence before it binds the customer. Passive or continued
 use cannot serve as acceptance evidence, alone or in combination with another
-signal.
+signal. The owner workspace therefore remains unavailable for an existing
+company until one of its accepted owners explicitly accepts the pinned current
+versions and digests. That acceptance is appended; historical evidence is not
+updated or backfilled.
 
 The append-only acceptance evidence records the customer legal name and
 organization number, accepting user, immutable Business Terms and DPA versions

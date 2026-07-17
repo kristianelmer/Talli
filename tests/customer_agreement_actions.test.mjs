@@ -27,6 +27,7 @@ test("company creation requires current explicit company assent", () => {
   assert.doesNotMatch(createWorkspaceAction, /\.from\("companies"\)\s*\.insert/iu);
   assert.doesNotMatch(createWorkspaceAction, /\.from\("company_memberships"\)\s*\.insert/iu);
   assert.doesNotMatch(createWorkspaceAction, /\.from\("audit_events"\)\s*\.insert/iu);
+  assert.match(createWorkspaceAction, /if \(!result\.ok\) \{\s*failTo\(returnTo, result\.message\);?\s*\}/iu);
 });
 
 test("the Server Action owns the server-only atomic RPC dependency", () => {

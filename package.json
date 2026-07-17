@@ -34,6 +34,7 @@
     "test:customer-agreement-actions": "node --test tests/customer_agreement_actions.test.mjs",
     "test:customer-agreement-schema": "node --test tests/customer_agreement_schema.test.mjs",
     "test:customer-onboarding": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/customer_onboarding.test.mjs",
+    "test:customer-agreement-reacceptance": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/customer_agreement_reacceptance.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs",
     "test:ci-gate": "node --test tests/ci_release_gate.test.mjs",
     "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs",
     "test:corporate-decision-workflow": "node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs",

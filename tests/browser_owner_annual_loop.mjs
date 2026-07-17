@@ -126,6 +126,22 @@ async function seedAnnualLoop(admin, ids) {
     }),
   );
   await assertNoError(
+    admin.rpc("append_company_agreement_acceptance", {
+      p_actor_id: ownerId,
+      p_company_id: companyId,
+      p_business_terms_version: "2026-07-17",
+      p_business_terms_effective_date: "2026-07-17",
+      p_business_terms_path: "/vilkar",
+      p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+      p_dpa_version: "2026-07-17",
+      p_dpa_effective_date: "2026-07-17",
+      p_dpa_path: "/databehandleravtale",
+      p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+      p_authority_statement_version: "authority-v1",
+      p_acceptance_method: "in_app_clickwrap",
+    }),
+  );
+  await assertNoError(
     admin.from("opening_balance_setups").insert({
       id: setupId,
       company_id: companyId,

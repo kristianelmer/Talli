@@ -113,6 +113,26 @@ test("stale agreement versions stop before lookup and privileged creation", asyn
   assert.equal(privilegedCalls.length, 0);
 });
 
+test("invalid organization number stops before lookup and privileged creation", async () => {
+  let lookupCalls = 0;
+  const { deps, privilegedCalls } = dependencies({
+    lookupCompanyIdentity: async () => {
+      lookupCalls += 1;
+      return identity;
+    },
+  });
+
+  const result = await onboardCustomer({ ...validForm, orgNumber: "123" }, deps);
+
+  assert.deepEqual(result, {
+    ok: false,
+    code: "invalid_org_number",
+    message: "Organisasjonsnummer må ha 9 sifre.",
+  });
+  assert.equal(lookupCalls, 0);
+  assert.equal(privilegedCalls.length, 0);
+});
+
 for (const [field, value] of [
   ["businessTermsSha256", "stale-business-terms-digest"],
   ["dpaSha256", "stale-dpa-digest"],

@@ -22,6 +22,7 @@ import {
 import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { onboardCustomer } from "./lib/customer-onboarding";
+import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
 import { getSiteUrl } from "./lib/site-url";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -619,6 +620,40 @@ export async function createWorkspace(formData: FormData) {
   }
 
   revalidatePath("/");
+  redirect(returnTo);
+}
+
+export async function reacceptCompanyAgreement(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const result = await reacceptCustomerAgreement(
+    {
+      companyId: formString(formData, "companyId"),
+      agreementAccepted: formString(formData, "agreementAccepted"),
+      businessTermsVersion: formString(formData, "businessTermsVersion"),
+      businessTermsSha256: formString(formData, "businessTermsSha256"),
+      dpaVersion: formString(formData, "dpaVersion"),
+      dpaSha256: formString(formData, "dpaSha256"),
+    },
+    {
+      getAuthenticatedUser: async () => {
+        const { data, error } = await supabase.auth.getUser();
+        return error ? null : data.user;
+      },
+      appendAcceptance: async (payload) => {
+        const serviceRoleClient = createSupabaseServiceRoleClient();
+        const { error } = await serviceRoleClient.rpc("append_company_agreement_acceptance", payload);
+        if (error) throw new Error(error.message);
+      },
+    },
+  );
+  if (!result.ok) {
+    failTo(returnTo, result.message);
+  }
+  revalidatePath("/", "layout");
   redirect(returnTo);
 }
 
