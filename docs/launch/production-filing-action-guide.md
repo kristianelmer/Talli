@@ -908,46 +908,56 @@ approved window are recorded. Both production switches are false before the wind
 4. Record the statutory deadline.
 5. Record the authority-approved alternative route.
 6. Record the approved start and end time.
-7. Run the full filing release gate for the exact case.
-8. Verify the exact entitlement again.
-9. Verify the immutable approval hashes again.
-10. Verify the immediate kill switch.
-11. Verify that no unexpected authority endpoint is present.
-12. Enable only `TALLI_RF1086_PRODUCTION_ENABLED` for the approved window.
-13. Deploy the approved Git SHA.
-14. Verify the filing gate is ready for only the exact case.
-15. Prepare one UUID idempotency key.
-16. Ask the owner to press Send once.
-17. Watch the append-only journal.
-18. Record the operator case reference.
+7. Verify the exact entitlement again.
+8. Verify the immutable approval hashes again.
+9. Verify the immediate kill switch.
+10. Verify that no unexpected authority endpoint is present.
+11. Keep both production switches false.
+12. Run the pre-window release-gate check for the exact case.
+13. Confirm that every disabled reason except `production_adapter_disabled` is clear.
+14. Stop before enabling if any other disabled reason remains.
+15. Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
+16. Deploy the approved Git SHA.
+17. Immediately run the actual full release gate for the exact case.
+18. Require the actual gate result to be `production_ready`.
+19. Prepare one UUID idempotency key.
+20. Ask the owner to press Send once.
+21. Watch the append-only journal.
+22. Record the operator case reference.
 
 The production adapter must be implemented and enabled.
 
 ### Evidence to retain
 
 Save a sanitized journal link and operator case. Include the operator, owner,
-observer, window, deployed Git SHA, gate result, entitlement reference, approval
-reference, idempotency reference, safe authority reference, and timestamps. The
-observer reviews it.
+observer, window, deployed Git SHA, pre-window gate result, actual full gate result,
+entitlement reference, approval reference, idempotency reference, safe authority
+reference, and timestamps. The observer reviews it.
 
 ### Pass criteria
 
-Every gate stayed ready. The exact entitlement matched. The approved window was
-active. The production adapter was implemented and enabled. Send happened once.
-The journal recorded the attempt.
+The pre-window check had no disabled reason except `production_adapter_disabled`.
+The exact entitlement matched. The approved window was active. The production
+adapter was implemented and enabled. The actual full release gate returned
+`production_ready` before Send. Send happened once. The journal recorded the attempt.
 
 ### Stop conditions
 
-If any action fails after `TALLI_RF1086_PRODUCTION_ENABLED` is enabled, do these
-actions in order. This includes a changed gate, an entitlement mismatch, an
-unavailable kill switch, an unexpected endpoint, or an expired window.
+If the pre-window check has any disabled reason other than
+`production_adapter_disabled`, stop before enabling the switch. Do not send.
+
+If the actual full gate does not return `production_ready`, or any later action
+fails after `TALLI_RF1086_PRODUCTION_ENABLED` is enabled, do these actions in
+order. This includes a changed gate, an entitlement mismatch, an unavailable kill
+switch, an unexpected endpoint, or an expired window.
 
 1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
 2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
 3. Redeploy the approved Git SHA.
 4. Verify both deployed values are false.
 5. Stop the filing window.
-6. Do not send twice.
+6. Do not send.
+7. Do not send again if a send already started.
 
 ### Runtime signoff or record
 
@@ -999,13 +1009,18 @@ unchanged.
 
 If the outcome is unknown, follow these instructions exactly:
 
-1. Set both production switches to false.
-2. Redeploy the approved Git SHA.
-3. Verify both deployed values are false.
-4. Stop the filing window.
-5. Do not send again.
-6. Keep the idempotency record and journal.
-7. Reconcile the result through read-only authority calls and support.
+1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. Redeploy the approved Git SHA.
+4. Verify both deployed values are false.
+
+After the deployed shutdown is proven, keep these five instructions in order:
+
+1. Stop the filing window.
+2. Set both production switches to false.
+3. Do not send again.
+4. Keep the idempotency record and journal.
+5. Reconcile the result through read-only authority calls and support.
 
 A transport reference is not final acceptance.
 
