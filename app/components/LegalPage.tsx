@@ -14,7 +14,15 @@ type LegalDoc = {
   sections: readonly LegalSection[];
 };
 
-export function LegalPage({ doc }: { doc: LegalDoc }) {
+export function LegalPage({
+  doc,
+  version,
+  effectiveDate,
+}: {
+  doc: LegalDoc;
+  version?: string;
+  effectiveDate?: string;
+}) {
   const c = ownerCopy.legal;
   return (
     <div className="legalShell">
@@ -26,6 +34,11 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         <p className="legalMeta">
           {c.lastUpdatedLabel}: {c.lastUpdated}
         </p>
+        {version && effectiveDate ? (
+          <p className="legalMeta">
+            Versjon {version} · Gjelder fra {effectiveDate}
+          </p>
+        ) : null}
         <h1 className="legalTitle">{doc.title}</h1>
         <p className="legalIntro">{doc.intro}</p>
         {doc.sections.map((section) => (

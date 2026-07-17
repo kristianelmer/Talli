@@ -2,7 +2,7 @@ import {
   inviteOnlyBetaCopy,
   preProductionDirectFilingCopy,
   requiredNonAffiliationCopy,
-} from "./launch-copy";
+} from "./launch-copy.ts";
 
 export const operatorAuthorityCopy = {
   systembrukerCallback: {
@@ -387,42 +387,45 @@ export const ownerCopy = {
     },
 
     terms: {
-      title: "Brukervilkår",
+      title: "Brukervilkår for bedriftskunder",
       intro:
-        "Disse vilkårene gjelder for bruk av Talli på talli.no. Ved å opprette en konto eller bruke tjenesten godtar du vilkårene.",
+        "Disse vilkårene er avtalen mellom selskapet som uttrykkelig godtar dem ved opprettelse av et selskapsområde (kunden), og ELMER WELFIS, org.nr. 930 835 978 (leverandøren), om kundens bruk av Talli.",
       sections: [
         {
-          heading: "Om tjenesten",
+          heading: "Tjenesten og støttet omfang",
           body: [
-            "Talli er et digitalt verktøy som hjelper støttede, enkle norske aksjeselskaper (AS), særlig holdingselskaper, med å forberede årsoppgjør og lovpålagt rapportering. Betaversjonen leveres av ELMER WELFIS, org.nr. 930 835 978.",
+            "Talli er et holding-først digitalt verktøy som hjelper støttede, enkle norske aksjeselskaper (AS), særlig holdingselskaper, med å forberede årsoppgjør og lovpålagt rapportering. Tjenesten kan avvise eller stoppe saker med forhold den ikke støtter, for eksempel mer sammensatt regnskap, merverdiavgift, lønn eller fakturering.",
+            "Kundens pris, plan og tilgang følger planen og funksjonene som vises i tjenesten. Beta, tidlig tilgang og senere generell tilgjengelighet er tjenestetilstander under de samme vilkårene. Betaling eller produksjonsinnsending aktiveres ikke før dette uttrykkelig vises i tjenesten og de tilhørende sikkerhets-, betalings- og myndighetsportene er oppfylt.",
           ],
           bullets: [],
         },
         {
-          heading: "Ikke profesjonell rådgivning",
+          heading: "Konto, selskap og fullmakt",
           body: [
-            "Talli er et hjelpemiddel og erstatter ikke regnskapsfører, revisor eller juridisk rådgivning. Du er selv ansvarlig for at opplysningene du legger inn, og innsendingene du godkjenner, er fullstendige og riktige. Talli gir ingen garanti for at en innsending blir godkjent av offentlige myndigheter.",
+            "Den som oppretter et selskapsområde, må gi korrekte opplysninger, beskytte innloggingsinformasjonen og ha nødvendig fullmakt til å inngå avtalen på vegne av kunden. En personlig konto, passiv bruk eller en lenke til vilkårene utgjør ikke selskapets aksept.",
           ],
           bullets: [],
         },
         {
-          heading: "Konto og tilgang",
+          heading: "Kundens kontroll og ansvar",
           body: [
-            "For å bruke tjenesten må du opprette en konto med korrekte opplysninger og holde innloggingsinformasjonen din konfidensiell. Du må ha nødvendig fullmakt til å handle på vegne av selskapet du registrerer. Du er ansvarlig for all bruk som skjer via kontoen din.",
+            "Talli er et hjelpemiddel og erstatter ikke regnskapsfører, revisor eller juridisk rådgivning. Kunden skal kontrollere at grunnlag, beregninger, dokumenter og innsendinger er fullstendige og riktige, og at bruken passer kundens forhold.",
+            "Kunden er ansvarlig for lokale godkjenninger og for å beslutte om noe skal sendes. At Talli forbereder eller lokalt godkjenner innhold, eller mottar en transportkvittering, betyr ikke at en myndighet har mottatt eller endelig godkjent innholdet. Talli garanterer ikke myndighetsgodkjenning.",
           ],
           bullets: [],
         },
         {
-          heading: "Ditt ansvar ved innsending",
+          heading: "Direkte innsending og støtte",
           body: [
-            "Innsending til offentlige myndigheter skjer på ditt ansvar. Du må gjennomgå og bekrefte opplysningene før de sendes inn. Talli kan stoppe saker som er for sammensatte for den enkle flyten; da må de håndteres manuelt eller av en regnskapsfører.",
+            "Direkte innsending er bare tilgjengelig når den aktuelle funksjonen, kundens rettigheter, produksjonslegitimasjon og alle gjeldende lanserings- og myndighetsporter er aktive. Avtaleaksept gir ikke i seg selv rett til produksjonsinnsending eller omgår noen port.",
+            "Kunden skal følge opp kvitteringer, avvisninger og frister. Spørsmål om tjenesten kan sendes til post@talli.no. Støtte innebærer ikke at leverandøren overtar kundens kontroll-, arkiv- eller innsendingsansvar.",
           ],
           bullets: [],
         },
         {
-          heading: "Abonnement og betaling",
+          heading: "Pris og betaling",
           body: [
-            "Betaen er gratis, og live betaling er ikke tilgjengelig. Før en eventuell betalt lansering vil gjeldende priser og betingelser vises i tjenesten før du forplikter deg.",
+            "Gjeldende pris og betalingsstatus følger kundens plan i tjenesten. En gratis plan medfører ingen betaling. Før en betalt tjeneste aktiveres, vises pris og betalingsvilkår, og kunden må gjennomføre den aktuelle aktiveringen. Avtaleaksept alene utløser ingen betaling.",
           ],
           bullets: [],
         },
@@ -436,30 +439,39 @@ export const ownerCopy = {
           ],
         },
         {
-          heading: "Immaterielle rettigheter",
+          heading: "Konfidensialitet, data og tilbakemeldinger",
           body: [
-            "Talli, inkludert programvare, design og varemerke, eies av oss. Du beholder alle rettigheter til dataene og dokumentene du selv legger inn, og gir oss en begrenset rett til å behandle disse for å levere tjenesten til deg.",
+            "Partene skal beskytte hverandres konfidensielle opplysninger og bare bruke dem for avtalen eller der lov krever det. Kunden beholder rettighetene til egne data og dokumenter og gir leverandøren en begrenset rett til å behandle dem for å levere og sikre tjenesten.",
+            "Talli, programvaren, designet og varemerkene tilhører leverandøren eller leverandørens lisensgivere. Kunden kan frivillig gi tilbakemeldinger; leverandøren kan bruke generelle ideer uten å offentliggjøre kundens konfidensielle opplysninger eller personopplysninger.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Databehandling",
+          body: [
+            "Databehandleravtalen på /databehandleravtale er innlemmet i disse vilkårene og gjelder når leverandøren behandler personopplysninger på vegne av kunden. Ved motstrid om slik behandling går databehandleravtalen foran disse vilkårene.",
           ],
           bullets: [],
         },
         {
           heading: "Ansvarsbegrensning",
           body: [
-            "Tjenesten leveres «som den er». Så langt loven tillater, er vi ikke ansvarlige for indirekte tap, følgetap eller tap som skyldes uriktige opplysninger du har lagt inn, eller bruk i strid med vilkårene. Ingenting i disse vilkårene begrenser ansvar som ikke kan fraskrives etter ufravikelig lov.",
+            "Tjenesten leveres med de funksjonene og begrensningene som vises. Så langt loven tillater, er leverandøren ikke ansvarlig for indirekte tap, følgetap eller tap som skyldes uriktige kundeopplysninger, manglende kundekontroll, bruk utenfor støttet omfang eller kundens brudd på vilkårene. Ingenting begrenser ansvar som ikke kan fraskrives etter ufravikelig lov.",
           ],
           bullets: [],
         },
         {
-          heading: "Oppsigelse",
+          heading: "Suspensjon, oppsigelse og eksport",
           body: [
-            "Du kan når som helst slutte å bruke tjenesten og avslutte kontoen din. Vi kan suspendere eller avslutte tilgangen ved vesentlig brudd på vilkårene. Ved avslutning behandler vi dataene dine i tråd med personvernerklæringen.",
+            "Kunden kan si opp tjenesten. Leverandøren kan suspendere nødvendig tilgang ved sikkerhetsrisiko, ulovlig bruk eller vesentlig mislighold, og kan si opp avtalen ved vesentlig mislighold etter rimelig mulighet til å rette når det passer.",
+            "Før avslutning skal kunden eksportere data og dokumenter kunden må beholde. Etter avslutning håndteres personopplysninger etter databehandleravtalen, lovpålagte oppbevaringskrav og tjenestens tilgjengelige eksport- og sletterutiner.",
           ],
           bullets: [],
         },
         {
           heading: "Endringer i vilkårene",
           body: [
-            "Vi kan endre vilkårene ved utvikling av tjenesten eller endringer i regelverket. Vesentlige endringer varsler vi om i tjenesten eller på e-post. Gjeldende versjon ligger alltid på denne siden.",
+            "Leverandøren kan oppdatere vilkårene ved utvikling av tjenesten eller endringer i regelverket. Vesentlige endringer varsles i tjenesten eller på e-post, og ny uttrykkelig aksept innhentes når det er nødvendig. Fortsatt bruk alene er ikke eneste bevis på aksept av en vesentlig endring. Gjeldende versjon vises på denne siden.",
           ],
           bullets: [],
         },
@@ -473,6 +485,97 @@ export const ownerCopy = {
         {
           heading: "Kontakt",
           body: ["Har du spørsmål om vilkårene, kontakt oss på post@talli.no."],
+          bullets: [],
+        },
+      ],
+    },
+
+    dpa: {
+      title: "Databehandleravtale",
+      intro:
+        "Denne databehandleravtalen er del av Talli Brukervilkår for bedriftskunder mellom kunden som behandlingsansvarlig og ELMER WELFIS, org.nr. 930 835 978, som databehandler når Talli behandler personopplysninger på kundens vegne.",
+      sections: [
+        {
+          heading: "1. Roller og omfang",
+          body: [
+            "Kunden er behandlingsansvarlig for personopplysninger i kundens selskaps-, aksjonær-, regnskapsdokument- og innsendingsdata. Leverandøren er databehandler når opplysningene behandles for å levere Talli etter kundens dokumenterte instrukser.",
+            "Leverandøren er selvstendig behandlingsansvarlig for begrenset behandling som er nødvendig for egen kontoadministrasjon, tjenestesikkerhet, oppfyllelse av rettslige plikter og egne forretningsopptegnelser.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "2. Behandlingens detaljer og varighet",
+          body: [
+            "Formålet og arten er å lagre, organisere, beregne, vise, eksportere og, når særskilt aktivert, overføre opplysninger for å levere kundens regnskaps- og rapporteringsarbeidsflyt. Behandlingen varer mens avtalen gjelder og deretter bare så lenge retur, sletting eller lovpålagt oppbevaring krever det.",
+            "Registrerte kan være kundens brukere, eiere, styremedlemmer, ansatte, kontaktpersoner og andre personer som inngår i kundens dokumentasjon. Opplysningene kan omfatte identitets- og kontaktopplysninger, konto- og tilgangsdata, eier- og rolleopplysninger, transaksjoner, bilag, dokumentinnhold, rapporterings- og innsendingsdata, kvitteringer og sikkerhets- og revisjonslogger.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "3. Dokumenterte instrukser",
+          body: [
+            "Leverandøren behandler bare personopplysninger etter dokumenterte instrukser fra kunden, herunder denne avtalen og kundens bruk av funksjonene, med mindre lov krever annet. Leverandøren informerer kunden før lovpålagt behandling når loven tillater det, og varsler uten ugrunnet opphold dersom en instruks etter leverandørens vurdering strider mot personvernregelverket.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "4. Konfidensialitet og sikkerhet",
+          body: [
+            "Leverandøren sikrer at personer med tilgang er underlagt konfidensialitet og bare får nødvendig tilgang. Leverandøren gjennomfører egnede tekniske og organisatoriske tiltak vurdert mot risikoen, blant annet tilgangsstyring, autentisering, kryptert transport, logging, sikker utvikling, sikkerhetskopiering og rutiner for gjenoppretting og hendelseshåndtering.",
+            "Kunden er ansvarlig for egne brukere, tilgangstildelinger, enheter, datakvalitet og lovlig behandlingsgrunnlag. Sikkerhetstiltak kan utvikles så lenge beskyttelsesnivået ikke samlet sett svekkes.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "5. Underdatabehandlere",
+          body: [
+            "Kunden gir generell skriftlig tillatelse til å bruke underdatabehandlere som er nødvendige for tjenesten. Leverandøren skal føre en tilgjengelig oversikt og varsle om planlagte tillegg eller utskiftninger slik at kunden kan fremsette en saklig personverninnsigelse før endringen når det er praktisk mulig.",
+            "Leverandøren pålegger underdatabehandlere personvernforpliktelser som i det vesentlige tilsvarer denne avtalen, og er ansvarlig overfor kunden for deres oppfyllelse etter personvernregelverket.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "6. Overføringer utenfor EØS",
+          body: [
+            "Personopplysninger skal bare overføres til et tredjeland eller en internasjonal organisasjon etter kundens dokumenterte instrukser og når kravene i personvernregelverket er oppfylt. Før en aktuell overføring skal leverandøren sikre et gyldig overføringsgrunnlag og nødvendige tilleggstiltak, og gjøre relevant informasjon tilgjengelig for kunden.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "7. Bistand og registrertes rettigheter",
+          body: [
+            "Med hensyn til behandlingens art bistår leverandøren, så langt det er mulig, kunden med egnede tiltak for forespørsler om registrertes rettigheter. Dersom leverandøren mottar en slik forespørsel om kundens data, videresendes den til kunden med mindre lov krever annet.",
+            "Leverandøren bistår rimelig med sikkerhetsplikter, vurdering og melding av brudd, personvernkonsekvensvurderinger og forhåndsdrøftelser med tilsynsmyndigheter, hensyntatt informasjonen leverandøren har og behandlingens art.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "8. Brudd på personopplysningssikkerheten",
+          body: [
+            "Leverandøren varsler kunden uten ugrunnet opphold etter å ha blitt kjent med et brudd som berører personopplysninger behandlet på kundens vegne. Varselet skal etter hvert som informasjonen blir tilgjengelig beskrive hendelsen, berørte kategorier, sannsynlige konsekvenser, tiltak og kontaktpunkt. Kunden avgjør egne varsler til registrerte og myndigheter.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "9. Dokumentasjon og revisjon",
+          body: [
+            "Leverandøren gjør informasjon som er nødvendig for å påvise oppfyllelse av artikkel 28 tilgjengelig for kunden og bidrar til rimelige revisjoner og inspeksjoner. Partene skal først bruke relevant dokumentasjon og fjernkontroll der dette gir tilstrekkelig sikkerhet. Revisjon skal varsles rimelig, begrenses til kundens behandling og beskytte andre kunders opplysninger og leverandørens sikkerhet og konfidensialitet.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "10. Retur, sletting og opphør",
+          body: [
+            "Ved opphør skal leverandøren etter kundens valg returnere eller slette personopplysninger og eksisterende kopier når tjenestens rutiner tillater det, med mindre lov krever fortsatt lagring. Kunden skal eksportere materiale den må beholde før tilgangen avsluttes.",
+            "Opplysninger som må beholdes etter lov, isoleres fra ordinær behandling og brukes bare for oppbevaringsformålet. Sikkerhetskopier slettes eller overskrives etter gjeldende rotasjon, og forpliktelsene i avtalen gjelder frem til sletting eller anonymisering.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "11. Kontakt og prioritet",
+          body: [
+            "Personvernhenvendelser sendes til post@talli.no. Ved motstrid om behandling av personopplysninger går denne databehandleravtalen foran de generelle brukervilkårene.",
+          ],
           bullets: [],
         },
       ],
