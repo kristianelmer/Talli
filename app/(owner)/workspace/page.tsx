@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import Link from "next/link";
 
 import {
   acknowledgeFilingReviewComment,
@@ -64,6 +65,7 @@ import {
   validateOwnerDividendPaymentInput,
 } from "../../lib/owner-dividend-payment";
 import { invitationStatus, reviewChecklistStatus } from "../../lib/invitations";
+import { currentCustomerAgreements } from "../../lib/customer-agreements";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
 import { estimateAnnualTax } from "../../lib/tax-settlement";
 import {
@@ -284,6 +286,25 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <label>
                 Organisasjonsnummer
                 <input name="orgNumber" inputMode="numeric" pattern="[0-9]{9}" required />
+              </label>
+              <input
+                name="businessTermsVersion"
+                type="hidden"
+                value={currentCustomerAgreements.businessTerms.version}
+              />
+              <input
+                name="dpaVersion"
+                type="hidden"
+                value={currentCustomerAgreements.dpa.version}
+              />
+              <label className="checkboxLabel">
+                <input name="agreementAccepted" type="checkbox" value="accepted" required />
+                <span>
+                  {ownerCopy.workspace.agreementAcceptance.authority}{" "}
+                  <Link href="/vilkar">{ownerCopy.workspace.agreementAcceptance.businessTerms}</Link>{" "}
+                  {ownerCopy.workspace.agreementAcceptance.conjunction}{" "}
+                  <Link href="/databehandleravtale">{ownerCopy.workspace.agreementAcceptance.dpa}</Link>
+                </span>
               </label>
               <button className="primaryButton" type="submit">
                 {ownerCopy.workspace.createCta}

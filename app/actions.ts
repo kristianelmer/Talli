@@ -21,6 +21,11 @@ import {
 } from "./lib/billing";
 import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
+import {
+  assertCurrentCustomerAgreementForm,
+  currentCustomerAgreements,
+  customerAgreementAuthorityStatementVersion,
+} from "./lib/customer-agreements";
 import { getSiteUrl } from "./lib/site-url";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -596,6 +601,16 @@ export async function createWorkspace(formData: FormData) {
     failTo(returnTo, "Innlogging kreves.");
   }
 
+  try {
+    assertCurrentCustomerAgreementForm({
+      agreementAccepted: formString(formData, "agreementAccepted"),
+      businessTermsVersion: formString(formData, "businessTermsVersion"),
+      dpaVersion: formString(formData, "dpaVersion"),
+    });
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Avtaleaksept mangler.");
+  }
+
   const orgNumber = formString(formData, "orgNumber");
   if (!/^\d{9}$/.test(orgNumber)) {
     failTo(returnTo, "Organisasjonsnummer må ha 9 sifre.");
@@ -612,45 +627,39 @@ export async function createWorkspace(formData: FormData) {
     failTo(returnTo, error instanceof Error ? error.message : "Selskapsform støttes ikke");
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .insert({
-      org_number: identity.orgNumber,
-      name: identity.name,
-      entity_type: identity.entityType,
-      address: identity.address,
-      postal_code: identity.postalCode,
-      city: identity.city,
-      status_text: identity.statusText,
-      source: identity.source,
-      created_by: user.id,
-      identity_confirmed_at: new Date().toISOString(),
-      identity_locked_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
-  if (companyError || !company) {
-    failTo(returnTo, companyError?.message ?? "Kunne ikke opprette selskap");
+  let workspaceCreationError = "";
+  try {
+    const serviceRoleClient = createSupabaseServiceRoleClient();
+    const { error } = await serviceRoleClient.rpc("create_company_workspace_with_acceptance", {
+      p_actor_id: user.id,
+      p_org_number: identity.orgNumber,
+      p_name: identity.name,
+      p_entity_type: identity.entityType,
+      p_address: identity.address,
+      p_postal_code: identity.postalCode,
+      p_city: identity.city,
+      p_status_text: identity.statusText,
+      p_source: identity.source,
+      p_business_terms_version: currentCustomerAgreements.businessTerms.version,
+      p_business_terms_effective_date: currentCustomerAgreements.businessTerms.effectiveDate,
+      p_business_terms_path: currentCustomerAgreements.businessTerms.path,
+      p_business_terms_sha256: currentCustomerAgreements.businessTerms.contentSha256,
+      p_dpa_version: currentCustomerAgreements.dpa.version,
+      p_dpa_effective_date: currentCustomerAgreements.dpa.effectiveDate,
+      p_dpa_path: currentCustomerAgreements.dpa.path,
+      p_dpa_sha256: currentCustomerAgreements.dpa.contentSha256,
+      p_authority_statement_version: customerAgreementAuthorityStatementVersion,
+      p_acceptance_method: "in_app_clickwrap",
+    });
+    if (error) {
+      workspaceCreationError = error.message;
+    }
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Kunne ikke opprette selskap");
   }
-
-  const { error: membershipError } = await supabase.from("company_memberships").insert({
-    company_id: company.id,
-    user_id: user.id,
-    role: "owner",
-    accepted_at: new Date().toISOString(),
-  });
-  if (membershipError) {
-    failTo(returnTo, membershipError.message);
+  if (workspaceCreationError) {
+    failTo(returnTo, workspaceCreationError);
   }
-
-  await supabase.from("audit_events").insert({
-    company_id: company.id,
-    actor_id: user.id,
-    category: "company",
-    action: "workspace_created",
-    message: "Selskapsarbeidsflate opprettet.",
-  });
 
   revalidatePath("/");
   redirect(returnTo);

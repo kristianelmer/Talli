@@ -667,6 +667,12 @@ export const ownerCopy = {
     createTitle: "Hent selskapet fra Brønnøysund.",
     createCta: "Hent fra Brønnøysund og opprett",
     onlyAs: "Kun AS går videre. ENK, NUF, ASA og andre selskapsformer stoppes før selskapet opprettes.",
+    agreementAcceptance: {
+      authority: "Jeg bekrefter at jeg har fullmakt til å inngå avtale på vegne av selskapet, og godtar Talli",
+      businessTerms: "Brukervilkår for bedriftskunder",
+      conjunction: "og",
+      dpa: "Databehandleravtalen.",
+    },
 
     companiesEyebrow: "Dine selskaper",
     companiesTitle: "Selskapene dine.",
