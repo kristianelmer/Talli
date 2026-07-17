@@ -48,8 +48,9 @@ control is not company acceptance.
 The acceptance record identifies the customer and accepting user and preserves
 the document versions and SHA-256 digests, authority-statement version,
 acceptance method, and timestamp. A later version does not rewrite an earlier
-acceptance record. Material changes will be notified, and new explicit
-acceptance will be collected when required.
+acceptance record. Every material new agreement version must be notified and
+explicitly re-accepted by an authorized representative with new immutable
+acceptance evidence before it binds the customer.
 
 ## Customer Responsibility
 
@@ -150,11 +151,11 @@ procedures in `retention-delete-export-policy-draft.md`.
 
 ## Changes to These Terms
 
-The supplier may update these terms as the service or law changes. Material
-changes will be communicated by email or in the service before they take
-effect, with a reasonable opportunity to review. New explicit acceptance will
-be obtained when required; continued use alone is not the sole evidence of
-acceptance of a material change.
+The supplier may update these terms as the service or law changes. Every material new agreement version
+will be communicated by email or in the service before it takes effect and must be
+explicitly re-accepted by an authorized representative before it binds the customer.
+Talli must retain immutable acceptance evidence identifying the customer, document versions and digests,
+acceptance method, and timestamp. Passive or continued use is not acceptance evidence.
 
 ## Governing Law and Jurisdiction
 

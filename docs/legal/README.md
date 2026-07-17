@@ -31,6 +31,11 @@ representative must affirm authority to bind that company. Account signup,
 passive use, footer links, or pre-selected controls do not constitute company
 acceptance.
 
+Every material new agreement version requires explicit authorized re-acceptance
+and new immutable evidence before it binds the customer. Passive or continued
+use cannot serve as acceptance evidence, alone or in combination with another
+signal.
+
 The append-only acceptance evidence records the customer legal name and
 organization number, accepting user, immutable Business Terms and DPA versions
 and SHA-256 digests, authority-statement version, acceptance method, and

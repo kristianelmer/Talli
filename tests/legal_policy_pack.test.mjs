@@ -8,6 +8,11 @@ const docs = {
   dpa: readFileSync(new URL("../docs/legal/dpa-draft.md", import.meta.url), "utf8"),
   retention: readFileSync(new URL("../docs/legal/retention-delete-export-policy-draft.md", import.meta.url), "utf8"),
   incident: readFileSync(new URL("../docs/legal/incident-response-policy-draft.md", import.meta.url), "utf8"),
+  readme: readFileSync(new URL("../docs/legal/README.md", import.meta.url), "utf8"),
+  evidence: readFileSync(
+    new URL("../docs/launch/evidence/production-e2e-verification-2026-07-16.md", import.meta.url),
+    "utf8",
+  ),
 };
 
 test("terms cover holding-first scope, unsupported cases, filing limits, refunds, and no advisory guarantee", () => {
@@ -25,11 +30,37 @@ test("legal pack uses one beta-to-live business agreement and explicit electroni
   assert.match(docs.terms, /930 835 978/);
   assert.match(docs.terms, /plan and capabilities shown in the service/i);
   assert.match(docs.terms, /Data Processing Agreement/i);
-  assert.doesNotMatch(docs.terms, /continued use.*constitutes acceptance/i);
+  assert.match(docs.terms, /every material new agreement version/i);
+  assert.match(docs.terms, /explicitly re-accepted by an authorized representative/i);
+  assert.match(docs.terms, /immutable acceptance evidence/i);
+  assert.match(docs.terms, /continued use is not acceptance evidence/i);
+  assert.doesNotMatch(docs.terms, /continued use alone|not the sole evidence|when required/i);
   assert.match(docs.dpa, /Article 28/i);
   assert.match(docs.dpa, /documented instructions/i);
   assert.match(docs.dpa, /categories of data subjects/i);
   assert.match(docs.dpa, /technical and organizational measures/i);
+});
+
+test("privacy and pack metadata identify the supplier without transfer or hosting overclaims", () => {
+  assert.match(docs.privacy, /ELMER WELFIS/);
+  assert.match(docs.privacy, /930 835 978/);
+  assert.doesNotMatch(docs.privacy, /natural person|pre-incorporation/i);
+  assert.doesNotMatch(docs.privacy, /EU region|stored in the EEA|covered by SCC|SCCs\/DPF|Data Privacy Framework/i);
+  assert.match(docs.privacy, /must be verified against current production contracts and configuration/i);
+  assert.match(docs.dpa, /not a certification or proof that\s+the current hosted environment has passed review/i);
+  assert.match(docs.dpa, /require security re-confirmation against current hosted/i);
+  assert.doesNotMatch(docs.dpa, /EU region|covered by SCC|SCCs\/DPF|Data Privacy Framework/i);
+  assert.doesNotMatch(docs.readme, /continued use alone|not the sole evidence|when required/i);
+  assert.match(docs.readme, /Every material new agreement version/i);
+  assert.match(docs.readme, /explicit authorized re-acceptance/i);
+});
+
+test("production evidence retains both named-company gates and production filing NO-GO", () => {
+  assert.match(docs.evidence, /NO-GO for an actual\s+end-to-end production filing today/i);
+  assert.match(docs.evidence, /Business Terms and DPA validly accepted by an authorized representative/i);
+  assert.match(docs.evidence, /founder\/legal\/security approval/i);
+  assert.match(docs.evidence, /Hosted tenant-isolation, private-storage, and restore evidence reviewed and\s+approved/i);
+  assert.match(docs.evidence, /This verification did not establish both conditions for a named company/i);
 });
 
 test("privacy policy and DPA cover launch-critical data and processor boundaries", () => {

@@ -315,18 +315,14 @@ export const ownerCopy = {
         {
           heading: "Databehandlere og deling",
           body: [
-            "Vi selger aldri personopplysningene dine. For å levere tjenesten bruker vi enkelte underleverandører (databehandlere) som behandler opplysninger på våre vegne under databehandleravtale:",
+            "Vi selger aldri personopplysningene dine. Talli kan bruke underleverandører (databehandlere) for funksjoner som autentisering, database, lagring, hosting, valgfri innlogging, betaling og e-post. Endelig leverandørliste, roller og behandlingssteder må verifiseres mot gjeldende produksjonsavtaler og konfigurasjon før de oppgis som produksjonsfakta.",
           ],
-          bullets: [
-            "Supabase – autentisering og database.",
-            "Vercel – drift og hosting av nettjenesten.",
-            "Google – valgfri innlogging hvis du bruker «Fortsett med Google».",
-          ],
+          bullets: [],
         },
         {
           heading: "Overføring utenfor EU/EØS",
           body: [
-            "Noen av underleverandørene våre kan behandle opplysninger utenfor EU/EØS. Når det skjer, sikrer vi overføringen med EU-kommisjonens standard personvernbestemmelser (SCC) eller et annet gyldig overføringsgrunnlag.",
+            "Før en eventuell overføring utenfor EU/EØS skal Talli verifisere behandlingssted, gyldig overføringsgrunnlag og nødvendige tilleggstiltak mot gjeldende produksjonsavtaler og konfigurasjon. Denne erklæringen bekrefter ikke at en bestemt overføring, region eller mekanisme er produksjonsverifisert i dag.",
           ],
           bullets: [],
         },
@@ -365,7 +361,7 @@ export const ownerCopy = {
         {
           heading: "Sikkerhet",
           body: [
-            "Vi bruker tekniske og organisatoriske tiltak for å beskytte opplysningene dine, blant annet kryptert overføring og tilgangsstyring. Ingen tjeneste er likevel helt uten risiko, og vi oppfordrer deg til å bruke et sterkt, unikt passord.",
+            "Talli skal bruke tekniske og organisatoriske tiltak som er tilpasset risikoen, blant annet kontrollmål for tilgang, autentisering, kryptert overføring og hendelseshåndtering. Et kontrollmål beskrives ikke som implementert før det er verifisert i gjeldende produksjonsmiljø. Ingen tjeneste er helt uten risiko, og vi oppfordrer deg til å bruke et sterkt, unikt passord.",
           ],
           bullets: [],
         },
@@ -426,6 +422,7 @@ export const ownerCopy = {
           heading: "Pris og betaling",
           body: [
             "Gjeldende pris og betalingsstatus følger kundens plan i tjenesten. En gratis plan medfører ingen betaling. Før en betalt tjeneste aktiveres, vises pris og betalingsvilkår, og kunden må gjennomføre den aktuelle aktiveringen. Avtaleaksept alene utløser ingen betaling.",
+            "En innsendingspakke kan bare belastes etter at gjeldende klargjøringsporter er bestått, og en sak utenfor støttet omfang skal ikke belastes for pakken. Dersom Talli godtar en støttet sak og den mislykkes på grunn av Tallis innsendingslogikk eller integrasjon, er innsendingspakken refusjonsberettiget. Dette gjelder ikke feil i kundeopplysninger, manglende myndighetstilgang, forhold utenfor støttet omfang, frister utenfor Tallis kontroll eller myndighetsavbrudd, med mindre leverandøren har gitt en særskilt skriftlig forpliktelse.",
           ],
           bullets: [],
         },
@@ -471,7 +468,7 @@ export const ownerCopy = {
         {
           heading: "Endringer i vilkårene",
           body: [
-            "Leverandøren kan oppdatere vilkårene ved utvikling av tjenesten eller endringer i regelverket. Vesentlige endringer varsles i tjenesten eller på e-post, og ny uttrykkelig aksept innhentes når det er nødvendig. Fortsatt bruk alene er ikke eneste bevis på aksept av en vesentlig endring. Gjeldende versjon vises på denne siden.",
+            "Leverandøren kan oppdatere vilkårene ved utvikling av tjenesten eller endringer i regelverket. Enhver vesentlig ny avtaleversjon varsles i tjenesten eller på e-post og må uttrykkelig aksepteres på nytt av en representant med fullmakt før den binder kunden. Talli lagrer uforanderlig akseptbevis med kunde, dokumentversjoner og dokumentavtrykk, akseptmetode og tidspunkt. Passiv bruk er ikke akseptbevis. Gjeldende versjon vises på denne siden.",
           ],
           bullets: [],
         },
@@ -521,7 +518,7 @@ export const ownerCopy = {
         {
           heading: "4. Konfidensialitet og sikkerhet",
           body: [
-            "Leverandøren sikrer at personer med tilgang er underlagt konfidensialitet og bare får nødvendig tilgang. Leverandøren gjennomfører egnede tekniske og organisatoriske tiltak vurdert mot risikoen, blant annet tilgangsstyring, autentisering, kryptert transport, logging, sikker utvikling, sikkerhetskopiering og rutiner for gjenoppretting og hendelseshåndtering.",
+            "Leverandøren skal sikre at personer med tilgang er underlagt konfidensialitet og bare får nødvendig tilgang. Leverandøren skal gjennomføre egnede tekniske og organisatoriske tiltak vurdert mot risikoen. Kontrollmål kan omfatte tilgangsstyring, autentisering, kryptert transport, revisjonsspor, sikker utvikling, sikkerhetskopiering, gjenoppretting og hendelseshåndtering, men beskrives ikke som implementert før tiltaket er verifisert i gjeldende produksjonsmiljø.",
             "Kunden er ansvarlig for egne brukere, tilgangstildelinger, enheter, datakvalitet og lovlig behandlingsgrunnlag. Sikkerhetstiltak kan utvikles så lenge beskyttelsesnivået ikke samlet sett svekkes.",
           ],
           bullets: [],
@@ -529,7 +526,7 @@ export const ownerCopy = {
         {
           heading: "5. Underdatabehandlere",
           body: [
-            "Kunden gir generell skriftlig tillatelse til å bruke underdatabehandlere som er nødvendige for tjenesten. Leverandøren skal føre en tilgjengelig oversikt og varsle om planlagte tillegg eller utskiftninger slik at kunden kan fremsette en saklig personverninnsigelse før endringen når det er praktisk mulig.",
+            "Kunden gir generell skriftlig tillatelse til å bruke underdatabehandlere som er nødvendige for tjenesten. Leverandøren skal føre en tilgjengelig oversikt og gi forhåndsvarsel om planlagte tillegg eller utskiftninger slik at kunden kan fremsette en saklig personverninnsigelse før endringen.",
             "Leverandøren pålegger underdatabehandlere personvernforpliktelser som i det vesentlige tilsvarer denne avtalen, og er ansvarlig overfor kunden for deres oppfyllelse etter personvernregelverket.",
           ],
           bullets: [],
@@ -567,7 +564,7 @@ export const ownerCopy = {
           heading: "10. Retur, sletting og opphør",
           body: [
             "Ved opphør skal leverandøren etter kundens valg returnere eller slette personopplysninger og eksisterende kopier, med mindre lov krever fortsatt lagring. Tjenestens operative rutiner kan fastsette rimelig tidspunkt og teknisk rekkefølge for gjennomføringen, men begrenser ikke kundens valg. Kunden skal eksportere materiale den må beholde før tilgangen avsluttes.",
-            "Opplysninger som må beholdes etter lov, isoleres fra ordinær behandling og brukes bare for oppbevaringsformålet. Sikkerhetskopier slettes eller overskrives etter gjeldende rotasjon, og forpliktelsene i avtalen gjelder frem til sletting eller anonymisering.",
+            "Opplysninger som må beholdes etter lov, isoleres fra ordinær behandling og brukes bare for oppbevaringsformålet. Når sikkerhetskopiering og rotasjon er verifisert i gjeldende produksjonsmiljø, skal kopier slettes eller overskrives etter den verifiserte rotasjonen. Forpliktelsene i avtalen gjelder frem til sletting eller anonymisering.",
           ],
           bullets: [],
         },

@@ -28,8 +28,10 @@ experience.
 - The beta customer uses the same acceptance control as a later paid customer.
   The persisted service plan, price, entitlements, and production gates describe
   what is currently available.
-- Passive use, footer links, or a pre-selected checkbox do not count as
-  acceptance.
+- Passive or continued use, footer links, or a pre-selected checkbox do not
+  count as acceptance. Every material new agreement version requires explicit
+  re-acceptance by an authorized representative and a new immutable acceptance
+  record before it binds the customer.
 - DocuSign, BankID signing, negotiated order forms, and enterprise amendments
   remain optional later paths, not dependencies of self-service onboarding.
 
@@ -67,13 +69,16 @@ ELMER WELFIS as the current supplier and cover:
 - the distinction between preparation, local approval, transport receipt, and
   final authority acceptance;
 - plan, price, beta/early-access functionality, and paid-service activation;
+- the reviewed filing-package refund boundary while live billing remains gated;
 - acceptable use, confidentiality, customer data rights, service feedback,
   support, suspension, termination, export, liability, governing law, and term
   changes;
 - incorporation and priority of the DPA for processor activity.
 
-The terms do not imply that beta is a separate contract, that production filing
-is enabled, or that continued use alone accepts a material future change.
+The terms do not imply that beta is a separate contract or that production
+filing is enabled. Every material future agreement version requires explicit
+authorized re-acceptance with immutable evidence; continued use is never
+acceptance evidence.
 
 ### DPA
 
@@ -86,7 +91,8 @@ mandatory Article 28 subjects:
 - data-subject and personal-data categories;
 - documented instructions and unlawful-instruction notice;
 - confidentiality and technical/organizational security measures;
-- subprocessor authorization and notice;
+- subprocessor authorization and mandatory advance notice before a change,
+  without a practicality exception;
 - international-transfer safeguards;
 - data-subject, breach, DPIA, regulator, and audit assistance;
 - return, deletion, retention exceptions, and termination.
@@ -114,7 +120,11 @@ type ContractDocument = {
 The published document content and recorded digest must be generated from the
 same canonical content. Tests fail if content changes without a new version and
 digest. Historical accepted metadata is immutable; publishing a later version
-does not rewrite prior acceptance records.
+does not rewrite prior acceptance records. Version `2026-07-17` remains
+unchanged during this pre-release correction only because no customer
+acceptance for that version has been released or recorded. After any customer
+acceptance exists, changing canonical content requires a new version and new
+explicit acceptance.
 
 ## Acceptance experience
 
@@ -195,8 +205,9 @@ acceptance.
 - Brønnøysund failure or unsupported entity: retain the current fail-closed
   behavior and create nothing.
 - Database failure: roll back company, membership, acceptance, and audit event.
-- Later material term changes: notify customers and collect explicit acceptance
-  when required; continued use alone is not the only evidence.
+- Later material agreement versions: notify customers and require explicit
+  authorized re-acceptance with new immutable evidence before the version binds
+  the customer; continued use is not acceptance evidence.
 
 ## Tests
 

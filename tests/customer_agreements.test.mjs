@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -24,6 +25,14 @@ test("publishes separate current Business Terms and DPA records", () => {
   assert.match(currentCustomerAgreements.businessTerms.contentSha256, /^[a-f0-9]{64}$/u);
   assert.match(currentCustomerAgreements.dpa.contentSha256, /^[a-f0-9]{64}$/u);
   assert.equal(customerAgreementAuthorityStatementVersion, "authority-v1");
+  assert.equal(
+    currentCustomerAgreements.businessTerms.contentSha256,
+    createHash("sha256").update(JSON.stringify(ownerCopy.legal.terms), "utf8").digest("hex"),
+  );
+  assert.equal(
+    currentCustomerAgreements.dpa.contentSha256,
+    createHash("sha256").update(JSON.stringify(ownerCopy.legal.dpa), "utf8").digest("hex"),
+  );
 });
 
 test("uses one general supplier contract for beta and live plans", () => {
@@ -72,4 +81,39 @@ test("makes return or deletion the customer's unconditional choice except for le
     /etter kundens valg returnere eller slette[^.]*når tjenestens rutiner tillater det/iu,
   );
   assert.match(dpa, /med mindre lov krever fortsatt lagring/iu);
+});
+
+test("requires explicit authorized reacceptance with immutable evidence for every material version", () => {
+  const terms = JSON.stringify(ownerCopy.legal.terms);
+  assert.match(terms, /enhver vesentlig ny avtaleversjon/iu);
+  assert.match(terms, /uttrykkelig aksepteres på nytt av en representant med fullmakt/iu);
+  assert.match(terms, /uforanderlig akseptbevis/iu);
+  assert.doesNotMatch(terms, /fortsatt bruk[^.]*aksept/iu);
+  assert.doesNotMatch(terms, /ny uttrykkelig aksept innhentes når det er nødvendig/iu);
+});
+
+test("publishes the filing-package refund boundary while live billing remains gated", () => {
+  const terms = JSON.stringify(ownerCopy.legal.terms);
+  assert.match(terms, /innsendingspakke/iu);
+  assert.match(terms, /refusjonsberettiget/iu);
+  assert.match(terms, /Tallis innsendingslogikk eller integrasjon/iu);
+  assert.match(terms, /Betaling eller produksjonsinnsending aktiveres ikke/iu);
+});
+
+test("requires advance subprocessor notice without a practicality exception", () => {
+  const dpa = JSON.stringify(ownerCopy.legal.dpa);
+  assert.match(dpa, /forhåndsvarsel/iu);
+  assert.match(dpa, /før endringen/iu);
+  assert.doesNotMatch(dpa, /når det er praktisk mulig/iu);
+});
+
+test("public privacy and DPA copy do not assert unverified hosting or transfer controls", () => {
+  const privacy = JSON.stringify(ownerCopy.legal.privacy);
+  const dpa = JSON.stringify(ownerCopy.legal.dpa);
+  assert.doesNotMatch(privacy, /EU-kommisjonens standard personvernbestemmelser|\bSCC\b|DPF|Data Privacy Framework/iu);
+  assert.doesNotMatch(privacy, /EU-region|lagres i EØS|EEA region/iu);
+  assert.match(privacy, /må verifiseres mot gjeldende produksjonsavtaler og konfigurasjon/iu);
+  assert.match(dpa, /før tiltaket er verifisert i gjeldende produksjonsmiljø/iu);
+  assert.doesNotMatch(dpa, /gjennomfører[^.]*logging[^.]*sikkerhetskopiering[^.]*gjenoppretting/iu);
+  assert.match(dpa, /Når sikkerhetskopiering og rotasjon er verifisert i gjeldende produksjonsmiljø/iu);
 });
