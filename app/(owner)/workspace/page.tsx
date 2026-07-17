@@ -293,9 +293,19 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 value={currentCustomerAgreements.businessTerms.version}
               />
               <input
+                name="businessTermsSha256"
+                type="hidden"
+                value={currentCustomerAgreements.businessTerms.contentSha256}
+              />
+              <input
                 name="dpaVersion"
                 type="hidden"
                 value={currentCustomerAgreements.dpa.version}
+              />
+              <input
+                name="dpaSha256"
+                type="hidden"
+                value={currentCustomerAgreements.dpa.contentSha256}
               />
               <div className="checkboxLabel">
                 <input

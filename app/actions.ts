@@ -593,7 +593,9 @@ export async function createWorkspace(formData: FormData) {
     {
       agreementAccepted: formString(formData, "agreementAccepted"),
       businessTermsVersion: formString(formData, "businessTermsVersion"),
+      businessTermsSha256: formString(formData, "businessTermsSha256"),
       dpaVersion: formString(formData, "dpaVersion"),
+      dpaSha256: formString(formData, "dpaSha256"),
       orgNumber: formString(formData, "orgNumber"),
     },
     {

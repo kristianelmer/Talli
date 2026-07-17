@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import {
+import * as customerAgreements from "../app/lib/customer-agreements.ts";
+import { ownerCopy } from "../app/lib/copy.ts";
+
+const {
   assertCurrentCustomerAgreementForm,
   currentCustomerAgreements,
   customerAgreementAuthorityStatementVersion,
-} from "../app/lib/customer-agreements.ts";
-import { ownerCopy } from "../app/lib/copy.ts";
+} = customerAgreements;
 
 const legalPageSource = readFileSync(
   new URL("../app/components/LegalPage.tsx", import.meta.url),
@@ -19,8 +25,16 @@ const termsPageSource = readFileSync(new URL("../app/vilkar/page.tsx", import.me
 test("publishes separate current Business Terms and DPA records", () => {
   assert.deepEqual(Object.keys(currentCustomerAgreements), ["businessTerms", "dpa"]);
   assert.equal(currentCustomerAgreements.businessTerms.version, "2026-07-17");
+  assert.equal(
+    currentCustomerAgreements.businessTerms.contentSha256,
+    "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+  );
   assert.equal(currentCustomerAgreements.businessTerms.path, "/vilkar");
   assert.equal(currentCustomerAgreements.dpa.version, "2026-07-17");
+  assert.equal(
+    currentCustomerAgreements.dpa.contentSha256,
+    "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+  );
   assert.equal(currentCustomerAgreements.dpa.path, "/databehandleravtale");
   assert.match(currentCustomerAgreements.businessTerms.contentSha256, /^[a-f0-9]{64}$/u);
   assert.match(currentCustomerAgreements.dpa.contentSha256, /^[a-f0-9]{64}$/u);
@@ -33,6 +47,54 @@ test("publishes separate current Business Terms and DPA records", () => {
     currentCustomerAgreements.dpa.contentSha256,
     createHash("sha256").update(JSON.stringify(ownerCopy.legal.dpa), "utf8").digest("hex"),
   );
+});
+
+test("rejects canonical content drift without a pinned digest update", () => {
+  assert.throws(
+    () => customerAgreements.assertCanonicalAgreementContent(
+      "business_terms",
+      { ...ownerCopy.legal.terms, intro: `${ownerCopy.legal.terms.intro} changed` },
+      currentCustomerAgreements.businessTerms.contentSha256,
+    ),
+    /customer_agreement_content_digest_mismatch:business_terms/u,
+  );
+});
+
+test("module initialization fails when public copy drifts from the pinned digest", () => {
+  const directory = mkdtempSync(join(tmpdir(), "talli-agreement-drift-"));
+  try {
+    const moduleSource = readFileSync(
+      new URL("../app/lib/customer-agreements.ts", import.meta.url),
+      "utf8",
+    );
+    const copySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+    const mutatedCopySource = copySource.replace(
+      "Disse vilkårene er avtalen mellom selskapet",
+      "ENDRET: Disse vilkårene er avtalen mellom selskapet",
+    );
+    assert.notEqual(mutatedCopySource, copySource);
+
+    mkdirSync(join(directory, "app", "lib"), { recursive: true });
+    writeFileSync(join(directory, "app", "lib", "customer-agreements.ts"), moduleSource);
+    writeFileSync(join(directory, "app", "lib", "copy.ts"), mutatedCopySource);
+    writeFileSync(
+      join(directory, "app", "lib", "launch-copy.ts"),
+      readFileSync(new URL("../app/lib/launch-copy.ts", import.meta.url), "utf8"),
+    );
+
+    const importedModuleUrl = pathToFileURL(
+      join(directory, "app", "lib", "customer-agreements.ts"),
+    ).href;
+    const result = spawnSync(
+      process.execPath,
+      ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--experimental-strip-types", "--input-type=module", "--eval", `import(${JSON.stringify(importedModuleUrl)})`],
+      { encoding: "utf8" },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /customer_agreement_content_digest_mismatch:business_terms/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("uses one general supplier contract for beta and live plans", () => {
@@ -48,7 +110,9 @@ test("rejects absent and stale company agreement assent", () => {
   const current = {
     agreementAccepted: "accepted",
     businessTermsVersion: "2026-07-17",
+    businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
     dpaVersion: "2026-07-17",
+    dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
   };
   assert.doesNotThrow(() => assertCurrentCustomerAgreementForm(current));
   assert.throws(
@@ -57,6 +121,14 @@ test("rejects absent and stale company agreement assent", () => {
   );
   assert.throws(
     () => assertCurrentCustomerAgreementForm({ ...current, dpaVersion: "2026-07-16" }),
+    /Avtalevilkårene er oppdatert/u,
+  );
+  assert.throws(
+    () => assertCurrentCustomerAgreementForm({ ...current, businessTermsSha256: "stale" }),
+    /Avtalevilkårene er oppdatert/u,
+  );
+  assert.throws(
+    () => assertCurrentCustomerAgreementForm({ ...current, dpaSha256: "stale" }),
     /Avtalevilkårene er oppdatert/u,
   );
 });

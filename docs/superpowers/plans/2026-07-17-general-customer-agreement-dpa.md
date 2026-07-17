@@ -4,7 +4,7 @@
 
 **Goal:** Give every Talli business customer the same explicit, versioned Business Terms and DPA acceptance when creating a company workspace, while keeping beta differences in plan and capability state.
 
-**Architecture:** Canonical Norwegian legal documents live in the application and produce stable SHA-256 evidence through a small server module. A service-role-only, security-definer Supabase function creates the company, owner membership, immutable agreement acceptance, and audit event atomically after the authenticated Server Action validates Brønnøysund identity and current documents. The existing workspace form passes exact document versions and an explicit authority checkbox; browser clients cannot call the privileged creation function.
+**Architecture:** Canonical Norwegian legal documents live in the application. Each version has an expected SHA-256 digest pinned in the registry; module initialization hashes the exact public copy and fails tests/builds on drift. A service-role-only, security-definer Supabase function creates the company, owner membership, immutable agreement acceptance, and audit event atomically after the authenticated Server Action validates submitted versions and digests before Brønnøysund lookup. The workspace form passes exact versions, exact digests, and an explicit authority checkbox; browser clients cannot call the privileged creation function.
 
 **Tech Stack:** Next.js 16 App Router and Server Actions, React 19, TypeScript 6, Node test runner, Supabase/Postgres migrations and RLS.
 
@@ -22,6 +22,14 @@
 - Existing companies receive no fabricated acceptance or silent backfill.
 - User-facing copy is Norwegian-first; implementation, tests, and operator-only language may be English.
 - Production code follows red-green-refactor: every behavioral change begins with a failing test.
+- Version `2026-07-17` is retained only for the documented pre-release state in
+  which no released customer acceptance exists.
+- Pinned digests: Business Terms
+  `f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543`;
+  DPA `083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c`.
+- The server rejects any submitted version or digest mismatch before
+  Brønnøysund lookup or service-role work and sends only trusted registry
+  metadata to the unchanged 19-key RPC payload.
 
 ---
 
@@ -38,11 +46,11 @@
 
 **Interfaces:**
 - Consumes: `ownerCopy.legal.terms` and the new `ownerCopy.legal.dpa` as canonical public document content.
-- Produces: `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm(input)` for Task 3.
+- Produces: pinned `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, `assertCanonicalAgreementContent`, and digest-aware `assertCurrentCustomerAgreementForm(input)` for Task 3.
 
 - [ ] **Step 1: Write failing document and registry tests**
 
-Create `tests/customer_agreements.test.mjs` with tests that import `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm`; assert that terms are version `2026-07-17`, path `/vilkar`, DPA is version `2026-07-17`, path `/databehandleravtale`, both digests match `/^[a-f0-9]{64}$/`, both name `ELMER WELFIS` and `930 835 978`, beta-specific availability is expressed through plan/capability language, and missing, false, or stale form values throw these exact messages:
+Create `tests/customer_agreements.test.mjs` with tests that assert the exact version/path/pinned-digest pairs, independently hash the exact public copy, mutate canonical content and require deterministic mismatch failure, and require missing, false, stale-version, or stale-digest form values to throw the stale-agreement message.
 
 ```js
 import assert from "node:assert/strict";
@@ -79,7 +87,9 @@ test("rejects absent and stale company agreement assent", () => {
   const current = {
     agreementAccepted: "accepted",
     businessTermsVersion: "2026-07-17",
+    businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
     dpaVersion: "2026-07-17",
+    dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
   };
   assert.doesNotThrow(() => assertCurrentCustomerAgreementForm(current));
   assert.throws(
@@ -103,7 +113,7 @@ Expected: FAIL because `app/lib/customer-agreements.ts` does not exist.
 
 - [ ] **Step 3: Implement canonical document metadata and validation**
 
-Create `app/lib/customer-agreements.ts` as a server-only-compatible TypeScript module using `createHash` from `node:crypto`. Serialize each document with `JSON.stringify`, compute the digest from the exact public copy, and export:
+Create `app/lib/customer-agreements.ts` as a server-compatible TypeScript module using `createHash` from `node:crypto`. Pin the expected digest beside each version. Serialize each exact public document with `JSON.stringify` during module initialization, compute its digest, and throw `customer_agreement_content_digest_mismatch:<kind>` when it differs from the pinned value. `assertCurrentCustomerAgreementForm` must compare both submitted versions and both submitted digests with the registry.
 
 ```ts
 import { createHash } from "node:crypto";
@@ -112,18 +122,35 @@ import { ownerCopy } from "./copy";
 
 export const customerAgreementAuthorityStatementVersion = "authority-v1" as const;
 
+const currentAgreementMetadata = {
+  business_terms: {
+    version: "2026-07-17",
+    effectiveDate: "2026-07-17",
+    contentSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+  },
+  dpa: {
+    version: "2026-07-17",
+    effectiveDate: "2026-07-17",
+    contentSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+  },
+} as const;
+
 function contractDocument(
   kind: "business_terms" | "dpa",
   path: "/vilkar" | "/databehandleravtale",
   content: typeof ownerCopy.legal.terms,
 ) {
-  const canonical = JSON.stringify(content);
+  const metadata = currentAgreementMetadata[kind];
+  const actualSha256 = createHash("sha256").update(JSON.stringify(content), "utf8").digest("hex");
+  if (actualSha256 !== metadata.contentSha256) {
+    throw new Error(`customer_agreement_content_digest_mismatch:${kind}`);
+  }
   return {
     kind,
-    version: "2026-07-17",
-    effectiveDate: "2026-07-17",
+    version: metadata.version,
+    effectiveDate: metadata.effectiveDate,
     path,
-    contentSha256: createHash("sha256").update(canonical, "utf8").digest("hex"),
+    contentSha256: actualSha256,
   } as const;
 }
 
@@ -135,14 +162,18 @@ export const currentCustomerAgreements = {
 export function assertCurrentCustomerAgreementForm(input: {
   agreementAccepted: string;
   businessTermsVersion: string;
+  businessTermsSha256: string;
   dpaVersion: string;
+  dpaSha256: string;
 }) {
   if (input.agreementAccepted !== "accepted") {
     throw new Error("Du må bekrefte fullmakt og godta avtalevilkårene.");
   }
   if (
     input.businessTermsVersion !== currentCustomerAgreements.businessTerms.version ||
-    input.dpaVersion !== currentCustomerAgreements.dpa.version
+    input.businessTermsSha256 !== currentCustomerAgreements.businessTerms.contentSha256 ||
+    input.dpaVersion !== currentCustomerAgreements.dpa.version ||
+    input.dpaSha256 !== currentCustomerAgreements.dpa.contentSha256
   ) {
     throw new Error("Avtalevilkårene er oppdatert. Les dem og bekreft på nytt.");
   }
@@ -316,7 +347,9 @@ test("company creation requires current explicit company assent", () => {
   assert.match(actions, /assertCurrentCustomerAgreementForm/iu);
   assert.match(actions, /formString\(formData, "agreementAccepted"\)/iu);
   assert.match(actions, /formString\(formData, "businessTermsVersion"\)/iu);
+  assert.match(actions, /formString\(formData, "businessTermsSha256"\)/iu);
   assert.match(actions, /formString\(formData, "dpaVersion"\)/iu);
+  assert.match(actions, /formString\(formData, "dpaSha256"\)/iu);
   assert.match(actions, /\.rpc\("create_company_workspace_with_acceptance"/iu);
   assert.doesNotMatch(actions.match(/export async function createWorkspace[\s\S]+?\n}\n/iu)?.[0] ?? "", /\.from\("companies"\)\.insert/iu);
 });
@@ -330,7 +363,9 @@ test("workspace creation shows an unchecked authority and agreement control", ()
   assert.match(workspace, /href="\/vilkar"/iu);
   assert.match(workspace, /href="\/databehandleravtale"/iu);
   assert.match(workspace, /businessTermsVersion/iu);
+  assert.match(workspace, /businessTermsSha256/iu);
   assert.match(workspace, /dpaVersion/iu);
+  assert.match(workspace, /dpaSha256/iu);
 });
 ```
 
@@ -344,7 +379,7 @@ Expected: FAIL because the form and action do not yet implement acceptance.
 
 - [ ] **Step 3: Implement form and server action integration**
 
-Import `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm` into `app/actions.ts`. At the beginning of `createWorkspace`, after user authentication and before Brønnøysund lookup, read the three form fields and validate them. Preserve the existing Brønnøysund lookup and supported-AS checks. Replace direct company, membership, and audit inserts with the Task 2 RPC through `createSupabaseServiceRoleClient()`, passing `p_actor_id: user.id`, the normalized Brønnøysund identity, plus:
+Import `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm` into `app/actions.ts`. At the beginning of `createWorkspace`, after user authentication and before Brønnøysund lookup, read the acceptance value plus both submitted versions and both submitted digests and validate them. Preserve the existing Brønnøysund lookup and supported-AS checks. Replace direct company, membership, and audit inserts with the Task 2 RPC through `createSupabaseServiceRoleClient()`, passing `p_actor_id: user.id`, the normalized Brønnøysund identity, plus:
 
 ```ts
 p_business_terms_version: currentCustomerAgreements.businessTerms.version,
@@ -361,7 +396,7 @@ p_acceptance_method: "in_app_clickwrap",
 
 If validation or RPC fails, use the existing `failTo` boundary and create nothing.
 
-In the workspace company-creation form, add hidden current version inputs and one required unchecked checkbox. The exact visible copy is:
+In the workspace company-creation form, add hidden current version and digest inputs for both documents and one required unchecked checkbox. The exact visible copy is:
 
 > Jeg bekrefter at jeg har fullmakt til å inngå avtale på vegne av selskapet, og godtar Talli Brukervilkår for bedriftskunder og Databehandleravtalen.
 

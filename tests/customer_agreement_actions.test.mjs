@@ -17,7 +17,9 @@ test("company creation requires current explicit company assent", () => {
   assert.match(createWorkspaceAction, /onboardCustomer/iu);
   assert.match(createWorkspaceAction, /formString\(formData, "agreementAccepted"\)/iu);
   assert.match(createWorkspaceAction, /formString\(formData, "businessTermsVersion"\)/iu);
+  assert.match(createWorkspaceAction, /formString\(formData, "businessTermsSha256"\)/iu);
   assert.match(createWorkspaceAction, /formString\(formData, "dpaVersion"\)/iu);
+  assert.match(createWorkspaceAction, /formString\(formData, "dpaSha256"\)/iu);
   assert.match(createWorkspaceAction, /createSupabaseServiceRoleClient\(\)/iu);
   assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance"/iu);
   assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance",\s*payload\)/iu);
@@ -50,7 +52,11 @@ test("workspace creation shows an unchecked authority and agreement control", ()
   assert.match(companyCreationForm, /href="\/vilkar"/iu);
   assert.match(companyCreationForm, /href="\/databehandleravtale"/iu);
   assert.match(companyCreationForm, /name="businessTermsVersion"/iu);
+  assert.match(companyCreationForm, /name="businessTermsSha256"/iu);
+  assert.match(companyCreationForm, /value=\{currentCustomerAgreements\.businessTerms\.contentSha256\}/iu);
   assert.match(companyCreationForm, /name="dpaVersion"/iu);
+  assert.match(companyCreationForm, /name="dpaSha256"/iu);
+  assert.match(companyCreationForm, /value=\{currentCustomerAgreements\.dpa\.contentSha256\}/iu);
   const agreementLabel = companyCreationForm.match(/<label[^>]+htmlFor="agreementAccepted"[\s\S]+?<\/label>/iu)?.[0] ?? "";
   assert.doesNotMatch(agreementLabel, /<Link/iu);
 });

@@ -30,7 +30,9 @@ export type CustomerWorkspaceRpcPayload = {
 export type CustomerOnboardingInput = {
   agreementAccepted: string;
   businessTermsVersion: string;
+  businessTermsSha256: string;
   dpaVersion: string;
+  dpaSha256: string;
   orgNumber: string;
 };
 

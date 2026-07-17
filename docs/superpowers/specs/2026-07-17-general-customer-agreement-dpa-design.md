@@ -117,9 +117,11 @@ type ContractDocument = {
 };
 ```
 
-The published document content and recorded digest must be generated from the
-same canonical content. Tests fail if content changes without a new version and
-digest. Historical accepted metadata is immutable; publishing a later version
+The expected SHA-256 digest is pinned beside each document version. At module
+initialization, Talli serializes the exact public copy, hashes it, and fails if
+the result differs from that version's pinned digest. Tests and builds therefore
+fail when content changes without an intentional version and digest update.
+Historical accepted metadata is immutable; publishing a later version
 does not rewrite prior acceptance records. Version `2026-07-17` remains
 unchanged during this pre-release correction only because no customer
 acceptance for that version has been released or recorded. After any customer
@@ -136,14 +138,19 @@ control:
 > og godtar Talli Brukervilkår for bedriftskunder og Databehandleravtalen.
 
 `Brukervilkår for bedriftskunder` and `Databehandleravtalen` link to their
-current public, versioned pages and open without losing form state. The submit
-button remains the existing company-creation action. Server validation rejects
-a missing or unexpected checkbox value; client-only validation is not trusted.
+current public, versioned pages and open without losing form state. The form
+submits the current version and pinned digest for both documents. The submit
+button remains the existing company-creation action. Before Brønnøysund lookup
+or service-role work, server validation rejects a missing or unexpected
+checkbox value and any version or digest mismatch; client-only validation is
+not trusted.
 
-After Brønnøysund resolves the organization number, the server binds acceptance
-to the resolved legal name and organization number. If the lookup, supported-AS
-check, company insert, owner membership, or acceptance insert fails, no partial
-company is created.
+After the submitted versions and digests match the rendered registry, the
+server uses only the trusted current registry metadata in the 19-key RPC
+payload. Brønnøysund then resolves the organization number and the server binds
+acceptance to the resolved legal name and organization number. If validation,
+lookup, supported-AS check, company insert, owner membership, or acceptance
+insert fails, no partial company is created.
 
 The workspace lists the active plan and capabilities independently of the legal
 documents. During beta this can remain `Free beta`, preparation/comparison
