@@ -25,6 +25,16 @@ This guide does not unlock public self-service filing, corrections, expanded RF-
 - **Systembruker** is the Altinn access that lets Talli act for one approved company.
 - **Pilot entitlement** is a short-lived record that allows one exact pilot case.
 - **Unknown outcome** means Talli cannot prove whether the authority received a send.
+- **DPA** is the agreement that says how Talli handles personal data for a company.
+- **Git SHA** is the exact code version that is deployed.
+- **SHA-256** is a check value used to prove that saved bytes have not changed.
+- **Immutable** means a saved record cannot be changed later.
+- **Delegated preflight** is a read-only check that the exact Systembruker access works.
+- **GET** is a read request that must not change authority data.
+- **POST** is a send request that may create or change authority data.
+- **UUID idempotency key** is a unique send ID used to detect the same request again.
+- **Append-only journal** is an event log where old entries cannot be changed.
+- **Artifact persistence** means saving a receipt or feedback file so it can be read later.
 
 ## Sources used by this guide
 
@@ -259,20 +269,22 @@ for this rehearsal.
 9. Rehearse database recovery from the isolated proof.
 10. Record the authority-approved alternative filing route.
 11. Record the support route and deadline.
-12. Save the rehearsal result.
+12. Ask the founder to approve the fallback route.
+13. Save the founder's decision.
+14. Save the rehearsal result.
 
 ### Evidence to retain
 
 Save a monitoring and rollback report or durable link. Include alert results, safe
 log samples, switch checks, Vercel rollback proof, database recovery proof, named
 owner, named observer, alternative route, support route, and reviewer decision.
-The on-call observer reviews it.
+Include the founder's fallback-route decision. The on-call observer reviews it.
 
 ### Pass criteria
 
 Alerts work. Logs are safe. Both kill switches can be checked and changed. Vercel
 rollback works. Database recovery works. An observer and alternative filing route
-are named.
+are named. The founder approved the fallback route.
 
 ### Stop conditions
 
@@ -529,8 +541,16 @@ authority-operations switch returned to false.
 
 ### Stop conditions
 
-Stop if the callback differs. Stop if the result is not allowlisted. Stop if an
-unexpected endpoint appears. Stop if the switch cannot be confirmed false.
+If any action fails after `TALLI_AUTHORITY_OPS_ENABLED` is enabled, do these
+actions in order. This includes a changed callback, a result that is not
+allowlisted, an unexpected endpoint, or an unclear switch state.
+
+1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. Redeploy the approved Git SHA.
+4. Verify both deployed values are false.
+5. Stop the callback window.
+6. Escalate the failure.
 
 ### Runtime signoff or record
 
@@ -637,33 +657,42 @@ Stage 9 passed. Every evidence link is durable and sanitized. The latest
 1. Record reviewer, date, evidence link, and decision for `launch_legal_name_public_copy`.
 2. Record reviewer, date, evidence link, and decision for `legal_policy_pack`.
 3. Record reviewer, date, evidence link, and decision for `security_restore`.
-4. Record reviewer, date, evidence link, and decision for `billing_refund`.
-5. Record reviewer, date, evidence link, and decision for `support_rollback`.
-6. Record reviewer, date, evidence link, and decision for `rf1086_authority`.
-7. Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
-8. Check the expiry of every signoff that can expire.
-9. Check that every decision is approved.
-10. Save the gate result.
+4. Record reviewer, date, evidence link, and decision for `support_rollback`.
+5. Record reviewer, date, evidence link, and decision for `rf1086_authority`.
+6. Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
+7. Choose the paid path or the exact billing-exempt path.
+8. Record an approved `billing_refund` signoff for the paid path.
+9. Record the founder's decision to create an exact billing-exempt pilot for the free path.
+10. Record the billing reviewer's approval of the chosen path.
+11. Check the expiry of every signoff that can expire.
+12. Check that every unconditional decision is approved.
+13. Save the chosen billing path with the gate result.
 
 ### Evidence to retain
 
-Retain the source evidence behind every `launch_signoffs` row. Save a sanitized
-gate report that lists each key, reviewer, review date, evidence link, decision,
-and expiry. The founder reviews the full set.
+Retain the source evidence behind every recorded `launch_signoffs` row. Save a
+sanitized gate report that lists each unconditional key, reviewer, review date,
+evidence link, decision, and expiry. Add either the approved `billing_refund`
+record or the founder and billing reviewer decisions to use an exact billing-exempt
+pilot. The founder reviews the full set.
 
 ### Pass criteria
 
-All seven required keys exist and are approved. Every key has a reviewer, date,
-evidence link, and decision. `security_restore` is current.
+The six unconditional signoffs exist and are approved. Every recorded signoff has
+a reviewer, date, evidence link, and decision. `security_restore` is current. The
+paid path has an approved `billing_refund`, or the free path has a documented
+decision to create one exact billing-exempt pilot in stage 11.
 
 ### Stop conditions
 
-Stop if any key is missing. Stop if any decision is rejected. Stop if any evidence
-link is missing. Stop if `security_restore` is stale.
+Stop if any unconditional signoff is missing. Stop if any decision is rejected.
+Stop if any evidence link is missing. Stop if `security_restore` is stale. Stop if
+neither an approved `billing_refund` nor a documented exact billing-exempt path
+exists.
 
 ### Runtime signoff or record
 
-The required RF-1086 `launch_signoffs` keys are:
+The RF-1086 `launch_signoffs` keys used by the release gate are:
 
 - `launch_legal_name_public_copy`
 - `legal_policy_pack`
@@ -673,13 +702,14 @@ The required RF-1086 `launch_signoffs` keys are:
 - `rf1086_authority`
 - `founder_production_go_live`
 
-`billing_refund` may be skipped only when the exact active pilot entitlement has
-`billing_exempt=true`. No other signoff may be skipped for a free pilot.
+`billing_refund` is conditional. At this stage, it may be left unrecorded only when
+the founder and billing reviewer have approved creating one exact billing-exempt
+pilot in stage 11. No other signoff may be skipped for a free pilot.
 
 ### Capability unlocked
 
-This stage allows the exact pilot entitlement to be created after all case checks
-also pass.
+This stage allows the operator to create the exact pilot entitlement. It does not
+claim that the final release gate is ready.
 
 ### Next stage
 
@@ -712,11 +742,15 @@ active. The exact case facts match stage 5.
 6. Link the accepted Systembruker request.
 7. Set a short start time.
 8. Set a short expiry time.
-9. Set `billing_exempt=true` for the approved free pilot.
-10. Complete billing and refund proof for a paid pilot.
-11. Create the entitlement only after preflight.
-12. Read the saved entitlement back.
-13. Save its immutable reference.
+9. Read the billing path approved in stage 10.
+10. Set `billing_exempt=true` only for the approved free pilot.
+11. Set `billing_exempt=false` for the paid pilot.
+12. Check the approved `billing_refund` for the paid pilot.
+13. Create the entitlement only after preflight.
+14. Read the saved entitlement back.
+15. Run the full filing release gate for the exact case.
+16. Save the release-gate result.
+17. Save the entitlement's immutable reference.
 
 An active exact pilot entitlement is required.
 
@@ -732,13 +766,15 @@ and billing path. The founder and billing reviewer review it.
 
 The active entitlement matches the exact company, user, year, obligation, and
 profile. Its validity window is short. It was created after accepted delegation
-and preflight. The paid path has billing and refund proof, or the exact free pilot
-has `billing_exempt=true`.
+and preflight. The paid path has billing and an approved `billing_refund`, or the
+exact free pilot has `billing_exempt=true`. The final full filing release gate is
+ready for the exact case.
 
 ### Stop conditions
 
 Stop if the entitlement is broad, expired, or mismatched. Stop if it was created
-before preflight. Stop if neither billing nor an exact exemption is valid.
+before preflight. Stop if neither billing nor an exact exemption is valid. Stop if
+the full filing release gate is not ready for the exact case.
 
 ### Runtime signoff or record
 
@@ -874,9 +910,16 @@ The journal recorded the attempt.
 
 ### Stop conditions
 
-Stop if any gate changes. Stop if the entitlement mismatches. Stop if the kill
-switch is unavailable. Stop if an unexpected endpoint appears. Stop if the window
-expires. Do not send twice.
+If any action fails after `TALLI_RF1086_PRODUCTION_ENABLED` is enabled, do these
+actions in order. This includes a changed gate, an entitlement mismatch, an
+unavailable kill switch, an unexpected endpoint, or an expired window.
+
+1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. Redeploy the approved Git SHA.
+4. Verify both deployed values are false.
+5. Stop the filing window.
+6. Do not send twice.
 
 ### Runtime signoff or record
 
@@ -933,6 +976,8 @@ If the outcome is unknown, follow these instructions exactly:
 3. Do not send again.
 4. Keep the idempotency record and journal.
 5. Reconcile the result through read-only authority calls and support.
+6. Redeploy the approved Git SHA.
+7. Verify both deployed values are false.
 
 A transport reference is not final acceptance.
 
@@ -951,10 +996,24 @@ switches are false.
 
 ### Stop conditions
 
-Stop and escalate if the outcome is `unknown`. Stop if artifact persistence fails.
-Stop if final feedback is absent. Never repeat the filing POST. For a failed
-read-and-persist step, use **Sjekk status på nytt** only after storage health is
-restored and the existing object's byte size and SHA-256 hash are checked.
+For an `unknown` outcome, use the exact steps above before stopping and escalating.
+
+If artifact persistence fails or final feedback is absent, do these actions in
+order:
+
+1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. Redeploy the approved Git SHA.
+4. Verify both deployed values are false.
+5. Stop the filing window.
+6. Escalate the failure.
+7. Never repeat the filing POST.
+
+Use the same seven actions if any other closeout action fails before both deployed
+switches have been verified false.
+
+For a failed read-and-persist step, use **Sjekk status på nytt** only after storage
+health is restored and the existing object's byte size and SHA-256 hash are checked.
 
 ### Runtime signoff or record
 
