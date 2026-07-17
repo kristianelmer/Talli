@@ -19,6 +19,19 @@ test("terms cover holding-first scope, unsupported cases, filing limits, refunds
   assert.match(docs.terms, /must not provide bespoke legal advice/i);
 });
 
+test("legal pack uses one beta-to-live business agreement and explicit electronic acceptance", () => {
+  assert.match(docs.terms, /Business Terms/i);
+  assert.match(docs.terms, /ELMER WELFIS/);
+  assert.match(docs.terms, /930 835 978/);
+  assert.match(docs.terms, /plan and capabilities shown in the service/i);
+  assert.match(docs.terms, /Data Processing Agreement/i);
+  assert.doesNotMatch(docs.terms, /continued use.*constitutes acceptance/i);
+  assert.match(docs.dpa, /Article 28/i);
+  assert.match(docs.dpa, /documented instructions/i);
+  assert.match(docs.dpa, /categories of data subjects/i);
+  assert.match(docs.dpa, /technical and organizational measures/i);
+});
+
 test("privacy policy and DPA cover launch-critical data and processor boundaries", () => {
   for (const required of [
     /company data/i,

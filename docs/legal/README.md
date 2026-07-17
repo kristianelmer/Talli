@@ -1,7 +1,7 @@
 # Legal and Operational Policy Drafts
 
 Status: draft pack for #72  
-Last updated: 2026-06-27
+Last updated: 2026-07-17
 
 Files:
 
@@ -12,73 +12,79 @@ Files:
 - `incident-response-policy-draft.md`
 
 These drafts convert product decisions into reviewable policy text. They are not
-legal signoff. Issue #72 should remain open until founder/legal/security review
-records approval, dates, and any required changes.
+legal, founder, security, or production-filing approval. Issue #72 must remain
+open until the required reviewers record approval, dates, evidence, and any
+required changes.
 
-## Founder decisions recorded (2026-06-24, Kristian Elmer)
+## Current Agreement Model
 
-The following open factual items were resolved by the founder and written into the
-drafts above:
+ELMER WELFIS, org.nr. 930 835 978 is the current supplier. Talli uses one set of
+general B2B Business Terms and one incorporated Data Processing Agreement for
+beta, early-access, and generally available customers. Beta is a plan and
+capability state, not a separate agreement. Pricing, payment, features, and
+production-filing availability follow the plan and capabilities shown in the
+service and their separate release gates.
 
-1. Controller/operator — Kristian Elmer (natural person), pre-incorporation;
-   migrate to the Talli AS name + org number once registered.
-2. Processors — Supabase (EU), Vercel, Vipps MobilePay (payment), Resend (email),
-   Norwegian authority systems.
-3. Retention floor — minimum 5 years for primary accounting material
-   (bokføringsloven § 13).
-4. Data transfer — EEA residency; US-incorporated suppliers (Vercel, Resend)
-   covered by SCCs/DPF.
-5. Breach notification — Datatilsynet within 72 hours (GDPR art. 33); high-risk
-   user notice without undue delay (art. 34).
+An authenticated representative explicitly accepts the current Business Terms
+and DPA for a Brønnøysund-resolved named company during company onboarding. The
+representative must affirm authority to bind that company. Account signup,
+passive use, footer links, or pre-selected controls do not constitute company
+acceptance.
 
-## Founder decisions recorded (2026-06-27, Kristian Elmer)
+The append-only acceptance evidence records the customer legal name and
+organization number, accepting user, immutable Business Terms and DPA versions
+and SHA-256 digests, authority-statement version, acceptance method, and
+timestamp. Later document publication must not rewrite historical acceptance.
+Existing customer records must not be fabricated or silently backfilled.
 
-Further founder-decidable items resolved and written into the drafts:
+The Privacy Notice is disclosed separately; it is not presented as a contract
+the company must accept.
 
-6. Archive responsibility after export — the customer is responsible for safekeeping
-   the exported archive; Talli's copy is deleted after the retention hold expires.
-7. User identifiers in retained audit records — pseudonymized with a stable opaque
-   token (audit trail preserved, no longer directly identifying).
-8. Support/operator access model — read-only, time-boxed, request/incident-gated, and
-   fully audited; no standing operator access to company data.
-9. Incident roles — founder holds all incident roles solely pre-incorporation;
-   reassign on incorporation.
-10. Customer breach notification — content defined (nature, data/companies affected,
-    consequences, remediation, user steps) and delivered by Resend email; polished
-    templates deferred to the support owner before broad public launch.
-11. Processor breach notification — Talli notifies the controller without undue delay so
-    the controller can meet its own art. 33/34 duties.
-12. Legal basis (GDPR art. 6) — contract, legal obligation, legitimate interests, and
-    consent mapped per processing purpose (final per-purpose confirmation pending legal).
+## Decisions Preserved in the Draft Pack
 
-Still required before the `legal_policy_pack` signoff can be recorded as approved:
+- The customer controls its company, shareholder, accounting-document, and
+  filing data; ELMER WELFIS/Talli acts as processor when providing the service
+  on documented instructions, subject to final legal review.
+- Archive export precedes cancellation. The customer is responsible for its
+  exported copy, while lawful retention and deletion remain governed by the
+  retention policy and final legal review.
+- The intended support/operator access model is least-privilege, read-only by
+  default, time-bounded, request- or incident-gated, and audited.
+- Processor breach notification is without undue delay so the controller can
+  assess its own notification duties.
+- Refund eligibility, liability/cap language, support boundaries, governing
+  law, and jurisdiction remain explicit review items.
 
-- Legal reviewer approves liability/jurisdiction, controller/processor role, per-purpose
-  legal basis, and final privacy/DPA wording.
-- Security reviewer confirms technical measures and support/operator access model.
-- Founder approves customer-facing deletion/return obligations and refund wording.
-- On incorporation, replace the pre-incorporation operator with the AS entity.
+Earlier provider-region and international-transfer notes are not production
+facts. Subprocessor identity, role, location, certification, contract,
+international transfer path, and transfer basis must be re-confirmed against
+the current deployed service before publication. The drafts must not be read as
+asserting unverified residency, SCC, DPF, certification, or security claims.
 
-## Founder self-attestation (2026-06-24, Kristian Elmer)
+## Remaining Approval and Release Gates
 
-For a **private/limited pre-launch only**, the founder has reviewed and approved
-this policy pack as the operative drafts and elected to record the
-`legal_policy_pack` signoff with **external legal review deferred**. This
-attestation is scoped to limited early access and does **not** cover a broad
-public launch.
+Before the legal pack is approved for a named company:
 
-Deferred follow-ups that must be completed before broad public launch:
+- Founder approves commercial terms, refund wording, customer-facing
+  deletion/return obligations, and the final subprocessor list.
+- Legal reviewer approves electronic company acceptance, the B2B scope,
+  controller/processor boundary, Article 28 DPA, legal bases, retention,
+  liability/remedies, transfer wording, governing law, and jurisdiction.
+- Security reviewer confirms the technical and organizational measures,
+  support/operator access model, subprocessor facts, and security appendix
+  against current hosted evidence.
 
-- Independent legal review of liability/jurisdiction and controller/processor role.
-- Security reviewer confirmation of production technical measures and
-  support/operator access model.
-- Entity migration to the Talli AS on incorporation.
+Valid electronic acceptance does not by itself clear named-company beta entry.
+That gate also requires approved, current evidence for hosted tenant isolation,
+private storage, and restore in the deployed environment. Neither agreement
+acceptance nor this draft pack enables billing, grants filing entitlement,
+approves production credentials, or authorizes a production filing.
 
-Machine-checkable signoff gate:
+## Signoff Record Boundary
 
 - Implementation: `app/lib/launch-signoff.ts`
 - Test: `npm run test:launch-signoff`
-- Required key for this issue: `legal_policy_pack`
-- Closure rule: terms, privacy policy, DPA, retention/delete/export policy, and
-  incident response policy must be approved with reviewer, review date, evidence
-  link, and decision. Draft text alone is not legal approval.
+- Required key: `legal_policy_pack`
+- Closure rule: final terms, privacy policy, DPA, retention/delete/export
+  policy, and incident policy must be approved with reviewer, review date,
+  evidence link, and decision. Draft text and automated tests are not approval.

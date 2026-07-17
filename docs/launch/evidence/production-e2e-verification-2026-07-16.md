@@ -850,7 +850,10 @@ Before any named-company data is entered or uploaded to Talli for the
 preparation/export comparison beta, both of these conditions must be approved
 and current:
 
-1. A signed customer agreement and DPA for the named company.
+1. Business Terms and DPA validly accepted by an authorized representative for
+   the named company, with immutable evidence of the customer, document
+   versions and digests, acceptance method, and timestamp. Final
+   founder/legal/security approval of the agreement pack must also be current.
 2. Hosted tenant-isolation, private-storage, and restore evidence reviewed and
    approved for the current deployed environment.
 
