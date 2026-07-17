@@ -31,6 +31,7 @@
     "test:company-tax-return-authority-script": "node --test tests/company_tax_return_authority_script.test.mjs",
     "test:company-tax-return-xml": "node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs",
     "test:customer-agreements": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/customer_agreements.test.mjs",
+    "test:customer-agreement-schema": "node --test tests/customer_agreement_schema.test.mjs",
     "test:ci-gate": "node --test tests/ci_release_gate.test.mjs",
     "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs",
     "test:corporate-decision-workflow": "node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs",
