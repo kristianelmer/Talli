@@ -566,7 +566,7 @@ export const ownerCopy = {
         {
           heading: "10. Retur, sletting og opphør",
           body: [
-            "Ved opphør skal leverandøren etter kundens valg returnere eller slette personopplysninger og eksisterende kopier når tjenestens rutiner tillater det, med mindre lov krever fortsatt lagring. Kunden skal eksportere materiale den må beholde før tilgangen avsluttes.",
+            "Ved opphør skal leverandøren etter kundens valg returnere eller slette personopplysninger og eksisterende kopier, med mindre lov krever fortsatt lagring. Tjenestens operative rutiner kan fastsette rimelig tidspunkt og teknisk rekkefølge for gjennomføringen, men begrenser ikke kundens valg. Kunden skal eksportere materiale den må beholde før tilgangen avsluttes.",
             "Opplysninger som må beholdes etter lov, isoleres fra ordinær behandling og brukes bare for oppbevaringsformålet. Sikkerhetskopier slettes eller overskrives etter gjeldende rotasjon, og forpliktelsene i avtalen gjelder frem til sletting eller anonymisering.",
           ],
           bullets: [],

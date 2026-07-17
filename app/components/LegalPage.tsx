@@ -31,14 +31,15 @@ export function LegalPage({
           <span className="appBrandMark" aria-hidden="true" />
           <span>{ownerCopy.brand}</span>
         </div>
-        <p className="legalMeta">
-          {c.lastUpdatedLabel}: {c.lastUpdated}
-        </p>
         {version && effectiveDate ? (
           <p className="legalMeta">
             Versjon {version} · Gjelder fra {effectiveDate}
           </p>
-        ) : null}
+        ) : (
+          <p className="legalMeta">
+            {c.lastUpdatedLabel}: {c.lastUpdated}
+          </p>
+        )}
         <h1 className="legalTitle">{doc.title}</h1>
         <p className="legalIntro">{doc.intro}</p>
         {doc.sections.map((section) => (
