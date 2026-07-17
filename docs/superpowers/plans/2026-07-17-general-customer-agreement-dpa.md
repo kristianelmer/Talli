@@ -4,7 +4,7 @@
 
 **Goal:** Give every Talli business customer the same explicit, versioned Business Terms and DPA acceptance when creating a company workspace, while keeping beta differences in plan and capability state.
 
-**Architecture:** Canonical Norwegian legal documents live in the application and produce stable SHA-256 evidence through a small server module. An authenticated, security-definer Supabase function creates the company, owner membership, immutable agreement acceptance, and audit event atomically. The existing workspace form passes exact document versions and an explicit authority checkbox; the server rejects missing or stale assent before calling the database.
+**Architecture:** Canonical Norwegian legal documents live in the application and produce stable SHA-256 evidence through a small server module. A service-role-only, security-definer Supabase function creates the company, owner membership, immutable agreement acceptance, and audit event atomically after the authenticated Server Action validates Brønnøysund identity and current documents. The existing workspace form passes exact document versions and an explicit authority checkbox; browser clients cannot call the privileged creation function.
 
 **Tech Stack:** Next.js 16 App Router and Server Actions, React 19, TypeScript 6, Node test runner, Supabase/Postgres migrations and RLS.
 
@@ -172,11 +172,12 @@ git commit -m "feat: publish versioned business terms and dpa"
 - Create: `supabase/migrations/20260717110000_customer_agreement_acceptances.sql`
 - Create: `supabase/rollback/customer_agreement_acceptances.sql`
 - Create: `tests/customer_agreement_schema.test.mjs`
+- Create: `tests/customer_agreement_database_runtime.test.mjs`
 - Modify: `package.json`
 
 **Interfaces:**
 - Consumes: company identity and current agreement evidence supplied by Task 3.
-- Produces: RPC `public.create_company_workspace_with_acceptance(text, text, text, text, text, text, text, text, text, date, text, text, text, date, text, text, text, text)` returning `uuid`.
+- Produces: service-role-only RPC `public.create_company_workspace_with_acceptance(uuid, text, text, text, text, text, text, text, text, text, date, text, text, text, date, text, text, text, text)` returning `uuid`.
 
 - [ ] **Step 1: Write the failing schema contract test**
 
@@ -206,19 +207,26 @@ test("stores immutable company-scoped agreement evidence", () => {
 
 test("creates company, owner, acceptance, and audit evidence atomically", () => {
   const fn = sql.match(/create or replace function public\.create_company_workspace_with_acceptance[\s\S]+?\n\$\$;/iu)?.[0] ?? "";
-  assert.match(fn, /auth\.uid\(\)/iu);
-  assert.match(fn, /p_entity_type <> 'AS'/iu);
+  assert.match(fn, /auth\.role\(\).*service_role/iu);
+  assert.match(fn, /p_actor_id is null/iu);
+  assert.match(fn, /p_entity_type is distinct from 'AS'/iu);
   assert.match(fn, /insert into public\.companies/iu);
   assert.match(fn, /insert into public\.company_memberships/iu);
   assert.match(fn, /insert into public\.customer_agreement_acceptances/iu);
   assert.match(fn, /insert into public\.audit_events/iu);
   assert.doesNotMatch(fn, /production_pilot_entitlements/iu);
   assert.match(sql, /revoke all on function public\.create_company_workspace_with_acceptance[\s\S]+from public, anon/iu);
-  assert.match(sql, /grant execute on function public\.create_company_workspace_with_acceptance[\s\S]+to authenticated/iu);
+  assert.doesNotMatch(sql, /grant execute on function public\.create_company_workspace_with_acceptance[\s\S]+to authenticated/iu);
+  assert.match(sql, /grant execute on function public\.create_company_workspace_with_acceptance[\s\S]+to service_role/iu);
 });
 ```
 
 Add `"test:customer-agreement-schema": "node --test tests/customer_agreement_schema.test.mjs"` to `package.json`.
+Add the runtime test to the existing `test:supabase` command so the normal local
+database gate always proves that authenticated and anonymous clients cannot call
+the RPC, service role cannot update/delete/truncate/directly insert evidence,
+null acceptance values fail, successful service-role creation writes all four
+records atomically, and a failed call writes none.
 
 - [ ] **Step 2: Run the schema test and verify RED**
 
@@ -228,21 +236,22 @@ Expected: FAIL because the migration does not exist.
 
 - [ ] **Step 3: Implement the append-only table, RLS, RPC, grants, and rollback**
 
-Create the migration with the exact evidence columns from the design. Use `check (business_terms_sha256 ~ '^[a-f0-9]{64}$')` and the equivalent DPA check. Add a `before update or delete` trigger using a dedicated function that always raises `customer_agreement_acceptance_is_immutable`. Enable RLS; grant authenticated users only `select`; permit reads only where an accepted company membership exists.
+Create the migration with the exact evidence columns from the design. Use `check (business_terms_sha256 ~ '^[a-f0-9]{64}$')` and the equivalent DPA check. Add a `before update or delete` trigger using a dedicated function that always raises `customer_agreement_acceptance_is_immutable`. Use `on delete restrict` for acceptance evidence. Enable RLS; grant authenticated users only `select`; permit reads only where an accepted company membership exists. Revoke every table privilege from service role and grant it only `select`, so it cannot update, delete, truncate, or directly insert evidence.
 
-Implement the named 18-argument RPC. It must:
+Implement the named 19-argument RPC. It must:
 
 ```sql
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := p_actor_id;
   v_company_id uuid;
   v_now timestamptz := now();
 begin
-  if v_actor_id is null then raise exception 'authentication_required'; end if;
+  if auth.role() is distinct from 'service_role' then raise exception 'service_role_required'; end if;
+  if v_actor_id is null then raise exception 'authenticated_actor_required'; end if;
   if p_org_number !~ '^[0-9]{9}$' then raise exception 'invalid_org_number'; end if;
-  if p_entity_type <> 'AS' then raise exception 'unsupported_entity_type'; end if;
-  if p_acceptance_method <> 'in_app_clickwrap' then raise exception 'invalid_acceptance_method'; end if;
-  if p_authority_statement_version <> 'authority-v1' then raise exception 'invalid_authority_statement'; end if;
+  if p_entity_type is distinct from 'AS' then raise exception 'unsupported_entity_type'; end if;
+  if p_acceptance_method is distinct from 'in_app_clickwrap' then raise exception 'invalid_acceptance_method'; end if;
+  if p_authority_statement_version is distinct from 'authority-v1' then raise exception 'invalid_authority_statement'; end if;
   if p_business_terms_sha256 !~ '^[a-f0-9]{64}$' or p_dpa_sha256 !~ '^[a-f0-9]{64}$' then
     raise exception 'invalid_contract_digest';
   end if;
@@ -260,7 +269,7 @@ begin
 end;
 ```
 
-Use one PL/pgSQL function transaction; do not catch exceptions inside it. Revoke all table and function privileges from `public`, `anon`, and `authenticated` before granting the exact select/execute privileges. Grant service role full table access for operational evidence and tests. The rollback must revoke RPC access before dropping the function, policy, trigger, trigger function, and table.
+Use one PL/pgSQL function transaction; do not catch exceptions inside it. Revoke function execution from `public`, `anon`, and `authenticated`, and grant it only to `service_role`. Revoke all table privileges from all API roles, then grant authenticated tenant-scoped `select` and service-role `select` only. The rollback must revoke RPC access before dropping the function, policy, trigger, trigger function, and table, and must remain safe when the table is already absent.
 
 - [ ] **Step 4: Run schema/grant tests for GREEN**
 
@@ -268,10 +277,13 @@ Run: `npm run test:customer-agreement-schema && npm run test:supabase-grants`
 
 Expected: both commands exit 0.
 
+Then run `npm run test:supabase:local` and require the committed runtime test to
+pass alongside the existing local database and owner-browser suites.
+
 - [ ] **Step 5: Commit the schema slice**
 
 ```bash
-git add supabase/migrations/20260717110000_customer_agreement_acceptances.sql supabase/rollback/customer_agreement_acceptances.sql tests/customer_agreement_schema.test.mjs package.json
+git add supabase/migrations/20260717110000_customer_agreement_acceptances.sql supabase/rollback/customer_agreement_acceptances.sql tests/customer_agreement_schema.test.mjs tests/customer_agreement_database_runtime.test.mjs package.json docs/superpowers/specs/2026-07-17-general-customer-agreement-dpa-design.md docs/superpowers/plans/2026-07-17-general-customer-agreement-dpa.md
 git commit -m "feat: persist immutable customer agreement acceptance"
 ```
 
@@ -332,7 +344,7 @@ Expected: FAIL because the form and action do not yet implement acceptance.
 
 - [ ] **Step 3: Implement form and server action integration**
 
-Import `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm` into `app/actions.ts`. At the beginning of `createWorkspace`, after user authentication and before Brønnøysund lookup, read the three form fields and validate them. Preserve the existing Brønnøysund lookup and supported-AS checks. Replace direct company, membership, and audit inserts with the Task 2 RPC, passing the normalized Brønnøysund identity plus:
+Import `currentCustomerAgreements`, `customerAgreementAuthorityStatementVersion`, and `assertCurrentCustomerAgreementForm` into `app/actions.ts`. At the beginning of `createWorkspace`, after user authentication and before Brønnøysund lookup, read the three form fields and validate them. Preserve the existing Brønnøysund lookup and supported-AS checks. Replace direct company, membership, and audit inserts with the Task 2 RPC through `createSupabaseServiceRoleClient()`, passing `p_actor_id: user.id`, the normalized Brønnøysund identity, plus:
 
 ```ts
 p_business_terms_version: currentCustomerAgreements.businessTerms.version,

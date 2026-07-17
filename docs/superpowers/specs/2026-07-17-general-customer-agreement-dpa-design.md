@@ -159,9 +159,12 @@ read the company's acceptance record. Support access follows the existing
 audited support boundary. The table does not store passwords, tokens, document
 bodies, or broad browser fingerprints.
 
-Company creation moves behind one security-definer database function that:
+Company creation moves behind one service-role-only security-definer database
+function called exclusively from the authenticated Server Action. Browser clients
+cannot execute the function. The Server Action supplies the user ID only after
+`getUser()` succeeds, and the function:
 
-1. verifies the authenticated user;
+1. verifies the service-role caller and supplied authenticated user ID;
 2. accepts only server-supplied, Brønnøysund-normalized company identity;
 3. creates the company;
 4. creates the accepted owner membership;
@@ -172,8 +175,10 @@ Company creation moves behind one security-definer database function that:
 
 The function validates required versions, digests, paths, authority statement,
 and acceptance method against explicit arguments supplied by trusted server
-code. It does not grant production-filing entitlement and does not bypass any
-existing launch or authority gate.
+code. Its execute privilege is revoked from `public`, `anon`, and
+`authenticated`; the acceptance table grants the service role only the minimum
+read access needed for evidence. It does not grant production-filing entitlement
+and does not bypass any existing launch or authority gate.
 
 Existing company workspaces are not silently backfilled. No historical
 acceptance is fabricated. A later migration flow may collect current acceptance
