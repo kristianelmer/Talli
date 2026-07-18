@@ -102,8 +102,9 @@ function contradictoryGatePattern(subject) {
 
   return new RegExp(
     [
-      `${referencedSubject}\\s+(?:is|are)\\s+(?:optional|not\\s+required)`,
-      `${referencedSubject}\\s+need\\s+not\\b`,
+      `${referencedSubject}\\s+(?:is|are)\\s+(?:optional|not\\s+(?:required|mandatory))`,
+      `${referencedSubject}\\s+(?:isn't|isn’t|aren't|aren’t)\\s+(?:required|mandatory)`,
+      `${referencedSubject}\\s+(?:need\\s+not|needn't|needn’t)\\b`,
       `(?:(?:does|do)\\s+not|never)\\s+requires?\\s+${referencedSubject}`,
       `requires?\\s+no\\s+${referencedSubject}`,
       `${referencedSubject}\\s+(?:may|can)\\s+be\\s+bypassed`,
@@ -149,6 +150,15 @@ const mandatoryGates = [
     subject: "production adapter",
   },
 ];
+
+const concreteOperatorVerbs = new Set([
+  "Ask", "Build", "Check", "Choose", "Compare", "Confirm", "Create", "Decide",
+  "Defer", "Deploy", "Do", "Enable", "Explain", "Export", "Generate", "Keep",
+  "Leave", "Link", "List", "Name", "Open", "Perform", "Poll", "Prepare", "Read",
+  "Reconcile", "Record", "Redeploy", "Rehearse", "Repeat", "Require", "Resolve",
+  "Restore", "Review", "Run", "Save", "Select", "Set", "Show", "Sign", "Start",
+  "Stop", "Test", "Treat", "Try", "Validate", "Verify", "Watch",
+]);
 
 test("checklist and guide keep the exact ordered stage sequence", () => {
   const checklistSlugs = extractSlugs(
@@ -211,7 +221,14 @@ test("mandatory-gate contradiction matcher rejects bypasses but allows fail-clos
   const contradictions = [
     "Fresh AAL2 is optional.",
     "Fresh AAL2 is not required.",
+    "Fresh AAL2 is not mandatory.",
+    "Fresh AAL2 isn't required.",
+    "Fresh AAL2 isn’t mandatory.",
+    "Fresh AAL2 aren't required.",
+    "Fresh AAL2 aren’t mandatory.",
     "Fresh AAL2 need not be current.",
+    "Fresh AAL2 needn't be current.",
+    "Fresh AAL2 needn’t be current.",
     "This flow does not require fresh AAL2.",
     "This flow never requires fresh AAL2.",
     "The release requires no fresh AAL2.",
@@ -243,6 +260,11 @@ test("every guide stage uses only numbered checkbox action entries", () => {
         continue;
       }
       if (/^\d+\. \[ \] \S/.test(line)) {
+        const firstWord = line.match(/^\d+\. \[ \] (\S+)/)?.[1];
+        assert.ok(
+          concreteOperatorVerbs.has(firstWord),
+          `${slug} action must start with a concrete operator verb: ${line}`,
+        );
         hasPrecedingCheckbox = true;
         continue;
       }
@@ -253,6 +275,16 @@ test("every guide stage uses only numbered checkbox action entries", () => {
         `${slug} has a continuation without a preceding checkbox: ${line}`,
       );
     }
+  }
+});
+
+test("mandatory gate declarations stay outside exact action checkboxes", () => {
+  for (const { slug, sentence } of mandatoryGates) {
+    assert.ok(guideStage(slug).includes(sentence), `${slug} must retain "${sentence}"`);
+    assert.ok(
+      !exactActions(guideStage(slug)).includes(sentence),
+      `${slug} must not use a passive gate declaration as an action: ${sentence}`,
+    );
   }
 });
 

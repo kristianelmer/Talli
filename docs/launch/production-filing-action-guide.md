@@ -582,6 +582,10 @@ authority reviewer reviews the evidence.
 Stage 8 passed. Both production switches are false. The company and owner match
 stage 5.
 
+Production authority permission is required.
+
+Accepted authority-test evidence is required.
+
 ### Exact actions
 
 1. [ ] Start one standard Systembruker request for the exact company.
@@ -597,8 +601,6 @@ stage 5.
 11. [ ] Check the exact external reference.
 12. [ ] Check that the short-lived token was discarded.
 13. [ ] Save the accepted and verified request reference.
-14. [ ] Production authority permission is required.
-15. [ ] Accepted authority-test evidence is required.
 
 ### Evidence to retain
 
@@ -752,6 +754,10 @@ reviews the paid or exempt path.
 Stage 10 passed. The accepted and preflight-verified Systembruker request is still
 active. The exact case facts match stage 5.
 
+An active exact pilot entitlement is required.
+
+Billing or an exact billing exemption is required.
+
 ### Exact actions
 
 1. [ ] Record the exact company ID.
@@ -783,8 +789,6 @@ active. The exact case facts match stage 5.
 3. [ ] Verify the exact company, user, year, obligation, profile, and validity window.
 4. [ ] Verify the saved billing value matches the chosen branch.
 5. [ ] Save the entitlement's immutable reference.
-6. [ ] An active exact pilot entitlement is required.
-7. [ ] Billing or an exact billing exemption is required.
 
 ### Evidence to retain
 
@@ -838,6 +842,10 @@ founder reviews the result.
 Stage 11 passed. The exact entitlement is active. The final preview is ready and
 will not be edited during review.
 
+Fresh AAL2 is required.
+
+Filing readiness is required.
+
 ### Exact actions
 
 1. [ ] Ask the named owner to sign in with fresh AAL2.
@@ -852,8 +860,6 @@ will not be edited during review.
 10. [ ] Read the saved hashes back.
 11. [ ] Compare the saved hashes with the approved artifacts.
 12. [ ] Save the approval reference.
-13. [ ] Fresh AAL2 is required.
-14. [ ] Filing readiness is required.
 
 ### Evidence to retain
 
@@ -917,7 +923,7 @@ approved window are recorded. Both production switches are false before the wind
 12. [ ] Record secret-store readiness.
 13. [ ] Verify the exact scope and permission for this production filing.
 14. [ ] Validate that the required production configuration is present without exposing secrets.
-15. [ ] Never copy the key.
+15. [ ] Keep the production key out of the evidence. Never copy the key.
 16. [ ] Verify the immediate kill switch.
 17. [ ] Verify that no unexpected authority endpoint is present.
 18. [ ] Keep both production switches false.
@@ -928,13 +934,12 @@ approved window are recorded. Both production switches are false before the wind
 23. [ ] Stop before enabling if any other disabled reason remains.
 24. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
 25. [ ] Deploy the approved Git SHA.
-26. [ ] The production adapter must be implemented and enabled.
-27. [ ] Immediately run the actual full release gate for the exact case.
-28. [ ] Require the actual gate result to be `production_ready`.
-29. [ ] Prepare one UUID idempotency key.
-30. [ ] Ask the owner to press Send once.
-31. [ ] Watch the append-only journal.
-32. [ ] Record the operator case reference.
+26. [ ] Run the actual full release gate for the exact case immediately.
+27. [ ] Require the actual gate result to be `production_ready`.
+28. [ ] Prepare one UUID idempotency key.
+29. [ ] Ask the owner to press Send once.
+30. [ ] Watch the append-only journal.
+31. [ ] Record the operator case reference.
 
 ### Evidence to retain
 
@@ -948,6 +953,8 @@ and final `founder_production_go_live` record. Never copy the key. The observer
 reviews it.
 
 ### Pass criteria
+
+The production adapter must be implemented and enabled.
 
 The pre-window check had no disabled reason except `production_adapter_disabled`.
 The exact entitlement and immutable approval matched. Credential evidence is
@@ -1039,7 +1046,7 @@ unchanged.
 5. [ ] Redeploy the approved Git SHA.
 6. [ ] Verify both deployed values are false.
 7. [ ] Reconcile the result through read-only authority calls and support.
-8. [ ] A transport reference is not final acceptance.
+8. [ ] Treat a transport reference as incomplete; a transport reference is not final acceptance.
 
 ### Evidence to retain
 
