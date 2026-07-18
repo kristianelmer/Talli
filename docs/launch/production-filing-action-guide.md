@@ -523,8 +523,7 @@ production switches are false.
 10. [ ] Redeploy the same approved Git SHA.
 11. [ ] Verify the deployed switch is false.
 12. [ ] Save the redacted audit reference.
-
-Do not use a real filing as a connection test.
+13. [ ] Do not use a real filing as a connection test.
 
 ### Evidence to retain
 
@@ -598,10 +597,8 @@ stage 5.
 11. [ ] Check the exact external reference.
 12. [ ] Check that the short-lived token was discarded.
 13. [ ] Save the accepted and verified request reference.
-
-Production authority permission is required.
-
-Accepted authority-test evidence is required.
+14. [ ] Production authority permission is required.
+15. [ ] Accepted authority-test evidence is required.
 
 ### Evidence to retain
 
@@ -659,16 +656,16 @@ Stage 9 passed. Every evidence link is durable and sanitized. The latest
 3. [ ] Record reviewer, date, evidence link, and decision for `security_restore`.
 4. [ ] Record reviewer, date, evidence link, and decision for `support_rollback`.
 5. [ ] Record reviewer, date, evidence link, and decision for `rf1086_authority`.
-6. [ ] Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
+6. [ ] Leave `founder_production_go_live` pending. It cannot be approved yet.
 7. [ ] Choose the free-pilot branch or the paid-filing branch below.
+8. [ ] Perform only one branch.
 
-The operator performs only one branch.
+#### If this is the provisional free-pilot branch
 
-#### If this is the free pilot
-
-1. [ ] Record the founder's decision to create one exact billing-exempt pilot.
+1. [ ] Record only the founder's provisional intent to create one exact billing-exempt pilot.
 2. [ ] Record the billing reviewer's approval of the billing-exempt path.
-3. [ ] Save the billing-exempt path with the signoff review.
+3. [ ] Record that the billing exemption is not active until stage 11 creates and reads back the exact entitlement.
+4. [ ] Save the provisional billing-exempt path with the signoff review.
 
 #### If this is a paid filing
 
@@ -679,30 +676,36 @@ The operator performs only one branch.
 #### After the chosen branch
 
 1. [ ] Check the expiry of every signoff that can expire.
-2. [ ] Check that every unconditional decision is approved.
-3. [ ] Save the signoff review result.
+2. [ ] Check that the five currently approvable unconditional decisions are approved.
+3. [ ] Save the provisional signoff review result.
+4. [ ] Defer the final signoff-set validation until stage 13.
 
 ### Evidence to retain
 
 Retain the source evidence behind every recorded `launch_signoffs` row. Save a
-sanitized gate report that lists each unconditional key, reviewer, review date,
-evidence link, decision, and expiry. Add either the approved `billing_refund`
-record or the founder and billing reviewer decisions to use an exact billing-exempt
-pilot. The founder reviews the full set.
+sanitized provisional gate report that lists each recorded key, reviewer, review
+date, evidence link, decision, and expiry. Mark `founder_production_go_live` as
+pending. Add either the approved `billing_refund` record or the founder and billing
+reviewer decisions that provisionally approve the intent to create an exact
+billing-exempt pilot. The founder reviews this provisional set.
 
 ### Pass criteria
 
-The six unconditional signoffs exist and are approved. Every recorded signoff has
-a reviewer, date, evidence link, and decision. `security_restore` is current. The
-paid path has an approved `billing_refund`, or the free path has a documented
-decision to create one exact billing-exempt pilot in stage 11.
+The five unconditional signoffs that can be decided now exist and are approved.
+Every recorded signoff has a reviewer, date, evidence link, and decision.
+`security_restore` is current. `founder_production_go_live` remains pending. The
+paid path has an approved `billing_refund`, or the provisional free path has a
+documented intent to create one exact billing-exempt pilot in stage 11. This stage
+does not claim that the billing exemption is active or that final signoff-set
+validation has passed.
 
 ### Stop conditions
 
-Stop if any unconditional signoff is missing. Stop if any decision is rejected.
-Stop if any evidence link is missing. Stop if `security_restore` is stale. Stop if
-neither an approved `billing_refund` nor a documented exact billing-exempt path
-exists.
+Stop if any currently approvable unconditional signoff is missing. Stop if any
+decision is rejected. Stop if any evidence link is missing. Stop if
+`security_restore` is stale. Stop if `founder_production_go_live` is approved at
+this stage. Stop if neither an approved `billing_refund` nor a documented intent
+to create an exact billing-exempt path exists.
 
 ### Runtime signoff or record
 
@@ -717,8 +720,11 @@ The RF-1086 `launch_signoffs` keys used by the release gate are:
 - `founder_production_go_live`
 
 `billing_refund` is conditional. At this stage, it may be left unrecorded only when
-the founder and billing reviewer have approved creating one exact billing-exempt
-pilot in stage 11. No other signoff may be skipped for a free pilot.
+the founder and billing reviewer have provisionally approved the intent to create
+one exact billing-exempt pilot in stage 11. `founder_production_go_live` must stay
+pending and cannot be approved yet. Stage 13 records or reconfirms it after the
+active exact entitlement and fresh-AAL2 immutable owner approval exist. No other
+signoff may be skipped for a free pilot.
 
 ### Capability unlocked
 
@@ -757,8 +763,7 @@ active. The exact case facts match stage 5.
 7. [ ] Set a short start time.
 8. [ ] Set a short expiry time.
 9. [ ] Read the billing path approved in stage 10.
-
-The operator performs only one branch.
+10. [ ] Perform only one branch.
 
 #### If this is the free pilot
 
@@ -778,10 +783,8 @@ The operator performs only one branch.
 3. [ ] Verify the exact company, user, year, obligation, profile, and validity window.
 4. [ ] Verify the saved billing value matches the chosen branch.
 5. [ ] Save the entitlement's immutable reference.
-
-An active exact pilot entitlement is required.
-
-Billing or an exact billing exemption is required.
+6. [ ] An active exact pilot entitlement is required.
+7. [ ] Billing or an exact billing exemption is required.
 
 ### Evidence to retain
 
@@ -849,10 +852,8 @@ will not be edited during review.
 10. [ ] Read the saved hashes back.
 11. [ ] Compare the saved hashes with the approved artifacts.
 12. [ ] Save the approval reference.
-
-Fresh AAL2 is required.
-
-Filing readiness is required.
+13. [ ] Fresh AAL2 is required.
+14. [ ] Filing readiness is required.
 
 ### Evidence to retain
 
@@ -910,41 +911,63 @@ approved window are recorded. Both production switches are false before the wind
 6. [ ] Record the approved start and end time.
 7. [ ] Verify the exact entitlement again.
 8. [ ] Verify the immutable approval hashes again.
-9. [ ] Verify the immediate kill switch.
-10. [ ] Verify that no unexpected authority endpoint is present.
-11. [ ] Keep both production switches false.
-12. [ ] Run the pre-window release-gate check for the exact case.
-13. [ ] Confirm that every disabled reason except `production_adapter_disabled` is clear.
-14. [ ] Stop before enabling if any other disabled reason remains.
-15. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
-16. [ ] Deploy the approved Git SHA.
-17. [ ] Immediately run the actual full release gate for the exact case.
-18. [ ] Require the actual gate result to be `production_ready`.
-19. [ ] Prepare one UUID idempotency key.
-20. [ ] Ask the owner to press Send once.
-21. [ ] Watch the append-only journal.
-22. [ ] Record the operator case reference.
-
-The production adapter must be implemented and enabled.
+9. [ ] Record sanitized evidence of the production Maskinporten client/key fingerprint.
+10. [ ] Record the credential rotation owner.
+11. [ ] Record the credential revocation path.
+12. [ ] Record secret-store readiness.
+13. [ ] Verify the exact scope and permission for this production filing.
+14. [ ] Validate that the required production configuration is present without exposing secrets.
+15. [ ] Never copy the key.
+16. [ ] Verify the immediate kill switch.
+17. [ ] Verify that no unexpected authority endpoint is present.
+18. [ ] Keep both production switches false.
+19. [ ] Record or reconfirm `founder_production_go_live` with the complete evidence set from stages 1–12 and the production credential-readiness evidence.
+20. [ ] Run the final signoff-set validation for the exact case.
+21. [ ] Run the pre-window full release-gate check for the exact case.
+22. [ ] Confirm that every disabled reason except `production_adapter_disabled` is clear.
+23. [ ] Stop before enabling if any other disabled reason remains.
+24. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
+25. [ ] Deploy the approved Git SHA.
+26. [ ] The production adapter must be implemented and enabled.
+27. [ ] Immediately run the actual full release gate for the exact case.
+28. [ ] Require the actual gate result to be `production_ready`.
+29. [ ] Prepare one UUID idempotency key.
+30. [ ] Ask the owner to press Send once.
+31. [ ] Watch the append-only journal.
+32. [ ] Record the operator case reference.
 
 ### Evidence to retain
 
 Save a sanitized journal link and operator case. Include the operator, owner,
 observer, window, deployed Git SHA, pre-window gate result, actual full gate result,
 entitlement reference, approval reference, idempotency reference, safe authority
-reference, and timestamps. The observer reviews it.
+reference, and timestamps. Include the production Maskinporten client/key
+fingerprint, rotation owner, revocation path, secret-store readiness, exact scope
+and permission, sanitized configuration-presence result, final signoff-set result,
+and final `founder_production_go_live` record. Never copy the key. The observer
+reviews it.
 
 ### Pass criteria
 
 The pre-window check had no disabled reason except `production_adapter_disabled`.
-The exact entitlement matched. The approved window was active. The production
-adapter was implemented and enabled. The actual full release gate returned
-`production_ready` before Send. Send happened once. The journal recorded the attempt.
+The exact entitlement and immutable approval matched. Credential evidence is
+complete and the required production configuration is present. The exact scope
+and permission are correct. The final signoff set passed and
+`founder_production_go_live` was recorded or reconfirmed with the complete evidence
+set. The approved window was active. The production adapter was implemented and
+enabled. The actual full release gate returned `production_ready` before Send.
+Send happened once. The journal recorded the attempt.
 
 ### Stop conditions
 
 If the pre-window check has any disabled reason other than
 `production_adapter_disabled`, stop before enabling the switch. Do not send.
+
+Stop before enabling if the production credential fingerprint, rotation owner,
+revocation path, secret-store readiness, exact scope or permission, or sanitized
+configuration-presence result is missing or wrong. Stop if the key was copied or
+exposed. Stop if final signoff-set validation fails or
+`founder_production_go_live` is not current for the complete evidence set.
 
 If the actual full gate does not return `production_ready`, or any later action
 fails after `TALLI_RF1086_PRODUCTION_ENABLED` is enabled, do these actions in
@@ -1007,22 +1030,16 @@ unchanged.
 13. [ ] Export the closeout evidence package.
 14. [ ] Verify that the package can be restored.
 
-If the outcome is unknown, follow these instructions exactly:
-
-1. [ ] Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
-2. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
-3. [ ] Redeploy the approved Git SHA.
-4. [ ] Verify both deployed values are false.
-
-After the deployed shutdown is proven, keep these five instructions in order:
+#### If the outcome is unknown
 
 1. [ ] Stop the filing window.
 2. [ ] Set both production switches to false.
 3. [ ] Do not send again.
 4. [ ] Keep the idempotency record and journal.
-5. [ ] Reconcile the result through read-only authority calls and support.
-
-A transport reference is not final acceptance.
+5. [ ] Redeploy the approved Git SHA.
+6. [ ] Verify both deployed values are false.
+7. [ ] Reconcile the result through read-only authority calls and support.
+8. [ ] A transport reference is not final acceptance.
 
 ### Evidence to retain
 

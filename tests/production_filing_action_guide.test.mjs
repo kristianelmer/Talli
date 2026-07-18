@@ -92,6 +92,64 @@ function assertStageIncludesExact(slug, sentences) {
   }
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function contradictoryGatePattern(subject) {
+  const exactSubject = escapeRegExp(subject);
+  const referencedSubject = `(?:an?\\s+|the\\s+)?${exactSubject}`;
+
+  return new RegExp(
+    [
+      `${referencedSubject}\\s+(?:is|are)\\s+(?:optional|not\\s+required)`,
+      `${referencedSubject}\\s+need\\s+not\\b`,
+      `(?:(?:does|do)\\s+not|never)\\s+requires?\\s+${referencedSubject}`,
+      `requires?\\s+no\\s+${referencedSubject}`,
+      `${referencedSubject}\\s+(?:may|can)\\s+be\\s+bypassed`,
+    ].join("|"),
+    "i",
+  );
+}
+
+const mandatoryGates = [
+  {
+    slug: "complete-systembruker-approval-and-preflight",
+    sentence: "Production authority permission is required.",
+    subject: "production authority permission",
+  },
+  {
+    slug: "complete-systembruker-approval-and-preflight",
+    sentence: "Accepted authority-test evidence is required.",
+    subject: "accepted authority-test evidence",
+  },
+  {
+    slug: "create-the-pilot-entitlement-and-billing-path",
+    sentence: "An active exact pilot entitlement is required.",
+    subject: "active exact pilot entitlement",
+  },
+  {
+    slug: "create-the-pilot-entitlement-and-billing-path",
+    sentence: "Billing or an exact billing exemption is required.",
+    subject: "billing or an exact billing exemption",
+  },
+  {
+    slug: "capture-the-owners-final-approval",
+    sentence: "Fresh AAL2 is required.",
+    subject: "fresh AAL2",
+  },
+  {
+    slug: "capture-the-owners-final-approval",
+    sentence: "Filing readiness is required.",
+    subject: "filing readiness",
+  },
+  {
+    slug: "run-the-production-filing-window",
+    sentence: "The production adapter must be implemented and enabled.",
+    subject: "production adapter",
+  },
+];
+
 test("checklist and guide keep the exact ordered stage sequence", () => {
   const checklistSlugs = extractSlugs(
     checklist,
@@ -135,17 +193,129 @@ test("both documents keep case-specific gates in their operating stages", () => 
   ]);
 });
 
-test("every guide stage uses only numbered checkbox action entries", () => {
-  for (const slug of requiredStageSlugs) {
-    const actionLines = exactActions(guideStage(slug))
-      .split("\n")
-      .filter((line) => /^\s*(?:\d+\.|[-+*])\s+/.test(line));
-
-    assert.ok(actionLines.length > 0, `${slug} must include at least one action`);
-    for (const line of actionLines) {
-      assert.match(line, /^\d+\. \[ \] \S/, `${slug} has an invalid action: ${line}`);
+test("mandatory gates stay affirmative without localized contradictions", () => {
+  for (const { slug, sentence, subject } of mandatoryGates) {
+    for (const documentStage of [checklistStage(slug), guideStage(slug)]) {
+      assert.ok(documentStage.includes(sentence), `${slug} must include "${sentence}"`);
+      assert.doesNotMatch(
+        documentStage,
+        contradictoryGatePattern(subject),
+        `${slug} contradicts its ${subject} gate`,
+      );
     }
   }
+});
+
+test("mandatory-gate contradiction matcher rejects bypasses but allows fail-closed language", () => {
+  const pattern = contradictoryGatePattern("fresh AAL2");
+  const contradictions = [
+    "Fresh AAL2 is optional.",
+    "Fresh AAL2 is not required.",
+    "Fresh AAL2 need not be current.",
+    "This flow does not require fresh AAL2.",
+    "This flow never requires fresh AAL2.",
+    "The release requires no fresh AAL2.",
+    "Fresh AAL2 may be bypassed.",
+    "Fresh AAL2 can be bypassed.",
+  ];
+  const safeLanguage = [
+    "Fresh AAL2 is required.",
+    "No bypass is allowed.",
+    "Never bypass fresh AAL2.",
+    "The release requires fresh AAL2.",
+  ];
+
+  for (const example of contradictions) assert.match(example, pattern);
+  for (const example of safeLanguage) assert.doesNotMatch(example, pattern);
+});
+
+test("every guide stage uses only numbered checkbox action entries", () => {
+  for (const slug of requiredStageSlugs) {
+    const lines = exactActions(guideStage(slug)).split("\n");
+    const actionLines = lines.filter((line) => /^\d+\. \[ \] \S/.test(line));
+    let hasPrecedingCheckbox = false;
+
+    assert.ok(actionLines.length > 0, `${slug} must include at least one action`);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      if (/^#### \S/.test(line)) {
+        hasPrecedingCheckbox = false;
+        continue;
+      }
+      if (/^\d+\. \[ \] \S/.test(line)) {
+        hasPrecedingCheckbox = true;
+        continue;
+      }
+
+      assert.match(line, /^\s{2,}\S/, `${slug} has an uncheckable action: ${line}`);
+      assert.ok(
+        hasPrecedingCheckbox,
+        `${slug} has a continuation without a preceding checkbox: ${line}`,
+      );
+    }
+  }
+});
+
+test("founder go-live approval stays pending until the complete evidence set exists", () => {
+  const signoffStage = guideStage("record-the-required-launch-signoffs");
+  const filingStage = guideStage("run-the-production-filing-window");
+
+  assert.match(signoffStage, /founder_production_go_live[^\n]*pending/i);
+  assert.match(signoffStage, /cannot be approved yet/i);
+  assert.match(checklistStage("record-the-required-launch-signoffs"), /pending/i);
+  assert.match(
+    filingStage,
+    /record or reconfirm `founder_production_go_live`[^\n]*complete evidence set/i,
+  );
+  assert.match(checklistStage("run-the-production-filing-window"), /record or reconfirm/i);
+  assert.ok(filingStage.indexOf("founder_production_go_live") < filingStage.indexOf("TALLI_RF1086_PRODUCTION_ENABLED=true"));
+});
+
+test("production credential readiness is verified without exposing the key", () => {
+  const filingStage = guideStage("run-the-production-filing-window");
+  const requiredCredentialEvidence = [
+    /Maskinporten client\/key fingerprint/i,
+    /rotation owner/i,
+    /revocation path/i,
+    /secret-store readiness/i,
+    /exact scope and permission/i,
+    /required production configuration is present/i,
+    /Never copy the key\./i,
+  ];
+
+  for (const pattern of requiredCredentialEvidence) {
+    assert.match(filingStage, pattern);
+    assert.match(checklistStage("run-the-production-filing-window"), pattern);
+  }
+});
+
+test("unknown outcome shutdown precedes read-only reconciliation", () => {
+  const actions = exactActions(guideStage("save-the-final-result-and-closeout-evidence"));
+  const unknownActions = actions.slice(actions.indexOf("#### If the outcome is unknown"));
+  const orderedSentences = [
+    "Stop the filing window.",
+    "Set both production switches to false.",
+    "Do not send again.",
+    "Keep the idempotency record and journal.",
+    "Redeploy the approved Git SHA.",
+    "Verify both deployed values are false.",
+    "Reconcile the result through read-only authority calls and support.",
+  ];
+  let previous = -1;
+
+  for (const sentence of orderedSentences) {
+    const index = unknownActions.indexOf(sentence);
+    assert.ok(index > previous, `unknown outcome action is missing or reordered: ${sentence}`);
+    assert.match(
+      unknownActions.slice(
+        unknownActions.lastIndexOf("\n", index) + 1,
+        unknownActions.indexOf("\n", index),
+      ),
+      /^\d+\. \[ \] /,
+    );
+    previous = index;
+  }
+  assert.equal(unknownActions.match(/Set both production switches to false\./g)?.length, 1);
 });
 
 test("legal-pack approval stage says professional approval is pending", () => {
