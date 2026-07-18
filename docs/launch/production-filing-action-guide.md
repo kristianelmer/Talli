@@ -62,21 +62,21 @@ enough to review. The deployed suppliers and hosted security facts are known.
 
 ### Exact actions
 
-1. Open the [legal draft pack](../legal/README.md).
-2. Record the deployed service name and Git SHA.
-3. List the current subprocessors.
-4. Ask the founder to approve the commercial terms.
-5. Ask the founder to approve the subprocessor list.
-6. Ask the legal reviewer to approve the acceptance method.
-7. Ask the legal reviewer to approve the DPA.
-8. Ask the legal reviewer to approve the legal bases.
-9. Ask the legal reviewer to approve retention.
-10. Ask the legal reviewer to approve liability and remedies.
-11. Ask the legal reviewer to approve transfer wording.
-12. Ask the legal reviewer to approve governing law.
-13. Ask the legal reviewer to approve jurisdiction.
-14. Ask the security reviewer to compare the stated measures with hosted facts.
-15. Save each reviewer's decision.
+1. [ ] Open the [legal draft pack](../legal/README.md).
+2. [ ] Record the deployed service name and Git SHA.
+3. [ ] List the current subprocessors.
+4. [ ] Ask the founder to approve the commercial terms.
+5. [ ] Ask the founder to approve the subprocessor list.
+6. [ ] Ask the legal reviewer to approve the acceptance method.
+7. [ ] Ask the legal reviewer to approve the DPA.
+8. [ ] Ask the legal reviewer to approve the legal bases.
+9. [ ] Ask the legal reviewer to approve retention.
+10. [ ] Ask the legal reviewer to approve liability and remedies.
+11. [ ] Ask the legal reviewer to approve transfer wording.
+12. [ ] Ask the legal reviewer to approve governing law.
+13. [ ] Ask the legal reviewer to approve jurisdiction.
+14. [ ] Ask the security reviewer to compare the stated measures with hosted facts.
+15. [ ] Save each reviewer's decision.
 
 ### Evidence to retain
 
@@ -129,17 +129,17 @@ non-customer test accounts exist in separate test companies.
 
 ### Exact actions
 
-1. Open the [hosted tenant-isolation audit](../security/supabase-rls-storage-audit.md).
-2. Record the production domain.
-3. Record the deployed Git SHA.
-4. Sign in with the first non-customer account.
-5. Try to read the second test company's rows.
-6. Try to read the second test company's file metadata.
-7. Try to read the second test company's object bytes.
-8. Try to create a signed URL for the second test company's object.
-9. Try to read the second test company's private filing feedback.
-10. Repeat the checks with the accounts reversed.
-11. Save sanitized results.
+1. [ ] Open the [hosted tenant-isolation audit](../security/supabase-rls-storage-audit.md).
+2. [ ] Record the production domain.
+3. [ ] Record the deployed Git SHA.
+4. [ ] Sign in with the first non-customer account.
+5. [ ] Try to read the second test company's rows.
+6. [ ] Try to read the second test company's file metadata.
+7. [ ] Try to read the second test company's object bytes.
+8. [ ] Try to create a signed URL for the second test company's object.
+9. [ ] Try to read the second test company's private filing feedback.
+10. [ ] Repeat the checks with the accounts reversed.
+11. [ ] Save sanitized results.
 
 ### Evidence to retain
 
@@ -191,21 +191,21 @@ are ready. Neither target serves live users.
 
 ### Exact actions
 
-1. Open the [backup and restore runbook](../security/backup-restore-runbook.md).
-2. Record the source environment.
-3. Record the isolated restore target.
-4. Record the operator.
-5. Record the start time.
-6. Export the required company-year fixture.
-7. Build the backup manifest.
-8. Restore the archive to the isolated target.
-9. Compare every required row group.
-10. Compare each private-object count.
-11. Compare each private-object byte size.
-12. Compare each private-object SHA-256 hash.
-13. Record any missing-object warning.
-14. Record the end time.
-15. Record the result.
+1. [ ] Open the [backup and restore runbook](../security/backup-restore-runbook.md).
+2. [ ] Record the source environment.
+3. [ ] Record the isolated restore target.
+4. [ ] Record the operator.
+5. [ ] Record the start time.
+6. [ ] Export the required company-year fixture.
+7. [ ] Build the backup manifest.
+8. [ ] Restore the archive to the isolated target.
+9. [ ] Compare every required row group.
+10. [ ] Compare each private-object count.
+11. [ ] Compare each private-object byte size.
+12. [ ] Compare each private-object SHA-256 hash.
+13. [ ] Record any missing-object warning.
+14. [ ] Record the end time.
+15. [ ] Record the result.
 
 ### Evidence to retain
 
@@ -258,20 +258,20 @@ for this rehearsal.
 
 ### Exact actions
 
-1. Name the on-call owner.
-2. Name the filing-window observer.
-3. Test each required alert with safe test data.
-4. Check that logs omit restricted data.
-5. Check that `TALLI_AUTHORITY_OPS_ENABLED=false` is visible after deployment.
-6. Check that `TALLI_RF1086_PRODUCTION_ENABLED=false` is visible after deployment.
-7. Rehearse the immediate kill switch.
-8. Rehearse Vercel rollback to a known deployment.
-9. Rehearse database recovery from the isolated proof.
-10. Record the authority-approved alternative filing route.
-11. Record the support route and deadline.
-12. Ask the founder to approve the fallback route.
-13. Save the founder's decision.
-14. Save the rehearsal result.
+1. [ ] Name the on-call owner.
+2. [ ] Name the filing-window observer.
+3. [ ] Test each required alert with safe test data.
+4. [ ] Check that logs omit restricted data.
+5. [ ] Check that `TALLI_AUTHORITY_OPS_ENABLED=false` is visible after deployment.
+6. [ ] Check that `TALLI_RF1086_PRODUCTION_ENABLED=false` is visible after deployment.
+7. [ ] Rehearse the immediate kill switch.
+8. [ ] Rehearse Vercel rollback to a known deployment.
+9. [ ] Rehearse database recovery from the isolated proof.
+10. [ ] Record the authority-approved alternative filing route.
+11. [ ] Record the support route and deadline.
+12. [ ] Ask the founder to approve the fallback route.
+13. [ ] Save the founder's decision.
+14. [ ] Save the rehearsal result.
 
 ### Evidence to retain
 
@@ -326,19 +326,19 @@ tenant-isolation, private-storage, and restore evidence are current.
 
 ### Exact actions
 
-1. Record the exact legal company.
-2. Record the exact owner user.
-3. Record the income year.
-4. Select only `rf1086_no_activity_v1`.
-5. Confirm that the company has one share class.
-6. Confirm that every shareholder is Norwegian.
-7. Confirm that no share purchase occurred.
-8. Confirm that no share sale occurred.
-9. Confirm that no dividend occurred.
-10. Confirm that this is not a correction.
-11. Check for any other unsupported complexity.
-12. Ask the company owner to sign the facts.
-13. Ask the accounting reviewer to decide eligibility.
+1. [ ] Record the exact legal company.
+2. [ ] Record the exact owner user.
+3. [ ] Record the income year.
+4. [ ] Select only `rf1086_no_activity_v1`.
+5. [ ] Confirm that the company has one share class.
+6. [ ] Confirm that every shareholder is Norwegian.
+7. [ ] Confirm that no share purchase occurred.
+8. [ ] Confirm that no share sale occurred.
+9. [ ] Confirm that no dividend occurred.
+10. [ ] Confirm that this is not a correction.
+11. [ ] Check for any other unsupported complexity.
+12. [ ] Ask the company owner to sign the facts.
+13. [ ] Ask the accounting reviewer to decide eligibility.
 
 ### Evidence to retain
 
@@ -389,19 +389,19 @@ digests are pinned in the service.
 
 ### Exact actions
 
-1. Open the named company's owner workspace.
-2. Show the current Business Terms version.
-3. Show the current DPA version.
-4. Show the statement about authority to bind the company.
-5. Ask the authorized representative to accept the Business Terms.
-6. Ask the authorized representative to accept the DPA.
-7. Check the saved company legal name.
-8. Check the saved organization number.
-9. Check the saved accepting user.
-10. Check both saved versions and SHA-256 digests.
-11. Check the saved authority-statement version.
-12. Check the saved timestamp and acceptance method.
-13. Save the immutable evidence reference.
+1. [ ] Open the named company's owner workspace.
+2. [ ] Show the current Business Terms version.
+3. [ ] Show the current DPA version.
+4. [ ] Show the statement about authority to bind the company.
+5. [ ] Ask the authorized representative to accept the Business Terms.
+6. [ ] Ask the authorized representative to accept the DPA.
+7. [ ] Check the saved company legal name.
+8. [ ] Check the saved organization number.
+9. [ ] Check the saved accepting user.
+10. [ ] Check both saved versions and SHA-256 digests.
+11. [ ] Check the saved authority-statement version.
+12. [ ] Check the saved timestamp and acceptance method.
+13. [ ] Save the immutable evidence reference.
 
 ### Evidence to retain
 
@@ -450,18 +450,18 @@ Stage 6 passed. Talli and Fiken use the same company, period, and source facts.
 
 ### Exact actions
 
-1. Record the shared company and period.
-2. Record the shared input facts.
-3. Generate the Talli output.
-4. Generate the Fiken output.
-5. Compare every material figure.
-6. Compare every material document.
-7. List each difference.
-8. Resolve each difference that can be corrected.
-9. Explain each remaining difference.
-10. Ask the accounting reviewer for a decision.
-11. Ask the founder for written risk acceptance when needed.
-12. Save the final comparison.
+1. [ ] Record the shared company and period.
+2. [ ] Record the shared input facts.
+3. [ ] Generate the Talli output.
+4. [ ] Generate the Fiken output.
+5. [ ] Compare every material figure.
+6. [ ] Compare every material document.
+7. [ ] List each difference.
+8. [ ] Resolve each difference that can be corrected.
+9. [ ] Explain each remaining difference.
+10. [ ] Ask the accounting reviewer for a decision.
+11. [ ] Ask the founder for written risk acceptance when needed.
+12. [ ] Save the final comparison.
 
 ### Evidence to retain
 
@@ -511,18 +511,18 @@ production switches are false.
 
 ### Exact actions
 
-1. Record `TALLI_AUTHORITY_OPS_ENABLED=false`.
-2. Record `TALLI_RF1086_PRODUCTION_ENABLED=false`.
-3. Open a separately approved maintenance window.
-4. Enable only `TALLI_AUTHORITY_OPS_ENABLED`.
-5. Deploy the approved Git SHA.
-6. Run only the fixed Systemregister callback operation.
-7. Read the exact callback with the required GET.
-8. Record `callback_already_verified` or `callback_updated_and_verified`.
-9. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
-10. Redeploy the same approved Git SHA.
-11. Verify the deployed switch is false.
-12. Save the redacted audit reference.
+1. [ ] Record `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. [ ] Record `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. [ ] Open a separately approved maintenance window.
+4. [ ] Enable only `TALLI_AUTHORITY_OPS_ENABLED`.
+5. [ ] Deploy the approved Git SHA.
+6. [ ] Run only the fixed Systemregister callback operation.
+7. [ ] Read the exact callback with the required GET.
+8. [ ] Record `callback_already_verified` or `callback_updated_and_verified`.
+9. [ ] Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+10. [ ] Redeploy the same approved Git SHA.
+11. [ ] Verify the deployed switch is false.
+12. [ ] Save the redacted audit reference.
 
 Do not use a real filing as a connection test.
 
@@ -585,19 +585,19 @@ stage 5.
 
 ### Exact actions
 
-1. Start one standard Systembruker request for the exact company.
-2. Record its external reference.
-3. Ask the customer owner to open the exact Altinn request.
-4. Ask the customer owner to approve that request.
-5. Select **Sjekk status på nytt**.
-6. Check that the saved request status is accepted.
-7. Run the read-only delegated preflight.
-8. Check the exact company.
-9. Check the exact owner user.
-10. Check the exact RF-1086 right.
-11. Check the exact external reference.
-12. Check that the short-lived token was discarded.
-13. Save the accepted and verified request reference.
+1. [ ] Start one standard Systembruker request for the exact company.
+2. [ ] Record its external reference.
+3. [ ] Ask the customer owner to open the exact Altinn request.
+4. [ ] Ask the customer owner to approve that request.
+5. [ ] Select **Sjekk status på nytt**.
+6. [ ] Check that the saved request status is accepted.
+7. [ ] Run the read-only delegated preflight.
+8. [ ] Check the exact company.
+9. [ ] Check the exact owner user.
+10. [ ] Check the exact RF-1086 right.
+11. [ ] Check the exact external reference.
+12. [ ] Check that the short-lived token was discarded.
+13. [ ] Save the accepted and verified request reference.
 
 Production authority permission is required.
 
@@ -654,33 +654,33 @@ Stage 9 passed. Every evidence link is durable and sanitized. The latest
 
 ### Exact actions
 
-1. Record reviewer, date, evidence link, and decision for `launch_legal_name_public_copy`.
-2. Record reviewer, date, evidence link, and decision for `legal_policy_pack`.
-3. Record reviewer, date, evidence link, and decision for `security_restore`.
-4. Record reviewer, date, evidence link, and decision for `support_rollback`.
-5. Record reviewer, date, evidence link, and decision for `rf1086_authority`.
-6. Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
-7. Choose the free-pilot branch or the paid-filing branch below.
+1. [ ] Record reviewer, date, evidence link, and decision for `launch_legal_name_public_copy`.
+2. [ ] Record reviewer, date, evidence link, and decision for `legal_policy_pack`.
+3. [ ] Record reviewer, date, evidence link, and decision for `security_restore`.
+4. [ ] Record reviewer, date, evidence link, and decision for `support_rollback`.
+5. [ ] Record reviewer, date, evidence link, and decision for `rf1086_authority`.
+6. [ ] Record reviewer, date, evidence link, and decision for `founder_production_go_live`.
+7. [ ] Choose the free-pilot branch or the paid-filing branch below.
 
 The operator performs only one branch.
 
 #### If this is the free pilot
 
-1. Record the founder's decision to create one exact billing-exempt pilot.
-2. Record the billing reviewer's approval of the billing-exempt path.
-3. Save the billing-exempt path with the signoff review.
+1. [ ] Record the founder's decision to create one exact billing-exempt pilot.
+2. [ ] Record the billing reviewer's approval of the billing-exempt path.
+3. [ ] Save the billing-exempt path with the signoff review.
 
 #### If this is a paid filing
 
-1. Record reviewer, date, evidence link, and decision for `billing_refund`.
-2. Record the billing reviewer's approval of the paid path.
-3. Save the paid path with the signoff review.
+1. [ ] Record reviewer, date, evidence link, and decision for `billing_refund`.
+2. [ ] Record the billing reviewer's approval of the paid path.
+3. [ ] Save the paid path with the signoff review.
 
 #### After the chosen branch
 
-1. Check the expiry of every signoff that can expire.
-2. Check that every unconditional decision is approved.
-3. Save the signoff review result.
+1. [ ] Check the expiry of every signoff that can expire.
+2. [ ] Check that every unconditional decision is approved.
+3. [ ] Save the signoff review result.
 
 ### Evidence to retain
 
@@ -748,36 +748,36 @@ active. The exact case facts match stage 5.
 
 ### Exact actions
 
-1. Record the exact company ID.
-2. Record the exact owner user ID.
-3. Record the exact income year.
-4. Select only the RF-1086 obligation.
-5. Select only `rf1086_no_activity_v1`.
-6. Link the accepted Systembruker request.
-7. Set a short start time.
-8. Set a short expiry time.
-9. Read the billing path approved in stage 10.
+1. [ ] Record the exact company ID.
+2. [ ] Record the exact owner user ID.
+3. [ ] Record the exact income year.
+4. [ ] Select only the RF-1086 obligation.
+5. [ ] Select only `rf1086_no_activity_v1`.
+6. [ ] Link the accepted Systembruker request.
+7. [ ] Set a short start time.
+8. [ ] Set a short expiry time.
+9. [ ] Read the billing path approved in stage 10.
 
 The operator performs only one branch.
 
 #### If this is the free pilot
 
-1. Set `billing_exempt=true`.
-2. Check the documented billing-exempt decision from stage 10.
+1. [ ] Set `billing_exempt=true`.
+2. [ ] Check the documented billing-exempt decision from stage 10.
 
 #### If this is a paid filing
 
-1. Set `billing_exempt=false`.
-2. Check the approved `billing_refund` from stage 10.
-3. Check the active billing account.
+1. [ ] Set `billing_exempt=false`.
+2. [ ] Check the approved `billing_refund` from stage 10.
+3. [ ] Check the active billing account.
 
 #### After the chosen branch
 
-1. Create the entitlement only after preflight.
-2. Read the saved entitlement back.
-3. Verify the exact company, user, year, obligation, profile, and validity window.
-4. Verify the saved billing value matches the chosen branch.
-5. Save the entitlement's immutable reference.
+1. [ ] Create the entitlement only after preflight.
+2. [ ] Read the saved entitlement back.
+3. [ ] Verify the exact company, user, year, obligation, profile, and validity window.
+4. [ ] Verify the saved billing value matches the chosen branch.
+5. [ ] Save the entitlement's immutable reference.
 
 An active exact pilot entitlement is required.
 
@@ -837,18 +837,18 @@ will not be edited during review.
 
 ### Exact actions
 
-1. Ask the named owner to sign in with fresh AAL2.
-2. Show the exact human-readable preview.
-3. Show the exact filing payload summary.
-4. Show every submitted-document hash.
-5. Show the payload hash.
-6. Show the adapter version and hash.
-7. Ask the owner to read the full preview.
-8. Ask the owner to approve the exact preview.
-9. Save the immutable approval.
-10. Read the saved hashes back.
-11. Compare the saved hashes with the approved artifacts.
-12. Save the approval reference.
+1. [ ] Ask the named owner to sign in with fresh AAL2.
+2. [ ] Show the exact human-readable preview.
+3. [ ] Show the exact filing payload summary.
+4. [ ] Show every submitted-document hash.
+5. [ ] Show the payload hash.
+6. [ ] Show the adapter version and hash.
+7. [ ] Ask the owner to read the full preview.
+8. [ ] Ask the owner to approve the exact preview.
+9. [ ] Save the immutable approval.
+10. [ ] Read the saved hashes back.
+11. [ ] Compare the saved hashes with the approved artifacts.
+12. [ ] Save the approval reference.
 
 Fresh AAL2 is required.
 
@@ -902,28 +902,28 @@ approved window are recorded. Both production switches are false before the wind
 
 ### Exact actions
 
-1. Name the operator.
-2. Name the company owner.
-3. Name the observer.
-4. Record the statutory deadline.
-5. Record the authority-approved alternative route.
-6. Record the approved start and end time.
-7. Verify the exact entitlement again.
-8. Verify the immutable approval hashes again.
-9. Verify the immediate kill switch.
-10. Verify that no unexpected authority endpoint is present.
-11. Keep both production switches false.
-12. Run the pre-window release-gate check for the exact case.
-13. Confirm that every disabled reason except `production_adapter_disabled` is clear.
-14. Stop before enabling if any other disabled reason remains.
-15. Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
-16. Deploy the approved Git SHA.
-17. Immediately run the actual full release gate for the exact case.
-18. Require the actual gate result to be `production_ready`.
-19. Prepare one UUID idempotency key.
-20. Ask the owner to press Send once.
-21. Watch the append-only journal.
-22. Record the operator case reference.
+1. [ ] Name the operator.
+2. [ ] Name the company owner.
+3. [ ] Name the observer.
+4. [ ] Record the statutory deadline.
+5. [ ] Record the authority-approved alternative route.
+6. [ ] Record the approved start and end time.
+7. [ ] Verify the exact entitlement again.
+8. [ ] Verify the immutable approval hashes again.
+9. [ ] Verify the immediate kill switch.
+10. [ ] Verify that no unexpected authority endpoint is present.
+11. [ ] Keep both production switches false.
+12. [ ] Run the pre-window release-gate check for the exact case.
+13. [ ] Confirm that every disabled reason except `production_adapter_disabled` is clear.
+14. [ ] Stop before enabling if any other disabled reason remains.
+15. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=true` for the approved window.
+16. [ ] Deploy the approved Git SHA.
+17. [ ] Immediately run the actual full release gate for the exact case.
+18. [ ] Require the actual gate result to be `production_ready`.
+19. [ ] Prepare one UUID idempotency key.
+20. [ ] Ask the owner to press Send once.
+21. [ ] Watch the append-only journal.
+22. [ ] Record the operator case reference.
 
 The production adapter must be implemented and enabled.
 
@@ -992,35 +992,35 @@ unchanged.
 
 ### Exact actions
 
-1. Treat `received` as incomplete.
-2. Treat `processing` as incomplete.
-3. Poll only the documented read endpoints within the bounded window.
-4. Save the official receipt.
-5. Save explicit official `accepted` or `rejected` final feedback.
-6. Save the private artifact in private storage.
-7. Save only a safe summary in the evidence file.
-8. Compare the stored byte size and SHA-256 hash.
-9. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
-10. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
-11. Redeploy the approved Git SHA.
-12. Verify both deployed switches are false.
-13. Export the closeout evidence package.
-14. Verify that the package can be restored.
+1. [ ] Treat `received` as incomplete.
+2. [ ] Treat `processing` as incomplete.
+3. [ ] Poll only the documented read endpoints within the bounded window.
+4. [ ] Save the official receipt.
+5. [ ] Save explicit official `accepted` or `rejected` final feedback.
+6. [ ] Save the private artifact in private storage.
+7. [ ] Save only a safe summary in the evidence file.
+8. [ ] Compare the stored byte size and SHA-256 hash.
+9. [ ] Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+10. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+11. [ ] Redeploy the approved Git SHA.
+12. [ ] Verify both deployed switches are false.
+13. [ ] Export the closeout evidence package.
+14. [ ] Verify that the package can be restored.
 
 If the outcome is unknown, follow these instructions exactly:
 
-1. Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
-2. Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
-3. Redeploy the approved Git SHA.
-4. Verify both deployed values are false.
+1. [ ] Set `TALLI_AUTHORITY_OPS_ENABLED=false`.
+2. [ ] Set `TALLI_RF1086_PRODUCTION_ENABLED=false`.
+3. [ ] Redeploy the approved Git SHA.
+4. [ ] Verify both deployed values are false.
 
 After the deployed shutdown is proven, keep these five instructions in order:
 
-1. Stop the filing window.
-2. Set both production switches to false.
-3. Do not send again.
-4. Keep the idempotency record and journal.
-5. Reconcile the result through read-only authority calls and support.
+1. [ ] Stop the filing window.
+2. [ ] Set both production switches to false.
+3. [ ] Do not send again.
+4. [ ] Keep the idempotency record and journal.
+5. [ ] Reconcile the result through read-only authority calls and support.
 
 A transport reference is not final acceptance.
 
@@ -1092,17 +1092,17 @@ switches are false. The closeout package is available.
 
 ### Exact actions
 
-1. Review the official final result.
-2. Review every incident.
-3. Review support load.
-4. Review Talli and Fiken discrepancies.
-5. Review the restored closeout evidence.
-6. Review reviewer concerns.
-7. Decide whether to stop.
-8. Decide whether to prepare one more controlled pilot.
-9. Record the exact scope of any next pilot.
-10. Record every required new approval.
-11. Save the founder and reviewer decision.
+1. [ ] Review the official final result.
+2. [ ] Review every incident.
+3. [ ] Review support load.
+4. [ ] Review Talli and Fiken discrepancies.
+5. [ ] Review the restored closeout evidence.
+6. [ ] Review reviewer concerns.
+7. [ ] Decide whether to stop.
+8. [ ] Decide whether to prepare one more controlled pilot.
+9. [ ] Record the exact scope of any next pilot.
+10. [ ] Record every required new approval.
+11. [ ] Save the founder and reviewer decision.
 
 ### Evidence to retain
 

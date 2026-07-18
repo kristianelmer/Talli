@@ -65,6 +65,17 @@ function guideStage(slug) {
   return stageSection(guide, slug, (stageSlug) => `id="${stageSlug}"`);
 }
 
+function exactActions(stage) {
+  const startMarker = "### Exact actions\n\n";
+  const endMarker = "\n### Evidence to retain";
+  const start = stage.indexOf(startMarker);
+  const end = stage.indexOf(endMarker, start);
+
+  assert.notEqual(start, -1, "missing Exact actions section");
+  assert.notEqual(end, -1, "missing Evidence to retain section");
+  return stage.slice(start + startMarker.length, end);
+}
+
 function assertStageIncludes(slug, patterns) {
   for (const documentStage of [checklistStage(slug), guideStage(slug)]) {
     for (const pattern of patterns) {
@@ -124,11 +135,30 @@ test("both documents keep case-specific gates in their operating stages", () => 
   ]);
 });
 
+test("every guide stage uses only numbered checkbox action entries", () => {
+  for (const slug of requiredStageSlugs) {
+    const actionLines = exactActions(guideStage(slug))
+      .split("\n")
+      .filter((line) => /^\s*(?:\d+\.|[-+*])\s+/.test(line));
+
+    assert.ok(actionLines.length > 0, `${slug} must include at least one action`);
+    for (const line of actionLines) {
+      assert.match(line, /^\d+\. \[ \] \S/, `${slug} has an invalid action: ${line}`);
+    }
+  }
+});
+
+test("legal-pack approval stage says professional approval is pending", () => {
+  assert.match(
+    guideStage("approve-the-legal-pack"),
+    /legal pack is pending professional approval/i,
+  );
+});
+
 test("guide preserves switch, evidence, and unknown-outcome stop rules", () => {
   const callbackStage = guideStage("verify-the-production-systemregister-callback");
   const closeoutStage = guideStage("save-the-final-result-and-closeout-evidence");
 
-  assert.match(guide, /legal pack is pending professional approval/i);
   assert.match(callbackStage, /TALLI_AUTHORITY_OPS_ENABLED=false/);
   assert.match(callbackStage, /Do not use a real filing as a connection test\./i);
   assert.match(closeoutStage, /TALLI_RF1086_PRODUCTION_ENABLED=false/);
