@@ -7,6 +7,8 @@ import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 
+import { isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+
 loadDotEnv();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -16,6 +18,10 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABAS
 test("browser owner annual loop uses persisted state and survives reload", async (t) => {
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
     t.skip("Supabase env missing");
+    return;
+  }
+  if (!isLoopbackSupabaseUrl(supabaseUrl)) {
+    t.skip("Browser fixtures require local Supabase");
     return;
   }
 
