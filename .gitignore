@@ -13,6 +13,7 @@ out/
 .DS_Store
 .playwright-cli/
 output/playwright/
+.superpowers/
 .env
 .env.*
 !.env.example
