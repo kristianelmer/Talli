@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
+// Dev-only allowance so impeccable live mode can load.
+const __impeccableLiveDev =
+  process.env.NODE_ENV === "development" ? " http://localhost:8400" : "";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co${__impeccableLiveDev}`,
   "font-src 'self' data:",
   "form-action 'self'",
   "frame-ancestors 'none'",
@@ -11,7 +15,7 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
   "media-src 'self' blob:",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${__impeccableLiveDev}`,
   "style-src 'self' 'unsafe-inline'",
   "worker-src 'self' blob:",
 ].join("; ");

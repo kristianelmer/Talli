@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-19T12:00:00+02:00",
+  "title": "Design System: Talli",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Filing Green",
+        "canonical": "#176b55",
+        "tonalRamp": ["oklch(22% 0.055 165)", "oklch(32% 0.07 165)", "oklch(42% 0.08 165)", "oklch(52% 0.075 165)", "oklch(62% 0.065 165)", "oklch(74% 0.05 165)", "oklch(86% 0.028 165)", "oklch(95% 0.012 165)"]
+      },
+      "primary-strong": {
+        "role": "primary",
+        "displayName": "Deep Filing Green",
+        "canonical": "#084838",
+        "tonalRamp": ["oklch(18% 0.045 165)", "oklch(26% 0.055 165)", "oklch(35% 0.06 165)", "oklch(46% 0.055 165)", "oklch(58% 0.048 165)", "oklch(71% 0.038 165)", "oklch(84% 0.024 165)", "oklch(95% 0.01 165)"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Crisp Canvas",
+        "canonical": "#f7f8fa",
+        "tonalRamp": ["oklch(18% 0.008 240)", "oklch(30% 0.008 240)", "oklch(43% 0.008 240)", "oklch(56% 0.007 240)", "oklch(69% 0.006 240)", "oklch(81% 0.005 240)", "oklch(90% 0.004 240)", "oklch(97% 0.003 240)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Clear White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["oklch(18% 0 0)", "oklch(31% 0 0)", "oklch(44% 0 0)", "oklch(57% 0 0)", "oklch(70% 0 0)", "oklch(82% 0 0)", "oklch(92% 0 0)", "oklch(100% 0 0)"]
+      },
+      "selection": {
+        "role": "neutral",
+        "displayName": "Quiet Selection",
+        "canonical": "#e8f3ef",
+        "tonalRamp": ["oklch(20% 0.025 165)", "oklch(32% 0.03 165)", "oklch(45% 0.032 165)", "oklch(58% 0.03 165)", "oklch(70% 0.026 165)", "oklch(81% 0.021 165)", "oklch(90% 0.015 165)", "oklch(96% 0.01 165)"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "canonical": "#17202a",
+        "tonalRamp": ["oklch(18% 0.018 245)", "oklch(29% 0.018 245)", "oklch(41% 0.017 245)", "oklch(54% 0.015 245)", "oklch(67% 0.012 245)", "oklch(79% 0.009 245)", "oklch(89% 0.006 245)", "oklch(96% 0.003 245)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Ledger Grey",
+        "canonical": "#617067",
+        "tonalRamp": ["oklch(20% 0.014 160)", "oklch(32% 0.016 160)", "oklch(45% 0.017 160)", "oklch(57% 0.015 160)", "oklch(69% 0.012 160)", "oklch(80% 0.009 160)", "oklch(89% 0.006 160)", "oklch(96% 0.003 160)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Fine Rule",
+        "canonical": "#dfe5e8",
+        "tonalRamp": ["oklch(18% 0.008 225)", "oklch(31% 0.009 225)", "oklch(44% 0.009 225)", "oklch(57% 0.008 225)", "oklch(70% 0.007 225)", "oklch(82% 0.006 225)", "oklch(90% 0.005 225)", "oklch(95% 0.004 225)"]
+      },
+      "warning": {
+        "role": "warning",
+        "displayName": "Caution Ochre",
+        "canonical": "#985713",
+        "tonalRamp": ["oklch(22% 0.055 65)", "oklch(32% 0.075 65)", "oklch(43% 0.09 65)", "oklch(54% 0.095 65)", "oklch(65% 0.085 65)", "oklch(76% 0.065 65)", "oklch(87% 0.04 65)", "oklch(95% 0.018 65)"]
+      },
+      "danger": {
+        "role": "danger",
+        "displayName": "Blocking Red",
+        "canonical": "#a73a34",
+        "tonalRamp": ["oklch(22% 0.07 28)", "oklch(32% 0.1 28)", "oklch(43% 0.13 28)", "oklch(54% 0.14 28)", "oklch(65% 0.12 28)", "oklch(76% 0.09 28)", "oklch(87% 0.055 28)", "oklch(95% 0.025 28)"]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page identity and the primary annual task. One per page." },
+      "title": { "displayName": "Title", "purpose": "Major workflow areas and panel groups." },
+      "body": { "displayName": "Body", "purpose": "Instructions, explanations, and form guidance." },
+      "label": { "displayName": "Label", "purpose": "Controls, metadata, navigation, and compact state labels." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 8px 24px rgba(23, 32, 42, 0.14)", "purpose": "Menus, dialogs, and popovers only." },
+      { "name": "focus-ring", "value": "0 0 0 3px rgba(23, 107, 85, 0.22)", "purpose": "Keyboard focus paired with a Filing Green stroke." }
+    ],
+    "motion": [
+      { "name": "state-duration", "value": "180ms", "purpose": "Default duration for hover, focus, and compact state feedback." },
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default exponential ease-out for state transitions." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "560px" },
+      { "name": "navigation-collapse", "value": "860px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one dominant action within a local task area.",
+      "html": "<button class=\"ds-btn-primary\">Fortsett</button>",
+      "css": ".ds-btn-primary { min-height: 44px; padding: 12px 16px; border: 0; border-radius: 8px; background: #176b55; color: #fff; font: 700 13px/1.3 Arial, Helvetica, sans-serif; transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary:hover { background: #084838; } .ds-btn-primary:focus-visible { outline: 2px solid #176b55; outline-offset: 2px; box-shadow: 0 0 0 3px rgba(23,107,85,.22); } .ds-btn-primary:active { background: #063b2e; } .ds-btn-primary:disabled { background: #dfe5e8; color: #617067; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A supporting or reversible action with no decorative elevation.",
+      "html": "<button class=\"ds-btn-secondary\">Se detaljer</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; padding: 12px 16px; border: 1px solid #dfe5e8; border-radius: 8px; background: #fff; color: #17202a; font: 700 13px/1.3 Arial, Helvetica, sans-serif; transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-secondary:hover { background: #f7f8fa; border-color: #bfc9ce; } .ds-btn-secondary:focus-visible { outline: 2px solid #176b55; outline-offset: 2px; box-shadow: 0 0 0 3px rgba(23,107,85,.22); } .ds-btn-secondary:active { background: #eef2f4; } .ds-btn-secondary:disabled { color: #7b8580; background: #f7f8fa; cursor: not-allowed; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A legible, familiar field for company and filing data.",
+      "html": "<label class=\"ds-field\"><span>Organisasjonsnummer</span><input value=\"314 259 521\" aria-label=\"Organisasjonsnummer\"></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: #617067; font: 700 13px/1.3 Arial, Helvetica, sans-serif; } .ds-field input { min-height: 44px; padding: 10px 12px; border: 1px solid #dfe5e8; border-radius: 8px; background: #fff; color: #17202a; font: 400 15px/1.55 Arial, Helvetica, sans-serif; } .ds-field input:hover { border-color: #bfc9ce; } .ds-field input:focus-visible { outline: 2px solid #176b55; outline-offset: 1px; box-shadow: 0 0 0 3px rgba(23,107,85,.22); } .ds-field input:disabled { background: #f7f8fa; color: #617067; cursor: not-allowed; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "The current product area, shown with quiet selection rather than heavy color.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\" aria-current=\"page\">Årsoversikt</a>",
+      "css": ".ds-nav-active { display: block; padding: 10px 12px; border-radius: 8px; background: #e8f3ef; color: #084838; text-decoration: none; font: 700 13px/1.3 Arial, Helvetica, sans-serif; transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-nav-active:hover { background: #dcebe5; } .ds-nav-active:focus-visible { outline: 2px solid #176b55; outline-offset: 2px; } .ds-nav-active:active { background: #d2e5dd; }"
+    },
+    {
+      "name": "Working Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A flat working surface separated by tone and a fine structural rule.",
+      "html": "<section class=\"ds-panel\"><strong>Kontroller aksjonærforhold</strong><p>Neste steg tar omtrent fem minutter.</p></section>",
+      "css": ".ds-panel { padding: 20px; border: 1px solid #dfe5e8; border-radius: 10px; background: #fff; color: #17202a; font-family: Arial, Helvetica, sans-serif; } .ds-panel strong { display: block; margin-bottom: 6px; font-size: 15px; line-height: 1.4; } .ds-panel p { margin: 0; max-width: 70ch; color: #617067; font-size: 15px; line-height: 1.55; }"
+    },
+    {
+      "name": "Readiness Row",
+      "kind": "custom",
+      "description": "The signature annual-workflow row combining obligation, explicit status, and next action.",
+      "html": "<div class=\"ds-readiness\"><span class=\"ds-status\" aria-hidden=\"true\">✓</span><span><strong>Avstem bankbevegelser</strong><small>Alle bevegelser er forklart</small></span><span class=\"ds-ready-label\">Ferdig</span></div>",
+      "css": ".ds-readiness { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #dfe5e8; color: #17202a; font-family: Arial, Helvetica, sans-serif; } .ds-status { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #176b55; color: #fff; font-size: 12px; font-weight: 700; } .ds-readiness strong { display: block; font-size: 13px; line-height: 1.35; } .ds-readiness small { display: block; margin-top: 3px; color: #617067; font-size: 12px; line-height: 1.4; } .ds-ready-label { color: #176b55; font-size: 13px; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clear Desk",
+    "overview": "Talli feels like sitting down to a clear, well-organized desk before completing consequential work. Everything required is visible and within reach; irrelevant operating-company features are absent. The interface is reassuring, plain-spoken, and meticulous, with calm hierarchy and familiar product conventions that let the owner concentrate on the annual reporting task. The visual character is Quiet confidence expressed through Nordic clarity: crisp neutral surfaces, restrained evergreen accents, precise spacing, and minimal ornament. Density is moderate. Guidance is present at the point of action without turning the entire product into an inflexible wizard. The system explicitly rejects visual imitation of Fiken, generic AI-generated styling, decorative novelty, clutter, feature bloat, unexplained accounting jargon, and intimidating filing flows.",
+    "keyCharacteristics": [
+      "Crisp, neutral, and highly legible.",
+      "Systematic navigation with one obvious next action.",
+      "Familiar controls with complete, unmistakable states.",
+      "Moderate density without dashboard clutter.",
+      "Motion limited to meaningful state feedback."
+    ],
+    "rules": [
+      { "name": "The Ten-Percent Rule", "body": "Filing Green occupies no more than roughly ten percent of a normal working screen. It marks action and state, never atmosphere.", "section": "colors" },
+      { "name": "The True-Neutral Rule", "body": "Warm cream, sand, paper, parchment, and beige application backgrounds are prohibited. Warmth comes from reassuring language and interaction quality, not a tinted canvas.", "section": "colors" },
+      { "name": "The Product-Scale Rule", "body": "Headings use fixed product sizes. Marketing-scale fluid headings and 44–84px interface titles are prohibited.", "section": "typography" },
+      { "name": "The Sentence-Case Rule", "body": "Navigation, labels, and section titles use Norwegian sentence case. Repeated uppercase eyebrows and tracked kickers are prohibited.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "If an element remains in the normal document flow, structure it with tone, spacing, or Fine Rule—not a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Filing Green only for primary actions, active navigation, progress, focus, and positive readiness.",
+      "Do organize annual reporting around an obvious current state, next action, and blocking issue.",
+      "Do use familiar controls, Norwegian sentence case, and plain-language explanations for accounting terms.",
+      "Do prefer lists, rows, dividers, and whitespace over repeated cards when the content belongs to one workflow.",
+      "Do meet WCAG 2.2 AA with keyboard operation, visible focus, screen-reader semantics, sufficient contrast, non-color cues, and reduced-motion support.",
+      "Do use 150–250ms state transitions with exponential ease-out and an instant or crossfade alternative for reduced motion."
+    ],
+    "donts": [
+      "Don't visually imitate Fiken even though it is a business and category reference.",
+      "Don't use generic AI-generated styling, decorative novelty, glassmorphism, gradient text, or ornamental gradients.",
+      "Don't use warm cream, sand, paper, parchment, or beige as the application canvas.",
+      "Don't create clutter or feature bloat by exposing payroll, invoicing, VAT, or other operating-company concepts in the default navigation.",
+      "Don't use unexplained accounting jargon or filing flows that feel intimidating or bureaucratic.",
+      "Don't repeat uppercase eyebrows, numbered section scaffolding, hero metrics, or identical card grids.",
+      "Don't pair a 1px panel border with a soft shadow whose blur is 16px or more.",
+      "Don't use card or input radii above 16px; reserve full pills for chips and compact taxonomy.",
+      "Don't rely on color alone for readiness, warnings, errors, or completion."
+    ]
+  }
+}
