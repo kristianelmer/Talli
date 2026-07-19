@@ -434,6 +434,24 @@ export async function listCompanyWorkspaces() {
   };
 }
 
+export async function getCompanyMembership(companyId: string, userId: string) {
+  if (!hasSupabaseEnv()) {
+    return { membership: null as CompanyMembershipRow | null, error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("company_memberships")
+    .select("company_id, user_id, role, accepted_at")
+    .eq("company_id", companyId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return {
+    membership: (data ?? null) as CompanyMembershipRow | null,
+    error: error?.message ?? null,
+  };
+}
+
 export async function listDocumentsForCompanies(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { documents: [] as DocumentRow[], error: null };
