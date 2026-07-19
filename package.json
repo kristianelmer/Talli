@@ -10,6 +10,7 @@
     "test:auth-input": "node --experimental-strip-types --test tests/auth_input.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
+    "test:annual-workspace": "node --experimental-strip-types --test tests/annual_workspace_view_model.test.mjs tests/annual_workspace_scope.test.mjs tests/action_return.test.mjs tests/annual_workspace_render.test.mjs tests/annual_workspace_routes.test.mjs",
     "test:action-errors": "node --experimental-strip-types --test tests/action_errors.test.mjs",
     "test:annual-accounts": "node --experimental-strip-types --test tests/annual_accounts_payload.test.mjs tests/annual_accounts_xml.test.mjs tests/annual_accounts_altinn_client.test.mjs tests/annual_accounts_orchestration.test.mjs tests/annual_accounts_file_journal.test.mjs tests/annual_accounts_completion.test.mjs tests/annual_accounts_completion_file_store.test.mjs tests/annual_accounts_dialog_evidence.test.mjs tests/annual_accounts_tt02_runner.test.mjs tests/annual_accounts_tt02_cli.test.mjs",
     "test:authority": "node --experimental-strip-types --test tests/authority_permission.test.mjs",
