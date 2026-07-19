@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation.js";
 
 import { buildAnnualWorkspaceViewModel, type AnnualWorkspaceContext } from "./annual-workspace.ts";
 import { scopeAnnualWorkspaceRecords } from "./annual-workspace-scope.ts";
+import { companiesRequiringCurrentCustomerAgreement } from "./customer-agreement-reacceptance.ts";
 import { buildDeadlineDashboard } from "./deadlines.ts";
 import {
   getCompanyMembership,
@@ -12,6 +13,7 @@ import {
   listBankTransactions,
   listBillingAccounts,
   listCompanyWorkspaces,
+  listCustomerAgreementAcceptances,
   listDocumentsForCompanies,
   listFilingOverrides,
   listFilingPreviews,
@@ -38,6 +40,12 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
 
   const { membership, error: membershipError } = await getCompanyMembership(company.id, user.id);
   if (membershipError || !membership?.accepted_at) notFound();
+
+  const { acceptances, error: agreementError } = await listCustomerAgreementAcceptances([company.id]);
+  if (agreementError) throw new Error("Kunne ikke kontrollere gjeldende avtaleaksept.");
+  if (companiesRequiringCurrentCustomerAgreement([company], acceptances).length > 0) {
+    redirect(membership.role === "owner" ? "/dashboard" : "/dashboard?agreement=required");
+  }
 
   const companyIds = [company.id];
   const [

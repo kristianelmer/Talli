@@ -60,7 +60,7 @@ export default async function OwnerLayout({
               <p>Du må bekrefte gjeldende avtaleversjoner før du kan fortsette i arbeidsflaten.</p>
             </div>
             <form className="dataPanel formPanel widePanel" action={reacceptCompanyAgreement}>
-              <input name="returnTo" type="hidden" value="/workspace" />
+              <input name="returnTo" type="hidden" value="/dashboard" />
               <input name="companyId" type="hidden" value={pendingCompany.id} />
               <input name="businessTermsVersion" type="hidden" value={currentCustomerAgreements.businessTerms.version} />
               <input name="businessTermsSha256" type="hidden" value={currentCustomerAgreements.businessTerms.contentSha256} />

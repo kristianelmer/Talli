@@ -19,14 +19,14 @@ test("requires non-affiliation and pre-production gate language in public app co
   assert.match(copy, /requiredNonAffiliationCopy/);
   assert.match(copy, /preProductionDirectFilingCopy/);
 
-  // ...and that copy is surfaced on the owner dashboard (the public app home).
-  const dashboard = readFileSync(
-    new URL("../app/(owner)/dashboard/page.tsx", import.meta.url),
+  // ...and that copy is surfaced where the owner reviews submission readiness.
+  const submissionReview = readFileSync(
+    new URL("../app/components/annual-workspace/SubmissionReview.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(dashboard, /ownerCopy\.filing\.notAffiliated/);
-  assert.match(dashboard, /ownerCopy\.filing\.preProductionGate/);
+  assert.match(submissionReview, /requiredNonAffiliationCopy/);
+  assert.match(submissionReview, /preProductionDirectFilingCopy/);
 
   const result = validateLaunchCopy(`${requiredNonAffiliationCopy}\n${preProductionDirectFilingCopy}`);
 

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { annualReviewHref, type AnnualWorkspaceViewModel } from "../../lib/annual-workspace";
+import type { AnnualWorkspaceViewModel } from "../../lib/annual-workspace";
 import styles from "./annual-workspace.module.css";
 
 const roleLabel = { owner: "Eier", reviewer: "Kontrollør", read_only: "Lesetilgang" } as const;
 
 export function AnnualWorkspaceShell({ model, children }: { model: AnnualWorkspaceViewModel; children: ReactNode }) {
+  const annualOverviewHref = model.obligations[0].href.replace(/\/[^/]+$/, "");
+
   return (
     <div className={styles.workspace}>
       <header className={styles.topbar}>
@@ -17,13 +19,15 @@ export function AnnualWorkspaceShell({ model, children }: { model: AnnualWorkspa
         </div>
       </header>
       <div className={styles.frame}>
-        <nav className={styles.nav} aria-label="Årsrapportering">
-          <p className={styles.navLabel}>Årsrapportering</p>
-          <Link href={model.obligations[0].href.replace(/\/[^/]+$/, "")}>Oversikt</Link>
-          {model.obligations.map((item) => <Link key={item.obligation} href={item.href}>{item.label}</Link>)}
-          <Link href={annualReviewHref(model.context)}>Gjennomgang</Link>
+        <nav className={styles.nav} aria-label="Arbeidsflate">
+          <p className={styles.navLabel}>Arbeidsflate</p>
+          <Link className={styles.navActive} href={annualOverviewHref} aria-current="page">Årsrapportering</Link>
           <hr className={styles.navRule} />
-          <Link href="/#everyday-actions">Løpende handlinger</Link>
+          <Link href="/actions">Handlinger</Link>
+          <Link href="/transactions">Transaksjoner</Link>
+          <Link href="/documents">Dokumenter</Link>
+          <Link href="/connections">Selskap</Link>
+          <Link href="/billing">Innstillinger</Link>
         </nav>
         <main className={styles.main}>{children}</main>
       </div>
