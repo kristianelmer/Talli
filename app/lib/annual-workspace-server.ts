@@ -92,7 +92,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     ["authority", authorityResult.error],
   ].filter((entry) => entry[1]);
   if (failedSources.length) {
-    console.error("annual_workspace_load_failed", { sources: Object.fromEntries(failedSources) });
+    console.error("annual_workspace_load_failed", { sources: failedSources.map(([source]) => source) });
     throw new Error("Kunne ikke laste årsrapporteringen. Prøv igjen.");
   }
 

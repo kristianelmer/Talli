@@ -45,9 +45,6 @@ test("browser owner annual loop uses persisted state and survives reload", async
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  let serverOutput = "";
-  server.stdout.on("data", (chunk) => { serverOutput = `${serverOutput}${chunk}`.slice(-6000); });
-  server.stderr.on("data", (chunk) => { serverOutput = `${serverOutput}${chunk}`.slice(-6000); });
   t.after(() => server.kill("SIGTERM"));
   t.after(async () => {
     await admin.from("companies").delete().eq("id", companyId);
@@ -74,7 +71,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
   try {
     await annualHeading.waitFor({ state: "visible", timeout: 15_000 });
   } catch (error) {
-    throw new Error(`Annual workspace did not render at ${page.url()}. Server output:\n${serverOutput}`, { cause: error });
+    throw new Error(`Annual workspace did not render at ${page.url()}.`, { cause: error });
   }
   assert.equal(await page.locator("[data-obligation]").count(), 3);
   assert.deepEqual(
@@ -108,11 +105,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await page.getByRole("button", { name: "Arkiver simulert kvittering" }).click();
   await page.waitForLoadState("networkidle");
 
-  try {
-    await expectText(page, "sim-rf1086-");
-  } catch (error) {
-    throw new Error(`Simulated receipt did not render at ${page.url()}. Server output:\n${serverOutput}`, { cause: error });
-  }
+  await expectText(page, "sim-rf1086-");
   await expectText(page, "Eksporter arkiv");
 });
 
