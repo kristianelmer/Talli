@@ -1,13 +1,13 @@
 # Production Security Baseline
 
 Status: production filing blocked until human security review  
-Last updated: 2026-07-13
+Last updated: 2026-06-14
 
 This baseline identifies the minimum controls required before Talli stores real customer documents or enables live authority filing. The code currently contains domain seams and tests for these gates; a human security review and operational evidence are still required.
 
 ## Sensitive Actions and Step-Up
 
-`holding_core.security` and `app/lib/security.ts` define the sensitive-action policy.
+`holding_core.security` defines the first sensitive-action policy.
 
 | Action | MFA/step-up | Human security review | Explicit production credential gate |
 | --- | --- | --- | --- |
@@ -21,27 +21,6 @@ This baseline identifies the minimum controls required before Talli stores real 
 | Company deletion | Required | Required | Not required |
 
 Production filing must fail closed unless MFA, human security review, and production credential enablement are all present.
-
-Migration `20260713121355_secure_step_up_attestation.sql` closes a previously identified self-attestation path:
-
-- MFA freshness is derived from the signed Supabase JWT only when `aal=aal2` and a TOTP `amr.timestamp` is no older than 15 minutes.
-- A user-supplied MFA timestamp or privilege flag cannot satisfy the insert policy.
-- Human security review and production-credential enablement live in a separate, expiring `production_security_grants` record.
-- Only an active support admin can create a grant, and the approver cannot approve themselves.
-- Approval metadata is append-only. An active support admin may only revoke a grant once; the revoking operator and time are preserved on the row.
-- Legacy privilege flags on `step_up_events` are cleared and ignored by application code.
-- `/security/mfa` provides authenticated TOTP enrollment and re-verification through Supabase `challengeAndVerify`; the resulting AAL2 JWT is recorded through the RLS-controlled `record_mfa_step_up` RPC.
-
-The migration contract, MFA input boundary, application gate, production build, and unauthenticated browser redirect have automated or browser evidence. Enrollment and RPC execution against a real local/staging Supabase Auth/RLS layer remain required before the human security signoff.
-
-Password sign-up preserves the submitted secret exactly and enforces a bounded
-12–128 character passphrase policy in the application. Before production,
-configure the same or stronger minimum in Supabase Auth, enable confirmed email,
-review Auth rate limits, configure CAPTCHA/bot protection, use production SMTP,
-and enable leaked-password protection when the selected plan supports it. See
-the official [password security](https://supabase.com/docs/guides/auth/password-security),
-[CAPTCHA](https://supabase.com/docs/guides/auth/auth-captcha), and
-[production checklist](https://supabase.com/docs/guides/deployment/going-into-prod).
 
 ## Tenant Isolation and Authorization
 
@@ -74,34 +53,10 @@ Minimum required behavior:
 - URLs must not be logged with long-lived secrets.
 - Deletion/export behavior must be tied to retention policy.
 
-Current implementation:
+Current seam:
 
-- `app/documents/[documentId]/download/route.ts` checks authenticated document metadata access and then creates a five-minute signed URL from the private `company-documents` bucket.
-- Storage RLS scopes each object to the company UUID in its first path segment.
-- Uploads are capped at 6 MB at both the Server Action and bucket boundary.
-- The server derives canonical MIME type from PDF/PNG/JPEG signatures or
-  validated UTF-8 CSV content; browser-supplied MIME values are ignored.
-- The bucket accepts only PDF, PNG, JPEG, and CSV, and remains private.
-- If metadata persistence fails after upload, the server removes the orphaned
-  object through an owner policy that applies only while no metadata row
-  references the storage key. Retained objects remain non-deletable by owners.
-- The local Python `talli-signed://` model remains a deterministic domain fixture only; it is not the deployed download path.
-
-## Browser and Artifact Boundary
-
-- Dynamic Auth, Supabase, Storage, provider, and unexpected server-action
-  diagnostics are replaced by a bounded generic message in production before
-  they enter a redirect URL. Only explicitly classified domain-validation
-  messages remain user-visible; development retains bounded diagnostics.
-- All routes receive CSP, frame-ancestor/clickjacking protection, MIME-sniffing
-  protection, a restrictive permissions policy, and a strict referrer policy.
-- Production responses include one-year HSTS. `includeSubDomains` and preload
-  remain an infrastructure/legal decision because they affect every subdomain.
-- The production container runs as a non-root user and is smoke-tested with a
-  read-only root filesystem, all Linux capabilities dropped, and
-  `no-new-privileges`.
-- Local environment files and common private-key formats are excluded from both
-  the standalone artifact and Docker build context.
+- `create_signed_document_url` produces a short-lived signed URL model after membership check.
+- Supabase Storage or equivalent must replace the local `talli-signed://` placeholder before real documents.
 
 ## Backup and Restore Runbook
 

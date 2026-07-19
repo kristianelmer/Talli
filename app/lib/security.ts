@@ -1,5 +1,11 @@
 export type SensitiveAction =
+  | "authority_operations"
+  | "system_user_connection"
   | "production_filing"
+  | "approve_corporate_facts"
+  | "attest_signed_corporate_document"
+  | "finalize_corporate_decision"
+  | "record_owner_dividend_payment"
   | "confirm_authority"
   | "invite_reviewer"
   | "change_role"
@@ -12,37 +18,32 @@ export type SensitiveAction =
 export type StepUpContext = {
   actorId: string;
   mfaVerifiedAt: string | null;
-  securityReviewApproved?: boolean;
-  productionCredentialsEnabled?: boolean;
-};
-
-export type StepUpEventRecord = {
-  actor_id: string;
-  mfa_verified_at: string | null;
-  security_review_approved?: boolean | null;
-  production_credentials_enabled?: boolean | null;
-};
-
-export type ProductionSecurityGrantRecord = {
-  actor_id: string;
-  security_review_approved: boolean | null;
-  production_credentials_enabled: boolean | null;
-  expires_at: string;
-  revoked_at: string | null;
 };
 
 export type StepUpRequirement = {
   action: SensitiveAction;
   requiresMfa: boolean;
-  requiresSecurityReview: boolean;
-  requiresProductionCredentialsGate: boolean;
   maxMfaAgeMinutes: number;
   label: string;
 };
 
 type SupabaseStepUpClient = {
+  auth: {
+    getClaims: () => Promise<{
+      data: { claims: unknown } | null;
+      error: unknown;
+    }>;
+  };
   from: (table: string) => any;
 };
+
+type SignedClaimRecord = {
+  sub?: unknown;
+  aal?: unknown;
+  amr?: unknown;
+};
+
+const timestampedMfaMethods = new Set(["totp", "mfa/totp", "mfa/phone", "mfa/webauthn"]);
 
 export class SensitiveActionStepUpError extends Error {
   readonly code: string;
@@ -58,74 +59,92 @@ export class SensitiveActionStepUpError extends Error {
 
 export const sensitiveActionRequirements: StepUpRequirement[] = [
   {
+    action: "authority_operations",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Produksjonsoperasjon mot myndighet",
+  },
+  {
+    action: "system_user_connection",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Koble selskapet til Altinn Systembruker",
+  },
+  {
     action: "production_filing",
     requiresMfa: true,
-    requiresSecurityReview: true,
-    requiresProductionCredentialsGate: true,
     maxMfaAgeMinutes: 15,
     label: "Produksjonsinnsending",
   },
   {
+    action: "approve_corporate_facts",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Godkjenn selskapsrettslige fakta",
+  },
+  {
+    action: "attest_signed_corporate_document",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Bekreft signert selskapsdokument",
+  },
+  {
+    action: "finalize_corporate_decision",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Fullfør selskapsbeslutning",
+  },
+  {
+    action: "record_owner_dividend_payment",
+    requiresMfa: true,
+    maxMfaAgeMinutes: 15,
+    label: "Avstem utbyttebetaling",
+  },
+  {
     action: "confirm_authority",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Bekreft innsendingsrett",
   },
   {
     action: "invite_reviewer",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Inviter reviewer",
   },
   {
     action: "change_role",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Endre rolle",
   },
   {
     action: "document_download",
     requiresMfa: false,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Dokumentnedlasting",
   },
   {
     action: "archive_export",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Arkiveksport",
   },
   {
     action: "billing_admin",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Billing-admin",
   },
   {
     action: "company_cancel",
     requiresMfa: true,
-    requiresSecurityReview: false,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Kanseller selskap",
   },
   {
     action: "company_delete",
     requiresMfa: true,
-    requiresSecurityReview: true,
-    requiresProductionCredentialsGate: false,
     maxMfaAgeMinutes: 15,
     label: "Slett selskap",
   },
@@ -173,87 +192,70 @@ export function assertStepUpAllowed(action: SensitiveAction, context: StepUpCont
       );
     }
   }
-  if (requirement.requiresSecurityReview && !context.securityReviewApproved) {
-    throw new SensitiveActionStepUpError(
-      `${requirement.label} krever human security review.`,
-      "missing_security_review",
-      `${requirement.label} stoppet: security review må være godkjent.`,
-    );
-  }
-  if (requirement.requiresProductionCredentialsGate && !context.productionCredentialsEnabled) {
-    throw new SensitiveActionStepUpError(
-      `${requirement.label} krever eksplisitt produksjonscredential-gate.`,
-      "missing_production_credentials_gate",
-      `${requirement.label} stoppet: produksjonscredentials er ikke aktivert.`,
-    );
-  }
 }
 
-export function stepUpContextFromEvent(
-  actorId: string,
-  event: StepUpEventRecord | null | undefined,
-): StepUpContext {
-  if (!event) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function stepUpContextFromClaims(actorId: string, value: unknown): StepUpContext {
+  if (!isRecord(value)) {
     return { actorId, mfaVerifiedAt: null };
   }
-  if (event.actor_id !== actorId) {
+
+  const claims = value as SignedClaimRecord;
+  if (claims.sub !== actorId || claims.aal !== "aal2" || !Array.isArray(claims.amr)) {
     return { actorId, mfaVerifiedAt: null };
   }
+
+  let newestMfaTimestampSeconds: number | null = null;
+  for (const entry of claims.amr) {
+    if (!isRecord(entry) || typeof entry.method !== "string" || !timestampedMfaMethods.has(entry.method)) {
+      continue;
+    }
+    if (typeof entry.timestamp !== "number" || !Number.isFinite(entry.timestamp)) {
+      continue;
+    }
+    if (newestMfaTimestampSeconds === null || entry.timestamp > newestMfaTimestampSeconds) {
+      newestMfaTimestampSeconds = entry.timestamp;
+    }
+  }
+
+  if (newestMfaTimestampSeconds === null) {
+    return { actorId, mfaVerifiedAt: null };
+  }
+
+  const verifiedAt = new Date(newestMfaTimestampSeconds * 1000);
+  if (Number.isNaN(verifiedAt.getTime())) {
+    return { actorId, mfaVerifiedAt: null };
+  }
+
   return {
     actorId,
-    mfaVerifiedAt: event.mfa_verified_at,
+    mfaVerifiedAt: verifiedAt.toISOString(),
   };
 }
 
-export function stepUpContextFromRecords(
-  actorId: string,
-  event: StepUpEventRecord | null | undefined,
-  grant: ProductionSecurityGrantRecord | null | undefined,
-  now = new Date(),
-): StepUpContext {
-  const context = stepUpContextFromEvent(actorId, event);
-  if (!grant || grant.actor_id !== actorId || grant.revoked_at) return context;
-  const expiresAt = new Date(grant.expires_at);
-  if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime()) return context;
-  return {
-    ...context,
-    securityReviewApproved: Boolean(grant.security_review_approved),
-    productionCredentialsEnabled: Boolean(grant.production_credentials_enabled),
-  };
-}
-
-export async function loadLatestStepUpContext(
+export async function loadTrustedStepUpContext(
   supabase: SupabaseStepUpClient,
   actorId: string,
-  now = new Date(),
 ): Promise<StepUpContext> {
-  const { data: event, error: eventError } = await supabase
-    .from("step_up_events")
-    .select("actor_id, mfa_verified_at")
-    .eq("actor_id", actorId)
-    .order("mfa_verified_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (eventError) {
+  const { data, error } = await supabase.auth.getClaims();
+  if (error) {
     throw new SensitiveActionStepUpError(
-      `Kunne ikke lese MFA/step-up-status: ${eventError.message}`,
-      "step_up_lookup_failed",
-      "Sensitiv handling stoppet: MFA/step-up-status kunne ikke kontrolleres.",
+      "Verifiserte innloggingskrav kunne ikke kontrolleres.",
+      "trusted_claims_lookup_failed",
+      "Sensitiv handling stoppet: innloggingen kunne ikke verifiseres. Prøv å logge inn på nytt.",
     );
   }
-  const { data: grant, error: grantError } = await supabase
-    .from("production_security_grants")
-    .select("actor_id, security_review_approved, production_credentials_enabled, expires_at, revoked_at")
-    .eq("actor_id", actorId)
-    .maybeSingle();
-  if (grantError) {
+  if (!data?.claims) {
     throw new SensitiveActionStepUpError(
-      `Kunne ikke lese produksjonsgodkjenning: ${grantError.message}`,
-      "production_security_grant_lookup_failed",
-      "Sensitiv handling stoppet: produksjonsgodkjenning kunne ikke kontrolleres.",
+      "Verifiserte innloggingskrav mangler.",
+      "trusted_claims_missing",
+      "Sensitiv handling stoppet: innloggingen kunne ikke verifiseres. Prøv å logge inn på nytt.",
     );
   }
-  return stepUpContextFromRecords(actorId, event, grant, now);
+  return stepUpContextFromClaims(actorId, data.claims);
 }
 
 export async function requireStepUpForAction(input: {
@@ -265,22 +267,15 @@ export async function requireStepUpForAction(input: {
 }) {
   const requirement = requirementForSensitiveAction(input.action);
   try {
-    const context = await loadLatestStepUpContext(input.supabase, input.userId, input.now);
+    const context = await loadTrustedStepUpContext(input.supabase, input.userId);
     assertStepUpAllowed(input.action, context, input.now);
-    const { error: auditError } = await input.supabase.from("audit_events").insert({
+    await input.supabase.from("audit_events").insert({
       company_id: input.companyId,
       actor_id: input.userId,
       category: "security",
       action: "sensitive_action_allowed",
       message: `${requirement.label} tillatt etter MFA/step-up-kontroll.`,
     });
-    if (auditError) {
-      throw new SensitiveActionStepUpError(
-        `Kunne ikke registrere sikkerhetshendelse: ${auditError.message}`,
-        "security_audit_write_failed",
-        "Sensitiv handling stoppet: sikkerhetshendelsen kunne ikke registreres.",
-      );
-    }
   } catch (error) {
     const stepUpError =
       error instanceof SensitiveActionStepUpError

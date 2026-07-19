@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   COMPANY_DOCUMENTS_BUCKET,
-  MAX_DOCUMENT_UPLOAD_BYTES,
   documentStorageKey,
   validateDocumentUpload,
 } from "../app/lib/documents.ts";
@@ -23,39 +22,37 @@ test("document storage key strips unsafe filename characters", () => {
   );
 });
 
-test("document upload derives canonical MIME type from file bytes", async () => {
-  const pdf = new File(
-    [new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37])],
-    "receipt.pdf",
-    { type: "text/html" },
+test("document upload accepts a bounded PDF based on signature, not only browser MIME", () => {
+  assert.deepEqual(
+    validateDocumentUpload({
+      name: "bilag.pdf",
+      contentType: "application/octet-stream",
+      size: 1024,
+      header: new TextEncoder().encode("%PDF-"),
+    }),
+    { name: "bilag.pdf", contentType: "application/pdf", size: 1024 },
   );
-  const png = new File(
-    [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-    "scan.png",
-    { type: "application/octet-stream" },
-  );
-
-  assert.deepEqual(await validateDocumentUpload(pdf), {
-    contentType: "application/pdf",
-    fileName: "receipt.pdf",
-  });
-  assert.deepEqual(await validateDocumentUpload(png), {
-    contentType: "image/png",
-    fileName: "scan.png",
-  });
 });
 
-test("document upload rejects spoofed, binary CSV, and oversized files", async () => {
-  await assert.rejects(
-    () => validateDocumentUpload(new File(["<script>"], "spoofed.pdf", { type: "application/pdf" })),
-    /ekte PDF-, PNG-, JPEG- eller UTF-8 CSV-fil/,
+test("document upload rejects non-PDF content and oversized files", () => {
+  assert.throws(
+    () =>
+      validateDocumentUpload({
+        name: "bilag.pdf",
+        contentType: "application/pdf",
+        size: 1024,
+        header: new TextEncoder().encode("<html"),
+      }),
+    /gyldig PDF/,
   );
-  await assert.rejects(
-    () => validateDocumentUpload(new File([new Uint8Array([0x61, 0x00, 0x62])], "binary.csv")),
-    /ekte PDF-, PNG-, JPEG- eller UTF-8 CSV-fil/,
-  );
-  await assert.rejects(
-    () => validateDocumentUpload(new File([new Uint8Array(MAX_DOCUMENT_UPLOAD_BYTES + 1)], "large.pdf")),
-    /større enn 6 MB/,
+  assert.throws(
+    () =>
+      validateDocumentUpload({
+        name: "bilag.pdf",
+        contentType: "application/pdf",
+        size: 10 * 1024 * 1024 + 1,
+        header: new TextEncoder().encode("%PDF-"),
+      }),
+    /10 MB/,
   );
 });

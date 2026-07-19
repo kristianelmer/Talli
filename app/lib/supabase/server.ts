@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type {
   YearEndInterviewAnswers,
 } from "../annual-data";
@@ -12,11 +13,10 @@ import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
 import { assertOperatorSearchAllowed, buildOperatorSupportSummaries } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
-  Rf1086SubmissionFeedbackItem,
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
-import type { Rf1086AuthorityCheckpoint } from "../rf1086-authority-orchestration";
+import type { SystemUserRequestStatus } from "../system-user-requests";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -41,6 +41,15 @@ export type CompanyMembershipRow = {
   accepted_at: string | null;
 };
 
+export type CustomerAgreementAcceptanceRow = {
+  company_id: string;
+  business_terms_version: string;
+  business_terms_sha256: string;
+  dpa_version: string;
+  dpa_sha256: string;
+  accepted_at: string;
+};
+
 export type LaunchSignoffRow = {
   key: LaunchSignoffKey;
   status: LaunchSignoffStatus;
@@ -50,6 +59,19 @@ export type LaunchSignoffRow = {
   decision: string;
   recorded_by: string;
   updated_at: string;
+};
+
+export type AuthorityOperationRow = {
+  id: string;
+  operation: "register_rf1086_system" | "set_rf1086_systembruker_callback";
+  actor_id: string;
+  status: "started" | "succeeded" | "failed" | "conflict";
+  request_hash: string;
+  result_code: string;
+  authority_http_status: number | null;
+  metadata: { systemId?: string; clientId?: string; right?: string; callbackPath?: string };
+  created_at: string;
+  completed_at: string | null;
 };
 
 export type DocumentRow = {
@@ -64,6 +86,9 @@ export type DocumentRow = {
   storage_key: string;
   created_by: string;
   created_at: string;
+  removed_at: string | null;
+  removed_by: string | null;
+  removal_reason: string | null;
 };
 
 export type OpeningBalanceSetupRow = {
@@ -101,6 +126,83 @@ export type AnnualDataRow = {
   updated_at: string;
 };
 
+export type CorporateDecisionRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_kind: "owner_dividend" | "annual_close";
+  annual_close_source_id: string;
+  source_hash: string;
+  canonical_input: Record<string, unknown>;
+  decision_hash: string;
+  supersedes_decision_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentSetRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  template_family: string;
+  template_version: string;
+  decision_hash: string;
+  supersedes_set_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentArtifactRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  set_id: string;
+  artifact_kind: string;
+  variant: "unsigned" | "signed_owner_attested";
+  document_id: string;
+  content_sha256: string;
+  byte_length: number;
+  mime_type: "application/pdf";
+  storage_key: string;
+  supersedes_artifact_id: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type CorporateDocumentEventRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  set_id: string;
+  artifact_id: string | null;
+  event_kind: string;
+  actor_id: string;
+  occurred_at: string;
+  decision_hash: string;
+  content_sha256: string | null;
+  metadata: Record<string, unknown>;
+  idempotency_key: string;
+  created_at: string;
+};
+
+export type CorporateDecisionFinalizationRow = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  decision_id: string;
+  finalization_kind: "owner_dividend_declared" | "annual_close_adopted";
+  holding_action_id: string | null;
+  ledger_entry_id: string | null;
+  annual_close_source_id: string | null;
+  decision_hash: string;
+  signed_artifact_hashes: Record<string, string>;
+  accounting_policy_version: string | null;
+  created_by: string;
+  created_at: string;
+};
+
 export type OpeningShareholderRow = {
   id: string;
   setup_id: string;
@@ -127,39 +229,172 @@ export type FilingPreviewRow = {
   created_at: string;
 };
 
-export type Rf1086AuthorityCheckpointRow = {
-  preview_id: string;
-  company_id: string;
-  income_year: number;
-  revision: number;
-  checkpoint: Rf1086AuthorityCheckpoint;
+export type FilingSubmissionCall = {
+  endpoint: string;
+  body_hash: string;
+  idempotency_key: string | null;
+  status: string;
   created_at: string;
-  updated_at: string;
+};
+
+export type FilingSubmissionFeedbackItem = {
+  severity: "accepted" | "error" | "warning";
+  code: string;
+  message: string;
+  documentId: string | null;
+};
+
+export type CompanyTaxReturnReceiptMetadata = {
+  authority: "skatteetaten";
+  receiptId: string;
+  status: "feedback_ready";
+  receivedAt: string;
+  feedbackDocumentIds: string[];
+  dataType: "tilbakemelding";
+  contentType: "application/xml" | "text/xml";
+  byteLength: number;
+  contentSha256: string;
+  reference: string;
+  archiveReference: string;
+  processEndedAt: string;
+  archivedAt: string;
+};
+
+export type CompanyTaxReturnPayloadReference = {
+  companyOrgNumber: string;
+  incomeYear: number;
+  envelopeDataId: string;
+  archiveReference: string;
+  payloadHash: string;
+  skattemeldingHash: string;
+  naeringsspesifikasjonHash: string;
+  validationEnvelopeHash: string;
+  submissionEnvelopeHash: string;
+  currentDocumentReferenceHash: string;
+  storedAt: string;
 };
 
 export type FilingSubmissionRow = {
   id: string;
-  preview_id: string;
+  preview_id: string | null;
+  authority_test_run_id: string | null;
   company_id: string;
   income_year: number;
   filing: string;
-  mode: "simulation";
-  adapter_mode: "simulation" | "production";
+  mode: "simulation" | "test_authority";
+  adapter_mode: "simulation" | "test_authority" | "production";
   payload_hash: string | null;
   idempotency_key: string | null;
   status: string;
-  calls: { endpoint: string; body_hash: string; idempotency_key: string; status: string; created_at: string }[];
+  calls: FilingSubmissionCall[];
   receipt_id: string | null;
   feedback_document_ids: string[];
-  feedback_items: Rf1086SubmissionFeedbackItem[];
-  receipt_metadata: Rf1086ReceiptMetadata | null;
-  submitted_payload_ref: Rf1086SubmittedPayloadReference | null;
+  feedback_items: FilingSubmissionFeedbackItem[];
+  receipt_metadata: Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | null;
+  submitted_payload_ref: Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | null;
   submitted_payload: Rf1086SubmittedPayloadSnapshot | null;
   authority_confirmed_at: string | null;
   preview_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
   submitted_by: string | null;
+};
+
+export type ProductionPilotEntitlementRow = {
+  id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  status: "pending" | "active" | "suspended" | "completed" | "revoked";
+  billing_exempt: boolean;
+  system_user_request_id: string | null;
+  system_user_external_reference: string;
+  starts_at: string;
+  expires_at: string;
+  evidence_reference: string;
+  approved_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SystemUserRequestRow = {
+  id: string;
+  company_id: string;
+  initiating_owner_user_id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  external_ref: string;
+  altinn_request_id: string | null;
+  status: SystemUserRequestStatus;
+  confirm_url: string | null;
+  preflight_verified_at: string | null;
+  failure_code: string | null;
+  operator_evidence_id: string | null;
+  requested_at: string | null;
+  last_status_checked_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+};
+
+export type FilingApprovalSnapshotRow = {
+  id: string;
+  entitlement_id: string;
+  preview_id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  adapter_version: string;
+  payload_hash: string;
+  manifest_hash: string;
+  manifest: Record<string, unknown>;
+  approved_by: string;
+  approved_at: string;
+  invalidated_at: string | null;
+  invalidation_reason: string | null;
+};
+
+export type ProductionFilingSubmissionRow = {
+  id: string;
+  approval_id: string;
+  entitlement_id: string;
+  company_id: string;
+  user_id: string;
+  income_year: number;
+  obligation: "aksjonaerregisteroppgaven";
+  case_profile: "rf1086_no_activity_v1";
+  payload_hash: string;
+  adapter_version: string;
+  environment: "production";
+  status: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  authority_references: Record<string, string>;
+  failure_class: string | null;
+  supersedes_submission_id: string | null;
+  submitted_by: string;
+  feedback_state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  feedback_artifact_count: number;
+  feedback_last_checked_at: string | null;
+  feedback_last_changed_at: string | null;
+  feedback_safe_error_code: string | null;
+  feedback_correlation_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProductionFeedbackArtifactRow = {
+  id: string;
+  company_id: string;
+  submission_id: string;
+  document_id: string;
+  content_type: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  byte_length: number;
+  sha256: string;
+  retrieved_at: string;
+  classification: "accepted" | "rejected" | "action_required";
 };
 
 export type FilingOverrideRow = {
@@ -225,6 +460,19 @@ export type BankTransactionRow = {
   created_at: string;
 };
 
+export type BankSuggestionAcceptanceRow = {
+  id: string;
+  company_id: string;
+  bank_transaction_id: string;
+  ledger_entry_id: string;
+  rule_id: "bank_fee" | "system_subscription" | "deposit_interest";
+  rule_version: string;
+  reason: string;
+  lines: unknown[];
+  accepted_by: string;
+  accepted_at: string;
+};
+
 export type HoldingActionRow = {
   id: string;
   company_id: string;
@@ -257,10 +505,37 @@ export type InvestmentPositionRow = {
   org_number: string | null;
   share_count: number;
   cost_basis: number;
+  lot_history_status: "complete" | "needs_reconstruction";
   movements: unknown[];
   created_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type InvestmentLotRow = {
+  id: string;
+  company_id: string;
+  position_id: string;
+  acquisition_action_id: string;
+  acquisition_date: string;
+  original_share_count: number;
+  remaining_share_count: number;
+  original_cost_basis: number;
+  remaining_cost_basis: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type InvestmentLotAllocationRow = {
+  id: string;
+  company_id: string;
+  position_id: string;
+  lot_id: string;
+  sale_action_id: string;
+  allocated_share_count: number;
+  allocated_cost_basis: number;
+  created_by: string;
+  created_at: string;
 };
 
 export type FilingReviewCommentRow = {
@@ -407,6 +682,15 @@ export async function createSupabaseServerClient() {
   });
 }
 
+export function createSupabaseServiceRoleClient() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Supabase service role is not configured for production filing.");
+  }
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function getCurrentUser() {
   if (!hasSupabaseEnv()) {
     return null;
@@ -416,6 +700,42 @@ export async function getCurrentUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
+}
+
+/**
+ * True when an owner must still confirm their email before entering the app.
+ * OAuth sign-ins (e.g. Google) arrive with a verified identity, so they are
+ * never gated even if `email_confirmed_at` is momentarily absent.
+ */
+export function needsEmailVerification(user: User): boolean {
+  if (user.email_confirmed_at) {
+    return false;
+  }
+  const providers =
+    user.app_metadata?.providers ??
+    (user.app_metadata?.provider ? [user.app_metadata.provider] : []);
+  const hasOAuthIdentity = providers.some((provider) => provider && provider !== "email");
+  return !hasOAuthIdentity;
+}
+
+/**
+ * Resolves the current user's support-operator role. Used to server-side guard
+ * the (operator) route group and to conditionally surface operator navigation.
+ */
+export async function getOperatorContext() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { user: null, isOperator: false, isAdminOperator: false };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: operator } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .maybeSingle();
+  const isOperator = Boolean(operator);
+  return { user, isOperator, isAdminOperator: operator?.role === "admin" };
 }
 
 export async function listCompanyWorkspaces() {
@@ -452,6 +772,44 @@ export async function getCompanyMembership(companyId: string, userId: string) {
   };
 }
 
+export async function listOwnedCompanyWorkspaces(userId: string) {
+  if (!hasSupabaseEnv()) {
+    return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: memberships, error: membershipError } = await supabase
+    .from("company_memberships")
+    .select("company_id")
+    .eq("user_id", userId)
+    .eq("role", "owner")
+    .not("accepted_at", "is", null);
+  if (membershipError || !memberships?.length) {
+    return { companies: [] as CompanyWorkspaceRow[], error: membershipError?.message ?? null };
+  }
+  const { data, error } = await supabase
+    .from("companies")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .in("id", memberships.map(({ company_id }) => company_id))
+    .order("created_at", { ascending: false });
+  return { companies: (data ?? []) as CompanyWorkspaceRow[], error: error?.message ?? null };
+}
+
+export async function listCustomerAgreementAcceptances(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { acceptances: [] as CustomerAgreementAcceptanceRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("customer_agreement_acceptances")
+    .select("company_id, business_terms_version, business_terms_sha256, dpa_version, dpa_sha256, accepted_at")
+    .in("company_id", companyIds)
+    .order("accepted_at", { ascending: false });
+  return {
+    acceptances: (data ?? []) as CustomerAgreementAcceptanceRow[],
+    error: error?.message ?? null,
+  };
+}
+
 export async function listDocumentsForCompanies(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { documents: [] as DocumentRow[], error: null };
@@ -459,8 +817,9 @@ export async function listDocumentsForCompanies(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("documents")
-    .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
+    .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")
     .in("company_id", companyIds)
+    .neq("status", "removed")
     .order("created_at", { ascending: false });
 
   return {
@@ -543,6 +902,60 @@ export async function listAnnualData(companyIds: string[]) {
   };
 }
 
+export async function listCorporateDocumentLifecycle(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return {
+      corporateDecisions: [] as CorporateDecisionRow[],
+      corporateDocumentSets: [] as CorporateDocumentSetRow[],
+      corporateDocumentArtifacts: [] as CorporateDocumentArtifactRow[],
+      corporateDocumentEvents: [] as CorporateDocumentEventRow[],
+      corporateDecisionFinalizations: [] as CorporateDecisionFinalizationRow[],
+      error: null,
+    };
+  }
+  const supabase = await createSupabaseServerClient();
+  const [decisions, sets, artifacts, events, finalizations] = await Promise.all([
+    supabase
+      .from("corporate_decisions")
+      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, supersedes_decision_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("corporate_document_sets")
+      .select("id, company_id, income_year, decision_id, template_family, template_version, decision_hash, supersedes_set_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("corporate_document_artifacts")
+      .select("id, company_id, income_year, set_id, artifact_kind, variant, document_id, content_sha256, byte_length, mime_type, storage_key, supersedes_artifact_id, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("corporate_document_events")
+      .select("id, company_id, income_year, decision_id, set_id, artifact_id, event_kind, actor_id, occurred_at, decision_hash, content_sha256, metadata, idempotency_key, created_at")
+      .in("company_id", companyIds)
+      .order("occurred_at", { ascending: true }),
+    supabase
+      .from("corporate_decision_finalizations")
+      .select("id, company_id, income_year, decision_id, finalization_kind, holding_action_id, ledger_entry_id, annual_close_source_id, decision_hash, signed_artifact_hashes, accounting_policy_version, created_by, created_at")
+      .in("company_id", companyIds)
+      .order("created_at", { ascending: true }),
+  ]);
+  return {
+    corporateDecisions: (decisions.data ?? []) as CorporateDecisionRow[],
+    corporateDocumentSets: (sets.data ?? []) as CorporateDocumentSetRow[],
+    corporateDocumentArtifacts: (artifacts.data ?? []) as CorporateDocumentArtifactRow[],
+    corporateDocumentEvents: (events.data ?? []) as CorporateDocumentEventRow[],
+    corporateDecisionFinalizations: (finalizations.data ?? []) as CorporateDecisionFinalizationRow[],
+    error: decisions.error?.message
+      ?? sets.error?.message
+      ?? artifacts.error?.message
+      ?? events.error?.message
+      ?? finalizations.error?.message
+      ?? null,
+  };
+}
+
 export async function listFilingPreviews(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { previews: [] as FilingPreviewRow[], error: null };
@@ -567,13 +980,74 @@ export async function listFilingSubmissions(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("filing_submissions")
-    .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
+    .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
   return {
     submissions: (data ?? []) as FilingSubmissionRow[],
     error: error?.message ?? null,
+  };
+}
+
+function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message?: string } | null>) {
+  return errors.some((error) => error != null && (
+    error.code === "PGRST205"
+    || error.code === "42P01"
+    || /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(error.message ?? "")
+  ));
+}
+
+export async function listSystemUserRequests(
+  supabase: SupabaseClient,
+  companyIds: string[],
+): Promise<SystemUserRequestRow[]> {
+  if (companyIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code,operator_evidence_id,requested_at,last_status_checked_at,accepted_at,created_at,updated_at,resolved_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as SystemUserRequestRow[];
+}
+
+export async function listProductionFilingState(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return {
+      productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
+      filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
+      productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
+      productionFeedbackArtifacts: [] as ProductionFeedbackArtifactRow[],
+      error: null,
+    };
+  }
+  const supabase = await createSupabaseServerClient();
+  const [entitlements, approvals, submissions, artifacts] = await Promise.all([
+    supabase.from("production_pilot_entitlements").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+    supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
+    supabase.from("production_filing_submissions")
+      .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,payload_hash,adapter_version,environment,status,supersedes_submission_id,submitted_by,feedback_state,feedback_artifact_count,feedback_last_checked_at,feedback_last_changed_at,feedback_safe_error_code,feedback_correlation_id,created_at,updated_at")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false }),
+    supabase.from("production_feedback_artifacts")
+      .select("id,company_id,submission_id,document_id,content_type,byte_length,sha256,retrieved_at,classification")
+      .in("company_id", companyIds)
+      .order("retrieved_at", { ascending: false }),
+  ]);
+  const errors = [entitlements.error, approvals.error, submissions.error, artifacts.error];
+  const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
+    && productionPilotSchemaUnavailable(errors);
+  return {
+    productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
+    filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
+    productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
+    productionFeedbackArtifacts: (artifacts.data ?? []) as ProductionFeedbackArtifactRow[],
+    error: rolloutSchemaPending
+      ? null
+      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
   };
 }
 
@@ -611,6 +1085,23 @@ export async function listBankTransactions(companyIds: string[]) {
   };
 }
 
+export async function listBankSuggestionAcceptances(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { acceptances: [] as BankSuggestionAcceptanceRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("bank_suggestion_acceptances")
+    .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
+    .in("company_id", companyIds)
+    .order("accepted_at", { ascending: false });
+
+  return {
+    acceptances: (data ?? []) as BankSuggestionAcceptanceRow[],
+    error: error?.message ?? null,
+  };
+}
+
 export async function listHoldingActions(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { actions: [] as HoldingActionRow[], error: null };
@@ -635,12 +1126,47 @@ export async function listInvestmentPositions(companyIds: string[]) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("investment_positions")
-    .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, movements, created_by, created_at, updated_at")
+    .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, lot_history_status, movements, created_by, created_at, updated_at")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
   return {
     positions: (data ?? []) as InvestmentPositionRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listInvestmentLots(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { lots: [] as InvestmentLotRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("investment_lots")
+    .select("id, company_id, position_id, acquisition_action_id, acquisition_date, original_share_count, remaining_share_count, original_cost_basis, remaining_cost_basis, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("acquisition_date", { ascending: true })
+    .order("id", { ascending: true });
+
+  return {
+    lots: (data ?? []) as InvestmentLotRow[],
+    error: error?.message ?? null,
+  };
+}
+
+export async function listInvestmentLotAllocations(companyIds: string[]) {
+  if (!hasSupabaseEnv() || companyIds.length === 0) {
+    return { allocations: [] as InvestmentLotAllocationRow[], error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("investment_lot_allocations")
+    .select("id, company_id, position_id, lot_id, sale_action_id, allocated_share_count, allocated_cost_basis, created_by, created_at")
+    .in("company_id", companyIds)
+    .order("created_at", { ascending: true });
+
+  return {
+    allocations: (data ?? []) as InvestmentLotAllocationRow[],
     error: error?.message ?? null,
   };
 }
@@ -849,6 +1375,36 @@ export async function listLaunchSignoffs(actorId?: string | null) {
   };
 }
 
+export async function listAuthorityOperations(actorId?: string | null) {
+  if (!hasSupabaseEnv() || !actorId) {
+    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", actorId)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError) {
+    return {
+      operations: [] as AuthorityOperationRow[],
+      isAdminOperator: false,
+      error: "authority_operator_lookup_failed",
+    };
+  }
+  if (!operator) {
+    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+  }
+  const { data, error } = await supabase.from("authority_operations").select("*").order("created_at", { ascending: false }).limit(10);
+  return {
+    operations: (data ?? []) as AuthorityOperationRow[],
+    isAdminOperator: true,
+    error: error ? "authority_operations_query_failed" : null,
+  };
+}
+
 export async function searchOperatorSupportDashboard(query: string, actorId?: string | null) {
   if (!hasSupabaseEnv() || !actorId) {
     return { summaries: [], isOperator: false, error: null };
@@ -901,7 +1457,7 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
       .in("company_id", companyIds),
     supabase
       .from("filing_submissions")
-      .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
+      .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
       .in("company_id", companyIds)
       .order("updated_at", { ascending: false }),
     supabase

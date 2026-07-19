@@ -59,3 +59,20 @@ test("blocks unsupported share purchase treatment with machine-readable reasons"
     (error) => error instanceof SharePurchaseValidationError && error.code === "unsupported_tax_treatment",
   );
 });
+
+test("requires a whole share count for FIFO lots", () => {
+  assert.throws(
+    () =>
+      validateSharePurchase({
+        investmentKey: "portfolio-as",
+        investmentName: "Portfolio AS",
+        investmentKind: "norwegian_private_company",
+        taxTreatment: "fritaksmetoden",
+        acquisitionDate: "2025-05-01",
+        shareCount: 1.5,
+        purchaseAmount: 50000,
+        documentStatus: "attached",
+      }),
+    (error) => error instanceof SharePurchaseValidationError && error.code === "invalid_share_count",
+  );
+});

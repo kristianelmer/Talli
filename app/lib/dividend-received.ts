@@ -1,5 +1,4 @@
 export type DividendReceivedTaxTreatment = "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant";
-export type DividendReceivedThreePercentTreatment = "applies" | "group_exemption" | "needs_accountant";
 export type DividendReceivedDocumentStatus = "attached" | "missing_accepted_warning" | "not_required";
 
 export type DividendReceivedInput = {
@@ -9,7 +8,6 @@ export type DividendReceivedInput = {
   grossAmount: number;
   linkedInvestmentId: string;
   taxTreatment: DividendReceivedTaxTreatment;
-  threePercentTreatment: DividendReceivedThreePercentTreatment;
   bankTransactionId?: string | null;
   documentId?: string | null;
   documentStatus: DividendReceivedDocumentStatus;
@@ -22,7 +20,6 @@ export type DividendReceivedActionPayload = {
   gross_amount: number;
   linked_investment_id: string;
   tax_treatment: "fritaksmetoden";
-  three_percent_treatment: Exclude<DividendReceivedThreePercentTreatment, "needs_accountant">;
   taxable_add_back: number;
   bank_transaction_id: string | null;
   document_id: string | null;
@@ -62,12 +59,6 @@ export function validateDividendReceived(input: DividendReceivedInput): Dividend
       "unsupported_tax_treatment",
     );
   }
-  if (input.threePercentTreatment !== "applies" && input.threePercentTreatment !== "group_exemption") {
-    throw new DividendReceivedValidationError(
-      "Treprosentregel eller konsernunntak må avklares før utbyttet kan inngå i skattemeldingen.",
-      "unsupported_three_percent_treatment",
-    );
-  }
   if (!["attached", "missing_accepted_warning", "not_required"].includes(input.documentStatus)) {
     throw new DividendReceivedValidationError("Ugyldig dokumentstatus.", "invalid_document_status");
   }
@@ -78,8 +69,7 @@ export function validateDividendReceived(input: DividendReceivedInput): Dividend
     gross_amount: roundMoney(input.grossAmount),
     linked_investment_id: linkedInvestmentId,
     tax_treatment: "fritaksmetoden",
-    three_percent_treatment: input.threePercentTreatment,
-    taxable_add_back: input.threePercentTreatment === "applies" ? roundMoney(input.grossAmount * 0.03) : 0,
+    taxable_add_back: roundMoney(input.grossAmount * 0.03),
     bank_transaction_id: input.bankTransactionId || null,
     document_id: input.documentId || null,
     document_status: input.documentStatus,

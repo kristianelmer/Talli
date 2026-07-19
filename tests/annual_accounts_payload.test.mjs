@@ -66,6 +66,63 @@ test("builds verified RR0002 annual accounts payload fields", () => {
   assert.deepEqual(payload.feedback, []);
 });
 
+test("includes system costs, bank interest, and share-sale losses in annual result", () => {
+  const payload = buildAnnualAccountsPayload({
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries: [
+      {
+        ...ledgerEntries[0],
+        lines: [
+          { account: "1920", debit: 0, credit: 0 },
+          { account: "8070", debit: 0, credit: 20000 },
+          { account: "8050", debit: 0, credit: 125.5 },
+          { account: "6700", debit: 990, credit: 0 },
+          { account: "8090", debit: 5000, credit: 0 },
+        ],
+      },
+    ],
+  });
+  const fields = Object.fromEntries(payload.fields.map((field) => [field.tag, field]));
+
+  assert.equal(fields["sumDriftskostnad/aarets"].value, 990);
+  assert.equal(fields["sumFinansinntekter/aarets"].value, 20125.5);
+  assert.equal(fields["sumFinanskostnader/aarets"].value, 5000);
+  assert.equal(fields["resultatFoerSkattekostnad/aarets"].value, 14135.5);
+  assert.equal(fields["aarsresultat/aarets"].value, 14135.5);
+});
+
+test("separates tax expense from result before tax and includes tax payable in debt", () => {
+  const payload = buildAnnualAccountsPayload({
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries: [
+      {
+        ...ledgerEntries[0],
+        lines: [
+          { account: "1920", debit: 128510, credit: 0 },
+          { account: "8070", debit: 0, credit: 100000 },
+          { account: "7770", debit: 1490, credit: 0 },
+          { account: "8300", debit: 20000, credit: 0 },
+          { account: "2500", debit: 0, credit: 20000 },
+          { account: "2000", debit: 0, credit: 30000 },
+        ],
+      },
+    ],
+  });
+  const fields = Object.fromEntries(payload.fields.map((field) => [field.tag, field]));
+
+  assert.equal(fields["resultatFoerSkattekostnad/aarets"].value, 98510);
+  assert.equal(fields["skattekostnad/aarets"].orid, "11835");
+  assert.equal(fields["skattekostnad/aarets"].value, 20000);
+  assert.equal(fields["aarsresultat/aarets"].value, 78510);
+  assert.equal(fields["betalbarSkatt/aarets"].orid, "2483");
+  assert.equal(fields["betalbarSkatt/aarets"].value, 20000);
+  assert.equal(fields["sumKortsiktigGjeld/aarets"].value, 20000);
+  assert.equal(fields["sumEgenkapital/aarets"].value, 108510);
+  assert.equal(fields["sumEiendeler/aarets"].value, 128510);
+});
+
 test("returns annual accounts feedback for missing notes and unsupported cases", () => {
   const payload = buildAnnualAccountsPayload({
     incomeYear: 2025,

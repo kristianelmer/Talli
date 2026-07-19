@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -29,6 +30,7 @@ test("blocks launch when required signoffs are missing", () => {
   assert.equal(gate.status, "launch_signoff_blocked");
   assert.ok(gate.missing.includes("legal_policy_pack"));
   assert.ok(gate.missing.includes("security_restore"));
+  assert.ok(gate.missing.includes("founder_production_go_live"));
   assert.ok(gate.messages.some((message) => /Legal\/privacy/.test(message)));
 });
 
@@ -60,6 +62,35 @@ test("requires fresh restore signoff", () => {
   assert.ok(gate.messages.some((message) => /gammel/.test(message)));
 });
 
+test("rejects future-dated launch signoffs", () => {
+  const gate = buildLaunchSignoffGate({
+    signoffs: launchSignoffKeys.map((key) =>
+      approvedSignoff(key, key === "founder_production_go_live" ? "2026-06-21T10:00:00Z" : "2026-06-20T10:00:00Z"),
+    ),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(gate.ready, false);
+  assert.ok(gate.missing.includes("founder_production_go_live"));
+
+  assert.throws(
+    () =>
+      buildLaunchSignoffRecord(
+        {
+          key: "founder_production_go_live",
+          status: "approved",
+          reviewer: "Founder",
+          reviewedAt: "2026-06-21T10:00:00Z",
+          evidenceLink: "https://evidence.example/final-go-live",
+          decision: "Approved.",
+          recordedBy: "operator-1",
+        },
+        new Date("2026-06-20T12:00:00Z"),
+      ),
+    /future/i,
+  );
+});
+
 test("passes only when every launch signoff is approved with evidence", () => {
   const gate = buildLaunchSignoffGate({
     signoffs: launchSignoffKeys.map((key) => approvedSignoff(key)),
@@ -67,6 +98,7 @@ test("passes only when every launch signoff is approved with evidence", () => {
   });
 
   assert.equal(launchSignoffLabel("rf1086_authority"), "RF-1086 authority filing");
+  assert.equal(launchSignoffLabel("founder_production_go_live"), "Final founder production go-live");
   assert.equal(gate.ready, true);
   assert.equal(gate.status, "launch_signoff_ready");
   assert.deepEqual(gate.missing, []);
@@ -118,4 +150,53 @@ test("builds persisted launch signoff record and validates approved evidence", (
       }),
     /Ugyldig/,
   );
+});
+
+test("documented launch_legal_name_public_copy entry is a valid approved record", () => {
+  // Mirrors the "Launch Signoff Record To Apply" entry in
+  // docs/launch/talli-clearance-evidence-register.md so the documented operator-form
+  // values cannot drift from the validation rules in buildLaunchSignoffRecord.
+  const record = buildLaunchSignoffRecord(
+    {
+      key: "launch_legal_name_public_copy",
+      status: "approved",
+      reviewer: "Kristian Elmer (founder)",
+      reviewedAt: "2026-06-24T00:00:00Z",
+      evidenceLink: "docs/launch/talli-clearance-evidence-register.md",
+      decision:
+        "Trademark (Patentstyret), company-name (Brønnøysund), talli.no ownership, " +
+        "fallback (not required), public copy, and authority wording all approved " +
+        "2026-06-24; pre-production public-copy baseline enforced by test:launch-copy.",
+      recordedBy: "admin-operator",
+    },
+    new Date("2026-06-27T00:00:00Z"),
+  );
+
+  assert.equal(record.key, "launch_legal_name_public_copy");
+  assert.equal(record.status, "approved");
+  assert.equal(record.reviewer, "Kristian Elmer (founder)");
+  assert.equal(record.reviewed_at, "2026-06-24T00:00:00Z");
+});
+
+test("launch evidence records the final founder gate as intentionally unapproved", () => {
+  const evidenceRegister = readFileSync(
+    new URL("../docs/launch/talli-clearance-evidence-register.md", import.meta.url),
+    "utf8",
+  );
+  const productionRehearsal = readFileSync(
+    new URL("../docs/launch/production-launch-rehearsal.md", import.meta.url),
+    "utf8",
+  );
+  const decisionMap = readFileSync(
+    new URL("../docs/launch/customer-ready-decision-map.md", import.meta.url),
+    "utf8",
+  );
+
+  for (const doc of [evidenceRegister, productionRehearsal]) {
+    assert.match(doc, /founder_production_go_live/);
+    assert.match(doc, /(?:missing|pending|not approved|ikke godkjent)/i);
+    assert.match(doc, /explicit founder confirmation/i);
+  }
+  assert.match(decisionMap, /2026-07-15-customer-ready-foundation-design\.md/);
+  assert.match(decisionMap, /2026-07-15-customer-ready-foundation\.md/);
 });

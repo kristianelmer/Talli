@@ -7,6 +7,9 @@ export type CancellationEvidence = {
   retentionClasses?: string[];
   missingDocumentIds?: string[];
   legalReviewRequired?: boolean;
+  corporateObjectKeys?: string[];
+  missingCorporateObjectKeys?: string[];
+  corporateEvidenceComplete?: boolean;
 };
 
 export type CompanyCancellationRow = {
@@ -37,6 +40,7 @@ export const retentionClasses = [
   "filing_payloads_feedback_receipts",
   "billing_refund_records",
   "audit_security_logs",
+  "corporate_decisions_and_signed_artifacts",
 ];
 
 export function cancellationStatusLabel(status: CancellationStatus) {
@@ -56,6 +60,8 @@ export function nextCancellationStatus(input: {
   archiveExportedAt?: string | null;
   legalReviewApproved?: boolean;
   deletedAt?: string | null;
+  corporateLifecyclePresent?: boolean;
+  corporateEvidenceComplete?: boolean;
 }): CancellationStatus {
   if (input.deletedAt) {
     return "deleted";
@@ -63,7 +69,8 @@ export function nextCancellationStatus(input: {
   if (input.legalReviewApproved) {
     return "deletion_approved";
   }
-  if (input.archiveExportedAt) {
+  if (input.archiveExportedAt
+    && (!input.corporateLifecyclePresent || input.corporateEvidenceComplete)) {
     return "retention_hold";
   }
   return "export_required";
@@ -74,7 +81,11 @@ export function buildCancellationEvidence(input: {
   incomeYear: number;
   archiveExportedAt?: string | null;
   missingDocumentIds?: string[];
+  corporateObjectKeys?: string[];
+  missingCorporateObjectKeys?: string[];
 }): CancellationEvidence {
+  const corporateObjectKeys = input.corporateObjectKeys ?? [];
+  const missingCorporateObjectKeys = input.missingCorporateObjectKeys ?? [];
   return {
     archiveExportedAt: input.archiveExportedAt ?? null,
     archiveIncomeYear: input.incomeYear,
@@ -82,6 +93,9 @@ export function buildCancellationEvidence(input: {
     retentionClasses,
     missingDocumentIds: input.missingDocumentIds ?? [],
     legalReviewRequired: true,
+    corporateObjectKeys,
+    missingCorporateObjectKeys,
+    corporateEvidenceComplete: missingCorporateObjectKeys.length === 0,
   };
 }
 
@@ -129,15 +143,11 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
 
 export function buildDeletionCompletionUpdate(input: {
   actorId: string;
-  requestedBy: string;
   reviewedAt: string;
   deletedAt: string;
 }) {
   if (!input.actorId) {
     throw new Error("missing_deletion_actor");
-  }
-  if (!input.requestedBy || input.requestedBy === input.actorId) {
-    throw new Error("independent_deletion_reviewer_required");
   }
   return {
     status: "deleted" as const,

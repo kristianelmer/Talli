@@ -1,6 +1,6 @@
 # PRD: Talli Holding-First Filing Assistant
 
-Status: `ready-for-agent`  
+Status: `implementation-in-progress` — local corporate-document workflow verified; production remains disabled
 Product: Talli  
 Audience: Product, engineering, compliance review, future implementation agents  
 Source plan: consolidated Talli plan and ADRs
@@ -30,6 +30,30 @@ The first direct filing scope is:
 3. `skattemelding for AS`
 
 The first implementation target is the Python domain and filing engine, beginning with `aksjonærregisteroppgaven` filing simulation. The web SaaS product, billing, auth, document storage, and production authority submission should come after the filing core is proven with deterministic fixtures, official schemas, public-data validation, and official test-flow validation.
+
+## Implementation Snapshot (2026-07-14)
+
+The simple-AS corporate-document slice is implemented and locally rehearsed for:
+
+- deterministic dividend board proposal and general-meeting minutes;
+- deterministic annual board and general-meeting minutes;
+- reviewed persisted facts, canonical decision hashes, private
+  content-addressed unsigned and owner-attested signed copies;
+- fresh-MFA owner approval, signing-request, attestation, rejection,
+  finalization, declaration/payable accounting, and matched partial/full
+  payment;
+- immutable lifecycle/archive records and restore-integrity checks; and
+- PostgreSQL-side recomputation of canonical hashes, ledger-derived financial
+  totals, shareholders, proportional allocations, staleness, and period locks
+  so direct RPC callers cannot substitute forged accounting facts.
+
+Local production rehearsal evidence is recorded in
+`docs/launch/evidence/corporate-document-local-rehearsal.md`. The implementation
+is not approved for public use: `TALLI_CORPORATE_DOCUMENTS_ENABLED=false`
+remains the required state until every named gate in
+`docs/launch/corporate-document-release-gate.md` is approved. Live authority
+filing is also still unimplemented/disabled and retains its separate authority,
+official-schema, receipt, security, and human-signoff gates.
 
 ## User Stories
 

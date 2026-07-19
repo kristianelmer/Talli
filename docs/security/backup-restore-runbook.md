@@ -13,8 +13,11 @@ The launch restore fixture must cover:
 - `opening_shareholders`
 - `ledger_entries`
 - `bank_transactions`
+- `bank_suggestion_acceptances`
 - `holding_actions`
 - `investment_positions`
+- `investment_lots`
+- `investment_lot_allocations`
 - `documents`
 - `filing_previews`
 - `filing_submissions`

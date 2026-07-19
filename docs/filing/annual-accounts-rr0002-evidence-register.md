@@ -1,8 +1,9 @@
 # Årsregnskap RR-0002 Evidence Register
 
-Status: narrow XML renderer and test-only Altinn boundary implemented
-Last updated: 2026-07-13
-Target issue: #82
+Status: TT02 payload validated, signed, submitted, and archived; processing decision and production approval pending
+
+Last updated: 2026-07-14
+Target issue: #82 (payload map, closed) / #84 (test-environment submission flow)
 
 This register records the public evidence Talli can use to build a narrow
 `aarsregnskap-vanlig-202406` payload for a simple holding AS. It does not enable
@@ -19,10 +20,24 @@ required.
   https://brreg.github.io/docs/apidokumentasjon/regnskapsregisteret/maskinell-innrapportering/eksempler-paa-registrering/API-eksempler-Postman.zip
 - Altinn RR-0002 form page:
   https://info.altinn.no/skjemaoversikt/bronnoysundregistrene/arsregnskap/
-- Dialogporten instance lookup:
-  https://docs.altinn.studio/en/dialogporten/user-guides/looking-up-dialogs/
-- Dialogporten dialog details:
-  https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
+- Altinn Apps instance API:
+  https://docs.altinn.studio/en/api/apps/instances/
+- Altinn Apps process API:
+  https://docs.altinn.studio/en/api/apps/process/
+- Altinn instance model:
+  https://docs.altinn.studio/en/api/models/instance/
+- Altinn end-user-system receipt retrieval:
+  https://docs.altinn.studio/nb/altinn-studio/v8/guides/integration/sbs/apis/#4-hente-kvittering
+- Altinn system registration guide:
+  https://docs.altinn.studio/en/authorization/guides/system-vendor/system-user/systemregistration/
+- Altinn system-register rights update API:
+  https://docs.altinn.studio/en/api/authentication/systemuserapi/systemregister/update/
+- TT02 Resource Registry record used for the rehearsal:
+  https://platform.tt02.altinn.no/resourceregistry/api/v1/resource/app_brg_aarsregnskap-vanlig-202406
+- Live TT02 hovedskjema JSON schema:
+  https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Hovedskjema
+- Live TT02 underskjema JSON schema:
+  https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/api/jsonschema/Underskjema
 
 Evidence extraction source:
 
@@ -31,24 +46,7 @@ Evidence extraction source:
 - hovedskjema root: `dataFormatId="1266"`, `dataFormatVersion="51820"`,
   `tjenestehandling="aarsregnskap_vanlig"`, `tjeneste="regnskap"`
 - selskapsregnskap root: `dataFormatId="758"`, `dataFormatVersion="51980"`,
-  `versjon="1.1"`, `tjenestehandling="aarsregnskap_vanlig_underskjema"`,
-  `tjeneste="regnskap"`
-
-Live TT02 contract snapshot inspected on 2026-07-13:
-
-- application: `brg/aarsregnskap-vanlig-202406`;
-- Hovedskjema JSON schema SHA-256:
-  `3776336fa2f7e1ef4773e8cb2800d7930415b9b1c028a59a338327f68b8b4f68`;
-- Underskjema JSON schema SHA-256:
-  `e17fc7f6cb45984f5ab74dc614955199610deab9b12f9eb1012772f2e0e7c931`;
-- application metadata SHA-256:
-  `45da74344955265ede80e42726a29ce33c8efa81090cf45ab6739f00a3ad7aa6`;
-- custom OpenAPI SHA-256:
-  `23f3dc34915a469d031a5ffb9f17fdebf7e548d12211b2019534717156ea38f9`.
-
-The two schema fingerprints are pinned by the renderer. They are evidence of the
-contract inspected, not a substitute for provider validation in an Altinn
-instance.
+  `tjenestehandling="aarsregnskap_vanlig_underskjema"`, `tjeneste="regnskap"`
 
 ## Submission and Signing Flow
 
@@ -68,9 +66,11 @@ Talli launch decision:
 
 - Owner-managed annual accounts filing must use hybrid flow or ID-porten-only
   signing. Talli may automate data filling only until the signing step.
-- Production adapter remains disabled until TT02 test evidence proves instance
-  creation, data upload, lock, signing, receipt/inbox behavior, and archive
-  references for the supported simple holding AS path.
+- TT02 now proves instance creation, data upload, lock, hybrid person signing,
+  submission, receipt retrieval, and archive references for the supported simple
+  holding AS path. The production adapter remains disabled until the later
+  processing decision, deployed-runtime evidence, and dated release approval
+  are recorded.
 
 ## Minimal Hovedskjema Map
 
@@ -89,8 +89,8 @@ Talli launch decision:
 | --- | --- | ---: | --- |
 | Currency | `valuta` | `34984` | Supported as `NOK` only. |
 | Admin/operating costs | `sumDriftskostnad/aarets` | `17126` | Supported from ledger expense totals; detail rows can follow later. |
-| Dividend/gain financial income | `sumFinansinntekter/aarets` | `153` | Supported for aggregate financial income preview; detailed classification remains conservative. |
-| Financial costs | `sumFinanskostnader/aarets` | `17130` | Supported as zero or simple finance-cost aggregate. |
+| Dividend/gain/interest financial income | `sumFinansinntekter/aarets` | `153` | Supported from internal accounts `8070` and `8050`; detailed authority classification remains conservative. |
+| Financial costs | `sumFinanskostnader/aarets` | `17130` | Supported for the launch share-sale loss aggregate from internal account `8090`. |
 | Result before tax | `resultatFoerSkattekostnad/aarets` | `167` | Derived from ledger totals. |
 | Annual result | `aarsresultat/aarets` | `172` | Derived after tax settlement, if known; otherwise block production. |
 | Investments in subsidiaries | `investeringDatterselskap/aarets` | `9686` | Supported for owned subsidiary shares when classification is clear. |
@@ -110,54 +110,8 @@ Talli launch decision:
 | Annual full-time equivalents | `antallAarsverk` | `37467` | Required small-enterprise note field; supported, default `0` for no employees/payroll. |
 
 Previous-year fields exist in the official example as sibling `fjoraarets` values.
-The implemented renderer requires explicit prior-year values and blocks rather
-than copying or inventing them.
-
-## Implemented XML Guardrails
-
-`app/lib/annual-accounts-xml.ts` renders deterministic Hovedskjema and
-Underskjema XML only for the launch case documented here. Before rendering it:
-
-- verifies the organization number format and checksum and restricts the entity
-  form to `AS`;
-- requires an explicit next-year adoption date and confirming representative;
-- rejects parent companies, IFRS, audit obligation, and non-small enterprises;
-- requires current and prior figures in whole kroner;
-- reconciles result before tax, annual result, assets, equity, debt, and both
-  sides of the balance for both periods;
-- supports only the no-tax-cost, one-investment, bank, paid-in/retained equity,
-  and short-term-debt path;
-- escapes XML text, rejects forbidden control characters, and bounds identifiers,
-  descriptions, email, amounts, and annual full-time equivalents;
-- emits content hashes for both generated documents.
-
-The focused suite parses both outputs, verifies exact namespaces, versions,
-paths, `orid` values, current/prior values, and XML escaping, and exercises every
-fail-closed boundary above. It does not call Altinn.
-
-The guarded TT02 runner accepts only a private exact-schema JSON input, renders
-the documents in memory, locks customer/year/document hashes before token
-issuance, advances one journaled operation per invocation, and requires a
-separate flag before locking for personal signature. Its offline inspection and
-test suite do not create an Altinn instance.
-
-`app/lib/annual-accounts-completion.ts` adds a separate post-signature boundary.
-It uses the exact accepted lock checkpoint, performs one read-only instance
-inspection, and accepts completion only when the same company/instance and the
-same Hovedskjema/Underskjema IDs have an ended process plus exactly one JSON
-`signature` data element. `app/lib/annual-accounts-completion-file-store.ts`
-then records only those bounded IDs, document hashes, and completion timestamp
-in a private immutable file. It does not claim or synthesize an inbox, archive,
-or receipt reference.
-
-`app/lib/annual-accounts-dialog-evidence.ts` adds an independent read-only
-Dialogporten boundary after that signed-instance proof exists. It resolves the
-exact Altinn instance to a dialog, requires the same company, annual-accounts
-resource and provider plus `Completed` state, and writes a second immutable file
-linked by the signed-evidence SHA-256. The record contains bounded dialog IDs,
-timestamps, and counts only; localized text, authorization evidence, attachment
-names/URLs, and provider content are not retained. This proves dialog linkage,
-not receipt or decision attachment content.
+Talli launch may set them from opening/prior annual accounts where available, or
+block production annual accounts until prior-year values are confirmed.
 
 ## Notes
 
@@ -202,15 +156,71 @@ Block or escalate:
 
 ## Remaining Before Production
 
-- Validate the rendered Hovedskjema and Underskjema with the provider in TT02;
-  well-formedness and pinned local contract assertions are already covered.
-- Validate generated XML/data elements in TT02.
-- Prove hybrid system-user/ID-porten owner signing.
-- Run the implemented signed-instance verifier after the owner's ID-porten step.
-- Run the implemented exact-instance Dialogporten verifier after attaching its
-  separately approved read scope.
-- Retrieve and persist official receipt/decision attachment content separately.
+- Implement payload builder using this map. — Done in #83 (`holding_core.annual` +
+  `app/lib`; covered by the code-gate verification below).
+- Implement the test-only stepped Altinn transport through the person-signing
+  handoff. — Done 2026-07-14 in `app/lib/annual-accounts-authority-client.ts`.
+  It creates the instance, resolves exactly one `Hovedskjema` and one
+  `Underskjema`, uploads XML, validates, fails closed on errors, locks with
+  `action=confirm`, and returns the person-signing URL. It cannot sign or submit,
+  and construction with `environment=production` is refused.
+- Add `altinn:instances.read` and `altinn:instances.write` to the TT02
+  Maskinporten client. — Done and verified in Digdir Selvbetjening 2026-07-14.
+- Register the live TT02 resource `app_brg_aarsregnskap-vanlig-202406` on
+  system `930835978_talli`. — Done 2026-07-14 using the rights-only endpoint;
+  read-back verified that both existing Skatteetaten rights were preserved.
+- Create a matching annual-accounts system-user request for test company
+  `310279617`. — Done 2026-07-14; request
+  `4f774704-88b8-4053-994b-37073ab4a896` was approved by the company through
+  TT02 ID-porten and read back through the vendor API with status `Accepted`.
+- Mint and exchange an annual-accounts system-user token with both Altinn
+  instance scopes. — Done 2026-07-14; both tokens remained in memory.
+- Validate generated XML/data elements in TT02. — Done 2026-07-14; instance
+  `51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51` accepted both XML data
+  elements with zero validation issues and moved to the signing task. Evidence:
+  [annual-accounts-tt02-2026-07-14.md](./evidence/annual-accounts-tt02-2026-07-14.md).
+- Prove hybrid system-user/ID-porten owner signing. — Done 2026-07-14; TestID
+  high-assurance signing ended the process and created a distinct signature data
+  element.
+- Persist official receipt/inbox/archive references. — Done for the TT02 evidence
+  pack; read-only polling captured `process.ended`, `status.archived`, the
+  platform instance reference, and the official `ref-data-as-pdf` reference.
+  The linked inbox dialog confirmed receipt and currently reports
+  `Til behandling`.
+- Capture the later Regnskapsregisteret processing decision from the TT02 inbox.
+- Connect the verified evidence shape to the deployed runtime submission journal.
+  — The owner workspace now imports the sanitized JSON through a company-bound,
+  step-up-protected action and stores it as `pending`; executing that import in
+  the deployed environment remains pending.
 - Complete human release signoff.
+- Enable the production transport only after all external evidence and signoffs
+  above exist; the current client remains test-only.
 
-The test-only client contract and live-rehearsal stop conditions are recorded in
-[annual-accounts-tt02-runbook.md](./annual-accounts-tt02-runbook.md).
+The generic Altinn system-user setup guide currently shows
+`app_brg_aarsregnskap` as an example. A TT02 rights update with that identifier
+failed on 2026-07-14 with `AUTH.VLD-00003` because the resource was not found.
+The live TT02 Resource Registry returned the versioned, delegable Altinn App
+resource `app_brg_aarsregnskap-vanlig-202406`; that exact identifier is the one
+registered and read back for this rehearsal.
+
+## Code Gate Verification (2026-07-14)
+
+Latest run of the annual-accounts code-side evidence (all green):
+
+| Suite | Result |
+| --- | --- |
+| `uv run python -m unittest tests.test_annual tests.test_annual_validation` | 13 passed |
+| `npm run test:annual-accounts` | 5 passed |
+| `npm run test:annual-accounts-xml` | 5 passed |
+| `npm run test:annual-accounts-authority` | 6 passed |
+| `npm run test:annual-accounts-authority-script` | 1 passed |
+| `npm run test:annual-data` | 2 passed |
+| `npm run test:annual-readiness` | 5 passed |
+| `npm run test:authority-evidence` | 11 passed |
+
+This proves the deterministic payload/readiness/evidence logic and the full TT02
+hybrid submission path through receipt/archive. It does not substitute for the
+remaining external rows above (processing decision, deployed-runtime evidence,
+and human release signoff), which keep `buildFilingReleaseGates` fail-closed for
+`aarsregnskap` (requires accepted `authority_test_runs` evidence + approved
+`annual_accounts_authority` signoff).

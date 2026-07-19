@@ -41,7 +41,7 @@ export function estimateAnnualTax(input: AnnualTaxEstimateInput) {
   const fritaksmetodenAddBack = input.holdingActions
     .filter((action) => action.action_type === "dividend_received")
     .reduce<number>((sum, action) => sum + Number(action.payload.taxable_add_back ?? 0), 0);
-  const taxBasis = roundMoney(fritaksmetodenAddBack - adminCosts);
+  const taxBasis = roundMoney(adminCosts + fritaksmetodenAddBack);
   const estimatedTax = roundMoney(Math.max(0, taxBasis) * 0.22);
   return {
     adminCosts: roundMoney(adminCosts),

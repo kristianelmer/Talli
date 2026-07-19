@@ -1,8 +1,8 @@
 # Talli Clearance Evidence Register
 
-Status: prepared for founder/legal review  
-Last updated: 2026-06-17  
-Blocks: #71 remains open until human/legal signoff
+Status: invite-only beta copy and legal-operator implementation complete locally; production launch remains blocked
+Last updated: 2026-07-15
+Blocks: hosted evidence, runtime signoffs, and the intentionally missing `founder_production_go_live` approval
 
 This register turns `docs/launch/clearance-checklist.md` into a reviewable
 evidence log. It is not trademark clearance.
@@ -12,6 +12,9 @@ Machine-checkable signoff gate:
 - Implementation: `app/lib/launch-signoff.ts`
 - Test: `npm run test:launch-signoff`
 - Required key for this issue: `launch_legal_name_public_copy`
+- Final production key: `founder_production_go_live` — **not approved**. It requires
+  a later explicit founder confirmation after hosted security, authority, beta,
+  professional-review/risk-acceptance, and payment evidence passes.
 - Closure rule: reviewer, review date, evidence link, and decision must be
   recorded as `approved`. Pending, rejected, incomplete, or stale evidence keeps
   #71 open.
@@ -50,21 +53,22 @@ search sources above and, if doubt remains, trademark counsel.
 
 | Gate | Evidence needed | Current evidence | Decision | Reviewer/date |
 | --- | --- | --- | --- | --- |
-| Trademark search | Patentstyret search for `Talli`, close variants, similar accounting/finance software marks, relevant Nice classes | Not completed in official UI. Supplemental searches on 2026-06-16 and 2026-06-17 show apparently unrelated uses that require review. | Pending | Pending |
-| Company-name conflict | Brønnøysund search for `Talli`, variants, confusingly similar accounting/finance company names | Not completed in official UI. Supplemental 2026-06-17 search found unrelated `Bassam Talli` sewing/repair entities. | Pending | Pending |
-| Domain ownership | Registrar/account evidence for `talli.no` | Founder stated `talli.no` secured. Need registrar screenshot/account evidence. | Pending | Pending |
-| Fallback name | Written fallback if `Talli` conflicts | None selected. | Pending | Pending |
-| Public copy | Homepage/app/pricing/legal copy reviewed against non-affiliation and no-production-claim rules | Current app copy says production filing remains gated. Legal policy drafts exist in `docs/legal/`. | Pending | Pending |
-| Pricing/refund/support boundary | Pricing and refund wording reviewed against founder pricing gate | `docs/billing/founder-pricing-gate.md` and `docs/legal/terms-of-service-draft.md` exist. | Pending | Pending |
-| Authority wording | No implication of endorsement by Fiken, Altinn, Skatteetaten, or Brønnøysundregistrene | Required wording exists in checklist; final public copy review pending. | Pending | Pending |
-| Security/restore | Backup/restore, security baseline, RLS/storage audit evidence | Security docs and RLS audit exist; production restore signoff still pending. | Pending | Pending |
+| Trademark search | Patentstyret search for `Talli`, close variants, similar accounting/finance software marks, relevant Nice classes | Official Patentstyret search completed 2026-06-24 for `Talli` and close variants across Nice classes 9/35/36/42; no confusingly similar accounting/finance mark found. Prior supplemental hit `Flli Talli SpA` confirmed out-of-scope. | Approved — no conflict | Kristian Elmer (founder), 2026-06-24 |
+| Company-name conflict | Brønnøysund search for `Talli`, variants, confusingly similar accounting/finance company names | Official Brønnøysund register search completed 2026-06-24; no active confusingly similar accounting/software/finance company found. `Bassam Talli Skredder og Systue` confirmed unrelated (sewing/repair). | Approved — no conflict | Kristian Elmer (founder), 2026-06-24 |
+| Domain ownership | Registrar/account evidence for `talli.no` | Founder confirmed `talli.no` is owned/controlled by the founder/company (2026-06-24). Registrar/Norid evidence to be attached to the launch signoff record. | Approved — ownership confirmed | Kristian Elmer (founder), 2026-06-24 |
+| Fallback name | Written fallback if `Talli` conflicts | Not required — `Talli` cleared on both official trademark and company-name searches (2026-06-24). | Approved — not required | Kristian Elmer (founder), 2026-06-24 |
+| Public copy | Homepage/app/pricing/legal copy reviewed against non-affiliation and no-production-claim rules | Founder HITL approved the invite-only free-beta posture 2026-07-15. The customer-ready branch removes accountant-replacement, human-review, live-payment, and definitive-delivery claims; identifies ELMER WELFIS; and is enforced by `npm run test:launch-copy`. Rendered deployment review remains pending. | Approved design and local implementation; deployed rendering pending | Kristian Elmer (founder), 2026-07-15 |
+| Pricing/refund/support boundary | Pricing and refund wording reviewed against founder pricing gate | Founder attested pricing/refund posture 2026-06-24 (`docs/billing/founder-pricing-gate.md`, signoff key `billing_refund`); support-boundary and refund wording finalized in `docs/legal/terms-of-service-draft.md` under #72 (2026-06-27). | Approved — founder attestation + finalized terms | Kristian Elmer (founder), 2026-06-27 |
+| Authority wording | No implication of endorsement by Fiken, Altinn, Skatteetaten, or Brønnøysundregistrene | Required non-affiliation wording approved for public use 2026-06-24: "Talli er ikke tilknyttet, godkjent av eller drevet av Fiken, Altinn, Skatteetaten eller Brønnøysundregistrene." No endorsement implied. | Approved — no endorsement implied | Kristian Elmer (founder), 2026-06-24 |
+| Security/restore | Backup/restore, security baseline, RLS/storage audit evidence | Local signed-AAL2 migration, fresh PostgreSQL lifecycle, local Supabase advisors/RLS, and persisted browser tests pass 2026-07-15. Hosted MFA enrollment/recovery, staging/production RLS/storage, and production restore signoff remain pending. | Pending (local boundary green; hosted and restore evidence outstanding) | Pending |
 
 ## Approved Public Copy Baseline
 
 Allowed before production filing:
 
-- `Holding-first regnskaps- og innsendingsapp under utvikling.`
-- `Forbereder aksjonærregisteroppgaven, årsregnskap og skattemelding for enkle norske holding-AS.`
+- `Invitasjonsbasert gratis beta.`
+- `Produksjonsinnsending og live betaling er ikke tilgjengelig i betaen.`
+- `Talli hjelper inviterte betabrukere med å forberede og kontrollere utkast for støttede, enkle norske AS.`
 - `Direkte innsending åpnes først når myndighetstilgang, testmiljø og sikkerhetsgjennomgang er fullført.`
 
 Required non-affiliation wording:
@@ -78,9 +82,59 @@ Required non-affiliation wording:
 - `Godkjent av` any public authority or Fiken.
 - Guarantee language about correctness, penalties, or avoiding fees.
 - `Erstatter regnskapsfører`.
+- Human/accountant review or professional-quality-assurance claims.
+- Live payment or paid-customer availability.
 - Claims that Talli covers all AS companies.
 
+## Final production lock
+
+`founder_production_go_live` is intentionally **missing / not approved**. Neither a
+merge, deployment, passing local test, authority sandbox receipt, nor another
+signoff may substitute for it. An admin operator may record it only after a later
+explicit founder confirmation made with the complete hosted evidence set in view.
+
+Until then:
+
+- production authority adapters remain disabled;
+- Vipps/live charging remains disabled;
+- paid-customer admission remains disabled;
+- public copy remains invite-only beta/pre-production copy.
+
+## Launch Signoff Record To Apply
+
+All brand/name/domain/public-copy/authority/pricing clearance evidence above is
+recorded as **approved**. To close the in-app gate, an admin operator records the
+`launch_legal_name_public_copy` signoff in the app operator section
+(`recordLaunchSignoff`) with the values below. These values are validated against
+`buildLaunchSignoffRecord` by `npm run test:launch-signoff` (test: "documented
+launch_legal_name_public_copy entry is a valid approved record"), so they can be
+entered into the operator form verbatim.
+
+| Field | Value |
+| --- | --- |
+| key | `launch_legal_name_public_copy` |
+| status | `approved` |
+| reviewer | `Kristian Elmer (founder)` |
+| reviewedAt | `2026-06-24T00:00:00Z` |
+| evidenceLink | `docs/launch/talli-clearance-evidence-register.md` (or its GitHub blob URL) |
+| decision | `Trademark (Patentstyret), company-name (Brønnøysund), talli.no ownership, fallback (not required), public copy, and authority wording all approved 2026-06-24; pre-production public-copy baseline enforced by test:launch-copy.` |
+| recordedBy | (filled automatically with the admin operator's user id) |
+
+Recording this one key closes #71's in-app requirement. The overall launch gate
+(`buildLaunchSignoffGate`) stays blocked until the other keys (e.g.
+`security_restore`, filing-authority keys, and `founder_production_go_live`) are
+also approved and fresh.
+
 ## Required Human Signoff
+
+Evidence status (2026-06-27): trademark/name, `talli.no` ownership, fallback (not
+required), public copy, authority wording, and pricing/refund/support boundary all
+**approved** by Kristian Elmer (founder). Legal pack finalized and approved separately
+under #72 / `legal_policy_pack` (2026-06-27). Remaining to close #71: record the
+`launch_legal_name_public_copy` signoff in the app operator section, and complete the
+production restore signoff (automated `npm run test:backup-restore` is green).
+This issue-specific signoff does not approve production launch; the separate
+`founder_production_go_live` key remains unapproved.
 
 Issue #71 can close only when:
 

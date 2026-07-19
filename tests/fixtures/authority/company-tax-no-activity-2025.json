@@ -1,0 +1,52 @@
+{
+  "company": {
+    "orgNumber": "310279617",
+    "name": "LOGISK ØDE TIGER AS",
+    "incomeYear": 2025
+  },
+  "annualData": {
+    "id": "authority-test-annual-data",
+    "company_id": "authority-test-company",
+    "income_year": 2025,
+    "answers": {
+      "shares_owned_at_year_end": false,
+      "bought_or_sold_shares": false,
+      "received_dividends": false,
+      "declared_owner_dividends": false,
+      "shareholder_loans": false,
+      "paid_costs": false,
+      "bank_balance_confirmed": true,
+      "has_unpaid_items": false,
+      "general_meeting_approved": true,
+      "authority_to_submit_confirmed": true
+    },
+    "confirmations": [
+      "bank_balance_confirmed",
+      "general_meeting_approved",
+      "authority_to_submit_confirmed"
+    ],
+    "no_activity_confirmed": true,
+    "annual_full_time_equivalents": 0,
+    "completed_by": "authority-test",
+    "completed_at": "2026-07-14T00:00:00.000Z",
+    "updated_by": "authority-test",
+    "updated_at": "2026-07-14T00:00:00.000Z"
+  },
+  "ledgerEntries": [
+    {
+      "id": "authority-test-opening-balance",
+      "company_id": "authority-test-company",
+      "setup_id": "authority-test-setup",
+      "income_year": 2025,
+      "entry_type": "opening_balance",
+      "memo": "No-activity authority validation",
+      "lines": [],
+      "risk_flags": [],
+      "warning_accepted_by": null,
+      "warning_accepted_at": null,
+      "created_by": "authority-test",
+      "created_at": "2026-07-14T00:00:00.000Z"
+    }
+  ],
+  "holdingActions": []
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import shutil
 import subprocess
@@ -9,7 +10,11 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from holding_core.corporate_documents import DividendDocumentInput, generate_owner_dividend_documents
+from holding_core.corporate_documents import (
+    CorporateDecisionInput,
+    CorporateDocumentValidationError,
+    render_corporate_documents,
+)
 from holding_core.models import FilingCase
 from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
 from holding_core.rf1086 import filing_preview, generate_rf1086, write_rf1086
@@ -65,11 +70,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     simulate_rf1086_submission.add_argument("--stdin-json", action="store_true", required=True)
 
-    generate_dividend_documents = subparsers.add_parser(
-        "generate-owner-dividend-documents",
-        help="Generate unsigned board and general-meeting PDF drafts from JSON on stdin",
+    render_corporate = subparsers.add_parser(
+        "render-corporate-documents",
+        help="Render deterministic corporate decision PDFs from JSON on stdin",
     )
-    generate_dividend_documents.add_argument("--stdin-json", action="store_true", required=True)
+    render_corporate.add_argument("--stdin-json", action="store_true", required=True)
 
     args = parser.parse_args(argv)
     if args.command == "simulate-aksjonaerregister":
@@ -86,8 +91,8 @@ def main(argv: list[str] | None = None) -> int:
         return _render_rf1086_preview()
     if args.command == "simulate-rf1086-submission":
         return _simulate_rf1086_submission()
-    if args.command == "generate-owner-dividend-documents":
-        return _generate_owner_dividend_documents()
+    if args.command == "render-corporate-documents":
+        return _render_corporate_documents()
     return 2
 
 
@@ -235,17 +240,16 @@ def _simulate_rf1086_submission() -> int:
         preview_id = str(payload["preview_id"])
         base_endpoint = f"/api/aksjonaerregister/v1/{submission.income_year}"
         hovedskjema_id = f"simulated-{preview_id}"
-        forsendelse_id = f"simulated-forsendelse-{preview_id}"
         submission = register_api_call(
             submission,
             endpoint=f"{base_endpoint}/1086H",
             body={"content_type": "application/xml", "xml": str(payload["hovedskjema_xml"])},
         )
-        for _, xml in sorted(underskjema_xml.items()):
+        for shareholder_id, xml in sorted(underskjema_xml.items()):
             submission = register_api_call(
                 submission,
                 endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U",
-                body={"content_type": "application/xml", "xml": str(xml)},
+                body={"shareholder_id": shareholder_id, "content_type": "application/xml", "xml": str(xml)},
             )
         submission = register_api_call(
             submission,
@@ -255,12 +259,10 @@ def _simulate_rf1086_submission() -> int:
             ),
             body={"antall_underskjema": len(underskjema_xml)},
         )
+        forsendelse_id = f"simulated-forsendelse-{preview_id}"
         submission = register_api_call(
             submission,
-            endpoint=(
-                f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter"
-                "?page=0&size=50"
-            ),
+            endpoint=f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter?page=0&size=50",
             body={"page": 0, "size": 50},
         )
         receipt_id = f"sim-rf1086-{submission.company_id}-{submission.income_year}-{preview_id[:8]}"
@@ -283,15 +285,79 @@ def _simulate_rf1086_submission() -> int:
         return 1
 
 
-def _generate_owner_dividend_documents() -> int:
+def _render_corporate_documents() -> int:
     try:
-        data = DividendDocumentInput.model_validate_json(sys.stdin.read())
-        documents = generate_owner_dividend_documents(data)
-        print(json.dumps({"documents": [document.json_record() for document in documents]}))
+        decision = CorporateDecisionInput.model_validate_json(sys.stdin.read())
+        artifacts = render_corporate_documents(decision)
+        print(
+            json.dumps(
+                {
+                    "status": "rendered",
+                    "decisionHash": artifacts[0].decision_hash,
+                    "artifacts": [
+                        {
+                            "artifactKind": artifact.artifact_kind.value,
+                            "filename": artifact.filename,
+                            "templateVersion": artifact.template_version,
+                            "decisionHash": artifact.decision_hash,
+                            "contentSha256": artifact.content_sha256,
+                            "byteLength": artifact.byte_length,
+                            "pdfBase64": base64.b64encode(artifact.pdf_bytes).decode("ascii"),
+                        }
+                        for artifact in artifacts
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
         return 0
-    except (ValueError, ValidationError) as error:
-        print(json.dumps({"status": "blocked", "failure_code": "invalid_dividend_document_input"}))
-        print(f"Dividend document generation blocked: {error}", file=sys.stderr)
+    except ValidationError as error:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [
+                        {
+                            "code": "corporate_documents_invalid_input",
+                            "message": "Dokumentgrunnlaget er ugyldig.",
+                            "details": error.error_count(),
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+        return 1
+    except CorporateDocumentValidationError as error:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [{"code": error.code, "message": str(error)}],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+        return 1
+    except Exception:
+        print(
+            json.dumps(
+                {
+                    "status": "blocked",
+                    "issues": [
+                        {
+                            "code": "corporate_documents_render_failed",
+                            "message": "Dokumentene kunne ikke genereres.",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
         return 1
 
 

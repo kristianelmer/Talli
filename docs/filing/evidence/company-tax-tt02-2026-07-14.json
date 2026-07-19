@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 2,
+  "status": "submitted_and_receipted",
+  "environment": "test",
+  "productionEnabled": false,
+  "authority": "Skatteetaten company tax via Altinn TT02",
+  "companyOrgNumber": "310279617",
+  "companyName": "LOGISK ØDE TIGER AS",
+  "incomeYear": 2025,
+  "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+  "caseFixture": "company-tax-no-activity-2025.json",
+  "codeCommit": "520c3cc0b64f8976319ed05228efbf91026a37d0",
+  "payloadHashes": {
+    "skattemelding": "f5ba8fa7258ff90ae27e1156051be204f1b22bd6fa796cfce08cd6155a0a0243",
+    "naeringsspesifikasjon": "c9744c577e7103a3cb6d4bacd6df23ae1642c5f58dfccc1c96245838ad839c2f",
+    "validationEnvelope": "b98f5107428a7bb6b54f80b1cf03a484f7aa69cff9d7f6481d90dee26c2dfaae",
+    "submissionEnvelope": "a7e656244f374a6917a86ddbe0155895a93fc7f987825003335d5ae10c0a949a"
+  },
+  "payloadFeedbackCodes": [
+    "tax_return_payload_candidate_ready"
+  ],
+  "localSchemaValidation": {
+    "status": "passed",
+    "schemas": [
+      "skattemeldingUpersonlig_v5_ekstern.xsd",
+      "naeringsspesifikasjon_v6_ekstern.xsd",
+      "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+    ]
+  },
+  "authorityValidation": {
+    "result": "validertOK",
+    "deviationCodes": [
+      "avvikSkattemelding"
+    ],
+    "guidanceCodes": [
+      "N_EGENKAPITALAVSTEMMING_MANGLER",
+      "N_MANGLER_OPPLYSNINGER_OM_SELSKAPET",
+      "N_MANGLER_VERDI_BAK_AKSJENE"
+    ],
+    "failureReasons": []
+  },
+  "responseBytes": 5050,
+  "secretsStored": false,
+  "validatedAt": "2026-07-14T19:00:36.353Z",
+  "preflightValidation": {
+    "result": "validertOK",
+    "deviationCodes": [
+      "avvikSkattemelding"
+    ],
+    "guidanceCodes": [
+      "N_EGENKAPITALAVSTEMMING_MANGLER",
+      "N_MANGLER_OPPLYSNINGER_OM_SELSKAPET",
+      "N_MANGLER_VERDI_BAK_AKSJENE"
+    ],
+    "failureReasons": []
+  },
+  "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+  "systemUserExternalRef": null,
+  "evidenceFile": "company-tax-tt02-2026-07-14.json",
+  "currentDocumentReferenceHash": "a2e9e47dd5bc62e12a355368d7ba8dbd94bf0711d555689057b01033f5653fd7",
+  "instance": {
+    "id": "51549454/5cb600d9-b525-45e9-a506-ebb45b70af31",
+    "envelopeUploaded": true,
+    "envelopeDataId": "dfd34c49-27de-4eff-b4d2-ea2b384de7e6",
+    "validationJobId": "storeDokument-2b19fa1cc38e50a080291234c80f9069ebc3",
+    "confirmationPrepared": true,
+    "processTask": "confirmation",
+    "fileScanResult": "Clean",
+    "validationJobStatus": "OPPRETTET"
+  },
+  "validationResponseBytes": 5050,
+  "error": null,
+  "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/5cb600d9-b525-45e9-a506-ebb45b70af31",
+  "confirmationPreparedAt": "2026-07-14T19:00:37.648Z",
+  "receipt": {
+    "dataId": "bc7ecc16-45af-4eb3-b00f-667217f034aa",
+    "dataType": "tilbakemelding",
+    "contentType": "text/xml",
+    "byteLength": 5050,
+    "contentSha256": "2930acdc547f10591979ace5467a37f5d6095864bd2fe8be2399b3507aea99ac",
+    "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/5cb600d9-b525-45e9-a506-ebb45b70af31/data/bc7ecc16-45af-4eb3-b00f-667217f034aa"
+  },
+  "submission": {
+    "submitted": true,
+    "processTask": null,
+    "processEndedAt": "2026-07-14T19:10:21.8787146Z",
+    "archived": true,
+    "archivedAt": "2026-07-14T19:10:21.8787146Z",
+    "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/5cb600d9-b525-45e9-a506-ebb45b70af31"
+  },
+  "receiptRetrievedAt": "2026-07-14T19:10:25.077Z"
+}

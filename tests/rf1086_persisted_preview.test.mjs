@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+import {
+  buildNoActivityRf1086Case,
+  renderRf1086Preview,
+  renderRf1086PreviewWithPython,
+} from "../app/lib/rf1086.ts";
 
 const company = {
   id: "company-id",
@@ -53,8 +57,8 @@ test("builds RF-1086 no-activity case from persisted setup rows", () => {
   assert.deepEqual(filingCase.events, []);
 });
 
-test("renders persisted no-activity case through Python RF-1086 engine", async () => {
-  const result = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+test("renders persisted no-activity case through Python RF-1086 engine", () => {
+  const result = renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
 
   assert.equal(result.status, "ready");
   assert.equal(result.filing, "aksjonærregisteroppgaven");
@@ -63,11 +67,41 @@ test("renders persisted no-activity case through Python RF-1086 engine", async (
   assert.equal(Object.keys(result.underskjemaXml ?? {}).length, 1);
 });
 
-test("blocks persisted setup with mismatched shareholder totals through Python engine", async () => {
-  const badCase = buildNoActivityRf1086Case(company, setup, [{ ...shareholders[0], share_count: 90 }]);
-  const result = await renderRf1086PreviewWithPython(badCase);
+test("renders persisted no-activity case without a Python runtime", () => {
+  const previous = process.env.TALLI_PYTHON_BIN;
+  process.env.TALLI_PYTHON_BIN = "/definitely/missing/talli-python";
+  try {
+    const result = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
 
-  assert.equal(result.status, "blocked");
-  assert.equal(result.issues[0].code, "invalid_case");
-  assert.match(result.issues[0].message, /shareholder shares/);
+    assert.equal(result.status, "ready");
+    assert.equal(result.filing, "aksjonærregisteroppgaven");
+    assert.match(result.preview, /Demo Holding AS/);
+    assert.match(result.hovedskjemaXml ?? "", /blankettnummer="RF-1086"/);
+    assert.equal(Object.keys(result.underskjemaXml ?? {}).length, 1);
+  } finally {
+    if (previous === undefined) delete process.env.TALLI_PYTHON_BIN;
+    else process.env.TALLI_PYTHON_BIN = previous;
+  }
+});
+
+test("serverless renderer matches the verified Python renderer for the no-activity profile", () => {
+  const filingCase = buildNoActivityRf1086Case(company, setup, shareholders);
+  const serverless = renderRf1086Preview(filingCase);
+  const verified = renderRf1086PreviewWithPython(filingCase);
+
+  assert.equal(serverless.preview, verified.preview);
+  assert.equal(serverless.hovedskjemaXml, verified.hovedskjemaXml);
+  assert.deepEqual(serverless.underskjemaXml, verified.underskjemaXml);
+});
+
+test("blocks persisted setup with mismatched shareholder totals in both renderers", () => {
+  const badCase = buildNoActivityRf1086Case(company, setup, [{ ...shareholders[0], share_count: 90 }]);
+  const serverless = renderRf1086Preview(badCase);
+  const verified = renderRf1086PreviewWithPython(badCase);
+
+  assert.equal(serverless.status, "blocked");
+  assert.equal(serverless.issues[0].code, "invalid_case");
+  assert.match(serverless.issues[0].message, /shareholder shares/);
+  assert.equal(verified.status, "blocked");
+  assert.equal(verified.issues[0].code, "invalid_case");
 });

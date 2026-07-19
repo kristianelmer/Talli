@@ -1,25 +1,22 @@
 # RF-1086 Production Submission Runbook
 
-Status: production blocked until human review and official validation
-Last updated: 2026-07-13
+Status: transport and TT02 validation complete; production blocked until human/security review
+Last updated: 2026-07-14
 Target filing: `aksjonærregisteroppgaven` / RF-1086
 
-This runbook defines the path from local RF-1086 simulation to live submission. It is not permission to enable production filing. Live filing remains disabled until authority access, test-environment evidence, RF-1086 code decisions, billing, security, and human review gates are complete.
+This runbook defines the path from local RF-1086 simulation to live submission.
+It is not permission to enable production filing. Live filing remains disabled
+until the accepted evidence is recorded in the runtime gate and the production
+credential, security/restore, billing, and named human review gates are complete.
 
 ## Official Anchors
 
 - Skatteetaten RF-1086 API docs: https://skatteetaten.github.io/api-dokumentasjon/api/innrapportering-aksjonaerregisteroppgave
-- Published OpenAPI 1.0.0: https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api/1.0.0/swagger.json
 - Skatteetaten RF-1086 page: https://www.skatteetaten.no/skjema/rf-1086-aksjonarregisteroppgaven/
 - Skatteetaten end-user-system transition note: https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/
 - Skatteetaten setup guidance for re-established services: https://www.skatteetaten.no/samarbeidspartnere/reetablering-altinn/systemleverandor/oppkobling/
 - Altinn system-user guide: https://docs.altinn.studio/en/authorization/guides/resource-owner/system-user/
-- Digdir system-user RAR contract: https://docs.digdir.no/docs/Maskinporten/maskinporten_func_systembruker.html
-- Digdir Maskinporten token endpoint: https://docs.digdir.no/docs/Maskinporten/maskinporten_protocol_token.html
-- Dialogporten authentication: https://docs.altinn.studio/en/dialogporten/user-guides/authenticating/
-- Dialogporten dialog details: https://docs.altinn.studio/en/dialogporten/user-guides/getting-dialog-details/
 - RF-1086 phase 0 map: [aksjonaerregisteroppgaven-phase-0-map.md](./aksjonaerregisteroppgaven-phase-0-map.md)
-- RF-1086 authority contract evidence: [rf1086-authority-api-contract.md](./rf1086-authority-api-contract.md)
 
 ## Required Authority Access
 
@@ -34,7 +31,9 @@ Before production filing can be enabled:
 
 ## Submission Flow
 
-The local integration seam in `holding_core.rf1086_submission` models the production path:
+`app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts`
+implement the real token/transport path; `holding_core.rf1086_submission`
+models its persisted state. Production invocation is still disabled.
 
 1. Build RF-1086 readiness from the deterministic case model.
 2. Block if readiness has hard errors.
@@ -43,76 +42,24 @@ The local integration seam in `holding_core.rf1086_submission` models the produc
 5. In production mode, require fresh MFA, human security review, and explicit production credentials gate.
 6. Require owner authority confirmation and final preview confirmation.
 7. Prepare API calls for:
-   - `POST /{inntektsaar}/1086H` hovedskjema.
-   - `POST /{inntektsaar}/{hovedskjemaid}/1086U` per underskjema.
-   - `POST /{inntektsaar}/{hovedskjemaid}/bekreft?antall_underskjema={count}`.
-   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter?page=0&size=50`.
-   - Dialogporten `GET /api/v1/enduser/dialogs/{dialogid}` to discover
-     authorized API attachments for the confirmed party and resource.
-   - `GET /{inntektsaar}/forsendelser/{forsendelseid}/dokumenter/{dokumentid}`
-     for each allowlisted provider artifact discovered from a URL that exactly
-     matches the fixed authority host and confirmed shipment.
-8. Store content-addressed submitted XML, immutable provider artifacts, and a
-   separate manifest for each Dialogporten revision.
+   - `POST 1086H` hovedskjema.
+   - `POST 1086U` underskjema per shareholder.
+   - `POST bekreft` with underskjema count.
+   - `GET /{year}/forsendelser/{forsendelseId}/dokumenter` with bounded polling
+     for the observed TT02 `GLD_021 / GLD_1017` eventual-consistency window.
+8. Store feedback document references and official receipt/reference ids in submission state.
 
 ## Idempotency Policy
 
-Skatteetaten requires an `idempotencyKey` UUID on the hovedskjema and underskjema XML POST operations. Repeated POSTs with the same body/key reuse the first response. Talli policy:
+Skatteetaten requires an `idempotencyKey` UUID and repeated POSTs with the same body/key must reuse the first response. Talli policy:
 
 - Store endpoint, body hash, and idempotency key for each logical authority call.
 - Reuse the same key only for the same endpoint and same body hash.
 - Generate a new key if the endpoint or body changes.
 - Never retry a changed body under an old key.
 - Never create duplicate logical submissions for the same confirmed preview.
-- Do not add an idempotency header to `bekreft` unless a later published contract requires it.
 
 This is covered by `holding_core.submission.register_api_call` and RF-1086 submission tests.
-
-The exact authority HTTP boundary is implemented in
-`app/lib/rf1086-authority-client.ts` and covered by
-`npm run test:rf1086:authority`. Crash-safe one-call orchestration is implemented
-in `app/lib/rf1086-authority-orchestration.ts` and covered by
-`npm run test:rf1086:orchestration`. It requires prepared, sent, and accepted
-journal revisions and blocks replay of an uncertain `bekreft`. A reviewed
-Supabase production journal adapter with service-role-only atomic writes is
-implemented and tested on a disposable real stack.
-
-The guarded server-only worker boundary is implemented in
-`app/lib/rf1086-production-state.ts`, `app/lib/rf1086-production-runner.ts`, and
-`app/lib/rf1086-production-service.ts`. It does not trust cached filing
-readiness. It first loads the preview and accepted owner through the
-owner-authenticated workspace client, then loads current tenant rows through
-RLS, reads the global signoff through a separate narrow control client, and
-uses the service-role client only for journal compare-and-swap operations. It
-audits before token issuance, requests only the RF-1086 scope from the fixed
-Maskinporten production issuer, reloads and audits the release state again, and
-advances at most one provider operation. It never returns or persists the
-bearer token. Final `bekreft` remains a separate explicit flag.
-
-Immediately before the sealed portion of the run, the worker acquires a
-service-only lease bound to the persisted preview and authenticated owner. The
-lease lasts at most 120 seconds. While active, database triggers reject changes
-to every table used by the current release decision, including accounting/year
-data, preview/submission state, review comments and overrides, authority and
-billing evidence, step-up/security state, and the RF-1086 launch signoff. A
-second worker receives a conflict before token/provider transport. The worker
-attempts lease release on success or error; automatic expiry is the fallback if
-the worker crashes or release fails. The checkpoint journal remains the
-authority for reconciling an uncertain provider result.
-
-Hosted migration deployment and an authenticated operational trigger remain
-required before production activation. No browser/web route invokes this
-worker. The local TT02-only operator boundary is implemented by
-`app/lib/maskinporten-system-user.ts`, `app/lib/rf1086-file-journal.ts`,
-`app/lib/rf1086-tt02-runner.ts`, and `scripts/rf1086-tt02.ts`; see
-`rf1086-tt02-submission-runbook.md`. TT02 feedback/receipt evidence is still
-pending.
-
-The Dialogporten/read-archive boundary is implemented in
-`app/lib/dialogporten-client.ts` and
-`app/lib/rf1086-authority-archive.ts`. It is covered by
-`npm run test:rf1086:archive`. Production persistence and web wiring remain
-disabled.
 
 ## Failure Handling
 
@@ -132,19 +79,6 @@ Blocked failures:
 - Production security gate missing.
 
 Every failure must preserve the submission state and be visible to the user/operator without silently resubmitting.
-
-While the short-lived production lease is active, ordinary workspace writes
-that would alter the sealed release state fail with SQLSTATE `55000`. The server
-redirect boundary recognizes only that exact database code/message pair and
-returns a fixed Norwegian retry message. Other database/provider diagnostics,
-including near-matches, remain redacted in production. The user can retry after
-the operation completes or the 120-second lease expires.
-
-Release state must be reloaded immediately around token acquisition and before
-transport. A cached `filing_readiness_snapshots` row is not authority to send.
-Open readiness warnings, hard review comments, blocking overrides, stale MFA,
-missing billing, missing authority evidence, or missing signoff all stop the
-worker before the provider call.
 
 ## Current RF-1086 Production Scope
 
@@ -171,3 +105,13 @@ Production credentials/live filing may be enabled only after a named reviewer si
 - Support/refund policy confirmed.
 
 Until then, Talli may generate previews, XML, validation reports, and simulated submission state only.
+
+## TT02 acceptance evidence
+
+On 2026-07-14 the supported 2025 no-activity shape for Tenor org `310279617`
+completed the full hovedskjema, underskjema, confirmation, and archive sequence.
+Both archived XML hashes matched the submitted payload hashes. See
+`evidence/rf1086-tt02-2026-07-14.md` and its machine-checked JSON companion.
+
+This evidence clears the test-environment transport row only. It does not
+enable production or constitute Skatteetaten endorsement of Talli.

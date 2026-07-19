@@ -28,7 +28,6 @@ from holding_core.billing import CompanyBillingAccount, assign_founder_pricing, 
 from holding_core.holding_actions import (
     AdminCostInput,
     DividendReceivedInput,
-    DividendToOwnerInput,
     InvestmentPosition,
     SharePurchaseInput,
     ShareSaleInput,
@@ -36,12 +35,12 @@ from holding_core.holding_actions import (
     TaxTreatment,
     build_admin_cost_entry,
     build_dividend_received,
-    build_dividend_to_owner,
     build_share_purchase,
     build_share_sale,
     build_shareholder_loan,
 )
 from holding_core.ledger import DraftEntry, NarrowLedger, PostedEntry
+from holding_core.investment_lots import AcquisitionLot, LotAllocation
 
 
 class WorkspaceRole(StrEnum):
@@ -220,6 +219,7 @@ class InvestmentMovement(BaseModel):
     share_delta: float = 0
     cost_basis_delta: float = 0
     amount: float = 0
+    lot_allocations: tuple[LotAllocation, ...] = ()
 
 
 class InvestmentRegisterPosition(BaseModel):
@@ -233,6 +233,7 @@ class InvestmentRegisterPosition(BaseModel):
     share_count: float = 0
     cost_basis: float = 0
     movements: tuple[InvestmentMovement, ...] = ()
+    acquisition_lots: tuple[AcquisitionLot, ...] = ()
 
 
 class PeriodLock(BaseModel):
@@ -667,7 +668,6 @@ def record_holding_action(
         | DividendReceivedInput
         | SharePurchaseInput
         | ShareSaleInput
-        | DividendToOwnerInput
         | ShareholderLoanInput
     ),
     document_ids: tuple[str, ...] = (),
@@ -676,6 +676,27 @@ def record_holding_action(
 ) -> CompanyWorkspace:
     workspace = store.get_workspace(actor_id, company_id, roles=(WorkspaceRole.OWNER,))
     _assert_not_locked(workspace, income_year)
+    action_id = str(uuid.uuid4())
+    if isinstance(action_input, SharePurchaseInput) and action_input.purchase_reference is None:
+        action_input = action_input.model_copy(update={"purchase_reference": action_id})
+    if isinstance(action_input, ShareSaleInput):
+        registered_position = next(
+            (position for position in workspace.investment_positions if position.id == action_input.position.id),
+            None,
+        )
+        if registered_position is not None:
+            action_input = action_input.model_copy(
+                update={
+                    "position": action_input.position.model_copy(
+                        update={
+                            "share_count": registered_position.share_count,
+                            "cost_basis": registered_position.cost_basis,
+                            "acquisition_lots": registered_position.acquisition_lots,
+                        }
+                    ),
+                    "acquisition_lots": registered_position.acquisition_lots,
+                }
+            )
     result = _build_action_entry(action_input)
     entry = result["entry"]
     ledger = NarrowLedger()
@@ -683,12 +704,23 @@ def record_holding_action(
         ledger._posted[posted.id] = posted
     ledger.create_draft(entry)
     posted_entry = ledger.post(entry.id) if post else None
+    action_payload = action_input.model_dump(mode="json")
+    if result["action_type"] == "share_sale":
+        sale_result = result["result"]
+        action_payload.update(
+            {
+                "cost_basis_reduction": sale_result.cost_basis_reduction,
+                "gain_or_loss": sale_result.gain_or_loss,
+                "lot_allocations": [allocation.model_dump(mode="json") for allocation in sale_result.lot_allocations],
+            }
+        )
     action = StructuredAction(
+        id=action_id,
         company_id=company_id,
         income_year=income_year,
         action_type=result["action_type"],
         status="posted" if posted_entry else "draft",
-        payload=action_input.model_dump(mode="json"),
+        payload=action_payload,
         document_ids=document_ids,
         bank_transaction_ids=bank_transaction_ids,
         ledger_entry_id=posted_entry.id if posted_entry else entry.id,
@@ -804,34 +836,6 @@ def add_filing_override(
         AuditCategory.FILING,
         "filing_override_added",
         f"Manuell filing-overstyring lagt til for {field_target}.",
-    )
-    return store.replace_workspace(workspace)
-
-
-def generate_owner_dividend_documents(store: WorkspaceStore, actor_id: str, company_id: str, action_id: str) -> CompanyWorkspace:
-    workspace = store.get_workspace(actor_id, company_id, roles=(WorkspaceRole.OWNER,))
-    action = next((item for item in workspace.structured_actions if item.id == action_id), None)
-    if action is None or action.action_type != "dividend_to_owner":
-        raise ValueError("owner dividend action not found")
-    names = ("Styreforslag utbytte.txt", "Generalforsamlingsprotokoll utbytte.txt")
-    documents = tuple(
-        StoredDocument(
-            company_id=company_id,
-            income_year=action.income_year,
-            document_type="corporate_document",
-            name=name,
-            linked_to=action.id,
-            storage_key=f"generated/{company_id}/{action.income_year}/{action.id}/{name}",
-            created_by=actor_id,
-        )
-        for name in names
-    )
-    workspace = _with_audit(
-        workspace.model_copy(update={"documents": workspace.documents + documents}),
-        actor_id,
-        AuditCategory.DOCUMENT,
-        "corporate_documents_generated",
-        "Styreforslag og generalforsamlingsprotokoll generert.",
     )
     return store.replace_workspace(workspace)
 
@@ -1081,9 +1085,6 @@ def _build_action_entry(action_input: Any) -> dict[str, Any]:
     if isinstance(action_input, ShareSaleInput):
         result = build_share_sale(action_input)
         return {"action_type": "share_sale", "entry": result.entry, "result": result}
-    if isinstance(action_input, DividendToOwnerInput):
-        result = build_dividend_to_owner(action_input)
-        return {"action_type": "dividend_to_owner", "entry": result.entry, "result": result}
     if isinstance(action_input, ShareholderLoanInput):
         return {"action_type": "shareholder_loan", "entry": build_shareholder_loan(action_input)}
     raise TypeError("unsupported action input")
@@ -1092,6 +1093,7 @@ def _build_action_entry(action_input: Any) -> dict[str, Any]:
 def _apply_investment_result(workspace: CompanyWorkspace, result: dict[str, Any], action: StructuredAction) -> CompanyWorkspace:
     if result["action_type"] == "share_purchase":
         position: InvestmentPosition = result["result"].position
+        acquisition_lot = position.acquisition_lots[0]
         movement = InvestmentMovement(
             action_id=action.id,
             movement_type="purchase",
@@ -1109,8 +1111,34 @@ def _apply_investment_result(workspace: CompanyWorkspace, result: dict[str, Any]
             share_count=position.share_count,
             cost_basis=position.cost_basis,
             movements=(movement,),
+            acquisition_lots=(acquisition_lot,),
         )
-        return workspace.model_copy(update={"investment_positions": workspace.investment_positions + (registered,)})
+        positions: list[InvestmentRegisterPosition] = []
+        merged = False
+        for existing in workspace.investment_positions:
+            if existing.id != registered.id:
+                positions.append(existing)
+                continue
+            if (
+                existing.company_id != registered.company_id
+                or existing.tax_treatment != registered.tax_treatment
+                or existing.org_number != registered.org_number
+            ):
+                raise ValueError("investment position identity conflict")
+            positions.append(
+                existing.model_copy(
+                    update={
+                        "share_count": existing.share_count + registered.share_count,
+                        "cost_basis": round(existing.cost_basis + registered.cost_basis, 2),
+                        "movements": existing.movements + (movement,),
+                        "acquisition_lots": existing.acquisition_lots + (acquisition_lot,),
+                    }
+                )
+            )
+            merged = True
+        if not merged:
+            positions.append(registered)
+        return workspace.model_copy(update={"investment_positions": tuple(positions)})
     if result["action_type"] == "share_sale":
         sale_result = result["result"]
         positions: list[InvestmentRegisterPosition] = []
@@ -1125,6 +1153,7 @@ def _apply_investment_result(workspace: CompanyWorkspace, result: dict[str, Any]
                 share_delta=-float(action.payload["sold_share_count"]),
                 cost_basis_delta=round(sale_result.updated_position.cost_basis - position.cost_basis, 2),
                 amount=float(action.payload["proceeds"]),
+                lot_allocations=sale_result.lot_allocations,
             )
             positions.append(
                 position.model_copy(
@@ -1132,6 +1161,7 @@ def _apply_investment_result(workspace: CompanyWorkspace, result: dict[str, Any]
                         "share_count": sale_result.updated_position.share_count,
                         "cost_basis": sale_result.updated_position.cost_basis,
                         "movements": position.movements + (movement,),
+                        "acquisition_lots": sale_result.updated_lots,
                     }
                 )
             )

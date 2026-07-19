@@ -2,231 +2,427 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  RF1086_AUTHORITY_BASE_URLS,
   Rf1086AuthorityError,
   createRf1086AuthorityClient,
+  executeRf1086AuthoritySubmission,
 } from "../app/lib/rf1086-authority-client.ts";
 
-const hovedskjemaId = "0193de1a-d956-739e-980e-ab57ae7de73c";
-const dialogId = "0193d51a-ec30-7d58-b727-6ce65964d3d4";
-const forsendelseId = "0193de1b-0483-740a-9e0b-f60a2d519638";
-const dokumentId = "0193de1b-0483-740a-9e0b-f60a2d519639";
-const idempotencyKey = "ee01ab68-9172-5cb8-a63b-55c224933e65";
-const underskjemaIdempotencyKey = "c6274e42-d13b-58e8-b255-e143e7b91c71";
+const accessToken = "opaque-authority-token";
+const ids = {
+  hovedskjema: "00000000-0000-4000-8000-000000000001",
+  underskjema: {
+    owner: "00000000-0000-4000-8000-000000000002",
+    spouse: "00000000-0000-4000-8000-000000000003",
+  },
+  bekreft: "00000000-0000-4000-8000-000000000004",
+};
 
 function jsonResponse(value, status = 200) {
-  return {
+  return new Response(JSON.stringify(value), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-    body: new TextEncoder().encode(JSON.stringify(value)),
-  };
+    headers: { "content-type": "application/json" },
+  });
 }
 
-test("uses the official test paths, headers, and response contracts", async () => {
+test("executes the official hovedskjema, underskjema, confirmation, and archive sequence", async () => {
   const requests = [];
-  const responses = [
-    jsonResponse({ hovedskjemaId }),
-    { status: 200, headers: {}, body: new Uint8Array() },
-    jsonResponse({ oppgavegiversLeveranseReferanse: hovedskjemaId, dialogId, forsendelseId }),
-    jsonResponse({ totalItems: 1, totalPages: 1, currentPage: 0, dokumenter: ["<Skjema />"] }),
-    {
-      status: 200,
-      headers: { "content-type": "application/pdf" },
-      body: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
-    },
+  const queue = [
+    jsonResponse({ hovedskjemaId: "10000000-0000-4000-8000-000000000001" }),
+    new Response(null, { status: 200 }),
+    new Response(null, { status: 200 }),
+    jsonResponse({
+      oppgavegiversLeveranseReferanse: "delivery-reference",
+      dialogId: "20000000-0000-4000-8000-000000000002",
+      forsendelseId: "30000000-0000-4000-8000-000000000003",
+    }),
+    jsonResponse({
+      totalItems: 3,
+      totalPages: 1,
+      currentPage: 0,
+      dokumenter: ["<Skjema>H</Skjema>", "<Skjema>U1</Skjema>", "<Skjema>U2</Skjema>"],
+    }),
   ];
   const client = createRf1086AuthorityClient({
     environment: "test",
-    accessToken: "short-lived-system-user-token",
-    transport: async (request) => {
-      requests.push(request);
-      return responses.shift();
+    accessToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
     },
   });
 
-  assert.deepEqual(
-    await client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey }),
-    { hovedskjemaId },
-  );
-  await client.submitUnderskjema({
+  const result = await executeRf1086AuthoritySubmission(client, {
     incomeYear: 2025,
-    hovedskjemaId,
-    xml: "<Skjema />",
-    idempotencyKey: underskjemaIdempotencyKey,
+    hovedskjemaXml: "<Skjema>H</Skjema>",
+    underskjemaXml: {
+      spouse: "<Skjema>U2</Skjema>",
+      owner: "<Skjema>U1</Skjema>",
+    },
+    idempotencyKeys: ids,
   });
-  assert.deepEqual(await client.confirmSubmission({ incomeYear: 2025, hovedskjemaId, underskjemaCount: 1 }), {
-    oppgavegiversLeveranseReferanse: hovedskjemaId,
-    dialogId,
-    forsendelseId,
-  });
-  assert.deepEqual(await client.listDocuments({ incomeYear: 2025, forsendelseId, page: 0, size: 50 }), {
-    totalItems: 1,
-    totalPages: 1,
-    currentPage: 0,
-    dokumenter: ["<Skjema />"],
-  });
-  assert.deepEqual(
-    await client.getDocument({ incomeYear: 2025, forsendelseId, dokumentId, accept: "application/pdf" }),
-    { contentType: "application/pdf", body: new Uint8Array([0x25, 0x50, 0x44, 0x46]) },
-  );
 
-  assert.deepEqual(
-    requests.map(({ method, url }) => ({ method, url })),
-    [
-      { method: "POST", url: `${RF1086_AUTHORITY_BASE_URLS.test}/2025/1086H` },
-      { method: "POST", url: `${RF1086_AUTHORITY_BASE_URLS.test}/2025/${hovedskjemaId}/1086U` },
-      {
-        method: "POST",
-        url: `${RF1086_AUTHORITY_BASE_URLS.test}/2025/${hovedskjemaId}/bekreft?antall_underskjema=1`,
-      },
-      {
-        method: "GET",
-        url: `${RF1086_AUTHORITY_BASE_URLS.test}/2025/forsendelser/${forsendelseId}/dokumenter?page=0&size=50`,
-      },
-      {
-        method: "GET",
-        url: `${RF1086_AUTHORITY_BASE_URLS.test}/2025/forsendelser/${forsendelseId}/dokumenter/${dokumentId}`,
-      },
-    ],
-  );
-  assert.equal(requests[0].headers.Authorization, "Bearer short-lived-system-user-token");
-  assert.equal(requests[0].headers.Accept, "application/json");
-  assert.equal(requests[0].headers["Content-Type"], "application/xml");
-  assert.equal(requests[0].headers.idempotencyKey, idempotencyKey);
-  assert.equal(requests[1].headers.idempotencyKey, underskjemaIdempotencyKey);
-  assert.equal(requests[2].headers.idempotencyKey, undefined);
-  assert.equal(requests[4].headers.Accept, "application/pdf");
+  assert.deepEqual(requests.map((request) => [request.init.method, request.url]), [
+    ["POST", "https://api-test.sits.no/api/aksjonaerregister/v1/2025/1086H"],
+    ["POST", "https://api-test.sits.no/api/aksjonaerregister/v1/2025/10000000-0000-4000-8000-000000000001/1086U"],
+    ["POST", "https://api-test.sits.no/api/aksjonaerregister/v1/2025/10000000-0000-4000-8000-000000000001/1086U"],
+    ["POST", "https://api-test.sits.no/api/aksjonaerregister/v1/2025/10000000-0000-4000-8000-000000000001/bekreft?antall_underskjema=2"],
+    ["GET", "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50"],
+  ]);
+  assert.deepEqual(requests.slice(0, 4).map((request) => request.init.headers.idempotencyKey), [
+    ids.hovedskjema,
+    ids.underskjema.owner,
+    ids.underskjema.spouse,
+    ids.bekreft,
+  ]);
+  assert.deepEqual(requests.map((request) => request.init.headers.authorization), Array(5).fill(`Bearer ${accessToken}`));
+  assert.deepEqual(requests.map((request) => request.init.redirect), Array(5).fill("error"));
+  assert.equal(requests[0].init.headers["content-type"], "application/xml");
+  assert.equal(requests[3].init.headers["content-type"], undefined);
+  assert.equal(result.hovedskjemaId, "10000000-0000-4000-8000-000000000001");
+  assert.equal(result.oppgavegiversLeveranseReferanse, "delivery-reference");
+  assert.equal(result.forsendelseId, "30000000-0000-4000-8000-000000000003");
+  assert.equal(result.documents.totalItems, 3);
+  assert.equal(result.documents.lookupReferenceType, "forsendelseId");
+  assert.equal(result.calls.length, 5);
+  assert.deepEqual(result.calls.map((call) => call.status), Array(5).fill("accepted"));
+  assert.ok(result.calls.every((call) => /^[a-f0-9]{64}$/u.test(call.bodyHash)));
+  assert.doesNotMatch(JSON.stringify(result), /opaque-authority-token/);
 });
 
-test("selects the official production host without accepting an arbitrary base URL", async () => {
-  let actualUrl;
+test("accepts the documented lowercase main response and uses the production base only when explicit", async () => {
+  let request;
   const client = createRf1086AuthorityClient({
     environment: "production",
-    accessToken: "short-lived-token",
-    transport: async (request) => {
-      actualUrl = request.url;
-      return jsonResponse({ hovedskjemaId });
+    accessToken,
+    fetch: async (url, init) => {
+      request = { url: String(url), init };
+      return jsonResponse({ hovedskjemaid: "10000000-0000-4000-8000-000000000001" });
     },
   });
 
-  await client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey });
+  const response = await client.postHovedskjema({
+    incomeYear: 2025,
+    xml: "<Skjema />",
+    idempotencyKey: ids.hovedskjema,
+  });
 
-  assert.equal(actualUrl, `${RF1086_AUTHORITY_BASE_URLS.production}/2025/1086H`);
-  assert.throws(
-    () =>
-      createRf1086AuthorityClient({
-        environment: "http://127.0.0.1/internal",
-        accessToken: "short-lived-token",
-        transport: async () => jsonResponse({ hovedskjemaId }),
-      }),
-    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_environment_invalid",
-  );
+  assert.equal(response.hovedskjemaId, "10000000-0000-4000-8000-000000000001");
+  assert.equal(request.url, "https://api.skatteetaten.no/api/aksjonaerregister/v1/2025/1086H");
 });
 
-test("rejects malformed and oversized authority responses", async () => {
-  const malformed = createRf1086AuthorityClient({
-    environment: "test",
-    accessToken: "short-lived-token",
-    transport: async () => jsonResponse({ hovedskjemaId: "not-a-uuid" }),
-  });
-  await assert.rejects(
-    malformed.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey }),
-    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_response_invalid",
-  );
-
-  const oversized = createRf1086AuthorityClient({
-    environment: "test",
-    accessToken: "short-lived-token",
-    maxResponseBytes: 64,
-    transport: async () => ({
-      status: 200,
-      headers: { "content-type": "application/json" },
-      body: new Uint8Array(65),
-    }),
-  });
-  await assert.rejects(
-    oversized.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey }),
-    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_response_too_large",
-  );
-
-  const invalidPage = createRf1086AuthorityClient({
-    environment: "test",
-    accessToken: "short-lived-token",
-    transport: async () =>
-      jsonResponse({ totalItems: -1, totalPages: 0, currentPage: 0, dokumenter: [] }),
-  });
-  await assert.rejects(
-    invalidPage.listDocuments({ incomeYear: 2025, forsendelseId }),
-    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_response_invalid",
-  );
-});
-
-test("classifies authority failures without exposing the bearer token", async () => {
-  const accessToken = "never-print-this-bearer-token";
+test("returns structured sanitized authority errors without token or submitted field values", async () => {
   const client = createRf1086AuthorityClient({
     environment: "test",
     accessToken,
-    transport: async () =>
-      jsonResponse(
-        {
-          kode: "GLD_005",
-          melding: `Ikke autorisert ${accessToken}`,
-          korrelasjonsid: "correlation-123",
-        },
-        403,
-      ),
+    fetch: async () => jsonResponse({
+      kode: "GLD_010",
+      melding: "Payload validation failed",
+      korrelasjonsid: "correlation-123",
+      spesifisering: [{
+        kode: "GLD_1052",
+        melding: "Income year mismatch",
+        sti: "/Skjema/Inntektsar",
+        angittVerdi: "sensitive-submitted-value",
+      }],
+      access_token: accessToken,
+    }, 400),
   });
 
   await assert.rejects(
-    client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey }),
+    client.postHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey: ids.hovedskjema }),
     (error) => {
-      assert.equal(error instanceof Rf1086AuthorityError, true);
-      assert.equal(error.code, "GLD_005");
-      assert.equal(error.retryable, false);
-      assert.equal(error.status, 403);
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.status, 400);
+      assert.equal(error.code, "GLD_010");
       assert.equal(error.correlationId, "correlation-123");
-      assert.doesNotMatch(error.message, new RegExp(accessToken));
+      assert.equal(error.retryable, false);
+      assert.deepEqual(error.specificationCodes, ["GLD_1052"]);
+      assert.match(error.message, /Payload validation failed/);
+      assert.match(error.message, /Income year mismatch/);
+      assert.doesNotMatch(error.message, /sensitive-submitted-value|opaque-authority-token/);
       return true;
     },
   );
 });
 
-test("validates UUID, XML, pagination, and income-year inputs before transport", async () => {
-  let calls = 0;
+test("polls the documented forsendelseId after the observed eventual-consistency GLD_1017", async () => {
+  const requests = [];
+  const queue = [
+    jsonResponse({ hovedskjemaId: "10000000-0000-4000-8000-000000000001" }),
+    new Response(null, { status: 200 }),
+    jsonResponse({
+      oppgavegiversLeveranseReferanse: "delivery-reference",
+      dialogId: "20000000-0000-4000-8000-000000000002",
+      forsendelseId: "30000000-0000-4000-8000-000000000003",
+    }),
+    jsonResponse({
+      kode: "GLD_021",
+      melding: "Finner ikke forespurt ressurs",
+      spesifisering: [{ kode: "GLD_1017", melding: "Det finnes ingen dialog med denne IDen" }],
+    }, 404),
+    jsonResponse({ totalItems: 2, totalPages: 1, currentPage: 0, dokumenter: ["<H />", "<U />"] }),
+  ];
   const client = createRf1086AuthorityClient({
     environment: "test",
-    accessToken: "short-lived-token",
-    transport: async () => {
-      calls += 1;
-      return jsonResponse({ hovedskjemaId });
+    accessToken,
+    fetch: async (url, init) => {
+      requests.push(String(url));
+      return queue.shift();
     },
   });
 
-  await assert.rejects(client.submitHovedskjema({ incomeYear: 25, xml: "<Skjema />", idempotencyKey }));
-  await assert.rejects(client.submitHovedskjema({ incomeYear: 2025, xml: "", idempotencyKey }));
-  await assert.rejects(
-    client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey: "not-a-uuid" }),
+  const result = await executeRf1086AuthoritySubmission(
+    client,
+    {
+      incomeYear: 2025,
+      hovedskjemaXml: "<H />",
+      underskjemaXml: { owner: "<U />" },
+      idempotencyKeys: {
+        hovedskjema: ids.hovedskjema,
+        underskjema: { owner: ids.underskjema.owner },
+        bekreft: ids.bekreft,
+      },
+    },
+    { sleep: async () => {}, archiveAttempts: 2 },
   );
-  await assert.rejects(client.listDocuments({ incomeYear: 2025, forsendelseId, page: -1, size: 51 }));
-  assert.equal(calls, 0);
+
+  assert.match(requests.at(-2), /forsendelser\/30000000-0000-4000-8000-000000000003\/dokumenter/u);
+  assert.match(requests.at(-1), /forsendelser\/30000000-0000-4000-8000-000000000003\/dokumenter/u);
+  assert.equal(result.documents.lookupReferenceType, "forsendelseId");
+  assert.equal(result.documents.totalItems, 2);
 });
 
-test("allows an identical retry but rejects idempotency-key reuse for another call", async () => {
-  let calls = 0;
+test("classifies authentication expiry and server failures as retryable", async () => {
+  for (const [status, code] of [[401, "GLD_004"], [503, "GLD_017"]]) {
+    const client = createRf1086AuthorityClient({
+      environment: "test",
+      accessToken,
+      fetch: async () => jsonResponse({ kode: code, melding: "Temporary failure" }, status),
+    });
+    await assert.rejects(
+      client.postHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey: ids.hovedskjema }),
+      (error) => error instanceof Rf1086AuthorityError && error.retryable,
+    );
+  }
+});
+
+test("fails closed on missing XML, invalid years, references, idempotency keys, and bearer tokens", async () => {
+  assert.throws(
+    () => createRf1086AuthorityClient({ environment: "test", accessToken: "" }),
+    /access token/i,
+  );
   const client = createRf1086AuthorityClient({
     environment: "test",
-    accessToken: "short-lived-token",
-    transport: async () => {
-      calls += 1;
-      return jsonResponse({ hovedskjemaId });
+    accessToken,
+    fetch: async () => new Response(null, { status: 200 }),
+  });
+  await assert.rejects(
+    client.postHovedskjema({ incomeYear: 1999, xml: "<Skjema />", idempotencyKey: ids.hovedskjema }),
+    /income year/i,
+  );
+  await assert.rejects(
+    client.postHovedskjema({ incomeYear: 2025, xml: "", idempotencyKey: ids.hovedskjema }),
+    /XML/i,
+  );
+  await assert.rejects(
+    client.postHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey: "not-a-uuid" }),
+    /idempotency/i,
+  );
+  await assert.rejects(
+    client.postUnderskjema({
+      incomeYear: 2025,
+      hovedskjemaId: "not-a-uuid",
+      xml: "<Skjema />",
+      idempotencyKey: ids.underskjema.owner,
+    }),
+    /hovedskjema/i,
+  );
+});
+
+test("retrieves an individual allowlisted document with a bounded GET", async () => {
+  const requests = [];
+  const documentId = "40000000-0000-4000-8000-000000000004";
+  const client = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return new Response("<tilbakemelding />", {
+        headers: { "content-type": "application/xml; charset=utf-8" },
+      });
     },
   });
 
-  await client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey });
-  await client.submitHovedskjema({ incomeYear: 2025, xml: "<Skjema />", idempotencyKey });
-  await assert.rejects(
-    client.submitUnderskjema({ incomeYear: 2025, hovedskjemaId, xml: "<Skjema />", idempotencyKey }),
-    (error) => error instanceof Rf1086AuthorityError && error.code === "rf1086_idempotency_key_reused",
+  const result = await client.getDocument({
+    incomeYear: 2025,
+    forsendelseId: "30000000-0000-4000-8000-000000000003",
+    documentId,
+  });
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].init.method, "GET");
+  assert.equal(requests[0].init.body, undefined);
+  assert.equal(requests[0].init.redirect, "error");
+  assert.equal(
+    requests[0].url,
+    `https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/30000000-0000-4000-8000-000000000003/dokumenter/${documentId}`,
   );
-  assert.equal(calls, 2);
+  assert.equal(result.reference, documentId);
+  assert.equal(result.contentType, "application/xml");
+  assert.equal(new TextDecoder().decode(result.bytes), "<tilbakemelding />");
+  assert.doesNotMatch(JSON.stringify(result), /opaque-authority-token/u);
+});
+
+test("individual document retrieval rejects disallowed types and streams over 10 MiB", async () => {
+  const documentId = "40000000-0000-4000-8000-000000000004";
+  const options = {
+    incomeYear: 2025,
+    forsendelseId: "30000000-0000-4000-8000-000000000003",
+    documentId,
+  };
+  const disallowed = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => new Response("secret", { headers: { "content-type": "text/html" } }),
+  });
+  await assert.rejects(disallowed.getDocument(options), /content type/i);
+
+  const oversized = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => new Response(new Uint8Array((10 * 1024 * 1024) + 1), {
+      headers: { "content-type": "application/octet-stream" },
+    }),
+  });
+  await assert.rejects(oversized.getDocument(options), (error) => {
+    assert.ok(error instanceof Rf1086AuthorityError);
+    assert.equal(error.code, "RF1086_DOCUMENT_TOO_LARGE");
+    assert.doesNotMatch(error.message, /secret/u);
+    return true;
+  });
+});
+
+test("document listing preserves inline XML and only strict UUID references", async () => {
+  const documentId = "40000000-0000-4000-8000-000000000004";
+  const client = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      totalItems: 2,
+      totalPages: 1,
+      currentPage: 0,
+      dokumenter: ["<Skjema />", { dokumentId: documentId }],
+    }),
+  });
+  const page = await client.listDocuments({
+    incomeYear: 2025,
+    referenceId: "30000000-0000-4000-8000-000000000003",
+  });
+  assert.deepEqual(page.documents, ["<Skjema />", { reference: documentId }]);
+  assert.equal(page.documentShapeValid, true);
+
+  const malformed = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 0,
+      dokumenter: [{ dokumentId: documentId, xml: "<unexpected />" }],
+    }),
+  });
+  const malformedPage = await malformed.listDocuments({
+    incomeYear: 2025,
+    referenceId: "30000000-0000-4000-8000-000000000003",
+  });
+  assert.equal(malformedPage.documentShapeValid, false);
+  assert.deepEqual(malformedPage.documents, []);
+});
+
+test("all JSON authority responses are streamed with a global 64 KiB cap", async () => {
+  const oversizedSecret = "must-not-leak-" + "x".repeat(65 * 1024);
+  const archiveClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      totalItems: 0,
+      totalPages: 0,
+      currentPage: 0,
+      dokumenter: [],
+      oversizedSecret,
+    }),
+  });
+  await assert.rejects(
+    archiveClient.listDocuments({
+      incomeYear: 2025,
+      referenceId: "30000000-0000-4000-8000-000000000003",
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_TOO_LARGE");
+      assert.doesNotMatch(error.message, /must-not-leak/u);
+      return true;
+    },
+  );
+
+  const errorClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({
+      kode: "GLD_017",
+      melding: oversizedSecret,
+    }, 503),
+  });
+  await assert.rejects(
+    errorClient.postHovedskjema({
+      incomeYear: 2025,
+      xml: "<Skjema />",
+      idempotencyKey: ids.hovedskjema,
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_TOO_LARGE");
+      assert.doesNotMatch(error.message, /must-not-leak/u);
+      return true;
+    },
+  );
+
+  const documentErrorClient = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => jsonResponse({ kode: "GLD_017", melding: oversizedSecret }, 502),
+  });
+  await assert.rejects(
+    documentErrorClient.getDocument({
+      incomeYear: 2025,
+      forsendelseId: "30000000-0000-4000-8000-000000000003",
+      documentId: "40000000-0000-4000-8000-000000000004",
+    }),
+    (error) => error instanceof Rf1086AuthorityError
+      && error.code === "RF1086_JSON_TOO_LARGE"
+      && !error.message.includes("must-not-leak"),
+  );
+});
+
+test("JSON authority responses reject non-JSON media types without exposing their body", async () => {
+  const client = createRf1086AuthorityClient({
+    environment: "test",
+    accessToken,
+    fetch: async () => new Response("private upstream response", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
+  });
+
+  await assert.rejects(
+    client.listDocuments({
+      incomeYear: 2025,
+      referenceId: "30000000-0000-4000-8000-000000000003",
+    }),
+    (error) => {
+      assert.ok(error instanceof Rf1086AuthorityError);
+      assert.equal(error.code, "RF1086_JSON_CONTENT_TYPE");
+      assert.doesNotMatch(error.message, /private upstream response/u);
+      return true;
+    },
+  );
 });

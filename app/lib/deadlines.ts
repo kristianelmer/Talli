@@ -130,14 +130,7 @@ export function buildDeadlineReminderPlan(input: {
       (snapshot) => snapshot.income_year === input.incomeYear && snapshot.obligation === obligation,
     );
     const unsupported = readiness?.hard_blocks?.some((issue) =>
-      [
-        "unsupported_entity",
-        "tax_return_unclear_fritaksmetoden",
-        "tax_return_three_percent_treatment_missing",
-        "tax_return_three_percent_treatment_unresolved",
-        "tax_return_shareholder_loan_review_required",
-        "rf1086_preview_not_ready",
-      ].includes(issue.code),
+      ["unsupported_entity", "tax_return_unclear_fritaksmetoden", "tax_return_shareholder_loan_review_required", "rf1086_preview_not_ready"].includes(issue.code),
     );
     const duplicate = input.notifications.some(
       (notification) =>

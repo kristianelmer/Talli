@@ -1,95 +1,128 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import {
-  CompanyTaxReturnDocumentError,
-  buildNoActivityCompanyTaxReturnDocuments,
-} from "../app/lib/company-tax-return-documents.ts";
+import { buildCompanyTaxReturnPayload } from "../app/lib/company-tax-return.ts";
+import { renderCompanyTaxReturnXml } from "../app/lib/company-tax-return-xml.ts";
 
-const fixtureDirectory = new URL("./fixtures/company_tax_return/", import.meta.url);
-const fixtureTaxReturnXml = await readFile(
-  new URL("2025-no-activity-current-tax-return.xml", fixtureDirectory),
-  "utf8",
-);
-const expectedBusinessSpecificationXml = await readFile(
-  new URL("2025-no-activity-business-specification.xml", fixtureDirectory),
-  "utf8",
-);
+const annualData = {
+  id: "annual-data-id",
+  company_id: "company-id",
+  income_year: 2025,
+  answers: {
+    shares_owned_at_year_end: true,
+    bought_or_sold_shares: false,
+    received_dividends: true,
+    declared_owner_dividends: false,
+    shareholder_loans: false,
+    paid_costs: true,
+    bank_balance_confirmed: true,
+    has_unpaid_items: false,
+    general_meeting_approved: true,
+    authority_to_submit_confirmed: true,
+  },
+  confirmations: ["bank_balance_confirmed", "general_meeting_approved", "authority_to_submit_confirmed"],
+  no_activity_confirmed: false,
+  annual_full_time_equivalents: 0,
+  completed_by: "owner",
+  completed_at: "2026-01-01T00:00:00Z",
+  updated_by: "owner",
+  updated_at: "2026-01-01T00:00:00Z",
+};
 
-test("preserves the local contract tax return and builds a deterministic 2025 no-activity business specification", () => {
-  const documents = buildNoActivityCompanyTaxReturnDocuments({
-    organizationNumber: "310279617",
+const ledgerEntries = [
+  {
+    id: "entry-id",
+    company_id: "company-id",
+    setup_id: "setup-id",
+    income_year: 2025,
+    entry_type: "annual",
+    memo: "Annual",
+    lines: [
+      { account: "1920", debit: 128510, credit: 0 },
+      { account: "8070", debit: 0, credit: 100000 },
+      { account: "7770", debit: 1490, credit: 0 },
+      { account: "2000", debit: 0, credit: 30000 },
+      { account: "2050", debit: 0, credit: 97020 },
+    ],
+    risk_flags: [],
+    warning_accepted_by: null,
+    warning_accepted_at: null,
+    created_by: "owner",
+    created_at: "2026-01-01T00:00:00Z",
+  },
+];
+
+const holdingActions = [
+  {
+    id: "action-id",
+    company_id: "company-id",
+    income_year: 2025,
+    action_type: "dividend_received",
+    action_date: "2025-06-15",
+    payload: {
+      gross_amount: 100000,
+      taxable_add_back: 3000,
+      tax_treatment: "fritaksmetoden",
+    },
+    ledger_entry_id: "entry-id",
+    bank_transaction_id: null,
+    document_id: "document-id",
+    risk_level: "info",
+    blocker_code: null,
+    created_by: "owner",
+    created_at: "2026-01-01T00:00:00Z",
+  },
+];
+
+function renderedDocuments() {
+  const payload = buildCompanyTaxReturnPayload({
+    companyOrgNumber: "314259521",
     incomeYear: 2025,
-    contractTaxReturnXml: fixtureTaxReturnXml,
-    currentBusinessSpecificationXml: null,
-    noActivityConfirmed: true,
-    hasMaterialActivity: false,
+    annualData,
+    ledgerEntries,
+    holdingActions,
   });
+  return renderCompanyTaxReturnXml(payload.fields);
+}
 
-  assert.equal(documents.taxReturnXml, fixtureTaxReturnXml);
-  assert.equal(documents.businessSpecificationXml, expectedBusinessSpecificationXml);
-  assert.equal(documents.taxReturnSource, "local-contract-fixture");
-  assert.equal(documents.businessSpecificationSource, "talli-no-activity-2025");
-  assert.match(documents.taxReturnSha256, /^[a-f0-9]{64}$/u);
-  assert.match(documents.businessSpecificationSha256, /^[a-f0-9]{64}$/u);
-  assert.equal(documents.schema.incomeYear, 2025);
-  assert.equal(documents.schema.taxReturnSha256, "d8e74eda092540a974efa63cc4608fdf36754dea27f9349b3293f874f9907d52");
-  assert.equal(documents.schema.businessSpecificationSha256, "6300d00b31f4cb1ccd45582cef041fb78400a6d9c2d351f6f320872dbb39f8ef");
+test("renders deterministic 2025 XML with escaped values and schema order", () => {
+  const { skattemeldingXml, naeringsspesifikasjonXml } = renderedDocuments();
+
+  assert.match(skattemeldingXml, /<skattemelding xmlns="urn:no:skatteetaten:fastsetting:formueinntekt:skattemelding:upersonlig:ekstern:v5">/);
+  assert.ok(skattemeldingXml.indexOf("<partsnummer>") < skattemeldingXml.indexOf("<inntektsaar>"));
+  assert.ok(skattemeldingXml.indexOf("<erOmfattetAvFritaksmetoden>") < skattemeldingXml.indexOf("<utbytte>"));
+  assert.match(naeringsspesifikasjonXml, /<naeringsspesifikasjon xmlns="urn:no:skatteetaten:fastsetting:formueinntekt:naeringsspesifikasjon:ekstern:v6">/);
+  assert.ok(naeringsspesifikasjonXml.indexOf("<resultatregnskap>") < naeringsspesifikasjonXml.indexOf("<balanseregnskap>"));
+  assert.ok(naeringsspesifikasjonXml.indexOf("<balanseregnskap>") < naeringsspesifikasjonXml.indexOf("<forskjellMellomRegnskapsmessigOgSkattemessigVerdi>"));
+  assert.ok(naeringsspesifikasjonXml.indexOf("<forskjellMellomRegnskapsmessigOgSkattemessigVerdi>") < naeringsspesifikasjonXml.indexOf("<virksomhet>"));
+  assert.match(naeringsspesifikasjonXml, /<resultatOgBalanseregnskapstype>8090<\/resultatOgBalanseregnskapstype>/);
+  assert.match(naeringsspesifikasjonXml, /<permanentForskjellstype>tilbakefoeringAvInntektsfoertUtbytte<\/permanentForskjellstype>/);
 });
 
-test("blocks no-activity generation when activity or an existing specification is present or confirmation is absent", () => {
-  const base = {
-    organizationNumber: "310279617",
-    incomeYear: 2025,
-    contractTaxReturnXml: fixtureTaxReturnXml,
-    currentBusinessSpecificationXml: null,
-    noActivityConfirmed: true,
-    hasMaterialActivity: false,
-  };
+test("rendered XML validates against the pinned official schemas when supplied", {
+  skip: !process.env.TALLI_SKATTE_XSD_DIR,
+}, () => {
+  const directory = mkdtempSync(join(tmpdir(), "talli-tax-xml-"));
+  const { skattemeldingXml, naeringsspesifikasjonXml } = renderedDocuments();
+  const skattemeldingPath = join(directory, "skattemelding.xml");
+  const naeringPath = join(directory, "naeringsspesifikasjon.xml");
+  writeFileSync(skattemeldingPath, skattemeldingXml, "utf8");
+  writeFileSync(naeringPath, naeringsspesifikasjonXml, "utf8");
 
-  for (const input of [
-    { ...base, noActivityConfirmed: false },
-    { ...base, hasMaterialActivity: true },
-    { ...base, currentBusinessSpecificationXml: expectedBusinessSpecificationXml },
+  for (const [schema, document] of [
+    ["skattemeldingUpersonlig_v5_ekstern.xsd", skattemeldingPath],
+    ["naeringsspesifikasjon_v6_ekstern.xsd", naeringPath],
   ]) {
-    assert.throws(
-      () => buildNoActivityCompanyTaxReturnDocuments(input),
-      (error) => error instanceof CompanyTaxReturnDocumentError,
-    );
+    const result = spawnSync("xmllint", [
+      "--noout",
+      "--schema",
+      join(process.env.TALLI_SKATTE_XSD_DIR, schema),
+      document,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 0, `${schema}: ${result.stderr || result.stdout}`);
   }
-});
-
-test("rejects mismatched, unsupported, and unsafe contract fixtures", () => {
-  const build = (xml, overrides = {}) =>
-    buildNoActivityCompanyTaxReturnDocuments({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      contractTaxReturnXml: xml,
-      currentBusinessSpecificationXml: null,
-      noActivityConfirmed: true,
-      hasMaterialActivity: false,
-      ...overrides,
-    });
-
-  assert.throws(
-    () => build(fixtureTaxReturnXml.replace("310279617", "930835978")),
-    (error) => error instanceof CompanyTaxReturnDocumentError && error.code === "tax_return_draft_party_mismatch",
-  );
-  assert.throws(
-    () => build(fixtureTaxReturnXml.replace("2025", "2024")),
-    (error) => error instanceof CompanyTaxReturnDocumentError && error.code === "tax_return_draft_year_mismatch",
-  );
-  assert.throws(
-    () => build(fixtureTaxReturnXml.replace("ekstern:v5", "ekstern:v6")),
-    (error) => error instanceof CompanyTaxReturnDocumentError && error.code === "tax_return_draft_namespace_invalid",
-  );
-  assert.throws(
-    () => build(`<!DOCTYPE x [<!ENTITY leak SYSTEM "file:///etc/passwd">]>${fixtureTaxReturnXml}`),
-    (error) => error instanceof CompanyTaxReturnDocumentError && error.code === "tax_return_draft_xml_unsafe",
-  );
-  assert.throws(
-    () => build(fixtureTaxReturnXml, { incomeYear: 2026 }),
-    (error) => error instanceof CompanyTaxReturnDocumentError && error.code === "tax_return_document_year_unsupported",
-  );
 });

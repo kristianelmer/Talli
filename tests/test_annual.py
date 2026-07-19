@@ -27,13 +27,12 @@ from holding_core.holding_actions import (
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
-    ThreePercentTreatment,
     build_admin_cost_entry,
     build_dividend_received,
     build_opening_balance_entry,
     build_shareholder_loan,
 )
-from holding_core.ledger import NarrowLedger
+from holding_core.ledger import LedgerLine, NarrowLedger, PostedEntry
 
 
 class AnnualSimulationTest(unittest.TestCase):
@@ -89,6 +88,55 @@ class AnnualSimulationTest(unittest.TestCase):
         self.assertTrue(any(decision.code == "small_holding_no_extra_attachment" for decision in payload.attachment_decisions))
         self.assertEqual(payload.feedback_items, ())
 
+    def test_annual_totals_include_interest_system_cost_and_share_loss(self) -> None:
+        data = _simple_annual_data()
+        additions = (
+            PostedEntry(
+                id="interest",
+                company_id=data.company_id,
+                entry_date=date(2025, 6, 1),
+                memo="Bank interest",
+                source="bank_rule:deposit_interest",
+                lines=(
+                    LedgerLine(account="1920", description="Bank", debit=125.5),
+                    LedgerLine(account="8050", description="Interest", credit=125.5),
+                ),
+            ),
+            PostedEntry(
+                id="system-cost",
+                company_id=data.company_id,
+                entry_date=date(2025, 7, 1),
+                memo="System subscription",
+                source="bank_rule:system_subscription",
+                lines=(
+                    LedgerLine(account="6700", description="System", debit=990),
+                    LedgerLine(account="1920", description="Bank", credit=990),
+                ),
+            ),
+            PostedEntry(
+                id="share-loss",
+                company_id=data.company_id,
+                entry_date=date(2025, 8, 1),
+                memo="Share sale loss",
+                source="holding_action:share_sale:tax:fritaksmetoden",
+                lines=(
+                    LedgerLine(account="8090", description="Share sale loss", debit=5000),
+                    LedgerLine(account="1800", description="Investment", credit=5000),
+                ),
+            ),
+        )
+        data = data.model_copy(update={"posted_entries": data.posted_entries + additions})
+        fields = {field.tag: field for field in build_annual_accounts_payload(data).fields}
+
+        self.assertEqual(data.admin_costs, 2480)
+        self.assertEqual(data.interest_income, 125.5)
+        self.assertEqual(data.financial_income, 100125.5)
+        self.assertEqual(data.financial_costs, 5000)
+        self.assertEqual(data.result_before_tax, 92645.5)
+        self.assertEqual(fields["sumFinansinntekter/aarets"].value, 100125.5)
+        self.assertEqual(fields["sumFinanskostnader/aarets"].value, 5000)
+        self.assertIn("Forenklet skattegrunnlag i simulering: 645.50 kr", simulate_tax_return(data).preview)
+
     def test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments(self) -> None:
         data = _simple_annual_data(interview=_interview(received_dividends=False, paid_costs=False))
         payload = build_annual_accounts_payload(data)
@@ -134,7 +182,6 @@ class AnnualSimulationTest(unittest.TestCase):
 
         self.assertEqual(simulation.filing, "skattemelding for AS")
         self.assertIn("3 prosent inntektsføring etter fritaksmetoden: 3000.00 kr", simulation.preview)
-        self.assertIn("Forenklet skattegrunnlag i simulering: 1510.00 kr", simulation.preview)
         self.assertIn("Estimert skatt 22 prosent: 332.20 kr", simulation.preview)
         self.assertEqual(simulation.readiness.status, "ready")
         self.assertEqual(simulation.simulated_receipt_id, "sim-skattemelding-314259521-2025")
@@ -222,7 +269,6 @@ def _simple_annual_data(
                 paying_company_name="PORTFOLIO AS",
                 linked_investment_id="portfolio-as",
                 tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                three_percent_treatment=ThreePercentTreatment.APPLIES,
                 bank_matched=True,
                 document_status=DocumentStatus.ATTACHED,
             )

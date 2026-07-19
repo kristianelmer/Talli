@@ -1,21 +1,25 @@
 from __future__ import annotations
 
-from base64 import b64encode
-from dataclasses import dataclass
-from datetime import date
-from decimal import Decimal
-from html import escape
-from io import BytesIO
+import hashlib
+import io
+import json
+from datetime import date, time
+from enum import StrEnum
+from pathlib import Path
 from typing import Literal
+from uuid import UUID
+from xml.sax.saxutils import escape
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 from reportlab.platypus import (
-    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -24,544 +28,774 @@ from reportlab.platypus import (
 )
 
 
-NAVY = colors.HexColor("#10233F")
-PALE_BLUE = colors.HexColor("#EAF2F8")
-PALE_YELLOW = colors.HexColor("#FFF4D6")
-MUTED = colors.HexColor("#526172")
-RULE = colors.HexColor("#C8D3DE")
+TEMPLATE_FAMILY = "norwegian_simple_as"
+TEMPLATE_VERSION = "corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1"
+FONT_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
+FONT_REGULAR = "TalliNotoSans"
+FONT_BOLD = "TalliNotoSansBold"
 
 
-class DividendAllocation(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    shareholder_id: str = Field(min_length=1, max_length=200)
-    shareholder_name: str = Field(min_length=1, max_length=240)
-    share_count: Decimal = Field(gt=0)
-    amount: Decimal = Field(gt=0, decimal_places=2)
+class CorporateArtifactKind(StrEnum):
+    DIVIDEND_BOARD_PROPOSAL = "dividend_board_proposal"
+    DIVIDEND_GENERAL_MEETING_MINUTES = "dividend_general_meeting_minutes"
+    ANNUAL_BOARD_MINUTES = "annual_board_minutes"
+    ANNUAL_GENERAL_MEETING_MINUTES = "annual_general_meeting_minutes"
 
 
-class DividendDocumentInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class CorporateDocumentValidationError(ValueError):
+    def __init__(self, message: str, code: str) -> None:
+        super().__init__(message)
+        self.code = code
 
-    company_name: str = Field(min_length=1, max_length=240)
-    org_number: str
-    income_year: int = Field(ge=2000, le=2100)
-    decision_date: date
-    payment_date: date
-    total_amount: Decimal = Field(gt=0, decimal_places=2)
-    distributable_equity: Decimal = Field(ge=0, decimal_places=2)
-    liquidity_after_payment: Decimal = Field(ge=0, decimal_places=2)
-    allocations: list[DividendAllocation] = Field(min_length=1, max_length=200)
 
-    @field_validator("org_number")
+class FrozenModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class FinancialTotals(FrozenModel):
+    result_after_tax_ore: int
+    equity_ore: int = Field(ge=0)
+    available_distribution_ore: int = Field(ge=0)
+    cash_ore: int = Field(ge=0)
+
+
+class BoardMeeting(FrozenModel):
+    meeting_date: date
+    meeting_time: time
+    place: str = Field(min_length=1, max_length=200)
+    treatment_method: Literal["physical", "video", "written"]
+
+    @field_validator("place")
     @classmethod
-    def validate_org_number(cls, value: str) -> str:
-        normalized = value.replace(" ", "")
-        if len(normalized) != 9 or not normalized.isdigit():
-            raise ValueError("org_number must contain exactly 9 digits")
-        return normalized
-
-    @model_validator(mode="after")
-    def validate_amounts(self) -> "DividendDocumentInput":
-        if self.payment_date < self.decision_date:
-            raise ValueError("payment_date cannot be before decision_date")
-        if self.total_amount > self.distributable_equity:
-            raise ValueError("total_amount exceeds distributable_equity")
-        if sum((allocation.amount for allocation in self.allocations), Decimal("0")) != self.total_amount:
-            raise ValueError("allocation amounts must equal total_amount")
-        if any(allocation.share_count != allocation.share_count.to_integral_value() for allocation in self.allocations):
-            raise ValueError("share_count must be a whole number")
-        if len({allocation.shareholder_id for allocation in self.allocations}) != len(self.allocations):
-            raise ValueError("shareholder_id must be unique")
-        total_shares = sum((allocation.share_count for allocation in self.allocations), Decimal("0"))
-        if any(
-            allocation.amount * total_shares != self.total_amount * allocation.share_count
-            for allocation in self.allocations
-        ):
-            raise ValueError("allocations must use an equal amount per share")
-        return self
+    def normalize_place(cls, value: str) -> str:
+        return _normalized_text(value)
 
 
-@dataclass(frozen=True)
-class GeneratedCorporateDocument:
-    kind: Literal["board_proposal", "general_meeting_minutes"]
-    file_name: str
-    content_type: Literal["application/pdf"]
-    content: bytes
+class BoardParticipant(FrozenModel):
+    participant_id: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=200)
+    role: Literal["chair", "member"]
 
-    def json_record(self) -> dict[str, str]:
-        return {
-            "kind": self.kind,
-            "file_name": self.file_name,
-            "content_type": self.content_type,
-            "base64": b64encode(self.content).decode("ascii"),
-        }
+    @field_validator("participant_id", "name")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return _normalized_text(value)
 
 
-def generate_owner_dividend_documents(data: DividendDocumentInput) -> tuple[GeneratedCorporateDocument, ...]:
+class GeneralMeeting(FrozenModel):
+    meeting_date: date
+    meeting_time: time
+    place: str = Field(min_length=1, max_length=200)
+    meeting_form: Literal["physical", "video"]
+    chair_name: str = Field(min_length=1, max_length=200)
+    co_signer_name: str = Field(min_length=1, max_length=200)
+
+    @field_validator("place", "chair_name", "co_signer_name")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return _normalized_text(value)
+
+
+class DecisionShareholder(FrozenModel):
+    shareholder_id: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=200)
+    share_count: int = Field(gt=0)
+    represented_share_count: int = Field(ge=0)
+    vote: Literal["for", "against", "abstain"]
+
+    @field_validator("shareholder_id", "name")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        return _normalized_text(value)
+
+
+class DividendAllocation(FrozenModel):
+    shareholder_id: str = Field(min_length=1, max_length=100)
+    amount_ore: int = Field(gt=0)
+
+    @field_validator("shareholder_id")
+    @classmethod
+    def normalize_shareholder_id(cls, value: str) -> str:
+        return _normalized_text(value)
+
+
+class DividendDecisionFacts(FrozenModel):
+    amount_ore: int = Field(gt=0)
+    payment_date: date
+    liquidity_after_payment_ore: int = Field(ge=0)
+    allocations: tuple[DividendAllocation, ...] = Field(min_length=1)
+
+
+class CorporateDecisionConfirmations(FrozenModel):
+    latest_approved_annual_accounts: bool
+    supported_dividend_basis: bool
+    full_board_participation: bool
+    full_share_representation: bool
+    unanimous_board: bool
+    unanimous_shareholders: bool
+    proportional_allocation: bool
+    prudent_equity_and_liquidity: bool
+
+
+class CorporateDecisionInput(FrozenModel):
+    request_id: UUID
+    company_id: UUID
+    organization_number: str = Field(pattern=r"^[0-9]{9}$")
+    legal_name: str = Field(min_length=1, max_length=200)
+    income_year: int = Field(ge=2000, le=2100)
+    decision_kind: Literal["owner_dividend", "annual_close"]
+    annual_close_source_id: UUID
+    source_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    template_family: Literal["norwegian_simple_as"] = TEMPLATE_FAMILY
+    template_version: Literal["corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1"] = TEMPLATE_VERSION
+    annual_basis_year: int = Field(ge=2000, le=2100)
+    financial_totals: FinancialTotals
+    board_meeting: BoardMeeting
+    board_participants: tuple[BoardParticipant, ...] = Field(min_length=1)
+    general_meeting: GeneralMeeting
+    shareholders: tuple[DecisionShareholder, ...] = Field(min_length=1)
+    total_company_shares: int = Field(gt=0)
+    one_share_class_confirmed: bool
+    dividend: DividendDecisionFacts | None
+    annual_result_allocation_ore: int
+    confirmations: CorporateDecisionConfirmations
+
+    @field_validator("legal_name")
+    @classmethod
+    def normalize_legal_name(cls, value: str) -> str:
+        return _normalized_text(value)
+
+
+class RenderedCorporateArtifact(FrozenModel):
+    artifact_kind: CorporateArtifactKind
+    filename: str
+    template_version: str
+    decision_hash: str
+    content_sha256: str
+    byte_length: int = Field(gt=0)
+    pdf_bytes: bytes
+
+
+def canonical_decision_json(decision: CorporateDecisionInput) -> bytes:
+    payload = decision.model_dump(mode="json", exclude_none=False)
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def decision_sha256(decision: CorporateDecisionInput) -> str:
+    return hashlib.sha256(canonical_decision_json(decision)).hexdigest()
+
+
+def required_artifact_kinds(decision: CorporateDecisionInput) -> tuple[CorporateArtifactKind, ...]:
+    if decision.decision_kind == "owner_dividend":
+        return (
+            CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
+            CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
+        )
     return (
-        GeneratedCorporateDocument(
-            kind="board_proposal",
-            file_name="styreforslag-og-protokoll-utbytte.pdf",
-            content_type="application/pdf",
-            content=_render_document(data, "board_proposal"),
-        ),
-        GeneratedCorporateDocument(
-            kind="general_meeting_minutes",
-            file_name="generalforsamlingsprotokoll-utbytte.pdf",
-            content_type="application/pdf",
-            content=_render_document(data, "general_meeting_minutes"),
-        ),
+        CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+        CorporateArtifactKind.ANNUAL_GENERAL_MEETING_MINUTES,
     )
 
 
-def _render_document(
-    data: DividendDocumentInput,
-    kind: Literal["board_proposal", "general_meeting_minutes"],
+def render_corporate_documents(
+    decision: CorporateDecisionInput,
+) -> tuple[RenderedCorporateArtifact, ...]:
+    validate_supported_scope(decision)
+    _register_fonts()
+    decision_hash = decision_sha256(decision)
+    artifacts = []
+    for artifact_kind in required_artifact_kinds(decision):
+        pdf_bytes = _render_pdf(decision, artifact_kind, decision_hash)
+        artifacts.append(
+            RenderedCorporateArtifact(
+                artifact_kind=artifact_kind,
+                filename=_artifact_filename(artifact_kind),
+                template_version=decision.template_version,
+                decision_hash=decision_hash,
+                content_sha256=hashlib.sha256(pdf_bytes).hexdigest(),
+                byte_length=len(pdf_bytes),
+                pdf_bytes=pdf_bytes,
+            )
+        )
+    return tuple(artifacts)
+
+
+def validate_supported_scope(decision: CorporateDecisionInput) -> None:
+    confirmations = decision.confirmations
+    if (
+        not decision.one_share_class_confirmed
+        or not confirmations.latest_approved_annual_accounts
+        or not confirmations.supported_dividend_basis
+        or decision.general_meeting.meeting_date < decision.board_meeting.meeting_date
+    ):
+        _blocked(
+            "corporate_documents_unsupported_dividend_basis",
+            "Beslutningen er utenfor støttet grunnlag for dokumentgenerering.",
+        )
+
+    participant_ids = [participant.participant_id for participant in decision.board_participants]
+    if (
+        not confirmations.full_board_participation
+        or not participant_ids
+        or len(participant_ids) != len(set(participant_ids))
+    ):
+        _blocked(
+            "corporate_documents_incomplete_board",
+            "Alle styremedlemmer må delta og være registrert én gang.",
+        )
+
+    shareholder_ids = [shareholder.shareholder_id for shareholder in decision.shareholders]
+    owned_shares = sum(shareholder.share_count for shareholder in decision.shareholders)
+    represented_shares = sum(shareholder.represented_share_count for shareholder in decision.shareholders)
+    if (
+        not confirmations.full_share_representation
+        or len(shareholder_ids) != len(set(shareholder_ids))
+        or owned_shares != decision.total_company_shares
+        or represented_shares != decision.total_company_shares
+        or any(
+            shareholder.represented_share_count != shareholder.share_count
+            for shareholder in decision.shareholders
+        )
+    ):
+        _blocked(
+            "corporate_documents_incomplete_share_representation",
+            "Alle aksjer må være representert av registrerte aksjonærer.",
+        )
+
+    if (
+        not confirmations.unanimous_board
+        or not confirmations.unanimous_shareholders
+        or any(shareholder.vote != "for" for shareholder in decision.shareholders)
+    ):
+        _blocked(
+            "corporate_documents_non_unanimous",
+            "Lanseringsløpet støtter bare enstemmige beslutninger.",
+        )
+
+    if decision.decision_kind == "owner_dividend":
+        _validate_owner_dividend(decision)
+    elif decision.dividend is not None:
+        _blocked(
+            "corporate_documents_unsupported_dividend_basis",
+            "Årsavslutningsbeslutningen kan ikke inneholde et separat utbytte i dette løpet.",
+        )
+
+
+def _validate_owner_dividend(decision: CorporateDecisionInput) -> None:
+    dividend = decision.dividend
+    if dividend is None or dividend.payment_date < decision.general_meeting.meeting_date:
+        _blocked(
+            "corporate_documents_unsupported_dividend_basis",
+            "Utbytte krever betalingsdato etter generalforsamlingens beslutning.",
+        )
+
+    allocation_ids = [allocation.shareholder_id for allocation in dividend.allocations]
+    actual_allocations = {allocation.shareholder_id: allocation.amount_ore for allocation in dividend.allocations}
+    expected_allocations = _proportional_allocations(decision, dividend.amount_ore)
+    if (
+        not decision.confirmations.proportional_allocation
+        or len(allocation_ids) != len(set(allocation_ids))
+        or set(allocation_ids) != {shareholder.shareholder_id for shareholder in decision.shareholders}
+        or sum(actual_allocations.values()) != dividend.amount_ore
+        or actual_allocations != expected_allocations
+    ):
+        _blocked(
+            "corporate_documents_allocation_mismatch",
+            "Utbyttet må fordeles proporsjonalt og summere til totalbeløpet.",
+        )
+
+    if (
+        not decision.confirmations.prudent_equity_and_liquidity
+        or dividend.amount_ore > decision.financial_totals.available_distribution_ore
+        or dividend.liquidity_after_payment_ore < 0
+        or dividend.liquidity_after_payment_ore
+        != decision.financial_totals.cash_ore - dividend.amount_ore
+    ):
+        _blocked(
+            "corporate_documents_equity_or_liquidity_failed",
+            "Utbyttet består ikke kontrollen av utdelingsramme og likviditet.",
+        )
+
+
+def _proportional_allocations(decision: CorporateDecisionInput, amount_ore: int) -> dict[str, int]:
+    allocations: dict[str, int] = {}
+    remainders: list[tuple[int, int, str]] = []
+    allocated = 0
+    for order, shareholder in enumerate(decision.shareholders):
+        quotient, remainder = divmod(amount_ore * shareholder.share_count, decision.total_company_shares)
+        allocations[shareholder.shareholder_id] = quotient
+        allocated += quotient
+        remainders.append((-remainder, order, shareholder.shareholder_id))
+    for _, _, shareholder_id in sorted(remainders)[: amount_ore - allocated]:
+        allocations[shareholder_id] += 1
+    return allocations
+
+
+def _normalized_text(value: str) -> str:
+    normalized = " ".join(value.strip().split())
+    if not normalized:
+        raise ValueError("value must contain non-whitespace characters")
+    return normalized
+
+
+def _blocked(code: str, message: str) -> None:
+    raise CorporateDocumentValidationError(message, code)
+
+
+def _register_fonts() -> None:
+    if FONT_REGULAR not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(FONT_REGULAR, FONT_DIR / "NotoSans-Regular.ttf"))
+    if FONT_BOLD not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(FONT_BOLD, FONT_DIR / "NotoSans-Bold.ttf"))
+    pdfmetrics.registerFontFamily(
+        "TalliNoto",
+        normal=FONT_REGULAR,
+        bold=FONT_BOLD,
+        italic=FONT_REGULAR,
+        boldItalic=FONT_BOLD,
+    )
+
+
+def _render_pdf(
+    decision: CorporateDecisionInput,
+    artifact_kind: CorporateArtifactKind,
+    decision_hash: str,
 ) -> bytes:
-    output = BytesIO()
+    buffer = io.BytesIO()
     document = SimpleDocTemplate(
-        output,
+        buffer,
         pagesize=A4,
-        rightMargin=20 * mm,
-        leftMargin=20 * mm,
-        topMargin=22 * mm,
-        bottomMargin=22 * mm,
-        title=(
-            "Styrets forslag og protokoll - utdeling av utbytte"
-            if kind == "board_proposal"
-            else "Protokoll fra generalforsamling - utdeling av utbytte"
-        ),
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title=_artifact_title(artifact_kind),
         author="Talli",
-        subject=f"Utkast til selskapsdokument for {data.company_name}",
-        invariant=1,
-        pageCompression=1,
+        subject=f"{artifact_kind.value} {decision.template_version}",
+        creator=f"Talli {decision.template_version}",
+        displayDocTitle=True,
     )
-    styles = _styles()
-    story = _board_story(data, styles) if kind == "board_proposal" else _general_meeting_story(data, styles)
-    document.build(story, onFirstPage=_footer, onLaterPages=_footer)
-    return output.getvalue()
+    styles = _document_styles()
+    story = _artifact_story(decision, artifact_kind, decision_hash, styles)
+    document.build(story, canvasmaker=_deterministic_canvas)
+    return buffer.getvalue()
 
 
-def _styles() -> dict[str, ParagraphStyle]:
+def _deterministic_canvas(*args: object, **kwargs: object) -> canvas.Canvas:
+    kwargs["invariant"] = 1
+    kwargs["pageCompression"] = 1
+    return canvas.Canvas(*args, **kwargs)
+
+
+def _document_styles() -> dict[str, ParagraphStyle]:
     sample = getSampleStyleSheet()
     return {
         "title": ParagraphStyle(
-            "DocumentTitle",
+            "TalliTitle",
             parent=sample["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=20,
-            leading=24,
-            textColor=NAVY,
-            spaceAfter=12,
-        ),
-        "subtitle": ParagraphStyle(
-            "Subtitle",
-            parent=sample["Normal"],
-            fontName="Helvetica",
-            fontSize=10,
-            leading=14,
-            textColor=MUTED,
-            spaceAfter=14,
+            fontName=FONT_BOLD,
+            fontSize=18,
+            leading=22,
+            alignment=TA_CENTER,
+            spaceAfter=8 * mm,
         ),
         "heading": ParagraphStyle(
-            "SectionHeading",
+            "TalliHeading",
             parent=sample["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=15,
-            textColor=NAVY,
-            spaceBefore=12,
-            spaceAfter=6,
+            fontName=FONT_BOLD,
+            fontSize=11,
+            leading=14,
+            spaceBefore=4 * mm,
+            spaceAfter=2 * mm,
         ),
         "body": ParagraphStyle(
-            "Body",
+            "TalliBody",
             parent=sample["BodyText"],
-            fontName="Helvetica",
+            fontName=FONT_REGULAR,
             fontSize=9.5,
-            leading=14,
-            textColor=colors.HexColor("#1D2A36"),
-            spaceAfter=7,
+            leading=13,
+            spaceAfter=2.5 * mm,
         ),
         "small": ParagraphStyle(
-            "Small",
+            "TalliSmall",
             parent=sample["BodyText"],
-            fontName="Helvetica",
-            fontSize=8,
-            leading=11,
-            textColor=MUTED,
+            fontName=FONT_REGULAR,
+            fontSize=7.5,
+            leading=10,
+            textColor=colors.HexColor("#4b5563"),
+            spaceBefore=4 * mm,
         ),
-        "table": ParagraphStyle(
-            "TableText",
+        "signature": ParagraphStyle(
+            "TalliSignature",
             parent=sample["BodyText"],
-            fontName="Helvetica",
-            fontSize=8.5,
-            leading=11,
-            textColor=colors.HexColor("#1D2A36"),
-        ),
-        "table_right": ParagraphStyle(
-            "TableTextRight",
-            parent=sample["BodyText"],
-            fontName="Helvetica",
-            fontSize=8.5,
-            leading=11,
-            textColor=colors.HexColor("#1D2A36"),
-            alignment=TA_RIGHT,
-        ),
-        "table_header": ParagraphStyle(
-            "TableHeader",
-            parent=sample["BodyText"],
-            fontName="Helvetica-Bold",
-            fontSize=8.5,
-            leading=11,
-            textColor=colors.white,
-        ),
-        "table_header_right": ParagraphStyle(
-            "TableHeaderRight",
-            parent=sample["BodyText"],
-            fontName="Helvetica-Bold",
-            fontSize=8.5,
-            leading=11,
-            textColor=colors.white,
-            alignment=TA_RIGHT,
-        ),
-        "draft": ParagraphStyle(
-            "Draft",
-            parent=sample["BodyText"],
-            fontName="Helvetica-Bold",
+            fontName=FONT_REGULAR,
             fontSize=9,
             leading=12,
-            textColor=colors.HexColor("#6C4B00"),
-            alignment=TA_CENTER,
+            spaceBefore=7 * mm,
         ),
     }
 
 
-def _common_intro(
-    data: DividendDocumentInput,
+def _artifact_story(
+    decision: CorporateDecisionInput,
+    artifact_kind: CorporateArtifactKind,
+    decision_hash: str,
     styles: dict[str, ParagraphStyle],
-    title: str,
-    decision_label: str,
 ) -> list[object]:
-    return [
-        _draft_banner(styles),
-        Spacer(1, 7 * mm),
-        Paragraph(escape(title), styles["title"]),
+    story: list[object] = [
+        Paragraph(_safe(_artifact_title(artifact_kind)), styles["title"]),
         Paragraph(
-            "Selskapsdokument generert av Talli. Opplysninger, myndighet, datoer og ordlyd må "
-            "kontrolleres før dokumentet signeres og får virkning.",
-            styles["subtitle"],
+            f"<b>{_safe(decision.legal_name)}</b><br/>Organisasjonsnummer: {_format_org_number(decision.organization_number)}",
+            styles["body"],
         ),
-        _metadata_table(data, styles, decision_label),
     ]
-
-
-def _board_story(data: DividendDocumentInput, styles: dict[str, ParagraphStyle]) -> list[object]:
-    story = _common_intro(
-        data,
-        styles,
-        "Styrets forslag og protokoll - utdeling av utbytte",
-        "Planlagt dato for generalforsamling",
-    )
-    story.extend(
-        [
-            Paragraph("1. Møtedetaljer", styles["heading"]),
-            _key_value_table(
-                [
-                    ("Dato og klokkeslett", "____________________________________________"),
-                    ("Møtested eller møteform", "____________________________________________"),
-                    ("Tilstede", "____________________________________________"),
-                    ("Forfall", "____________________________________________"),
-                ],
-                styles,
-            ),
-            Paragraph("2. Forslag om utdeling av utbytte", styles["heading"]),
-            Paragraph(
-                f"Styret behandlet forslag om ordinært kontantutbytte på <b>{_money(data.total_amount)}</b> "
-                f"med planlagt betalingsdato {_date(data.payment_date)}.",
-                styles["body"],
-            ),
-            _allocation_table(data, styles),
-            Paragraph("3. Styrets forsvarlighetsvurdering", styles["heading"]),
-            Paragraph(
-                "Styret må før signering kontrollere at utdelingen ligger innenfor selskapets utdelingsgrunnlag, "
-                "og at selskapet etter utdelingen fortsatt har forsvarlig egenkapital og likviditet.",
-                styles["body"],
-            ),
-            _key_value_table(
-                [
-                    ("Oppgitt fri egenkapital", _money(data.distributable_equity)),
-                    ("Oppgitt likviditet etter betaling", _money(data.liquidity_after_payment)),
-                    ("Styrets kontroll og begrunnelse", "____________________________________________"),
-                    ("", "____________________________________________"),
-                ],
-                styles,
-            ),
-            Paragraph("4. Forslag til vedtak", styles["heading"]),
-            Paragraph(
-                f"Styret foreslår at generalforsamlingen beslutter et samlet utbytte på "
-                f"<b>{_money(data.total_amount)}</b>, fordelt som angitt ovenfor og med planlagt betaling "
-                f"{_date(data.payment_date)}. Forslaget forutsetter at styrets vurdering i punkt 3 bekreftes.",
-                styles["body"],
-            ),
-            Paragraph("5. Styrets beslutning", styles["heading"]),
-            _checkbox_line("Forslaget ble enstemmig vedtatt av styret.", styles),
-            _checkbox_line("Annen beslutning (beskriv): ____________________________________________", styles),
-            Spacer(1, 6 * mm),
-            _signature_block("Styrets medlemmer", styles, two_signatures=True),
-        ]
-    )
-    return story
-
-
-def _general_meeting_story(data: DividendDocumentInput, styles: dict[str, ParagraphStyle]) -> list[object]:
-    story = _common_intro(
-        data,
-        styles,
-        "Protokoll fra generalforsamling - utdeling av utbytte",
-        "Beslutningsdato",
-    )
-    story.extend(
-        [
-            Paragraph("1. Åpning og møtedetaljer", styles["heading"]),
-            _key_value_table(
-                [
-                    ("Dato og klokkeslett", f"{_date(data.decision_date)} / ____________________"),
-                    ("Møtested eller møteform", "____________________________________________"),
-                    ("Møteleder", "____________________________________________"),
-                    ("Protokollunderskriver", "____________________________________________"),
-                ],
-                styles,
-            ),
-            Paragraph("2. Fremmøte og stemmer", styles["heading"]),
-            Paragraph(
-                "Kontroller at fremmøtte aksjeeiere, fullmakter, antall aksjer og stemmer er fullstendig angitt.",
-                styles["body"],
-            ),
-            _attendance_table(data, styles),
-            Paragraph("3. Godkjenning av innkalling og dagsorden", styles["heading"]),
-            _checkbox_line("Innkalling og dagsorden ble godkjent.", styles),
-            _checkbox_line("Merknader: __________________________________________________________", styles),
-            Paragraph("4. Beslutning om utdeling av utbytte", styles["heading"]),
-            Paragraph(
-                f"Generalforsamlingen behandlet styrets forslag og besluttet et samlet kontantutbytte på "
-                f"<b>{_money(data.total_amount)}</b>, fordelt som angitt nedenfor. Planlagt betalingsdato er "
-                f"{_date(data.payment_date)}.",
-                styles["body"],
-            ),
-            _allocation_table(data, styles),
-            Paragraph(
-                "Beslutningen må ligge innenfor styrets forslag eller aksept. Selskapets opplysninger og styrets "
-                "forsvarlighetsvurdering må kontrolleres før signering.",
-                styles["small"],
-            ),
-            Paragraph("5. Avstemning", styles["heading"]),
-            _key_value_table(
-                [
-                    ("Stemmer for", "____________________"),
-                    ("Stemmer mot", "____________________"),
-                    ("Avstår", "____________________"),
-                    ("Resultat", "____________________________________________"),
-                ],
-                styles,
-            ),
-            Paragraph("6. Signaturer", styles["heading"]),
-            Paragraph(
-                "Protokollen dateres og signeres i samsvar med selskapets forhold og gjeldende krav.",
-                styles["body"],
-            ),
-            Spacer(1, 4 * mm),
-            _signature_block("Møteleder og valgt medunderskriver", styles, two_signatures=True),
-        ]
-    )
-    return story
-
-
-def _draft_banner(styles: dict[str, ParagraphStyle]) -> Table:
-    table = Table(
-        [[Paragraph("UTKAST - MÅ KONTROLLERES OG SIGNERES", styles["draft"])]],
-        colWidths=[170 * mm],
-    )
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), PALE_YELLOW),
-                ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#D8A928")),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-            ]
+    if artifact_kind == CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL:
+        story.extend(_dividend_board_story(decision, styles))
+    elif artifact_kind == CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES:
+        story.extend(_dividend_general_meeting_story(decision, styles))
+    elif artifact_kind == CorporateArtifactKind.ANNUAL_BOARD_MINUTES:
+        story.extend(_annual_board_story(decision, styles))
+    else:
+        story.extend(_annual_general_meeting_story(decision, styles))
+    story.append(
+        Paragraph(
+            f"Dokumentversjon: {_safe(decision.template_version)}<br/>Beslutningshash (SHA-256): {decision_hash}",
+            styles["small"],
         )
     )
-    return table
+    return story
 
 
-def _metadata_table(
-    data: DividendDocumentInput,
+def _dividend_board_story(
+    decision: CorporateDecisionInput,
     styles: dict[str, ParagraphStyle],
-    decision_label: str,
-) -> Table:
-    return _key_value_table(
+) -> list[object]:
+    dividend = _required_dividend(decision)
+    rows = [
+        ["Møtedato", _format_date(decision.board_meeting.meeting_date)],
+        ["Tid", _format_time(decision.board_meeting.meeting_time)],
+        ["Sted", decision.board_meeting.place],
+        ["Behandlingsform", _treatment_label(decision.board_meeting.treatment_method)],
+    ]
+    story = _meeting_intro("Styremøte", rows, decision.board_participants, styles)
+    story.extend(
         [
-            ("Selskap", data.company_name),
-            ("Organisasjonsnummer", _org_number(data.org_number)),
-            ("Inntektsår", str(data.income_year)),
-            (decision_label, _date(data.decision_date)),
-        ],
-        styles,
-        shaded=True,
+            Paragraph("Grunnlag og vurdering", styles["heading"]),
+            Paragraph(
+                "Forslaget bygger på godkjent årsregnskap for "
+                f"{decision.annual_basis_year}. Fri egenkapital for utdeling er "
+                f"{_format_money(decision.financial_totals.available_distribution_ore)}. "
+                f"Foreslått kontantutbytte er {_format_money(dividend.amount_ore)}.",
+                styles["body"],
+            ),
+            Paragraph(
+                "Styret har vurdert selskapets egenkapital og likviditet som forsvarlig etter utdelingen. "
+                f"Likviditet etter planlagt betaling er {_format_money(dividend.liquidity_after_payment_ore)}.",
+                styles["body"],
+            ),
+            Paragraph("Styrets enstemmige forslag", styles["heading"]),
+            Paragraph(
+                f"Styret foreslår at generalforsamlingen vedtar et samlet kontantutbytte på "
+                f"{_format_money(dividend.amount_ore)}, med betalingsdato {_format_date(dividend.payment_date)}. "
+                "Utbyttet fordeles proporsjonalt etter registrert aksjeeierskap.",
+                styles["body"],
+            ),
+            _allocation_table(decision, styles),
+            *_board_signatures(decision, styles),
+        ]
     )
+    return story
 
 
-def _key_value_table(
-    rows: list[tuple[str, str]],
+def _dividend_general_meeting_story(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    dividend = _required_dividend(decision)
+    story = _general_meeting_intro(decision, styles)
+    story.extend(
+        [
+            Paragraph("Styrets forslag", styles["heading"]),
+            Paragraph(
+                f"Generalforsamlingen behandlet styrets forslag om kontantutbytte på "
+                f"{_format_money(dividend.amount_ore)} basert på godkjent årsregnskap for "
+                f"{decision.annual_basis_year}.",
+                styles["body"],
+            ),
+            Paragraph("Enstemmig vedtak", styles["heading"]),
+            Paragraph(
+                f"Generalforsamlingen vedtok et samlet kontantutbytte på "
+                f"{_format_money(dividend.amount_ore)}. Beløpet overstiger ikke styrets forslag. "
+                f"Betalingsdato er {_format_date(dividend.payment_date)}.",
+                styles["body"],
+            ),
+            _allocation_table(decision, styles),
+            *_general_meeting_signatures(decision, styles),
+        ]
+    )
+    return story
+
+
+def _annual_board_story(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    rows = [
+        ["Møtedato", _format_date(decision.board_meeting.meeting_date)],
+        ["Tid", _format_time(decision.board_meeting.meeting_time)],
+        ["Sted", decision.board_meeting.place],
+        ["Behandlingsform", _treatment_label(decision.board_meeting.treatment_method)],
+    ]
+    story = _meeting_intro("Styremøte", rows, decision.board_participants, styles)
+    story.extend(
+        [
+            Paragraph("Behandling av årsregnskapet", styles["heading"]),
+            Paragraph(
+                f"Styret behandlet årsregnskapet med noter for regnskapsåret {decision.income_year}. "
+                f"Årsresultatet etter skatt er {_format_money(decision.financial_totals.result_after_tax_ore)}, "
+                f"og egenkapitalen er {_format_money(decision.financial_totals.equity_ore)}.",
+                styles["body"],
+            ),
+            Paragraph(
+                f"Styret foreslår at {_format_money(decision.annual_result_allocation_ore)} disponeres i samsvar "
+                "med årsregnskapet og legges frem for ordinær generalforsamling.",
+                styles["body"],
+            ),
+            Paragraph(
+                "Denne protokollen erstatter ikke kravet om at det separate årsregnskapet signeres av alle "
+                "styremedlemmer og eventuell daglig leder.",
+                styles["body"],
+            ),
+            Paragraph("Enstemmig vedtak", styles["heading"]),
+            Paragraph("Styret vedtok å fremme årsregnskapet og resultatdisponeringen for generalforsamlingen.", styles["body"]),
+            *_board_signatures(decision, styles),
+        ]
+    )
+    return story
+
+
+def _annual_general_meeting_story(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    story = _general_meeting_intro(decision, styles)
+    story.extend(
+        [
+            Paragraph("Årsregnskap og resultatdisponering", styles["heading"]),
+            Paragraph(
+                f"Generalforsamlingen behandlet styrets forslag til årsregnskap med noter for "
+                f"regnskapsåret {decision.income_year}. Årsresultatet etter skatt er "
+                f"{_format_money(decision.financial_totals.result_after_tax_ore)}.",
+                styles["body"],
+            ),
+            Paragraph("Enstemmig vedtak", styles["heading"]),
+            Paragraph(
+                "Generalforsamlingen godkjente årsregnskapet med noter og vedtok styrets forslag til "
+                f"resultatdisponering på {_format_money(decision.annual_result_allocation_ore)}.",
+                styles["body"],
+            ),
+            Paragraph(
+                "Komplette årsregnskapsdokumenter skal sendes til Regnskapsregisteret innen gjeldende frist.",
+                styles["body"],
+            ),
+            *_general_meeting_signatures(decision, styles),
+        ]
+    )
+    return story
+
+
+def _meeting_intro(
+    label: str,
+    rows: list[list[str]],
+    participants: tuple[BoardParticipant, ...],
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    return [
+        Paragraph(label, styles["heading"]),
+        _fact_table(rows, styles),
+        Paragraph("Deltakere", styles["heading"]),
+        _fact_table([[participant.name, _board_role_label(participant.role)] for participant in participants], styles),
+    ]
+
+
+def _general_meeting_intro(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    meeting = decision.general_meeting
+    rows = [
+        ["Møtedato", _format_date(meeting.meeting_date)],
+        ["Tid", _format_time(meeting.meeting_time)],
+        ["Sted", meeting.place],
+        ["Møteform", _meeting_form_label(meeting.meeting_form)],
+        ["Møteleder", meeting.chair_name],
+        ["Medundertegner", meeting.co_signer_name],
+    ]
+    shareholder_rows = [["Aksjonær", "Representerte aksjer", "Stemme"]]
+    shareholder_rows.extend(
+        [shareholder.name, str(shareholder.represented_share_count), "For"]
+        for shareholder in decision.shareholders
+    )
+    return [
+        Paragraph("Møteopplysninger", styles["heading"]),
+        _fact_table(rows, styles),
+        Paragraph("Representasjon og avstemning", styles["heading"]),
+        _data_table(shareholder_rows, (80 * mm, 45 * mm, 30 * mm), styles),
+        Paragraph(
+            f"Alle selskapets {decision.total_company_shares} aksjer i én aksjeklasse var representert. "
+            "Samtlige avgitte stemmer var for vedtakene.",
+            styles["body"],
+        ),
+    ]
+
+
+def _allocation_table(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> Table:
+    dividend = _required_dividend(decision)
+    allocations = {item.shareholder_id: item.amount_ore for item in dividend.allocations}
+    rows = [["Aksjonær", "Aksjer", "Utbytte"]]
+    rows.extend(
+        [shareholder.name, str(shareholder.share_count), _format_money(allocations[shareholder.shareholder_id])]
+        for shareholder in decision.shareholders
+    )
+    rows.append(["Totalt", str(decision.total_company_shares), _format_money(dividend.amount_ore)])
+    return _data_table(rows, (80 * mm, 30 * mm, 45 * mm), styles)
+
+
+def _fact_table(rows: list[list[str]], styles: dict[str, ParagraphStyle]) -> Table:
+    return _data_table(rows, (45 * mm, 110 * mm), styles, header=False)
+
+
+def _data_table(
+    rows: list[list[str]],
+    widths: tuple[float, ...],
     styles: dict[str, ParagraphStyle],
     *,
-    shaded: bool = False,
+    header: bool = True,
 ) -> Table:
-    values = [
-        [Paragraph(f"<b>{escape(label)}</b>", styles["table"]), Paragraph(escape(value), styles["table"])]
-        for label, value in rows
-    ]
-    table = Table(values, colWidths=[52 * mm, 118 * mm], hAlign="LEFT")
-    commands: list[tuple] = [
+    body = [[Paragraph(_safe(cell), styles["body"]) for cell in row] for row in rows]
+    table = Table(body, colWidths=widths, repeatRows=1 if header else 0, hAlign="LEFT")
+    commands: list[tuple[object, ...]] = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LINEBELOW", (0, 0), (-1, -2), 0.35, RULE),
-        ("LEFTPADDING", (0, 0), (-1, -1), 7),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d1d5db")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]
-    if shaded:
-        commands.extend([("BACKGROUND", (0, 0), (-1, -1), PALE_BLUE), ("BOX", (0, 0), (-1, -1), 0.5, RULE)])
+    if header:
+        commands.extend(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e5eef7")),
+                ("FONTNAME", (0, 0), (-1, 0), FONT_BOLD),
+            ]
+        )
     table.setStyle(TableStyle(commands))
     return table
 
 
-def _allocation_table(data: DividendDocumentInput, styles: dict[str, ParagraphStyle]) -> Table:
-    rows: list[list[Paragraph]] = [
-        [
-            Paragraph("Aksjeeier", styles["table_header"]),
-            Paragraph("Aksjer", styles["table_header_right"]),
-            Paragraph("Beløp", styles["table_header_right"]),
-        ]
+def _board_signatures(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    story: list[object] = [Paragraph("Signatur", styles["heading"])]
+    for participant in decision.board_participants:
+        story.extend(
+            [
+                Spacer(1, 5 * mm),
+                Paragraph(
+                    f"____________________________________<br/>{_safe(participant.name)}, "
+                    f"{_board_role_label(participant.role)}",
+                    styles["signature"],
+                ),
+            ]
+        )
+    return story
+
+
+def _general_meeting_signatures(
+    decision: CorporateDecisionInput,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    return [
+        Paragraph("Signatur", styles["heading"]),
+        Spacer(1, 5 * mm),
+        Paragraph(
+            f"____________________________________<br/>{_safe(decision.general_meeting.chair_name)}, møteleder",
+            styles["signature"],
+        ),
+        Spacer(1, 5 * mm),
+        Paragraph(
+            f"____________________________________<br/>{_safe(decision.general_meeting.co_signer_name)}, medundertegner",
+            styles["signature"],
+        ),
     ]
-    for allocation in data.allocations:
-        rows.append(
-            [
-                Paragraph(escape(allocation.shareholder_name), styles["table"]),
-                Paragraph(_number(allocation.share_count), styles["table_right"]),
-                Paragraph(_money(allocation.amount), styles["table_right"]),
-            ]
+
+
+def _artifact_title(kind: CorporateArtifactKind) -> str:
+    return {
+        CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL: "Styrets forslag til utbytte",
+        CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES: "Protokoll fra generalforsamling – utbytte",
+        CorporateArtifactKind.ANNUAL_BOARD_MINUTES: "Styrets behandling av årsregnskapet",
+        CorporateArtifactKind.ANNUAL_GENERAL_MEETING_MINUTES: "Protokoll fra ordinær generalforsamling",
+    }[kind]
+
+
+def _artifact_filename(kind: CorporateArtifactKind) -> str:
+    return {
+        CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL: "styrets-forslag-til-utbytte.pdf",
+        CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES: "generalforsamlingsprotokoll-utbytte.pdf",
+        CorporateArtifactKind.ANNUAL_BOARD_MINUTES: "styreprotokoll-aarsregnskap.pdf",
+        CorporateArtifactKind.ANNUAL_GENERAL_MEETING_MINUTES: "generalforsamlingsprotokoll-aarsregnskap.pdf",
+    }[kind]
+
+
+def _required_dividend(decision: CorporateDecisionInput) -> DividendDecisionFacts:
+    if decision.dividend is None:
+        raise CorporateDocumentValidationError(
+            "Utbyttefakta mangler.",
+            "corporate_documents_unsupported_dividend_basis",
         )
-    rows.append(
-        [
-            Paragraph("<b>Totalt</b>", styles["table"]),
-            Paragraph(f"<b>{_number(sum(a.share_count for a in data.allocations))}</b>", styles["table_right"]),
-            Paragraph(f"<b>{_money(data.total_amount)}</b>", styles["table_right"]),
-        ]
-    )
-    table = Table(rows, colWidths=[92 * mm, 30 * mm, 48 * mm], repeatRows=1, hAlign="LEFT")
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), NAVY),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("BACKGROUND", (0, -1), (-1, -1), PALE_BLUE),
-                ("BOX", (0, 0), (-1, -1), 0.5, RULE),
-                ("INNERGRID", (0, 0), (-1, -1), 0.35, RULE),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
-    return table
+    return decision.dividend
 
 
-def _attendance_table(data: DividendDocumentInput, styles: dict[str, ParagraphStyle]) -> Table:
-    rows: list[list[Paragraph]] = [
-        [
-            Paragraph("Aksjeeier / fullmektig", styles["table_header"]),
-            Paragraph("Aksjer", styles["table_header_right"]),
-            Paragraph("Stemmer", styles["table_header_right"]),
-            Paragraph("Fullmakt kontrollert", styles["table_header"]),
-        ]
-    ]
-    for allocation in data.allocations:
-        rows.append(
-            [
-                Paragraph(escape(allocation.shareholder_name), styles["table"]),
-                Paragraph(_number(allocation.share_count), styles["table_right"]),
-                Paragraph("________", styles["table_right"]),
-                Paragraph("[ ] Ja&nbsp;&nbsp;[ ] Ikke relevant", styles["table"]),
-            ]
-        )
-    table = Table(rows, colWidths=[73 * mm, 23 * mm, 25 * mm, 49 * mm], repeatRows=1, hAlign="LEFT")
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), NAVY),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("BOX", (0, 0), (-1, -1), 0.5, RULE),
-                ("INNERGRID", (0, 0), (-1, -1), 0.35, RULE),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
-    return table
+def _format_org_number(value: str) -> str:
+    return f"{value[:3]} {value[3:6]} {value[6:]}"
 
 
-def _checkbox_line(text: str, styles: dict[str, ParagraphStyle]) -> Paragraph:
-    return Paragraph(f"[ ]&nbsp;&nbsp;{escape(text)}", styles["body"])
-
-
-def _signature_block(label: str, styles: dict[str, ParagraphStyle], *, two_signatures: bool) -> KeepTogether:
-    columns = 2 if two_signatures else 1
-    rows = [
-        [Paragraph("<br/><br/>__________________________________", styles["body"]) for _ in range(columns)],
-        [Paragraph("Navn: ____________________________", styles["small"]) for _ in range(columns)],
-        [Paragraph("Dato: _____________________________", styles["small"]) for _ in range(columns)],
-    ]
-    table = Table(rows, colWidths=[85 * mm] * columns, hAlign="LEFT")
-    table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("RIGHTPADDING", (0, 0), (-1, -1), 12)]))
-    return KeepTogether([Paragraph(escape(label), styles["small"]), table])
-
-
-def _footer(canvas, document) -> None:  # type: ignore[no-untyped-def]
-    canvas.saveState()
-    width, _height = A4
-    canvas.setStrokeColor(RULE)
-    canvas.setLineWidth(0.5)
-    canvas.line(20 * mm, 15 * mm, width - 20 * mm, 15 * mm)
-    canvas.setFont("Helvetica", 7.5)
-    canvas.setFillColor(MUTED)
-    canvas.drawString(20 * mm, 10 * mm, "Talli - usignert utkast, må kontrolleres før bruk")
-    canvas.drawRightString(width - 20 * mm, 10 * mm, f"Side {document.page}")
-    canvas.restoreState()
-
-
-def _money(value: Decimal) -> str:
-    quantized = value.quantize(Decimal("0.01"))
-    whole, decimals = f"{quantized:.2f}".split(".")
-    grouped = f"{int(whole):,}".replace(",", " ")
-    return f"kr {grouped},{decimals}"
-
-
-def _number(value: Decimal) -> str:
-    if value == value.to_integral_value():
-        return f"{int(value):,}".replace(",", " ")
-    return f"{value.normalize():f}".replace(".", ",")
-
-
-def _date(value: date) -> str:
+def _format_date(value: date) -> str:
     return value.strftime("%d.%m.%Y")
 
 
-def _org_number(value: str) -> str:
-    return f"{value[:3]} {value[3:6]} {value[6:]}"
+def _format_time(value: time) -> str:
+    return value.strftime("%H:%M")
+
+
+def _format_money(amount_ore: int) -> str:
+    sign = "-" if amount_ore < 0 else ""
+    whole, fraction = divmod(abs(amount_ore), 100)
+    whole_text = f"{whole:,}".replace(",", " ")
+    return f"{sign}{whole_text},{fraction:02d} kr"
+
+
+def _treatment_label(value: str) -> str:
+    return {"physical": "Fysisk møte", "video": "Videomøte", "written": "Skriftlig behandling"}[value]
+
+
+def _meeting_form_label(value: str) -> str:
+    return {"physical": "Fysisk møte", "video": "Videomøte"}[value]
+
+
+def _board_role_label(value: str) -> str:
+    return {"chair": "styreleder", "member": "styremedlem"}[value]
+
+
+def _safe(value: object) -> str:
+    return escape(str(value))

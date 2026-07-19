@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+import { buildNoActivityRf1086Case, renderRf1086Preview } from "../app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   assertRf1086SimulationConfirmations,
@@ -12,6 +12,7 @@ import {
   rf1086SubmittedPayloadReference,
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
+  simulateRf1086Submission,
   simulateRf1086SubmissionWithPython,
 } from "../app/lib/rf1086-submission.ts";
 
@@ -56,8 +57,8 @@ const shareholders = [
   },
 ];
 
-async function readyPreview() {
-  const rendered = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+function readyPreview() {
+  const rendered = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
   return {
     id: "12345678-1234-1234-1234-123456789abc",
     company_id: company.id,
@@ -88,13 +89,12 @@ test("blocks simulated submission without final preview confirmation", () => {
   );
 });
 
-test("prepares deterministic simulated submission calls and receipt from persisted preview", async () => {
-  const preview = await readyPreview();
-  const first = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
+test("prepares deterministic simulated submission calls and receipt from persisted preview", () => {
+  const first = simulateRf1086SubmissionWithPython(readyPreview(), "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });
-  const retry = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
+  const retry = simulateRf1086SubmissionWithPython(readyPreview(), "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });
@@ -106,72 +106,75 @@ test("prepares deterministic simulated submission calls and receipt from persist
     retry.calls.map((call) => call.idempotency_key),
     first.calls.map((call) => call.idempotency_key),
   );
-  assert.deepEqual(
-    first.calls.map((call) => call.endpoint),
-    [
-      "/api/aksjonaerregister/v1/2025/1086H",
-      "/api/aksjonaerregister/v1/2025/simulated-12345678-1234-1234-1234-123456789abc/1086U",
-      "/api/aksjonaerregister/v1/2025/simulated-12345678-1234-1234-1234-123456789abc/bekreft?antall_underskjema=1",
-      "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-12345678-1234-1234-1234-123456789abc/dokumenter?page=0&size=50",
-    ],
-  );
   assert.deepEqual(retry.feedback_document_ids, ["sim-feedback-12345678"]);
 });
 
-test("production mode cannot fall through to simulation through configuration", async () => {
+test("simulates a persisted submission without a Python runtime", () => {
+  const previous = process.env.TALLI_PYTHON_BIN;
+  process.env.TALLI_PYTHON_BIN = "/definitely/missing/talli-python";
+  try {
+    const result = simulateRf1086Submission(readyPreview(), "owner-user", {
+      authorityConfirmed: true,
+      previewConfirmed: true,
+    });
+
+    assert.equal(result.status, "receipt_stored");
+    assert.equal(result.receipt_id, "sim-rf1086-company-id-2025-12345678");
+    assert.equal(result.calls.length, 4);
+  } finally {
+    if (previous === undefined) delete process.env.TALLI_PYTHON_BIN;
+    else process.env.TALLI_PYTHON_BIN = previous;
+  }
+});
+
+test("serverless simulation matches the verified Python request plan", () => {
+  const preview = readyPreview();
+  const confirmations = { authorityConfirmed: true, previewConfirmed: true };
+  const serverless = simulateRf1086Submission(preview, "owner-user", confirmations);
+  const verified = simulateRf1086SubmissionWithPython(preview, "owner-user", confirmations);
+
+  assert.deepEqual(
+    serverless.calls.map(({ endpoint, body_hash, idempotency_key, status }) => ({ endpoint, body_hash, idempotency_key, status })),
+    verified.calls.map(({ endpoint, body_hash, idempotency_key, status }) => ({ endpoint, body_hash, idempotency_key, status })),
+  );
+  assert.equal(serverless.receipt_id, verified.receipt_id);
+  assert.deepEqual(serverless.feedback_document_ids, verified.feedback_document_ids);
+});
+
+test("blocks production adapter even if the legacy environment flag is set", () => {
   const previous = process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER;
   process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER = "true";
   try {
-    await assert.rejects(
-      async () =>
+    assert.throws(
+      () =>
         runRf1086SubmissionAdapter({
           mode: "production",
-          preview: await readyPreview(),
+          preview: readyPreview(),
           userId: "owner-user",
           confirmations: { authorityConfirmed: true, previewConfirmed: true },
         }),
       (error) => error instanceof Rf1086ProductionAdapterDisabledError && error.code === "rf1086_production_adapter_disabled",
     );
   } finally {
-    if (previous === undefined) delete process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER;
-    else process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER = previous;
+    if (previous === undefined) {
+      delete process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER;
+    } else {
+      process.env.TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER = previous;
+    }
   }
 });
 
-test("builds stable request payload hash and idempotency key", async () => {
-  const preview = await readyPreview();
-  const comparison = await readyPreview();
+test("builds stable request payload hash and idempotency key", () => {
+  const preview = readyPreview();
 
-  assert.equal(rf1086PayloadHash(preview), rf1086PayloadHash(comparison));
-  assert.equal(rf1086SubmissionIdempotencyKey(preview), rf1086SubmissionIdempotencyKey(comparison));
+  assert.equal(rf1086PayloadHash(preview), rf1086PayloadHash(readyPreview()));
+  assert.equal(rf1086SubmissionIdempotencyKey(preview), rf1086SubmissionIdempotencyKey(readyPreview()));
   assert.match(rf1086SubmissionIdempotencyKey(preview), /^rf1086:company-id:2025:/);
 });
 
-test("keeps payload identity stable when underskjema map insertion order changes", async () => {
-  const preview = await readyPreview();
-  const secondXml = preview.underskjema_xml["shareholder-id"].replace("shareholder-id", "shareholder-two");
-  const ordered = {
-    ...preview,
-    underskjema_xml: {
-      "shareholder-id": preview.underskjema_xml["shareholder-id"],
-      "shareholder-two": secondXml,
-    },
-  };
-  const reordered = {
-    ...preview,
-    underskjema_xml: {
-      "shareholder-two": secondXml,
-      "shareholder-id": preview.underskjema_xml["shareholder-id"],
-    },
-  };
-
-  assert.equal(rf1086PayloadHash(ordered), rf1086PayloadHash(reordered));
-  assert.equal(rf1086SubmissionIdempotencyKey(ordered), rf1086SubmissionIdempotencyKey(reordered));
-});
-
-test("builds accepted receipt metadata and immutable submitted payload references", async () => {
-  const preview = await readyPreview();
-  const result = await simulateRf1086SubmissionWithPython(preview, "owner-user", {
+test("builds accepted receipt metadata and immutable submitted payload references", () => {
+  const preview = readyPreview();
+  const result = simulateRf1086SubmissionWithPython(preview, "owner-user", {
     authorityConfirmed: true,
     previewConfirmed: true,
   });

@@ -24,8 +24,33 @@ export const yearEndAnswerKeys: (keyof YearEndInterviewAnswers)[] = [
   "authority_to_submit_confirmed",
 ];
 
+export const registeredYearEndActivityKeys = [
+  "shares_owned_at_year_end",
+  "bought_or_sold_shares",
+  "received_dividends",
+  "declared_owner_dividends",
+  "shareholder_loans",
+  "paid_costs",
+] as const satisfies readonly (keyof YearEndInterviewAnswers)[];
+
+export type RegisteredYearEndActivity = Pick<
+  YearEndInterviewAnswers,
+  (typeof registeredYearEndActivityKeys)[number]
+>;
+
 export function buildYearEndInterviewAnswers(input: Partial<Record<keyof YearEndInterviewAnswers, boolean>>) {
   return Object.fromEntries(yearEndAnswerKeys.map((key) => [key, Boolean(input[key])])) as YearEndInterviewAnswers;
+}
+
+export function buildYearEndInterviewInitialAnswers(
+  saved: Partial<YearEndInterviewAnswers> | null,
+  registered: Partial<RegisteredYearEndActivity>,
+) {
+  const answers = buildYearEndInterviewAnswers(saved ?? {});
+  for (const key of registeredYearEndActivityKeys) {
+    answers[key] ||= Boolean(registered[key]);
+  }
+  return answers;
 }
 
 export function noActivityConfirmed(answers: YearEndInterviewAnswers) {

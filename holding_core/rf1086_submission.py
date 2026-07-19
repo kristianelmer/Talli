@@ -92,11 +92,11 @@ def prepare_rf1086_api_calls(
         endpoint=f"{base_endpoint}/1086H",
         body={"content_type": "application/xml", "xml": documents.hovedskjema_xml},
     )
-    for _, xml in sorted(documents.underskjema_xml.items()):
+    for shareholder_id, xml in sorted(documents.underskjema_xml.items()):
         submission = register_api_call(
             submission,
             endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U",
-            body={"content_type": "application/xml", "xml": xml},
+            body={"shareholder_id": shareholder_id, "content_type": "application/xml", "xml": xml},
         )
     submission = register_api_call(
         submission,
@@ -108,10 +108,7 @@ def prepare_rf1086_api_calls(
     )
     return register_api_call(
         submission,
-        endpoint=(
-            f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter"
-            "?page=0&size=50"
-        ),
+        endpoint=f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter?page=0&size=50",
         body={"page": 0, "size": 50},
     )
 

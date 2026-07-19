@@ -1,376 +1,589 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
-  COMPANY_TAX_RETURN_VALIDATION_BASE_URLS,
-  COMPANY_TAX_RETURN_VALIDATION_SCOPE,
   CompanyTaxReturnAuthorityError,
-  buildCompanyTaxReturnValidationEnvelope,
   createCompanyTaxReturnAuthorityClient,
-  createFetchCompanyTaxReturnAuthorityTransport,
+  exchangeMaskinportenForAltinnToken,
+  renderCompanyTaxReturnEnvelope,
+  renderCompanyTaxReturnValidationEnvelope,
+  summarizeCompanyTaxReturnValidation,
+  waitForCompanyTaxReturnFeedback,
+  waitForCompanyTaxReturnValidation,
 } from "../app/lib/company-tax-return-authority-client.ts";
 
-const accessToken = "test-system-user-token";
-const taxReturnXml = '<?xml version="1.0" encoding="UTF-8"?><skattemelding xmlns="urn:test:tax"><partsnummer>310279617</partsnummer></skattemelding>';
-const businessSpecificationXml = '<?xml version="1.0" encoding="UTF-8"?><naeringsspesifikasjon xmlns="urn:test:business"><partsreferanse>310279617</partsreferanse></naeringsspesifikasjon>';
+const taxToken = "opaque-tax-token";
+const altinnToken = "opaque-altinn-token";
+const instanceId = "50001234/10000000-0000-4000-8000-000000000001";
+const feedbackDataId = "30000000-0000-4000-8000-000000000003";
 
-function xmlResponse(body, status = 200, contentType = "application/xml; charset=utf-8") {
-  return {
+function jsonResponse(value, status = 200) {
+  return new Response(JSON.stringify(value), {
     status,
-    headers: { "content-type": contentType },
-    body: new TextEncoder().encode(body),
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function instanceResponse(taskType, overrides = {}) {
+  return {
+    id: instanceId,
+    process: {
+      started: "2026-07-14T12:00:00Z",
+      ended: null,
+      endEvent: null,
+      currentTask: taskType === null
+        ? null
+        : { elementId: `${taskType}-task`, altinnTaskType: taskType },
+    },
+    status: { isArchived: false, archived: null },
+    data: [],
+    ...overrides,
   };
 }
 
-function validResponse(extra = "") {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<skattemeldingOgNaeringsspesifikasjonResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:response:v2">
-  ${extra}
-  <resultatAvValidering>validertOK</resultatAvValidering>
-</skattemeldingOgNaeringsspesifikasjonResponse>`;
-}
+test("renders the official v2 envelope with base64 documents and 2025 submission purpose", () => {
+  const skattemeldingXml = "<?xml version=\"1.0\"?><skattemelding>æ &amp; ø</skattemelding>";
+  const naeringsspesifikasjonXml = "<?xml version=\"1.0\"?><naeringsspesifikasjon>holding</naeringsspesifikasjon>";
+  const envelope = renderCompanyTaxReturnEnvelope({
+    skattemeldingXml,
+    naeringsspesifikasjonXml,
+    currentDocumentReference: "SKI:755:1<&>",
+    companyOrgNumber: "310279617",
+    incomeYear: 2025,
+    createdBy: "Talli",
+  });
 
-test("pins the exact official API v2 authority envelope schemas", async () => {
-  const expected = new Map([
-    ["skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd", "7aac32c36117d0a7666ee469eaa94768296337e9e37ceab6f835ba2d8856d669"],
-    ["skattemeldingognaeringsspesifikasjonresponse_v2.xsd", "fc9c100462603564198ee27e3f96abacc0be037cf9c10ba6d8d440e14ad1e237"],
-    ["skattemeldingognaeringsspesifikasjonforespoerselresponse_v2_kompakt.xsd", "c718010fdf6dc6633f4a4c583c272457c1828a70518c6798ff626e0b809a5839"],
+  assert.match(envelope, /skattemeldingognaeringsspesifikasjon:request:v2/u);
+  assert.match(envelope, /<type>skattemeldingUpersonlig<\/type>/u);
+  assert.ok(envelope.includes(Buffer.from(skattemeldingXml, "utf8").toString("base64")));
+  assert.ok(envelope.includes(Buffer.from(naeringsspesifikasjonXml, "utf8").toString("base64")));
+  assert.match(envelope, /<dokumentidentifikator>SKI:755:1&lt;&amp;&gt;<\/dokumentidentifikator>/u);
+  assert.match(envelope, /<innsendingstype>komplett<\/innsendingstype>/u);
+  assert.match(envelope, /<tin>310279617<\/tin>/u);
+  assert.match(envelope, /<innsendingsformaal>egenfastsetting<\/innsendingsformaal>/u);
+});
+
+test("rendered envelope validates against the pinned official request schema when supplied", {
+  skip: !process.env.TALLI_SKATTE_XSD_DIR,
+}, () => {
+  const directory = mkdtempSync(join(tmpdir(), "talli-tax-envelope-"));
+  const envelopePath = join(directory, "skattemeldingOgNaeringsspesifikasjon.xml");
+  writeFileSync(envelopePath, renderCompanyTaxReturnEnvelope({
+    skattemeldingXml: "<skattemelding/>",
+    naeringsspesifikasjonXml: "<naeringsspesifikasjon/>",
+    currentDocumentReference: "SKI:755:14847",
+    companyOrgNumber: "310279617",
+    incomeYear: 2025,
+    createdBy: "Talli",
+  }), "utf8");
+  const result = spawnSync("xmllint", [
+    "--noout",
+    "--schema",
+    join(process.env.TALLI_SKATTE_XSD_DIR, "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"),
+    envelopePath,
+  ], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+});
+
+test("renders and posts a reference-free envelope only to the documented validertest endpoint", async () => {
+  const envelope = renderCompanyTaxReturnValidationEnvelope({
+    skattemeldingXml: "<skattemelding/>",
+    naeringsspesifikasjonXml: "<naeringsspesifikasjon/>",
+    companyOrgNumber: "310279617",
+    incomeYear: 2025,
+    createdBy: "Talli",
+  });
+  assert.doesNotMatch(envelope, /dokumentreferanseTilGjeldendeDokument/u);
+
+  let captured;
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    fetch: async (url, init) => {
+      captured = { url: String(url), init };
+      return new Response("<skattemeldingOgNaeringsspesifikasjonResponse/>", {
+        status: 200,
+        headers: { "content-type": "application/xml" },
+      });
+    },
+  });
+  const result = await client.validateTest({
+    incomeYear: 2025,
+    companyOrgNumber: "310279617",
+    envelopeXml: envelope,
+  });
+
+  assert.equal(captured.url, "https://api-test.sits.no/api/skattemelding/v2/validertest/2025/310279617");
+  assert.equal(captured.init.method, "POST");
+  assert.equal(captured.init.headers.authorization, `Bearer ${taxToken}`);
+  assert.equal(captured.init.headers["content-type"], "application/xml");
+  assert.equal(result.resultXml, "<skattemeldingOgNaeringsspesifikasjonResponse/>");
+});
+
+test("summarizes validation status and guidance without retaining calculated documents", () => {
+  const summary = summarizeCompanyTaxReturnValidation(`
+    <skattemeldingOgNaeringsspesifikasjonResponse>
+      <dokumenter><dokument><content>base64-sensitive-result</content></dokument></dokumenter>
+      <veiledningEtterKontroll>
+        <veiledning><veiledningstype>N_MANGLER_VERDI_BAK_AKSJENE</veiledningstype></veiledning>
+        <veiledning><veiledningstype>N_MANGLER_OPPLYSNINGER_OM_SELSKAPET</veiledningstype></veiledning>
+      </veiledningEtterKontroll>
+      <resultatAvValidering>validertOK</resultatAvValidering>
+    </skattemeldingOgNaeringsspesifikasjonResponse>
+  `);
+
+  assert.deepEqual(summary, {
+    result: "validertOK",
+    deviationCodes: [],
+    guidanceCodes: ["N_MANGLER_OPPLYSNINGER_OM_SELSKAPET", "N_MANGLER_VERDI_BAK_AKSJENE"],
+    failureReasons: [],
+  });
+  assert.doesNotMatch(JSON.stringify(summary), /base64-sensitive-result/u);
+});
+
+test("exchanges a system-user Maskinporten token at the official Altinn endpoint", async () => {
+  let captured;
+  const exchanged = await exchangeMaskinportenForAltinnToken({
+    environment: "test",
+    maskinportenAccessToken: taxToken,
+    fetch: async (url, init) => {
+      captured = { url: String(url), init };
+      return new Response(altinnToken, { status: 200, headers: { "content-type": "text/plain" } });
+    },
+  });
+
+  assert.equal(captured.url, "https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten");
+  assert.equal(captured.init.method, "GET");
+  assert.equal(captured.init.headers.authorization, `Bearer ${taxToken}`);
+  assert.equal(exchanged, altinnToken);
+});
+
+test("uses the official current-document and Altinn async-validation sequence", async () => {
+  const requests = [];
+  const currentSkattemeldingXml = `<?xml version="1.0"?><skattemelding><partsnummer>9000020078</partsnummer><inntektsaar>2025</inntektsaar></skattemelding>`;
+  const currentXml = `<?xml version="1.0"?><skattemeldingOgNaeringsspesifikasjonforespoerselResponse><dokumenter><skattemeldingdokument><id>SKI:755:14847</id><encoding>utf-8</encoding><content>${Buffer.from(currentSkattemeldingXml, "utf8").toString("base64")}</content><type>skattemeldingUpersonligUtkast</type></skattemeldingdokument></dokumenter></skattemeldingOgNaeringsspesifikasjonforespoerselResponse>`;
+  const queue = [
+    new Response(currentXml, { status: 200, headers: { "content-type": "application/xml" } }),
+    jsonResponse({ id: instanceId, data: [] }),
+    jsonResponse({
+      id: "20000000-0000-4000-8000-000000000002",
+      dataType: "skattemeldingOgNaeringsspesifikasjon",
+      fileScanResult: "Pending",
+    }),
+    jsonResponse({
+      id: instanceId,
+      data: [{
+        id: "20000000-0000-4000-8000-000000000002",
+        dataType: "skattemeldingOgNaeringsspesifikasjon",
+        fileScanResult: "Clean",
+      }],
+    }),
+    jsonResponse({ jobbStatus: "OPPRETTET", jobbId: "storeDokument-safe-job-id" }),
+    jsonResponse({ jobbStatus: "KJOERER", sekunderSidenEndring: 1 }),
+    jsonResponse({ jobbStatus: "FERDIG", sekunderSidenEndring: 2 }),
+    new Response("<skattemeldingOgNaeringsspesifikasjonResponse/>", {
+      status: 200,
+      headers: { "content-type": "application/xml" },
+    }),
+  ];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
+    },
+  });
+
+  const current = await client.fetchCurrent({ incomeYear: 2025, companyOrgNumber: "310279617" });
+  assert.equal(current.documentReference, "SKI:755:14847");
+  assert.equal(current.partyNumber, "9000020078");
+  assert.equal(current.rawXml, currentXml);
+
+  const instance = await client.createInstance({ incomeYear: 2025, companyOrgNumber: "310279617" });
+  const uploaded = await client.uploadEnvelope({ instanceId: instance.id, envelopeXml: "<envelope/>" });
+  assert.equal(uploaded.fileScanResult, "Pending");
+  const scan = await client.getEnvelopeScan({ instanceId: instance.id });
+  assert.equal(scan.fileScanResult, "Clean");
+  const job = await client.startValidation({
+    incomeYear: 2025,
+    companyOrgNumber: "310279617",
+    instanceId: instance.id,
+  });
+  const result = await waitForCompanyTaxReturnValidation(client, {
+    incomeYear: 2025,
+    companyOrgNumber: "310279617",
+    jobId: job.jobId,
+  }, { sleep: async () => {}, attempts: 2 });
+
+  assert.match(result.resultXml, /skattemeldingOgNaeringsspesifikasjonResponse/u);
+  assert.deepEqual(requests.map((request) => [request.init.method, request.url]), [
+    ["GET", "https://api-test.sits.no/api/skattemelding/v2/2025/310279617"],
+    ["POST", "https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/"],
+    ["POST", `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/data?dataType=skattemeldingOgNaeringsspesifikasjon`],
+    ["GET", `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}`],
+    ["POST", "https://api-test.sits.no/api/skattemelding/v2/jobb/altinn/2025/310279617/start"],
+    ["GET", "https://api-test.sits.no/api/skattemelding/v2/jobb/altinn/2025/310279617/storeDokument-safe-job-id/status"],
+    ["GET", "https://api-test.sits.no/api/skattemelding/v2/jobb/altinn/2025/310279617/storeDokument-safe-job-id/status"],
+    ["GET", "https://api-test.sits.no/api/skattemelding/v2/jobb/altinn/2025/310279617/storeDokument-safe-job-id/resultat"],
   ]);
+  assert.deepEqual(JSON.parse(requests[1].init.body), {
+    instanceOwner: { organisationNumber: "310279617" },
+    appId: "skd/formueinntekt-skattemelding-v2",
+    dataValues: { inntektsaar: 2025 },
+  });
+  assert.equal(requests[2].init.headers["content-type"], "text/xml");
+  assert.equal(requests[2].init.headers["content-disposition"], "attachment; filename=skattemeldingOgNaeringsspesifikasjon.xml");
+  assert.equal(requests[0].init.headers.authorization, `Bearer ${taxToken}`);
+  assert.equal(requests[1].init.headers.authorization, `Bearer ${altinnToken}`);
+  assert.equal(requests[4].init.headers.authorization, `Bearer ${taxToken}`);
+  assert.doesNotMatch(JSON.stringify(result), /opaque-tax-token|opaque-altinn-token/u);
+});
 
-  for (const [name, digest] of expected) {
-    const source = await readFile(new URL(`../docs/filing/authority-contract/${name}`, import.meta.url));
-    assert.equal(createHash("sha256").update(source).digest("hex"), digest);
+test("replaces an existing company-tax envelope data element in place", async () => {
+  const dataId = "20000000-0000-4000-8000-000000000002";
+  let captured;
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      captured = { url: String(url), init };
+      return jsonResponse({
+        id: dataId,
+        dataType: "skattemeldingOgNaeringsspesifikasjon",
+        fileScanResult: "Pending",
+      });
+    },
+  });
+
+  const replaced = await client.replaceEnvelope({
+    instanceId,
+    dataId,
+    envelopeXml: "<envelope/>",
+  });
+
+  assert.deepEqual(replaced, { dataId, fileScanResult: "Pending" });
+  assert.equal(
+    captured.url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/data/${dataId}`,
+  );
+  assert.equal(captured.init.method, "PUT");
+  assert.equal(captured.init.headers.authorization, `Bearer ${altinnToken}`);
+  assert.equal(captured.init.headers["content-type"], "text/xml");
+  assert.equal(captured.init.body, "<envelope/>");
+});
+
+test("advances exactly once from data to owner confirmation and returns the documented viewer URL", async () => {
+  const requests = [];
+  const queue = [
+    jsonResponse(instanceResponse("data")),
+    jsonResponse({ process: { currentTask: { altinnTaskType: "confirmation" } } }),
+    jsonResponse(instanceResponse("confirmation")),
+  ];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
+    },
+  });
+
+  const prepared = await client.advanceToConfirmation({ instanceId });
+
+  assert.deepEqual(prepared, {
+    instanceId,
+    processTask: "confirmation",
+    transitioned: true,
+  });
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "PUT", "GET"]);
+  assert.equal(
+    requests[1].url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/process/next`,
+  );
+  assert.equal(
+    client.getOwnerConfirmationUrl({ instanceId }),
+    `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`,
+  );
+});
+
+test("owner-confirmation preparation is idempotent and blocks unknown tasks without a write", async () => {
+  const confirmationRequests = [];
+  const confirmationClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      confirmationRequests.push({ url: String(url), init });
+      return jsonResponse(instanceResponse("confirmation"));
+    },
+  });
+
+  assert.deepEqual(await confirmationClient.advanceToConfirmation({ instanceId }), {
+    instanceId,
+    processTask: "confirmation",
+    transitioned: false,
+  });
+  assert.deepEqual(confirmationRequests.map((request) => request.init.method), ["GET"]);
+
+  const blockedRequests = [];
+  const blockedClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      blockedRequests.push({ url: String(url), init });
+      return jsonResponse(instanceResponse("feedback"));
+    },
+  });
+  await assert.rejects(
+    blockedClient.advanceToConfirmation({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_CONFIRMATION_TASK_INVALID"
+      && error.retryable === false,
+  );
+  assert.deepEqual(blockedRequests.map((request) => request.init.method), ["GET"]);
+});
+
+test("retrieves exactly one clean XML feedback receipt through read-only calls", async () => {
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding><status>mottatt</status></tilbakemelding>";
+  const requests = [];
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      if (requests.length === 1) {
+        return jsonResponse(instanceResponse("feedback", {
+          status: { isArchived: true, archived: "2026-07-14T12:30:00Z" },
+          data: [{
+            id: feedbackDataId,
+            dataType: "tilbakemelding",
+            contentType: "application/xml",
+            filename: "tilbakemelding.xml",
+            size: Buffer.byteLength(receiptXml, "utf8"),
+            fileScanResult: "Clean",
+          }],
+        }));
+      }
+      return new Response(receiptXml, {
+        status: 200,
+        headers: { "content-type": "application/xml" },
+      });
+    },
+  });
+
+  const receipt = await client.getFeedbackReceipt({ instanceId });
+
+  assert.deepEqual(receipt, {
+    instanceId,
+    dataId: feedbackDataId,
+    dataType: "tilbakemelding",
+    contentType: "application/xml",
+    sizeBytes: Buffer.byteLength(receiptXml, "utf8"),
+    reference: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}/data/${feedbackDataId}`,
+    receiptXml,
+    archived: true,
+    archivedAt: "2026-07-14T12:30:00Z",
+    archiveReference: `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`,
+  });
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "GET"]);
+  assert.equal(
+    requests[1].url,
+    `https://skd.apps.tt02.altinn.no/skd/formueinntekt-skattemelding-v2/instances/${instanceId}/data/${feedbackDataId}`,
+  );
+});
+
+test("feedback retrieval treats missing feedback as retryable and duplicate feedback as blocked", async () => {
+  const pendingClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse(instanceResponse("feedback")),
+  });
+  await assert.rejects(
+    pendingClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_PENDING"
+      && error.retryable === true,
+  );
+
+  const duplicateClient = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse(instanceResponse("feedback", {
+      data: [feedbackDataId, "40000000-0000-4000-8000-000000000004"].map((id) => ({
+        id,
+        dataType: "tilbakemelding",
+        contentType: "application/xml",
+        filename: "tilbakemelding.xml",
+        size: 100,
+        fileScanResult: "Clean",
+      })),
+    })),
+  });
+  await assert.rejects(
+    duplicateClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_DUPLICATE"
+      && error.retryable === false,
+  );
+});
+
+test("feedback retrieval blocks rejected scans, non-XML content, and byte-length mismatches", async () => {
+  const invalidElement = {
+    id: feedbackDataId,
+    dataType: "tilbakemelding",
+    contentType: "application/xml",
+    filename: "tilbakemelding.xml",
+    size: 100,
+    fileScanResult: "Clean",
+  };
+  const cases = [
+    {
+      expectedCode: "COMPANY_TAX_FEEDBACK_SCAN_REJECTED",
+      element: { ...invalidElement, fileScanResult: "Infected" },
+    },
+    {
+      expectedCode: "COMPANY_TAX_FEEDBACK_CONTENT_TYPE_INVALID",
+      element: { ...invalidElement, contentType: "application/pdf" },
+    },
+  ];
+  for (const testCase of cases) {
+    const client = createCompanyTaxReturnAuthorityClient({
+      environment: "test",
+      taxAccessToken: taxToken,
+      altinnAccessToken: altinnToken,
+      fetch: async () => jsonResponse(instanceResponse("feedback", { data: [testCase.element] })),
+    });
+    await assert.rejects(
+      client.getFeedbackReceipt({ instanceId }),
+      (error) => error instanceof CompanyTaxReturnAuthorityError
+        && error.code === testCase.expectedCode
+        && error.retryable === false,
+    );
   }
-});
 
-test("builds the official v2 filing-validation envelope with both UTF-8 documents and current-draft reference", () => {
-  const xml = buildCompanyTaxReturnValidationEnvelope({
-    mode: "filing",
-    organizationNumber: "310279617",
-    incomeYear: 2025,
-    taxReturnXml,
-    businessSpecificationXml,
-    currentTaxReturnDocumentId: "SKI:755:14847",
-  });
-
-  assert.match(xml, /xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:request:v2"/u);
-  assert.match(xml, /<type>skattemeldingUpersonlig<\/type>/u);
-  assert.match(xml, /<type>naeringsspesifikasjon<\/type>/u);
-  assert.match(xml, /<dokumenttype>skattemeldingUpersonlig<\/dokumenttype>\s*<dokumentidentifikator>SKI:755:14847<\/dokumentidentifikator>/u);
-  assert.match(xml, /<inntektsaar>2025<\/inntektsaar>/u);
-  assert.match(xml, /<innsendingstype>komplett<\/innsendingstype>/u);
-  assert.match(xml, /<opprettetAv>Talli<\/opprettetAv>/u);
-  assert.match(xml, /<tin>310279617<\/tin>/u);
-  assert.match(xml, /<innsendingsformaal>egenfastsetting<\/innsendingsformaal>/u);
-
-  const encodedDocuments = [...xml.matchAll(/<content>([^<]+)<\/content>/gu)].map((match) => match[1]);
-  assert.deepEqual(encodedDocuments.map((value) => Buffer.from(value, "base64").toString("utf8")), [
-    taxReturnXml,
-    businessSpecificationXml,
-  ]);
-});
-
-test("requires a current Skatteetaten draft reference for filing validation and keeps validertest explicitly calculation-only", async () => {
-  assert.throws(
-    () => buildCompanyTaxReturnValidationEnvelope({
-      mode: "filing",
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml,
-      businessSpecificationXml,
-    }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_current_document_required",
-  );
-
-  let captured;
-  const client = createCompanyTaxReturnAuthorityClient({
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding/>";
+  let requestCount = 0;
+  const sizeMismatchClient = createCompanyTaxReturnAuthorityClient({
     environment: "test",
-    accessToken,
-    transport: async (request) => {
-      captured = request;
-      return xmlResponse(validResponse());
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => {
+      requestCount += 1;
+      return requestCount === 1
+        ? jsonResponse(instanceResponse("feedback", {
+          data: [{ ...invalidElement, size: Buffer.byteLength(receiptXml, "utf8") + 1 }],
+        }))
+        : new Response(receiptXml, { status: 200, headers: { "content-type": "application/xml" } });
     },
   });
-  const result = await client.calculateWithoutCurrentDraft({
-    organizationNumber: "310279617",
-    incomeYear: 2025,
-    taxReturnXml,
-    businessSpecificationXml,
-  });
-
-  assert.equal(captured.url, `${COMPANY_TAX_RETURN_VALIDATION_BASE_URLS.test}/validertest/2025/310279617`);
-  assert.doesNotMatch(captured.body, /dokumentreferanseTilGjeldendeDokument/u);
-  assert.equal(result.calculationOnly, true);
-  assert.equal(result.validForSubmission, false);
+  await assert.rejects(
+    sizeMismatchClient.getFeedbackReceipt({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_FEEDBACK_SIZE_MISMATCH"
+      && error.retryable === false,
+  );
 });
 
-test("posts filing validation only to the fixed authority endpoint and returns bounded structured feedback", async () => {
-  let captured;
-  const response = `<?xml version="1.0" encoding="UTF-8"?>
-<skattemeldingOgNaeringsspesifikasjonResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:response:v2">
-  <avvikEtterBeregning><avvik><avvikstype>BeloepEndret</avvikstype><forekomstidentifikator>item-1</forekomstidentifikator><mottattVerdi>100</mottattVerdi><beregnetVerdi>97</beregnetVerdi><avvikIVerdi>3</avvikIVerdi><sti>skattemelding.inntekt</sti></avvik></avvikEtterBeregning>
-  <veiledningEtterKontroll><veiledning><veiledningstype>KontrollerUtbytte</veiledningstype><hjelpetekst>Kontroller beløpet &amp; dokumentasjonen.</hjelpetekst><betjeningsstrategi>dialog</betjeningsstrategi><sti>skattemelding.utbytte</sti></veiledning></veiledningEtterKontroll>
-  <avvikVedValidering><avvik><avvikstype>UgyldigFelt</avvikstype><oevrigInformasjon>Feltet må rettes.</oevrigInformasjon><sti>skattemelding.felt</sti></avvik></avvikVedValidering>
-  <resultatAvValidering>validertMedFeil</resultatAvValidering>
-  <aarsakTilValidertMedFeil>Valideringsavvik</aarsakTilValidertMedFeil>
-</skattemeldingOgNaeringsspesifikasjonResponse>`;
+test("polls read-only until the company tax feedback receipt is available", async () => {
+  const receiptXml = "<?xml version=\"1.0\"?><tilbakemelding><status>mottatt</status></tilbakemelding>";
+  const requests = [];
+  const queue = [
+    jsonResponse(instanceResponse("feedback")),
+    jsonResponse(instanceResponse("feedback", {
+      data: [{
+        id: feedbackDataId,
+        dataType: "tilbakemelding",
+        contentType: "text/xml",
+        filename: "tilbakemelding.xml",
+        size: Buffer.byteLength(receiptXml, "utf8"),
+        fileScanResult: "Clean",
+      }],
+    })),
+    new Response(receiptXml, { status: 200, headers: { "content-type": "text/xml" } }),
+  ];
   const client = createCompanyTaxReturnAuthorityClient({
     environment: "test",
-    accessToken,
-    transport: async (request) => {
-      captured = request;
-      return xmlResponse(response);
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async (url, init) => {
+      requests.push({ url: String(url), init });
+      return queue.shift();
     },
   });
 
-  const result = await client.validateForFiling({
-    organizationNumber: "310279617",
-    incomeYear: 2025,
-    taxReturnXml,
-    businessSpecificationXml,
-    currentTaxReturnDocumentId: "SKI:755:14847",
-  });
-
-  assert.equal(COMPANY_TAX_RETURN_VALIDATION_SCOPE, "skatteetaten:formueinntekt/skattemelding");
-  assert.equal(captured.method, "POST");
-  assert.equal(captured.url, `${COMPANY_TAX_RETURN_VALIDATION_BASE_URLS.test}/valider/2025/310279617`);
-  assert.equal(captured.headers.Authorization, `Bearer ${accessToken}`);
-  assert.equal(captured.headers.Accept, "application/xml");
-  assert.equal(captured.headers["Content-Type"], "application/xml; charset=utf-8");
-  assert.equal(result.result, "validertMedFeil");
-  assert.equal(result.calculationOnly, false);
-  assert.equal(result.validForSubmission, false);
-  assert.deepEqual(result.reasons, ["Valideringsavvik"]);
-  assert.deepEqual(result.feedback.map(({ level, source, code, message, path }) => ({ level, source, code, message, path })), [
-    { level: "warning", source: "calculation", code: "BeloepEndret", message: "Beregnet verdi avviker fra mottatt verdi.", path: "skattemelding.inntekt" },
-    { level: "info", source: "guidance", code: "KontrollerUtbytte", message: "Kontroller beløpet & dokumentasjonen.", path: "skattemelding.utbytte" },
-    { level: "error", source: "validation", code: "UgyldigFelt", message: "Feltet må rettes.", path: "skattemelding.felt" },
-    { level: "error", source: "validation", code: "company_tax_return_validation_failed", message: "Valideringsavvik", path: undefined },
-  ]);
-  assert.equal(result.feedback[0].receivedValue, "100");
-  assert.equal(result.feedback[0].calculatedValue, "97");
-  assert.equal(result.feedback[0].difference, "3");
-});
-
-test("returns calculated authority documents as verified UTF-8 XML with content identity", async () => {
-  const calculatedXml = '<?xml version="1.0" encoding="UTF-8"?><skattemelding xmlns="urn:test:calculated" />';
-  const documents = `<dokumenter><dokument><type>skattemeldingUpersonligEtterBeregning</type><encoding>utf-8</encoding><content>${Buffer.from(calculatedXml).toString("base64")}</content></dokument></dokumenter>`;
-  const client = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    transport: async () => xmlResponse(validResponse(documents)),
-  });
-
-  const result = await client.validateForFiling({
-    organizationNumber: "310279617",
-    incomeYear: 2025,
-    taxReturnXml,
-    businessSpecificationXml,
-    currentTaxReturnDocumentId: "draft-1",
-  });
-
-  assert.equal(result.validForSubmission, true);
-  assert.equal(result.documents.length, 1);
-  assert.equal(result.documents[0].type, "skattemeldingUpersonligEtterBeregning");
-  assert.equal(result.documents[0].xml, calculatedXml);
-  assert.match(result.documents[0].sha256, /^[0-9a-f]{64}$/u);
-  assert.equal(result.documents[0].byteLength, Buffer.byteLength(calculatedXml));
-});
-
-test("gets the current company draft and preserves its document reference for filing validation", async () => {
-  let captured;
-  const currentTaxXml = '<skattemelding xmlns="urn:test:current" />';
-  const currentBusinessXml = '<naeringsspesifikasjon xmlns="urn:test:current-business" />';
-  const response = `<?xml version="1.0" encoding="UTF-8"?>
-<skattemeldingOgNaeringsspesifikasjonforespoerselResponse xmlns="no:skatteetaten:fastsetting:formueinntekt:skattemeldingognaeringsspesifikasjon:forespoersel:response:v2">
-  <dokumenter>
-    <skattemeldingdokument><id>SKI:755:14847</id><encoding>utf-8</encoding><content>${Buffer.from(currentTaxXml).toString("base64")}</content><type>skattemeldingUpersonligUtkast</type></skattemeldingdokument>
-    <naeringsspesifikasjondokument><id>NS:755:14848</id><encoding>utf-8</encoding><content>${Buffer.from(currentBusinessXml).toString("base64")}</content></naeringsspesifikasjondokument>
-  </dokumenter>
-  <laasteFelt><laastFeltSkattemelding><forekomstidentifikator>locked-1</forekomstidentifikator><verdi>yes</verdi><sti>skattemelding.laas</sti></laastFeltSkattemelding></laasteFelt>
-</skattemeldingOgNaeringsspesifikasjonforespoerselResponse>`;
-  const client = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    transport: async (request) => {
-      captured = request;
-      return xmlResponse(response);
-    },
-  });
-
-  const draft = await client.getCurrentDraft({ organizationNumber: "310279617", incomeYear: 2025 });
-
-  assert.equal(captured.method, "GET");
-  assert.equal(captured.url, `${COMPANY_TAX_RETURN_VALIDATION_BASE_URLS.test}/2025/310279617`);
-  assert.equal(captured.body, undefined);
-  assert.deepEqual(draft.taxReturn, {
-    id: "SKI:755:14847",
-    type: "skattemeldingUpersonligUtkast",
-    encoding: "utf-8",
-    xml: currentTaxXml,
-  });
-  assert.equal(draft.businessSpecification.id, "NS:755:14848");
-  assert.equal(draft.businessSpecification.xml, currentBusinessXml);
-  assert.deepEqual(draft.lockedFields, [{ document: "skattemeldingUpersonlig", occurrenceId: "locked-1", value: "yes", path: "skattemelding.laas", information: undefined }]);
-});
-
-test("rejects dangerous or malformed XML before transport and rejects unsafe authority XML", async () => {
-  let calls = 0;
-  const client = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    transport: async () => {
-      calls += 1;
-      return xmlResponse('<!DOCTYPE x [<!ENTITY leak SYSTEM "file:///etc/passwd">]><x>&leak;</x>');
-    },
-  });
-
-  await assert.rejects(
-    client.validateForFiling({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml: '<!DOCTYPE x [<!ENTITY leak SYSTEM "file:///etc/passwd">]><x>&leak;</x>',
-      businessSpecificationXml,
-      currentTaxReturnDocumentId: "draft-1",
-    }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_xml_unsafe",
+  const receipt = await waitForCompanyTaxReturnFeedback(
+    client,
+    { instanceId },
+    { attempts: 2, sleep: async () => {} },
   );
-  assert.equal(calls, 0);
 
-  const deeplyNested = `${"<x>".repeat(257)}value${"</x>".repeat(257)}`;
-  await assert.rejects(
-    client.validateForFiling({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml: deeplyNested,
-      businessSpecificationXml,
-      currentTaxReturnDocumentId: "draft-1",
-    }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_xml_too_complex",
-  );
-  assert.equal(calls, 0);
-
-  await assert.rejects(
-    client.validateForFiling({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml,
-      businessSpecificationXml,
-      currentTaxReturnDocumentId: "draft-1",
-    }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_response_unsafe",
-  );
-  assert.equal(calls, 1);
+  assert.equal(receipt.dataId, feedbackDataId);
+  assert.equal(receipt.contentType, "text/xml");
+  assert.deepEqual(requests.map((request) => request.init.method), ["GET", "GET", "GET"]);
 });
 
-test("never exposes bearer tokens or provider response bodies in failures", async () => {
-  const secret = "secret-system-user-token";
+test("fails closed before validation until the uploaded envelope is virus-scan Clean", async () => {
   const client = createCompanyTaxReturnAuthorityClient({
     environment: "test",
-    accessToken: secret,
-    transport: async () => xmlResponse(`<error>${secret} confidential taxpayer data</error>`, 400),
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse({
+      id: instanceId,
+      data: [{ dataType: "skattemeldingOgNaeringsspesifikasjon", fileScanResult: "Infected" }],
+    }),
   });
 
   await assert.rejects(
-    client.validateForFiling({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml,
-      businessSpecificationXml,
-      currentTaxReturnDocumentId: "draft-1",
-    }),
+    client.getEnvelopeScan({ instanceId }),
+    (error) => error instanceof CompanyTaxReturnAuthorityError
+      && error.code === "COMPANY_TAX_ENVELOPE_SCAN_REJECTED"
+      && error.retryable === false,
+  );
+});
+
+test("sanitizes remote errors and rejects production-by-default shortcuts", async () => {
+  const client = createCompanyTaxReturnAuthorityClient({
+    environment: "test",
+    taxAccessToken: taxToken,
+    altinnAccessToken: altinnToken,
+    fetch: async () => jsonResponse({
+      title: "Validation failed",
+      detail: "submitted-secret-value",
+      access_token: taxToken,
+      traceId: "safe-trace-id",
+    }, 400),
+  });
+
+  await assert.rejects(
+    client.fetchCurrent({ incomeYear: 2025, companyOrgNumber: "310279617" }),
     (error) => {
       assert.ok(error instanceof CompanyTaxReturnAuthorityError);
-      assert.equal(error.code, "company_tax_return_http_400");
       assert.equal(error.status, 400);
-      assert.equal(error.retryable, false);
-      assert.doesNotMatch(error.message, new RegExp(secret, "u"));
-      assert.doesNotMatch(error.message, /confidential taxpayer data/u);
+      assert.equal(error.correlationId, "safe-trace-id");
+      assert.match(error.message, /Validation failed/u);
+      assert.doesNotMatch(error.message, /submitted-secret-value|opaque-tax-token/u);
       return true;
     },
   );
-});
 
-test("the default transport refuses redirects and bounds streamed responses", async () => {
-  let init;
-  const transport = createFetchCompanyTaxReturnAuthorityTransport(async (_url, requestInit) => {
-    init = requestInit;
-    return new Response("<ok />", { status: 200, headers: { "content-type": "application/xml" } });
-  });
-  const response = await transport({
-    method: "GET",
-    url: `${COMPANY_TAX_RETURN_VALIDATION_BASE_URLS.test}/ping`,
-    headers: { Accept: "application/xml" },
-    timeoutMs: 1_000,
-    maxResponseBytes: 64,
-  });
-
-  assert.equal(init.redirect, "error");
-  assert.ok(init.signal instanceof AbortSignal);
-  assert.equal(new TextDecoder().decode(response.body), "<ok />");
-
-  const oversized = createFetchCompanyTaxReturnAuthorityTransport(async () =>
-    new Response("x".repeat(65), { status: 200, headers: { "content-type": "application/xml" } }),
-  );
-  await assert.rejects(
-    oversized({
-      method: "GET",
-      url: `${COMPANY_TAX_RETURN_VALIDATION_BASE_URLS.test}/ping`,
-      headers: { Accept: "application/xml" },
-      timeoutMs: 1_000,
-      maxResponseBytes: 64,
-    }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_response_too_large",
-  );
-});
-
-test("rejects non-company identifiers, unbounded responses, and invalid response content types", async () => {
   assert.throws(
-    () => createCompanyTaxReturnAuthorityClient({ environment: "test", accessToken: "short" }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_access_token_invalid",
-  );
-
-  const oversized = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    maxResponseBytes: 128,
-    transport: async () => xmlResponse("x".repeat(129)),
-  });
-  await assert.rejects(
-    oversized.getCurrentDraft({ organizationNumber: "310279617", incomeYear: 2025 }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_response_too_large",
-  );
-
-  const wrongType = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    transport: async () => xmlResponse("{}", 200, "application/json"),
-  });
-  await assert.rejects(
-    wrongType.getCurrentDraft({ organizationNumber: "310279617", incomeYear: 2025 }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_response_content_type_invalid",
-  );
-
-  await assert.rejects(
-    wrongType.getCurrentDraft({ organizationNumber: "123", incomeYear: 2025 }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_organization_number_invalid",
-  );
-
-  const wrongNamespace = createCompanyTaxReturnAuthorityClient({
-    environment: "test",
-    accessToken,
-    transport: async () => xmlResponse('<skattemeldingOgNaeringsspesifikasjonResponse xmlns="urn:not-skatteetaten"><resultatAvValidering>validertOK</resultatAvValidering></skattemeldingOgNaeringsspesifikasjonResponse>'),
-  });
-  await assert.rejects(
-    wrongNamespace.validateForFiling({
-      organizationNumber: "310279617",
-      incomeYear: 2025,
-      taxReturnXml,
-      businessSpecificationXml,
-      currentTaxReturnDocumentId: "draft-1",
+    () => createCompanyTaxReturnAuthorityClient({
+      environment: "production",
+      taxAccessToken: taxToken,
+      altinnAccessToken: altinnToken,
     }),
-    (error) => error instanceof CompanyTaxReturnAuthorityError && error.code === "company_tax_return_response_invalid",
+    /production authority transport is disabled/u,
   );
 });

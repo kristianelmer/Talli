@@ -1,12 +1,22 @@
 import type {
   AuthorityPermissionRow,
+  AuthorityTestRunRow,
+  BankSuggestionAcceptanceRow,
   BillingAccountRow,
   CompanyWorkspaceRow,
+  CorporateDecisionFinalizationRow,
+  CorporateDecisionRow,
+  CorporateDocumentArtifactRow,
+  CorporateDocumentEventRow,
+  CorporateDocumentSetRow,
   DocumentRow,
   FilingPreviewRow,
   FilingReviewCommentRow,
   FilingSubmissionRow,
   HoldingActionRow,
+  InvestmentLotAllocationRow,
+  InvestmentLotRow,
+  InvestmentPositionRow,
   OpeningBalanceSetupRow,
   OpeningShareholderRow,
 } from "./supabase/server";
@@ -41,12 +51,22 @@ export function buildPersistedCompanyArchive(input: {
   ledgerEntries: LedgerEntryRow[];
   documents: DocumentRow[];
   holdingActions?: HoldingActionRow[];
+  investmentPositions?: InvestmentPositionRow[];
+  investmentLots?: InvestmentLotRow[];
+  investmentLotAllocations?: InvestmentLotAllocationRow[];
+  bankSuggestionAcceptances?: BankSuggestionAcceptanceRow[];
   billingAccounts?: BillingAccountRow[];
   authorityPermissions?: AuthorityPermissionRow[];
+  authorityTestRuns?: AuthorityTestRunRow[];
   auditEvents?: AuditEventArchiveRow[];
   reviewComments?: FilingReviewCommentRow[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
+  corporateDecisions?: CorporateDecisionRow[];
+  corporateDocumentSets?: CorporateDocumentSetRow[];
+  corporateDocumentArtifacts?: CorporateDocumentArtifactRow[];
+  corporateDocumentEvents?: CorporateDocumentEventRow[];
+  corporateDecisionFinalizations?: CorporateDecisionFinalizationRow[];
 }) {
   const taxSettlementActions = (input.holdingActions ?? []).filter((action) => action.action_type === "tax_settlement");
   const taxSettlementLedgerIds = new Set(
@@ -104,10 +124,49 @@ export function buildPersistedCompanyArchive(input: {
         : null,
     })),
     taxSettlementLedgerEntries: input.ledgerEntries.filter((entry) => taxSettlementLedgerIds.has(entry.id)),
+    investmentPositions: input.investmentPositions ?? [],
+    investmentLots: input.investmentLots ?? [],
+    investmentLotAllocations: input.investmentLotAllocations ?? [],
+    bankSuggestionAcceptances: input.bankSuggestionAcceptances ?? [],
     billingAccounts: input.billingAccounts ?? [],
     authorityPermissions: input.authorityPermissions ?? [],
+    authorityTestRuns: (input.authorityTestRuns ?? []).map((run) => ({
+      id: run.id,
+      company_id: run.company_id,
+      obligation: run.obligation,
+      environment: run.environment,
+      status: run.status,
+      test_reference: run.test_reference,
+      feedback_summary: run.feedback_summary,
+      receipt_reference: run.receipt_reference,
+      archive_reference: run.archive_reference,
+      evidence_url: run.evidence_url,
+      payload_hash: run.payload_hash,
+      recorded_by: run.recorded_by,
+      recorded_at: run.recorded_at,
+    })),
     auditEvents: input.auditEvents ?? [],
     reviewComments: input.reviewComments ?? [],
+    corporateDecisions: input.corporateDecisions ?? [],
+    corporateDocumentSets: input.corporateDocumentSets ?? [],
+    corporateDocumentArtifacts: (input.corporateDocumentArtifacts ?? []).map((artifact) => ({
+      id: artifact.id,
+      company_id: artifact.company_id,
+      income_year: artifact.income_year,
+      set_id: artifact.set_id,
+      artifact_kind: artifact.artifact_kind,
+      variant: artifact.variant,
+      document_id: artifact.document_id,
+      content_sha256: artifact.content_sha256,
+      byte_length: artifact.byte_length,
+      mime_type: artifact.mime_type,
+      storage_key: artifact.storage_key,
+      supersedes_artifact_id: artifact.supersedes_artifact_id,
+      created_by: artifact.created_by,
+      created_at: artifact.created_at,
+    })),
+    corporateDocumentEvents: input.corporateDocumentEvents ?? [],
+    corporateDecisionFinalizations: input.corporateDecisionFinalizations ?? [],
     documents: input.documents.map((document) => ({
       id: document.id,
       incomeYear: document.income_year,
@@ -146,6 +205,35 @@ export function buildPersistedCompanyArchive(input: {
         receiptMetadata: submission.receipt_metadata,
         submittedPayloadReference: submission.submitted_payload_ref,
         submittedPayload: submission.submitted_payload,
+        submittedBy: submission.submitted_by,
+        createdAt: submission.created_at,
+        updatedAt: submission.updated_at,
+      })),
+    companyTaxSubmissions: input.filingSubmissions
+      .filter(
+        (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",
+      )
+      .map((submission) => ({
+        id: submission.id,
+        authorityTestRunId: submission.authority_test_run_id,
+        incomeYear: submission.income_year,
+        mode: submission.mode,
+        adapterMode: submission.adapter_mode,
+        status: submission.status,
+        payloadHash: submission.payload_hash,
+        idempotencyKey: submission.idempotency_key,
+        receiptId: submission.receipt_id,
+        feedbackDocumentIds: submission.feedback_document_ids,
+        feedbackItems: submission.feedback_items,
+        receiptMetadata: submission.receipt_metadata,
+        submittedPayloadReference: submission.submitted_payload_ref,
+        submittedPayload: null,
+        calls: submission.calls.map((call) => ({
+          endpoint: call.endpoint,
+          bodyHash: call.body_hash,
+          idempotencyKey: call.idempotency_key,
+          status: call.status,
+        })),
         submittedBy: submission.submitted_by,
         createdAt: submission.created_at,
         updatedAt: submission.updated_at,

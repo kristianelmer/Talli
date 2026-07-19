@@ -1,12 +1,20 @@
 # RF-1086 Live Release Gate
 
 Status: HITL release checklist  
-Last updated: 2026-07-13
+Last updated: 2026-07-15
 Target issue: #81  
-Blocked by: #76 real payment collection, #80 code evidence decision
+Blockers resolved: #76 real payment collection (closed), #80 code evidence decision (closed)
 
 This checklist must pass before Talli can enable live RF-1086 submission. It does
 not enable production by itself.
+
+Current deployed switch state:
+
+- `TALLI_AUTHORITY_OPS_ENABLED=false`
+- `TALLI_RF1086_PRODUCTION_ENABLED=false`
+
+Latest deployed fail-closed verification:
+[`rf1086-controlled-beta-deployment-2026-07-15.md`](../launch/evidence/rf1086-controlled-beta-deployment-2026-07-15.md).
 
 ## Live Scope
 
@@ -32,66 +40,89 @@ Excluded live scope:
 
 | Gate | Evidence required | Current status |
 | --- | --- | --- |
-| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | Pass in Test: DM-8 access, system registration, customer approval, request status `Accepted`, and a system-user-bound token for company `310279617` were confirmed on 2026-07-13. Production access is not implied. See `authority-access-evidence-register.md`. |
-| Test submission | Test-environment RF-1086 hovedskjema, underskjema, bekreft, dokumenter/feedback retrieval recorded | Pending |
+| Authority access | Maskinporten/Altinn/system-user or equivalent flow tested for Talli organization and supported company | **Done in TT02 2026-07-14** — system-user token issued for Tenor org 310279617 with RF-1086 scope |
+| Test submission | Test-environment RF-1086 hovedskjema, underskjema, bekreft, dokumenter/feedback retrieval recorded | **Done 2026-07-14** — accepted no-activity filing and two archived documents; `evidence/rf1086-tt02-2026-07-14.md` |
 | Live scope | K/S/U excluded, stiftelse/no-activity only | Done in #80 |
-| Billing | Real subscription/payment/filing-package gate implemented and test charged/refunded | Pending #76 |
-| Security | Fresh MFA/step-up, human security review, production credential gate | Step-up implemented; human review pending |
+| Billing | Real subscription/payment/filing-package gate implemented and test charged/refunded | Implemented in #76 (`productionBillingGate` + payment/refund workflow, #76 closed); live test charge/refund evidence still to attach |
+| Security | Fresh MFA/step-up, human security review, production credential gate | Step-up (#73) and RLS/storage audit (#74) implemented and closed; human security review signoff pending |
 | Authority confirmation | Owner confirms authority for obligation/company before submission | Implemented as model/UI gate; live flow pending |
 | Final preview confirmation | Owner confirms final preview before API calls | Implemented as submission state; live flow pending |
-| Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented in submission model/tests |
-| Authority HTTP contract | Fixed hosts, five official paths, bounded transport, strict response validation, and safe per-call idempotency | Implemented and contract-tested; durable database journal and guarded server-only production worker are implemented through `7af781a`; no hosted operator trigger or web route is enabled |
-| Crash-safe orchestration | Prepared/sent/accepted journal revisions, XML retry safety, non-idempotent confirmation reconciliation, checkpoint integrity, fresh release-state loading, and mutation sealing during transport | Implemented/tested through `7af781a`; safe release-seal retry messaging, including composite cleanup paths, is implemented through `6b07c22`. The owner-authenticated workspace client, narrow control client, and service-role journal/lease client remain separated. A 120-second service-only lease blocks concurrent workers and temporarily seals every current release-gate source until the one provider operation finishes. Hosted migration deployment and operational wiring are pending |
-| TT02 operator boundary | Test-only system-user token, private atomic file journal, exact customer/year lock, one call per run, explicit final confirmation | Implemented and tested at `2d0822a`; the candidate preview was inspected locally on 2026-07-13 with `nextOperation` equal to `hovedskjema`. No provider write has occurred because the synthetic shareholder allocation still requires explicit acceptance |
-| Feedback/receipt archive | Official references, submitted XML, authorized Dialogporten attachment ids, receipt/feedback files, and revisioned private manifest persisted | Fixed-host Dialogporten client and immutable local archive implemented/tested; `digdir:dialogporten` test scope and official artifacts pending |
-| Human signoff | Named reviewer signs production release decision | Pending |
+| Idempotency | Endpoint/body hash/idempotency key persisted for each authority call | Implemented and exercised in TT02; resumable journal was persisted before each POST |
+| Feedback/receipt archive | Official references, feedback document ids, receipt id persisted | TT02 delivery/dialog/transmission refs and two archive-document hashes recorded; runtime Supabase row still pending |
+| Human signoff | Named reviewer signs production release decision | Pending (`rf1086_authority` launch signoff) |
+| Production adapter | Real RF-1086 transport implementation; simulation must never satisfy this row | **Implemented, disabled** (`currentAuthorityAdapterCapabilities`); test-only CLI refuses production |
+| Exact pilot entitlement | Operator-approved company/user/year/obligation/profile interval | Implemented; no entitlement is active by default |
+| Immutable production approval | Exact payload/document hashes, adapter version and fresh owner AAL2 | Implemented; approval and Send are separate |
+| Durable production journal | Append-only prepared/succeeded/unknown events and stable UUID idempotency keys | Implemented; ambiguous writes quarantine instead of retrying |
 
-Code gate anchors:
+Code and evidence gate anchors:
 
 - `buildFilingReleaseGates` requires accepted `authority_test_runs` evidence
   with receipt and archive refs for `aksjonaerregisteroppgaven`.
+- At the protected database Send boundary, the operator-only global
+  `rf1086_authority` signoff carries the accepted TT02 evidence reference. TT02
+  synthetic evidence is never copied onto a real customer's company row.
 - `buildFilingReleaseGates` requires approved `launch_signoffs` key
   `rf1086_authority` with reviewer, date, evidence link, and decision.
+- `buildFilingReleaseGates` independently requires an implemented and enabled
+  production adapter. The legacy `TALLI_ENABLE_RF1086_PRODUCTION_ADAPTER`
+  environment flag cannot route production to the simulation adapter. The only
+  live switch is `TALLI_RF1086_PRODUCTION_ENABLED=true` with complete production-
+  only inline secret configuration.
+- `tests/rf1086_tt02_evidence.test.mjs` checks that accepted evidence has the
+  required references/hashes and contains no token, private key, raw XML, or
+  synthetic personal identifier.
 
-The production worker never trusts the cached readiness snapshot. It reloads
-the current tenant rows through the authenticated owner's RLS context, reads the
-global launch signoff through a separate narrow control client, audits before
-token issuance, reloads and audits again before transport, and limits each
-invocation to one authority call. The service role is reserved for the atomic
-checkpoint journal and the short-lived production lease. While that lease is
-active, database triggers reject changes to the preview, company/year source
-rows, review/override state, authority evidence, actor security state, and the
-RF-1086 launch signoff. The worker attempts release on both success and failure;
-the lease expires automatically 120 seconds after acquisition if a worker
-crashes or release itself fails.
+## Self-service browser proof boundary
 
-## First TT02 Write Gate
+`npm run test:browser-system-user` proves the mocked/local flow with synthetic
+owners, synthetic companies, loopback-only authority responses, and private
+feedback hash verification. It also proves that a tampered callback query cannot
+select another pending request and that another owner cannot read the request or
+feedback. The callback prerequisite remains an audited result of
+`callback_already_verified` or `callback_updated_and_verified`.
 
-The approved system request does not itself authorize the synthetic filing
-contents. Before the first provider write, the operator must record this exact
-acceptance in the controlled session:
-
-```text
-Approve RF-1086 TT02: one synthetic shareholder owns all 500 shares, no 2025 transactions.
-```
-
-That acceptance authorizes only the first guarded TT02 progression. When the
-journal later reports `bekreft`, confirmation must be authorized separately.
+The local mock is not a production callback and cannot replace production
+Systemregister evidence, customer approval, preflight, or entitlement. Reviewers
+must separately authorize any production filing after every gate in this document
+and the pilot runbook passes. The local browser proof leaves
+`TALLI_AUTHORITY_OPS_ENABLED=false` and
+`TALLI_RF1086_PRODUCTION_ENABLED=false`; its isolated child-only filing switch is
+hard-routed to loopback authority mocks and is not a deployed enablement.
 
 ## Required Test Run
+
+The deployed no-activity preview renderer and simulation adapter run in-process
+in TypeScript so they do not depend on a Python runtime in Vercel. The Python
+implementation remains the offline reference oracle: parity tests require the
+TypeScript XML bytes and simulated request plan to match it exactly.
 
 Before release signoff:
 
 ```bash
 uv run python -m unittest tests.test_rf1086 tests.test_rf1086_submission tests.test_submission_and_billing
 npm run test:rf1086:submission
-npm run test:rf1086:authority
-npm run test:rf1086:orchestration
-npm run test:rf1086:archive
 npm run test:security
 npm run test:supabase
 npm run test:backup-restore
 ```
+
+## Code Gate Verification (2026-06-27)
+
+Latest run of the code-side release evidence (all green):
+
+| Suite | Result |
+| --- | --- |
+| `uv run python -m unittest tests.test_rf1086 tests.test_rf1086_submission tests.test_submission_and_billing` | 25 passed |
+| `npm run test:rf1086:submission` (in-process adapter plus Python parity oracle) | 7 passed |
+| `npm run test:security` | 4 passed |
+| `npm run test:filing-release-gate` | 3 passed |
+| `npm run test:backup-restore` | 4 passed |
+
+`npm run test:supabase` requires Supabase env and is run in an environment with
+credentials. This code-gate verification proves the deterministic logic is release-ready;
+it does **not** substitute for the external authority access, test submission, and human
+release signoff rows above, which keep production disabled.
 
 ## Release Decision Template
 
@@ -114,3 +145,7 @@ Notes:
 If any gate is pending, stale, or unclear, production RF-1086 submission remains
 disabled. Talli may still provide simulation, XML export, archive export, and
 support-boundary guidance.
+
+The operator procedure for the first hand-held filing, unknown-outcome quarantine,
+kill switch, evidence closeout, and correction boundary is in
+[`rf1086-production-pilot-runbook.md`](rf1086-production-pilot-runbook.md).

@@ -1,7 +1,7 @@
 # Supabase RLS and Storage Security Audit
 
-Status: repeatable non-production security check  
-Last updated: 2026-07-13
+Status: current local Supabase stack passed; deployed staging/production evidence pending
+Last updated: 2026-07-14
 Target issue: #74
 
 This audit proves tenant isolation against the real Supabase/Postgres RLS and
@@ -14,11 +14,10 @@ Run against a non-production Supabase project:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `DIRECT_DATABASE_URL` or `DATABASE_URL`
 
-Apply every SQL file in `supabase/migrations` through the controlled migration
-workflow before running this audit. The audit intentionally has no direct
-database credential: it consumes the deployed schema, creates temporary
-confirmed users, signs in through the anon client, exercises RLS as
+The test applies every SQL file in `supabase/migrations/` in lexical order, creates
+temporary confirmed users, signs in through the anon client, exercises RLS as
 owner/reviewer/read-only/outsider, then removes the created company and users.
 
 ## Command
@@ -26,6 +25,20 @@ owner/reviewer/read-only/outsider, then removes the created company and users.
 ```bash
 npm run test:supabase
 ```
+
+For a clean local deployment-shaped run using the pinned Supabase CLI and a
+fresh database, run:
+
+```bash
+npm run test:supabase:local
+```
+
+The 2026-07-14 local run applied every migration from zero, reported zero
+blocking security/error advisor findings, exercised authenticated owner,
+reviewer, read-only and outsider access, exercised private Storage policies,
+and completed the browser owner annual loop. Nine low-volume performance
+warnings about multiple permissive policies remain documented; they are not
+security findings. This local result does not replace a staging/production run.
 
 Use this as the repeatable production-shaped security check before launch gate
 review. It should be run against staging after every schema/RLS change.
@@ -39,70 +52,19 @@ review. It should be run against staging after every schema/RLS change.
   comments, but cannot perform owner-only writes such as document upload.
 - Read-only member can read authorized document metadata but cannot write review
   comments or upload document objects.
-- Reviewer/read-only memberships cannot self-promote through Data API updates;
-  membership acceptance is invitation-backed insert-only.
-- Confirmed Brreg company identity is not mutable by authenticated Data API
-  clients after creation.
-- Owners can request cancellation/retention hold but cannot self-approve final
-  deletion; final state requires a different active admin operator, fresh
-  security step-up, archive evidence, and immutable request identity.
 - Outsider cannot read company rows, memberships, documents, filings, billing,
   authority permissions, readiness snapshots, ledger/action rows, period locks,
   audit events, or storage objects.
 - Signed document URL generation is denied for non-members by Storage RLS.
-- Orphan cleanup is verified by subsequent download failure, while a delete
-  attempt against a retained object is verified by successfully downloading the
-  unchanged bytes; the audit does not mistake Storage's zero-row success for a
-  completed deletion.
-- The private document bucket enforces a 6 MB limit and PDF/PNG/JPEG/CSV MIME
-  allowlist aligned with server-side byte-signature validation.
-- The simple owner-dividend RPC requires the complete registered shareholder
-  set at an equal amount per share, verifies both bounded PDF objects already
-  exist under the company/year path, then atomically inserts the ledger entry,
-  action, and unsigned document metadata.
-- Its PostgreSQL 17 implementation uses an unambiguous opening-register
-  identifier so shareholder validation executes rather than failing during
-  PL/pgSQL name resolution.
-- `step_up_events` are user-scoped and can be created only from a signed,
-  recent Supabase AAL2/TOTP claim; user-supplied privilege flags are denied.
-- The executable audit enrolls a real local TOTP factor, completes the Auth
-  challenge/verification flow to AAL2, and records step-up only through the
-  signed-claim RPC; it does not seed trusted attestations with the service key.
-- Production security grants are separate, expiring, admin-controlled, append-only, and
-  enforce separation of duties between the subject and approver.
-- Attempts to reinstate a revoked production grant reach the immutable-row
-  trigger and fail explicitly instead of returning a misleading zero-row update.
-- Security-definer membership helpers live outside the exposed `public` schema
-  with explicit execute grants.
-- The executable audit does not receive a direct database password and cannot
-  bypass the Data API and Storage authorization boundaries it is testing.
-- The service-role key has explicit public-table grants only for support-operator
-  provisioning and isolated rehearsal cleanup; it does not receive blanket
-  access to all customer tables.
-
-The migration-contract checks run without an external project:
-
-```bash
-npm run test:supabase-migrations
-```
-
-For a disposable executable rehearsal on a developer machine with Docker (the
-project's lockfile supplies the pinned Supabase CLI):
-
-```bash
-npm run test:supabase:local
-```
-
-The helper binds the temporary stack to `127.0.0.1`, starts only Postgres, Auth,
-PostgREST, Storage, and the API gateway, obtains generated local credentials in
-memory, runs the same executable audit, and deletes all local rehearsal data.
-Neither the static migration check nor the local stack replaces
-`npm run test:supabase` against the confirmed isolated hosted-staging project.
-
-Supabase references: [local development](https://supabase.com/docs/guides/local-development),
-[schema migrations](https://supabase.com/docs/guides/local-development/overview),
-[`status`](https://supabase.com/docs/reference/cli/supabase-status), and
-[`stop`](https://supabase.com/docs/reference/cli/supabase-stop).
+- `step_up_events` are user-scoped: users can read/create only their own
+  MFA/step-up events, and cross-user events are denied.
+- Investment positions and FIFO lots are readable by members but can only be
+  mutated by the atomic purchase/sale functions; outsiders cannot call those
+  functions for the company.
+- Bank suggestions can only be accepted by an owner through the atomic
+  acceptance function. Direct acceptance writes are revoked, the database
+  revalidates rule/version/direction/ambiguity, and outsiders cannot read or
+  accept another company's suggestion.
 
 ## Interpretation
 

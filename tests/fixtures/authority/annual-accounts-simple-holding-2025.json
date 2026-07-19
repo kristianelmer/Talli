@@ -1,0 +1,61 @@
+{
+  "synthetic": true,
+  "environment": "test",
+  "company": {
+    "orgNumber": "310279617",
+    "name": "LOGISK ØDE TIGER AS",
+    "incomeYear": 2025
+  },
+  "annualData": {
+    "id": "annual-data-synthetic-2025",
+    "company_id": "company-synthetic-310279617",
+    "income_year": 2025,
+    "answers": {
+      "shares_owned_at_year_end": true,
+      "bought_or_sold_shares": false,
+      "received_dividends": false,
+      "declared_owner_dividends": false,
+      "shareholder_loans": false,
+      "paid_costs": true,
+      "bank_balance_confirmed": true,
+      "has_unpaid_items": true,
+      "general_meeting_approved": true,
+      "authority_to_submit_confirmed": true
+    },
+    "confirmations": [
+      "bank_balance_confirmed",
+      "general_meeting_approved",
+      "authority_to_submit_confirmed"
+    ],
+    "no_activity_confirmed": false,
+    "annual_full_time_equivalents": 0,
+    "completed_by": "synthetic-test-owner",
+    "completed_at": "2026-06-30T12:00:00Z",
+    "updated_by": "synthetic-test-owner",
+    "updated_at": "2026-06-30T12:00:00Z"
+  },
+  "ledgerEntries": [
+    {
+      "id": "annual-ledger-synthetic-2025",
+      "company_id": "company-synthetic-310279617",
+      "setup_id": "setup-synthetic-2025",
+      "income_year": 2025,
+      "entry_type": "annual",
+      "memo": "Synthetic simple holding annual accounts",
+      "lines": [
+        { "account": "1920", "debit": 128510, "credit": 50000 },
+        { "account": "1800", "debit": 50000, "credit": 0 },
+        { "account": "8050", "debit": 0, "credit": 100000 },
+        { "account": "7770", "debit": 1490, "credit": 0 },
+        { "account": "8300", "debit": 21672, "credit": 0 },
+        { "account": "2500", "debit": 0, "credit": 21672 },
+        { "account": "2000", "debit": 0, "credit": 30000 }
+      ],
+      "risk_flags": [],
+      "warning_accepted_by": null,
+      "warning_accepted_at": null,
+      "created_by": "synthetic-test-owner",
+      "created_at": "2026-06-30T12:00:00Z"
+    }
+  ]
+}

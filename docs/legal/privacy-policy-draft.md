@@ -1,8 +1,21 @@
 # Talli Privacy Policy Draft
 
-Status: draft for founder/legal review  
-Last updated: 2026-06-16  
-Blocks: #72 remains open until human/legal signoff
+Status: draft for founder/legal/security review
+Last updated: 2026-07-17
+Blocks: #72 remains open until the required human approvals are recorded
+
+## Controller
+
+ELMER WELFIS, org.nr. 930 835 978 is the controller for account administration,
+service security, legal compliance, and its own business records. This role
+boundary and the final purpose-by-purpose legal bases require legal/privacy
+review before publication.
+
+For business customers, the customer company is expected to be controller for
+personal data in its own company, shareholder, accounting-document, and filing
+content. ELMER WELFIS/Talli is expected to act as processor when it handles that
+data on the customer's documented instructions under `dpa-draft.md`. The final
+controller/processor allocation remains subject to legal review.
 
 ## Data Talli Processes
 
@@ -15,63 +28,98 @@ Talli processes data needed to operate a holding-first accounting and filing app
 - documents: accounting source documents, storage keys, metadata, signed download events;
 - filing data: previews, validation issues, overrides, confirmations, submissions, receipts;
 - billing data: plan, subscription state, filing-package state, refund eligibility;
-- audit logs: security, role, document, ledger, billing, filing, and support-relevant events.
+- audit logs: security, role, document, ledger, billing, filing, and support-relevant events;
+- authority feedback and receipts when the relevant filing capability is enabled.
 
 ## Purpose
 
-Data is processed to:
+Data may be processed to:
 
-- provide secure company workspaces;
-- maintain company accounting records and document archive;
+- provide company workspaces and account access;
+- maintain company accounting records and document archives;
 - evaluate filing readiness;
-- prepare, simulate, validate, and, where enabled, submit statutory filings;
+- prepare, simulate, validate, and, only where separately enabled, submit filings;
 - store authority feedback and receipts;
-- manage billing and refunds;
-- provide support and security monitoring;
+- manage billing and refunds when billing is enabled;
+- provide support and security operations; and
 - export company archives and handle cancellation/deletion requests.
 
-## Access
+Agreement acceptance does not enable billing or production filing and does not
+prove that any hosted security or filing gate has passed.
 
-Access is role-scoped:
+## Access and Security Control Objectives
 
-- owner can manage company data, documents, filing, billing, reviewers, and export;
-- reviewer can read authorized data and add review comments;
-- read-only can read authorized data but cannot mutate company resources;
-- non-members are denied by RLS and storage policies.
+The intended access model is role-scoped: owners manage authorized company
+resources; reviewers and read-only members receive limited access; non-members
+are denied. The intended support/operator model is least-privilege, read-only by default,
+time-bounded, request- or incident-gated, and audited.
 
-Support/operator access must be limited to operational need, audited, and
-reviewed before production launch.
+These are required control objectives, not a claim that the current hosted
+environment has been approved. Tenant isolation, private storage, operator
+access, encryption, audit logging, backup, and restore must be verified against
+the current production environment before being stated as implemented facts or
+before named-company processing begins.
+
+## Legal Basis for Processing
+
+The intended GDPR article 6 bases, subject to final purpose-by-purpose review,
+are:
+
+- **Contract (art. 6(1)(b))** for processing needed to provide requested account
+  and service functions;
+- **Legal obligation (art. 6(1)(c))** for records that applicable law requires
+  ELMER WELFIS to retain;
+- **Legitimate interests (art. 6(1)(f))** for proportionate security, fraud and
+  abuse prevention, service integrity, and business administration; and
+- **Consent (art. 6(1)(a))** for optional processing that specifically relies on
+  consent, which may be withdrawn.
+
+The legal/privacy reviewer must confirm the correct controller, purpose, basis,
+necessity, balancing, notice, and retention for each activity before publication.
 
 ## Processors and External Services
 
-Expected processors/services:
+Talli may use external services for database, authentication, storage, hosting,
+optional identity login, payments, transactional email, and Norwegian authority
+connections. Provider identity, controller/processor role, data categories,
+processing location, contract terms, certifications, and production configuration
+must be verified against current production contracts and configuration before
+publication. A draft-time provider choice is not a verified production fact.
 
-- Supabase/Postgres/Auth/Storage for data, auth, RLS, and documents;
-- Vercel for app hosting and runtime logs;
-- payment provider when real payment collection is enabled;
-- email provider when notification delivery is enabled;
-- Norwegian public authority systems when direct filing is enabled.
+## Data Location and International Transfers
 
-Final processor list must be updated before public launch.
+No particular storage region, residency, certification, international-transfer
+path, or transfer mechanism is represented as verified by this draft. Before an
+actual restricted transfer, Talli must verify and document the processing
+locations, a valid legal transfer mechanism, any required transfer assessment,
+and necessary supplementary measures. Relevant current information must be made
+available to affected customers before the transfer begins.
 
 ## Retention
 
-Accounting documentation, filing receipts, and audit trails may need retention
-even after cancellation. Deletion requests must be evaluated against accounting
-documentation requirements and legal retention duties. See
-`docs/legal/retention-delete-export-policy-draft.md`.
+Accounting documentation, filing receipts, billing records, and audit trails may
+need retention after cancellation. Retention must be mapped to the applicable
+controller, purpose, and legal duty. User-requested deletion must not silently
+remove material that law requires the responsible controller to retain. See
+`docs/legal/retention-delete-export-policy-draft.md`; exact periods and role
+allocation remain subject to legal review.
 
 ## User Rights
 
-Users may request access, correction, export, restriction, or deletion where
-applicable. Talli should provide company archive export before cancellation and
-explain any data that cannot be deleted immediately because of statutory
-retention obligations.
+Users may request access, correction, export, restriction, objection, or deletion
+where applicable. Talli should provide company archive export before cancellation
+and explain any data that cannot be deleted immediately because of a verified
+legal retention duty.
+
+Users may lodge a complaint with the Norwegian Data Protection Authority
+(Datatilsynet) if they believe personal data is processed unlawfully.
 
 ## Required Human Review Before Publication
 
-- Identify controller/legal entity.
-- Confirm processor list and subprocessors.
-- Confirm data transfer basis if any data leaves EEA/Norway.
-- Confirm support/operator access model.
-- Legal/privacy reviewer approves final wording.
+- Legal/privacy reviewer approves the controller/processor boundary, each
+  purpose and legal basis, retention, rights, and transfer wording.
+- Founder confirms the actual provider list and customer-facing commitments.
+- Security reviewer confirms access and security statements against current
+  hosted tenant-isolation, private-storage, backup, restore, and audit evidence.
+- Provider regions, transfer bases, certifications, and hosted controls remain
+  pending until current production verification is recorded.

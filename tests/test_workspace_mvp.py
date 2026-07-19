@@ -9,17 +9,14 @@ from holding_core.holding_actions import (
     AdminCostCategory,
     AdminCostInput,
     DividendReceivedInput,
-    DividendToOwnerInput,
     DocumentStatus,
     InvestmentPosition,
     InvestmentKind,
     SharePurchaseInput,
     ShareSaleInput,
-    ShareholderDividendAllocation,
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
-    ThreePercentTreatment,
 )
 from holding_core.ledger import DraftEntry, LedgerLine
 from holding_core.workspace import (
@@ -40,7 +37,6 @@ from holding_core.workspace import (
     dashboard_for_company,
     export_workspace_archive,
     fetch_brreg_identity,
-    generate_owner_dividend_documents,
     import_bank_csv,
     invite_member,
     lock_period,
@@ -202,7 +198,6 @@ class WorkspaceMvpTest(unittest.TestCase):
                     paying_company_name="Portfolio AS",
                     linked_investment_id="portfolio-as",
                     tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                    three_percent_treatment=ThreePercentTreatment.APPLIES,
                     bank_matched=True,
                     document_status=DocumentStatus.ATTACHED,
                 ),
@@ -321,29 +316,7 @@ class WorkspaceMvpTest(unittest.TestCase):
                 amount=2200,
                 settlement_type="payable",
             )
-            with self.assertRaises(ValueError):
-                generate_owner_dividend_documents(store, "owner", "314259521", loan.structured_actions[0].id)
-            dividend = record_holding_action(
-                store,
-                "owner",
-                "314259521",
-                income_year=2025,
-                action_input=DividendToOwnerInput(
-                    company_id="314259521",
-                    decision_date=date(2025, 6, 1),
-                    payment_date=date(2025, 6, 15),
-                    total_amount=1000,
-                    distributable_equity=5000,
-                    liquidity_after_payment=1000,
-                    document_status=DocumentStatus.ATTACHED,
-                    allocations=[ShareholderDividendAllocation(shareholder_id="owner", share_count=100, amount=1000)],
-                ),
-            )
-            documented = generate_owner_dividend_documents(store, "owner", "314259521", dividend.structured_actions[-1].id)
-
-            # Loan action is not a dividend action, so document generation must reject it.
             self.assertEqual(len(taxed.structured_actions), 2)
-            self.assertGreaterEqual(len(documented.documents), 0)
 
             dashboard = dashboard_for_company(store, "owner", "314259521", income_year=2025, today=date(2026, 2, 1))
             archive = export_workspace_archive(store, "owner", "314259521", income_year=2025)
@@ -351,7 +324,6 @@ class WorkspaceMvpTest(unittest.TestCase):
 
             self.assertIn(FilingStatus.OVERDUE, [deadline.status for deadline in dashboard.deadlines])
             self.assertTrue(archive.receipts)
-            self.assertGreaterEqual(len(documented.documents), 2)
             self.assertIn(validation["outcome"], {"pass", "blocked", "mismatch"})
 
     def test_billing_gate_and_norwegian_labels(self) -> None:

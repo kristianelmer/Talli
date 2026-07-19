@@ -40,3 +40,22 @@ Charge policy:
 - If Talli accepts a supported case and production filing fails because of Talli's filing logic or integration, mark the account refund-eligible.
 
 Implementation anchor: `holding_core.billing`.
+
+## Founder Attestation (2026-06-24, Kristian Elmer)
+
+For the private/limited pre-launch, the founder approves the pricing and refund
+policy above as written:
+
+- Founder cohort 29 kr/mo + 299 kr per successful filing; standard 49 kr/mo +
+  499 kr per filing.
+- Refund-eligible only when Talli accepts a supported case and production filing
+  fails due to Talli's own logic/integration; no refunds for user error, missing
+  authority access, unsupported cases, or authority outages.
+- No filing-package charge while readiness is blocked or the case is unsupported.
+
+Live charging is OFF (Vipps MobilePay in test mode) for the pre-launch. Live
+payment collection requires the Vipps integration to be built and reviewed before
+the `billing_refund` posture changes to live charging.
+
+Signoff key: `billing_refund`. Remaining step: an admin operator records this
+attestation in `launch_signoffs` via the app operator form.

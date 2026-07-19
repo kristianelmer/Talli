@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -11,9 +12,6 @@ node_modules/
 tsconfig.tsbuildinfo
 out/
 .DS_Store
-.playwright-cli/
-output/playwright/
-.superpowers/
 .env
 .env.*
 !.env.example
@@ -21,8 +19,8 @@ output/playwright/
 *.pem
 *.p12
 *.pfx
-*.jwk
 node_modules/
 .next/
 .vercel/
 .vercel
+.worktrees/

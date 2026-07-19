@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { createHmac, randomUUID } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
+import pg from "pg";
 
 import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../app/lib/annual-data.ts";
@@ -11,6 +13,7 @@ import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../app/lib/authority-permission.ts";
 import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
 import { buildBillingAccount, productionBillingGate } from "../app/lib/billing.ts";
+import { buildCompanyTaxReturnEvidencePersistence } from "../app/lib/company-tax-return-submission.ts";
 import {
   dividendReceivedLedgerLines,
   summarizeDividendReceivedAnnualImpact,
@@ -21,19 +24,7 @@ import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../app/
 import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "../app/lib/invitations.ts";
 import { validateManualJournal } from "../app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
-import {
-  ownerDividendLedgerLines,
-  validateOwnerDividend,
-} from "../app/lib/owner-dividend.ts";
-import {
-  generateOwnerDividendCorporateDocuments,
-  prepareOwnerDividendCorporateDocuments,
-} from "../app/lib/owner-dividend-documents.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
-import { createRf1086AuthorityClient } from "../app/lib/rf1086-authority-client.ts";
-import { runNextRf1086AuthorityStep } from "../app/lib/rf1086-authority-orchestration.ts";
-import { withRf1086ProductionLease } from "../app/lib/rf1086-production-lease.ts";
-import { loadRf1086ProductionState } from "../app/lib/rf1086-production-state.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   rf1086PayloadHash,
@@ -44,14 +35,9 @@ import {
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
 } from "../app/lib/rf1086-submission.ts";
-import {
-  Rf1086SupabaseJournalError,
-  createRf1086SupabaseJournal,
-} from "../app/lib/rf1086-supabase-journal.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
-import { assertStepUpAllowed, stepUpContextFromEvent } from "../app/lib/security.ts";
-import { sharePurchaseLedgerLines, validateSharePurchase } from "../app/lib/share-purchase.ts";
-import { shareSaleLedgerLines, validateShareSale } from "../app/lib/share-sale.ts";
+import { validateSharePurchase } from "../app/lib/share-purchase.ts";
+import { validateShareSale } from "../app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
 import {
   estimateAnnualTax,
@@ -80,7 +66,73 @@ function loadDotenv() {
 loadDotenv();
 
 function hasRequiredEnv() {
-  return requiredEnv.every((key) => Boolean(process.env[key]));
+  return requiredEnv.every((key) => Boolean(process.env[key])) && Boolean(getDatabaseConfig());
+}
+
+async function applyMigration() {
+  const migrationFiles = (await readdir("supabase/migrations"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  const client = new pg.Client({
+    ...getDatabaseConfig(),
+  });
+  await client.connect();
+  try {
+    for (const migrationFile of migrationFiles) {
+      const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
+      await client.query(sql);
+    }
+  } finally {
+    await client.end();
+  }
+}
+
+function getDatabaseConfig() {
+  for (const candidate of [process.env.DIRECT_DATABASE_URL, process.env.DATABASE_URL]) {
+    if (!candidate) {
+      continue;
+    }
+    if (candidate.includes("<") || candidate.includes("your-project-ref") || candidate.includes("your-password")) {
+      continue;
+    }
+    const parsed = parsePostgresUrl(candidate);
+    if (parsed) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function parsePostgresUrl(raw) {
+  raw = raw.trim();
+  const schemeEnd = raw.indexOf("://");
+  const at = raw.lastIndexOf("@");
+  const credentialColon = raw.indexOf(":", schemeEnd + 3);
+  if (schemeEnd === -1 || at === -1 || credentialColon === -1 || credentialColon > at) {
+    return null;
+  }
+  const user = raw.slice(schemeEnd + 3, credentialColon);
+  const password = raw.slice(credentialColon + 1, at);
+  const rest = raw.slice(at + 1);
+  const slash = rest.indexOf("/");
+  if (slash === -1) {
+    return null;
+  }
+  const hostPort = rest.slice(0, slash);
+  const databaseAndParams = rest.slice(slash + 1);
+  const [databaseName, rawParams = ""] = databaseAndParams.split("?", 2);
+  const database = databaseName || "postgres";
+  const portColon = hostPort.lastIndexOf(":");
+  const host = portColon === -1 ? hostPort : hostPort.slice(0, portColon);
+  const port = portColon === -1 ? 5432 : Number(hostPort.slice(portColon + 1));
+  if (!host || !Number.isFinite(port)) {
+    return null;
+  }
+  const sslMode = new URLSearchParams(rawParams).get("sslmode");
+  const ssl = sslMode === "disable" || host === "127.0.0.1" || host === "localhost"
+    ? false
+    : { rejectUnauthorized: false };
+  return { host, port, database, user, password, ssl };
 }
 
 function serviceClient() {
@@ -119,83 +171,145 @@ async function signIn(user) {
   return client;
 }
 
-function decodeBase32(value) {
+function totpCode(secret, now = Date.now()) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const bytes = [];
-  let buffer = 0;
-  let bitCount = 0;
-  for (const character of value.toUpperCase().replace(/=+$/u, "")) {
-    const index = alphabet.indexOf(character);
-    if (index === -1) throw new Error("Unexpected TOTP secret encoding");
-    buffer = (buffer << 5) | index;
-    bitCount += 5;
-    if (bitCount >= 8) {
-      bitCount -= 8;
-      bytes.push((buffer >> bitCount) & 0xff);
-      buffer &= (1 << bitCount) - 1;
-    }
+  const normalized = secret.toUpperCase().replace(/=+$/u, "").replace(/\s+/gu, "");
+  let bits = "";
+  for (const character of normalized) {
+    const value = alphabet.indexOf(character);
+    assert.notEqual(value, -1, "Supabase returned an invalid base32 TOTP secret");
+    bits += value.toString(2).padStart(5, "0");
   }
-  return Buffer.from(bytes);
-}
-
-function currentTotp(secret, now = Date.now()) {
+  const bytes = Buffer.alloc(Math.floor(bits.length / 8));
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(bits.slice(index * 8, index * 8 + 8), 2);
+  }
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
-  const digest = createHmac("sha1", decodeBase32(secret)).update(counter).digest();
+  const digest = createHmac("sha1", bytes).update(counter).digest();
   const offset = digest.at(-1) & 0x0f;
-  const binary = digest.readUInt32BE(offset) & 0x7fffffff;
-  return String(binary % 1_000_000).padStart(6, "0");
+  const binary = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return String(binary).padStart(6, "0");
 }
 
-async function recordSignedTotpStepUp(client) {
+async function elevateToAal2(client) {
   const { data: enrollment, error: enrollmentError } = await client.auth.mfa.enroll({
     factorType: "totp",
-    friendlyName: `talli-rehearsal-${randomUUID()}`,
+    friendlyName: `company-tax-${randomUUID()}`,
   });
   assert.ifError(enrollmentError);
   assert.ok(enrollment?.id);
   assert.ok(enrollment?.totp?.secret);
-
   const { data: challenge, error: challengeError } = await client.auth.mfa.challenge({
     factorId: enrollment.id,
   });
   assert.ifError(challengeError);
-  assert.ok(challenge?.id);
-
   const { error: verificationError } = await client.auth.mfa.verify({
     factorId: enrollment.id,
     challengeId: challenge.id,
-    code: currentTotp(enrollment.totp.secret),
+    code: totpCode(enrollment.totp.secret),
   });
   assert.ifError(verificationError);
+  const { data: assurance, error: assuranceError } = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+  assert.ifError(assuranceError);
+  assert.equal(assurance.currentLevel, "aal2");
+}
 
-  const { data, error } = await client.rpc("record_mfa_step_up").single();
-  assert.ifError(error);
-  return data;
+function companyTaxTt02Persistence({ companyId, orgNumber, ownerId }) {
+  const instanceId = `51549454/${randomUUID()}`;
+  const envelopeDataId = randomUUID();
+  const receiptDataId = randomUUID();
+  const archiveReference = `https://platform.tt02.altinn.no/storage/api/v1/instances/${instanceId}`;
+  return buildCompanyTaxReturnEvidencePersistence({
+    companyId,
+    expectedCompanyOrgNumber: orgNumber,
+    expectedIncomeYear: 2025,
+    evidenceUrl: "https://evidence.example/company-tax-tt02.json",
+    recordedBy: ownerId,
+    evidence: {
+      schemaVersion: 2,
+      status: "submitted_and_receipted",
+      environment: "test",
+      productionEnabled: false,
+      companyOrgNumber: orgNumber,
+      incomeYear: 2025,
+      scope: "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+      systemUserResource: "app_skd_formueinntekt-skattemelding-v2",
+      payloadHashes: {
+        skattemelding: "a".repeat(64),
+        naeringsspesifikasjon: "b".repeat(64),
+        validationEnvelope: "c".repeat(64),
+        submissionEnvelope: "d".repeat(64),
+      },
+      localSchemaValidation: {
+        status: "passed",
+        schemas: [
+          "skattemeldingUpersonlig_v5_ekstern.xsd",
+          "naeringsspesifikasjon_v6_ekstern.xsd",
+          "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd",
+        ],
+      },
+      authorityValidation: { result: "validertOK", failureReasons: [] },
+      currentDocumentReferenceHash: "e".repeat(64),
+      currentDocumentReference: "DATABASE_TEST_REFERENCE",
+      sourceXml: "<skattemelding>DATABASE_TEST_XML</skattemelding>",
+      partyNumber: "DATABASE_TEST_PARTY",
+      accessToken: "DATABASE_TEST_TOKEN",
+      privateKeyPem: "DATABASE_TEST_KEY",
+      personalIdentifier: "DATABASE_TEST_PERSON",
+      instance: {
+        id: instanceId,
+        envelopeUploaded: true,
+        envelopeDataId,
+        fileScanResult: "Clean",
+        confirmationPrepared: true,
+        processTask: "confirmation",
+      },
+      confirmationUrl: `https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=${instanceId}`,
+      validatedAt: "2026-07-14T12:20:00.000Z",
+      confirmationPreparedAt: "2026-07-14T12:21:00.000Z",
+      receipt: {
+        dataId: receiptDataId,
+        dataType: "tilbakemelding",
+        contentType: "application/xml",
+        byteLength: 527,
+        contentSha256: "f".repeat(64),
+        reference: `${archiveReference}/data/${receiptDataId}`,
+      },
+      submission: {
+        submitted: true,
+        processTask: null,
+        processEndedAt: "2026-07-14T12:30:00.000Z",
+        archived: true,
+        archivedAt: "2026-07-14T12:31:00.000Z",
+        archiveReference,
+      },
+      receiptRetrievedAt: "2026-07-14T12:32:00.000Z",
+      secretsStored: false,
+    },
+  });
 }
 
 test(
   "Supabase authenticated workspace persists owner data and denies outsider",
-  { skip: hasRequiredEnv() ? false : "Supabase URL/keys missing" },
+  { skip: hasRequiredEnv() ? false : "Supabase URL/keys or usable DATABASE_URL missing" },
   async () => {
+  await applyMigration();
   const admin = serviceClient();
   const ownerUser = await createConfirmedUser("owner");
+  const secondOwnerUser = await createConfirmedUser("second-owner");
   const outsiderUser = await createConfirmedUser("outsider");
   const reviewerUser = await createConfirmedUser("reviewer");
   const readOnlyUser = await createConfirmedUser("readonly");
   const inviteeUser = await createConfirmedUser("invitee");
-  const grantAdminUser = await createConfirmedUser("grant-admin");
   const owner = await signIn(ownerUser);
+  const secondOwner = await signIn(secondOwnerUser);
   const outsider = await signIn(outsiderUser);
   const reviewer = await signIn(reviewerUser);
   const readOnly = await signIn(readOnlyUser);
   const invitee = await signIn(inviteeUser);
-  const grantAdmin = await signIn(grantAdminUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
-  const launchSignoffKey = "support_rollback";
-  const rf1086LaunchSignoffKey = "rf1086_authority";
   let companyId;
-  const storageKeysToCleanup = [];
 
   try {
     const { data: company, error: companyError } = await owner
@@ -228,153 +342,36 @@ test(
     });
     assert.ifError(membershipError);
 
-    const { error: grantAdminError } = await admin.from("support_operators").insert({
-      user_id: grantAdminUser.id,
-      role: "admin",
-      active: true,
+    const { error: secondOwnerMembershipError } = await admin.from("company_memberships").insert({
+      company_id: companyId,
+      user_id: secondOwnerUser.id,
+      role: "owner",
+      invited_by: ownerUser.id,
+      accepted_at: new Date().toISOString(),
     });
-    assert.ifError(grantAdminError);
+    assert.ifError(secondOwnerMembershipError);
 
-    await admin.from("launch_signoff_events").delete().eq("signoff_key", launchSignoffKey);
-    await admin.from("launch_signoffs").delete().eq("key", launchSignoffKey);
-    const firstSignoffAt = new Date().toISOString();
-    const { error: signoffInsertError } = await grantAdmin.from("launch_signoffs").insert({
-      key: launchSignoffKey,
-      status: "pending",
-      reviewer: "Staging operator",
-      reviewed_at: firstSignoffAt,
-      evidence_link: "",
-      decision: "Pending controlled rehearsal.",
-      recorded_by: grantAdminUser.id,
-      updated_at: firstSignoffAt,
+    const { error: reviewerInviteError } = await owner.from("company_memberships").insert({
+      company_id: companyId,
+      user_id: reviewerUser.id,
+      role: "reviewer",
+      invited_by: ownerUser.id,
+      accepted_at: new Date().toISOString(),
     });
-    assert.ifError(signoffInsertError);
-
-    const approvedAt = new Date().toISOString();
-    const { error: signoffUpdateError } = await grantAdmin
-      .from("launch_signoffs")
-      .update({
-        status: "approved",
-        reviewer: "Staging operator",
-        reviewed_at: approvedAt,
-        evidence_link: "https://example.invalid/staging-evidence",
-        decision: "Approved only for the isolated staging rehearsal.",
-        recorded_by: grantAdminUser.id,
-        updated_at: approvedAt,
-      })
-      .eq("key", launchSignoffKey);
-    assert.ifError(signoffUpdateError);
-
-    const { data: signoffHistory, error: signoffHistoryError } = await grantAdmin
-      .from("launch_signoff_events")
-      .select("id, operation, status, recorded_by")
-      .eq("signoff_key", launchSignoffKey);
-    assert.ifError(signoffHistoryError);
-    assert.equal(signoffHistory.length, 2);
-    assert.deepEqual(new Set(signoffHistory.map((event) => event.operation)), new Set(["insert", "update"]));
-    assert.ok(signoffHistory.every((event) => event.recorded_by === grantAdminUser.id));
-
-    const { error: historyRewriteError } = await grantAdmin
-      .from("launch_signoff_events")
-      .update({ status: "rejected" })
-      .eq("id", signoffHistory[0].id);
-    assert.ok(historyRewriteError);
-
-    const grantExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    const { error: productionGrantError } = await grantAdmin.from("production_security_grants").insert({
-      actor_id: ownerUser.id,
-      security_review_approved: true,
-      production_credentials_enabled: true,
-      approved_by: grantAdminUser.id,
-      expires_at: grantExpiry,
+    assert.ifError(reviewerInviteError);
+    const { error: readOnlyInviteError } = await owner.from("company_memberships").insert({
+      company_id: companyId,
+      user_id: readOnlyUser.id,
+      role: "read_only",
+      invited_by: ownerUser.id,
+      accepted_at: new Date().toISOString(),
     });
-    assert.ifError(productionGrantError);
-
-    const { data: ownerGrant, error: ownerGrantError } = await owner
-      .from("production_security_grants")
-      .select("actor_id, approved_by, revoked_at, revoked_by")
-      .eq("actor_id", ownerUser.id)
-      .single();
-    assert.ifError(ownerGrantError);
-    assert.equal(ownerGrant.approved_by, grantAdminUser.id);
-    assert.equal(ownerGrant.revoked_at, null);
-
-    const { error: rewriteApprovalError } = await grantAdmin
-      .from("production_security_grants")
-      .update({ security_review_approved: false })
-      .eq("actor_id", ownerUser.id);
-    assert.ok(rewriteApprovalError);
-
-    const productionGrantRevokedAt = new Date().toISOString();
-    const { data: revokedGrant, error: revokeGrantError } = await grantAdmin
-      .from("production_security_grants")
-      .update({ revoked_at: productionGrantRevokedAt })
-      .eq("actor_id", ownerUser.id)
-      .select("approved_by, revoked_at, revoked_by")
-      .single();
-    assert.ifError(revokeGrantError);
-    assert.equal(revokedGrant.approved_by, grantAdminUser.id);
-    assert.ok(new Date(revokedGrant.revoked_at).getTime() >= new Date(productionGrantRevokedAt).getTime());
-    assert.equal(revokedGrant.revoked_by, grantAdminUser.id);
-
-    const { error: reinstateGrantError } = await grantAdmin
-      .from("production_security_grants")
-      .update({ revoked_at: null })
-      .eq("actor_id", ownerUser.id);
-    assert.ok(reinstateGrantError);
-
-    async function acceptInvitedMembership(member, memberUser, role) {
-      const acceptedAt = new Date().toISOString();
-      const { data: invitation, error: invitationError } = await owner
-        .from("company_invitations")
-        .insert({
-          company_id: companyId,
-          invited_email: memberUser.email,
-          role,
-          token_hash: await invitationTokenHash(randomUUID()),
-          status: "pending",
-          expires_at: invitationExpiry(),
-          invited_by: ownerUser.id,
-          delivery_events: [invitationDeliveryEvent({ recipientEmail: memberUser.email })],
-        })
-        .select("id")
-        .single();
-      assert.ifError(invitationError);
-
-      const { error: membershipError } = await member.from("company_memberships").insert({
-        company_id: companyId,
-        user_id: memberUser.id,
-        role,
-        invited_by: ownerUser.id,
-        accepted_at: acceptedAt,
-      });
-      assert.ifError(membershipError);
-
-      const { error: acceptanceError } = await member
-        .from("company_invitations")
-        .update({
-          invited_user_id: memberUser.id,
-          status: "accepted",
-          accepted_by: memberUser.id,
-          accepted_at: acceptedAt,
-        })
-        .eq("id", invitation.id);
-      assert.ifError(acceptanceError);
-    }
-
-    await acceptInvitedMembership(reviewer, reviewerUser, "reviewer");
-    await acceptInvitedMembership(readOnly, readOnlyUser, "read_only");
-    const persistedRoles = await Promise.all(
-      [owner, reviewer, readOnly].map(async (member) => {
-        const { data, error } = await member
-          .from("company_memberships")
-          .select("user_id, role")
-          .eq("company_id", companyId)
-          .single();
-        assert.ifError(error);
-        return data;
-      }),
-    );
+    assert.ifError(readOnlyInviteError);
+    const { data: persistedRoles, error: persistedRolesError } = await admin
+      .from("company_memberships")
+      .select("user_id, role")
+      .eq("company_id", companyId);
+    assert.ifError(persistedRolesError);
     assert.deepEqual(
       persistedRoles
         .map((membership) => [membership.user_id, membership.role])
@@ -383,6 +380,7 @@ test(
         [ownerUser.id, "owner"],
         [readOnlyUser.id, "read_only"],
         [reviewerUser.id, "reviewer"],
+        [secondOwnerUser.id, "owner"],
       ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
     );
 
@@ -521,65 +519,20 @@ test(
     assert.ifError(inviteeOutboxReadError);
     assert.deepEqual(inviteeOutboxRows, []);
 
-    const { error: roleEscalationError } = await readOnly
-      .from("company_memberships")
-      .update({ role: "owner" })
-      .eq("company_id", companyId)
-      .eq("user_id", readOnlyUser.id);
-    assert.ok(roleEscalationError);
+    const { error: ownerStepUpWriteError } = await owner.from("step_up_events").insert({
+      actor_id: ownerUser.id,
+      method: "totp",
+      mfa_verified_at: new Date().toISOString(),
+      security_review_approved: true,
+      production_credentials_enabled: true,
+    });
+    assert.ok(ownerStepUpWriteError);
 
-    const { error: companyIdentityMutationError } = await owner
-      .from("companies")
-      .update({ org_number: "999999999" })
-      .eq("id", companyId);
-    assert.ok(companyIdentityMutationError);
-
-    const { error: selfAssertedStepUpError } = await owner
-      .from("step_up_events")
-      .insert({
-        actor_id: ownerUser.id,
-        method: "totp",
-        mfa_verified_at: new Date().toISOString(),
-        security_review_approved: true,
-        production_credentials_enabled: true,
-      });
-    assert.ok(selfAssertedStepUpError);
-
-    const { data: cancellation, error: cancellationRequestError } = await owner
-      .from("company_cancellations")
-      .insert({
-        company_id: companyId,
-        status: "retention_hold",
-        reason: "Integration-test cancellation request",
-        evidence: { archiveExportedAt: new Date().toISOString() },
-        requested_by: ownerUser.id,
-      })
-      .select("id")
-      .single();
-    assert.ifError(cancellationRequestError);
-    const { error: selfApprovedDeletionError } = await owner
-      .from("company_cancellations")
-      .update({
-        status: "deleted",
-        reviewed_by: ownerUser.id,
-        reviewed_at: new Date().toISOString(),
-        deleted_by: ownerUser.id,
-        deleted_at: new Date().toISOString(),
-      })
-      .eq("id", cancellation.id);
-    assert.ok(selfApprovedDeletionError);
-
-    const stepUpEvent = await recordSignedTotpStepUp(owner);
-    assert.doesNotThrow(() =>
-      assertStepUpAllowed("billing_admin", stepUpContextFromEvent(ownerUser.id, stepUpEvent), new Date()),
-    );
-
-    const { data: outsiderStepUps, error: outsiderStepUpReadError } = await outsider
+    const { error: ownerStepUpReadError } = await owner
       .from("step_up_events")
       .select("id")
       .eq("actor_id", ownerUser.id);
-    assert.ifError(outsiderStepUpReadError);
-    assert.deepEqual(outsiderStepUps, []);
+    assert.ok(ownerStepUpReadError);
 
     const { error: outsiderStepUpWriteError } = await outsider.from("step_up_events").insert({
       actor_id: ownerUser.id,
@@ -587,6 +540,12 @@ test(
       mfa_verified_at: new Date().toISOString(),
     });
     assert.ok(outsiderStepUpWriteError);
+
+    const { error: outsiderStepUpReadError } = await outsider
+      .from("step_up_events")
+      .select("id")
+      .eq("actor_id", ownerUser.id);
+    assert.ok(outsiderStepUpReadError);
 
     const { data: outsiderCompanies, error: outsiderCompanyError } = await outsider
       .from("companies")
@@ -765,7 +724,7 @@ test(
       .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
       .eq("setup_id", setup.id);
     assert.ifError(persistedShareholdersError);
-    const rendered = await renderRf1086PreviewWithPython(
+    const rendered = renderRf1086PreviewWithPython(
       buildNoActivityRf1086Case(persistedCompany, setup, persistedShareholders),
     );
     assert.equal(rendered.status, "ready");
@@ -790,141 +749,6 @@ test(
       .single();
     assert.ifError(filingPreviewError);
     assert.equal(filingPreview.status, "ready");
-
-    const authorityAccessToken = `local-integration-token-${randomUUID()}`;
-    const hovedskjemaId = randomUUID();
-    const authorityClient = createRf1086AuthorityClient({
-      environment: "test",
-      accessToken: authorityAccessToken,
-      transport: async () => ({
-        status: 200,
-        headers: { "content-type": "application/json" },
-        body: new TextEncoder().encode(JSON.stringify({ hovedskjemaId })),
-      }),
-    });
-    const authorityJournal = createRf1086SupabaseJournal({ preview: filingPreview, client: admin });
-    const authorityProgress = await runNextRf1086AuthorityStep({
-      preview: filingPreview,
-      client: authorityClient,
-      journal: authorityJournal,
-    });
-    assert.equal(authorityProgress.complete, false);
-    assert.equal(authorityProgress.checkpoint.revision, 3);
-    assert.equal(authorityProgress.checkpoint.hovedskjemaId, hovedskjemaId);
-    assert.equal(authorityProgress.checkpoint.calls[0].status, "accepted");
-
-    const { data: ownerCheckpointRows, error: ownerCheckpointError } = await owner
-      .from("rf1086_authority_checkpoints")
-      .select("preview_id, company_id, income_year, revision, checkpoint")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(ownerCheckpointError);
-    assert.equal(ownerCheckpointRows.length, 1);
-    assert.equal(ownerCheckpointRows[0].revision, 3);
-    assert.doesNotMatch(JSON.stringify(ownerCheckpointRows[0]), new RegExp(authorityAccessToken, "u"));
-
-    const { data: reviewerCheckpointRows, error: reviewerCheckpointError } = await reviewer
-      .from("rf1086_authority_checkpoints")
-      .select("preview_id")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(reviewerCheckpointError);
-    assert.deepEqual(reviewerCheckpointRows, [{ preview_id: filingPreview.id }]);
-
-    const { data: outsiderCheckpointRows, error: outsiderCheckpointError } = await outsider
-      .from("rf1086_authority_checkpoints")
-      .select("preview_id")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(outsiderCheckpointError);
-    assert.deepEqual(outsiderCheckpointRows, []);
-
-    const { error: ownerCheckpointRewriteError } = await owner
-      .from("rf1086_authority_checkpoints")
-      .update({ revision: 99 })
-      .eq("preview_id", filingPreview.id);
-    assert.ok(ownerCheckpointRewriteError);
-
-    const { error: ownerCheckpointRpcError } = await owner.rpc("save_rf1086_authority_checkpoint", {
-      p_preview_id: filingPreview.id,
-      p_expected_revision: 3,
-      p_checkpoint: { ...authorityProgress.checkpoint, revision: 4 },
-    });
-    assert.ok(ownerCheckpointRpcError);
-
-    await assert.rejects(
-      authorityJournal.save(authorityProgress.checkpoint, 2),
-      (error) =>
-        error instanceof Rf1086SupabaseJournalError &&
-        error.code === "rf1086_supabase_journal_revision_conflict",
-    );
-
-    await admin.from("launch_signoff_events").delete().eq("signoff_key", rf1086LaunchSignoffKey);
-    await admin.from("launch_signoffs").delete().eq("key", rf1086LaunchSignoffKey);
-    const { error: ownerLeaseRpcError } = await owner.rpc("acquire_rf1086_production_lease", {
-      p_preview_id: filingPreview.id,
-      p_actor_id: ownerUser.id,
-    });
-    assert.ok(ownerLeaseRpcError);
-
-    await withRf1086ProductionLease({
-      client: admin,
-      previewId: filingPreview.id,
-      actorId: ownerUser.id,
-      operation: async () => {
-        const { error: concurrentLeaseError } = await admin.rpc("acquire_rf1086_production_lease", {
-          p_preview_id: filingPreview.id,
-          p_actor_id: ownerUser.id,
-        });
-        assert.equal(concurrentLeaseError?.code, "PT409");
-
-        const { data: ownerLeaseRows, error: ownerLeaseReadError } = await owner
-          .from("rf1086_production_leases")
-          .select("preview_id")
-          .eq("preview_id", filingPreview.id);
-        assert.equal(ownerLeaseRows, null);
-        assert.ok(ownerLeaseReadError);
-
-        const { error: sealedAnnualDataError } = await owner
-          .from("annual_data")
-          .update({
-            no_activity_confirmed: true,
-            updated_by: ownerUser.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", annualData.id);
-        assert.equal(sealedAnnualDataError?.code, "55000");
-
-        const { error: sealedReviewError } = await owner.from("filing_review_comments").insert({
-          preview_id: filingPreview.id,
-          company_id: companyId,
-          target: "rf1086_preview",
-          severity: "hard_block",
-          body: "Must not race a provider call.",
-          created_by: ownerUser.id,
-        });
-        assert.equal(sealedReviewError?.code, "55000");
-
-        const { error: sealedSignoffError } = await grantAdmin.from("launch_signoffs").insert({
-          key: rf1086LaunchSignoffKey,
-          status: "pending",
-          reviewer: "",
-          reviewed_at: new Date().toISOString(),
-          evidence_link: "",
-          decision: "",
-          recorded_by: grantAdminUser.id,
-          updated_at: new Date().toISOString(),
-        });
-        assert.equal(sealedSignoffError?.code, "55000");
-      },
-    });
-
-    const { error: unsealedAnnualDataError } = await owner
-      .from("annual_data")
-      .update({
-        no_activity_confirmed: true,
-        updated_by: ownerUser.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", annualData.id);
-    assert.ifError(unsealedAnnualDataError);
 
     assert.equal(productionAuthorityGate([], "aksjonaerregisteroppgaven").status, "missing_authority_confirmation");
     const { data: authorityPermission, error: authorityPermissionError } = await owner
@@ -989,6 +813,481 @@ test(
       .eq("company_id", companyId);
     assert.ifError(outsiderAuthorityRowsError);
     assert.equal(outsiderAuthorityRows.length, 0);
+
+    const companyTaxPersistence = companyTaxTt02Persistence({
+      companyId,
+      orgNumber,
+      ownerId: ownerUser.id,
+    });
+    const { data: authorityPermissionsBeforeImport, error: authorityPermissionsBeforeImportError } = await admin
+      .from("authority_permissions")
+      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
+      .eq("company_id", companyId)
+      .order("obligation");
+    assert.ifError(authorityPermissionsBeforeImportError);
+    const { data: launchSignoffsBeforeImport, error: launchSignoffsBeforeImportError } = await admin
+      .from("launch_signoffs")
+      .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
+      .order("key");
+    assert.ifError(launchSignoffsBeforeImportError);
+
+    const { error: noMfaImportError } = await owner.rpc("import_company_tax_tt02_evidence", {
+      p_payload: companyTaxPersistence,
+    });
+    assert.match(noMfaImportError?.message ?? "", /company_tax_evidence_mfa_required/u);
+
+    await elevateToAal2(owner);
+    for (const [label, evidenceUrl] of [
+      ["missing host", "https:///missing-host"],
+      ["non-canonical host-only URL", "https://evidence.example"],
+      ["credentials", "https://user:password@evidence.example/company-tax.json"],
+      ["port", "https://evidence.example:443/company-tax.json"],
+      ["query", "https://evidence.example/company-tax.json?token=secret"],
+      ["fragment", "https://evidence.example/company-tax.json#secret"],
+      ["unsupported scheme", "http://evidence.example/company-tax.json"],
+      ["path traversal", "https://evidence.example/archive/../company-tax.json"],
+      ["encoded path traversal", "https://evidence.example/archive/%2e%2e/company-tax.json"],
+      ["control character", "https://evidence.example/company-tax.json\nignored"],
+    ]) {
+      const invalidUrlPayload = structuredClone(companyTaxPersistence);
+      invalidUrlPayload.authorityRun.evidence_url = evidenceUrl;
+      const { error: invalidUrlError } = await owner.rpc(
+        "import_company_tax_tt02_evidence",
+        { p_payload: invalidUrlPayload },
+      );
+      assert.match(
+        invalidUrlError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} must fail at the direct RPC boundary`,
+      );
+    }
+    const { data: importedCompanyTax, error: companyTaxImportError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.ifError(companyTaxImportError);
+    assert.equal(importedCompanyTax.created, true);
+    assert.match(importedCompanyTax.authority_test_run_id, /^[0-9a-f-]{36}$/u);
+    assert.match(importedCompanyTax.filing_submission_id, /^[0-9a-f-]{36}$/u);
+
+    const { data: importedAuthorityRuns, error: importedAuthorityRunsError } = await owner
+      .from("authority_test_runs")
+      .select("id, company_id, obligation, environment, status, test_reference, payload_hash")
+      .eq("company_id", companyId)
+      .eq("obligation", "skattemelding")
+      .eq("test_reference", companyTaxPersistence.authorityRun.test_reference);
+    assert.ifError(importedAuthorityRunsError);
+    assert.deepEqual(importedAuthorityRuns, [{
+      id: importedCompanyTax.authority_test_run_id,
+      company_id: companyId,
+      obligation: "skattemelding",
+      environment: "test",
+      status: "pending",
+      test_reference: companyTaxPersistence.authorityRun.test_reference,
+      payload_hash: companyTaxPersistence.authorityRun.payload_hash,
+    }]);
+    const { data: importedSubmissions, error: importedSubmissionsError } = await owner
+      .from("filing_submissions")
+      .select("id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, status, receipt_id, submitted_payload")
+      .eq("authority_test_run_id", importedCompanyTax.authority_test_run_id);
+    assert.ifError(importedSubmissionsError);
+    assert.deepEqual(importedSubmissions, [{
+      id: importedCompanyTax.filing_submission_id,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      company_id: companyId,
+      income_year: 2025,
+      filing: "skattemelding for AS",
+      mode: "test_authority",
+      adapter_mode: "test_authority",
+      status: "feedback_ready",
+      receipt_id: companyTaxPersistence.submission.receipt_id,
+      submitted_payload: null,
+    }]);
+
+    const { data: companyTaxAuditBeforeRetry, error: companyTaxAuditBeforeRetryError } = await owner
+      .from("audit_events")
+      .select("id, actor_id")
+      .eq("company_id", companyId)
+      .eq("action", "company_tax_tt02_evidence_imported");
+    assert.ifError(companyTaxAuditBeforeRetryError);
+    assert.equal(companyTaxAuditBeforeRetry.length, 1);
+    assert.equal(companyTaxAuditBeforeRetry[0].actor_id, ownerUser.id);
+    const { data: retriedCompanyTax, error: companyTaxRetryError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: structuredClone(companyTaxPersistence) },
+    );
+    assert.ifError(companyTaxRetryError);
+    assert.deepEqual(retriedCompanyTax, {
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      filing_submission_id: importedCompanyTax.filing_submission_id,
+      created: false,
+    });
+    await elevateToAal2(secondOwner);
+    const secondOwnerRetryPayload = structuredClone(companyTaxPersistence);
+    secondOwnerRetryPayload.authorityRun.recorded_by = secondOwnerUser.id;
+    secondOwnerRetryPayload.submission.created_by = secondOwnerUser.id;
+    const { data: secondOwnerRetry, error: secondOwnerRetryError } = await secondOwner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: secondOwnerRetryPayload },
+    );
+    assert.ifError(secondOwnerRetryError);
+    assert.deepEqual(secondOwnerRetry, {
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+      filing_submission_id: importedCompanyTax.filing_submission_id,
+      created: false,
+    });
+    const { data: originalEvidenceActors, error: originalEvidenceActorsError } = await admin
+      .from("authority_test_runs")
+      .select("recorded_by")
+      .eq("id", importedCompanyTax.authority_test_run_id)
+      .single();
+    assert.ifError(originalEvidenceActorsError);
+    assert.equal(originalEvidenceActors.recorded_by, ownerUser.id);
+    const { data: originalSubmissionActors, error: originalSubmissionActorsError } = await admin
+      .from("filing_submissions")
+      .select("created_by")
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .single();
+    assert.ifError(originalSubmissionActorsError);
+    assert.equal(originalSubmissionActors.created_by, ownerUser.id);
+    const { data: companyTaxAuditAfterRetry, error: companyTaxAuditAfterRetryError } = await owner
+      .from("audit_events")
+      .select("id, actor_id")
+      .eq("company_id", companyId)
+      .eq("action", "company_tax_tt02_evidence_imported");
+    assert.ifError(companyTaxAuditAfterRetryError);
+    assert.deepEqual(companyTaxAuditAfterRetry, companyTaxAuditBeforeRetry);
+
+    const legacyDuplicateReference = `legacy-duplicate-${randomUUID()}`;
+    const { error: legacyDuplicateError } = await owner.from("authority_test_runs").insert([
+      {
+        ...companyTaxPersistence.authorityRun,
+        environment: "manual_evidence",
+        status: "accepted",
+        test_reference: legacyDuplicateReference,
+      },
+      {
+        ...companyTaxPersistence.authorityRun,
+        environment: "manual_evidence",
+        status: "accepted",
+        test_reference: legacyDuplicateReference,
+      },
+    ]);
+    assert.ifError(legacyDuplicateError);
+    const { error: duplicateCompanyTaxIdentityError } = await owner
+      .from("authority_test_runs")
+      .insert(structuredClone(companyTaxPersistence.authorityRun));
+    assert.ok(duplicateCompanyTaxIdentityError);
+
+    const conflictingCompanyTax = structuredClone(companyTaxPersistence);
+    const conflictingReceiptId = randomUUID();
+    conflictingCompanyTax.authorityRun.receipt_reference = `${conflictingCompanyTax.authorityRun.archive_reference}/data/${conflictingReceiptId}`;
+    conflictingCompanyTax.submission.receipt_id = conflictingReceiptId;
+    conflictingCompanyTax.submission.feedback_document_ids = [conflictingReceiptId];
+    conflictingCompanyTax.submission.feedback_items[0].documentId = conflictingReceiptId;
+    conflictingCompanyTax.submission.receipt_metadata.receiptId = conflictingReceiptId;
+    conflictingCompanyTax.submission.receipt_metadata.feedbackDocumentIds = [conflictingReceiptId];
+    conflictingCompanyTax.submission.receipt_metadata.reference = conflictingCompanyTax.authorityRun.receipt_reference;
+    const { error: conflictingCompanyTaxError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: conflictingCompanyTax },
+    );
+    assert.match(conflictingCompanyTaxError?.message ?? "", /company_tax_evidence_conflict/u);
+
+    const rawNestedCompanyTax = structuredClone(companyTaxPersistence);
+    rawNestedCompanyTax.submission.receipt_metadata.rawXml = "<skattemelding>forbidden</skattemelding>";
+    const { error: rawNestedCompanyTaxError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: rawNestedCompanyTax },
+    );
+    assert.match(rawNestedCompanyTaxError?.message ?? "", /company_tax_evidence_forbidden_content/u);
+
+    const missingCanonicalKeys = [
+      ["receipt metadata", (payload) => delete payload.submission.receipt_metadata.contentSha256],
+      ["payload reference", (payload) => delete payload.submission.submitted_payload_ref.validationEnvelopeHash],
+      ["feedback item", (payload) => delete payload.submission.feedback_items[0].severity],
+      ["validation call", (payload) => delete payload.submission.calls[0].status],
+      ["confirmation call", (payload) => delete payload.submission.calls[1].status],
+      ["receipt call", (payload) => delete payload.submission.calls[2].status],
+    ];
+    for (const [label, removeKey] of missingCanonicalKeys) {
+      const missingKeyPayload = structuredClone(companyTaxPersistence);
+      removeKey(missingKeyPayload);
+      const { error: missingKeyError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: missingKeyPayload,
+      });
+      assert.match(
+        missingKeyError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} key removal must fail closed`,
+      );
+    }
+
+    const identityAndDigestAttacks = [
+      ["organization number", (payload) => {
+        payload.submission.submitted_payload_ref.companyOrgNumber = "999999999";
+      }],
+      ["income year", (payload) => {
+        payload.submission.submitted_payload_ref.incomeYear = 2024;
+      }],
+      ["self-consistent non-2025 income year", (payload) => {
+        payload.submission.income_year = 2024;
+        payload.submission.submitted_payload_ref.incomeYear = 2024;
+        payload.submission.idempotency_key = payload.submission.idempotency_key.replace(
+          ":2025:",
+          ":2024:",
+        );
+      }],
+      ["component digest", (payload) => {
+        payload.submission.submitted_payload_ref.validationEnvelopeHash = "0".repeat(64);
+        payload.submission.calls[0].body_hash = "0".repeat(64);
+      }],
+      ["receipt UUID", (payload) => {
+        payload.submission.receipt_id = "not-a-uuid";
+      }],
+      ["uppercase semantic UUID duplicate", (payload) => {
+        const instanceUuid = payload.authorityRun.test_reference.split("/").at(-1);
+        const uppercaseInstanceUuid = instanceUuid.toUpperCase();
+        const uppercaseReceiptId = payload.submission.receipt_id.toUpperCase();
+        const envelopeDataId = payload.submission.submitted_payload_ref.envelopeDataId;
+        const uppercaseArchiveReference = payload.authorityRun.archive_reference.replace(
+          instanceUuid,
+          uppercaseInstanceUuid,
+        );
+        const uppercaseReceiptReference =
+          `${uppercaseArchiveReference}/data/${uppercaseReceiptId}`;
+        payload.authorityRun.test_reference = payload.authorityRun.test_reference.replace(
+          instanceUuid,
+          uppercaseInstanceUuid,
+        );
+        payload.authorityRun.archive_reference = uppercaseArchiveReference;
+        payload.authorityRun.receipt_reference = uppercaseReceiptReference;
+        payload.submission.receipt_id = uppercaseReceiptId;
+        payload.submission.feedback_document_ids = [uppercaseReceiptId];
+        payload.submission.feedback_items[0].documentId = uppercaseReceiptId;
+        payload.submission.receipt_metadata.receiptId = uppercaseReceiptId;
+        payload.submission.receipt_metadata.feedbackDocumentIds = [uppercaseReceiptId];
+        payload.submission.receipt_metadata.reference = uppercaseReceiptReference;
+        payload.submission.receipt_metadata.archiveReference = uppercaseArchiveReference;
+        payload.submission.submitted_payload_ref.envelopeDataId = envelopeDataId.toUpperCase();
+        payload.submission.submitted_payload_ref.archiveReference = uppercaseArchiveReference;
+      }],
+    ];
+    for (const [label, mutate] of identityAndDigestAttacks) {
+      const attackedPayload = structuredClone(companyTaxPersistence);
+      mutate(attackedPayload);
+      const { error: attackedPayloadError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: attackedPayload,
+      });
+      assert.match(
+        attackedPayloadError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} tampering must fail closed`,
+      );
+    }
+    const { data: canonicalRetryRows, error: canonicalRetryRowsError } = await owner
+      .from("filing_submissions")
+      .select("id, idempotency_key")
+      .eq("mode", "test_authority")
+      .eq("idempotency_key", companyTaxPersistence.submission.idempotency_key);
+    assert.ifError(canonicalRetryRowsError);
+    assert.deepEqual(canonicalRetryRows, [{
+      id: importedCompanyTax.filing_submission_id,
+      idempotency_key: companyTaxPersistence.submission.idempotency_key,
+    }]);
+
+    for (const [label, mutate] of [
+      ["PostgreSQL infinity timestamp", (payload) => {
+        payload.submission.calls[0].created_at = "infinity";
+      }],
+      ["non-RFC3339 timestamp", (payload) => {
+        payload.submission.calls[1].created_at = "2026-07-14 12:21:00+00";
+      }],
+      ["confirmation after process end", (payload) => {
+        payload.submission.calls[1].created_at = "2026-07-14T12:30:30.000Z";
+      }],
+      ["out-of-range RFC3339 components", (payload) => {
+        const invalidTimestamp = "2026-07-14T24:00:00Z";
+        payload.authorityRun.recorded_at = invalidTimestamp;
+        payload.submission.updated_at = invalidTimestamp;
+        for (const call of payload.submission.calls) {
+          call.created_at = invalidTimestamp;
+        }
+        payload.submission.receipt_metadata.receivedAt = invalidTimestamp;
+        payload.submission.receipt_metadata.processEndedAt = invalidTimestamp;
+        payload.submission.receipt_metadata.archivedAt = invalidTimestamp;
+        payload.submission.submitted_payload_ref.storedAt = invalidTimestamp;
+      }],
+      ["sub-microsecond reversed chronology", (payload) => {
+        payload.submission.calls[0].created_at = "2026-07-14T12:20:00.0000002Z";
+        payload.submission.calls[1].created_at = "2026-07-14T12:20:00.0000001Z";
+      }],
+    ]) {
+      const timestampAttack = structuredClone(companyTaxPersistence);
+      mutate(timestampAttack);
+      const { error: timestampAttackError } = await owner.rpc(
+        "import_company_tax_tt02_evidence",
+        { p_payload: timestampAttack },
+      );
+      assert.match(
+        timestampAttackError?.message ?? "",
+        /company_tax_evidence_invalid_payload/u,
+        `${label} must fail closed`,
+      );
+    }
+
+    for (const forbiddenContent of [
+      "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+      "ACCESS_TOKEN_SENTINEL",
+      "PRIVATE_KEY_SENTINEL",
+      "PERSONAL_IDENTIFIER_SENTINEL",
+    ]) {
+      const forbiddenPayload = structuredClone(companyTaxPersistence);
+      forbiddenPayload.submission.feedback_items[0].message = forbiddenContent;
+      const { error: forbiddenPayloadError } = await owner.rpc("import_company_tax_tt02_evidence", {
+        p_payload: forbiddenPayload,
+      });
+      assert.match(
+        forbiddenPayloadError?.message ?? "",
+        /company_tax_evidence_forbidden_content/u,
+      );
+    }
+    const currentReferenceSentinelPayload = structuredClone(companyTaxPersistence);
+    currentReferenceSentinelPayload.authorityRun.evidence_url =
+      "https://evidence.example/CuRrEnT_DoCuMeNt_ReFeReNcE_SeNtInEl.json";
+    const { error: currentReferenceSentinelError } = await owner.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: currentReferenceSentinelPayload },
+    );
+    assert.match(
+      currentReferenceSentinelError?.message ?? "",
+      /company_tax_evidence_forbidden_content/u,
+    );
+
+    const directAuthority = {
+      ...companyTaxPersistence.authorityRun,
+      test_reference: `tt02:51549454/${randomUUID()}`,
+    };
+    const { data: directAuthorityRow, error: directAuthorityError } = await owner
+      .from("authority_test_runs")
+      .insert(directAuthority)
+      .select("id")
+      .single();
+    assert.ifError(directAuthorityError);
+    const { error: directTestAuthoritySubmissionError } = await owner
+      .from("filing_submissions")
+      .insert({
+        ...companyTaxPersistence.submission,
+        authority_test_run_id: directAuthorityRow.id,
+      });
+    assert.ok(directTestAuthoritySubmissionError);
+
+    const { data: directSimulationSubmission, error: directSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .insert({
+        preview_id: filingPreview.id,
+        company_id: companyId,
+        setup_id: setup.id,
+        income_year: 2025,
+        filing: filingPreview.filing,
+        mode: "simulation",
+        adapter_mode: "simulation",
+        status: "ready",
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(directSimulationSubmissionError);
+    const { error: simulationToTestAuthorityError } = await owner
+      .from("filing_submissions")
+      .update({
+        mode: "test_authority",
+        adapter_mode: "test_authority",
+        preview_id: null,
+        authority_test_run_id: directAuthorityRow.id,
+      })
+      .eq("id", directSimulationSubmission.id);
+    assert.ok(simulationToTestAuthorityError);
+    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", directSimulationSubmission.id)
+      .single();
+    assert.ifError(unchangedSimulationSubmissionError);
+    assert.deepEqual(unchangedSimulationSubmission, {
+      mode: "simulation",
+      adapter_mode: "simulation",
+      preview_id: filingPreview.id,
+      authority_test_run_id: null,
+    });
+
+    const { data: directTestAuthorityUpdates, error: directTestAuthorityUpdateError } = await owner
+      .from("filing_submissions")
+      .update({
+        mode: "simulation",
+        adapter_mode: "simulation",
+        preview_id: filingPreview.id,
+        authority_test_run_id: null,
+      })
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .select("id");
+    assert.ifError(directTestAuthorityUpdateError);
+    assert.deepEqual(directTestAuthorityUpdates, []);
+    const { data: unchangedTestAuthoritySubmission, error: unchangedTestAuthoritySubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", importedCompanyTax.filing_submission_id)
+      .single();
+    assert.ifError(unchangedTestAuthoritySubmissionError);
+    assert.deepEqual(unchangedTestAuthoritySubmission, {
+      mode: "test_authority",
+      adapter_mode: "test_authority",
+      preview_id: null,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+    });
+
+    await elevateToAal2(reviewer);
+    const { error: reviewerCompanyTaxError } = await reviewer.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.match(reviewerCompanyTaxError?.message ?? "", /company_tax_evidence_owner_required/u);
+    await elevateToAal2(outsider);
+    const { error: outsiderCompanyTaxError } = await outsider.rpc(
+      "import_company_tax_tt02_evidence",
+      { p_payload: companyTaxPersistence },
+    );
+    assert.match(outsiderCompanyTaxError?.message ?? "", /company_tax_evidence_owner_required/u);
+
+    const { data: reviewerCompanyTaxRuns, error: reviewerCompanyTaxRunsError } = await reviewer
+      .from("authority_test_runs")
+      .select("id")
+      .eq("id", importedCompanyTax.authority_test_run_id);
+    assert.ifError(reviewerCompanyTaxRunsError);
+    assert.deepEqual(reviewerCompanyTaxRuns, [{ id: importedCompanyTax.authority_test_run_id }]);
+    const { data: reviewerCompanyTaxSubmissions, error: reviewerCompanyTaxSubmissionsError } = await reviewer
+      .from("filing_submissions")
+      .select("id, authority_test_run_id")
+      .eq("id", importedCompanyTax.filing_submission_id);
+    assert.ifError(reviewerCompanyTaxSubmissionsError);
+    assert.deepEqual(reviewerCompanyTaxSubmissions, [{
+      id: importedCompanyTax.filing_submission_id,
+      authority_test_run_id: importedCompanyTax.authority_test_run_id,
+    }]);
+
+    const { data: authorityPermissionsAfterImport, error: authorityPermissionsAfterImportError } = await admin
+      .from("authority_permissions")
+      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
+      .eq("company_id", companyId)
+      .order("obligation");
+    assert.ifError(authorityPermissionsAfterImportError);
+    assert.deepEqual(authorityPermissionsAfterImport, authorityPermissionsBeforeImport);
+    const { data: launchSignoffsAfterImport, error: launchSignoffsAfterImportError } = await admin
+      .from("launch_signoffs")
+      .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
+      .order("key");
+    assert.ifError(launchSignoffsAfterImportError);
+    assert.deepEqual(launchSignoffsAfterImport, launchSignoffsBeforeImport);
 
     assert.throws(() => buildBillingAccount({ companyId, pricingPlan: "founder", founderCohortNumber: 101 }), /Founder-kull/);
     const billingAccount = buildBillingAccount({
@@ -1240,8 +1539,8 @@ test(
     assert.ok(readOnlyOverrideError);
     assertNoBlockingFilingOverrides([persistedAdvisoryOverride]);
 
-    await assert.rejects(
-      async () =>
+    assert.throws(
+      () =>
         runRf1086SubmissionAdapter({
           mode: "production",
           preview: filingPreview,
@@ -1250,7 +1549,7 @@ test(
         }),
       (error) => error instanceof Rf1086ProductionAdapterDisabledError,
     );
-    const simulatedSubmission = await runRf1086SubmissionAdapter({
+    const simulatedSubmission = runRf1086SubmissionAdapter({
       mode: "simulation",
       preview: filingPreview,
       userId: ownerUser.id,
@@ -1311,7 +1610,7 @@ test(
     assert.equal(filingSubmission.submitted_payload_ref.payloadHash, submissionPayloadHash);
     assert.equal(filingSubmission.submitted_payload.hovedskjemaXml, filingPreview.hovedskjema_xml);
 
-    const retrySubmission = await runRf1086SubmissionAdapter({
+    const retrySubmission = runRf1086SubmissionAdapter({
       mode: "simulation",
       preview: filingPreview,
       userId: ownerUser.id,
@@ -1472,20 +1771,6 @@ test(
       /simulert innsending/,
     );
 
-    const authoritativeRf1086State = await loadRf1086ProductionState({
-      workspaceClient: owner,
-      controlClient: admin,
-      actorId: ownerUser.id,
-      previewId: filingPreview.id,
-      confirmations: { authorityConfirmed: true, previewConfirmed: true },
-      now: new Date(),
-    });
-    assert.equal(authoritativeRf1086State.company.id, companyId);
-    assert.equal(authoritativeRf1086State.release.membership?.role, "owner");
-    assert.equal(authoritativeRf1086State.release.filingReady, false);
-    assert.equal(authoritativeRf1086State.release.hardReviewBlockCount, 1);
-    assert.equal(authoritativeRf1086State.release.blockingOverrideCount, 1);
-
     const bankCsv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";
     const parsedBank = parseBankCsv(bankCsv);
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -1558,6 +1843,106 @@ test(
     assert.ifError(outsiderBankError);
     assert.deepEqual(outsiderBankTransactions, []);
 
+    const { data: suggestedBankTransaction, error: suggestedBankTransactionError } = await owner
+      .from("bank_transactions")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        transaction_date: "2025-02-01",
+        text: "Årsgebyr bedriftskonto",
+        amount: -50,
+        source_hash: `bank-suggestion-${randomUUID()}`,
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(suggestedBankTransactionError);
+
+    const outsiderSuggestionResult = await outsider.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: suggestedBankTransaction.id,
+      p_rule_id: "bank_fee",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.ok(outsiderSuggestionResult.error);
+    const reviewerSuggestionResult = await reviewer.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: suggestedBankTransaction.id,
+      p_rule_id: "bank_fee",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.ok(reviewerSuggestionResult.error);
+
+    const { data: acceptedSuggestion, error: acceptedSuggestionError } = await owner.rpc(
+      "accept_bank_transaction_suggestion",
+      {
+        p_bank_transaction_id: suggestedBankTransaction.id,
+        p_rule_id: "bank_fee",
+        p_rule_version: "2026-07-13.1",
+      },
+    );
+    assert.ifError(acceptedSuggestionError);
+    assert.equal(acceptedSuggestion.rule_id, "bank_fee");
+    assert.equal(acceptedSuggestion.idempotent, false);
+    const { data: repeatedSuggestion, error: repeatedSuggestionError } = await owner.rpc(
+      "accept_bank_transaction_suggestion",
+      {
+        p_bank_transaction_id: suggestedBankTransaction.id,
+        p_rule_id: "bank_fee",
+        p_rule_version: "2026-07-13.1",
+      },
+    );
+    assert.ifError(repeatedSuggestionError);
+    assert.equal(repeatedSuggestion.idempotent, true);
+
+    const { data: suggestionAcceptances, error: suggestionAcceptanceError } = await owner
+      .from("bank_suggestion_acceptances")
+      .select("id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, lines, accepted_by")
+      .eq("bank_transaction_id", suggestedBankTransaction.id);
+    assert.ifError(suggestionAcceptanceError);
+    assert.equal(suggestionAcceptances.length, 1);
+    assert.equal(suggestionAcceptances[0].accepted_by, ownerUser.id);
+    assert.deepEqual(suggestionAcceptances[0].lines, [
+      { account: "7770", credit: 0, debit: 50, description: "Bankomkostninger" },
+      { account: "1920", credit: 50, debit: 0, description: "Bank" },
+    ]);
+    const directSuggestionAcceptance = await owner.from("bank_suggestion_acceptances").insert({
+      company_id: companyId,
+      bank_transaction_id: suggestedBankTransaction.id,
+      ledger_entry_id: suggestionAcceptances[0].ledger_entry_id,
+      rule_id: "bank_fee",
+      rule_version: "forged",
+      reason: "forged",
+      lines: [],
+      accepted_by: ownerUser.id,
+    });
+    assert.ok(directSuggestionAcceptance.error);
+    const { data: outsiderSuggestionAcceptances, error: outsiderSuggestionAcceptanceError } = await outsider
+      .from("bank_suggestion_acceptances")
+      .select("id")
+      .eq("company_id", companyId);
+    assert.ifError(outsiderSuggestionAcceptanceError);
+    assert.deepEqual(outsiderSuggestionAcceptances, []);
+
+    const { data: ambiguousBankTransaction, error: ambiguousBankTransactionError } = await owner
+      .from("bank_transactions")
+      .insert({
+        company_id: companyId,
+        income_year: 2025,
+        transaction_date: "2025-02-02",
+        text: "Bankgebyr og renter",
+        amount: 100,
+        source_hash: `bank-ambiguous-${randomUUID()}`,
+        created_by: ownerUser.id,
+      })
+      .select("id")
+      .single();
+    assert.ifError(ambiguousBankTransactionError);
+    const ambiguousSuggestionResult = await owner.rpc("accept_bank_transaction_suggestion", {
+      p_bank_transaction_id: ambiguousBankTransaction.id,
+      p_rule_id: "deposit_interest",
+      p_rule_version: "2026-07-13.1",
+    });
+    assert.match(ambiguousSuggestionResult.error?.message ?? "", /bank_suggestion_ambiguous/);
+
     assert.throws(
       () =>
         validateDividendReceived({
@@ -1567,7 +1952,6 @@ test(
           grossAmount: 1000,
           linkedInvestmentId: "unclear-fund",
           taxTreatment: "needs_accountant",
-          threePercentTreatment: "needs_accountant",
           documentStatus: "attached",
         }),
       (error) => error?.code === "unsupported_tax_treatment",
@@ -1593,8 +1977,8 @@ test(
         income_year: 2025,
         transaction_date: "2025-04-15",
         text: "Dividend Portfolio AS",
-        amount: 10000,
-        balance: 39950,
+        amount: 1000,
+        balance: 30950,
         source_hash: dividendSourceHash,
         created_by: ownerUser.id,
       })
@@ -1605,15 +1989,14 @@ test(
       payingCompanyName: "Portfolio AS",
       declaredDate: "2025-04-01",
       paidDate: "2025-04-15",
-      grossAmount: 10000,
+      grossAmount: 1000,
       linkedInvestmentId: "portfolio-as",
       taxTreatment: "fritaksmetoden",
-      threePercentTreatment: "applies",
       bankTransactionId: dividendBankTransaction.id,
       documentId: dividendDocumentId,
       documentStatus: "attached",
     });
-    assert.equal(dividendPayload.taxable_add_back, 300);
+    assert.equal(dividendPayload.taxable_add_back, 30);
     const dividendLines = dividendReceivedLedgerLines(dividendPayload);
     const { data: dividendEntry, error: dividendEntryError } = await owner
       .from("ledger_entries")
@@ -1655,7 +2038,7 @@ test(
     assert.equal(dividendAction.document_id, dividendDocumentId);
     assert.deepEqual(
       summarizeDividendReceivedAnnualImpact([{ action_type: dividendAction.action_type, payload: dividendAction.payload }]),
-      { dividendIncome: 10000, fritaksmetodenAddBack: 300 },
+      { dividendIncome: 1000, fritaksmetodenAddBack: 30 },
     );
     const { error: dividendBankMatchError } = await owner
       .from("bank_transactions")
@@ -1744,94 +2127,83 @@ test(
       documentId: purchaseDocumentId,
       documentStatus: "attached",
     });
-    const purchaseLines = sharePurchaseLedgerLines(purchasePayload);
-    const { data: purchaseEntry, error: purchaseEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "share_purchase",
-        memo: "Share purchase: Portfolio AS",
-        lines: purchaseLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(purchaseEntryError);
-    assert.equal(purchaseEntry.entry_type, "share_purchase");
-    assert.deepEqual(purchaseEntry.lines, purchaseLines);
     const purchaseActionId = randomUUID();
-    const { data: purchaseAction, error: purchaseActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: purchaseActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "share_purchase",
-        action_date: purchasePayload.acquisition_date,
-        payload: purchasePayload,
-        ledger_entry_id: purchaseEntry.id,
-        bank_transaction_id: purchaseBankTransaction.id,
-        document_id: purchaseDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(purchaseActionError);
-    assert.equal(purchaseAction.action_type, "share_purchase");
-    assert.equal(purchaseAction.ledger_entry_id, purchaseEntry.id);
-    assert.equal(purchaseAction.bank_transaction_id, purchaseBankTransaction.id);
-    assert.equal(purchaseAction.document_id, purchaseDocumentId);
+    const { data: purchaseWrite, error: purchaseWriteError } = await owner.rpc("record_share_purchase_fifo", {
+      p_action_id: purchaseActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: purchasePayload.investment_key,
+      p_investment_name: purchasePayload.investment_name,
+      p_investment_kind: purchasePayload.investment_kind,
+      p_tax_treatment: purchasePayload.tax_treatment,
+      p_acquisition_date: purchasePayload.acquisition_date,
+      p_share_count: purchasePayload.share_count,
+      p_purchase_amount: purchasePayload.purchase_amount,
+      p_org_number: purchasePayload.org_number,
+      p_bank_transaction_id: purchaseBankTransaction.id,
+      p_document_id: purchaseDocumentId,
+      p_document_status: purchasePayload.document_status,
+    });
+    assert.ifError(purchaseWriteError);
+    assert.equal(purchaseWrite.action_id, purchaseActionId);
+    assert.equal(purchaseWrite.idempotent, false);
     const { data: purchasePosition, error: purchasePositionError } = await owner
       .from("investment_positions")
-      .insert({
-        company_id: companyId,
-        investment_key: purchasePayload.investment_key,
-        name: purchasePayload.investment_name,
-        kind: purchasePayload.investment_kind,
-        tax_treatment: purchasePayload.tax_treatment,
-        org_number: purchasePayload.org_number,
-        share_count: purchasePayload.share_count,
-        cost_basis: purchasePayload.purchase_amount,
-        created_by: ownerUser.id,
-      })
-      .select("id, investment_key, share_count, cost_basis")
+      .select("id, investment_key, share_count, cost_basis, lot_history_status")
+      .eq("id", purchaseWrite.position_id)
       .single();
     assert.ifError(purchasePositionError);
     assert.equal(purchasePosition.investment_key, "portfolio-as");
     assert.equal(Number(purchasePosition.share_count), 100);
     assert.equal(Number(purchasePosition.cost_basis), 50000);
-    const { error: purchaseBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: purchaseAction.id })
-      .eq("id", purchaseBankTransaction.id);
-    assert.ifError(purchaseBankMatchError);
-    const { data: reloadedPurchasePosition, error: reloadedPurchasePositionError } = await owner
-      .from("investment_positions")
-      .select("id, share_count, cost_basis")
-      .eq("id", purchasePosition.id)
-      .single();
-    assert.ifError(reloadedPurchasePositionError);
-    assert.equal(Number(reloadedPurchasePosition.share_count), 100);
-    assert.equal(Number(reloadedPurchasePosition.cost_basis), 50000);
+    assert.equal(purchasePosition.lot_history_status, "complete");
+    const { data: purchaseLots, error: purchaseLotsError } = await owner
+      .from("investment_lots")
+      .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+      .eq("position_id", purchasePosition.id);
+    assert.ifError(purchaseLotsError);
+    assert.equal(purchaseLots.length, 1);
+    assert.equal(Number(purchaseLots[0].remaining_share_count), 100);
+    assert.equal(Number(purchaseLots[0].remaining_cost_basis), 50000);
+    const { data: purchaseRetry, error: purchaseRetryError } = await owner.rpc("record_share_purchase_fifo", {
+      p_action_id: purchaseActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: purchasePayload.investment_key,
+      p_investment_name: purchasePayload.investment_name,
+      p_investment_kind: purchasePayload.investment_kind,
+      p_tax_treatment: purchasePayload.tax_treatment,
+      p_acquisition_date: purchasePayload.acquisition_date,
+      p_share_count: purchasePayload.share_count,
+      p_purchase_amount: purchasePayload.purchase_amount,
+      p_org_number: purchasePayload.org_number,
+      p_bank_transaction_id: purchaseBankTransaction.id,
+      p_document_id: purchaseDocumentId,
+      p_document_status: purchasePayload.document_status,
+    });
+    assert.ifError(purchaseRetryError);
+    assert.equal(purchaseRetry.idempotent, true);
     const { data: outsiderPositions, error: outsiderPositionError } = await outsider
       .from("investment_positions")
       .select("id")
       .eq("id", purchasePosition.id);
     assert.ifError(outsiderPositionError);
     assert.deepEqual(outsiderPositions, []);
-    const { error: outsiderPurchaseActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "share_purchase",
-      action_date: purchasePayload.acquisition_date,
-      payload: purchasePayload,
-      ledger_entry_id: purchaseEntry.id,
-      bank_transaction_id: purchaseBankTransaction.id,
-      document_id: purchaseDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
+    const { error: outsiderPurchaseActionInsertError } = await outsider.rpc("record_share_purchase_fifo", {
+      p_action_id: randomUUID(),
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_investment_key: "forbidden",
+      p_investment_name: "Forbidden AS",
+      p_investment_kind: "norwegian_private_company",
+      p_tax_treatment: "fritaksmetoden",
+      p_acquisition_date: "2025-05-01",
+      p_share_count: 1,
+      p_purchase_amount: 1,
+      p_org_number: null,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: "not_required",
     });
     assert.ok(outsiderPurchaseActionInsertError);
     const { error: outsiderPurchasePositionInsertError } = await outsider.from("investment_positions").insert({
@@ -1854,6 +2226,12 @@ test(
           investmentName: "Portfolio AS",
           currentShareCount: 100,
           currentCostBasis: 50000,
+          acquisitionLots: purchaseLots.map((lot) => ({
+            id: lot.id,
+            acquisitionDate: lot.acquisition_date,
+            remainingShareCount: Number(lot.remaining_share_count),
+            remainingCostBasis: Number(lot.remaining_cost_basis),
+          })),
           saleDate: "2025-08-01",
           soldShareCount: 101,
           proceeds: 30000,
@@ -1895,6 +2273,12 @@ test(
       investmentName: "Portfolio AS",
       currentShareCount: 100,
       currentCostBasis: 50000,
+      acquisitionLots: purchaseLots.map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: "2025-08-01",
       soldShareCount: 40,
       proceeds: 30000,
@@ -1904,65 +2288,22 @@ test(
     });
     assert.equal(salePayload.cost_basis_reduction, 20000);
     assert.equal(salePayload.gain_or_loss, 10000);
-    const saleLines = shareSaleLedgerLines(salePayload);
-    const { data: saleEntry, error: saleEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "share_sale",
-        memo: "Share sale: Portfolio AS",
-        lines: saleLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(saleEntryError);
-    assert.deepEqual(saleEntry.lines, saleLines);
     const saleActionId = randomUUID();
-    const { data: saleAction, error: saleActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: saleActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "share_sale",
-        action_date: salePayload.sale_date,
-        payload: salePayload,
-        ledger_entry_id: saleEntry.id,
-        bank_transaction_id: saleBankTransaction.id,
-        document_id: saleDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(saleActionError);
-    assert.equal(saleAction.action_type, "share_sale");
-    const saleMovement = {
-      action_id: saleAction.id,
-      movement_type: "sale",
-      movement_date: salePayload.sale_date,
-      share_delta: -salePayload.sold_share_count,
-      cost_basis_delta: -salePayload.cost_basis_reduction,
-      amount: salePayload.proceeds,
-      gain_or_loss: salePayload.gain_or_loss,
-    };
-    const { error: salePositionUpdateError } = await owner
-      .from("investment_positions")
-      .update({
-        share_count: salePayload.remaining_share_count,
-        cost_basis: salePayload.remaining_cost_basis,
-        movements: [saleMovement],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchasePosition.id);
-    assert.ifError(salePositionUpdateError);
-    const { error: saleBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: saleAction.id })
-      .eq("id", saleBankTransaction.id);
-    assert.ifError(saleBankMatchError);
+    const { data: saleWrite, error: saleWriteError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: saleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: salePayload.sale_date,
+      p_sold_share_count: salePayload.sold_share_count,
+      p_proceeds: salePayload.proceeds,
+      p_bank_transaction_id: saleBankTransaction.id,
+      p_document_id: saleDocumentId,
+      p_document_status: salePayload.document_status,
+    });
+    assert.ifError(saleWriteError);
+    assert.equal(Number(saleWrite.payload.cost_basis_reduction), 20000);
+    assert.equal(Number(saleWrite.payload.gain_or_loss), 10000);
     const { data: positionAfterPartialSale, error: partialSaleReloadError } = await owner
       .from("investment_positions")
       .select("id, share_count, cost_basis, movements")
@@ -1971,7 +2312,27 @@ test(
     assert.ifError(partialSaleReloadError);
     assert.equal(Number(positionAfterPartialSale.share_count), 60);
     assert.equal(Number(positionAfterPartialSale.cost_basis), 30000);
-    assert.equal(positionAfterPartialSale.movements[0].gain_or_loss, 10000);
+    assert.equal(positionAfterPartialSale.movements.at(-1).gain_or_loss, 10000);
+    const { data: partialLots, error: partialLotsError } = await owner
+      .from("investment_lots")
+      .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+      .eq("position_id", purchasePosition.id)
+      .gt("remaining_share_count", 0);
+    assert.ifError(partialLotsError);
+    const { data: saleRetry, error: saleRetryError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: saleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: salePayload.sale_date,
+      p_sold_share_count: salePayload.sold_share_count,
+      p_proceeds: salePayload.proceeds,
+      p_bank_transaction_id: saleBankTransaction.id,
+      p_document_id: saleDocumentId,
+      p_document_status: salePayload.document_status,
+    });
+    assert.ifError(saleRetryError);
+    assert.equal(saleRetry.idempotent, true);
 
     const fullSalePayload = validateShareSale({
       positionId: purchasePosition.id,
@@ -1979,6 +2340,12 @@ test(
       investmentName: "Portfolio AS",
       currentShareCount: 60,
       currentCostBasis: 30000,
+      acquisitionLots: partialLots.map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: "2025-09-01",
       soldShareCount: 60,
       proceeds: 30000,
@@ -1986,27 +2353,20 @@ test(
     });
     assert.equal(fullSalePayload.remaining_share_count, 0);
     assert.equal(fullSalePayload.remaining_cost_basis, 0);
-    const { error: fullSalePositionUpdateError } = await owner
-      .from("investment_positions")
-      .update({
-        share_count: fullSalePayload.remaining_share_count,
-        cost_basis: fullSalePayload.remaining_cost_basis,
-        movements: [
-          ...positionAfterPartialSale.movements,
-          {
-            action_id: "full-sale-test",
-            movement_type: "sale",
-            movement_date: fullSalePayload.sale_date,
-            share_delta: -fullSalePayload.sold_share_count,
-            cost_basis_delta: -fullSalePayload.cost_basis_reduction,
-            amount: fullSalePayload.proceeds,
-            gain_or_loss: fullSalePayload.gain_or_loss,
-          },
-        ],
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchasePosition.id);
-    assert.ifError(fullSalePositionUpdateError);
+    const fullSaleActionId = randomUUID();
+    const { error: fullSaleError } = await owner.rpc("record_share_sale_fifo", {
+      p_action_id: fullSaleActionId,
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: fullSalePayload.sale_date,
+      p_sold_share_count: fullSalePayload.sold_share_count,
+      p_proceeds: fullSalePayload.proceeds,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: fullSalePayload.document_status,
+    });
+    assert.ifError(fullSaleError);
     const { data: positionAfterFullSale, error: fullSaleReloadError } = await owner
       .from("investment_positions")
       .select("share_count, cost_basis, movements")
@@ -2015,169 +2375,21 @@ test(
     assert.ifError(fullSaleReloadError);
     assert.equal(Number(positionAfterFullSale.share_count), 0);
     assert.equal(Number(positionAfterFullSale.cost_basis), 0);
-    assert.equal(positionAfterFullSale.movements.length, 2);
+    assert.equal(positionAfterFullSale.movements.length, 3);
 
-    const { error: outsiderSaleActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "share_sale",
-      action_date: salePayload.sale_date,
-      payload: salePayload,
-      ledger_entry_id: saleEntry.id,
-      bank_transaction_id: saleBankTransaction.id,
-      document_id: saleDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
+    const { error: outsiderSaleActionInsertError } = await outsider.rpc("record_share_sale_fifo", {
+      p_action_id: randomUUID(),
+      p_company_id: companyId,
+      p_income_year: 2025,
+      p_position_id: purchasePosition.id,
+      p_sale_date: "2025-10-01",
+      p_sold_share_count: 1,
+      p_proceeds: 1,
+      p_bank_transaction_id: null,
+      p_document_id: null,
+      p_document_status: "not_required",
     });
     assert.ok(outsiderSaleActionInsertError);
-
-    assert.throws(
-      () =>
-        validateOwnerDividend({
-          decisionDate: "2025-06-01",
-          paymentDate: "2025-06-15",
-          totalAmount: 1000,
-          distributableEquity: 5000,
-          liquidityAfterPayment: 1000,
-          documentStatus: "attached",
-          allocations: [{ shareholderId: persistedShareholders[0].id, shareholderName: persistedShareholders[0].name, shareCount: 100, amount: 900 }],
-        }),
-      (error) => error?.code === "allocation_mismatch",
-    );
-    const ownerDividendPayload = validateOwnerDividend({
-      decisionDate: "2025-06-01",
-      paymentDate: "2025-06-15",
-      totalAmount: 1000,
-      distributableEquity: 5000,
-      liquidityAfterPayment: 1000,
-      documentStatus: "attached",
-      allocations: [{ shareholderId: persistedShareholders[0].id, shareholderName: persistedShareholders[0].name, shareCount: 100, amount: 1000 }],
-    });
-    const ownerDividendActionId = randomUUID();
-    const ownerDividendLedgerEntryId = randomUUID();
-    const generatedDividendDocuments = await generateOwnerDividendCorporateDocuments({
-      companyName: persistedCompany.name,
-      orgNumber: persistedCompany.org_number,
-      incomeYear: 2025,
-      payload: ownerDividendPayload,
-    });
-    const preparedDividendDocuments = prepareOwnerDividendCorporateDocuments({
-      companyId,
-      incomeYear: 2025,
-      actionId: ownerDividendActionId,
-      createdBy: ownerUser.id,
-      documents: generatedDividendDocuments,
-    });
-    for (const document of preparedDividendDocuments) {
-      const { error: uploadError } = await owner.storage
-        .from(COMPANY_DOCUMENTS_BUCKET)
-        .upload(
-          document.storageKey,
-          new Blob([new Uint8Array(document.content)], { type: document.contentType }),
-          { contentType: document.contentType },
-        );
-      assert.ifError(uploadError);
-      storageKeysToCleanup.push(document.storageKey);
-    }
-    const { error: ownerDividendRpcError } = await owner.rpc("record_owner_dividend_action", {
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_ledger_entry_id: ownerDividendLedgerEntryId,
-      p_action_id: ownerDividendActionId,
-      p_payload: ownerDividendPayload,
-      p_documents: preparedDividendDocuments.map((document) => ({
-        id: document.id,
-        name: document.fileName,
-        storage_key: document.storageKey,
-      })),
-    });
-    assert.ifError(ownerDividendRpcError);
-    const { data: ownerDividendEntry, error: ownerDividendEntryError } = await owner
-      .from("ledger_entries")
-      .select("id, entry_type, lines")
-      .eq("id", ownerDividendLedgerEntryId)
-      .single();
-    assert.ifError(ownerDividendEntryError);
-    const ownerDividendLines = ownerDividendLedgerLines(ownerDividendPayload);
-    assert.equal(ownerDividendEntry.entry_type, "dividend_to_owner");
-    assert.deepEqual(ownerDividendEntry.lines, ownerDividendLines);
-    const { data: ownerDividendAction, error: ownerDividendActionError } = await owner
-      .from("holding_actions")
-      .select("id, action_type, ledger_entry_id, payload")
-      .eq("id", ownerDividendActionId)
-      .single();
-    assert.ifError(ownerDividendActionError);
-    assert.equal(ownerDividendAction.action_type, "dividend_to_owner");
-    assert.equal(ownerDividendAction.ledger_entry_id, ownerDividendEntry.id);
-    const { data: corporateDocuments, error: corporateDocumentReloadError } = await owner
-      .from("documents")
-      .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
-      .eq("linked_to", ownerDividendAction.id)
-      .order("name", { ascending: true });
-    assert.ifError(corporateDocumentReloadError);
-    assert.equal(corporateDocuments.length, 2);
-    assert.deepEqual(
-      corporateDocuments.map((document) => document.document_type),
-      ["corporate_document", "corporate_document"],
-    );
-    assert.ok(corporateDocuments.every((document) => document.status === "generated_unsigned"));
-    assert.ok(corporateDocuments.every((document) => document.name.endsWith(".pdf")));
-    for (const document of corporateDocuments) {
-      const { data: signedDocument, error: signedDocumentError } = await owner.storage
-        .from(COMPANY_DOCUMENTS_BUCKET)
-        .createSignedUrl(document.storage_key, 60);
-      assert.ifError(signedDocumentError);
-      assert.ok(signedDocument.signedUrl);
-    }
-    const invalidDividendLedgerId = randomUUID();
-    const invalidDividendActionId = randomUUID();
-    const { error: incompleteDividendError } = await owner.rpc("record_owner_dividend_action", {
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_ledger_entry_id: invalidDividendLedgerId,
-      p_action_id: invalidDividendActionId,
-      p_payload: ownerDividendPayload,
-      p_documents: [
-        {
-          id: preparedDividendDocuments[0].id,
-          name: preparedDividendDocuments[0].fileName,
-          storage_key: preparedDividendDocuments[0].storageKey,
-        },
-      ],
-    });
-    assert.ok(incompleteDividendError);
-    const { data: incompleteDividendEntries, error: incompleteDividendEntriesError } = await owner
-      .from("ledger_entries")
-      .select("id")
-      .eq("id", invalidDividendLedgerId);
-    assert.ifError(incompleteDividendEntriesError);
-    assert.deepEqual(incompleteDividendEntries, []);
-    const dividendArchive = buildPersistedCompanyArchive({
-      company: persistedCompany,
-      incomeYear: 2025,
-      setups: [setup],
-      shareholders: persistedShareholders,
-      ledgerEntries: [ownerDividendEntry],
-      documents: corporateDocuments,
-      filingPreviews: [filingPreview],
-      filingSubmissions: [filingSubmission],
-    });
-    assert.equal(dividendArchive.documents.length, 2);
-    assert.deepEqual(
-      dividendArchive.documents.map((document) => document.documentType),
-      ["corporate_document", "corporate_document"],
-    );
-    const { error: outsiderOwnerDividendActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "dividend_to_owner",
-      action_date: ownerDividendPayload.payment_date,
-      payload: ownerDividendPayload,
-      ledger_entry_id: ownerDividendEntry.id,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
-    });
-    assert.ok(outsiderOwnerDividendActionInsertError);
 
     assert.throws(
       () =>
@@ -2301,7 +2513,7 @@ test(
       holdingActions: [{ action_type: "dividend_received", payload: dividendPayload }],
     });
     assert.equal(taxEstimate.status, "payable");
-    assert.equal(taxEstimate.estimatedTax, 55);
+    assert.equal(taxEstimate.estimatedTax, 17.6);
     const taxDocumentId = randomUUID();
     const { error: taxDocumentError } = await owner.from("documents").insert({
       id: taxDocumentId,
@@ -2322,8 +2534,8 @@ test(
         income_year: 2025,
         transaction_date: "2025-12-31",
         text: "Tax payment",
-        amount: -55,
-        balance: 39895,
+        amount: -17.6,
+        balance: 30932.4,
         source_hash: `tax-bank-${randomUUID()}`,
         created_by: ownerUser.id,
       })
@@ -2558,31 +2770,12 @@ test(
 
     const documentId = randomUUID();
     const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
-    const orphanStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "orphan.pdf");
-    const { error: orphanUploadError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .upload(orphanStorageKey, new Blob(["orphan"], { type: "application/pdf" }), {
-        contentType: "application/pdf",
-      });
-    assert.ifError(orphanUploadError);
-    storageKeysToCleanup.push(orphanStorageKey);
-    const { error: orphanCleanupError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .remove([orphanStorageKey]);
-    assert.ifError(orphanCleanupError);
-    const { data: removedOrphan, error: removedOrphanError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .download(orphanStorageKey);
-    assert.equal(removedOrphan, null);
-    assert.ok(removedOrphanError);
-
     const { error: uploadError } = await owner.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
       .upload(storageKey, new Blob(["test"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ifError(uploadError);
-    storageKeysToCleanup.push(storageKey);
 
     const { error: documentInsertError } = await owner.from("documents").insert({
       id: documentId,
@@ -2596,13 +2789,6 @@ test(
       created_by: ownerUser.id,
     });
     assert.ifError(documentInsertError);
-
-    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
-    const { data: retainedObject, error: retainedObjectError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .download(storageKey);
-    assert.ifError(retainedObjectError);
-    assert.equal(await retainedObject.text(), "test");
 
     const { data: ownerDocuments, error: ownerDocumentError } = await owner
       .from("documents")
@@ -2634,6 +2820,11 @@ test(
       .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
       .eq("company_id", companyId);
     assert.ifError(persistedAuthorityError);
+    const { data: persistedBankSuggestionAcceptances, error: persistedBankSuggestionAcceptanceError } = await owner
+      .from("bank_suggestion_acceptances")
+      .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
+      .eq("company_id", companyId);
+    assert.ifError(persistedBankSuggestionAcceptanceError);
     const archive = buildPersistedCompanyArchive({
       company: persistedCompany,
       incomeYear: 2025,
@@ -2642,6 +2833,7 @@ test(
       ledgerEntries: persistedLedgerEntries,
       documents: ownerDocuments,
       holdingActions: persistedHoldingActions,
+      bankSuggestionAcceptances: persistedBankSuggestionAcceptances,
       billingAccounts: persistedBillingAccounts,
       authorityPermissions: persistedAuthorityPermissions,
       filingPreviews: [filingPreview],
@@ -2662,6 +2854,7 @@ test(
     assert.equal(archive.taxSettlements[0].document.id, taxDocumentId);
     assert.equal(archive.billingAccounts[0].refund_eligible, true);
     assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
+    assert.equal(archive.bankSuggestionAcceptances[0].rule_id, "bank_fee");
 
     const { data: outsiderArchiveCompany, error: outsiderArchiveCompanyError } = await outsider
       .from("companies")
@@ -2697,6 +2890,80 @@ test(
     assert.ifError(readOnlyDocumentError);
     assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
 
+    const linkedRemoval = await owner.rpc("remove_unlinked_document", {
+      p_document_id: dividendDocumentId,
+    });
+    assert.match(linkedRemoval.error?.message ?? "", /document_removal_evidence_linked/);
+
+    const removableDocumentId = randomUUID();
+    const removableStorageKey = documentStorageKey(
+      companyId,
+      2025,
+      removableDocumentId,
+      "uploaded-by-mistake.pdf",
+    );
+    const { error: removableUploadError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .upload(removableStorageKey, new Blob(["%PDF-test"], { type: "application/pdf" }), {
+        contentType: "application/pdf",
+      });
+    assert.ifError(removableUploadError);
+    const { error: removableInsertError } = await owner.from("documents").insert({
+      id: removableDocumentId,
+      company_id: companyId,
+      income_year: 2025,
+      document_type: "accounting_document",
+      name: "uploaded-by-mistake.pdf",
+      linked_to: "workspace",
+      status: "attached",
+      storage_key: removableStorageKey,
+      created_by: ownerUser.id,
+    });
+    assert.ifError(removableInsertError);
+
+    const reviewerRemoval = await reviewer.rpc("remove_unlinked_document", {
+      p_document_id: removableDocumentId,
+    });
+    assert.match(reviewerRemoval.error?.message ?? "", /document_removal_not_allowed/);
+    const outsiderRemoval = await outsider.rpc("remove_unlinked_document", {
+      p_document_id: removableDocumentId,
+    });
+    assert.match(outsiderRemoval.error?.message ?? "", /document_removal_not_allowed/);
+
+    const { data: removalResult, error: removalError } = await owner.rpc(
+      "remove_unlinked_document",
+      { p_document_id: removableDocumentId },
+    );
+    assert.ifError(removalError);
+    assert.deepEqual(removalResult, [{ storage_key: removableStorageKey }]);
+    const { data: removedDocument, error: removedDocumentError } = await owner
+      .from("documents")
+      .select("status, removed_at, removed_by, removal_reason")
+      .eq("id", removableDocumentId)
+      .single();
+    assert.ifError(removedDocumentError);
+    assert.equal(removedDocument.status, "removed");
+    assert.ok(removedDocument.removed_at);
+    assert.equal(removedDocument.removed_by, ownerUser.id);
+    assert.equal(removedDocument.removal_reason, "accidental_unlinked_upload");
+
+    const hiddenRemovedObject = await reviewer.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .createSignedUrl(removableStorageKey, 60);
+    assert.equal(hiddenRemovedObject.data, null);
+    assert.ok(hiddenRemovedObject.error);
+    const { error: removableObjectDeleteError } = await owner.storage
+      .from(COMPANY_DOCUMENTS_BUCKET)
+      .remove([removableStorageKey]);
+    assert.ifError(removableObjectDeleteError);
+    const { data: removalAudit, error: removalAuditError } = await owner
+      .from("audit_events")
+      .select("action")
+      .eq("company_id", companyId)
+      .eq("action", "document_removal_requested");
+    assert.ifError(removalAuditError);
+    assert.deepEqual(removalAudit, [{ action: "document_removal_requested" }]);
+
     const { data: outsiderSigned, error: outsiderSignedError } = await outsider.storage
       .from(COMPANY_DOCUMENTS_BUCKET)
       .createSignedUrl(storageKey, 60);
@@ -2718,23 +2985,18 @@ test(
         contentType: "application/pdf",
       });
     assert.ok(readOnlyUploadError);
+
+    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
   } finally {
-    await admin.from("launch_signoff_events").delete().eq("signoff_key", rf1086LaunchSignoffKey);
-    await admin.from("launch_signoffs").delete().eq("key", rf1086LaunchSignoffKey);
-    await admin.from("launch_signoff_events").delete().eq("signoff_key", launchSignoffKey);
-    await admin.from("launch_signoffs").delete().eq("key", launchSignoffKey);
-    if (storageKeysToCleanup.length) {
-      await admin.storage.from(COMPANY_DOCUMENTS_BUCKET).remove(storageKeysToCleanup);
-    }
     if (companyId) {
       await admin.from("companies").delete().eq("id", companyId);
     }
     await admin.auth.admin.deleteUser(ownerUser.id);
+    await admin.auth.admin.deleteUser(secondOwnerUser.id);
     await admin.auth.admin.deleteUser(outsiderUser.id);
     await admin.auth.admin.deleteUser(reviewerUser.id);
     await admin.auth.admin.deleteUser(readOnlyUser.id);
     await admin.auth.admin.deleteUser(inviteeUser.id);
-    await admin.auth.admin.deleteUser(grantAdminUser.id);
   }
   },
 );

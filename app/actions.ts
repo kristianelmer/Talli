@@ -1,6 +1,8 @@
 "use server";
 
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AdminCostCategory,
@@ -8,6 +10,7 @@ import {
   buildAdminCostLedgerLines,
   parseBankCsv,
 } from "./lib/bank";
+import { suggestBankTransaction } from "./lib/bank-suggestions";
 import {
   applyBillingProviderEvent,
   BillingValidationError,
@@ -18,20 +21,65 @@ import {
 } from "./lib/billing";
 import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
-import { buildAuthorityTestRun, type AuthorityTestRunEnvironment, type AuthorityTestRunStatus } from "./lib/authority-test-evidence";
+import { onboardCustomer } from "./lib/customer-onboarding";
+import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
+import { getSiteUrl } from "./lib/site-url";
+import {
+  buildAnnualAccountsAuthorityTestRunFromEvidence,
+  buildAuthorityTestRun,
+  type AuthorityTestRunEnvironment,
+  type AuthorityTestRunStatus,
+} from "./lib/authority-test-evidence";
 import { validateAuthorityObligation } from "./lib/authority-permission";
+import {
+  AUTHORITY_OPERATION,
+  AuthorityOperationError,
+  RF1086_RIGHT,
+  SYSTEMBRUKER_CALLBACK_OPERATION,
+  SYSTEMBRUKER_CALLBACK_PATH,
+  assertAuthorityOperationIntent,
+  assertSystembrukerCallbackOperationIntent,
+  authorityOperationEnvironmentFailureCode,
+  authorityOperationRequestHash,
+  buildRf1086SystemDefinition,
+  buildRf1086SystembrukerCallbackDefinition,
+  executeRf1086SystemRegistration,
+  executeRf1086SystembrukerCallbackUpdate,
+  productionAuthorityOperationEnvironment,
+} from "./lib/authority-operations";
+import { buildCompanyTaxReturnEvidencePersistence } from "./lib/company-tax-return-submission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
-import { encodeActionError, encodePublicActionError } from "./lib/action-errors";
-import { AuthInputError, validateSignupPassword } from "./lib/auth-input";
+import { buildAnnualAccountsPayload } from "./lib/annual-accounts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
-import { actionReturnPath } from "./lib/action-return";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
   COMPANY_DOCUMENTS_BUCKET,
-  DocumentUploadValidationError,
   documentStorageKey,
   validateDocumentUpload,
 } from "./lib/documents";
+import {
+  CorporateDecisionFactsError,
+  buildAnnualCloseDecisionInput,
+  buildOwnerDividendDecisionInput,
+  corporateAnnualSourceHash,
+} from "./lib/corporate-decision-facts";
+import { buildAnnualCloseBasis } from "./lib/annual-corporate-documents";
+import {
+  type CorporateArtifactKind,
+  type CorporateDecisionInput,
+  corporateDecisionHash,
+  renderCorporateDocuments,
+} from "./lib/corporate-documents";
+import {
+  type CorporateStorageClient,
+  uploadCorporateArtifacts,
+} from "./lib/corporate-document-storage";
+import {
+  corporateSignedArtifactStorageKey,
+  requiredCorporateArtifactSigners,
+  uploadSignedCorporateArtifact,
+  validateSignedCorporateArtifactUpload,
+} from "./lib/corporate-signed-artifacts";
 import {
   DividendReceivedValidationError,
   dividendReceivedLedgerLines,
@@ -47,6 +95,7 @@ import {
   validateInvitationRole,
 } from "./lib/invitations";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
+import { actionReturnPath } from "./lib/action-return";
 import { validateManualJournal } from "./lib/manual-journal";
 import {
   OpeningShareholderInput,
@@ -54,18 +103,17 @@ import {
   validateOpeningBalanceInput,
 } from "./lib/opening-balance";
 import {
-  allocateOwnerDividend,
-  OwnerDividendValidationError,
-  validateOwnerDividend,
+  OwnerDividendDraftBasisError,
+  buildOwnerDividendAnnualBasis,
 } from "./lib/owner-dividend";
 import {
-  COMPANY_DOCUMENTS_BUCKET as OWNER_DIVIDEND_DOCUMENTS_BUCKET,
-  OwnerDividendDocumentGenerationError,
-  generateOwnerDividendCorporateDocuments,
-  prepareOwnerDividendCorporateDocuments,
-} from "./lib/owner-dividend-documents";
+  deriveOpenDividendPayable,
+  OwnerDividendPaymentError,
+  validateOwnerDividendPaymentInput,
+} from "./lib/owner-dividend-payment";
 import {
   Rf1086ProductionAdapterDisabledError,
+  rf1086ProductionEnvironment,
   rf1086PayloadHash,
   rf1086ReceiptMetadata,
   rf1086SubmissionFeedbackItems,
@@ -74,17 +122,61 @@ import {
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
 } from "./lib/rf1086-submission";
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "./lib/rf1086";
+import {
+  approvalMatchesCurrentPayload,
+  buildProductionApprovalManifest,
+  productionApprovalHash,
+} from "./lib/production-approval";
+import {
+  createRf1086FeedbackArtifactPersistenceError,
+  executeJournaledRf1086Production,
+  executeRf1086ProductionRelease,
+  reconcileJournaledRf1086Production,
+  type ProductionOperation,
+  type ProductionOperationJournal,
+  type Rf1086ProductionJournal,
+  type Rf1086ReconciliationState,
+} from "./lib/rf1086-production";
+import { createRf1086FeedbackArtifactRecorder } from "./lib/rf1086-feedback-persistence";
+import { createRf1086AuthorityClient } from "./lib/rf1086-authority-client";
+import {
+  buildRf1086OwnerReconciliationActionState,
+  type Rf1086OwnerActionErrorCode,
+  type Rf1086OwnerReconciliationActionState,
+} from "./lib/rf1086-production-presentation";
+import { requestMaskinportenToken } from "./lib/maskinporten";
+import {
+  SYSTEM_USER_COOKIE,
+  callbackStateForResult,
+  createProductionSystemUserFlowDependencies,
+  reconcileSystemUserRequest,
+  retrySystemUserRequest,
+  startSystemUserRequest,
+  systemUserRequestRecordFromRow,
+} from "./lib/system-user-flow";
+import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
-import { requireStepUpForAction, SensitiveAction, SensitiveActionStepUpError } from "./lib/security";
-import { SharePurchaseValidationError, sharePurchaseLedgerLines, validateSharePurchase } from "./lib/share-purchase";
-import { ShareSaleValidationError, shareSaleLedgerLines, validateShareSale } from "./lib/share-sale";
+import {
+  assertStepUpAllowed,
+  loadTrustedStepUpContext,
+  requireStepUpForAction,
+  SensitiveAction,
+  SensitiveActionStepUpError,
+} from "./lib/security";
+import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
+import { ShareSaleValidationError, validateShareSale } from "./lib/share-sale";
 import {
   ShareholderLoanValidationError,
   shareholderLoanLedgerLines,
   validateShareholderLoan,
 } from "./lib/shareholder-loan";
-import { createSupabaseServerClient, hasSupabaseEnv } from "./lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+  hasSupabaseEnv,
+  type AnnualDataRow,
+  type LedgerEntryRow,
+} from "./lib/supabase/server";
 import {
   TaxSettlementValidationError,
   expectedBankAmountForTaxSettlement,
@@ -102,11 +194,181 @@ function formRawString(formData: FormData, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-function completeAnnualWorkspaceAction(formData: FormData) {
-  const returnTo = actionReturnPath(formData.get("returnTo"));
-  revalidatePath("/");
-  if (returnTo !== "/") revalidatePath(returnTo.split(/[?#]/, 1)[0]);
-  redirect(returnTo);
+function formStrings(formData: FormData, key: string) {
+  return formData.getAll(key).map((value) => typeof value === "string" ? value.trim() : "");
+}
+
+function requiredFormUuid(formData: FormData, key: string) {
+  const value = formString(formData, key);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`Ugyldig forespørsels-ID: ${key}.`);
+  }
+  return value;
+}
+
+type CorporateDraftArtifactIds = Partial<Record<
+  CorporateArtifactKind,
+  { artifactId: string; documentId: string }
+>>;
+
+async function persistCorporateDocumentDraft(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  decision: CorporateDecisionInput;
+  setId: string;
+  artifactIds: CorporateDraftArtifactIds;
+}) {
+  const rendered = await renderCorporateDocuments(input.decision);
+  if (rendered.status === "blocked") {
+    throw new Error(`${rendered.issues[0].code}: ${rendered.issues[0].message}`);
+  }
+  const uploadResult = await uploadCorporateArtifacts({
+    companyId: input.decision.company_id,
+    incomeYear: input.decision.income_year,
+    setId: input.setId,
+    artifacts: rendered.artifacts,
+    storageClient: input.supabase as unknown as CorporateStorageClient,
+  });
+  try {
+    const decisionHash = corporateDecisionHash(input.decision);
+    const rpcArtifacts = rendered.artifacts.map((artifact) => {
+      const ids = input.artifactIds[artifact.artifactKind];
+      const uploaded = uploadResult.artifacts.find(
+        (candidate) => candidate.artifactKind === artifact.artifactKind,
+      );
+      if (!ids || !uploaded) {
+        throw new Error("Dokumentsettet mangler en påkrevd PDF-identitet.");
+      }
+      return {
+        id: ids.artifactId,
+        document_id: ids.documentId,
+        artifact_kind: artifact.artifactKind,
+        name: artifact.filename,
+        content_sha256: artifact.contentSha256,
+        byte_length: artifact.byteLength,
+        mime_type: "application/pdf",
+        storage_key: uploaded.storageKey,
+      };
+    });
+    const { error: draftError } = await input.supabase.rpc("create_corporate_document_draft", {
+      p_payload: {
+        decision: {
+          id: input.decision.request_id,
+          company_id: input.decision.company_id,
+          income_year: input.decision.income_year,
+          decision_kind: input.decision.decision_kind,
+          annual_close_source_id: input.decision.annual_close_source_id,
+          source_hash: input.decision.source_hash,
+          canonical_input: input.decision,
+          decision_hash: decisionHash,
+        },
+        document_set: {
+          id: input.setId,
+          template_family: input.decision.template_family,
+          template_version: input.decision.template_version,
+          decision_hash: decisionHash,
+        },
+        artifacts: rpcArtifacts,
+        idempotency_key: `corporate-draft:${input.decision.request_id}`,
+      },
+    });
+    if (draftError) {
+      throw new Error(draftError.message);
+    }
+    return { decisionHash, rendered };
+  } catch (error) {
+    const cleanup = uploadResult.newlyUploadedKeys.length
+      ? await input.supabase.storage
+          .from(COMPANY_DOCUMENTS_BUCKET)
+          .remove(uploadResult.newlyUploadedKeys)
+      : { error: null };
+    if (cleanup.error) {
+      throw new AggregateError(
+        [error, new Error(cleanup.error.message)],
+        "Dokumentutkastet feilet, og nye PDF-objekter kunne ikke ryddes opp.",
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Post-action redirect target. Owner forms can pass a hidden `returnTo` so the
+ * guided flows (onboarding #95, holding-action wizards #96) keep control of the
+ * flow; everything else defaults to the transitional /workspace surface. Only
+ * known internal owner paths are allowed.
+ */
+const RETURN_TO_ALLOWLIST = new Set([
+  "/workspace",
+  "/onboarding",
+  "/onboarding?step=bank",
+  "/actions",
+  "/dashboard",
+  "/filing/aksjonaerregisteroppgaven",
+  "/filing/skattemelding",
+  "/filing/aarsregnskap",
+  "/transactions",
+  "/documents",
+  "/year-end",
+]);
+
+function returnTarget(formData: FormData): string {
+  const raw = formString(formData, "returnTo");
+  const annualTarget = actionReturnPath(raw);
+  if (annualTarget !== "/") return annualTarget;
+  return RETURN_TO_ALLOWLIST.has(raw) ? raw : "/workspace";
+}
+
+function failTo(returnTo: string, message: string): never {
+  const separator = returnTo.includes("?") ? "&" : "?";
+  redirect(`${returnTo}${separator}error=${encodeURIComponent(message)}`);
+}
+
+const investmentWriteErrors: Record<string, string> = {
+  authentication_required: "Innlogging kreves.",
+  company_owner_required: "Bare eier kan postere aksjekjøp og aksjesalg.",
+  income_year_locked: "Regnskapsåret er låst.",
+  idempotency_key_conflict: "Handlings-ID er allerede brukt til en annen postering.",
+  bank_transaction_mismatch: "Banktransaksjonen er ugyldig, allerede avstemt eller har feil beløp.",
+  bank_transaction_concurrent_match: "Banktransaksjonen ble avstemt av en annen handling. Last siden på nytt.",
+  document_mismatch: "Bilaget tilhører ikke valgt selskap og år.",
+  investment_position_identity_conflict: "Investerings-ID-en finnes med andre selskaps- eller skatteopplysninger.",
+  investment_position_mismatch: "Investeringsposisjonen tilhører ikke valgt selskap.",
+  lot_history_incomplete: "Anskaffelseshistorikken må rekonstrueres før aksjene kan selges.",
+  missing_acquisition_lots: "Aksjesalget mangler anskaffelsesposter.",
+  lot_position_mismatch: "Anskaffelsespostene stemmer ikke med investeringsposisjonen.",
+  sale_exceeds_lots: "Salg kan ikke overstige tilgjengelige aksjer.",
+};
+
+function investmentWriteError(message: string) {
+  const code = Object.keys(investmentWriteErrors).find((candidate) => message.includes(candidate));
+  return code ? `${code}: ${investmentWriteErrors[code]}` : "Investeringsposteringen kunne ikke lagres atomisk.";
+}
+
+const bankSuggestionErrors: Record<string, string> = {
+  authentication_required: "Innlogging kreves.",
+  bank_transaction_not_found: "Fant ikke banktransaksjonen.",
+  company_owner_required: "Bare eier kan godkjenne et bankforslag.",
+  income_year_locked: "Regnskapsåret er låst.",
+  bank_transaction_already_reconciled: "Banktransaksjonen er allerede avstemt.",
+  bank_suggestion_acceptance_conflict: "Et annet bankforslag er allerede godkjent.",
+  bank_rule_version_mismatch: "Forslaget er utdatert. Last siden på nytt.",
+  bank_suggestion_rule_mismatch: "Transaksjonen passer ikke lenger med forslaget.",
+  bank_suggestion_ambiguous: "Transaksjonsteksten er tvetydig og må vurderes manuelt.",
+  bank_suggestion_direction_mismatch: "Beløpsretningen passer ikke med forslaget.",
+};
+
+function bankSuggestionWriteError(message: string) {
+  const code = Object.keys(bankSuggestionErrors).find((candidate) => message.includes(candidate));
+  return code ? bankSuggestionErrors[code] : "Bankforslaget kunne ikke godkjennes atomisk.";
+}
+
+/**
+ * Post-success redirect for the holding-action wizards (#96). When the owner
+ * returns to the actions hub, flag `posted` so the hub can confirm the entry
+ * was booked; other return targets are left untouched.
+ */
+function succeedTo(returnTo: string): never {
+  redirect(returnTo === "/actions" ? "/actions?posted=1" : returnTo);
 }
 
 async function requireSensitiveActionStepUp(
@@ -121,45 +383,199 @@ async function requireSensitiveActionStepUp(
     const message =
       error instanceof SensitiveActionStepUpError
         ? error.userMessage
-        : "Sensitiv handling stoppet: MFA/step-up kreves.";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+        : error instanceof Error
+          ? error.message
+          : "Sensitiv handling stoppet: MFA/step-up kreves.";
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
+}
+
+type CorporateLifecycleActionContext = {
+  decision: {
+    id: string;
+    company_id: string;
+    income_year: number;
+    decision_kind: "owner_dividend" | "annual_close";
+    annual_close_source_id: string;
+    source_hash: string;
+    canonical_input: CorporateDecisionInput;
+    decision_hash: string;
+  };
+  documentSet: { id: string; decision_id: string; decision_hash: string };
+};
+
+function corporateDecisionPath(decisionId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decisionId)) {
+    return "/workspace";
+  }
+  return `/corporate-decisions/${decisionId}`;
+}
+
+async function loadCorporateLifecycleActionContext(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  decisionId: string;
+  setId: string;
+  submittedDecisionHash: string;
+  verifyCurrentAnnualSource?: boolean;
+}): Promise<CorporateLifecycleActionContext> {
+  const [decisionResult, setResult] = await Promise.all([
+    input.supabase
+      .from("corporate_decisions")
+      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash")
+      .eq("id", input.decisionId)
+      .maybeSingle(),
+    input.supabase
+      .from("corporate_document_sets")
+      .select("id, decision_id, decision_hash")
+      .eq("id", input.setId)
+      .maybeSingle(),
+  ]);
+  const decision = decisionResult.data as CorporateLifecycleActionContext["decision"] | null;
+  const documentSet = setResult.data as CorporateLifecycleActionContext["documentSet"] | null;
+  if (decisionResult.error || !decision || setResult.error || !documentSet) {
+    throw new Error(decisionResult.error?.message ?? setResult.error?.message ?? "Fant ikke selskapsbeslutningen.");
+  }
+
+  const membershipResult = await input.supabase
+    .from("company_memberships")
+    .select("company_id")
+    .eq("company_id", decision.company_id)
+    .eq("user_id", input.userId)
+    .eq("role", "owner")
+    .not("accepted_at", "is", null)
+    .maybeSingle();
+  if (membershipResult.error || !membershipResult.data) {
+    throw new Error("Bare en eier med akseptert tilgang kan behandle selskapsbeslutningen.");
+  }
+
+  let recomputedDecisionHash = "";
+  try {
+    recomputedDecisionHash = corporateDecisionHash(decision.canonical_input);
+  } catch {
+    throw new Error("Det lagrede beslutningsgrunnlaget er ugyldig.");
+  }
+  if (recomputedDecisionHash !== decision.decision_hash
+    || input.submittedDecisionHash !== decision.decision_hash
+    || documentSet.decision_id !== decision.id
+    || documentSet.decision_hash !== decision.decision_hash) {
+    throw new Error("Beslutningshashen er endret. Opprett og gjennomgå et nytt dokumentsett.");
+  }
+
+  if (input.verifyCurrentAnnualSource !== false) {
+    let annualQuery = input.supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
+      .eq("company_id", decision.company_id);
+    annualQuery = decision.decision_kind === "owner_dividend"
+      ? annualQuery.lte("income_year", decision.income_year)
+      : annualQuery.eq("income_year", decision.income_year);
+    const annualResult = await annualQuery.order("income_year", { ascending: false });
+    if (annualResult.error) throw new Error(annualResult.error.message);
+    const currentSource = (annualResult.data ?? []).find(
+      (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
+    ) as AnnualDataRow | undefined;
+    if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
+      throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+    }
+    const ledgerResult = await input.supabase
+      .from("ledger_entries")
+      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
+      .eq("company_id", decision.company_id)
+      .eq("income_year", currentSource.income_year);
+    if (ledgerResult.error) throw new Error(ledgerResult.error.message);
+    const currentBasis = buildAnnualCloseBasis({
+      annualData: currentSource,
+      annualAccountsPayload: buildAnnualAccountsPayload({
+        incomeYear: currentSource.income_year,
+        annualData: currentSource,
+        ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+      }),
+    });
+    if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
+      throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+    }
+  }
+  return { decision, documentSet };
 }
 
 export async function signIn(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/login?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
-  const password = formRawString(formData, "password");
+  const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    // Unconfirmed accounts are parked at the verification gate rather than
+    // shown a dead-end error — they keep going without re-entering anything.
+    if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
+      redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+    }
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
 
 export async function signUp(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/signup?error=Supabase%20env%20mangler");
   }
   const email = formString(formData, "email");
-  let password: string;
-  try {
-    password = validateSignupPassword(formRawString(formData, "password"));
-  } catch (error) {
-    const message = error instanceof AuthInputError ? error.message : "Passordet er ugyldig.";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+  const password = formString(formData, "password");
+  const supabase = await createSupabaseServerClient();
+  const siteUrl = await getSiteUrl();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+  });
+  if (error) {
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+  }
+  // With email confirmation off, Supabase returns an active, confirmed session
+  // immediately — go straight in. Otherwise send them to the verification gate.
+  if (data.session && data.user?.email_confirmed_at) {
+    revalidatePath("/dashboard");
+    redirect("/dashboard");
+  }
+  redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+}
+
+export async function resendConfirmation(formData: FormData) {
+  const email = formString(formData, "email");
+  if (!hasSupabaseEnv()) {
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=Tjenesten%20er%20midlertidig%20utilgjengelig.`);
   }
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const siteUrl = await getSiteUrl();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+  });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`);
   }
-  revalidatePath("/");
-  redirect("/");
+  redirect(`/verify-email?email=${encodeURIComponent(email)}&resent=1`);
+}
+
+export async function signInWithGoogle() {
+  if (!hasSupabaseEnv()) {
+    redirect("/login?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const siteUrl = await getSiteUrl();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${siteUrl}/auth/confirm?next=/dashboard` },
+  });
+  if (error || !data.url) {
+    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}`);
+  }
+  redirect(data.url);
 }
 
 export async function signOut() {
@@ -167,93 +583,94 @@ export async function signOut() {
     const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
   }
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/login");
+  redirect("/login");
 }
 
 export async function createWorkspace(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    redirect("/?error=Innlogging%20kreves");
+  const result = await onboardCustomer(
+    {
+      agreementAccepted: formString(formData, "agreementAccepted"),
+      businessTermsVersion: formString(formData, "businessTermsVersion"),
+      businessTermsSha256: formString(formData, "businessTermsSha256"),
+      dpaVersion: formString(formData, "dpaVersion"),
+      dpaSha256: formString(formData, "dpaSha256"),
+      orgNumber: formString(formData, "orgNumber"),
+    },
+    {
+      getAuthenticatedUser: async () => {
+        const { data, error } = await supabase.auth.getUser();
+        return error ? null : data.user;
+      },
+      lookupCompanyIdentity: fetchBrregEntity,
+      assertSupportedCompanyIdentity: assertSupportedBrregIdentity,
+      createCompanyWorkspace: async (payload) => {
+        const serviceRoleClient = createSupabaseServiceRoleClient();
+        const { error } = await serviceRoleClient.rpc("create_company_workspace_with_acceptance", payload);
+        if (error) {
+          throw new Error(error.message);
+        }
+      },
+    },
+  );
+  if (!result.ok) {
+    failTo(returnTo, result.message);
   }
-
-  const orgNumber = formString(formData, "orgNumber");
-  if (!/^\d{9}$/.test(orgNumber)) {
-    redirect("/?error=Organisasjonsnummer%20m%C3%A5%20ha%209%20sifre");
-  }
-  let identity;
-  try {
-    identity = await fetchBrregEntity(orgNumber);
-  } catch (error) {
-    redirect(`/?error=${encodeActionError(error instanceof Error ? error : "Brønnøysund-oppslag feilet")}`);
-  }
-  try {
-    assertSupportedBrregIdentity(identity);
-  } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Selskapsform støttes ikke")}`);
-  }
-
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .insert({
-      org_number: identity.orgNumber,
-      name: identity.name,
-      entity_type: identity.entityType,
-      address: identity.address,
-      postal_code: identity.postalCode,
-      city: identity.city,
-      status_text: identity.statusText,
-      source: identity.source,
-      created_by: user.id,
-      identity_confirmed_at: new Date().toISOString(),
-      identity_locked_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
-  if (companyError || !company) {
-    redirect(`/?error=${encodeActionError(companyError ?? "Kunne ikke opprette selskap")}`);
-  }
-
-  const { error: membershipError } = await supabase.from("company_memberships").insert({
-    company_id: company.id,
-    user_id: user.id,
-    role: "owner",
-    accepted_at: new Date().toISOString(),
-  });
-  if (membershipError) {
-    redirect(`/?error=${encodeActionError(membershipError)}`);
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: company.id,
-    actor_id: user.id,
-    category: "company",
-    action: "workspace_created",
-    message: "Selskapsarbeidsflate opprettet.",
-  });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTo);
+}
+
+export async function reacceptCompanyAgreement(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const result = await reacceptCustomerAgreement(
+    {
+      companyId: formString(formData, "companyId"),
+      agreementAccepted: formString(formData, "agreementAccepted"),
+      businessTermsVersion: formString(formData, "businessTermsVersion"),
+      businessTermsSha256: formString(formData, "businessTermsSha256"),
+      dpaVersion: formString(formData, "dpaVersion"),
+      dpaSha256: formString(formData, "dpaSha256"),
+    },
+    {
+      getAuthenticatedUser: async () => {
+        const { data, error } = await supabase.auth.getUser();
+        return error ? null : data.user;
+      },
+      appendAcceptance: async (payload) => {
+        const serviceRoleClient = createSupabaseServiceRoleClient();
+        const { error } = await serviceRoleClient.rpc("append_company_agreement_acceptance", payload);
+        if (error) throw new Error(error.message);
+      },
+    },
+  );
+  if (!result.ok) {
+    failTo(returnTo, result.message);
+  }
+  revalidatePath("/", "layout");
+  redirect(returnTo);
 }
 
 export async function uploadDocument(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
@@ -262,26 +679,29 @@ export async function uploadDocument(formData: FormData) {
   const linkedTo = formString(formData, "linkedTo") || "workspace";
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    redirect("/?error=Velg%20dokument%20for%20opplasting");
+    failTo(returnTo, "Velg et dokument for opplasting.");
   }
-  let validatedFile: Awaited<ReturnType<typeof validateDocumentUpload>>;
+
+  let validatedFile;
   try {
-    validatedFile = await validateDocumentUpload(file);
+    validatedFile = validateDocumentUpload({
+      name: file.name,
+      contentType: file.type,
+      size: file.size,
+      header: new Uint8Array(await file.slice(0, 5).arrayBuffer()),
+    });
   } catch (error) {
-    const message = error instanceof DocumentUploadValidationError
-      ? `${error.code}: ${error.message}`
-      : "Dokumentvalidering feilet";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Dokumentet kunne ikke valideres.");
   }
 
   const documentId = crypto.randomUUID();
-  const storageKey = documentStorageKey(companyId, incomeYear, documentId, validatedFile.fileName);
+  const storageKey = documentStorageKey(companyId, incomeYear, documentId, validatedFile.name);
   const { error: uploadError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(storageKey, file, {
     contentType: validatedFile.contentType,
     upsert: false,
   });
   if (uploadError) {
-    redirect(`/?error=${encodeActionError(uploadError)}`);
+    failTo(returnTo, uploadError.message);
   }
 
   const { error: metadataError } = await supabase.from("documents").insert({
@@ -289,7 +709,7 @@ export async function uploadDocument(formData: FormData) {
     company_id: companyId,
     income_year: incomeYear,
     document_type: documentType,
-    name: validatedFile.fileName,
+    name: validatedFile.name,
     linked_to: linkedTo,
     status: "attached",
     retention_years: 5,
@@ -297,14 +717,7 @@ export async function uploadDocument(formData: FormData) {
     created_by: user.id,
   });
   if (metadataError) {
-    const { error: cleanupError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
-    console.error("document_metadata_persistence_failed", {
-      companyId,
-      documentId,
-      metadataErrorCode: metadataError.code,
-      orphanCleanupFailed: Boolean(cleanupError),
-    });
-    redirect(`/?error=${encodeActionError(metadataError)}`);
+    failTo(returnTo, metadataError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -312,22 +725,75 @@ export async function uploadDocument(formData: FormData) {
     actor_id: user.id,
     category: "document",
     action: "document_uploaded",
-    message: `Dokument lastet opp: ${validatedFile.fileName}.`,
+    message: `Dokument lastet opp: ${validatedFile.name}.`,
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTo);
 }
 
-export async function createOpeningBalanceSetup(formData: FormData) {
+export async function removeUnlinkedDocument(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
+  }
+
+  const documentId = requiredFormUuid(formData, "documentId");
+  const { data, error } = await supabase.rpc("remove_unlinked_document", {
+    p_document_id: documentId,
+  });
+  if (error) {
+    const message = error.message.includes("document_removal_evidence_linked")
+      ? "Dokumentet brukes som regnskaps- eller innsendingsbevis og kan derfor ikke fjernes."
+      : error.message.includes("document_removal_not_allowed")
+        ? "Dokumentet finnes ikke, eller du har ikke rett til å fjerne det."
+        : "Dokumentet kunne ikke fjernes. Prøv på nytt.";
+    failTo(returnTo, message);
+  }
+
+  const storageKey = Array.isArray(data) ? data[0]?.storage_key : null;
+  if (!storageKey || typeof storageKey !== "string") {
+    failTo(returnTo, "Dokumentlageret kunne ikke identifiseres. Prøv på nytt.");
+  }
+
+  const storageRemoval = await supabase.storage
+    .from(COMPANY_DOCUMENTS_BUCKET)
+    .remove([storageKey]);
+  if (storageRemoval.error) {
+    const rollback = await supabase.rpc("restore_unlinked_document_after_storage_failure", {
+      p_document_id: documentId,
+    });
+    if (rollback.error) {
+      console.error("Document metadata restoration failed after storage removal error.", {
+        documentId,
+        errorCode: rollback.error.code,
+      });
+    }
+    failTo(returnTo, "Dokumentlageret svarte ikke. Dokumentet er beholdt; prøv igjen senere.");
+  }
+
+  revalidatePath("/documents");
+  redirect(returnTo === "/documents" ? "/documents?removed=1" : returnTo);
+}
+
+export async function createOpeningBalanceSetup(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
@@ -343,7 +809,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   try {
     validateOpeningBalanceInput(input);
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig åpningsbalanse")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Ugyldig åpningsbalanse");
   }
 
   const { data: setup, error: setupError } = await supabase
@@ -360,7 +826,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     .select("id")
     .single();
   if (setupError || !setup) {
-    redirect(`/?error=${encodeActionError(setupError ?? "Kunne ikke lagre åpningsbalanse")}`);
+    failTo(returnTo, setupError?.message ?? "Kunne ikke lagre åpningsbalanse");
   }
 
   const { error: shareholderError } = await supabase.from("opening_shareholders").insert(
@@ -376,7 +842,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     })),
   );
   if (shareholderError) {
-    redirect(`/?error=${encodeActionError(shareholderError)}`);
+    failTo(returnTo, shareholderError.message);
   }
 
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
@@ -389,7 +855,7 @@ export async function createOpeningBalanceSetup(formData: FormData) {
     created_by: user.id,
   });
   if (ledgerError) {
-    redirect(`/?error=${encodeActionError(ledgerError)}`);
+    failTo(returnTo, ledgerError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -401,29 +867,29 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTo);
 }
 
 export async function lockCompanyYear(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const reason = formString(formData, "reason");
   if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
-    redirect("/?error=Ugyldig%20inntekts%C3%A5r");
+    redirect("/workspace?error=Ugyldig%20inntekts%C3%A5r");
   }
   if (!reason) {
-    redirect("/?error=L%C3%A5se%C3%A5rsak%20mangler");
+    redirect("/workspace?error=L%C3%A5se%C3%A5rsak%20mangler");
   }
 
   const { error } = await supabase.from("period_locks").insert({
@@ -433,7 +899,7 @@ export async function lockCompanyYear(formData: FormData) {
     locked_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -445,19 +911,19 @@ export async function lockCompanyYear(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function queueDeadlineReminders(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -481,7 +947,7 @@ export async function queueDeadlineReminders(formData: FormData) {
     .eq("role", "owner")
     .maybeSingle();
   if (membershipError || !membership) {
-    redirect(`/?error=${encodeActionError(membershipError ?? "Kun eier kan køe fristvarsler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(membershipError?.message ?? "Kun eier kan køe fristvarsler")}`);
   }
 
   const [
@@ -495,7 +961,7 @@ export async function queueDeadlineReminders(formData: FormData) {
   ]);
   const firstError = submissionsError || readinessError || notificationsError;
   if (firstError) {
-    redirect(`/?error=${encodeActionError(firstError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
   const plan = buildDeadlineReminderPlan({
@@ -528,7 +994,7 @@ export async function queueDeadlineReminders(formData: FormData) {
       })),
     );
     if (insertError) {
-      redirect(`/?error=${encodeActionError(insertError)}`);
+      redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
     }
   }
 
@@ -541,19 +1007,19 @@ export async function queueDeadlineReminders(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function generateRf1086Preview(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const setupId = formString(formData, "setupId");
@@ -563,7 +1029,7 @@ export async function generateRf1086Preview(formData: FormData) {
     .eq("id", setupId)
     .single();
   if (setupError || !setup) {
-    redirect(`/?error=${encodeActionError(setupError ?? "Fant ikke åpningsbalanse")}`);
+    redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Fant ikke åpningsbalanse")}`);
   }
 
   const { data: company, error: companyError } = await supabase
@@ -572,7 +1038,7 @@ export async function generateRf1086Preview(formData: FormData) {
     .eq("id", setup.company_id)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeActionError(companyError ?? "Fant ikke selskap")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
   }
 
   const { data: shareholders, error: shareholdersError } = await supabase
@@ -580,14 +1046,14 @@ export async function generateRf1086Preview(formData: FormData) {
     .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
     .eq("setup_id", setupId);
   if (shareholdersError || !shareholders) {
-    redirect(`/?error=${encodeActionError(shareholdersError ?? "Fant ikke aksjonærer")}`);
+    redirect(`/workspace?error=${encodeURIComponent(shareholdersError?.message ?? "Fant ikke aksjonærer")}`);
   }
 
   let rendered;
   try {
-    rendered = await renderRf1086PreviewWithPython(buildNoActivityRf1086Case(company, setup, shareholders));
+    rendered = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
   } catch (error) {
-    redirect(`/?error=${encodeActionError(error instanceof Error ? error : "RF-1086-generering feilet")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
   }
 
   const { error: insertError } = await supabase.from("filing_previews").insert({
@@ -600,11 +1066,11 @@ export async function generateRf1086Preview(formData: FormData) {
     preview: rendered.preview,
     hovedskjema_xml: rendered.hovedskjemaXml ?? null,
     underskjema_xml: rendered.underskjemaXml ?? {},
-    source: "python_rf1086_engine",
+    source: "deterministic_rf1086_engine",
     created_by: user.id,
   });
   if (insertError) {
-    redirect(`/?error=${encodeActionError(insertError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -615,19 +1081,20 @@ export async function generateRf1086Preview(formData: FormData) {
     message: `RF-1086 forhåndsvisning generert for ${setup.income_year}.`,
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTarget(formData));
 }
 
 export async function confirmSimulatedRf1086Submission(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
@@ -637,7 +1104,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeActionError(previewError ?? "Fant ikke RF-1086 forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke RF-1086 forhåndsvisning")}`);
   }
   const { data: readinessSnapshot, error: readinessSnapshotError } = await supabase
     .from("filing_readiness_snapshots")
@@ -647,10 +1114,10 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("obligation", "aksjonaerregisteroppgaven")
     .maybeSingle();
   if (readinessSnapshotError) {
-    redirect(`/?error=${encodeActionError(readinessSnapshotError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(readinessSnapshotError.message)}`);
   }
   if (!readinessSnapshot?.ready) {
-    redirect(`/?error=${encodePublicActionError("Aksjonærregisteroppgaven readiness må være lagret og klar før innsending.")}`);
+    redirect(`/workspace?error=${encodeURIComponent("Aksjonærregisteroppgaven readiness må være lagret og klar før innsending.")}`);
   }
   const { data: blockingComments, error: blockingCommentError } = await supabase
     .from("filing_review_comments")
@@ -658,12 +1125,12 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("preview_id", preview.id)
     .eq("severity", "hard_block");
   if (blockingCommentError) {
-    redirect(`/?error=${encodeActionError(blockingCommentError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(blockingCommentError.message)}`);
   }
   try {
     assertNoHardReviewBlocks((blockingComments ?? []).map(() => ({ severity: "hard_block" })));
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Hard review-blokk")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
   }
   const { data: blockingOverrides, error: blockingOverrideError } = await supabase
     .from("filing_overrides")
@@ -673,17 +1140,17 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     .eq("filing", preview.filing)
     .eq("risk_level", "block");
   if (blockingOverrideError) {
-    redirect(`/?error=${encodeActionError(blockingOverrideError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(blockingOverrideError.message)}`);
   }
   try {
     assertNoBlockingFilingOverrides(blockingOverrides ?? []);
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Blokkerende filing-overstyring")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Blokkerende filing-overstyring")}`);
   }
 
   let simulated;
   try {
-    simulated = await runRf1086SubmissionAdapter({
+    simulated = runRf1086SubmissionAdapter({
       mode: "simulation",
       preview,
       userId: user.id,
@@ -699,7 +1166,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Simulert innsending feilet";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   const { error: upsertError } = await supabase.from("filing_submissions").upsert(
@@ -734,7 +1201,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     { onConflict: "preview_id" },
   );
   if (upsertError) {
-    redirect(`/?error=${encodeActionError(upsertError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(upsertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -745,19 +1212,20 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     message: `Simulert RF-1086-kvittering arkivert for ${preview.income_year}.`,
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTarget(formData));
 }
 
 export async function addFilingOverride(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
@@ -767,10 +1235,10 @@ export async function addFilingOverride(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeActionError(previewError ?? "Fant ikke forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
   }
   if (formData.get("ownerConfirmed") !== "on") {
-    redirect("/?error=Overstyring%20m%C3%A5%20bekreftes%20av%20eier");
+    redirect("/workspace?error=Overstyring%20m%C3%A5%20bekreftes%20av%20eier");
   }
 
   let override;
@@ -783,7 +1251,7 @@ export async function addFilingOverride(formData: FormData) {
       riskLevel: formString(formData, "riskLevel") as "advisory" | "warning" | "block",
     });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig filing-overstyring")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig filing-overstyring")}`);
   }
 
   const confirmedAt = new Date().toISOString();
@@ -802,7 +1270,7 @@ export async function addFilingOverride(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -814,19 +1282,19 @@ export async function addFilingOverride(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function inviteWorkspaceReviewer(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -837,7 +1305,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     invitedEmail = normalizeInvitationEmail(rawEmail);
     role = validateInvitationRole(formString(formData, "role") || "reviewer");
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig invitasjon")}`);
   }
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "invite_reviewer");
 
@@ -847,7 +1315,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     .eq("id", companyId)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeActionError(companyError ?? "Fant ikke selskap for invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap for invitasjon")}`);
   }
 
   const token = crypto.randomUUID();
@@ -869,7 +1337,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     .select("id")
     .single();
   if (error || !invitation) {
-    redirect(`/?error=${encodeActionError(error ?? "Kunne ikke opprette invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error?.message ?? "Kunne ikke opprette invitasjon")}`);
   }
 
   const email = buildInvitationEmail({
@@ -887,7 +1355,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     created_by: user.id,
   });
   if (outboxError) {
-    redirect(`/?error=${encodeActionError(outboxError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -899,19 +1367,19 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function acceptWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user?.email) {
-    redirect("/?error=Innlogging%20med%20e-post%20kreves");
+    redirect("/workspace?error=Innlogging%20med%20e-post%20kreves");
   }
 
   const token = formString(formData, "token");
@@ -922,13 +1390,13 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     .eq("token_hash", tokenHash)
     .single();
   if (error || !invitation) {
-    redirect(`/?error=${encodeActionError(error ?? "Fant ikke invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error?.message ?? "Fant ikke invitasjon")}`);
   }
   if (invitation.invited_email !== user.email.toLowerCase()) {
-    redirect("/?error=Invitasjonen%20tilh%C3%B8rer%20en%20annen%20e-postadresse");
+    redirect("/workspace?error=Invitasjonen%20tilh%C3%B8rer%20en%20annen%20e-postadresse");
   }
   if (invitation.status !== "pending" || new Date(invitation.expires_at).getTime() < Date.now()) {
-    redirect("/?error=Invitasjonen%20er%20utl%C3%B8pt%20eller%20ikke%20lenger%20aktiv");
+    redirect("/workspace?error=Invitasjonen%20er%20utl%C3%B8pt%20eller%20ikke%20lenger%20aktiv");
   }
 
   const acceptedAt = new Date().toISOString();
@@ -940,7 +1408,7 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     accepted_at: acceptedAt,
   });
   if (membershipError) {
-    redirect(`/?error=${encodeActionError(membershipError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(membershipError.message)}`);
   }
   const { error: updateError } = await supabase
     .from("company_invitations")
@@ -953,7 +1421,7 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     })
     .eq("id", invitation.id);
   if (updateError) {
-    redirect(`/?error=${encodeActionError(updateError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(updateError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -965,19 +1433,19 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function revokeWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
@@ -989,7 +1457,7 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
     .eq("id", invitationId)
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
   await supabase.from("audit_events").insert({
     company_id: companyId,
@@ -999,19 +1467,19 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
     message: "Reviewer/read-only invitasjon tilbakekalt.",
   });
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function resendWorkspaceInvitation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
@@ -1023,7 +1491,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (invitationError || !invitation) {
-    redirect(`/?error=${encodeActionError(invitationError ?? "Fant ikke invitasjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(invitationError?.message ?? "Fant ikke invitasjon")}`);
   }
   const token = crypto.randomUUID();
   const tokenHash = await invitationTokenHash(token);
@@ -1041,7 +1509,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     })
     .eq("id", invitation.id);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
   const { error: outboxError } = await supabase.from("notification_outbox").insert({
     company_id: companyId,
@@ -1052,7 +1520,7 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     created_by: user.id,
   });
   if (outboxError) {
-    redirect(`/?error=${encodeActionError(outboxError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
   }
   await supabase.from("audit_events").insert({
     company_id: companyId,
@@ -1062,29 +1530,29 @@ export async function resendWorkspaceInvitation(formData: FormData) {
     message: "Reviewer/read-only invitasjon sendt på nytt.",
   });
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function addFilingReviewComment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const previewId = formString(formData, "previewId");
   const severity = formString(formData, "severity") || "advisory";
   const body = formString(formData, "body");
   if (!["advisory", "hard_block"].includes(severity)) {
-    redirect("/?error=Ugyldig%20kommentaralvorlighet");
+    redirect("/workspace?error=Ugyldig%20kommentaralvorlighet");
   }
   if (!body) {
-    redirect("/?error=Kommentar%20mangler");
+    redirect("/workspace?error=Kommentar%20mangler");
   }
 
   const { data: preview, error: previewError } = await supabase
@@ -1093,7 +1561,7 @@ export async function addFilingReviewComment(formData: FormData) {
     .eq("id", previewId)
     .single();
   if (previewError || !preview) {
-    redirect(`/?error=${encodeActionError(previewError ?? "Fant ikke forhåndsvisning")}`);
+    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
   }
 
   const { error } = await supabase.from("filing_review_comments").insert({
@@ -1105,7 +1573,7 @@ export async function addFilingReviewComment(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1116,19 +1584,20 @@ export async function addFilingReviewComment(formData: FormData) {
     message: `Review-kommentar lagt til: ${severity}.`,
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTarget(formData));
 }
 
 export async function acknowledgeFilingReviewComment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const commentId = formString(formData, "commentId");
@@ -1138,12 +1607,12 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     .eq("id", commentId)
     .single();
   if (commentError || !comment) {
-    redirect(`/?error=${encodeActionError(commentError ?? "Fant ikke review-kommentar")}`);
+    redirect(`/workspace?error=${encodeURIComponent(commentError?.message ?? "Fant ikke review-kommentar")}`);
   }
   try {
     assertAdvisoryCanBeAcknowledged({ severity: comment.severity });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Hard review-blokk")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
   }
 
   const acknowledgedAt = new Date().toISOString();
@@ -1152,7 +1621,7 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     .update({ acknowledged_by: user.id, acknowledged_at: acknowledgedAt })
     .eq("id", comment.id);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -1163,19 +1632,21 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     message: "Advisory review-kommentar acknowledged av eier.",
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTarget(formData));
 }
 
 export async function importBankCsv(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1185,10 +1656,10 @@ export async function importBankCsv(formData: FormData) {
   try {
     transactions = parseBankCsv(csvText);
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Bank CSV kunne ikke leses")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Bank CSV kunne ikke leses");
   }
   if (transactions.length === 0) {
-    redirect("/?error=Bank%20CSV%20mangler%20transaksjoner");
+    failTo(returnTo, "Bank CSV mangler transaksjoner.");
   }
 
   const { error: insertError } = await supabase.from("bank_transactions").upsert(
@@ -1205,7 +1676,7 @@ export async function importBankCsv(formData: FormData) {
     { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
   );
   if (insertError) {
-    redirect(`/?error=${encodeActionError(insertError)}`);
+    failTo(returnTo, insertError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -1217,19 +1688,72 @@ export async function importBankCsv(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTo);
 }
 
-export async function recordAdminCost(formData: FormData) {
+export async function acceptBankTransactionSuggestion(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
+  }
+
+  const bankTransactionId = formString(formData, "bankTransactionId");
+  const requestedRuleId = formString(formData, "ruleId");
+  const requestedRuleVersion = formString(formData, "ruleVersion");
+  const { data: transaction, error: transactionError } = await supabase
+    .from("bank_transactions")
+    .select("id, text, amount, matched_entry_id, matched_action_id, accepted_warning")
+    .eq("id", bankTransactionId)
+    .single();
+  if (transactionError || !transaction) {
+    failTo(returnTo, transactionError?.message ?? "Fant ikke banktransaksjonen.");
+  }
+  if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
+    failTo(returnTo, bankSuggestionErrors.bank_transaction_already_reconciled);
+  }
+
+  const suggestion = suggestBankTransaction({
+    text: transaction.text,
+    amount: Number(transaction.amount),
+  });
+  if (
+    !suggestion ||
+    suggestion.ruleId !== requestedRuleId ||
+    suggestion.ruleVersion !== requestedRuleVersion
+  ) {
+    failTo(returnTo, "Forslaget er endret eller ikke lenger gyldig. Last siden på nytt.");
+  }
+
+  const { error: writeError } = await supabase.rpc("accept_bank_transaction_suggestion", {
+    p_bank_transaction_id: transaction.id,
+    p_rule_id: suggestion.ruleId,
+    p_rule_version: suggestion.ruleVersion,
+  });
+  if (writeError) {
+    failTo(returnTo, bankSuggestionWriteError(writeError.message));
+  }
+
+  revalidatePath("/");
+  redirect(returnTo === "/transactions" ? "/transactions?posted=1" : returnTo);
+}
+
+export async function recordAdminCost(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1240,6 +1764,7 @@ export async function recordAdminCost(formData: FormData) {
   const amount = Number(formString(formData, "amount"));
   const paidDate = formString(formData, "paidDate");
   const documentId = formString(formData, "documentId");
+  const returnTo = returnTarget(formData);
 
   const { data: transaction, error: transactionError } = await supabase
     .from("bank_transactions")
@@ -1247,25 +1772,25 @@ export async function recordAdminCost(formData: FormData) {
     .eq("id", bankTransactionId)
     .single();
   if (transactionError || !transaction) {
-    redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
+    failTo(returnTo, transactionError?.message ?? "Fant ikke banktransaksjon");
   }
   if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-    redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+    failTo(returnTo, "Banktransaksjonen tilhører ikke valgt selskap og år.");
   }
   if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-    redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+    failTo(returnTo, "Banktransaksjonen er allerede avstemt.");
   }
   try {
     assertBankTransactionMatchesCost(Number(transaction.amount), amount);
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Bankmatch feilet")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Bankmatch feilet");
   }
 
   let lines;
   try {
     lines = buildAdminCostLedgerLines({ category, payee, amount });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig administrasjonskostnad")}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Ugyldig administrasjonskostnad");
   }
 
   const { data: entry, error: entryError } = await supabase
@@ -1281,7 +1806,7 @@ export async function recordAdminCost(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere administrasjonskostnad")}`);
+    failTo(returnTo, entryError?.message ?? "Kunne ikke postere administrasjonskostnad");
   }
 
   const { error: matchError } = await supabase
@@ -1289,7 +1814,7 @@ export async function recordAdminCost(formData: FormData) {
     .update({ matched_entry_id: entry.id })
     .eq("id", bankTransactionId);
   if (matchError) {
-    redirect(`/?error=${encodeActionError(matchError)}`);
+    failTo(returnTo, matchError.message);
   }
 
   await supabase.from("audit_events").insert({
@@ -1301,19 +1826,19 @@ export async function recordAdminCost(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTo);
 }
 
 export async function recordDividendReceived(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1329,7 +1854,6 @@ export async function recordDividendReceived(formData: FormData) {
       grossAmount: Number(formString(formData, "grossAmount")),
       linkedInvestmentId: formString(formData, "linkedInvestmentId"),
       taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant",
-      threePercentTreatment: formString(formData, "threePercentTreatment") as "applies" | "group_exemption" | "needs_accountant",
       bankTransactionId,
       documentId,
       documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
@@ -1341,7 +1865,7 @@ export async function recordDividendReceived(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig mottatt utbytte";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    failTo(returnTarget(formData), message);
   }
 
   if (bankTransactionId) {
@@ -1351,16 +1875,16 @@ export async function recordDividendReceived(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     if (Number(transaction.amount) !== payload.gross_amount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20brutto%20utbytte");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20brutto%20utbytte");
     }
   }
   if (documentId) {
@@ -1370,10 +1894,10 @@ export async function recordDividendReceived(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeActionError(documentError ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -1392,7 +1916,7 @@ export async function recordDividendReceived(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere mottatt utbytte")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere mottatt utbytte")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -1410,7 +1934,7 @@ export async function recordDividendReceived(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeActionError(actionError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -1419,7 +1943,7 @@ export async function recordDividendReceived(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeActionError(matchError)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -1432,19 +1956,19 @@ export async function recordDividendReceived(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  succeedTo(returnTarget(formData));
 }
 
 export async function recordSharePurchase(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1473,148 +1997,44 @@ export async function recordSharePurchase(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjekjøp";
-    redirect(`/?error=${encodePublicActionError(message)}`);
-  }
-
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    if (Number(transaction.amount) !== -payload.purchase_amount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjekj%C3%B8pet");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/?error=${encodeActionError(documentError ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = sharePurchaseLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "share_purchase",
-      memo: `Share purchase: ${payload.investment_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere aksjekjøp")}`);
+    failTo(returnTarget(formData), message);
   }
 
   const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "share_purchase",
-    action_date: payload.acquisition_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
+  const { error: writeError } = await supabase.rpc("record_share_purchase_fifo", {
+    p_action_id: actionId,
+    p_company_id: companyId,
+    p_income_year: incomeYear,
+    p_investment_key: payload.investment_key,
+    p_investment_name: payload.investment_name,
+    p_investment_kind: payload.investment_kind,
+    p_tax_treatment: payload.tax_treatment,
+    p_acquisition_date: payload.acquisition_date,
+    p_share_count: payload.share_count,
+    p_purchase_amount: payload.purchase_amount,
+    p_org_number: payload.org_number,
+    p_bank_transaction_id: bankTransactionId,
+    p_document_id: documentId,
+    p_document_status: payload.document_status,
   });
-  if (actionError) {
-    redirect(`/?error=${encodeActionError(actionError)}`);
+  if (writeError) {
+    failTo(returnTarget(formData), investmentWriteError(writeError.message));
   }
-
-  const { data: existingPosition, error: existingPositionError } = await supabase
-    .from("investment_positions")
-    .select("id, share_count, cost_basis")
-    .eq("company_id", companyId)
-    .eq("investment_key", payload.investment_key)
-    .maybeSingle();
-  if (existingPositionError) {
-    redirect(`/?error=${encodeActionError(existingPositionError)}`);
-  }
-  if (existingPosition) {
-    const { error: positionUpdateError } = await supabase
-      .from("investment_positions")
-      .update({
-        share_count: Number(existingPosition.share_count) + payload.share_count,
-        cost_basis: Number(existingPosition.cost_basis) + payload.purchase_amount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existingPosition.id);
-    if (positionUpdateError) {
-      redirect(`/?error=${encodeActionError(positionUpdateError)}`);
-    }
-  } else {
-    const { error: positionInsertError } = await supabase.from("investment_positions").insert({
-      company_id: companyId,
-      investment_key: payload.investment_key,
-      name: payload.investment_name,
-      kind: payload.investment_kind,
-      tax_treatment: payload.tax_treatment,
-      org_number: payload.org_number,
-      share_count: payload.share_count,
-      cost_basis: payload.purchase_amount,
-      created_by: user.id,
-    });
-    if (positionInsertError) {
-      redirect(`/?error=${encodeActionError(positionInsertError)}`);
-    }
-  }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/?error=${encodeActionError(matchError)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "share_purchase_recorded",
-    message: `Aksjekjøp postert for ${payload.investment_name} i ${incomeYear}.`,
-  });
 
   revalidatePath("/");
-  redirect("/");
+  succeedTo(returnTarget(formData));
 }
 
 export async function recordShareSale(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1624,14 +2044,28 @@ export async function recordShareSale(formData: FormData) {
   const documentId = formString(formData, "documentId") || null;
   const { data: position, error: positionError } = await supabase
     .from("investment_positions")
-    .select("id, company_id, investment_key, name, share_count, cost_basis, movements")
+    .select("id, company_id, investment_key, name, share_count, cost_basis, lot_history_status")
     .eq("id", positionId)
     .single();
   if (positionError || !position) {
-    redirect(`/?error=${encodeActionError(positionError ?? "Fant ikke investeringsposisjon")}`);
+    redirect(`/workspace?error=${encodeURIComponent(positionError?.message ?? "Fant ikke investeringsposisjon")}`);
   }
   if (position.company_id !== companyId) {
-    redirect("/?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+    redirect("/workspace?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
+  }
+  if (position.lot_history_status !== "complete") {
+    failTo(returnTarget(formData), investmentWriteErrors.lot_history_incomplete);
+  }
+
+  const { data: acquisitionLots, error: acquisitionLotsError } = await supabase
+    .from("investment_lots")
+    .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
+    .eq("position_id", position.id)
+    .gt("remaining_share_count", 0)
+    .order("acquisition_date", { ascending: true })
+    .order("id", { ascending: true });
+  if (acquisitionLotsError) {
+    failTo(returnTarget(formData), investmentWriteError(acquisitionLotsError.message));
   }
 
   let payload;
@@ -1642,6 +2076,12 @@ export async function recordShareSale(formData: FormData) {
       investmentName: position.name,
       currentShareCount: Number(position.share_count),
       currentCostBasis: Number(position.cost_basis),
+      acquisitionLots: (acquisitionLots ?? []).map((lot) => ({
+        id: lot.id,
+        acquisitionDate: lot.acquisition_date,
+        remainingShareCount: Number(lot.remaining_share_count),
+        remainingCostBasis: Number(lot.remaining_cost_basis),
+      })),
       saleDate: formString(formData, "saleDate"),
       soldShareCount: Number(formString(formData, "soldShareCount")),
       proceeds: Number(formString(formData, "proceeds")),
@@ -1656,311 +2096,778 @@ export async function recordShareSale(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjesalg";
-    redirect(`/?error=${encodePublicActionError(message)}`);
-  }
-
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    if (Number(transaction.amount) !== payload.proceeds) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20salgsproveny");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/?error=${encodeActionError(documentError ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = shareSaleLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "share_sale",
-      memo: `Share sale: ${payload.investment_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere aksjesalg")}`);
+    failTo(returnTarget(formData), message);
   }
 
   const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "share_sale",
-    action_date: payload.sale_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
+  const { error: writeError } = await supabase.rpc("record_share_sale_fifo", {
+    p_action_id: actionId,
+    p_company_id: companyId,
+    p_income_year: incomeYear,
+    p_position_id: position.id,
+    p_sale_date: payload.sale_date,
+    p_sold_share_count: payload.sold_share_count,
+    p_proceeds: payload.proceeds,
+    p_bank_transaction_id: bankTransactionId,
+    p_document_id: documentId,
+    p_document_status: payload.document_status,
   });
-  if (actionError) {
-    redirect(`/?error=${encodeActionError(actionError)}`);
+  if (writeError) {
+    failTo(returnTarget(formData), investmentWriteError(writeError.message));
   }
-
-  const movements = Array.isArray(position.movements) ? position.movements : [];
-  const { error: positionUpdateError } = await supabase
-    .from("investment_positions")
-    .update({
-      share_count: payload.remaining_share_count,
-      cost_basis: payload.remaining_cost_basis,
-      movements: [
-        ...movements,
-        {
-          action_id: actionId,
-          movement_type: "sale",
-          movement_date: payload.sale_date,
-          share_delta: -payload.sold_share_count,
-          cost_basis_delta: -payload.cost_basis_reduction,
-          amount: payload.proceeds,
-          gain_or_loss: payload.gain_or_loss,
-        },
-      ],
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", position.id);
-  if (positionUpdateError) {
-    redirect(`/?error=${encodeActionError(positionUpdateError)}`);
-  }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/?error=${encodeActionError(matchError)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "share_sale_recorded",
-    message: `Aksjesalg postert for ${payload.investment_name} i ${incomeYear}.`,
-  });
 
   revalidatePath("/");
-  redirect("/");
+  succeedTo(returnTarget(formData));
 }
 
-export async function recordOwnerDividend(formData: FormData) {
+export async function createOwnerDividendDecisionDraft(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true") {
+    failTo(returnTo, "Beslutningsdokumenter er deaktivert til juridisk og regnskapsfaglig godkjenning foreligger.");
+  }
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
   const companyId = formString(formData, "companyId");
-  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const { data: openingSetup, error: openingSetupError } = await supabase
-    .from("opening_balance_setups")
-    .select("id, company_id, share_count")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear)
-    .single();
-  if (openingSetupError || !openingSetup) {
-    redirect(`/?error=${encodeActionError(openingSetupError ?? "Fant ikke åpningsbalansen")}`);
-  }
-  const { data: shareholders, error: shareholderError } = await supabase
-    .from("opening_shareholders")
-    .select("id, company_id, name, share_count")
-    .eq("setup_id", openingSetup.id)
-    .order("id", { ascending: true });
-  if (shareholderError || !shareholders?.length) {
-    redirect(`/?error=${encodeActionError(shareholderError ?? "Fant ikke aksjeeiere")}`);
-  }
-  if (
-    shareholders.some((shareholder) => shareholder.company_id !== companyId) ||
-    shareholders.reduce((sum, shareholder) => sum + Number(shareholder.share_count), 0) !==
-      Number(openingSetup.share_count)
-  ) {
-    redirect("/?error=Aksjeeierboken%20stemmer%20ikke%20med%20%C3%A5pningsbalansen");
-  }
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, name, org_number")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    redirect(`/?error=${encodeActionError(companyError ?? "Fant ikke selskapet")}`);
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
+    failTo(returnTo, "Inntektsåret er ugyldig.");
   }
 
-  let payload;
+  const [companyResult, membershipResult, setupResult, annualResult, lockResult] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id, org_number, name, entity_type, identity_locked_at")
+      .eq("id", companyId)
+      .maybeSingle(),
+    supabase
+      .from("company_memberships")
+      .select("company_id, user_id, role, accepted_at")
+      .eq("company_id", companyId)
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+    supabase
+      .from("opening_balance_setups")
+      .select("id, company_id, income_year")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear)
+      .maybeSingle(),
+    supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
+      .eq("company_id", companyId)
+      .lte("income_year", incomeYear)
+      .order("income_year", { ascending: false }),
+    supabase
+      .from("period_locks")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear)
+      .maybeSingle(),
+  ]);
+  if (companyResult.error || !companyResult.data || companyResult.data.entity_type !== "AS") {
+    failTo(returnTo, "Fant ikke et støttet AS for beslutningen.");
+  }
+  if (membershipResult.error || !membershipResult.data) {
+    failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette beslutningsutkast.");
+  }
+  if (setupResult.error || !setupResult.data) {
+    failTo(returnTo, "Låst aksjonærgrunnlag mangler for beslutningsåret.");
+  }
+  if (lockResult.error || lockResult.data) {
+    failTo(returnTo, lockResult.error?.message ?? "Regnskapsåret er låst og kan ikke få et nytt utbytteutkast.");
+  }
+  if (annualResult.error) {
+    failTo(returnTo, annualResult.error.message);
+  }
+  const annualData = (annualResult.data ?? []).find(
+    (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
+  ) as AnnualDataRow | undefined;
+  if (!annualData) {
+    failTo(returnTo, "Siste godkjente årsregnskap mangler.");
+  }
+
+  const [shareholderResult, ledgerResult] = await Promise.all([
+    supabase
+      .from("opening_shareholders")
+      .select("id, setup_id, company_id, name, share_count")
+      .eq("company_id", companyId)
+      .eq("setup_id", setupResult.data.id)
+      .order("id", { ascending: true }),
+    supabase
+      .from("ledger_entries")
+      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
+      .eq("company_id", companyId)
+      .eq("income_year", annualData.income_year),
+  ]);
+  if (shareholderResult.error || !shareholderResult.data?.length) {
+    failTo(returnTo, shareholderResult.error?.message ?? "Aksjonærgrunnlaget mangler.");
+  }
+  if (ledgerResult.error) {
+    failTo(returnTo, ledgerResult.error.message);
+  }
+
+  const persistedShareholders = shareholderResult.data.map((shareholder, order) => ({
+    id: shareholder.id,
+    name: shareholder.name,
+    shareCount: Number(shareholder.share_count),
+    order,
+  }));
+  let decision;
   try {
-    const totalAmount = Number(formString(formData, "totalAmount"));
-    payload = validateOwnerDividend({
-      decisionDate: formString(formData, "decisionDate"),
-      paymentDate: formString(formData, "paymentDate"),
-      totalAmount,
-      distributableEquity: Number(formString(formData, "distributableEquity")),
-      liquidityAfterPayment: Number(formString(formData, "liquidityAfterPayment")),
-      documentStatus: "attached",
-      allocations: allocateOwnerDividend(
-        totalAmount,
-        shareholders.map((shareholder) => ({
-          shareholderId: shareholder.id,
-          shareholderName: shareholder.name,
-          shareCount: Number(shareholder.share_count),
+    const annualAccountsPayload = buildAnnualAccountsPayload({
+      incomeYear: annualData.income_year,
+      annualData,
+      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+    });
+    const annualBasis = buildOwnerDividendAnnualBasis({ annualData, annualAccountsPayload });
+    const boardParticipantIds = formStrings(formData, "boardParticipantId");
+    const boardParticipantNames = formStrings(formData, "boardParticipantName");
+    const boardParticipantRoles = formStrings(formData, "boardParticipantRole");
+    const boardParticipantOrders = formStrings(formData, "boardParticipantOrder");
+    const shareholderVoteIds = formStrings(formData, "shareholderVoteId");
+    const shareholderVotes = formStrings(formData, "shareholderVote");
+    const representedShareCounts = formStrings(formData, "shareholderRepresentedShareCount");
+    const reviewedIds = formStrings(formData, "reviewedShareholderId");
+    const reviewedNames = formStrings(formData, "reviewedShareholderName");
+    const reviewedCounts = formStrings(formData, "reviewedShareholderShareCount");
+
+    decision = buildOwnerDividendDecisionInput({
+      company: {
+        id: companyResult.data.id,
+        organizationNumber: companyResult.data.org_number,
+        legalName: companyResult.data.name,
+      },
+      shareholders: persistedShareholders,
+      annualBasis,
+      submission: {
+        requestId: requiredFormUuid(formData, "decisionId"),
+        incomeYear,
+        boardMeeting: {
+          meetingDate: formString(formData, "boardMeetingDate"),
+          meetingTime: formString(formData, "boardMeetingTime"),
+          place: formString(formData, "boardMeetingPlace"),
+          treatmentMethod: formString(formData, "boardTreatmentMethod") as "physical" | "video" | "written",
+        },
+        boardParticipants: boardParticipantIds.map((participantId, index) => ({
+          participantId,
+          name: boardParticipantNames[index] ?? "",
+          role: boardParticipantRoles[index] as "chair" | "member",
+          order: Number(boardParticipantOrders[index] ?? index),
         })),
-      ),
+        generalMeeting: {
+          meetingDate: formString(formData, "generalMeetingDate"),
+          meetingTime: formString(formData, "generalMeetingTime"),
+          place: formString(formData, "generalMeetingPlace"),
+          meetingForm: formString(formData, "generalMeetingForm") as "physical" | "video",
+          chairName: formString(formData, "generalMeetingChairName"),
+          coSignerName: formString(formData, "generalMeetingCoSignerName"),
+        },
+        shareholderVotes: shareholderVoteIds.map((shareholderId, index) => ({
+          shareholderId,
+          representedShareCount: Number(representedShareCounts[index]),
+          vote: shareholderVotes[index] as "for" | "against" | "abstain",
+        })),
+        oneShareClassConfirmed: formString(formData, "oneShareClassConfirmed") === "on",
+        fullBoardParticipationConfirmed: formString(formData, "fullBoardParticipationConfirmed") === "on",
+        unanimousBoardConfirmed: formString(formData, "unanimousBoardConfirmed") === "on",
+        supportedDividendBasisConfirmed: formString(formData, "supportedDividendBasisConfirmed") === "on",
+        prudentEquityAndLiquidityConfirmed: formString(formData, "prudentEquityAndLiquidityConfirmed") === "on",
+        reviewedFacts: {
+          organizationNumber: formString(formData, "reviewedOrganizationNumber"),
+          legalName: formString(formData, "reviewedLegalName"),
+          shareholders: reviewedIds.map((shareholderId, index) => ({
+            shareholderId,
+            name: reviewedNames[index] ?? "",
+            shareCount: Number(reviewedCounts[index]),
+          })),
+          totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
+          availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
+          annualDataHash: formString(formData, "reviewedAnnualDataHash"),
+          annualAccountsPayloadHash: formString(formData, "reviewedAnnualAccountsPayloadHash"),
+        },
+        dividendAmountOre: Number(formString(formData, "dividendAmountOre")),
+        paymentDate: formString(formData, "paymentDate"),
+      },
     });
   } catch (error) {
-    const message =
-      error instanceof OwnerDividendValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig eierutbytte";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    const message = error instanceof CorporateDecisionFactsError || error instanceof OwnerDividendDraftBasisError
+      ? `${error.code}: ${error.message}`
+      : error instanceof Error ? error.message : "Beslutningsgrunnlaget er ugyldig.";
+    failTo(returnTo, message);
   }
 
-  let generatedDocuments;
+  const setId = requiredFormUuid(formData, "documentSetId");
+  const artifactIds: CorporateDraftArtifactIds = {
+    dividend_board_proposal: {
+      artifactId: requiredFormUuid(formData, "dividendBoardArtifactId"),
+      documentId: requiredFormUuid(formData, "dividendBoardDocumentId"),
+    },
+    dividend_general_meeting_minutes: {
+      artifactId: requiredFormUuid(formData, "dividendGeneralMeetingArtifactId"),
+      documentId: requiredFormUuid(formData, "dividendGeneralMeetingDocumentId"),
+    },
+  };
+  let decisionHash: string;
   try {
-    generatedDocuments = await generateOwnerDividendCorporateDocuments({
-      companyName: company.name,
-      orgNumber: company.org_number,
-      incomeYear,
-      payload,
-    });
+    ({ decisionHash } = await persistCorporateDocumentDraft({
+      supabase,
+      decision,
+      setId,
+      artifactIds,
+    }));
   } catch (error) {
-    const message =
-      error instanceof OwnerDividendDocumentGenerationError
-        ? `${error.code}: ${error.message}`
-        : "Selskapsdokumentene kunne ikke genereres.";
-    redirect(`/?error=${encodePublicActionError(message)}`);
-  }
-
-  const actionId = crypto.randomUUID();
-  const ledgerEntryId = crypto.randomUUID();
-  const documents = prepareOwnerDividendCorporateDocuments({
-    companyId,
-    incomeYear,
-    actionId,
-    createdBy: user.id,
-    documents: generatedDocuments,
-  });
-  const uploadedStorageKeys: string[] = [];
-  let uploadFailure: string | null = null;
-  for (const document of documents) {
-    const { error } = await supabase.storage
-      .from(OWNER_DIVIDEND_DOCUMENTS_BUCKET)
-      .upload(document.storageKey, new Blob([new Uint8Array(document.content)], { type: document.contentType }), {
-        contentType: document.contentType,
-        upsert: false,
-      });
-    if (error) {
-      uploadFailure = error.message;
-      break;
-    }
-    uploadedStorageKeys.push(document.storageKey);
-  }
-  if (uploadFailure) {
-    const { error: cleanupError } = uploadedStorageKeys.length
-      ? await supabase.storage.from(OWNER_DIVIDEND_DOCUMENTS_BUCKET).remove(uploadedStorageKeys)
-      : { error: null };
-    console.error("owner_dividend_document_upload_failed", {
-      companyId,
-      actionId,
-      uploadedCount: uploadedStorageKeys.length,
-      orphanCleanupFailed: Boolean(cleanupError),
-    });
-    const internalMessage = cleanupError
-      ? `${uploadFailure}; orphan cleanup failed: ${cleanupError.message}`
-      : uploadFailure;
-    redirect(`/?error=${encodeActionError(internalMessage)}`);
-  }
-
-  const { error: persistenceError } = await supabase.rpc("record_owner_dividend_action", {
-    p_company_id: companyId,
-    p_income_year: incomeYear,
-    p_ledger_entry_id: ledgerEntryId,
-    p_action_id: actionId,
-    p_payload: payload,
-    p_documents: documents.map((document) => ({
-      id: document.id,
-      name: document.fileName,
-      storage_key: document.storageKey,
-    })),
-  });
-  if (persistenceError) {
-    const { error: cleanupError } = await supabase.storage
-      .from(OWNER_DIVIDEND_DOCUMENTS_BUCKET)
-      .remove(uploadedStorageKeys);
-    console.error("owner_dividend_atomic_persistence_failed", {
-      companyId,
-      actionId,
-      persistenceErrorCode: persistenceError.code,
-      orphanCleanupFailed: Boolean(cleanupError),
-    });
-    redirect(`/?error=${encodeActionError(persistenceError)}`);
+    failTo(returnTo, error instanceof Error ? error.message : "Dokumentutkastet kunne ikke opprettes.");
   }
 
   const { error: auditError } = await supabase.from("audit_events").insert({
     company_id: companyId,
     actor_id: user.id,
-    category: "ledger",
-    action: "dividend_to_owner_recorded",
-    message: `Eierutbytte postert for ${incomeYear}.`,
+    category: "corporate_documents",
+    action: "owner_dividend_decision_draft_created",
+    message: `Decision ${decision.request_id}, set ${setId}, decision hash ${decisionHash}.`,
   });
   if (auditError) {
-    console.error("owner_dividend_audit_write_failed", {
-      companyId,
-      actionId,
-      auditErrorCode: auditError.code,
+    console.error("Corporate decision audit detail could not be appended.", {
+      decisionId: decision.request_id,
+      decisionHash,
+      errorCode: auditError.code,
     });
   }
 
   revalidatePath("/");
-  redirect("/");
+  redirect(`/corporate-decisions/${decision.request_id}`);
 }
 
-export async function recordShareholderLoan(formData: FormData) {
+export async function createAnnualCorporateDecisionDraft(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true") {
+    failTo(returnTo, "Årsbeslutningsdokumenter er deaktivert til juridisk godkjenning foreligger.");
+  }
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
+    failTo(returnTo, "Inntektsåret er ugyldig.");
+  }
+  const [companyResult, membershipResult, setupResult, annualResult, ledgerResult] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id, org_number, name, entity_type, identity_locked_at")
+      .eq("id", companyId)
+      .maybeSingle(),
+    supabase
+      .from("company_memberships")
+      .select("company_id, user_id, role, accepted_at")
+      .eq("company_id", companyId)
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+    supabase
+      .from("opening_balance_setups")
+      .select("id, company_id, income_year")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear)
+      .maybeSingle(),
+    supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear)
+      .maybeSingle(),
+    supabase
+      .from("ledger_entries")
+      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear),
+  ]);
+  if (companyResult.error || !companyResult.data || companyResult.data.entity_type !== "AS") {
+    failTo(returnTo, "Fant ikke et støttet AS for årsbeslutningen.");
+  }
+  if (membershipResult.error || !membershipResult.data) {
+    failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette årsbeslutningen.");
+  }
+  if (setupResult.error || !setupResult.data) {
+    failTo(returnTo, "Låst aksjonærgrunnlag mangler for regnskapsåret.");
+  }
+  if (annualResult.error || !annualResult.data) {
+    failTo(returnTo, annualResult.error?.message ?? "Fullført årsgrunnlag mangler.");
+  }
+  if (ledgerResult.error) {
+    failTo(returnTo, ledgerResult.error.message);
+  }
+
+  const shareholderResult = await supabase
+    .from("opening_shareholders")
+    .select("id, setup_id, company_id, name, share_count")
+    .eq("company_id", companyId)
+    .eq("setup_id", setupResult.data.id)
+    .order("id", { ascending: true });
+  if (shareholderResult.error || !shareholderResult.data?.length) {
+    failTo(returnTo, shareholderResult.error?.message ?? "Aksjonærgrunnlaget mangler.");
+  }
+  const persistedShareholders = shareholderResult.data.map((shareholder, order) => ({
+    id: shareholder.id,
+    name: shareholder.name,
+    shareCount: Number(shareholder.share_count),
+    order,
+  }));
+
+  let decision: CorporateDecisionInput;
+  try {
+    const annualAccountsPayload = buildAnnualAccountsPayload({
+      incomeYear,
+      annualData: annualResult.data as AnnualDataRow,
+      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+    });
+    const annualBasis = buildAnnualCloseBasis({
+      annualData: annualResult.data as AnnualDataRow,
+      annualAccountsPayload,
+    });
+    const boardParticipantIds = formStrings(formData, "boardParticipantId");
+    const boardParticipantNames = formStrings(formData, "boardParticipantName");
+    const boardParticipantRoles = formStrings(formData, "boardParticipantRole");
+    const boardParticipantOrders = formStrings(formData, "boardParticipantOrder");
+    const shareholderVoteIds = formStrings(formData, "shareholderVoteId");
+    const shareholderVotes = formStrings(formData, "shareholderVote");
+    const representedShareCounts = formStrings(formData, "shareholderRepresentedShareCount");
+    const reviewedIds = formStrings(formData, "reviewedShareholderId");
+    const reviewedNames = formStrings(formData, "reviewedShareholderName");
+    const reviewedCounts = formStrings(formData, "reviewedShareholderShareCount");
+    decision = buildAnnualCloseDecisionInput({
+      company: {
+        id: companyResult.data.id,
+        organizationNumber: companyResult.data.org_number,
+        legalName: companyResult.data.name,
+      },
+      shareholders: persistedShareholders,
+      annualBasis,
+      submission: {
+        requestId: requiredFormUuid(formData, "decisionId"),
+        incomeYear,
+        boardMeeting: {
+          meetingDate: formString(formData, "boardMeetingDate"),
+          meetingTime: formString(formData, "boardMeetingTime"),
+          place: formString(formData, "boardMeetingPlace"),
+          treatmentMethod: formString(formData, "boardTreatmentMethod") as "physical" | "video" | "written",
+        },
+        boardParticipants: boardParticipantIds.map((participantId, index) => ({
+          participantId,
+          name: boardParticipantNames[index] ?? "",
+          role: boardParticipantRoles[index] as "chair" | "member",
+          order: Number(boardParticipantOrders[index] ?? index),
+        })),
+        generalMeeting: {
+          meetingDate: formString(formData, "generalMeetingDate"),
+          meetingTime: formString(formData, "generalMeetingTime"),
+          place: formString(formData, "generalMeetingPlace"),
+          meetingForm: formString(formData, "generalMeetingForm") as "physical" | "video",
+          chairName: formString(formData, "generalMeetingChairName"),
+          coSignerName: formString(formData, "generalMeetingCoSignerName"),
+        },
+        shareholderVotes: shareholderVoteIds.map((shareholderId, index) => ({
+          shareholderId,
+          representedShareCount: Number(representedShareCounts[index]),
+          vote: shareholderVotes[index] as "for" | "against" | "abstain",
+        })),
+        oneShareClassConfirmed: formString(formData, "oneShareClassConfirmed") === "on",
+        fullBoardParticipationConfirmed: formString(formData, "fullBoardParticipationConfirmed") === "on",
+        unanimousBoardConfirmed: formString(formData, "unanimousBoardConfirmed") === "on",
+        supportedDividendBasisConfirmed: formString(formData, "supportedDividendBasisConfirmed") === "on",
+        prudentEquityAndLiquidityConfirmed: formString(formData, "prudentEquityAndLiquidityConfirmed") === "on",
+        reviewedFacts: {
+          organizationNumber: formString(formData, "reviewedOrganizationNumber"),
+          legalName: formString(formData, "reviewedLegalName"),
+          shareholders: reviewedIds.map((shareholderId, index) => ({
+            shareholderId,
+            name: reviewedNames[index] ?? "",
+            shareCount: Number(reviewedCounts[index]),
+          })),
+          totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
+          availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
+          annualDataHash: formString(formData, "reviewedAnnualDataHash"),
+          annualAccountsPayloadHash: formString(formData, "reviewedAnnualAccountsPayloadHash"),
+        },
+        annualResultAllocationOre: Number(formString(formData, "annualResultAllocationOre")),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof CorporateDecisionFactsError || error instanceof OwnerDividendDraftBasisError
+      ? `${error.code}: ${error.message}`
+      : error instanceof Error ? error.message : "Årsbeslutningsgrunnlaget er ugyldig.";
+    failTo(returnTo, message);
+  }
+
+  const setId = requiredFormUuid(formData, "documentSetId");
+  const artifactIds: CorporateDraftArtifactIds = {
+    annual_board_minutes: {
+      artifactId: requiredFormUuid(formData, "annualBoardArtifactId"),
+      documentId: requiredFormUuid(formData, "annualBoardDocumentId"),
+    },
+    annual_general_meeting_minutes: {
+      artifactId: requiredFormUuid(formData, "annualGeneralMeetingArtifactId"),
+      documentId: requiredFormUuid(formData, "annualGeneralMeetingDocumentId"),
+    },
+  };
+  let decisionHash: string;
+  try {
+    ({ decisionHash } = await persistCorporateDocumentDraft({
+      supabase,
+      decision,
+      setId,
+      artifactIds,
+    }));
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Årsdokumentutkastet kunne ikke opprettes.");
+  }
+
+  const { error: auditError } = await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "corporate_documents",
+    action: "annual_corporate_decision_draft_created",
+    message: `Decision ${decision.request_id}, set ${setId}, decision hash ${decisionHash}.`,
+  });
+  if (auditError) {
+    console.error("Annual corporate decision audit detail could not be appended.", {
+      decisionId: decision.request_id,
+      decisionHash,
+      errorCode: auditError.code,
+    });
+  }
+  revalidatePath("/");
+  redirect(`/corporate-decisions/${decision.request_id}`);
+}
+
+async function corporateLifecycleActionSetup(
+  formData: FormData,
+  returnToOverride?: string,
+  options: { verifyCurrentAnnualSource?: boolean } = {},
+) {
+  const decisionId = requiredFormUuid(formData, "decisionId");
+  const setId = requiredFormUuid(formData, "documentSetId");
+  const decisionHash = formString(formData, "decisionHash");
+  const returnTo = returnToOverride ?? corporateDecisionPath(decisionId);
+  if (process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED !== "true") {
+    failTo(returnTo, "Selskapsdokumenter er deaktivert til påkrevde godkjenninger foreligger.");
+  }
+  if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) failTo(returnTo, "Innlogging kreves.");
+  let context: CorporateLifecycleActionContext;
+  try {
+    context = await loadCorporateLifecycleActionContext({
+      supabase,
+      userId: user.id,
+      decisionId,
+      setId,
+      submittedDecisionHash: decisionHash,
+      verifyCurrentAnnualSource: options.verifyCurrentAnnualSource,
+    });
+  } catch (error) {
+    failTo(returnTo, error instanceof Error ? error.message : "Beslutningsgrunnlaget kunne ikke kontrolleres.");
+  }
+  return { supabase, user, context, decisionId, setId, decisionHash, returnTo };
+}
+
+export async function approveCorporateDecisionFacts(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "facts_approved",
+      decision_hash: setup.decisionHash,
+      metadata: { attestation: "owner_reviewed_persisted_facts" },
+      idempotency_key: `corporate-facts-approved:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function recordCorporateSigningRequested(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "signing_requested",
+      decision_hash: setup.decisionHash,
+      metadata: { delivery: "external_signing_managed_by_owner" },
+      idempotency_key: `corporate-signing-requested:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function rejectCorporateDecision(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "approve_corporate_facts",
+  );
+  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      event_kind: "rejected",
+      decision_hash: setup.decisionHash,
+      metadata: { reason: formString(formData, "reason").slice(0, 1000) || "owner_rejected" },
+      idempotency_key: `corporate-rejected:${setup.decisionId}:${setup.decisionHash}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath(setup.returnTo);
+  redirect(setup.returnTo);
+}
+
+export async function attestSignedCorporateArtifact(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "attest_signed_corporate_document",
+  );
+  if (formString(formData, "ownerAttestation") !== "on") {
+    failTo(setup.returnTo, "Du må bekrefte at den opplastede filen er en signert kopi.");
+  }
+  const unsignedArtifactId = requiredFormUuid(formData, "unsignedArtifactId");
+  const signedArtifactId = requiredFormUuid(formData, "signedArtifactId");
+  const signedDocumentId = requiredFormUuid(formData, "signedDocumentId");
+  const unsignedResult = await setup.supabase
+    .from("corporate_document_artifacts")
+    .select("id, set_id, artifact_kind, variant")
+    .eq("id", unsignedArtifactId)
+    .eq("set_id", setup.setId)
+    .eq("variant", "unsigned")
+    .maybeSingle();
+  if (unsignedResult.error || !unsignedResult.data) {
+    failTo(setup.returnTo, unsignedResult.error?.message ?? "Fant ikke originaldokumentet.");
+  }
+  const artifactKind = unsignedResult.data.artifact_kind as CorporateArtifactKind;
+  const signers = requiredCorporateArtifactSigners(artifactKind, setup.context.decision.canonical_input);
+  if (signers.length === 0) failTo(setup.returnTo, "Dokumentet mangler påkrevde signatarer.");
+  const file = formData.get("signedFile");
+  if (!(file instanceof File)) failTo(setup.returnTo, "Velg en signert PDF-fil.");
+
+  let artifact;
+  try {
+    artifact = validateSignedCorporateArtifactUpload({
+      filename: file.name,
+      contentType: file.type,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+    });
+  } catch (error) {
+    failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen er ugyldig.");
+  }
+  const storageKey = corporateSignedArtifactStorageKey({
+    companyId: setup.context.decision.company_id,
+    incomeYear: setup.context.decision.income_year,
+    setId: setup.setId,
+    artifactId: signedArtifactId,
+    artifactKind,
+    contentSha256: artifact.contentSha256,
+  });
+  let upload;
+  try {
+    upload = await uploadSignedCorporateArtifact({
+      storageClient: setup.supabase as unknown as CorporateStorageClient,
+      storageKey,
+      artifact,
+    });
+  } catch (error) {
+    failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen kunne ikke lagres.");
+  }
+
+  const { error } = await setup.supabase.rpc("attest_corporate_signed_artifact", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      unsigned_artifact_id: unsignedArtifactId,
+      decision_hash: setup.decisionHash,
+      signers,
+      signed_artifact: {
+        id: signedArtifactId,
+        document_id: signedDocumentId,
+        artifact_kind: artifactKind,
+        name: artifact.filename,
+        content_sha256: artifact.contentSha256,
+        byte_length: artifact.byteLength,
+        mime_type: artifact.mimeType,
+        storage_key: storageKey,
+      },
+      idempotency_key: `corporate-signed-copy:${signedArtifactId}`,
+    },
+  });
+  if (error) {
+    if (upload.newlyUploaded) {
+      const cleanup = await setup.supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+      if (cleanup.error) {
+        throw new AggregateError(
+          [new Error(error.message), new Error(cleanup.error.message)],
+          "Signert kopi ble ikke registrert, og det nye lagringsobjektet kunne ikke ryddes opp.",
+        );
+      }
+    }
+    failTo(setup.returnTo, error.message);
+  }
+  revalidatePath(setup.returnTo);
+  revalidatePath("/documents");
+  redirect(setup.returnTo);
+}
+
+export async function finalizeCorporateDecision(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData);
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "finalize_corporate_decision",
+  );
+  const finalizationId = requiredFormUuid(formData, "finalizationId");
+  const holdingActionId = setup.context.decision.decision_kind === "owner_dividend"
+    ? requiredFormUuid(formData, "holdingActionId")
+    : null;
+  const ledgerEntryId = setup.context.decision.decision_kind === "owner_dividend"
+    ? requiredFormUuid(formData, "ledgerEntryId")
+    : null;
+  const { error } = await setup.supabase.rpc("finalize_corporate_decision", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      decision_hash: setup.decisionHash,
+      finalization_id: finalizationId,
+      holding_action_id: holdingActionId,
+      ledger_entry_id: ledgerEntryId,
+      idempotency_key: `corporate-finalized:${finalizationId}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath("/");
+  redirect(setup.returnTo);
+}
+
+export async function recordOwnerDividendPayment(formData: FormData) {
+  const setup = await corporateLifecycleActionSetup(formData, "/workspace", {
+    verifyCurrentAnnualSource: false,
+  });
+  await requireSensitiveActionStepUp(
+    setup.supabase,
+    setup.user.id,
+    setup.context.decision.company_id,
+    "record_owner_dividend_payment",
+  );
+  const bankTransactionId = requiredFormUuid(formData, "bankTransactionId");
+  const holdingActionId = requiredFormUuid(formData, "holdingActionId");
+  const ledgerEntryId = requiredFormUuid(formData, "ledgerEntryId");
+  const [finalizationResult, eventsResult, transactionResult] = await Promise.all([
+    setup.supabase
+      .from("corporate_decision_finalizations")
+      .select("id, decision_id, finalization_kind, decision_hash, accounting_policy_version")
+      .eq("decision_id", setup.decisionId)
+      .maybeSingle(),
+    setup.supabase
+      .from("corporate_document_events")
+      .select("decision_id, event_kind, metadata")
+      .eq("decision_id", setup.decisionId)
+      .eq("event_kind", "payment_recorded"),
+    setup.supabase
+      .from("bank_transactions")
+      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id")
+      .eq("id", bankTransactionId)
+      .maybeSingle(),
+  ]);
+  if (finalizationResult.error || eventsResult.error || transactionResult.error
+    || !transactionResult.data) {
+    failTo(
+      setup.returnTo,
+      finalizationResult.error?.message
+        ?? eventsResult.error?.message
+        ?? transactionResult.error?.message
+        ?? "Fant ikke banktransaksjonen.",
+    );
+  }
+  try {
+    const payable = deriveOpenDividendPayable({
+      decision: setup.context.decision,
+      documentSet: setup.context.documentSet,
+      finalization: finalizationResult.data,
+      events: eventsResult.data ?? [],
+    });
+    validateOwnerDividendPaymentInput({ payable, transaction: transactionResult.data });
+  } catch (error) {
+    const message = error instanceof OwnerDividendPaymentError
+      ? `${error.code}: ${error.message}`
+      : error instanceof Error ? error.message : "Utbyttebetalingen er ugyldig.";
+    failTo(setup.returnTo, message);
+  }
+  const { error } = await setup.supabase.rpc("record_owner_dividend_payment", {
+    p_payload: {
+      decision_id: setup.decisionId,
+      set_id: setup.setId,
+      decision_hash: setup.decisionHash,
+      bank_transaction_id: bankTransactionId,
+      holding_action_id: holdingActionId,
+      ledger_entry_id: ledgerEntryId,
+      idempotency_key: `owner-dividend-payment:${holdingActionId}`,
+    },
+  });
+  if (error) failTo(setup.returnTo, error.message);
+  revalidatePath("/");
+  redirect("/workspace?dividendPayment=recorded");
+}
+
+export async function recordShareholderLoan(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -1990,7 +2897,7 @@ export async function recordShareholderLoan(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjonærlån";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    failTo(returnTarget(formData), message);
   }
 
   if (bankTransactionId) {
@@ -2000,17 +2907,17 @@ export async function recordShareholderLoan(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     const expectedAmount = payload.direction === "shareholder_to_company" ? payload.amount : -payload.amount;
     if (Number(transaction.amount) !== expectedAmount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjon%C3%A6rl%C3%A5net");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjon%C3%A6rl%C3%A5net");
     }
   }
   if (documentId) {
@@ -2020,10 +2927,10 @@ export async function recordShareholderLoan(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeActionError(documentError ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -2042,7 +2949,7 @@ export async function recordShareholderLoan(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere aksjonærlån")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjonærlån")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -2060,7 +2967,7 @@ export async function recordShareholderLoan(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeActionError(actionError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -2069,7 +2976,7 @@ export async function recordShareholderLoan(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeActionError(matchError)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -2082,19 +2989,19 @@ export async function recordShareholderLoan(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  succeedTo(returnTarget(formData));
 }
 
 export async function recordTaxSettlement(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2118,7 +3025,7 @@ export async function recordTaxSettlement(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig skatteoppgjør";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    failTo(returnTarget(formData), message);
   }
 
   if (bankTransactionId) {
@@ -2128,17 +3035,17 @@ export async function recordTaxSettlement(formData: FormData) {
       .eq("id", bankTransactionId)
       .single();
     if (transactionError || !transaction) {
-      redirect(`/?error=${encodeActionError(transactionError ?? "Fant ikke banktransaksjon")}`);
+      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
     }
     if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
     if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/?error=Banktransaksjonen%20er%20allerede%20avstemt");
+      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
     }
     const expectedAmount = expectedBankAmountForTaxSettlement(payload);
     if (expectedAmount === null || Number(transaction.amount) !== expectedAmount) {
-      redirect("/?error=Banktransaksjonen%20m%C3%A5%20matche%20skatteoppgj%C3%B8ret");
+      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20skatteoppgj%C3%B8ret");
     }
   }
   if (documentId) {
@@ -2148,10 +3055,10 @@ export async function recordTaxSettlement(formData: FormData) {
       .eq("id", documentId)
       .single();
     if (documentError || !document) {
-      redirect(`/?error=${encodeActionError(documentError ?? "Fant ikke bilag")}`);
+      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
     }
     if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
+      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
     }
   }
 
@@ -2169,7 +3076,7 @@ export async function recordTaxSettlement(formData: FormData) {
     .select("id")
     .single();
   if (entryError || !entry) {
-    redirect(`/?error=${encodeActionError(entryError ?? "Kunne ikke postere skatteoppgjør")}`);
+    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere skatteoppgjør")}`);
   }
 
   const actionId = crypto.randomUUID();
@@ -2187,7 +3094,7 @@ export async function recordTaxSettlement(formData: FormData) {
     created_by: user.id,
   });
   if (actionError) {
-    redirect(`/?error=${encodeActionError(actionError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
   }
 
   if (bankTransactionId) {
@@ -2196,7 +3103,7 @@ export async function recordTaxSettlement(formData: FormData) {
       .update({ matched_action_id: actionId })
       .eq("id", bankTransactionId);
     if (matchError) {
-      redirect(`/?error=${encodeActionError(matchError)}`);
+      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
     }
   }
 
@@ -2209,19 +3116,19 @@ export async function recordTaxSettlement(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  succeedTo(returnTarget(formData));
 }
 
 export async function saveBillingAccount(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2240,7 +3147,7 @@ export async function saveBillingAccount(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig billingkonto";
-    redirect(`/?error=${encodePublicActionError(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
   }
 
   const { error } = await supabase.from("billing_accounts").upsert(
@@ -2252,7 +3159,7 @@ export async function saveBillingAccount(formData: FormData) {
     { onConflict: "company_id" },
   );
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2264,19 +3171,19 @@ export async function saveBillingAccount(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function requestCompanyCancellation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2293,28 +3200,54 @@ export async function requestCompanyCancellation(formData: FormData) {
     .eq("role", "owner")
     .maybeSingle();
   if (!membership) {
-    redirect("/?error=Kun%20eier%20kan%20be%20om%20kansellering");
+    redirect("/workspace?error=Kun%20eier%20kan%20be%20om%20kansellering");
   }
 
-  const { data: documents, error: documentError } = await supabase
-    .from("documents")
-    .select("id, status")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear);
-  if (documentError) {
-    redirect(`/?error=${encodeActionError(documentError)}`);
-  }
+  const [documentResult, artifactResult, archiveAuditResult] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, status")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear),
+    supabase
+      .from("corporate_document_artifacts")
+      .select("storage_key, created_at")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear),
+    supabase
+      .from("audit_events")
+      .select("created_at")
+      .eq("company_id", companyId)
+      .eq("action", `company_year_archive_exported:${incomeYear}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const evidenceError = documentResult.error ?? artifactResult.error ?? archiveAuditResult.error;
+  if (evidenceError) redirect(`/workspace?error=${encodeURIComponent(evidenceError.message)}`);
 
-  const archiveExportedAt = new Date().toISOString();
+  const archiveExportedAt = archiveAuditResult.data?.created_at ?? null;
+  const archiveExportedTime = archiveExportedAt ? new Date(archiveExportedAt).getTime() : Number.NaN;
+  const corporateArtifacts = artifactResult.data ?? [];
+  const missingCorporateObjectKeys = corporateArtifacts
+    .filter((artifact) => !Number.isFinite(archiveExportedTime)
+      || new Date(artifact.created_at).getTime() > archiveExportedTime)
+    .map((artifact) => artifact.storage_key);
   const evidence = buildCancellationEvidence({
     companyId,
     incomeYear,
     archiveExportedAt,
-    missingDocumentIds: (documents ?? [])
+    missingDocumentIds: (documentResult.data ?? [])
       .filter((document) => String(document.status ?? "").startsWith("missing"))
       .map((document) => document.id),
+    corporateObjectKeys: corporateArtifacts.map((artifact) => artifact.storage_key),
+    missingCorporateObjectKeys,
   });
-  const status = nextCancellationStatus({ archiveExportedAt });
+  const status = nextCancellationStatus({
+    archiveExportedAt,
+    corporateLifecyclePresent: corporateArtifacts.length > 0,
+    corporateEvidenceComplete: evidence.corporateEvidenceComplete,
+  });
 
   const { data: existing } = await supabase
     .from("company_cancellations")
@@ -2325,20 +3258,21 @@ export async function requestCompanyCancellation(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
+  const requestedAt = new Date().toISOString();
   const payload = {
     company_id: companyId,
     status,
     reason,
     evidence,
     requested_by: user.id,
-    requested_at: archiveExportedAt,
-    updated_at: archiveExportedAt,
+    requested_at: requestedAt,
+    updated_at: requestedAt,
   };
   const { error } = existing?.id
     ? await supabase.from("company_cancellations").update(payload).eq("id", existing.id)
     : await supabase.from("company_cancellations").insert(payload);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert([
@@ -2359,61 +3293,49 @@ export async function requestCompanyCancellation(formData: FormData) {
   ]);
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function completeCompanyDeletionRecord(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const cancellationId = formString(formData, "cancellationId");
   const legalRetentionConfirmed = formData.get("legalRetentionConfirmed") === "on";
   if (!legalRetentionConfirmed) {
-    redirect("/?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
-  }
-
-  const { data: operator } = await supabase
-    .from("support_operators")
-    .select("role, active")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-  if (!operator) {
-    redirect("/?error=Endelig%20slettestatus%20krever%20en%20uavhengig%20admin-operator");
+    redirect("/workspace?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
   }
 
   await requireSensitiveActionStepUp(supabase, user.id, companyId, "company_delete");
 
   const { data: cancellation, error: cancellationError } = await supabase
     .from("company_cancellations")
-    .select("id, company_id, status, evidence, requested_by")
+    .select("id, company_id, status, evidence")
     .eq("id", cancellationId)
     .eq("company_id", companyId)
     .single();
   if (cancellationError || !cancellation) {
-    redirect(`/?error=${encodeActionError(cancellationError ?? "Kanselleringssak mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(cancellationError?.message ?? "Kanselleringssak mangler")}`);
   }
   if (!cancellation.evidence?.archiveExportedAt) {
-    redirect("/?error=Arkiv%20m%C3%A5%20registreres%20f%C3%B8r%20sletting");
+    redirect("/workspace?error=Arkiv%20m%C3%A5%20registreres%20f%C3%B8r%20sletting");
   }
   if (cancellation.status === "deleted") {
-    redirect("/?error=Selskapet%20er%20allerede%20markert%20slettet");
+    redirect("/workspace?error=Selskapet%20er%20allerede%20markert%20slettet");
   }
 
   const now = new Date().toISOString();
   const deletionUpdate = buildDeletionCompletionUpdate({
     actorId: user.id,
-    requestedBy: cancellation.requested_by,
     reviewedAt: now,
     deletedAt: now,
   });
@@ -2423,8 +3345,13 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
     .eq("id", cancellationId)
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
+
+  await supabase
+    .from("companies")
+    .update({ status_text: "deleted_retention_record" })
+    .eq("id", companyId);
 
   await supabase.from("audit_events").insert([
     {
@@ -2444,19 +3371,19 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   ]);
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function activateBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2467,7 +3394,7 @@ export async function activateBillingSubscription(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeActionError(accountError ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2487,7 +3414,7 @@ export async function activateBillingSubscription(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeActionError(eventError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
   const { error } = await supabase
     .from("billing_accounts")
@@ -2500,7 +3427,7 @@ export async function activateBillingSubscription(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2512,19 +3439,19 @@ export async function activateBillingSubscription(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function requestFilingPackagePayment(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2536,7 +3463,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeActionError(accountError ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   const { data: readinessSnapshot, error: readinessError } = await supabase
     .from("filing_readiness_snapshots")
@@ -2546,11 +3473,11 @@ export async function requestFilingPackagePayment(formData: FormData) {
     .eq("obligation", "aksjonaerregisteroppgaven")
     .maybeSingle();
   if (readinessError) {
-    redirect(`/?error=${encodeActionError(readinessError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(readinessError.message)}`);
   }
   const gate = productionBillingGate(account, Boolean(readinessSnapshot?.ready));
   if (!gate.chargeAllowed) {
-    redirect(`/?error=${encodePublicActionError(gate.message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(gate.message)}`);
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2572,7 +3499,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeActionError(eventError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2586,7 +3513,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2598,19 +3525,19 @@ export async function requestFilingPackagePayment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function cancelBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2621,7 +3548,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeActionError(accountError ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
 
   const event = simulateBillingProviderEvent({
@@ -2643,7 +3570,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeActionError(eventError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2656,7 +3583,7 @@ export async function cancelBillingSubscription(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2668,26 +3595,26 @@ export async function cancelBillingSubscription(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function saveYearEndInterview(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const annualFullTimeEquivalents = Number(formString(formData, "annualFullTimeEquivalents") || "0");
   if (!Number.isFinite(annualFullTimeEquivalents) || annualFullTimeEquivalents < 0) {
-    redirect("/?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
+    redirect("/workspace?error=%C3%85rsverk%20m%C3%A5%20v%C3%A6re%200%20eller%20h%C3%B8yere");
   }
   const answers = buildYearEndInterviewAnswers(
     Object.fromEntries(yearEndAnswerKeys.map((key) => [key, formData.get(key) === "on"])),
@@ -2716,7 +3643,7 @@ export async function saveYearEndInterview(formData: FormData) {
     { onConflict: "company_id,income_year" },
   );
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2728,19 +3655,19 @@ export async function saveYearEndInterview(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTarget(formData));
 }
 
 export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2751,7 +3678,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     .eq("id", companyId)
     .single();
   if (companyError || !company) {
-    redirect(`/?error=${encodeActionError(companyError ?? "Fant ikke selskap")}`);
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
   }
 
   const [
@@ -2767,19 +3694,29 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: authorityPermissions, error: authorityError },
     { data: filingPreviews, error: previewsError },
     { data: filingSubmissions, error: submissionsError },
+    { data: corporateDecisions, error: corporateDecisionsError },
+    { data: corporateDocumentSets, error: corporateDocumentSetsError },
+    { data: corporateDocumentArtifacts, error: corporateDocumentArtifactsError },
+    { data: corporateDocumentEvents, error: corporateDocumentEventsError },
+    { data: corporateDecisionFinalizations, error: corporateDecisionFinalizationsError },
   ] = await Promise.all([
     supabase.from("opening_balance_setups").select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("ledger_entries").select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("bank_transactions").select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
     supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("filing_submissions").select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("filing_submissions").select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("corporate_decisions").select("id, company_id, income_year, decision_kind, source_hash, decision_hash, created_at").eq("company_id", companyId).eq("income_year", incomeYear).order("created_at", { ascending: false }),
+    supabase.from("corporate_document_sets").select("id, company_id, income_year, decision_id, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("corporate_document_artifacts").select("id, company_id, income_year, set_id, artifact_kind, variant").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("corporate_document_events").select("id, company_id, income_year, decision_id, set_id, event_kind, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
+    supabase.from("corporate_decision_finalizations").select("id, company_id, income_year, decision_id, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
   ]);
   const firstError =
     setupsError ||
@@ -2793,11 +3730,38 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     (billingError?.code === "PGRST116" ? null : billingError) ||
     authorityError ||
     previewsError ||
-    submissionsError;
+    submissionsError ||
+    corporateDecisionsError ||
+    corporateDocumentSetsError ||
+    corporateDocumentArtifactsError ||
+    corporateDocumentEventsError ||
+    corporateDecisionFinalizationsError;
   if (firstError) {
-    redirect(`/?error=${encodeActionError(firstError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
+  const annualCorporateDecision = (corporateDecisions ?? []).find(
+    (decision) => decision.decision_kind === "annual_close",
+  ) ?? null;
+  const annualCorporateSet = annualCorporateDecision
+    ? (corporateDocumentSets ?? []).find((set) => set.decision_id === annualCorporateDecision.id) ?? null
+    : null;
+  let currentAnnualSourceHash = "";
+  if (annualData) {
+    try {
+      const annualBasis = buildAnnualCloseBasis({
+        annualData: annualData as AnnualDataRow,
+        annualAccountsPayload: buildAnnualAccountsPayload({
+          incomeYear,
+          annualData: annualData as AnnualDataRow,
+          ledgerEntries: (ledgerEntries ?? []) as LedgerEntryRow[],
+        }),
+      });
+      currentAnnualSourceHash = corporateAnnualSourceHash(annualBasis);
+    } catch {
+      currentAnnualSourceHash = "";
+    }
+  }
   const snapshots = evaluateAnnualReadinessGates({
     company,
     incomeYear,
@@ -2813,6 +3777,44 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     authorityPermissions: authorityPermissions ?? [],
     filingPreviews: filingPreviews ?? [],
     filingSubmissions: filingSubmissions ?? [],
+    corporateDocuments: {
+      enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
+      lifecycle: {
+        currentDecisionHash: annualCorporateDecision?.decision_hash ?? "",
+        currentSourceHash: currentAnnualSourceHash,
+        decision: annualCorporateDecision ? {
+          id: annualCorporateDecision.id,
+          decision_kind: annualCorporateDecision.decision_kind as "annual_close",
+          decision_hash: annualCorporateDecision.decision_hash,
+          source_hash: annualCorporateDecision.source_hash,
+        } : null,
+        documentSet: annualCorporateSet ? {
+          id: annualCorporateSet.id,
+          decision_id: annualCorporateSet.decision_id,
+          decision_hash: annualCorporateSet.decision_hash,
+        } : null,
+        artifacts: annualCorporateSet
+          ? (corporateDocumentArtifacts ?? []).filter(
+              (artifact) => artifact.set_id === annualCorporateSet.id,
+            ) as Array<{
+              id: string;
+              set_id: string;
+              artifact_kind: string;
+              variant: "unsigned" | "signed_owner_attested";
+            }>
+          : [],
+        events: annualCorporateDecision
+          ? (corporateDocumentEvents ?? []).filter(
+              (event) => event.decision_id === annualCorporateDecision.id,
+            )
+          : [],
+        finalizations: annualCorporateDecision
+          ? (corporateDecisionFinalizations ?? []).filter(
+              (finalization) => finalization.decision_id === annualCorporateDecision.id,
+            )
+          : [],
+      },
+    },
   });
 
   const { error: upsertError } = await supabase.from("filing_readiness_snapshots").upsert(
@@ -2832,7 +3834,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { onConflict: "company_id,income_year,obligation" },
   );
   if (upsertError) {
-    redirect(`/?error=${encodeActionError(upsertError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(upsertError.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2844,19 +3846,19 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect(returnTarget(formData));
 }
 
 export async function markBillingUnsupported(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2874,7 +3876,7 @@ export async function markBillingUnsupported(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2886,19 +3888,19 @@ export async function markBillingUnsupported(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function markBillingRefundEligible(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2910,10 +3912,10 @@ export async function markBillingRefundEligible(formData: FormData) {
     .eq("company_id", companyId)
     .single();
   if (accountError || !account) {
-    redirect(`/?error=${encodeActionError(accountError ?? "Billingkonto mangler")}`);
+    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
   }
   if (!account.supported_case || !account.filing_package_paid) {
-    redirect("/?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
+    redirect("/workspace?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
   }
   const event = simulateBillingProviderEvent({
     companyId,
@@ -2936,7 +3938,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     created_by: user.id,
   });
   if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/?error=${encodeActionError(eventError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
   }
 
   const { error } = await supabase
@@ -2950,7 +3952,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     })
     .eq("company_id", companyId);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -2962,19 +3964,19 @@ export async function markBillingRefundEligible(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 export async function confirmAuthorityPermission(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -2983,7 +3985,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
   try {
     obligation = validateAuthorityObligation(formString(formData, "obligation"));
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
   }
   const now = new Date().toISOString();
   const productionEnabled = formData.get("productionEnabled") === "on";
@@ -3000,7 +4002,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
     { onConflict: "company_id,obligation" },
   );
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -3011,19 +4013,20 @@ export async function confirmAuthorityPermission(formData: FormData) {
     message: `Innsendingsrett bekreftet for ${obligation}. Produksjonsgate: ${productionEnabled ? "aktiv" : "av"}.`,
   });
 
-  completeAnnualWorkspaceAction(formData);
+  revalidatePath("/");
+  redirect(returnTarget(formData));
 }
 
 export async function recordAuthorityTestEvidence(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -3032,12 +4035,12 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
   try {
     obligation = validateAuthorityObligation(formString(formData, "obligation"));
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig myndighetsplikt")}`);
   }
 
   const environment = formString(formData, "environment") as AuthorityTestRunEnvironment;
   if (!["test", "manual_evidence"].includes(environment)) {
-    redirect("/?error=Ugyldig%20testmilj%C3%B8");
+    redirect("/workspace?error=Ugyldig%20testmilj%C3%B8");
   }
   const status = formString(formData, "status") as AuthorityTestRunStatus;
   let record;
@@ -3056,12 +4059,12 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
       recordedBy: user.id,
     });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig test-evidens")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig test-evidens")}`);
   }
 
   const { error } = await supabase.from("authority_test_runs").insert(record);
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -3073,19 +4076,152 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
-export async function recordLaunchSignoff(formData: FormData) {
+export async function recordAnnualAccountsTt02Evidence(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/workspace?error=Supabase%20env%20mangler");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  await requireSensitiveActionStepUp(supabase, user.id, companyId, "confirm_authority");
+  const evidenceFile = formData.get("evidenceFile");
+  if (!(evidenceFile instanceof File)
+    || !evidenceFile.name.toLowerCase().endsWith(".json")
+    || evidenceFile.size < 1
+    || evidenceFile.size > 512 * 1024) {
+    redirect("/workspace?error=Velg%20en%20gyldig%20TT02-evidensfil%20i%20JSON-format");
+  }
+
+  let evidence;
+  try {
+    evidence = JSON.parse(await evidenceFile.text());
+  } catch {
+    redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number")
+    .eq("id", companyId)
+    .single();
+  if (companyError || !company) {
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
+  }
+
+  let record;
+  try {
+    record = buildAnnualAccountsAuthorityTestRunFromEvidence({
+      companyId,
+      expectedCompanyOrgNumber: company.org_number,
+      evidence,
+      evidenceUrl: formString(formData, "evidenceUrl"),
+      recordedBy: user.id,
+    });
+  } catch (error) {
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig TT02-evidens")}`);
+  }
+
+  const { error } = await supabase.from("authority_test_runs").insert(record);
+  if (error) {
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await supabase.from("audit_events").insert({
+    company_id: companyId,
+    actor_id: user.id,
+    category: "submission",
+    action: "annual_accounts_tt02_evidence_imported",
+    message: `Årsregnskap TT02-evidens importert som pending med ref ${record.test_reference}.`,
+  });
+
+  revalidatePath("/");
+  redirect("/workspace");
+}
+
+export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+
+  const companyId = formString(formData, "companyId");
+  const evidenceFile = formData.get("evidenceFile");
+  if (!(evidenceFile instanceof File)
+    || !evidenceFile.name.toLowerCase().endsWith(".json")
+    || evidenceFile.size < 1
+    || evidenceFile.size > 512 * 1024) {
+    redirect("/workspace?error=Velg%20en%20gyldig%20skattemelding-evidensfil%20i%20JSON-format");
+  }
+
+  let evidence;
+  try {
+    evidence = JSON.parse(await evidenceFile.text());
+  } catch {
+    redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number")
+    .eq("id", companyId)
+    .single();
+  if (companyError || !company) {
+    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
+  }
+
+  let persistence;
+  try {
+    persistence = buildCompanyTaxReturnEvidencePersistence({
+      companyId,
+      expectedCompanyOrgNumber: company.org_number,
+      expectedIncomeYear: Number(formString(formData, "incomeYear")),
+      evidence,
+      evidenceUrl: formString(formData, "evidenceUrl"),
+      recordedBy: user.id,
+    });
+  } catch {
+    redirect(`/workspace?error=${encodeURIComponent("Ugyldig TT02-evidens")}`);
+  }
+
+  const { error } = await supabase.rpc("import_company_tax_tt02_evidence", {
+    p_payload: persistence,
+  });
+  if (error) {
+    const message = error.message.includes("company_tax_evidence_mfa_required")
+      ? "Ekstra identitetsbekreftelse med tofaktorautentisering kreves."
+      : "TT02-evidensen kunne ikke lagres.";
+    redirect(`/workspace?error=${encodeURIComponent(message)}`);
+  }
+
+  revalidatePath("/");
+  redirect("/workspace");
+}
+
+export async function recordLaunchSignoff(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const { data: operator, error: operatorError } = await supabase
@@ -3096,10 +4232,10 @@ export async function recordLaunchSignoff(formData: FormData) {
     .eq("active", true)
     .maybeSingle();
   if (operatorError) {
-    redirect(`/?error=${encodeActionError(operatorError)}`);
+    redirect(`/workspace?error=${encodeURIComponent(operatorError.message)}`);
   }
   if (!operator) {
-    redirect("/?error=Admin%20operator%20kreves%20for%20launch%20signoff");
+    redirect("/workspace?error=Admin%20operator%20kreves%20for%20launch%20signoff");
   }
 
   let record;
@@ -3114,28 +4250,1138 @@ export async function recordLaunchSignoff(formData: FormData) {
       recordedBy: user.id,
     });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig launch signoff")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig launch signoff")}`);
   }
 
   const { error } = await supabase.from("launch_signoffs").upsert(record, { onConflict: "key" });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
-export async function postManualJournal(formData: FormData) {
+function authorityOperationFailureCode(error: unknown) {
+  if (!(error instanceof AuthorityOperationError)) {
+    return "authority_operation_failed" as const;
+  }
+  switch (error.code) {
+    case "authority_token_error":
+    case "authority_network_error":
+    case "authority_http_error":
+    case "authority_response_invalid":
+    case "authority_verification_error":
+      return error.code;
+    default:
+      return "authority_operation_failed" as const;
+  }
+}
+
+export async function runProductionAuthorityOperation(formData: FormData) {
   if (!hasSupabaseEnv()) {
-    redirect("/?error=Supabase%20env%20mangler");
+    redirect("/operator?authority=authority_ops_unavailable");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/?error=Innlogging%20kreves");
+    redirect("/login");
+  }
+
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError || !operator) {
+    redirect("/operator?authority=admin_operator_required");
+  }
+
+  try {
+    const stepUp = await loadTrustedStepUpContext(supabase, user.id);
+    assertStepUpAllowed("authority_operations", stepUp);
+  } catch (error) {
+    const code = error instanceof SensitiveActionStepUpError
+      ? "authority_step_up_required"
+      : "authority_step_up_failed";
+    redirect(`/operator?authority=${code}`);
+  }
+
+  try {
+    assertAuthorityOperationIntent({
+      operation: formRawString(formData, "operation"),
+      confirmation: formRawString(formData, "confirmation"),
+    });
+  } catch {
+    redirect("/operator?authority=authority_operation_invalid");
+  }
+
+  let environment;
+  try {
+    environment = productionAuthorityOperationEnvironment();
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
+  }
+  if (!environment) {
+    redirect("/operator?authority=authority_ops_disabled");
+  }
+
+  const definition = buildRf1086SystemDefinition(environment.clientId);
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    redirect("/operator?authority=authority_audit_unavailable");
+  }
+  const { data: started, error: startError } = await service.from("authority_operations").insert({
+    operation: AUTHORITY_OPERATION,
+    actor_id: user.id,
+    status: "started",
+    request_hash: authorityOperationRequestHash(definition),
+    result_code: "started",
+    metadata: {
+      systemId: definition.id,
+      clientId: environment.clientId,
+      right: RF1086_RIGHT,
+    },
+  }).select("id").single();
+  if (startError || !started) {
+    redirect("/operator?authority=authority_audit_start_failed");
+  }
+
+  let result;
+  try {
+    result = await executeRf1086SystemRegistration(environment);
+  } catch (error) {
+    const resultCode = authorityOperationFailureCode(error);
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    const { error: failureAuditError } = await service
+      .from("authority_operations")
+      .update({
+        status: "failed",
+        result_code: resultCode,
+        authority_http_status: authorityStatus,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", started.id);
+    if (failureAuditError) {
+      redirect("/operator?authority=authority_audit_completion_failed");
+    }
+    revalidatePath("/operator");
+    redirect(`/operator?authority=${resultCode}`);
+  }
+
+  const { error: completionError } = await service
+    .from("authority_operations")
+    .update({
+      status: result.status,
+      result_code: result.code,
+      authority_http_status: result.authorityStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", started.id);
+  if (completionError) {
+    redirect("/operator?authority=authority_audit_completion_failed");
+  }
+  revalidatePath("/operator");
+  redirect(`/operator?authority=${result.code}`);
+}
+
+export async function runProductionSystembrukerCallbackOperation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/operator?authority=authority_ops_unavailable");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: operator, error: operatorError } = await supabase
+    .from("support_operators")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+  if (operatorError || !operator) {
+    redirect("/operator?authority=admin_operator_required");
+  }
+
+  try {
+    const stepUp = await loadTrustedStepUpContext(supabase, user.id);
+    assertStepUpAllowed("authority_operations", stepUp);
+  } catch (error) {
+    const code = error instanceof SensitiveActionStepUpError
+      ? "authority_step_up_required"
+      : "authority_step_up_failed";
+    redirect(`/operator?authority=${code}`);
+  }
+
+  try {
+    assertSystembrukerCallbackOperationIntent({
+      operation: formRawString(formData, "operation"),
+      confirmation: formRawString(formData, "confirmation"),
+    });
+  } catch {
+    redirect("/operator?authority=authority_operation_invalid");
+  }
+
+  let environment;
+  try {
+    environment = productionAuthorityOperationEnvironment();
+  } catch (error) {
+    redirect(`/operator?authority=${authorityOperationEnvironmentFailureCode(error)}`);
+  }
+  if (!environment) {
+    redirect("/operator?authority=authority_ops_disabled");
+  }
+
+  const definition = buildRf1086SystembrukerCallbackDefinition(environment.clientId);
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    redirect("/operator?authority=authority_audit_unavailable");
+  }
+  const { data: started, error: startError } = await service.from("authority_operations").insert({
+    operation: SYSTEMBRUKER_CALLBACK_OPERATION,
+    actor_id: user.id,
+    status: "started",
+    request_hash: authorityOperationRequestHash(definition),
+    result_code: "started",
+    metadata: {
+      systemId: definition.id,
+      callbackPath: SYSTEMBRUKER_CALLBACK_PATH,
+    },
+  }).select("id").single();
+  if (startError || !started) {
+    redirect("/operator?authority=authority_audit_start_failed");
+  }
+
+  let result;
+  try {
+    result = await executeRf1086SystembrukerCallbackUpdate(environment);
+  } catch (error) {
+    const resultCode = authorityOperationFailureCode(error);
+    const authorityStatus = error instanceof AuthorityOperationError
+      ? error.authorityStatus
+      : null;
+    const { error: failureAuditError } = await service
+      .from("authority_operations")
+      .update({
+        status: "failed",
+        result_code: resultCode,
+        authority_http_status: authorityStatus,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", started.id);
+    if (failureAuditError) {
+      redirect("/operator?authority=authority_audit_completion_failed");
+    }
+    revalidatePath("/operator");
+    redirect(`/operator?authority=${resultCode}`);
+  }
+
+  const { error: completionError } = await service
+    .from("authority_operations")
+    .update({
+      status: result.status,
+      result_code: result.resultCode,
+      authority_http_status: result.authorityStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", started.id);
+  if (completionError) {
+    redirect("/operator?authority=authority_audit_completion_failed");
+  }
+  revalidatePath("/operator");
+  redirect(`/operator?authority=${result.resultCode}`);
+}
+
+function systemUserConnectionTarget(
+  companyId: string | null,
+  state: ReturnType<typeof callbackStateForResult> = "manual",
+) {
+  const query = new URLSearchParams({ systembruker: state });
+  if (companyId) query.set("company", companyId);
+  return `/connections?${query.toString()}`;
+}
+
+async function loadOwnedSystemUserContext(input: {
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  userId: string;
+  companyId: string;
+  requestId?: string;
+}) {
+  const [{ data: company, error: companyError }, { data: membership, error: membershipError }] = await Promise.all([
+    input.supabase
+      .from("companies")
+      .select("id,org_number")
+      .eq("id", input.companyId)
+      .maybeSingle(),
+    input.supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", input.companyId)
+      .eq("user_id", input.userId)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+  ]);
+  if (
+    companyError
+    || membershipError
+    || !company
+    || !membership
+    || company.id !== input.companyId
+    || membership.company_id !== input.companyId
+    || membership.user_id !== input.userId
+    || !/^\d{9}$/u.test(company.org_number)
+  ) {
+    return null;
+  }
+
+  if (!input.requestId) return { company, request: null };
+  const { data: request, error: requestError } = await input.supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code")
+    .eq("id", input.requestId)
+    .eq("company_id", input.companyId)
+    .eq("initiating_owner_user_id", input.userId)
+    .maybeSingle();
+  if (requestError || !request) return null;
+  return { company, request };
+}
+
+export async function startSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({ supabase, userId: user.id, companyId });
+  if (!context) redirect(systemUserConnectionTarget(companyId));
+
+  let confirmUrl: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const result = await startSystemUserRequest(dependencies, {
+      companyId: context.company.id,
+      requestId: randomUUID(),
+      ownerId: user.id,
+      orgNumber: context.company.org_number,
+    });
+    if (!result.confirmUrl || result.status !== "new") {
+      throw new Error("system_user_confirmation_unavailable");
+    }
+    const cookieStore = await cookies();
+    cookieStore.set(SYSTEM_USER_COOKIE.name, result.requestId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/systembruker/confirm",
+      maxAge: 3600,
+    });
+    confirmUrl = result.confirmUrl;
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(confirmUrl);
+}
+
+export async function refreshSystemUserRequestAction(formData: FormData) {
+  let companyId: string;
+  let requestId: string;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    requestId = requiredFormUuid(formData, "requestId");
+  } catch {
+    redirect(systemUserConnectionTarget(null));
+  }
+  if (!hasSupabaseEnv()) redirect(systemUserConnectionTarget(companyId));
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const context = await loadOwnedSystemUserContext({
+    supabase,
+    userId: user.id,
+    companyId,
+    requestId,
+  });
+  if (!context?.request) redirect(systemUserConnectionTarget(companyId));
+
+  let destination: string;
+  try {
+    await requireSensitiveActionStepUp(supabase, user.id, context.company.id, "system_user_connection");
+    const service = createSupabaseServiceRoleClient();
+    const dependencies = createProductionSystemUserFlowDependencies({
+      ownerClient: supabase as any,
+      serviceClient: service as any,
+      orgNumber: context.company.org_number,
+    });
+    const request = systemUserRequestRecordFromRow(
+      context.request,
+      context.company.org_number,
+    );
+    const result = request.status === "creating"
+      ? await retrySystemUserRequest(dependencies, request)
+      : await reconcileSystemUserRequest(dependencies, request);
+    revalidatePath("/connections");
+    destination = systemUserConnectionTarget(companyId, callbackStateForResult(result));
+  } catch {
+    redirect(systemUserConnectionTarget(companyId));
+  }
+  redirect(destination);
+}
+
+const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";
+
+function sha256(value: string) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function rf1086ProductionErrorTarget(
+  returnTo: string,
+  productionError: Rf1086OwnerActionErrorCode,
+) {
+  return `${returnTo}?productionError=${productionError}`;
+}
+
+function reportRf1086ProductionFailure(operation: string, error: unknown) {
+  const candidateCode = typeof error === "object" && error !== null && "code" in error
+    ? String(error.code)
+    : "UNCLASSIFIED";
+  const code = /^[A-Za-z0-9_:-]{1,100}$/u.test(candidateCode)
+    ? candidateCode
+    : "UNCLASSIFIED";
+  console.error("RF-1086 production operation failed.", { operation, code });
+}
+
+export async function upsertProductionPilotEntitlement(formData: FormData) {
+  if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  let companyId: string;
+  let ownerUserId: string;
+  let systemUserRequestId: string;
+  let entitlementId: string | null;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    ownerUserId = requiredFormUuid(formData, "ownerUserId");
+    systemUserRequestId = requiredFormUuid(formData, "systemUserRequestId");
+    entitlementId = formString(formData, "entitlementId")
+      ? requiredFormUuid(formData, "entitlementId")
+      : null;
+  } catch (error) {
+    redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig pilot-ID")}`);
+  }
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const status = formString(formData, "status");
+  const startsAt = new Date(formString(formData, "startsAt"));
+  const expiresAt = new Date(formString(formData, "expiresAt"));
+  const evidenceReference = formString(formData, "evidenceReference");
+  if (
+    !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100
+    || !["pending", "active", "suspended", "completed", "revoked"].includes(status)
+    || Number.isNaN(startsAt.valueOf()) || Number.isNaN(expiresAt.valueOf()) || startsAt >= expiresAt
+    || !evidenceReference || evidenceReference.length > 1000
+  ) {
+    redirect("/operator?error=Ugyldig%20produksjonspilot-entitlement");
+  }
+  const { error } = await supabase.rpc("manage_production_pilot_entitlement", {
+    p_id: entitlementId,
+    p_company_id: companyId,
+    p_user_id: ownerUserId,
+    p_income_year: incomeYear,
+    p_status: status,
+    p_billing_exempt: formData.get("billingExempt") === "on",
+    p_system_user_request_id: systemUserRequestId,
+    p_starts_at: startsAt.toISOString(),
+    p_expires_at: expiresAt.toISOString(),
+    p_evidence_reference: evidenceReference,
+  });
+  if (error) redirect(`/operator?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/operator");
+  revalidatePath("/filing/aksjonaerregisteroppgaven");
+  redirect("/operator?pilot=updated");
+}
+
+export async function approveProductionFiling(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
+  if (formData.get("realFilingConfirmed") !== "on") {
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
+  let previewId: string;
+  let entitlementId: string;
+  try {
+    previewId = requiredFormUuid(formData, "previewId");
+    entitlementId = requiredFormUuid(formData, "entitlementId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval_basis", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { data: preview, error: previewError } = await supabase
+    .from("filing_previews").select("*").eq("id", previewId).single();
+  if (previewError || !preview) {
+    reportRf1086ProductionFailure("load_approval_preview", previewError);
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
+  await requireSensitiveActionStepUp(supabase, user.id, preview.company_id, "production_filing");
+  const { data: company } = await supabase.from("companies").select("id, org_number").eq("id", preview.company_id).single();
+  if (!company || preview.status !== "ready" || !preview.hovedskjema_xml) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
+  const documentHashes = {
+    hovedskjema: sha256(preview.hovedskjema_xml),
+    ...Object.fromEntries(Object.entries(preview.underskjema_xml as Record<string, string>)
+      .map(([name, xml]) => [`underskjema_${name}`, sha256(xml)])),
+  };
+  const manifest = buildProductionApprovalManifest({
+    companyId: preview.company_id,
+    userId: user.id,
+    organizationNumber: company.org_number,
+    incomeYear: preview.income_year,
+    obligation: "aksjonaerregisteroppgaven",
+    caseProfile: "rf1086_no_activity_v1",
+    adapterVersion: RF1086_PRODUCTION_ADAPTER_VERSION,
+    previewId: preview.id,
+    payloadHash: rf1086PayloadHash(preview),
+    documentHashes,
+    blockers: [],
+    warnings: (preview.issues as { level: string; message: string }[])
+      .filter((issue) => issue.level === "warning").map((issue) => issue.message),
+  });
+  const { error } = await supabase.rpc("approve_production_filing", {
+    p_preview_id: preview.id,
+    p_entitlement_id: entitlementId,
+    p_manifest: manifest,
+    p_manifest_hash: productionApprovalHash(manifest),
+    p_adapter_version: RF1086_PRODUCTION_ADAPTER_VERSION,
+  });
+  if (error) {
+    reportRf1086ProductionFailure("approve", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "unavailable"));
+  }
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?approved=1`);
+}
+
+function createRf1086DatabaseJournal(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+): ProductionOperationJournal {
+  const operations = new Map<string, ProductionOperation>();
+  return {
+    async prepare(input) {
+      const { data: existing, error: readError } = await service
+        .from("production_filing_events")
+        .select("*")
+        .eq("submission_id", input.submissionId)
+        .eq("operation_name", input.name)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (readError) throw new Error("Kunne ikke lese produksjonsjournalen.");
+      const latest = existing?.[0];
+      if (latest) {
+        const retryableFailure = latest.operation_state === "failed" && latest.failure_class === "retryable";
+        const retryExhausted = retryableFailure && latest.attempt >= 20;
+        const state = latest.operation_state === "succeeded"
+          ? "succeeded"
+          : latest.operation_state === "failed"
+            ? "failed"
+            : input.idempotencyKey === null
+              ? latest.operation_state
+              : "unknown";
+        const operation = {
+          id: latest.id, name: latest.operation_name, state,
+          attempt: retryableFailure && !retryExhausted ? latest.attempt + 1 : latest.attempt,
+          bodyHash: latest.body_hash, idempotencyKey: latest.idempotency_key,
+          authorityReference: latest.authority_reference,
+          failureClassification: retryExhausted ? "blocked" : latest.failure_class,
+        } as ProductionOperation;
+        operations.set(operation.id, operation);
+        return operation;
+      }
+      const { data, error } = await service.from("production_filing_events").insert({
+        submission_id: input.submissionId,
+        operation_name: input.name,
+        operation_state: "prepared",
+        attempt: 1,
+        body_hash: input.bodyHash,
+        idempotency_key: input.idempotencyKey,
+        resulting_status: "sending",
+      }).select("*").single();
+      if (error || !data) throw new Error("Kunne ikke forberede produksjonsjournalen.");
+      const operation = {
+        id: data.id, name: data.operation_name, state: "prepared", attempt: data.attempt,
+        bodyHash: data.body_hash, idempotencyKey: data.idempotency_key,
+        authorityReference: null, failureClassification: null,
+      } as ProductionOperation;
+      operations.set(operation.id, operation);
+      return operation;
+    },
+    async succeed(operationId, authorityReference) {
+      const operation = operations.get(operationId);
+      if (!operation) throw new Error("Produksjonsjournal-operasjonen mangler.");
+      const status = operation.name === "confirm" ? "received"
+        : operation.name === "list_documents" ? "processing" : "sending";
+      const { error } = await service.rpc("append_production_filing_event", {
+        p_submission_id: (await service.from("production_filing_events").select("submission_id").eq("id", operationId).single()).data?.submission_id,
+        p_operation_name: operation.name, p_operation_state: "succeeded", p_attempt: operation.attempt,
+        p_body_hash: operation.bodyHash, p_idempotency_key: operation.idempotencyKey,
+        p_authority_reference: authorityReference, p_failure_class: null, p_status: status,
+        p_final_authority_decision: false,
+      });
+      if (error) throw new Error("Kunne ikke fullføre produksjonsjournalen.");
+    },
+    async fail(operationId, failure) {
+      const operation = operations.get(operationId);
+      if (!operation) throw new Error("Produksjonsjournal-operasjonen mangler.");
+      const event = await service.from("production_filing_events").select("submission_id").eq("id", operationId).single();
+      const { error } = await service.rpc("append_production_filing_event", {
+        p_submission_id: event.data?.submission_id,
+        p_operation_name: operation.name,
+        p_operation_state: failure.classification === "unknown" ? "unknown" : "failed",
+        p_attempt: operation.attempt, p_body_hash: operation.bodyHash,
+        p_idempotency_key: operation.idempotencyKey, p_authority_reference: null,
+        p_failure_class: failure.classification,
+        p_status: failure.classification === "unknown" ? "unknown" : failure.classification === "blocked" ? "rejected" : "sending",
+        p_final_authority_decision: false,
+      });
+      if (error) throw new Error("Kunne ikke registrere produksjonsfeilen.");
+    },
+  };
+}
+
+function createRf1086FeedbackJournal(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  input: {
+    submissionId: string;
+    companyId: string;
+    incomeYear: number;
+    userId: string;
+    forsendelseId: string;
+    leaseId: string;
+  },
+): Rf1086ProductionJournal {
+  const persistenceError = (
+    message: string,
+    cause: unknown,
+    options: { integrityFailure?: boolean } = {},
+  ) => createRf1086FeedbackArtifactPersistenceError(message, cause, options);
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, input);
+
+  return {
+    async readReconciliationState() {
+      const [submission, artifacts] = await Promise.all([
+        service
+          .from("production_filing_submissions")
+          .select("feedback_state,feedback_safe_error_code,feedback_correlation_id")
+          .eq("id", input.submissionId)
+          .eq("company_id", input.companyId)
+          .single(),
+        service
+          .from("production_feedback_artifacts")
+          .select("sha256")
+          .eq("submission_id", input.submissionId)
+          .order("sha256", { ascending: true }),
+      ]);
+      if (submission.error || !submission.data || artifacts.error) {
+        throw persistenceError(
+          "Kunne ikke lese tilbakemeldingsjournalen.",
+          submission.error ?? artifacts.error,
+        );
+      }
+      return {
+        state: submission.data.feedback_state as Rf1086ReconciliationState,
+        artifactHashes: (artifacts.data ?? []).map((artifact) => artifact.sha256),
+        safeErrorCode: submission.data.feedback_safe_error_code,
+        correlationId: submission.data.feedback_correlation_id,
+      };
+    },
+    recordArtifact,
+    async appendReconciliation(event) {
+      const { data, error } = await service.rpc("append_production_feedback_reconciliation", {
+        p_submission_id: input.submissionId,
+        p_lease_id: input.leaseId,
+        p_forsendelse_id: input.forsendelseId,
+        p_state: event.state,
+        p_artifact_hashes: event.artifactHashes,
+        p_safe_error_code: event.safeErrorCode,
+        p_correlation_id: event.correlationId,
+      });
+      if (error || typeof data !== "boolean") {
+        throw new Error("Kunne ikke oppdatere tilbakemeldingsstatusen.");
+      }
+      return data;
+    },
+  };
+}
+
+async function claimRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service.rpc("claim_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+  if (error) throw new Error("Kunne ikke reservere tilbakemeldingskontrollen.");
+  return data === true;
+}
+
+async function readClaimedRf1086ForsendelseId(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  const { data, error } = await service
+    .from("production_filing_submissions")
+    .select("feedback_forsendelse_id")
+    .eq("id", submissionId)
+    .eq("feedback_reconciliation_lease_id", leaseId)
+    .single();
+  if (error || !data?.feedback_forsendelse_id) {
+    throw new Error("Innsendingsreferansen kunne ikke gjenopprettes sikkert.");
+  }
+  return data.feedback_forsendelse_id;
+}
+
+async function releaseRf1086FeedbackLease(
+  service: ReturnType<typeof createSupabaseServiceRoleClient>,
+  submissionId: string,
+  leaseId: string,
+) {
+  await service.rpc("release_production_feedback_reconciliation", {
+    p_submission_id: submissionId,
+    p_lease_id: leaseId,
+  });
+}
+
+export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  let approvalId: string;
+  try {
+    approvalId = requiredFormUuid(formData, "approvalId");
+  } catch (error) {
+    reportRf1086ProductionFailure("validate_approval", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
+  }
+  let configuration;
+  try {
+    configuration = rf1086ProductionEnvironment();
+  } catch (error) {
+    reportRf1086ProductionFailure("load_configuration", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
+  if (!configuration) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const { data: approval } = await supabase.from("filing_approval_snapshots").select("*").eq("id", approvalId).single();
+  if (!approval || approval.invalidated_at) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
+  }
+  await requireSensitiveActionStepUp(supabase, user.id, approval.company_id, "production_filing");
+  const [{ data: preview }, { data: entitlement }, { data: company }] = await Promise.all([
+    supabase.from("filing_previews").select("*").eq("id", approval.preview_id).single(),
+    supabase.from("production_pilot_entitlements").select("*").eq("id", approval.entitlement_id).single(),
+    supabase.from("companies").select("id, org_number").eq("id", approval.company_id).single(),
+  ]);
+  if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
+  }
+  if (!entitlement.system_user_request_id) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
+  }
+  const { data: systemUserRequest } = await supabase
+    .from("system_user_requests")
+    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+    .eq("id", entitlement.system_user_request_id)
+    .single();
+  if (
+    !systemUserRequest
+    || systemUserRequest.company_id !== approval.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== approval.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+  ) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
+  }
+  const currentManifest = buildProductionApprovalManifest({
+    companyId: preview.company_id, userId: user.id, organizationNumber: company.org_number,
+    incomeYear: preview.income_year, obligation: "aksjonaerregisteroppgaven",
+    caseProfile: "rf1086_no_activity_v1", adapterVersion: RF1086_PRODUCTION_ADAPTER_VERSION,
+    previewId: preview.id, payloadHash: rf1086PayloadHash(preview),
+    documentHashes: {
+      hovedskjema: sha256(preview.hovedskjema_xml),
+      ...Object.fromEntries(Object.entries(preview.underskjema_xml as Record<string, string>)
+        .map(([name, xml]) => [`underskjema_${name}`, sha256(xml)])),
+    },
+    blockers: [], warnings: (preview.issues as { level: string; message: string }[])
+      .filter((issue) => issue.level === "warning").map((issue) => issue.message),
+  });
+  if (!approvalMatchesCurrentPayload(currentManifest, approval.manifest_hash)) {
+    redirect(rf1086ProductionErrorTarget(returnTo, "payload_changed"));
+  }
+  let service;
+  try {
+    service = createSupabaseServiceRoleClient();
+  } catch (error) {
+    reportRf1086ProductionFailure("load_private_journal", error);
+    redirect(rf1086ProductionErrorTarget(returnTo, "configuration_unavailable"));
+  }
+  try {
+    await executeRf1086ProductionRelease({
+      async acquireDelegatedToken() {
+        return requestMaskinportenToken({
+          ...configuration,
+          systemUserOrgNumber: company.org_number,
+          systemUserExternalRef: systemUserRequest.external_ref,
+        });
+      },
+      async beginProductionFiling() {
+        const { data: submission, error } = await supabase.rpc("begin_production_filing", {
+          p_approval_id: approval.id,
+        });
+        if (error || !submission) {
+          throw new Error("Produksjonsinnsendingen kunne ikke startes.");
+        }
+        return submission;
+      },
+      async executeExternalSubmission({ token, submission }) {
+        const authorityClient = createRf1086AuthorityClient({
+          environment: "production",
+          accessToken: token.accessToken,
+        });
+        const submitted = await executeJournaledRf1086Production({
+          submissionId: submission.id,
+          incomeYear: preview.income_year,
+          hovedskjemaXml: preview.hovedskjema_xml,
+          underskjemaXml: preview.underskjema_xml as Record<string, string>,
+        }, {
+          journal: createRf1086DatabaseJournal(service),
+          authorityClient,
+        });
+        const leaseId = randomUUID();
+        if (await claimRf1086FeedbackLease(service, submission.id, leaseId)) {
+          try {
+            const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+              service,
+              submission.id,
+              leaseId,
+            );
+            if (authoritativeForsendelseId !== submitted.forsendelseId) {
+              throw new Error("Den bekreftede innsendingsreferansen samsvarer ikke med produksjonsjournalen.");
+            }
+            await reconcileJournaledRf1086Production(
+              createRf1086FeedbackJournal(service, {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                userId: user.id,
+                forsendelseId: authoritativeForsendelseId,
+                leaseId,
+              }),
+              authorityClient,
+              {
+                submissionId: submission.id,
+                companyId: approval.company_id,
+                incomeYear: preview.income_year,
+                forsendelseId: authoritativeForsendelseId,
+                hovedskjemaXml: preview.hovedskjema_xml,
+                underskjemaXml: preview.underskjema_xml as Record<string, string>,
+              },
+              { initialPoll: true },
+            );
+          } finally {
+            await releaseRf1086FeedbackLease(service, submission.id, leaseId);
+          }
+        }
+      },
+      discardToken(token) {
+        token.accessToken = "";
+      },
+    });
+  } catch (error) {
+    reportRf1086ProductionFailure("send_or_reconcile", error);
+    revalidatePath(returnTo);
+    redirect(rf1086ProductionErrorTarget(returnTo, "send_unavailable"));
+  }
+  revalidatePath(returnTo);
+  redirect(`${returnTo}?sent=1`);
+}
+
+export async function reconcileRf1086ProductionAction(
+  _previousState: Rf1086OwnerReconciliationActionState,
+  formData: FormData,
+): Promise<Rf1086OwnerReconciliationActionState> {
+  let submissionId: string;
+  try {
+    submissionId = requiredFormUuid(formData, "submissionId");
+  } catch {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "invalid_request",
+      requiresManualRetry: true,
+    });
+  }
+  if (!hasSupabaseEnv()) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "authentication_required",
+      requiresManualRetry: true,
+    });
+  }
+
+  const { data: submission, error: submissionError } = await supabase
+    .from("production_filing_submissions")
+    .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,environment,feedback_state")
+    .eq("id", submissionId)
+    .single();
+  if (
+    submissionError
+    || !submission
+    || submission.user_id !== user.id
+    || submission.obligation !== "aksjonaerregisteroppgaven"
+    || submission.case_profile !== "rf1086_no_activity_v1"
+    || submission.environment !== "production"
+  ) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+  const storedState = submission.feedback_state as Rf1086ReconciliationState;
+  if (["accepted", "rejected", "action_required"].includes(storedState)) {
+    return buildRf1086OwnerReconciliationActionState(storedState);
+  }
+
+  const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
+    supabase
+      .from("company_memberships")
+      .select("company_id,user_id,role,accepted_at")
+      .eq("company_id", submission.company_id)
+      .eq("user_id", user.id)
+      .eq("role", "owner")
+      .not("accepted_at", "is", null)
+      .maybeSingle(),
+    supabase
+      .from("filing_approval_snapshots")
+      .select("id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,invalidated_at")
+      .eq("id", submission.approval_id)
+      .single(),
+    supabase
+      .from("production_pilot_entitlements")
+      .select("id,company_id,user_id,income_year,obligation,case_profile,system_user_request_id,system_user_external_reference")
+      .eq("id", submission.entitlement_id)
+      .single(),
+    supabase.from("companies").select("id,org_number").eq("id", submission.company_id).single(),
+  ]);
+  const membership = membershipResult.data;
+  const approval = approvalResult.data;
+  const entitlement = entitlementResult.data;
+  const company = companyResult.data;
+  if (
+    membershipResult.error
+    || !membership
+    || membership.role !== "owner"
+    || !membership.accepted_at
+    || approvalResult.error
+    || !approval
+    || approval.company_id !== submission.company_id
+    || approval.user_id !== user.id
+    || approval.entitlement_id !== entitlement?.id
+    || approval.income_year !== submission.income_year
+    || approval.obligation !== submission.obligation
+    || approval.case_profile !== submission.case_profile
+    || entitlementResult.error
+    || !entitlement
+    || entitlement.company_id !== submission.company_id
+    || entitlement.user_id !== user.id
+    || entitlement.income_year !== submission.income_year
+    || entitlement.obligation !== submission.obligation
+    || entitlement.case_profile !== submission.case_profile
+    || !entitlement.system_user_request_id
+    || companyResult.error
+    || !company
+  ) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "basis_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const [{ data: systemUserRequest, error: requestError }, { data: preview, error: previewError }] = await Promise.all([
+    supabase
+      .from("system_user_requests")
+      .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
+      .eq("id", entitlement.system_user_request_id)
+      .single(),
+    supabase
+      .from("filing_previews")
+      .select("id,company_id,income_year,hovedskjema_xml,underskjema_xml")
+      .eq("id", approval.preview_id)
+      .single(),
+  ]);
+  if (
+    requestError
+    || !systemUserRequest
+    || systemUserRequest.company_id !== submission.company_id
+    || systemUserRequest.initiating_owner_user_id !== user.id
+    || systemUserRequest.obligation !== submission.obligation
+    || systemUserRequest.status !== "accepted"
+    || !systemUserRequest.preflight_verified_at
+    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+    || previewError
+    || !preview
+    || preview.company_id !== submission.company_id
+    || preview.income_year !== submission.income_year
+    || !preview.hovedskjema_xml
+  ) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "connection_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  let configuration;
+  let service;
+  try {
+    configuration = rf1086ProductionEnvironment();
+    service = createSupabaseServiceRoleClient();
+  } catch {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+  if (!configuration) {
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "configuration_unavailable",
+      requiresManualRetry: true,
+    });
+  }
+
+  const leaseId = randomUUID();
+  let claimed = false;
+  let delegatedToken: Awaited<ReturnType<typeof requestMaskinportenToken>> | null = null;
+  try {
+    const claim = await service.rpc("claim_production_feedback_reconciliation", {
+      p_submission_id: submission.id,
+      p_lease_id: leaseId,
+    });
+    if (claim.error) throw new Error("Tilbakemeldingskontrollen kunne ikke reserveres.");
+    claimed = claim.data === true;
+    if (!claimed) {
+      return buildRf1086OwnerReconciliationActionState(storedState, {
+        errorCode: "status_busy",
+        requiresManualRetry: true,
+      });
+    }
+    const authoritativeForsendelseId = await readClaimedRf1086ForsendelseId(
+      service,
+      submission.id,
+      leaseId,
+    );
+    delegatedToken = await requestMaskinportenToken({
+      ...configuration,
+      systemUserOrgNumber: company.org_number,
+      systemUserExternalRef: systemUserRequest.external_ref,
+    });
+    const result = await reconcileJournaledRf1086Production(
+      createRf1086FeedbackJournal(service, {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        userId: user.id,
+        forsendelseId: authoritativeForsendelseId,
+        leaseId,
+      }),
+      createRf1086AuthorityClient({
+        environment: "production",
+        accessToken: delegatedToken.accessToken,
+      }),
+      {
+        submissionId: submission.id,
+        companyId: submission.company_id,
+        incomeYear: submission.income_year,
+        forsendelseId: authoritativeForsendelseId,
+        hovedskjemaXml: preview.hovedskjema_xml,
+        underskjemaXml: preview.underskjema_xml as Record<string, string>,
+      },
+      { initialPoll: false },
+    );
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return buildRf1086OwnerReconciliationActionState(result.state);
+  } catch (error) {
+    reportRf1086ProductionFailure("reconcile", error);
+    revalidatePath("/filing/aksjonaerregisteroppgaven");
+    return buildRf1086OwnerReconciliationActionState(storedState, {
+      errorCode: "status_unavailable",
+      requiresManualRetry: true,
+    });
+  } finally {
+    if (delegatedToken) delegatedToken.accessToken = "";
+    if (claimed) {
+      await service.rpc("release_production_feedback_reconciliation", {
+        p_submission_id: submission.id,
+        p_lease_id: leaseId,
+      });
+    }
+  }
+}
+
+export async function postManualJournal(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/workspace?error=Innlogging%20kreves");
   }
 
   const companyId = formString(formData, "companyId");
@@ -3153,7 +5399,7 @@ export async function postManualJournal(formData: FormData) {
       })),
     });
   } catch (error) {
-    redirect(`/?error=${encodePublicActionError(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
   }
 
   const warningAcceptedAt = journal.riskFlags.length > 0 ? new Date().toISOString() : null;
@@ -3169,7 +5415,7 @@ export async function postManualJournal(formData: FormData) {
     created_by: user.id,
   });
   if (error) {
-    redirect(`/?error=${encodeActionError(error)}`);
+    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -3181,7 +5427,7 @@ export async function postManualJournal(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/");
+  redirect("/workspace");
 }
 
 function parseShareholders(formData: FormData): OpeningShareholderInput[] {

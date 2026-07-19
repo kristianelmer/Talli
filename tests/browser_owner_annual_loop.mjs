@@ -40,12 +40,18 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
   await seedAnnualLoop(admin, { companyId, setupId, shareholderId, previewId, ownerId, orgNumber });
 
-  const server = spawn("npm", ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", String(port)], {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: ["ignore", "pipe", "pipe"],
+  const server = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "inherit", "inherit"],
+    },
+  );
+  t.after(async () => {
+    await stopServer(server);
   });
-  t.after(() => server.kill("SIGTERM"));
   t.after(async () => {
     await admin.from("companies").delete().eq("id", companyId);
     await admin.auth.admin.deleteUser(ownerId);
@@ -56,36 +62,34 @@ test("browser owner annual loop uses persisted state and survives reload", async
   t.after(async () => browser.close());
   const page = await browser.newPage();
 
-  await page.goto(baseUrl);
+  // The public landing page moved to `/` in #90; authentication is a distinct
+  // route and the browser rehearsal must exercise the real login surface.
+  await page.goto(`${baseUrl}/login`);
   const loginForm = page.locator("form").filter({ hasText: "Logg inn" }).first();
   await loginForm.getByLabel("E-post").fill(ownerEmail);
   await loginForm.getByLabel("Passord").fill(password);
   await loginForm.getByRole("button", { name: "Logg inn" }).click();
   await page.waitForLoadState("networkidle");
+
+  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") {
+    await page.goto(`${baseUrl}/companies/${companyId}/annual-reporting/2025`);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("heading", { name: "Årsrapportering" }).waitFor({ state: "visible", timeout: 15_000 });
+    assert.equal(await page.locator("[data-obligation]").count(), 3);
+    assert.deepEqual(
+      await page.locator("[data-obligation]").evaluateAll((items) => items.map((item) => item.getAttribute("data-obligation"))),
+      ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    return;
+  }
+
   await expectText(page, "Talli Browser Holding AS");
   await expectText(page, "Ikke vurdert");
 
-  await page.getByRole("link", { name: "Åpne årsrapportering" }).click();
-  await page.waitForLoadState("networkidle");
-  const annualHeading = page.getByRole("heading", { name: "Årsrapportering" });
-  try {
-    await annualHeading.waitFor({ state: "visible", timeout: 15_000 });
-  } catch (error) {
-    throw new Error(`Annual workspace did not render at ${page.url()}.`, { cause: error });
-  }
-  assert.equal(await page.locator("[data-obligation]").count(), 3);
-  assert.deepEqual(
-    await page.locator("[data-obligation]").evaluateAll((items) => items.map((item) => item.getAttribute("data-obligation"))),
-    ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
-  );
-  if (process.env.TALLI_BROWSER_SCREENSHOT) {
-    await page.screenshot({ path: process.env.TALLI_BROWSER_SCREENSHOT, fullPage: true });
-  }
-  await page.setViewportSize({ width: 390, height: 844 });
-  assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
-  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") return;
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(baseUrl);
+  // The owner workflow tools now live under the /workspace route group (#90).
+  await page.goto(`${baseUrl}/workspace`);
   await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
@@ -96,7 +100,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await page.waitForLoadState("networkidle");
   await page.reload();
   await page.waitForLoadState("networkidle");
-  await expectText(page, "ready");
+  await expectText(page, "Klar for produksjonsinnsending");
 
   await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
   await page.waitForLoadState("networkidle");
@@ -136,6 +140,24 @@ async function seedAnnualLoop(admin, ids) {
       accepted_at: new Date().toISOString(),
     }),
   );
+  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY !== "1") {
+    await assertNoError(
+      admin.rpc("append_company_agreement_acceptance", {
+      p_actor_id: ownerId,
+      p_company_id: companyId,
+      p_business_terms_version: "2026-07-17",
+      p_business_terms_effective_date: "2026-07-17",
+      p_business_terms_path: "/vilkar",
+      p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+      p_dpa_version: "2026-07-17",
+      p_dpa_effective_date: "2026-07-17",
+      p_dpa_path: "/databehandleravtale",
+      p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+      p_authority_statement_version: "authority-v1",
+      p_acceptance_method: "in_app_clickwrap",
+      }),
+    );
+  }
   await assertNoError(
     admin.from("opening_balance_setups").insert({
       id: setupId,
@@ -247,6 +269,28 @@ async function waitForServer(baseUrl) {
     }
   }
   throw new Error(`Server did not start at ${baseUrl}`);
+}
+
+async function stopServer(server) {
+  if (server.exitCode !== null || server.signalCode !== null) return;
+
+  const exited = new Promise((resolve) => server.once("exit", resolve));
+  server.kill("SIGTERM");
+  let timeoutId;
+  const gracefulTimeout = new Promise((resolve) => {
+    timeoutId = setTimeout(() => resolve(false), 5_000);
+    timeoutId.unref?.();
+  });
+  const stopped = await Promise.race([
+    exited.then(() => true),
+    gracefulTimeout,
+  ]);
+  clearTimeout(timeoutId);
+
+  if (!stopped && server.exitCode === null && server.signalCode === null) {
+    server.kill("SIGKILL");
+    await exited;
+  }
 }
 
 async function expectText(page, text) {

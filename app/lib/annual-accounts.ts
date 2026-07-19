@@ -26,8 +26,9 @@ export function buildAnnualAccountsPayload(input: {
   ledgerEntries: LedgerEntryRow[];
 }) {
   const totals = ledgerTotals(input.ledgerEntries);
-  const resultBeforeTax = round(totals.dividendIncome - totals.adminCosts);
-  const retained = round(totals.retainedEarnings + resultBeforeTax);
+  const resultBeforeTax = round(totals.financialIncome - totals.adminCosts - totals.financialCosts);
+  const annualResult = round(resultBeforeTax - totals.taxExpense);
+  const retained = round(totals.retainedEarnings + annualResult);
   const sumEquity = round(totals.shareCapital + retained);
   const sumAssets = round(totals.investmentBalance + totals.bankBalance);
   const annualFullTimeEquivalents = annualFullTimeEquivalentsValue(input.annualData);
@@ -46,9 +47,11 @@ export function buildAnnualAccountsPayload(input: {
       field("regnskapsslutt", "17104", `${input.incomeYear}-12-31`, "calendar_year"),
       field("valuta", "34984", "NOK", "launch_currency"),
       field("sumDriftskostnad/aarets", "17126", totals.adminCosts, "ledger.expense_accounts"),
-      field("sumFinansinntekter/aarets", "153", totals.dividendIncome, "ledger.8070"),
+      field("sumFinansinntekter/aarets", "153", totals.financialIncome, "ledger.8070_8050"),
+      field("sumFinanskostnader/aarets", "17130", totals.financialCosts, "ledger.8090"),
       field("resultatFoerSkattekostnad/aarets", "167", resultBeforeTax, "derived"),
-      field("aarsresultat/aarets", "172", resultBeforeTax, "derived"),
+      field("skattekostnad/aarets", "11835", totals.taxExpense, "ledger.8300"),
+      field("aarsresultat/aarets", "172", annualResult, "derived"),
       field("investeringAksjerAndeler/aarets", "7100", totals.investmentBalance, "ledger.1800"),
       field("sumFinansielleAnleggsmidler/aarets", "5267", totals.investmentBalance, "derived"),
       field("sumBankinnskuddKontanter/aarets", "29042", totals.bankBalance, "ledger.1920"),
@@ -56,7 +59,8 @@ export function buildAnnualAccountsPayload(input: {
       field("sumInnskuttEgenkapital/aarets", "3730", totals.shareCapital, "ledger.2000"),
       field("annenEgenkapital/aarets", "3274", retained, "ledger.2050_and_result"),
       field("sumEgenkapital/aarets", "250", sumEquity, "derived"),
-      field("sumKortsiktigGjeld/aarets", "85", totals.shortTermDebt, "ledger.2255"),
+      field("betalbarSkatt/aarets", "2483", totals.taxPayable, "ledger.2500"),
+      field("sumKortsiktigGjeld/aarets", "85", totals.shortTermDebt, "ledger.2255_2500"),
       field("sumGjeld/aarets", "1119", totals.shortTermDebt, "derived"),
       field("antallAarsverk", "37467", annualFullTimeEquivalents ?? 0, "annual_accounts.notes"),
     ],
@@ -89,14 +93,18 @@ export function annualAccountsPayloadFeedback(annualData: AnnualDataRow | null):
 }
 
 function ledgerTotals(entries: LedgerEntryRow[]) {
+  const taxPayable = accountCreditBalance(entries, "2500");
   return {
     bankBalance: accountBalance(entries, "1920"),
     investmentBalance: accountBalance(entries, "1800"),
-    adminCosts: debitTotal(entries, new Set(["7770", "6705", "6420", "7790", "6720", "7795"])),
-    dividendIncome: accountCreditBalance(entries, "8070"),
+    adminCosts: debitTotal(entries, new Set(["7770", "6700", "6705", "6420", "7790", "6720", "7795"])),
+    financialIncome: round(accountCreditBalance(entries, "8070") + accountCreditBalance(entries, "8050")),
+    financialCosts: debitTotal(entries, new Set(["8090"])),
+    taxExpense: accountBalance(entries, "8300"),
+    taxPayable,
     shareCapital: accountCreditBalance(entries, "2000"),
     retainedEarnings: accountCreditBalance(entries, "2050"),
-    shortTermDebt: accountCreditBalance(entries, "2255"),
+    shortTermDebt: round(accountCreditBalance(entries, "2255") + taxPayable),
   };
 }
 

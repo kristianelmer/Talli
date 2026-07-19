@@ -1,237 +1,140 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { XMLParser, XMLValidator } from "fast-xml-parser";
+import { buildAnnualAccountsPayload } from "../app/lib/annual-accounts.ts";
+import { renderAnnualAccountsXml } from "../app/lib/annual-accounts-xml.ts";
 
-import {
-  AnnualAccountsXmlError,
-  buildAnnualAccountsXmlDocuments,
-} from "../app/lib/annual-accounts-xml.ts";
-
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: "@",
-  parseTagValue: false,
-  trimValues: false,
-});
-
-const baseInput = {
-  organization: {
-    number: "310279617",
-    name: "LOGISK & ØDE <TIGER> AS",
-    form: "AS",
-    contactEmail: "post+talli@example.no",
+const annualData = {
+  id: "annual-data-id",
+  company_id: "company-id",
+  income_year: 2025,
+  answers: {
+    shares_owned_at_year_end: true,
+    bought_or_sold_shares: false,
+    received_dividends: true,
+    declared_owner_dividends: false,
+    shareholder_loans: false,
+    paid_costs: true,
+    bank_balance_confirmed: true,
+    has_unpaid_items: false,
+    general_meeting_approved: true,
+    authority_to_submit_confirmed: true,
   },
-  incomeYear: 2025,
-  adoption: {
-    date: "2026-06-15",
-    confirmingRepresentative: "Viktig & Rosin <styreleder>",
-  },
-  declarations: {
-    isSmallEnterprise: true,
-    isParentCompany: false,
-    usesIfrs: false,
-    auditRequired: false,
-    preparedByAuthorizedAccountant: false,
-    externalAuthorizedAccountantAssistance: false,
-  },
-  current: {
-    operatingCosts: 1_490,
-    financialIncome: 100_000,
-    financialCosts: 0,
-    resultBeforeTax: 98_510,
-    annualResult: 98_510,
-    investmentSharesAndUnits: 30_000,
-    bank: 128_510,
-    totalAssets: 158_510,
-    paidInEquity: 30_000,
-    retainedEquity: 128_510,
-    totalEquity: 158_510,
-    shortTermDebt: 0,
-    totalDebt: 0,
-    totalEquityAndDebt: 158_510,
-  },
-  prior: {
-    operatingCosts: 1_000,
-    financialIncome: 0,
-    financialCosts: 0,
-    resultBeforeTax: -1_000,
-    annualResult: -1_000,
-    investmentSharesAndUnits: 30_000,
-    bank: 1_000,
-    totalAssets: 31_000,
-    paidInEquity: 30_000,
-    retainedEquity: 1_000,
-    totalEquity: 31_000,
-    shortTermDebt: 0,
-    totalDebt: 0,
-    totalEquityAndDebt: 31_000,
-  },
-  annualFullTimeEquivalents: 0,
-  investmentDescription: "Aksjer & andeler <holding>",
-  retainedEquityDescription: "Annen & opptjent egenkapital",
+  confirmations: ["bank_balance_confirmed", "general_meeting_approved", "authority_to_submit_confirmed"],
+  no_activity_confirmed: false,
+  annual_full_time_equivalents: 0,
+  completed_by: "owner",
+  completed_at: "2026-01-01T00:00:00Z",
+  updated_by: "owner",
+  updated_at: "2026-01-01T00:00:00Z",
 };
 
-test("builds deterministic current-contract RR0002 XML with escaped metadata and current/prior figures", () => {
-  const documents = buildAnnualAccountsXmlDocuments(baseInput);
+function payload() {
+  return buildAnnualAccountsPayload({
+    incomeYear: 2025,
+    annualData,
+    ledgerEntries: [
+      {
+        id: "entry-id",
+        company_id: "company-id",
+        setup_id: "setup-id",
+        income_year: 2025,
+        entry_type: "annual",
+        memo: "Annual",
+        lines: [
+          { account: "1920", debit: 128510, credit: 0 },
+          { account: "8070", debit: 0, credit: 100000 },
+          { account: "7770", debit: 1490, credit: 0 },
+          { account: "8300", debit: 20000, credit: 0 },
+          { account: "2500", debit: 0, credit: 20000 },
+          { account: "2000", debit: 0, credit: 30000 },
+        ],
+        risk_flags: [],
+        warning_accepted_by: null,
+        warning_accepted_at: null,
+        created_by: "owner",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ],
+  });
+}
 
-  assert.equal(XMLValidator.validate(documents.mainFormXml), true);
-  assert.equal(XMLValidator.validate(documents.accountsFormXml), true);
-  assert.equal(documents.schema.application, "brg/aarsregnskap-vanlig-202406");
-  assert.equal(documents.schema.mainFormDataType, "Hovedskjema");
-  assert.equal(documents.schema.accountsFormDataType, "Underskjema");
-  assert.match(documents.mainFormSha256, /^[a-f0-9]{64}$/u);
-  assert.match(documents.accountsFormSha256, /^[a-f0-9]{64}$/u);
-  assert.equal(
-    buildAnnualAccountsXmlDocuments(baseInput).accountsFormSha256,
-    documents.accountsFormSha256,
-  );
-  assert.match(documents.mainFormXml, /LOGISK &amp; ØDE &lt;TIGER&gt; AS/u);
-  assert.match(documents.mainFormXml, /Viktig &amp; Rosin &lt;styreleder&gt;/u);
-  assert.match(documents.accountsFormXml, /Aksjer &amp; andeler &lt;holding&gt;/u);
+function render(overrides = {}) {
+  return renderAnnualAccountsXml({
+    payload: payload(),
+    companyOrgNumber: "310279617",
+    companyName: "Holding & Test AS",
+    contactEmail: "owner+talli@example.test",
+    approvalDate: "2026-06-30",
+    confirmingRepresentative: "Test & Person",
+    ...overrides,
+  });
+}
 
-  const main = parser.parse(documents.mainFormXml).melding;
-  assert.equal(main["@xmlns"], "http://schema.brreg.no/regnsys/aarsregnskap_vanlig");
-  assert.equal(main["@dataFormatId"], "1266");
-  assert.equal(main["@dataFormatVersion"], "51820");
-  assert.equal(main.Innsender.enhet.organisasjonsnummer["@orid"], "18");
-  assert.equal(main.Innsender.enhet.organisasjonsnummer["#text"], "310279617");
-  assert.equal(main.Innsender.opplysningerInnsending.systemNavn["#text"], "Talli");
-  assert.equal(main.Skjemainnhold.regnskapsperiode.regnskapsaar["#text"], "2025");
-  assert.equal(main.Skjemainnhold.konsern.morselskap["#text"], "nei");
-  assert.equal(main.Skjemainnhold.regnskapsprinsipper.smaaForetak["#text"], "ja");
-  assert.equal(main.Skjemainnhold.regnskapsprinsipper.regnskapsreglerSelskap["#text"], "nei");
-  assert.equal(main.Skjemainnhold.revisjonRegnskapsfoerer.aarsregnskapIkkeRevideres["#text"], "ja");
+test("renders deterministic live-schema RR0002 main and company-accounts XML", () => {
+  const { mainFormXml, companyAccountsXml } = render();
 
-  const accounts = parser.parse(documents.accountsFormXml).melding;
-  const content = accounts["Skjemainnhold-RR0002U"];
-  assert.equal(accounts["@xmlns"], "http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema");
-  assert.equal(accounts["@dataFormatId"], "758");
-  assert.equal(accounts["@dataFormatVersion"], "51980");
-  assert.equal(accounts["@versjon"], "1.1");
-  assert.equal(accounts["Rapport-RR0002U"].aarsregnskap.valoer["#text"], "H");
-  assert.deepEqual(
-    content.resultatregnskapDriftsresultat.kostnad.sumDriftskostnad,
-    {
-      aarets: { "#text": "1490", "@orid": "17126" },
-      fjoraarets: { "#text": "1000", "@orid": "17127" },
-    },
-  );
-  assert.equal(
-    content.resultatregnskapFinansinntekt.finansinntekt.sumFinansinntekter.aarets["@orid"],
-    "153",
-  );
-  assert.equal(
-    content.resultatregnskapResultat.resultat.resultatFoerSkattekostnad.fjoraarets["#text"],
-    "-1000",
-  );
-  assert.equal(content.balanseAnleggsmidlerOmloepsmidler.sumEiendeler.aarets["#text"], "158510");
-  assert.equal(
-    content.balanseAnleggsmidlerOmloepsmidler.balanseAnleggsmidler.balanseFinansielleAnleggsmidler
-      .investeringAksjerAndeler.aarets["@orid"],
-    "7100",
-  );
-  assert.equal(
-    content.balanseEgenkapitalGjeld.balanseEgenkapitalInnskuttOpptjentEgenkapital
-      .opptjentEgenkaiptal.sumOpptjentEgenkapital.aarets["#text"],
-    "128510",
-  );
-  assert.equal(content.balanseEgenkapitalGjeld.sumEgenkapitalGjeld.aarets["@orid"], "251");
-  assert.equal(content.noter.noteAarsverkTjenestePensjon.antallAarsverk["#text"], "0");
+  assert.match(mainFormXml, /<melding xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance" xmlns:xsd="http:\/\/www\.w3\.org\/2001\/XMLSchema" xmlns="http:\/\/schema\.brreg\.no\/regnsys\/aarsregnskap_vanlig" dataFormatId="1266" dataFormatVersion="51820" tjenestehandling="aarsregnskap_vanlig" tjeneste="regnskap">/);
+  assert.match(mainFormXml, /<organisasjonsnummer orid="18">310279617<\/organisasjonsnummer>/);
+  assert.match(mainFormXml, /<navn orid="1">Holding &amp; Test AS<\/navn>/);
+  assert.match(mainFormXml, /<e-post orid="19022">owner\+talli@example\.test<\/e-post>/);
+  assert.match(mainFormXml, /<smaaForetak orid="8079">ja<\/smaaForetak>/);
+  assert.match(mainFormXml, /<bekreftendeSelskapsrepresentant orid="19023">Test &amp; Person<\/bekreftendeSelskapsrepresentant>/);
+  assert.match(mainFormXml, /<aarsregnskapIkkeRevideres orid="34669">ja<\/aarsregnskapIkkeRevideres>/);
+
+  assert.match(companyAccountsXml, /<melding xmlns:xsi="http:\/\/www\.w3\.org\/2001\/XMLSchema-instance" xmlns:xsd="http:\/\/www\.w3\.org\/2001\/XMLSchema" xmlns="http:\/\/schema\.brreg\.no\/regnsys\/aarsregnskap_vanlig\/underskjema" dataFormatId="758" dataFormatVersion="51980" versjon="1\.1" tjenestehandling="aarsregnskap_vanlig_underskjema" tjeneste="regnskap">/);
+  assert.match(companyAccountsXml, /<regnskapstype orid="25942">S<\/regnskapstype>/);
+  assert.match(companyAccountsXml, /<valoer orid="28974">H<\/valoer>/);
+  assert.match(companyAccountsXml, /<sumDriftskostnad>[\s\S]*<aarets orid="17126">1490<\/aarets>[\s\S]*<\/sumDriftskostnad>/);
+  assert.match(companyAccountsXml, /<skattekostnad>[\s\S]*<aarets orid="11835">20000<\/aarets>[\s\S]*<\/skattekostnad>/);
+  assert.match(companyAccountsXml, /<aarsresultat>[\s\S]*<aarets orid="172">78510<\/aarets>[\s\S]*<\/aarsresultat>/);
+  assert.match(companyAccountsXml, /<sumEiendeler>[\s\S]*<aarets orid="219">128510<\/aarets>[\s\S]*<\/sumEiendeler>/);
+  assert.match(companyAccountsXml, /<betalbarSkatt>[\s\S]*<aarets orid="2483">20000<\/aarets>[\s\S]*<\/betalbarSkatt>/);
+  assert.match(companyAccountsXml, /<sumEgenkapitalGjeld>[\s\S]*<aarets orid="251">128510<\/aarets>[\s\S]*<\/sumEgenkapitalGjeld>/);
+  assert.match(companyAccountsXml, /<antallAarsverk orid="37467">0<\/antallAarsverk>/);
+  assert.ok(companyAccountsXml.indexOf("<resultatregnskapDriftsresultat>") < companyAccountsXml.indexOf("<resultatregnskapFinansinntekt>"));
+  assert.ok(companyAccountsXml.indexOf("<resultatregnskapFinansinntekt>") < companyAccountsXml.indexOf("<resultatregnskapResultat>"));
+  assert.ok(companyAccountsXml.indexOf("<resultatregnskapResultat>") < companyAccountsXml.indexOf("<balanseAnleggsmidlerOmloepsmidler>"));
 });
 
-test("rejects unsupported annual-account declarations before XML generation", () => {
-  for (const [field, value, code] of [
-    ["isSmallEnterprise", false, "annual_accounts_xml_not_small_enterprise"],
-    ["isParentCompany", true, "annual_accounts_xml_parent_company_unsupported"],
-    ["usesIfrs", true, "annual_accounts_xml_ifrs_unsupported"],
-    ["auditRequired", true, "annual_accounts_xml_audit_unsupported"],
-  ]) {
-    assert.throws(
-      () =>
-        buildAnnualAccountsXmlDocuments({
-          ...baseInput,
-          declarations: { ...baseInput.declarations, [field]: value },
-        }),
-      (error) => error instanceof AnnualAccountsXmlError && error.code === code,
-    );
-  }
+test("rejects a payload with readiness blocks", () => {
+  const blockedPayload = payload();
+  blockedPayload.feedback.push({
+    level: "block",
+    code: "annual_accounts_audit_required",
+    message: "Audit is outside launch scope.",
+    source: "test",
+  });
+
+  assert.throws(
+    () => render({ payload: blockedPayload }),
+    /annual_accounts_audit_required/,
+  );
 });
 
-test("rejects incomplete, fractional, or unreconciled current and prior whole-kroner figures", () => {
-  const invalidInputs = [
-    {
-      input: { ...baseInput, prior: undefined },
-      code: "annual_accounts_xml_prior_figures_missing",
-    },
-    {
-      input: { ...baseInput, current: { ...baseInput.current, bank: 128_510.25 } },
-      code: "annual_accounts_xml_whole_kroner_required",
-    },
-    {
-      input: { ...baseInput, current: { ...baseInput.current, totalAssets: 158_511 } },
-      code: "annual_accounts_xml_balance_unreconciled",
-    },
-    {
-      input: { ...baseInput, prior: { ...baseInput.prior, resultBeforeTax: -999 } },
-      code: "annual_accounts_xml_result_unreconciled",
-    },
-  ];
+test("rejects unbalanced or fractional whole-kroner payloads", () => {
+  const unbalanced = payload();
+  unbalanced.fields.find((field) => field.tag === "sumEiendeler/aarets").value += 1;
+  assert.throws(() => render({ payload: unbalanced }), /balanse|eiendeler/i);
 
-  for (const item of invalidInputs) {
-    assert.throws(
-      () => buildAnnualAccountsXmlDocuments(item.input),
-      (error) => error instanceof AnnualAccountsXmlError && error.code === item.code,
-    );
-  }
+  const fractional = payload();
+  fractional.fields.find((field) => field.tag === "sumFinansinntekter/aarets").value += 0.5;
+  assert.throws(() => render({ payload: fractional }), /hele kroner/i);
 });
 
-test("rejects invalid identity, dates, notes, and unsafe XML text", () => {
-  const invalidInputs = [
-    {
-      input: { ...baseInput, organization: { ...baseInput.organization, number: "123" } },
-      code: "annual_accounts_xml_org_number_invalid",
-    },
-    {
-      input: { ...baseInput, organization: { ...baseInput.organization, number: "123456789" } },
-      code: "annual_accounts_xml_org_number_invalid",
-    },
-    {
-      input: { ...baseInput, adoption: { ...baseInput.adoption, date: "2025-12-31" } },
-      code: "annual_accounts_xml_adoption_date_invalid",
-    },
-    {
-      input: { ...baseInput, annualFullTimeEquivalents: -1 },
-      code: "annual_accounts_xml_full_time_equivalents_invalid",
-    },
-    {
-      input: { ...baseInput, investmentDescription: "unsafe\u0001text" },
-      code: "annual_accounts_xml_text_invalid",
-    },
-  ];
+test("rejects a missing field or mismatched official orid", () => {
+  const missing = payload();
+  missing.fields = missing.fields.filter((field) => field.tag !== "sumEgenkapital/aarets");
+  assert.throws(() => render({ payload: missing }), /sumEgenkapital\/aarets/);
 
-  for (const item of invalidInputs) {
-    assert.throws(
-      () => buildAnnualAccountsXmlDocuments(item.input),
-      (error) => error instanceof AnnualAccountsXmlError && error.code === item.code,
-    );
-  }
+  const mismatched = payload();
+  mismatched.fields.find((field) => field.tag === "valuta").orid = "wrong";
+  assert.throws(() => render({ payload: mismatched }), /34984/);
 });
 
-test("rejects unknown fields at every guarded annual-accounts input boundary", () => {
-  for (const input of [
-    { ...baseInput, privateKey: "forbidden" },
-    { ...baseInput, organization: { ...baseInput.organization, token: "forbidden" } },
-    { ...baseInput, adoption: { ...baseInput.adoption, assertion: "forbidden" } },
-    { ...baseInput, declarations: { ...baseInput.declarations, production: true } },
-    { ...baseInput, current: { ...baseInput.current, providerValue: 1 } },
-    { ...baseInput, prior: { ...baseInput.prior, xml: "<secret />" } },
-  ]) {
-    assert.throws(
-      () => buildAnnualAccountsXmlDocuments(input),
-      (error) =>
-        error instanceof AnnualAccountsXmlError &&
-        error.code === "annual_accounts_xml_input_invalid",
-    );
-  }
+test("rejects a calendar-invalid approval date", () => {
+  assert.throws(
+    () => render({ approvalDate: "2026-02-31" }),
+    /Fastsettelsesdato/,
+  );
 });

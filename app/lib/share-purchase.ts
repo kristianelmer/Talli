@@ -60,7 +60,7 @@ export function validateSharePurchase(input: SharePurchaseInput): SharePurchaseA
   if (!/^\d{4}-\d{2}-\d{2}$/.test(acquisitionDate)) {
     throw new SharePurchaseValidationError("Kjøpsdato må være YYYY-MM-DD.", "invalid_date");
   }
-  if (!Number.isFinite(input.shareCount) || input.shareCount <= 0) {
+  if (!Number.isSafeInteger(input.shareCount) || input.shareCount <= 0) {
     throw new SharePurchaseValidationError("Antall aksjer må være større enn 0.", "invalid_share_count");
   }
   if (!Number.isFinite(input.purchaseAmount) || input.purchaseAmount <= 0) {

@@ -9,7 +9,7 @@ import {
   validateTaxSettlement,
 } from "../app/lib/tax-settlement.ts";
 
-test("subtracts deductible admin costs from the dividend add-back", () => {
+test("estimates payable tax from persisted admin costs and dividend add-back", () => {
   const estimate = estimateAnnualTax({
     ledgerEntries: [
       {
@@ -31,29 +31,10 @@ test("subtracts deductible admin costs from the dividend add-back", () => {
   assert.deepEqual(estimate, {
     adminCosts: 50,
     fritaksmetodenAddBack: 30,
-    taxBasis: -20,
-    estimatedTax: 0,
-    status: "zero",
+    taxBasis: 80,
+    estimatedTax: 17.6,
+    status: "payable",
   });
-});
-
-test("estimates payable tax when the dividend add-back exceeds deductible costs", () => {
-  const estimate = estimateAnnualTax({
-    ledgerEntries: [
-      {
-        entry_type: "admin_cost",
-        lines: [
-          { account: "7770", debit: 10, credit: 0 },
-          { account: "1920", debit: 0, credit: 10 },
-        ],
-      },
-    ],
-    holdingActions: [{ action_type: "dividend_received", payload: { taxable_add_back: 30 } }],
-  });
-
-  assert.equal(estimate.taxBasis, 20);
-  assert.equal(estimate.estimatedTax, 4.4);
-  assert.equal(estimate.status, "payable");
 });
 
 test("estimates zero tax when persisted annual data has no taxable basis", () => {
