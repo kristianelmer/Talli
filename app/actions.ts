@@ -24,6 +24,7 @@ import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { encodeActionError, encodePublicActionError } from "./lib/action-errors";
 import { AuthInputError, validateSignupPassword } from "./lib/auth-input";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
+import { actionReturnPath } from "./lib/action-return";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
   COMPANY_DOCUMENTS_BUCKET,
@@ -99,6 +100,13 @@ function formString(formData: FormData, key: string) {
 function formRawString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
+}
+
+function completeAnnualWorkspaceAction(formData: FormData) {
+  const returnTo = actionReturnPath(formData.get("returnTo"));
+  revalidatePath("/");
+  if (returnTo !== "/") revalidatePath(returnTo.split(/[?#]/, 1)[0]);
+  redirect(returnTo);
 }
 
 async function requireSensitiveActionStepUp(
@@ -307,8 +315,7 @@ export async function uploadDocument(formData: FormData) {
     message: `Dokument lastet opp: ${validatedFile.fileName}.`,
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function createOpeningBalanceSetup(formData: FormData) {
@@ -608,8 +615,7 @@ export async function generateRf1086Preview(formData: FormData) {
     message: `RF-1086 forhåndsvisning generert for ${setup.income_year}.`,
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function confirmSimulatedRf1086Submission(formData: FormData) {
@@ -739,8 +745,7 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     message: `Simulert RF-1086-kvittering arkivert for ${preview.income_year}.`,
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function addFilingOverride(formData: FormData) {
@@ -1111,8 +1116,7 @@ export async function addFilingReviewComment(formData: FormData) {
     message: `Review-kommentar lagt til: ${severity}.`,
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function acknowledgeFilingReviewComment(formData: FormData) {
@@ -1159,8 +1163,7 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     message: "Advisory review-kommentar acknowledged av eier.",
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function importBankCsv(formData: FormData) {
@@ -3008,8 +3011,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
     message: `Innsendingsrett bekreftet for ${obligation}. Produksjonsgate: ${productionEnabled ? "aktiv" : "av"}.`,
   });
 
-  revalidatePath("/");
-  redirect("/");
+  completeAnnualWorkspaceAction(formData);
 }
 
 export async function recordAuthorityTestEvidence(formData: FormData) {

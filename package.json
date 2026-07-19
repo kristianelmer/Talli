@@ -18,6 +18,7 @@
     "test:bank": "node --experimental-strip-types --test tests/bank_workflow.test.mjs",
     "test:backup-restore": "node --experimental-strip-types --test tests/backup_restore.test.mjs",
     "test:browser-owner": "node tests/browser_owner_annual_loop.mjs",
+    "test:browser-annual-workspace": "TALLI_ANNUAL_WORKSPACE_ONLY=1 node tests/browser_owner_annual_loop.mjs",
     "test:billing": "node --experimental-strip-types --test tests/billing_persisted.test.mjs",
     "test:brreg": "node --experimental-strip-types --test tests/brreg.test.mjs",
     "test:company-tax-return": "node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs tests/company_tax_return_authority_client.test.mjs tests/company_tax_return_xml.test.mjs tests/company_tax_return_tt02_runner.test.mjs tests/company_tax_return_tt02_journal.test.mjs tests/company_tax_return_tt02_cli.test.mjs",

@@ -45,6 +45,9 @@ test("browser owner annual loop uses persisted state and survives reload", async
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  let serverOutput = "";
+  server.stdout.on("data", (chunk) => { serverOutput = `${serverOutput}${chunk}`.slice(-6000); });
+  server.stderr.on("data", (chunk) => { serverOutput = `${serverOutput}${chunk}`.slice(-6000); });
   t.after(() => server.kill("SIGTERM"));
   t.after(async () => {
     await admin.from("companies").delete().eq("id", companyId);
@@ -65,6 +68,29 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await expectText(page, "Talli Browser Holding AS");
   await expectText(page, "Ikke vurdert");
 
+  await page.getByRole("link", { name: "Åpne årsrapportering" }).click();
+  await page.waitForLoadState("networkidle");
+  const annualHeading = page.getByRole("heading", { name: "Årsrapportering" });
+  try {
+    await annualHeading.waitFor({ state: "visible", timeout: 15_000 });
+  } catch (error) {
+    throw new Error(`Annual workspace did not render at ${page.url()}. Server output:\n${serverOutput}`, { cause: error });
+  }
+  assert.equal(await page.locator("[data-obligation]").count(), 3);
+  assert.deepEqual(
+    await page.locator("[data-obligation]").evaluateAll((items) => items.map((item) => item.getAttribute("data-obligation"))),
+    ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
+  );
+  if (process.env.TALLI_BROWSER_SCREENSHOT) {
+    await page.screenshot({ path: process.env.TALLI_BROWSER_SCREENSHOT, fullPage: true });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") return;
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(baseUrl);
+  await page.waitForLoadState("networkidle");
+
   await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
   await page.waitForLoadState("networkidle");
   await expectText(page, "Filing readiness må være klar før filingpakke kan betales.");
@@ -82,7 +108,11 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await page.getByRole("button", { name: "Arkiver simulert kvittering" }).click();
   await page.waitForLoadState("networkidle");
 
-  await expectText(page, "sim-rf1086-");
+  try {
+    await expectText(page, "sim-rf1086-");
+  } catch (error) {
+    throw new Error(`Simulated receipt did not render at ${page.url()}. Server output:\n${serverOutput}`, { cause: error });
+  }
   await expectText(page, "Eksporter arkiv");
 });
 

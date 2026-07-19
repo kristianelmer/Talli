@@ -522,6 +522,21 @@ export async function listAnnualData(companyIds: string[]) {
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
 
+  if (error?.message.includes("annual_full_time_equivalents")) {
+    const fallback = await supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false });
+    return {
+      annualData: (fallback.data ?? []).map((item) => ({
+        ...item,
+        annual_full_time_equivalents: null,
+      })) as AnnualDataRow[],
+      error: fallback.error?.message ?? null,
+    };
+  }
+
   return {
     annualData: (data ?? []) as AnnualDataRow[],
     error: error?.message ?? null,

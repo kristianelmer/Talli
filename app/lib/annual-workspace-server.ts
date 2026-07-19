@@ -74,24 +74,25 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listAuthorityPermissions(companyIds),
   ]);
 
-  const results = [
-    documentsResult,
-    openingResult,
-    locksResult,
-    annualDataResult,
-    previewsResult,
-    submissionsResult,
-    overridesResult,
-    transactionsResult,
-    actionsResult,
-    positionsResult,
-    entriesResult,
-    snapshotsResult,
-    commentsResult,
-    billingResult,
-    authorityResult,
-  ];
-  if (results.some((result) => result.error)) {
+  const failedSources = [
+    ["documents", documentsResult.error],
+    ["opening", openingResult.error],
+    ["locks", locksResult.error],
+    ["annual_data", annualDataResult.error],
+    ["previews", previewsResult.error],
+    ["submissions", submissionsResult.error],
+    ["overrides", overridesResult.error],
+    ["transactions", transactionsResult.error],
+    ["actions", actionsResult.error],
+    ["positions", positionsResult.error],
+    ["entries", entriesResult.error],
+    ["snapshots", snapshotsResult.error],
+    ["comments", commentsResult.error],
+    ["billing", billingResult.error],
+    ["authority", authorityResult.error],
+  ].filter((entry) => entry[1]);
+  if (failedSources.length) {
+    console.error("annual_workspace_load_failed", { sources: Object.fromEntries(failedSources) });
     throw new Error("Kunne ikke laste årsrapporteringen. Prøv igjen.");
   }
 

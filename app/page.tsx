@@ -53,6 +53,7 @@ import { summarizeDividendReceivedAnnualImpact } from "./lib/dividend-received";
 import { invitationStatus, reviewChecklistStatus } from "./lib/invitations";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "./lib/launch-copy";
 import { estimateAnnualTax } from "./lib/tax-settlement";
+import { annualOverviewHref } from "./lib/annual-workspace";
 import {
   getCurrentUser,
   hasSupabaseEnv,
@@ -378,7 +379,17 @@ export default async function Home({ searchParams }: HomeProps) {
 
           {companies.length > 0 ? (
             <>
-              <section className="band">
+              <section className="band mutedBand">
+                <div className="sectionHeader">
+                  <p className="eyebrow">Årsrapportering</p>
+                  <h2>Tre plikter. Ett tydelig neste steg.</h2>
+                  <p>Åpne den nye årsarbeidsflaten for {companies[0].name} og {primaryIncomeYear}.</p>
+                </div>
+                <a className="primaryButton" href={annualOverviewHref({ companyId: primaryCompanyId!, incomeYear: primaryIncomeYear })}>
+                  Åpne årsrapportering
+                </a>
+              </section>
+              <section className="band" id="everyday-actions">
                 <div className="sectionHeader">
                   <p className="eyebrow">Åpningsbalanse</p>
                   <h2>Lås første aksje- og bankgrunnlag.</h2>
