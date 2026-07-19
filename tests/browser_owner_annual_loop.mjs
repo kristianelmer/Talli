@@ -70,6 +70,21 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await loginForm.getByLabel("Passord").fill(password);
   await loginForm.getByRole("button", { name: "Logg inn" }).click();
   await page.waitForLoadState("networkidle");
+
+  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") {
+    await page.goto(`${baseUrl}/companies/${companyId}/annual-reporting/2025`);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("heading", { name: "Årsrapportering" }).waitFor({ state: "visible", timeout: 15_000 });
+    assert.equal(await page.locator("[data-obligation]").count(), 3);
+    assert.deepEqual(
+      await page.locator("[data-obligation]").evaluateAll((items) => items.map((item) => item.getAttribute("data-obligation"))),
+      ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
+    return;
+  }
+
   await expectText(page, "Talli Browser Holding AS");
   await expectText(page, "Ikke vurdert");
 
@@ -125,8 +140,9 @@ async function seedAnnualLoop(admin, ids) {
       accepted_at: new Date().toISOString(),
     }),
   );
-  await assertNoError(
-    admin.rpc("append_company_agreement_acceptance", {
+  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY !== "1") {
+    await assertNoError(
+      admin.rpc("append_company_agreement_acceptance", {
       p_actor_id: ownerId,
       p_company_id: companyId,
       p_business_terms_version: "2026-07-17",
@@ -139,8 +155,9 @@ async function seedAnnualLoop(admin, ids) {
       p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
       p_authority_statement_version: "authority-v1",
       p_acceptance_method: "in_app_clickwrap",
-    }),
-  );
+      }),
+    );
+  }
   await assertNoError(
     admin.from("opening_balance_setups").insert({
       id: setupId,

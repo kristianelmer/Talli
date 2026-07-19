@@ -95,6 +95,7 @@ import {
   validateInvitationRole,
 } from "./lib/invitations";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
+import { actionReturnPath } from "./lib/action-return";
 import { validateManualJournal } from "./lib/manual-journal";
 import {
   OpeningShareholderInput,
@@ -312,6 +313,8 @@ const RETURN_TO_ALLOWLIST = new Set([
 
 function returnTarget(formData: FormData): string {
   const raw = formString(formData, "returnTo");
+  const annualTarget = actionReturnPath(raw);
+  if (annualTarget !== "/") return annualTarget;
   return RETURN_TO_ALLOWLIST.has(raw) ? raw : "/workspace";
 }
 
@@ -1582,7 +1585,7 @@ export async function addFilingReviewComment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function acknowledgeFilingReviewComment(formData: FormData) {
@@ -1630,7 +1633,7 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/workspace");
+  redirect(returnTarget(formData));
 }
 
 export async function importBankCsv(formData: FormData) {

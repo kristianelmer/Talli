@@ -15,6 +15,7 @@ import {
   StatusBadge,
 } from "../../components/ui";
 import type { DomainStatus } from "../../components/ui";
+import { annualOverviewHref } from "../../lib/annual-workspace";
 
 type DashboardProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -182,6 +183,17 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                   </div>
                 );
               })}
+            </div>
+            <div className="actions">
+              <LinkButton
+                variant="secondary"
+                href={annualOverviewHref({
+                  companyId: primaryCompany.id,
+                  incomeYear: primaryIncomeYear,
+                })}
+              >
+                Åpne årsrapportering
+              </LinkButton>
             </div>
           </Panel>
 

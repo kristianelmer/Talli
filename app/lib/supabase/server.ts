@@ -754,6 +754,24 @@ export async function listCompanyWorkspaces() {
   };
 }
 
+export async function getCompanyMembership(companyId: string, userId: string) {
+  if (!hasSupabaseEnv()) {
+    return { membership: null as CompanyMembershipRow | null, error: null };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("company_memberships")
+    .select("company_id, user_id, role, accepted_at")
+    .eq("company_id", companyId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return {
+    membership: (data ?? null) as CompanyMembershipRow | null,
+    error: error?.message ?? null,
+  };
+}
+
 export async function listOwnedCompanyWorkspaces(userId: string) {
   if (!hasSupabaseEnv()) {
     return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
@@ -862,6 +880,21 @@ export async function listAnnualData(companyIds: string[]) {
     .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
     .in("company_id", companyIds)
     .order("updated_at", { ascending: false });
+
+  if (error?.message.includes("annual_full_time_equivalents")) {
+    const fallback = await supabase
+      .from("annual_data")
+      .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, completed_by, completed_at, updated_by, updated_at")
+      .in("company_id", companyIds)
+      .order("updated_at", { ascending: false });
+    return {
+      annualData: (fallback.data ?? []).map((item) => ({
+        ...item,
+        annual_full_time_equivalents: null,
+      })) as AnnualDataRow[],
+      error: fallback.error?.message ?? null,
+    };
+  }
 
   return {
     annualData: (data ?? []) as AnnualDataRow[],
