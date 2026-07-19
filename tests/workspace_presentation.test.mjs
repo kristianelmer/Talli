@@ -17,11 +17,10 @@ test("customer forms do not seed synthetic accounting facts", async () => {
   assert.match(source, /name="incomeYear"[\s\S]+defaultValue=\{primaryIncomeYear\}/);
 });
 
-test("dashboard next actions lead to the dedicated customer workflow", async () => {
+test("dashboard enters the dedicated annual workspace", async () => {
   const source = await readFile(dashboardUrl, "utf8");
 
-  assert.doesNotMatch(source, /href: "\/workspace#arbeidsflate"/);
-  assert.match(source, /href: "\/filing"/);
-  assert.match(source, /href: "\/transactions"/);
-  assert.match(source, /href: "\/year-end"/);
+  assert.match(source, /redirect\(annualOverviewHref\(/);
+  assert.match(source, /redirect\("\/onboarding"\)/);
+  assert.doesNotMatch(source, /href: "\/(?:workspace|filing|year-end)"/);
 });

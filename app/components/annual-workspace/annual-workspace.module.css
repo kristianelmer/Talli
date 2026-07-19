@@ -21,18 +21,19 @@
 .frame { display: grid; grid-template-columns: 224px minmax(0, 1fr); max-width: 1440px; margin: 0 auto; }
 .nav { min-height: calc(100vh - 65px); padding: 28px 20px; border-right: 1px solid #dfe5e8; background: #fff; }
 .navLabel { margin: 0 10px 10px; color: #617067; font-size: 12px; font-weight: 700; }
-.nav a { display: block; padding: 9px 10px; border-radius: 7px; color: #3c4a43; font-size: 14px; text-decoration: none; }
+.nav a { display: block; padding: 10px 12px; border-radius: 8px; color: #3c4a43; font-size: 13px; font-weight: 700; text-decoration: none; }
 .nav a:hover, .nav a:focus-visible { background: #edf4f1; color: #084838; }
+.navActive { background: #e8f3ef; color: #084838 !important; }
 .navRule { margin: 16px 10px; border: 0; border-top: 1px solid #dfe5e8; }
 .main { min-width: 0; padding: 40px clamp(24px, 5vw, 72px) 72px; }
 .pageHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
-.pageHeader h1 { margin: 0 0 7px; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; letter-spacing: -0.035em; }
+.pageHeader h1 { margin: 0 0 7px; font-size: 32px; line-height: 1.2; letter-spacing: -0.025em; }
 .pageHeader p, .muted { margin: 0; color: #617067; line-height: 1.6; }
 .overviewLayout, .obligationLayout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: clamp(32px, 5vw, 72px); }
-.nextAction { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border: 1px solid #bad1c9; border-left: 4px solid #176b55; border-radius: 8px; background: #fff; }
+.nextAction { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border: 1px solid #bad1c9; border-radius: 8px; background: #fff; }
 .nextAction h2, .section h2, .contextRail h2 { margin: 0 0 5px; font-size: 17px; }
 .nextAction p { margin: 0; color: #617067; font-size: 14px; }
-.primaryButton, .secondaryButton { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 16px; border-radius: 7px; font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background-color 180ms ease-out, border-color 180ms ease-out; }
+.primaryButton, .secondaryButton { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 16px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background-color 180ms ease-out, border-color 180ms ease-out; }
 .primaryButton { border: 1px solid #176b55; background: #176b55; color: #fff; }
 .primaryButton:hover { background: #084838; border-color: #084838; }
 .secondaryButton { border: 1px solid #c9d2d6; background: #fff; color: #17202a; }
@@ -62,7 +63,7 @@
 .readinessRow p { margin: 0; color: #617067; line-height: 1.5; }
 .issueIcon { width: 18px; height: 18px; margin-top: 1px; color: #a73a34; }
 .emptyState { padding: 20px 0; color: #617067; }
-.notice { padding: 16px 18px; border-left: 4px solid #985713; border-radius: 7px; background: #fff8ed; color: #5d3b13; }
+.notice { padding: 16px 18px; border: 1px solid var(--color-warning); border-radius: 8px; background: var(--color-warning-soft); color: var(--color-warning-text); }
 .form { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border: 1px solid #dfe5e8; border-radius: 8px; background: #fff; }
 .form label { display: grid; gap: 6px; color: #3c4a43; font-size: 13px; font-weight: 650; }
 .form input[type="text"], .form textarea, .form select, .form input[type="file"] { width: 100%; box-sizing: border-box; padding: 10px 11px; border: 1px solid #c9d2d6; border-radius: 6px; background: #fff; color: #17202a; font: inherit; }
@@ -78,9 +79,9 @@
 
 @media (max-width: 920px) {
   .frame { grid-template-columns: 1fr; }
-  .nav { min-height: auto; padding: 12px 20px; border-right: 0; border-bottom: 1px solid #dfe5e8; overflow-x: auto; white-space: nowrap; }
+  .nav { display: flex; flex-wrap: wrap; gap: 4px; min-height: auto; padding: 12px 20px; border-right: 0; border-bottom: 1px solid #dfe5e8; }
   .navLabel, .navRule { display: none; }
-  .nav a { display: inline-block; }
+  .nav a { display: block; }
   .overviewLayout, .obligationLayout { grid-template-columns: 1fr; }
   .contextRail { border-left: 0; border-top: 1px solid #dfe5e8; padding: 28px 0 0; }
 }

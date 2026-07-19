@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { ownerCopy } from "../lib/copy";
 
-type NavItem = { href: string; label: string; variant?: "operator" };
+type NavItem = { href: string; label: string };
 
 type AppNavProps = {
   isOperator: boolean;
@@ -21,17 +21,10 @@ export function AppNav({ isOperator, children }: AppNavProps) {
     { href: "/dashboard", label: ownerCopy.nav.overview },
     { href: "/actions", label: ownerCopy.nav.actions },
     { href: "/transactions", label: ownerCopy.nav.transactions },
-    { href: "/year-end", label: ownerCopy.nav.yearEnd },
-    { href: "/filing", label: ownerCopy.nav.filing },
-    { href: "/connections", label: ownerCopy.nav.connections },
     { href: "/documents", label: ownerCopy.nav.documents },
+    { href: "/connections", label: ownerCopy.nav.connections },
     { href: "/billing", label: ownerCopy.nav.billing },
-    { href: "/workspace", label: ownerCopy.nav.workspace },
   ];
-  if (isOperator) {
-    items.push({ href: "/operator", label: ownerCopy.nav.operator, variant: "operator" });
-  }
-
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -54,7 +47,6 @@ export function AppNav({ isOperator, children }: AppNavProps) {
               className="appNavLink"
               href={item.href}
               data-active={isActive(item.href) || undefined}
-              data-variant={item.variant}
               aria-current={isActive(item.href) ? "page" : undefined}
               onClick={() => setOpen(false)}
             >
@@ -62,7 +54,23 @@ export function AppNav({ isOperator, children }: AppNavProps) {
             </Link>
           ))}
         </nav>
-        {children ? <div className="appNavRight">{children}</div> : null}
+        {isOperator || children ? (
+          <div className="appNavRight">
+            {isOperator ? (
+              <Link
+                className="appNavLink"
+                href="/operator"
+                data-active={isActive("/operator") || undefined}
+                data-variant="operator"
+                aria-current={isActive("/operator") ? "page" : undefined}
+                onClick={() => setOpen(false)}
+              >
+                {ownerCopy.nav.operator}
+              </Link>
+            ) : null}
+            {children}
+          </div>
+        ) : null}
       </div>
     </>
   );

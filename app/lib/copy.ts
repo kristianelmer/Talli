@@ -107,14 +107,14 @@ export const ownerCopy = {
   },
 
   nav: {
-    overview: "Oversikt",
+    overview: "Årsrapportering",
     actions: "Handlinger",
     transactions: "Transaksjoner",
     yearEnd: "Årsavslutning",
     filing: "Innsending",
-    connections: "Tilkoblinger",
+    connections: "Selskap",
     documents: "Dokumenter",
-    billing: "Abonnement",
+    billing: "Innstillinger",
     workspace: "Arbeidsflate",
     operator: "Operatør",
     menu: "Meny",
