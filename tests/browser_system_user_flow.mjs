@@ -23,9 +23,7 @@ import {
 } from "./fixtures/system-user-authority-mock.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const MOCK_PRELOAD = fileURLToPath(
-  new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url),
-);
+const MOCK_PRELOAD = new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href;
 const INCOME_YEAR = 2025;
 const CALLBACK_PATH = "/auth/systembruker/confirm";
 const PRODUCTION_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave";
@@ -43,6 +41,8 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
   let mock;
   let nextServer;
   let browser;
+  let primaryError;
+  const cleanupErrors = [];
   const browserProblems = [];
   const browserEgressViolations = [];
 
@@ -84,6 +84,14 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
 
     await login(ownerPage, siteOrigin, fixture.ownerEmail, fixture.ownerPassword);
     await establishSyntheticAal2(ownerPage, siteOrigin);
+
+    const dashboardResponse = await ownerPage.goto(`${siteOrigin}/dashboard`);
+    assert.equal(dashboardResponse?.status(), 200);
+    assert.equal(
+      new URL(ownerPage.url()).pathname,
+      `/companies/${fixture.primaryCompanyId}/annual-reporting/${INCOME_YEAR}`,
+    );
+
     await assertNoError(
       admin.from("support_operators").delete().eq("user_id", fixture.ownerId),
     );
@@ -91,12 +99,12 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     await ownerPage.goto(`${siteOrigin}/connections?company=${fixture.primaryCompanyId}`);
     await ownerPage.getByRole("heading", { name: "Altinn-tilkobling" }).waitFor();
     await assertKeyboardFocusOrder(ownerPage, [
-      "Oversikt",
+      "Årsrapportering",
       "Handlinger",
       "Transaksjoner",
-      "Årsavslutning",
-      "Innsending",
-      "Tilkoblinger",
+      "Dokumenter",
+      "Selskap",
+      "Innstillinger",
     ]);
 
     await ownerPage.getByRole("button", { name: "Opprett tilkobling" }).click();
@@ -230,8 +238,9 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     process.stdout.write(
       "browser-system-user PASS: 320x900 + 1440x900; keyboard order verified; console warnings/errors 0; parent switches off; child filing adapter local-mock-only\n",
     );
+  } catch (error) {
+    primaryError = error;
   } finally {
-    const cleanupErrors = [];
     if (browser) await teardownStep(() => browser.close(), cleanupErrors);
     if (nextServer) await teardownStep(() => stopServer(nextServer), cleanupErrors);
     if (mock) await teardownStep(() => mock.close(), cleanupErrors);
@@ -242,10 +251,16 @@ test("local browser proves the isolated RF-1086 Systembruker release flow", {
     if (localSupabase?.startedHere) {
       await teardownStep(() => stopLocalSupabase(), cleanupErrors);
     }
-    assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true");
-    assert.notEqual(process.env.TALLI_RF1086_PRODUCTION_ENABLED, "true");
-    if (cleanupErrors.length) throw cleanupErrors[0];
+    await teardownStep(
+      () => assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true"),
+      cleanupErrors,
+    );
+    await teardownStep(
+      () => assert.notEqual(process.env.TALLI_RF1086_PRODUCTION_ENABLED, "true"),
+      cleanupErrors,
+    );
   }
+  throwWithCleanupErrors(primaryError, cleanupErrors);
 });
 
 async function seedIdentityAndCompanies(admin, database, retainFixtureForCleanup) {
@@ -259,16 +274,17 @@ async function seedIdentityAndCompanies(admin, database, retainFixtureForCleanup
     email_confirm: true,
   });
   assert.ifError(owner.error);
+  retainFixtureForCleanup({ ownerId: owner.data.user.id });
   const otherOwner = await admin.auth.admin.createUser({
     email: otherOwnerEmail,
     password: otherOwnerPassword,
     email_confirm: true,
   });
-  if (otherOwner.error) {
-    const ownerCleanup = await admin.auth.admin.deleteUser(owner.data.user.id);
-    assert.ifError(ownerCleanup.error);
-    assert.ifError(otherOwner.error);
-  }
+  assert.ifError(otherOwner.error);
+  retainFixtureForCleanup({
+    ownerId: owner.data.user.id,
+    otherOwnerId: otherOwner.data.user.id,
+  });
 
   const ids = {
     ownerId: owner.data.user.id,
@@ -319,6 +335,26 @@ async function seedIdentityAndCompanies(admin, database, retainFixtureForCleanup
     role: "admin",
     active: true,
   }));
+  for (const [companyId, actorId] of [
+    [ids.tamperedCompanyId, ids.ownerId],
+    [ids.primaryCompanyId, ids.ownerId],
+    [ids.otherCompanyId, ids.otherOwnerId],
+  ]) {
+    await assertNoError(admin.rpc("append_company_agreement_acceptance", {
+      p_actor_id: actorId,
+      p_company_id: companyId,
+      p_business_terms_version: "2026-07-17",
+      p_business_terms_effective_date: "2026-07-17",
+      p_business_terms_path: "/vilkar",
+      p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+      p_dpa_version: "2026-07-17",
+      p_dpa_effective_date: "2026-07-17",
+      p_dpa_path: "/databehandleravtale",
+      p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+      p_authority_statement_version: "authority-v1",
+      p_acceptance_method: "in_app_clickwrap",
+    }));
+  }
 
   const mainXml = syntheticXml("rf1086", syntheticXml("year", String(INCOME_YEAR)));
   const subXml = syntheticXml("rf1086u", syntheticXml("shares", "100"));
@@ -599,7 +635,7 @@ async function verifyConnectionsResponsiveViewports(page) {
     true,
   );
   await page.keyboard.press("Enter");
-  await page.getByRole("link", { name: "Tilkoblinger", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Selskap", exact: true }).waitFor();
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.reload();
@@ -810,76 +846,126 @@ async function stopServer(server) {
 }
 
 async function cleanupFixture(admin, database, fixture) {
-  const documents = await database.query(
-    `select d.storage_key
-      from public.documents d
-      join public.production_feedback_artifacts a on a.document_id = d.id
-      where a.company_id = $1`,
-    [fixture.primaryCompanyId],
-  );
-  const storageKeys = documents.rows.map((document) => document.storage_key);
-  if (storageKeys.length) {
-    const removal = await admin.storage.from("company-documents").remove(storageKeys);
-    assert.ifError(removal.error);
+  const cleanupErrors = [];
+  if (!fixture.primaryCompanyId) {
+    for (const userId of [fixture.ownerId, fixture.otherOwnerId].filter(Boolean)) {
+      await teardownStep(async () => {
+        const deletion = await admin.auth.admin.deleteUser(userId);
+        assert.ifError(deletion.error);
+      }, cleanupErrors);
+    }
+    throwWithCleanupErrors(undefined, cleanupErrors);
+    return;
   }
-  await database.query(
-    `delete from public.production_filing_events
-      where submission_id in (
-        select id from public.production_filing_submissions where company_id = $1
-      )`,
-    [fixture.primaryCompanyId],
-  );
-  await database.query("delete from public.production_feedback_artifacts where company_id = $1", [
-    fixture.primaryCompanyId,
-  ]);
-  await database.query("delete from public.production_filing_submissions where company_id = $1", [
-    fixture.primaryCompanyId,
-  ]);
-  await database.query("delete from public.filing_approval_snapshots where company_id = $1", [
-    fixture.primaryCompanyId,
-  ]);
-  await database.query("delete from public.production_pilot_entitlements where company_id = $1", [
-    fixture.primaryCompanyId,
-  ]);
-  await database.query("delete from public.documents where company_id = $1", [
-    fixture.primaryCompanyId,
-  ]);
-  await database.query("delete from public.system_user_requests where company_id = any($1::uuid[])", [[
-    fixture.primaryCompanyId,
-    fixture.tamperedCompanyId,
-  ]]);
-  await database.query("delete from public.authority_operations where actor_id = $1", [
-    fixture.ownerId,
-  ]);
-  await database.query("delete from public.support_operators where user_id = $1", [
-    fixture.ownerId,
-  ]);
+  let storageKeys = [];
+  await teardownStep(async () => {
+    const documents = await database.query(
+      `select d.storage_key
+        from public.documents d
+        join public.production_feedback_artifacts a on a.document_id = d.id
+        where a.company_id = $1`,
+      [fixture.primaryCompanyId],
+    );
+    storageKeys = documents.rows.map((document) => document.storage_key);
+  }, cleanupErrors);
+  if (storageKeys.length) {
+    await teardownStep(async () => {
+      const removal = await admin.storage.from("company-documents").remove(storageKeys);
+      assert.ifError(removal.error);
+    }, cleanupErrors);
+  }
+  const databaseCleanupSteps = [
+    () => database.query(
+      `delete from public.production_filing_events
+        where submission_id in (
+          select id from public.production_filing_submissions where company_id = $1
+        )`,
+      [fixture.primaryCompanyId],
+    ),
+    () => database.query("delete from public.production_feedback_artifacts where company_id = $1", [
+      fixture.primaryCompanyId,
+    ]),
+    () => database.query("delete from public.production_filing_submissions where company_id = $1", [
+      fixture.primaryCompanyId,
+    ]),
+    () => database.query("delete from public.filing_approval_snapshots where company_id = $1", [
+      fixture.primaryCompanyId,
+    ]),
+    () => database.query("delete from public.production_pilot_entitlements where company_id = $1", [
+      fixture.primaryCompanyId,
+    ]),
+    () => database.query("delete from public.documents where company_id = $1", [
+      fixture.primaryCompanyId,
+    ]),
+    () => database.query("delete from public.system_user_requests where company_id = any($1::uuid[])", [[
+      fixture.primaryCompanyId,
+      fixture.tamperedCompanyId,
+    ]]),
+    () => database.query("delete from public.authority_operations where actor_id = $1", [
+      fixture.ownerId,
+    ]),
+    () => database.query("delete from public.support_operators where user_id = $1", [
+      fixture.ownerId,
+    ]),
+  ];
+  for (const cleanupStep of databaseCleanupSteps) {
+    await teardownStep(cleanupStep, cleanupErrors);
+  }
   const companyIds = [
     fixture.primaryCompanyId,
     fixture.tamperedCompanyId,
     fixture.otherCompanyId,
   ];
-  await database.query("delete from public.companies where id = any($1::uuid[])", [companyIds]);
-  const ownerDeletion = await admin.auth.admin.deleteUser(fixture.ownerId);
-  assert.ifError(ownerDeletion.error);
-  const otherOwnerDeletion = await admin.auth.admin.deleteUser(fixture.otherOwnerId);
-  assert.ifError(otherOwnerDeletion.error);
-
-  const residue = await database.query(
-    `select
-      (select count(*)::int from public.companies where id = any($1::uuid[])) as companies,
-      (select count(*)::int from public.system_user_requests where company_id = any($1::uuid[])) as requests,
-      (select count(*)::int from auth.users where id = any($2::uuid[])) as users,
-      (select count(*)::int from storage.objects
-        where bucket_id = 'company-documents' and name = any($3::text[])) as objects`,
-    [companyIds, [fixture.ownerId, fixture.otherOwnerId], storageKeys],
+  await teardownStep(async () => {
+    let transactionStarted = false;
+    try {
+      await database.query("begin");
+      transactionStarted = true;
+      await database.query("set local session_replication_role = replica");
+      await database.query(
+        "delete from public.customer_agreement_acceptances where company_id = any($1::uuid[])",
+        [companyIds],
+      );
+      await database.query("commit");
+    } catch (error) {
+      if (transactionStarted) {
+        try {
+          await database.query("rollback");
+        } catch (rollbackError) {
+          throw new AggregateError([error, rollbackError], "Agreement cleanup and rollback failed");
+        }
+      }
+      throw error;
+    }
+  }, cleanupErrors);
+  await teardownStep(
+    () => database.query("delete from public.companies where id = any($1::uuid[])", [companyIds]),
+    cleanupErrors,
   );
-  assert.deepEqual(residue.rows[0], {
-    companies: 0,
-    requests: 0,
-    users: 0,
-    objects: 0,
-  });
+  for (const userId of [fixture.ownerId, fixture.otherOwnerId]) {
+    await teardownStep(async () => {
+      const deletion = await admin.auth.admin.deleteUser(userId);
+      assert.ifError(deletion.error);
+    }, cleanupErrors);
+  }
+  await teardownStep(async () => {
+    const residue = await database.query(
+      `select
+        (select count(*)::int from public.companies where id = any($1::uuid[])) as companies,
+        (select count(*)::int from public.system_user_requests where company_id = any($1::uuid[])) as requests,
+        (select count(*)::int from auth.users where id = any($2::uuid[])) as users,
+        (select count(*)::int from storage.objects
+          where bucket_id = 'company-documents' and name = any($3::text[])) as objects`,
+      [companyIds, [fixture.ownerId, fixture.otherOwnerId], storageKeys],
+    );
+    assert.deepEqual(residue.rows[0], {
+      companies: 0,
+      requests: 0,
+      users: 0,
+      objects: 0,
+    });
+  }, cleanupErrors);
+  throwWithCleanupErrors(undefined, cleanupErrors);
 }
 
 async function teardownStep(step, errors) {
@@ -887,6 +973,19 @@ async function teardownStep(step, errors) {
     await step();
   } catch (error) {
     errors.push(error);
+  }
+}
+
+function throwWithCleanupErrors(primaryError, cleanupErrors) {
+  if (primaryError && cleanupErrors.length) {
+    throw new AggregateError(
+      [primaryError, ...cleanupErrors],
+      "Browser system-user test and fixture cleanup both failed",
+    );
+  }
+  if (primaryError) throw primaryError;
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, "Browser system-user fixture cleanup failed");
   }
 }
 

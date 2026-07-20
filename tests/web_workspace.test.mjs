@@ -125,7 +125,7 @@ test("optional accountant review allows advisory acknowledgement but blocks hard
 test("owner navigation adds connections without changing the operator-only branch", () => {
   assert.match(ownerNavSource, /href: "\/connections"/u);
   assert.match(ownerNavSource, /ownerCopy\.nav\.connections/u);
-  assert.match(ownerNavSource, /if \(isOperator\) \{[\s\S]*href: "\/operator"/u);
+  assert.match(ownerNavSource, /\{isOperator \? \([\s\S]*href="\/operator"/u);
 });
 
 test("RF-1086 filing uses durable Systembruker readiness and a local company link", () => {
