@@ -48,7 +48,7 @@ import {
  */
 export async function loadWorkspaceData() {
   const user = await getCurrentUser();
-  const { companies, error } = user ? await listCompanyWorkspaces() : { companies: [], error: null };
+  const { companies, error } = user ? await listCompanyWorkspaces(user.id) : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
   const { error: corporateLifecycleError, ...corporateLifecycle } = user

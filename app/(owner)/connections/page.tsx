@@ -2,6 +2,7 @@ import { Banner, EmptyState, LinkButton, StatusBadge } from "../../components/ui
 import { ownerCopy } from "../../lib/copy";
 import {
   createSupabaseServerClient,
+  getCurrentUser,
   listCompanyWorkspaces,
 } from "../../lib/supabase/server";
 import { SystemUserRequestControls } from "./SystemUserRequestControls";
@@ -24,7 +25,10 @@ type ConnectionsPageProps = {
 export default async function ConnectionsPage({ searchParams }: ConnectionsPageProps) {
   const query = await searchParams;
   const c = ownerCopy.connections;
-  const { companies, error: companiesError } = await listCompanyWorkspaces();
+  const user = await getCurrentUser();
+  const { companies, error: companiesError } = user
+    ? await listCompanyWorkspaces(user.id)
+    : { companies: [], error: "Innlogging kreves." };
   const selectedCompany = selectReadableCompany(query?.company, companies);
   const notice = systemUserCallbackNotice(query?.systembruker, c);
   const header = (

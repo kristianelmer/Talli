@@ -17,6 +17,7 @@ import type {
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
 import type { SystemUserRequestStatus } from "../system-user-requests";
+import { listCompanyWorkspacesForUser } from "./company-workspaces";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -738,19 +739,15 @@ export async function getOperatorContext() {
   return { user, isOperator, isAdminOperator: operator?.role === "admin" };
 }
 
-export async function listCompanyWorkspaces() {
+export async function listCompanyWorkspaces(userId: string) {
   if (!hasSupabaseEnv()) {
     return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .order("created_at", { ascending: false });
-
+  const { companies, error } = await listCompanyWorkspacesForUser(supabase, userId);
   return {
-    companies: (data ?? []) as CompanyWorkspaceRow[],
-    error: error?.message ?? null,
+    companies: companies as CompanyWorkspaceRow[],
+    error,
   };
 }
 

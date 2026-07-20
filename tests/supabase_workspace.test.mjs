@@ -39,6 +39,7 @@ import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../ap
 import { validateSharePurchase } from "../app/lib/share-purchase.ts";
 import { validateShareSale } from "../app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
+import { listCompanyWorkspacesForUser } from "../app/lib/supabase/company-workspaces.ts";
 import {
   estimateAnnualTax,
   taxSettlementLedgerLines,
@@ -145,6 +146,32 @@ function anonClient() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+async function assertNoError(resultPromise) {
+  const { error } = await resultPromise;
+  assert.ifError(error);
+}
+
+async function collectCleanupError(step, errors) {
+  try {
+    await step();
+  } catch (error) {
+    errors.push(error);
+  }
+}
+
+function throwWithCleanupErrors(primaryError, cleanupErrors) {
+  if (primaryError && cleanupErrors.length) {
+    throw new AggregateError(
+      [primaryError, ...cleanupErrors],
+      "Supabase workspace test and fixture cleanup both failed",
+    );
+  }
+  if (primaryError) throw primaryError;
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, "Supabase workspace fixture cleanup failed");
+  }
 }
 
 async function createConfirmedUser(label) {
@@ -296,22 +323,45 @@ test(
   async () => {
   await applyMigration();
   const admin = serviceClient();
-  const ownerUser = await createConfirmedUser("owner");
-  const secondOwnerUser = await createConfirmedUser("second-owner");
-  const outsiderUser = await createConfirmedUser("outsider");
-  const reviewerUser = await createConfirmedUser("reviewer");
-  const readOnlyUser = await createConfirmedUser("readonly");
-  const inviteeUser = await createConfirmedUser("invitee");
-  const owner = await signIn(ownerUser);
-  const secondOwner = await signIn(secondOwnerUser);
-  const outsider = await signIn(outsiderUser);
-  const reviewer = await signIn(reviewerUser);
-  const readOnly = await signIn(readOnlyUser);
-  const invitee = await signIn(inviteeUser);
   const orgNumber = `${Math.floor(100000000 + Math.random() * 899999999)}`;
+  const createdUsers = [];
+  let ownerUser;
+  let secondOwnerUser;
+  let outsiderUser;
+  let reviewerUser;
+  let readOnlyUser;
+  let inviteeUser;
+  let owner;
+  let secondOwner;
+  let outsider;
+  let reviewer;
+  let readOnly;
+  let invitee;
   let companyId;
+  let foreignCompanyId;
+  let primaryError;
+  const cleanupErrors = [];
 
   try {
+    ownerUser = await createConfirmedUser("owner");
+    createdUsers.push(ownerUser);
+    secondOwnerUser = await createConfirmedUser("second-owner");
+    createdUsers.push(secondOwnerUser);
+    outsiderUser = await createConfirmedUser("outsider");
+    createdUsers.push(outsiderUser);
+    reviewerUser = await createConfirmedUser("reviewer");
+    createdUsers.push(reviewerUser);
+    readOnlyUser = await createConfirmedUser("readonly");
+    createdUsers.push(readOnlyUser);
+    inviteeUser = await createConfirmedUser("invitee");
+    createdUsers.push(inviteeUser);
+    owner = await signIn(ownerUser);
+    secondOwner = await signIn(secondOwnerUser);
+    outsider = await signIn(outsiderUser);
+    reviewer = await signIn(reviewerUser);
+    readOnly = await signIn(readOnlyUser);
+    invitee = await signIn(inviteeUser);
+
     const { data: company, error: companyError } = await owner
       .from("companies")
       .insert({
@@ -383,6 +433,60 @@ test(
         [secondOwnerUser.id, "owner"],
       ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
     );
+
+    foreignCompanyId = randomUUID();
+    await assertNoError(admin.from("companies").insert({
+      id: foreignCompanyId,
+      org_number: `${Math.floor(100000000 + Math.random() * 899999999)}`,
+      name: "Foreign Operator-visible Holding AS",
+      entity_type: "AS",
+      address: "Storgata 2",
+      postal_code: "0155",
+      city: "OSLO",
+      status_text: "aktiv",
+      source: "test",
+      created_by: outsiderUser.id,
+      identity_confirmed_at: new Date().toISOString(),
+      identity_locked_at: new Date().toISOString(),
+    }));
+    await assertNoError(admin.from("company_memberships").insert({
+      company_id: foreignCompanyId,
+      user_id: outsiderUser.id,
+      role: "owner",
+      accepted_at: new Date().toISOString(),
+    }));
+    await assertNoError(admin.from("company_memberships").insert({
+      company_id: companyId,
+      user_id: inviteeUser.id,
+      role: "reviewer",
+      invited_by: ownerUser.id,
+      accepted_at: null,
+    }));
+    await assertNoError(admin.from("support_operators").insert({
+      user_id: ownerUser.id,
+      role: "admin",
+      active: true,
+    }));
+
+    for (const [client, userId] of [
+      [owner, ownerUser.id],
+      [reviewer, reviewerUser.id],
+      [readOnly, readOnlyUser.id],
+    ]) {
+      const scoped = await listCompanyWorkspacesForUser(client, userId);
+      assert.ifError(scoped.error);
+      assert.deepEqual(scoped.companies.map(({ id }) => id), [companyId]);
+    }
+    const pending = await listCompanyWorkspacesForUser(invitee, inviteeUser.id);
+    assert.ifError(pending.error);
+    assert.deepEqual(pending.companies, []);
+
+    await assertNoError(admin.from("support_operators").delete().eq("user_id", ownerUser.id));
+    await assertNoError(
+      admin.from("company_memberships").delete().eq("company_id", companyId).eq("user_id", inviteeUser.id),
+    );
+    await assertNoError(admin.from("companies").delete().eq("id", foreignCompanyId));
+    foreignCompanyId = undefined;
 
     const { error: auditError } = await owner.from("audit_events").insert({
       company_id: companyId,
@@ -2987,16 +3091,28 @@ test(
     assert.ok(readOnlyUploadError);
 
     await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
+  } catch (error) {
+    primaryError = error;
   } finally {
-    if (companyId) {
-      await admin.from("companies").delete().eq("id", companyId);
+    if (foreignCompanyId) {
+      await collectCleanupError(
+        () => assertNoError(admin.from("companies").delete().eq("id", foreignCompanyId)),
+        cleanupErrors,
+      );
     }
-    await admin.auth.admin.deleteUser(ownerUser.id);
-    await admin.auth.admin.deleteUser(secondOwnerUser.id);
-    await admin.auth.admin.deleteUser(outsiderUser.id);
-    await admin.auth.admin.deleteUser(reviewerUser.id);
-    await admin.auth.admin.deleteUser(readOnlyUser.id);
-    await admin.auth.admin.deleteUser(inviteeUser.id);
+    if (companyId) {
+      await collectCleanupError(
+        () => assertNoError(admin.from("companies").delete().eq("id", companyId)),
+        cleanupErrors,
+      );
+    }
+    for (const user of createdUsers) {
+      await collectCleanupError(
+        () => assertNoError(admin.auth.admin.deleteUser(user.id)),
+        cleanupErrors,
+      );
+    }
   }
+  throwWithCleanupErrors(primaryError, cleanupErrors);
   },
 );
