@@ -91,7 +91,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
-    "next": "16.2.9",
+    "next": "16.2.12",
     "pg": "^8.21.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -106,6 +106,7 @@
     "typescript": "6.0.3"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
   }
 }
