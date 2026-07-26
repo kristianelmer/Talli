@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "ledger",
+  "path": "apps/web/features/ledger",
+  "owner": "web:ledger",
+  "purpose": "Present backend-owned ledger facts and collect ledger-related user intent without reproducing accounting policy.",
+  "documentation": "apps/web/features/ledger/MODULE.md",
+  "publicEntryPoint": "@/features/ledger",
+  "ownedRoutes": [
+    "/companies/[companyId]/ledger"
+  ],
+  "apiOperations": [
+    "ledger_listEntries",
+    "ledger_postManualJournal"
+  ],
+  "dependencies": [
+    {
+      "module": "documents",
+      "kind": "feature",
+      "imports": ["DocumentLink"]
+    }
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": [
+      "same-request read deduplication",
+      "session-scoped in-memory read DTOs cleared on sign-out and company switch"
+    ]
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Posting or balancing rules",
+    "Period-lock decisions",
+    "Direct Supabase business persistence",
+    "Direct business-endpoint fetch calls",
+    "Handwritten duplicates of generated business DTOs"
+  ],
+  "tests": {
+    "feature": "apps/web/features/ledger/tests",
+    "architecture": "apps/web/tests/architecture"
+  },
+  "compatibilityExceptions": []
+}

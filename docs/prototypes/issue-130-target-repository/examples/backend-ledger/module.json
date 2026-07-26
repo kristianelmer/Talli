@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "ledger",
+  "path": "apps/backend/src/talli_backend/modules/ledger",
+  "owner": "backend:ledger",
+  "purpose": "Own the narrow ledger, posting invariants, opening balances, administrative-cost commands, manual journals, and period locks.",
+  "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.ledger.public",
+  "exports": {
+    "commands": ["LedgerCommands"],
+    "queries": ["LedgerQueries"],
+    "events": ["LedgerEntryPostedV1", "PeriodLockedV1"],
+    "errors": ["LEDGER_INVALID_POSTING", "LEDGER_PERIOD_LOCKED"],
+    "identifiers": ["LedgerEntryId"]
+  },
+  "owns": {
+    "postgresSchemas": ["ledger"],
+    "tables": ["ledger.ledger_entries", "ledger.period_locks"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "apps/backend/src/talli_backend/modules/ledger/migrations"
+  },
+  "dependencies": [
+    {
+      "module": "company_access",
+      "kind": "query",
+      "imports": ["CompanyAccessQueries"]
+    }
+  ],
+  "ports": [
+    {
+      "name": "LedgerRepository",
+      "direction": "outbound",
+      "adapters": [
+        "talli_backend.modules.ledger.persistence.postgres.PostgresLedgerRepository"
+      ]
+    }
+  ],
+  "forbiddenResponsibilities": [
+    "Investment position and FIFO rules",
+    "Corporate-governance decisions",
+    "Filing rules or payloads",
+    "Cross-capability table access"
+  ],
+  "tests": {
+    "unit": "apps/backend/src/talli_backend/modules/ledger/tests/unit",
+    "contract": "apps/backend/src/talli_backend/modules/ledger/tests/contract",
+    "architecture": "apps/backend/tests/architecture"
+  },
+  "compatibilityExceptions": []
+}
