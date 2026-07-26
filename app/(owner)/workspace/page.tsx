@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
+import { CustomerAgreementAcceptanceFields } from "../../components/CustomerAgreementAcceptanceFields";
 import {
   acknowledgeFilingReviewComment,
   activateBillingSubscription,
@@ -65,7 +66,6 @@ import {
   validateOwnerDividendPaymentInput,
 } from "../../lib/owner-dividend-payment";
 import { invitationStatus, reviewChecklistStatus } from "../../lib/invitations";
-import { currentCustomerAgreements } from "../../lib/customer-agreements";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
 import { estimateAnnualTax } from "../../lib/tax-settlement";
 import {
@@ -287,44 +287,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 Organisasjonsnummer
                 <input name="orgNumber" inputMode="numeric" pattern="[0-9]{9}" required />
               </label>
-              <input
-                name="businessTermsVersion"
-                type="hidden"
-                value={currentCustomerAgreements.businessTerms.version}
-              />
-              <input
-                name="businessTermsSha256"
-                type="hidden"
-                value={currentCustomerAgreements.businessTerms.contentSha256}
-              />
-              <input
-                name="dpaVersion"
-                type="hidden"
-                value={currentCustomerAgreements.dpa.version}
-              />
-              <input
-                name="dpaSha256"
-                type="hidden"
-                value={currentCustomerAgreements.dpa.contentSha256}
-              />
-              <div className="checkboxLabel">
-                <input
-                  id="agreementAccepted"
-                  name="agreementAccepted"
-                  type="checkbox"
-                  value="accepted"
-                  aria-describedby="agreementAcceptedDescription"
-                  required
-                />
-                <p id="agreementAcceptedDescription">
-                  <label htmlFor="agreementAccepted">
-                    {ownerCopy.workspace.agreementAcceptance.authority}{" "}
-                  </label>
-                  <Link href="/vilkar">{ownerCopy.workspace.agreementAcceptance.businessTerms}</Link>{" "}
-                  {ownerCopy.workspace.agreementAcceptance.conjunction}{" "}
-                  <Link href="/databehandleravtale">{ownerCopy.workspace.agreementAcceptance.dpa}</Link>
-                </p>
-              </div>
+              <CustomerAgreementAcceptanceFields />
               <button className="primaryButton" type="submit">
                 {ownerCopy.workspace.createCta}
               </button>

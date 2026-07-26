@@ -1,6 +1,7 @@
 "use client";
 
 import { createWorkspace } from "../../actions";
+import { CustomerAgreementAcceptanceFields } from "../../components/CustomerAgreementAcceptanceFields";
 import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
 
@@ -10,6 +11,7 @@ export function CompanyLookupForm() {
   return (
     <form action={createWorkspace} className="wizardForm">
       <input type="hidden" name="returnTo" value="/onboarding" />
+      <CustomerAgreementAcceptanceFields />
       <FormField
         label={c.orgLabel}
         name="orgNumber"
