@@ -10,7 +10,7 @@ import {
   requestMaskinportenToken,
   signMaskinportenGrant,
   summarizeMaskinportenToken,
-} from "../app/lib/maskinporten.ts";
+} from "../apps/web/app/lib/maskinporten.ts";
 
 const clientId = "7166e743-978e-4a60-8a2d-0a5c00fe6ad0";
 const keyId = "2d275f93-10a2-4839-993e-b14da2b84ad8";

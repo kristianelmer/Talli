@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
-import { buildCompanyTaxReturnPayload } from "../app/lib/company-tax-return.ts";
-import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
+import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
+import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
+import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 
 const annualData = {
   id: "annual-data-id",

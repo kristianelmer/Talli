@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("direct annual workspace routes preserve the current agreement gate", async () => {
   const source = await readFile(
-    new URL("../app/lib/annual-workspace-server.ts", import.meta.url),
+    new URL("../apps/web/app/lib/annual-workspace-server.ts", import.meta.url),
     "utf8",
   );
 
@@ -18,7 +18,7 @@ test("direct annual workspace routes preserve the current agreement gate", async
 
 test("non-owners get a stable fail-closed agreement message instead of a redirect loop", async () => {
   const dashboard = await readFile(
-    new URL("../app/(owner)/dashboard/page.tsx", import.meta.url),
+    new URL("../apps/web/app/(owner)/dashboard/page.tsx", import.meta.url),
     "utf8",
   );
 

@@ -6,19 +6,19 @@ import {
   corporateSignedArtifactStorageKey,
   requiredCorporateArtifactSigners,
   validateSignedCorporateArtifactUpload,
-} from "../app/lib/corporate-signed-artifacts.ts";
+} from "../apps/web/app/lib/corporate-signed-artifacts.ts";
 
-const actionsSource = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const pageSource = readFileSync(
-  new URL("../app/(owner)/corporate-decisions/[decisionId]/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx", import.meta.url),
   "utf8",
 );
 const uploadSource = readFileSync(
-  new URL("../app/(owner)/corporate-decisions/[decisionId]/SignedArtifactUpload.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/corporate-decisions/[decisionId]/SignedArtifactUpload.tsx", import.meta.url),
   "utf8",
 );
 const previewSource = readFileSync(
-  new URL("../app/documents/[documentId]/preview/route.ts", import.meta.url),
+  new URL("../apps/web/app/documents/[documentId]/preview/route.ts", import.meta.url),
   "utf8",
 );
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ShareSaleValidationError, shareSaleLedgerLines, validateShareSale } from "../app/lib/share-sale.ts";
+import { ShareSaleValidationError, shareSaleLedgerLines, validateShareSale } from "../apps/web/app/lib/share-sale.ts";
 
 test("builds partial share sale payload and gain ledger lines", () => {
   const payload = validateShareSale({

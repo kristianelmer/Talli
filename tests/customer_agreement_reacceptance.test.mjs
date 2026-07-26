@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { currentCustomerAgreements, customerAgreementAuthorityStatementVersion } from "../app/lib/customer-agreements.ts";
+import { currentCustomerAgreements, customerAgreementAuthorityStatementVersion } from "../apps/web/app/lib/customer-agreements.ts";
 import {
   companiesRequiringCurrentCustomerAgreement,
   reacceptCustomerAgreement,
-} from "../app/lib/customer-agreement-reacceptance.ts";
+} from "../apps/web/app/lib/customer-agreement-reacceptance.ts";
 
 const company = { id: "10000000-0000-4000-8000-000000000001", name: "Existing AS" };
 const currentEvidence = {

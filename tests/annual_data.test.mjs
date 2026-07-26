@@ -6,7 +6,7 @@ import {
   buildYearEndInterviewAnswers,
   buildYearEndInterviewInitialAnswers,
   noActivityConfirmed,
-} from "../app/lib/annual-data.ts";
+} from "../apps/web/app/lib/annual-data.ts";
 
 test("builds structured year-end answers without free text", () => {
   const answers = buildYearEndInterviewAnswers({

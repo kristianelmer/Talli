@@ -7,7 +7,7 @@ import {
   buildLaunchSignoffGate,
   launchSignoffKeys,
   launchSignoffLabel,
-} from "../app/lib/launch-signoff.ts";
+} from "../apps/web/app/lib/launch-signoff.ts";
 
 function approvedSignoff(key, reviewedAt = "2026-06-20T10:00:00Z") {
   return {

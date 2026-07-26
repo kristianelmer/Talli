@@ -5,7 +5,7 @@ import {
   SystemUserAuthorityError,
   createSystemUserAuthorityClient,
   validateSystemUserAuthorityResponse,
-} from "../app/lib/system-user-authority-client.ts";
+} from "../apps/web/app/lib/system-user-authority-client.ts";
 
 const requestId = "10000000-0000-4000-8000-000000000001";
 const systemUserId = "20000000-0000-4000-8000-000000000002";

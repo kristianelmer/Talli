@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   assertSystemUserTransition,
   generateSystemUserExternalRef,
-} from "../app/lib/system-user-requests.ts";
+} from "../apps/web/app/lib/system-user-requests.ts";
 
 test("external references are opaque and transitions are monotonic", () => {
   const reference = generateSystemUserExternalRef();

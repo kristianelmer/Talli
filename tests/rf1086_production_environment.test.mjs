@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   productionRf1086AdapterEnabled,
   rf1086ProductionEnvironment,
-} from "../app/lib/rf1086-submission.ts";
-import { currentAuthorityAdapterCapabilities } from "../app/lib/authority-adapters.ts";
+} from "../apps/web/app/lib/rf1086-submission.ts";
+import { currentAuthorityAdapterCapabilities } from "../apps/web/app/lib/authority-adapters.ts";
 
 const validEnvironment = {
   TALLI_RF1086_PRODUCTION_ENABLED: "true",

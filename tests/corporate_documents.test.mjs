@@ -12,12 +12,12 @@ import {
   corporateDecisionHash,
   parseCorporateRenderResult,
   renderCorporateDocuments,
-} from "../app/lib/corporate-documents.ts";
+} from "../apps/web/app/lib/corporate-documents.ts";
 import {
   COMPANY_DOCUMENTS_BUCKET,
   corporateArtifactStorageKey,
   uploadCorporateArtifacts,
-} from "../app/lib/corporate-document-storage.ts";
+} from "../apps/web/app/lib/corporate-document-storage.ts";
 
 const fixture = JSON.parse(
   readFileSync(new URL("./fixtures/corporate_documents/owner_dividend.json", import.meta.url), "utf8"),

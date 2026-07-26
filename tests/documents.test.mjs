@@ -5,7 +5,7 @@ import {
   COMPANY_DOCUMENTS_BUCKET,
   documentStorageKey,
   validateDocumentUpload,
-} from "../app/lib/documents.ts";
+} from "../apps/web/app/lib/documents.ts";
 
 test("document storage key scopes object by company, year, and document id", () => {
   assert.equal(COMPANY_DOCUMENTS_BUCKET, "company-documents");

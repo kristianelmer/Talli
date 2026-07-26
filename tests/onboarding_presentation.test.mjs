@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   selectOnboardingPhase,
   shouldRedirectReturningOwner,
-} from "../app/lib/onboarding-presentation.ts";
+} from "../apps/web/app/lib/onboarding-presentation.ts";
 
 test("a returning owner with a company lookup error stays on the lookup phase", () => {
   const input = {

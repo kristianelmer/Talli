@@ -4,14 +4,14 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { buildAnnualAccountsPayload } from "../app/lib/annual-accounts.ts";
-import { renderAnnualAccountsXml } from "../app/lib/annual-accounts-xml.ts";
+import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
+import { renderAnnualAccountsXml } from "../apps/web/app/lib/annual-accounts-xml.ts";
 import {
   AnnualAccountsAuthorityError,
   createAnnualAccountsAuthorityClient,
   exchangeMaskinportenForAnnualAccountsAltinnToken,
-} from "../app/lib/annual-accounts-authority-client.ts";
-import { requestMaskinportenToken } from "../app/lib/maskinporten.ts";
+} from "../apps/web/app/lib/annual-accounts-authority-client.ts";
+import { requestMaskinportenToken } from "../apps/web/app/lib/maskinporten.ts";
 
 process.umask(0o077);
 

@@ -12,8 +12,8 @@ import {
   reconcileSystemUserRequest,
   retrySystemUserRequest,
   startSystemUserRequest,
-} from "../app/lib/system-user-flow.ts";
-import { SystemUserAuthorityError } from "../app/lib/system-user-authority-client.ts";
+} from "../apps/web/app/lib/system-user-flow.ts";
+import { SystemUserAuthorityError } from "../apps/web/app/lib/system-user-authority-client.ts";
 
 const companyId = "12345678-1234-4234-8234-123456789abc";
 const requestId = "22345678-1234-4234-8234-123456789abc";

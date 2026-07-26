@@ -6,7 +6,7 @@ import {
   dividendReceivedLedgerLines,
   summarizeDividendReceivedAnnualImpact,
   validateDividendReceived,
-} from "../app/lib/dividend-received.ts";
+} from "../apps/web/app/lib/dividend-received.ts";
 
 test("builds deterministic dividend received payload and ledger lines", () => {
   const payload = validateDividendReceived({

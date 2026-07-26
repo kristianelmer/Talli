@@ -14,7 +14,7 @@ import {
   executeRf1086SystemRegistration,
   executeRf1086SystembrukerCallbackUpdate,
   productionAuthorityOperationEnvironment,
-} from "../app/lib/authority-operations.ts";
+} from "../apps/web/app/lib/authority-operations.ts";
 
 const productionEnvironment = {
   TALLI_AUTHORITY_OPS_ENABLED: "true",

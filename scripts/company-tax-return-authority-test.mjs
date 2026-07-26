@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { buildCompanyTaxReturnPayload } from "../app/lib/company-tax-return.ts";
-import { renderCompanyTaxReturnXml } from "../app/lib/company-tax-return-xml.ts";
+import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
+import { renderCompanyTaxReturnXml } from "../apps/web/app/lib/company-tax-return-xml.ts";
 import {
   CompanyTaxReturnAuthorityError,
   createCompanyTaxReturnAuthorityClient,
@@ -15,8 +15,8 @@ import {
   summarizeCompanyTaxReturnValidation,
   waitForCompanyTaxReturnFeedback,
   waitForCompanyTaxReturnValidation,
-} from "../app/lib/company-tax-return-authority-client.ts";
-import { requestMaskinportenToken } from "../app/lib/maskinporten.ts";
+} from "../apps/web/app/lib/company-tax-return-authority-client.ts";
+import { requestMaskinportenToken } from "../apps/web/app/lib/maskinporten.ts";
 
 process.umask(0o077);
 

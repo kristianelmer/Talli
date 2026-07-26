@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
+import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 
 test("builds company-year archive from persisted workspace rows", () => {
   const archive = buildPersistedCompanyArchive({
@@ -483,7 +483,7 @@ test("builds company-year archive from persisted workspace rows", () => {
 
 test("archive download fetches only sanitized authority runs linked by submission id", () => {
   const route = readFileSync(
-    new URL("../app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url),
+    new URL("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url),
     "utf8",
   );
   assert.match(route, /filing_submissions[\s\S]*authority_test_run_id/u);

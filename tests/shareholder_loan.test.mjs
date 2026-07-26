@@ -5,7 +5,7 @@ import {
   ShareholderLoanValidationError,
   shareholderLoanLedgerLines,
   validateShareholderLoan,
-} from "../app/lib/shareholder-loan.ts";
+} from "../apps/web/app/lib/shareholder-loan.ts";
 
 test("builds supported shareholder-to-company loan ledger lines", () => {
   const payload = validateShareholderLoan({

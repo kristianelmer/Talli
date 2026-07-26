@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { actionReturnPath, actionReturnPathWithMessage } from "../app/lib/action-return.ts";
+import { actionReturnPath, actionReturnPathWithMessage } from "../apps/web/app/lib/action-return.ts";
 
 test("accepts only company annual-reporting paths", () => {
   assert.equal(

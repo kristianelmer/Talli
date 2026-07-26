@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel } from "../app/lib/deadlines.ts";
+import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel } from "../apps/web/app/lib/deadlines.ts";
 
 const baseSubmission = {
   filing: "aksjonærregisteroppgaven",

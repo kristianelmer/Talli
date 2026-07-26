@@ -1,0 +1,33 @@
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
+const command = process.argv[2];
+if (!["build", "dev", "start"].includes(command)) {
+  throw new Error("Expected one of: build, dev, start");
+}
+
+if (existsSync(".env")) {
+  loadEnvFile(".env");
+}
+
+const child = spawn(
+  process.execPath,
+  ["apps/web/node_modules/next/dist/bin/next", command, "apps/web"],
+  {
+    env: process.env,
+    stdio: "inherit",
+  },
+);
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => child.kill(signal));
+}
+
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+  } else {
+    process.exitCode = code ?? 1;
+  }
+});

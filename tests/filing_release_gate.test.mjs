@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildFilingReleaseGates } from "../app/lib/filing-release-gate.ts";
+import { buildFilingReleaseGates } from "../apps/web/app/lib/filing-release-gate.ts";
 
 const liveReleaseGate = readFileSync(
   new URL("../docs/filing/rf1086-live-release-gate.md", import.meta.url),

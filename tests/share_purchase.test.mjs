@@ -5,7 +5,7 @@ import {
   SharePurchaseValidationError,
   sharePurchaseLedgerLines,
   validateSharePurchase,
-} from "../app/lib/share-purchase.ts";
+} from "../apps/web/app/lib/share-purchase.ts";
 
 test("builds deterministic share purchase payload and ledger lines", () => {
   const payload = validateSharePurchase({

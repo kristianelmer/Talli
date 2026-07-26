@@ -1,11 +1,19 @@
 {
-  "name": "talli-web",
+  "name": "talli-repository",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm run build:web",
+    "build:web": "npm --prefix apps/web run build",
+    "build:backend": "uv build --project apps/backend",
+    "start": "npm --prefix apps/web run start",
+    "generate:openapi": "uv run --project apps/backend python apps/backend/scripts/generate_openapi.py",
+    "generate:api-client": "node scripts/generate-api-client.mjs",
+    "test:boundary-backend": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests",
+    "test:boundary-web": "node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs",
+    "test:boundary-contract": "node --test tests/contract/web_fastapi_boundary.test.mjs",
+    "test:boundary": "npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract",
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
@@ -86,12 +94,12 @@
     "authority:company-tax-test": "node --experimental-strip-types scripts/company-tax-return-authority-test.mjs",
     "authority:annual-accounts-test": "node --experimental-strip-types scripts/annual-accounts-authority-test.mjs",
     "authority:rf1086-test": "node --experimental-strip-types scripts/rf1086-authority-test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "npm --prefix apps/web run typecheck"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
-    "next": "16.2.9",
+    "next": "16.2.12",
     "pg": "^8.21.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -106,6 +114,7 @@
     "typescript": "6.0.3"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.18",
+    "sharp": "0.35.0"
   }
 }

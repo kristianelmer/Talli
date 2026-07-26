@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assertSupportedBrregIdentity, fetchBrregEntity, mapBrregEntity } from "../app/lib/brreg.ts";
+import { assertSupportedBrregIdentity, fetchBrregEntity, mapBrregEntity } from "../apps/web/app/lib/brreg.ts";
 
 test("maps Brønnøysund entity payload to locked company identity", () => {
   const identity = mapBrregEntity({

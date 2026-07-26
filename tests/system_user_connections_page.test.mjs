@@ -7,7 +7,7 @@ import {
   selectReadableCompany,
   systemUserCallbackNotice,
   systemUserFilingPresentation,
-} from "../app/(owner)/connections/_presentation.ts";
+} from "../apps/web/app/(owner)/connections/_presentation.ts";
 
 const requestId = "22345678-1234-4234-8234-123456789abc";
 const altinnRequestId = "42345678-1234-4234-8234-123456789abc";
@@ -50,15 +50,15 @@ const connectionCopy = {
 };
 
 const pageSource = readFileSync(
-  new URL("../app/(owner)/connections/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/connections/page.tsx", import.meta.url),
   "utf8",
 );
 const controlsSource = readFileSync(
-  new URL("../app/(owner)/connections/SystemUserRequestControls.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/connections/SystemUserRequestControls.tsx", import.meta.url),
   "utf8",
 );
 const presentationSource = readFileSync(
-  new URL("../app/(owner)/connections/_presentation.ts", import.meta.url),
+  new URL("../apps/web/app/(owner)/connections/_presentation.ts", import.meta.url),
   "utf8",
 );
 

@@ -11,17 +11,17 @@ import {
   readinessSummary,
   roles,
   statusLabel,
-} from "../app/lib/workspace.mjs";
+} from "../apps/web/app/lib/workspace.mjs";
 
 const owner = { id: "owner", role: roles.owner, companyOrgNumbers: ["314259521"] };
 const reviewer = { id: "reviewer", role: roles.reviewer, companyOrgNumbers: ["314259521"] };
 
 const ownerNavSource = readFileSync(
-  new URL("../app/(owner)/AppNav.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/AppNav.tsx", import.meta.url),
   "utf8",
 );
 const filingPageSource = readFileSync(
-  new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
   "utf8",
 );
 

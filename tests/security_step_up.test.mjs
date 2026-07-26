@@ -5,7 +5,7 @@ import {
   assertStepUpAllowed,
   requireStepUpForAction,
   stepUpContextFromClaims,
-} from "../app/lib/security.ts";
+} from "../apps/web/app/lib/security.ts";
 
 const now = new Date("2026-06-16T10:00:00.000Z");
 

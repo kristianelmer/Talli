@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildOwnerFilingPresentation } from "../app/(owner)/filing/_presentation.ts";
+import { buildOwnerFilingPresentation } from "../apps/web/app/(owner)/filing/_presentation.ts";
 
 function submission(overrides = {}) {
   return {

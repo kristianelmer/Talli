@@ -6,7 +6,7 @@ import {
   createAnnualAccountsAuthorityClient,
   exchangeMaskinportenForAnnualAccountsAltinnToken,
   prepareAnnualAccountsForSigning,
-} from "../app/lib/annual-accounts-authority-client.ts";
+} from "../apps/web/app/lib/annual-accounts-authority-client.ts";
 
 const accessToken = "opaque-altinn-token";
 const instanceId = "50001234/10000000-0000-4000-8000-000000000001";

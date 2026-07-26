@@ -8,7 +8,7 @@ import {
   launchCriticalTables,
   productionRestoreLaunchGate,
   restoreCompanyYearArchive,
-} from "../app/lib/backup-restore.ts";
+} from "../apps/web/app/lib/backup-restore.ts";
 
 function archiveFixture(overrides = {}) {
   return {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { selectLatestRf1086ProductionSubmission } from "../app/lib/rf1086-production-presentation.ts";
+import { selectLatestRf1086ProductionSubmission } from "../apps/web/app/lib/rf1086-production-presentation.ts";
 
 const context = {
   companyId: "company-1",
@@ -62,7 +62,7 @@ test("selects the latest exact production submission independently of later gate
 
 test("owner page renders durable submissions before checking current approval or entitlement gates", () => {
   const ownerPage = readFileSync(
-    new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+    new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
     "utf8",
   );
   assert.match(ownerPage, /selectLatestRf1086ProductionSubmission/u);

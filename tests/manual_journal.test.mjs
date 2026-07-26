@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { manualJournalRiskFlags, validateManualJournal } from "../app/lib/manual-journal.ts";
+import { manualJournalRiskFlags, validateManualJournal } from "../apps/web/app/lib/manual-journal.ts";
 
 const balancedLines = [
   { account: "7795", description: "Manual cost", debit: 100, credit: 0 },

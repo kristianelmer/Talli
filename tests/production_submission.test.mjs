@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   classifyRf1086TransportOutcome,
   transitionProductionSubmission,
-} from "../app/lib/production-submission.ts";
+} from "../apps/web/app/lib/production-submission.ts";
 
 test("allows only documented production submission transitions", () => {
   assert.equal(transitionProductionSubmission("approved", "sending"), "sending");
@@ -40,17 +40,17 @@ test("uses explicit authority feedback for terminal outcomes", () => {
   assert.equal(classifyRf1086TransportOutcome({ forsendelseId: null, documents: [], finalAuthorityDecision: null }), "unknown");
 });
 
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
-const documents = readFileSync(new URL("../app/lib/documents.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const ownerPage = readFileSync(new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
+const documents = readFileSync(new URL("../apps/web/app/lib/documents.ts", import.meta.url), "utf8");
 const feedbackPersistence = readFileSync(
-  new URL("../app/lib/rf1086-feedback-persistence.ts", import.meta.url),
+  new URL("../apps/web/app/lib/rf1086-feedback-persistence.ts", import.meta.url),
   "utf8",
 );
 let reconciliationControl = "";
 try {
   reconciliationControl = readFileSync(
-    new URL("../app/(owner)/filing/_submission-presentation.ts", import.meta.url),
+    new URL("../apps/web/app/(owner)/filing/_submission-presentation.ts", import.meta.url),
     "utf8",
   );
 } catch {

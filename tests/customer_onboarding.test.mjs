@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   currentCustomerAgreements,
   customerAgreementAuthorityStatementVersion,
-} from "../app/lib/customer-agreements.ts";
-import { onboardCustomer } from "../app/lib/customer-onboarding.ts";
+} from "../apps/web/app/lib/customer-agreements.ts";
+import { onboardCustomer } from "../apps/web/app/lib/customer-onboarding.ts";
 
 const validForm = {
   agreementAccepted: "accepted",

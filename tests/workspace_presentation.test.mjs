@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const workspaceUrl = new URL("../app/(owner)/workspace/page.tsx", import.meta.url);
-const dashboardUrl = new URL("../app/(owner)/dashboard/page.tsx", import.meta.url);
+const workspaceUrl = new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url);
+const dashboardUrl = new URL("../apps/web/app/(owner)/dashboard/page.tsx", import.meta.url);
 
 test("customer forms do not seed synthetic accounting facts", async () => {
   const source = await readFile(workspaceUrl, "utf8");

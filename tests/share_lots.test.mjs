@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FifoLotValidationError, allocateFifoShareSale } from "../app/lib/share-lots.ts";
+import { FifoLotValidationError, allocateFifoShareSale } from "../apps/web/app/lib/share-lots.ts";
 
 const lots = [
   {

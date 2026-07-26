@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const workspace = readFileSync(new URL("../app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
-const companyLookup = readFileSync(new URL("../app/(owner)/onboarding/CompanyLookupForm.tsx", import.meta.url), "utf8");
-const agreementFields = readFileSync(new URL("../app/components/CustomerAgreementAcceptanceFields.tsx", import.meta.url), "utf8");
-const copy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
-const onboarding = readFileSync(new URL("../app/lib/customer-onboarding.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const workspace = readFileSync(new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
+const companyLookup = readFileSync(new URL("../apps/web/app/(owner)/onboarding/CompanyLookupForm.tsx", import.meta.url), "utf8");
+const agreementFields = readFileSync(new URL("../apps/web/app/components/CustomerAgreementAcceptanceFields.tsx", import.meta.url), "utf8");
+const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
+const onboarding = readFileSync(new URL("../apps/web/app/lib/customer-onboarding.ts", import.meta.url), "utf8");
 const createWorkspaceAction = actions.match(
   /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/iu,
 )?.[0] ?? "";

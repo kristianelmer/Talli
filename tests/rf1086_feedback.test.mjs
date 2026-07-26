@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { classifyRf1086Feedback } from "../app/lib/rf1086-feedback.ts";
+import { classifyRf1086Feedback } from "../apps/web/app/lib/rf1086-feedback.ts";
 
 const INNSENDING_NS = "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2";
 const LEVERANSE_NS = "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:leveransetilbakemelding:v2";

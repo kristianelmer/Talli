@@ -5,7 +5,7 @@ import {
   annualObligationHref,
   annualOverviewHref,
   buildAnnualWorkspaceViewModel,
-} from "../app/lib/annual-workspace.ts";
+} from "../apps/web/app/lib/annual-workspace.ts";
 
 const company = { id: "company-1", name: "Nordlys Holding AS", org_number: "314259521" };
 const context = { companyId: company.id, incomeYear: 2025 };

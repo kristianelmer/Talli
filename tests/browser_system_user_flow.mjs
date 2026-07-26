@@ -15,7 +15,7 @@ import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 import pg from "pg";
 
-import { SYSTEM_USER_SYSTEM_ID } from "../app/lib/system-user-requests.ts";
+import { SYSTEM_USER_SYSTEM_ID } from "../apps/web/app/lib/system-user-requests.ts";
 import {
   installBrowserEgressGuard,
   LOOPBACK_HOSTS,
@@ -793,7 +793,15 @@ function startNextServer({ port, siteOrigin, mockBaseUrl, localSupabase }) {
   }).filter(([, value]) => value !== undefined));
   const server = spawn(
     process.execPath,
-    ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)],
+    [
+      "node_modules/next/dist/bin/next",
+      "dev",
+      "apps/web",
+      "--hostname",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
     {
       cwd: ROOT,
       env: childEnvironment,

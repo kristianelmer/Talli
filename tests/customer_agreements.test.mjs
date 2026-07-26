@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import * as customerAgreements from "../app/lib/customer-agreements.ts";
-import { ownerCopy } from "../app/lib/copy.ts";
+import * as customerAgreements from "../apps/web/app/lib/customer-agreements.ts";
+import { ownerCopy } from "../apps/web/app/lib/copy.ts";
 
 const {
   assertCurrentCustomerAgreementForm,
@@ -17,10 +17,10 @@ const {
 } = customerAgreements;
 
 const legalPageSource = readFileSync(
-  new URL("../app/components/LegalPage.tsx", import.meta.url),
+  new URL("../apps/web/app/components/LegalPage.tsx", import.meta.url),
   "utf8",
 );
-const termsPageSource = readFileSync(new URL("../app/vilkar/page.tsx", import.meta.url), "utf8");
+const termsPageSource = readFileSync(new URL("../apps/web/app/vilkar/page.tsx", import.meta.url), "utf8");
 
 test("publishes separate current Business Terms and DPA records", () => {
   assert.deepEqual(Object.keys(currentCustomerAgreements), ["businessTerms", "dpa"]);
@@ -64,10 +64,10 @@ test("module initialization fails when public copy drifts from the pinned digest
   const directory = mkdtempSync(join(tmpdir(), "talli-agreement-drift-"));
   try {
     const moduleSource = readFileSync(
-      new URL("../app/lib/customer-agreements.ts", import.meta.url),
+      new URL("../apps/web/app/lib/customer-agreements.ts", import.meta.url),
       "utf8",
     );
-    const copySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+    const copySource = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
     const mutatedCopySource = copySource.replace(
       "Disse vilkårene er avtalen mellom selskapet",
       "ENDRET: Disse vilkårene er avtalen mellom selskapet",
@@ -79,7 +79,7 @@ test("module initialization fails when public copy drifts from the pinned digest
     writeFileSync(join(directory, "app", "lib", "copy.ts"), mutatedCopySource);
     writeFileSync(
       join(directory, "app", "lib", "launch-copy.ts"),
-      readFileSync(new URL("../app/lib/launch-copy.ts", import.meta.url), "utf8"),
+      readFileSync(new URL("../apps/web/app/lib/launch-copy.ts", import.meta.url), "utf8"),
     );
 
     const importedModuleUrl = pathToFileURL(

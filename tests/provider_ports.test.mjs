@@ -6,13 +6,13 @@ import {
   bankWebhookReceiptKey,
   createDisabledBankProvider,
   redactBankProviderDiagnostic,
-} from "../app/lib/bank-provider.ts";
+} from "../apps/web/app/lib/bank-provider.ts";
 import {
   DocumentExtractionDisabledError,
   createDisabledDocumentExtractionAdapter,
   normalizeDocumentExtractionResult,
   validateDocumentExtractionInput,
-} from "../app/lib/document-extraction.ts";
+} from "../apps/web/app/lib/document-extraction.ts";
 
 test("bank provider port fails closed until a provider is approved", async () => {
   const adapter = createDisabledBankProvider();

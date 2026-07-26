@@ -26,13 +26,17 @@ test("release gate runs every customer-readiness check before promotion", () => 
 
   for (const required of [
     "npm ci",
+    "npm ci --prefix apps/web",
     "python -m pip install uv==0.10.2",
     "uv sync --locked",
+    "uv sync --project apps/backend --locked",
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
+    "npm run test:boundary",
     "npm run test:launch-rehearsal",
     "npm run test:supabase:local",
-    "npm run build",
+    "npm run build:web",
+    "npm run build:backend",
     "npm audit --omit=dev --audit-level=high",
     "git diff --check",
     "TALLI_SKATTE_XSD_DIR",

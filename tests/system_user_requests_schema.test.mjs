@@ -15,7 +15,7 @@ const rollback = readFileSync(
   "utf8",
 );
 const server = readFileSync(
-  new URL("../app/lib/supabase/server.ts", import.meta.url),
+  new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url),
   "utf8",
 );
 

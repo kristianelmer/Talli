@@ -5,7 +5,7 @@ import {
   authorityObligationLabel,
   productionAuthorityGate,
   validateAuthorityObligation,
-} from "../app/lib/authority-permission.ts";
+} from "../apps/web/app/lib/authority-permission.ts";
 
 test("validates supported authority obligations", () => {
   assert.equal(validateAuthorityObligation("aksjonaerregisteroppgaven"), "aksjonaerregisteroppgaven");

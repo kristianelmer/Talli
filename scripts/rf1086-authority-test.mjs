@@ -3,12 +3,12 @@ import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promi
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { requestMaskinportenToken } from "../app/lib/maskinporten.ts";
+import { requestMaskinportenToken } from "../apps/web/app/lib/maskinporten.ts";
 import {
   Rf1086AuthorityError,
   createRf1086AuthorityClient,
-} from "../app/lib/rf1086-authority-client.ts";
-import { resolveTalliPythonBinary } from "../app/lib/python-runtime.ts";
+} from "../apps/web/app/lib/rf1086-authority-client.ts";
+import { resolveTalliPythonBinary } from "../apps/web/app/lib/python-runtime.ts";
 
 process.umask(0o077);
 

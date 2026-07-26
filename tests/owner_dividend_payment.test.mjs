@@ -6,10 +6,10 @@ import {
   OwnerDividendPaymentError,
   deriveOpenDividendPayable,
   validateOwnerDividendPaymentInput,
-} from "../app/lib/owner-dividend-payment.ts";
+} from "../apps/web/app/lib/owner-dividend-payment.ts";
 
-const actionsSource = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const workspaceSource = readFileSync(new URL("../app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
+const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const workspaceSource = readFileSync(new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
 const migrationSource = readFileSync(
   new URL("../supabase/migrations/0004_corporate_document_artifacts.sql", import.meta.url),
   "utf8",

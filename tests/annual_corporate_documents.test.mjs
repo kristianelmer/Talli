@@ -5,26 +5,26 @@ import test from "node:test";
 import {
   buildAnnualCloseDecisionInput,
   corporateAnnualSourceHash,
-} from "../app/lib/corporate-decision-facts.ts";
-import { evaluateCorporateDocumentReadiness } from "../app/lib/corporate-document-readiness.ts";
-import { corporateDecisionHash, renderCorporateDocuments } from "../app/lib/corporate-documents.ts";
+} from "../apps/web/app/lib/corporate-decision-facts.ts";
+import { evaluateCorporateDocumentReadiness } from "../apps/web/app/lib/corporate-document-readiness.ts";
+import { corporateDecisionHash, renderCorporateDocuments } from "../apps/web/app/lib/corporate-documents.ts";
 import {
   buildAnnualCloseBasis,
   buildAnnualCloseReviewedFacts,
-} from "../app/lib/annual-corporate-documents.ts";
+} from "../apps/web/app/lib/annual-corporate-documents.ts";
 
-const actionsSource = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const formSource = readFileSync(
-  new URL("../app/(owner)/year-end/CorporateAnnualDecisionForm.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/year-end/CorporateAnnualDecisionForm.tsx", import.meta.url),
   "utf8",
 );
-const yearEndSource = readFileSync(new URL("../app/(owner)/year-end/page.tsx", import.meta.url), "utf8");
+const yearEndSource = readFileSync(new URL("../apps/web/app/(owner)/year-end/page.tsx", import.meta.url), "utf8");
 const filingSource = readFileSync(
-  new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
   "utf8",
 );
 const readinessSource = readFileSync(
-  new URL("../app/(owner)/filing/_readiness.ts", import.meta.url),
+  new URL("../apps/web/app/(owner)/filing/_readiness.ts", import.meta.url),
   "utf8",
 );
 

@@ -10,8 +10,8 @@ import {
   normalizeInvitationEmail,
   reviewChecklistStatus,
   validateInvitationRole,
-} from "../app/lib/invitations.ts";
-import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
+} from "../apps/web/app/lib/invitations.ts";
+import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../apps/web/app/lib/review.ts";
 
 test("advisory review comments can be acknowledged", () => {
   assert.doesNotThrow(() => assertAdvisoryCanBeAcknowledged({ severity: "advisory" }));

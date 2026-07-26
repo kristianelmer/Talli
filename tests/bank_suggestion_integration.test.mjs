@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const actionsUrl = new URL("../app/actions.ts", import.meta.url);
-const pageUrl = new URL("../app/(owner)/transactions/page.tsx", import.meta.url);
+const actionsUrl = new URL("../apps/web/app/actions.ts", import.meta.url);
+const pageUrl = new URL("../apps/web/app/(owner)/transactions/page.tsx", import.meta.url);
 
 test("server recomputes a suggestion before invoking the atomic acceptance RPC", async () => {
   const source = await readFile(actionsUrl, "utf8");
