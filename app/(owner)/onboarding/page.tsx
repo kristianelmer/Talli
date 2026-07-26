@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 
 import { Banner, WizardShell } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
+import {
+  selectOnboardingPhase,
+  shouldRedirectReturningOwner,
+} from "../../lib/onboarding-presentation";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { BankImportForm } from "./BankImportForm";
 import { CompanyLookupForm } from "./CompanyLookupForm";
@@ -22,9 +26,15 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
   const hasSetup = primaryCompany
     ? setups.some((setup) => setup.company_id === primaryCompany.id)
     : false;
+  const presentation = {
+    hasCompany: Boolean(primaryCompany),
+    hasSetup,
+    hasError: Boolean(params?.error),
+    step: params?.step,
+  };
 
   // A returning, fully-onboarded owner goes straight to the dashboard.
-  if (hasSetup && params?.step !== "bank") {
+  if (shouldRedirectReturningOwner(presentation)) {
     redirect("/dashboard");
   }
 
@@ -32,11 +42,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
   const steps = [ob.steps.company, ob.steps.balances, ob.steps.bank];
   const year = primaryIncomeYear ?? new Date().getFullYear() - 1;
 
-  const phase = !primaryCompany
-    ? "lookup"
-    : !hasSetup
-      ? "balances"
-      : "bank";
+  const phase = selectOnboardingPhase(presentation);
   const current = phase === "lookup" ? 0 : phase === "balances" ? 1 : 2;
   const head =
     phase === "lookup" ? ob.lookup : phase === "balances" ? ob.balances : ob.bank;

@@ -4,12 +4,17 @@ import test from "node:test";
 
 const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
+const companyLookup = readFileSync(new URL("../app/(owner)/onboarding/CompanyLookupForm.tsx", import.meta.url), "utf8");
+const agreementFields = readFileSync(new URL("../app/components/CustomerAgreementAcceptanceFields.tsx", import.meta.url), "utf8");
 const copy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
 const onboarding = readFileSync(new URL("../app/lib/customer-onboarding.ts", import.meta.url), "utf8");
 const createWorkspaceAction = actions.match(
   /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/iu,
 )?.[0] ?? "";
 const companyCreationForm = workspace.match(
+  /<form[^>]+action=\{createWorkspace\}[\s\S]+?<\/form>/iu,
+)?.[0] ?? "";
+const companyLookupForm = companyLookup.match(
   /<form[^>]+action=\{createWorkspace\}[\s\S]+?<\/form>/iu,
 )?.[0] ?? "";
 
@@ -41,25 +46,32 @@ test("the Server Action owns the server-only atomic RPC dependency", () => {
 });
 
 test("workspace creation shows an unchecked authority and agreement control", () => {
-  assert.match(companyCreationForm, /name="agreementAccepted"/iu);
-  assert.match(companyCreationForm, /id="agreementAccepted"/iu);
-  assert.match(companyCreationForm, /type="checkbox"/iu);
-  assert.match(companyCreationForm, /value="accepted"/iu);
-  assert.match(companyCreationForm, /required/iu);
-  assert.match(companyCreationForm, /aria-describedby="agreementAcceptedDescription"/iu);
-  assert.match(companyCreationForm, /htmlFor="agreementAccepted"/iu);
-  assert.match(companyCreationForm, /id="agreementAcceptedDescription"/iu);
-  assert.doesNotMatch(companyCreationForm, /defaultChecked|checked=\{true\}/iu);
-  assert.match(companyCreationForm, /href="\/vilkar"/iu);
-  assert.match(companyCreationForm, /href="\/databehandleravtale"/iu);
-  assert.match(companyCreationForm, /name="businessTermsVersion"/iu);
-  assert.match(companyCreationForm, /name="businessTermsSha256"/iu);
-  assert.match(companyCreationForm, /value=\{currentCustomerAgreements\.businessTerms\.contentSha256\}/iu);
-  assert.match(companyCreationForm, /name="dpaVersion"/iu);
-  assert.match(companyCreationForm, /name="dpaSha256"/iu);
-  assert.match(companyCreationForm, /value=\{currentCustomerAgreements\.dpa\.contentSha256\}/iu);
-  const agreementLabel = companyCreationForm.match(/<label[^>]+htmlFor="agreementAccepted"[\s\S]+?<\/label>/iu)?.[0] ?? "";
+  assert.match(companyCreationForm, /<CustomerAgreementAcceptanceFields \/>/u);
+  assert.match(agreementFields, /name="agreementAccepted"/iu);
+  assert.match(agreementFields, /id="agreementAccepted"/iu);
+  assert.match(agreementFields, /type="checkbox"/iu);
+  assert.match(agreementFields, /value="accepted"/iu);
+  assert.match(agreementFields, /required/iu);
+  assert.match(agreementFields, /aria-describedby="agreementAcceptedDescription"/iu);
+  assert.match(agreementFields, /htmlFor="agreementAccepted"/iu);
+  assert.match(agreementFields, /id="agreementAcceptedDescription"/iu);
+  assert.doesNotMatch(agreementFields, /defaultChecked|checked=\{true\}/iu);
+  assert.match(agreementFields, /href="\/vilkar"/iu);
+  assert.match(agreementFields, /href="\/databehandleravtale"/iu);
+  assert.match(agreementFields, /name="businessTermsVersion"/iu);
+  assert.match(agreementFields, /name="businessTermsSha256"/iu);
+  assert.match(agreementFields, /value=\{currentCustomerAgreements\.businessTerms\.version\}/iu);
+  assert.match(agreementFields, /value=\{currentCustomerAgreements\.businessTerms\.contentSha256\}/iu);
+  assert.match(agreementFields, /name="dpaVersion"/iu);
+  assert.match(agreementFields, /name="dpaSha256"/iu);
+  assert.match(agreementFields, /value=\{currentCustomerAgreements\.dpa\.version\}/iu);
+  assert.match(agreementFields, /value=\{currentCustomerAgreements\.dpa\.contentSha256\}/iu);
+  const agreementLabel = agreementFields.match(/<label[^>]+htmlFor="agreementAccepted"[\s\S]+?<\/label>/iu)?.[0] ?? "";
   assert.doesNotMatch(agreementLabel, /<Link/iu);
+});
+
+test("company lookup submits the current authority and agreement evidence", () => {
+  assert.match(companyLookupForm, /<CustomerAgreementAcceptanceFields \/>/u);
 });
 
 test("the exact authority statement is centralized as linked copy fragments", () => {
@@ -67,8 +79,8 @@ test("the exact authority statement is centralized as linked copy fragments", ()
   assert.match(copy, /businessTerms:\s*"Brukervilkår for bedriftskunder"/iu);
   assert.match(copy, /conjunction:\s*"og"/iu);
   assert.match(copy, /dpa:\s*"Databehandleravtalen\."/iu);
-  assert.match(companyCreationForm, /ownerCopy\.workspace\.agreementAcceptance\.authority/iu);
-  assert.match(companyCreationForm, /ownerCopy\.workspace\.agreementAcceptance\.businessTerms/iu);
-  assert.match(companyCreationForm, /ownerCopy\.workspace\.agreementAcceptance\.conjunction/iu);
-  assert.match(companyCreationForm, /ownerCopy\.workspace\.agreementAcceptance\.dpa/iu);
+  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.authority/iu);
+  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.businessTerms/iu);
+  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.conjunction/iu);
+  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.dpa/iu);
 });
