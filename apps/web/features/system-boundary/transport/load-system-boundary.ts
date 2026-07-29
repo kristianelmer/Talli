@@ -47,10 +47,7 @@ export async function loadSystemBoundary(requestId: string) {
   const abort = AbortSignal.timeout(10_000);
   const client = createTalliApiClient({
     baseUrl: backendBaseUrl(),
-    headers: {
-      "X-Request-ID": requestId,
-    },
   });
 
-  return client.systemBoundaryGetTracerStatus({ signal: abort });
+  return client.systemBoundaryGetTracerStatus({ signal: abort, requestId });
 }

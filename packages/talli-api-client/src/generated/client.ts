@@ -67,6 +67,7 @@ export interface TalliApiClientOptions {
 export interface TalliRequestOptions {
   signal?: AbortSignal;
   headers?: HeadersInit;
+  requestId?: string;
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -83,6 +84,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           Accept: "application/json, application/problem+json",
           ...options.headers,
           ...request.headers,
+          ...(request.requestId === undefined
+            ? {}
+            : { ["X-Request-ID"]: request.requestId }),
         },
         method: "GET",
         signal: request.signal,

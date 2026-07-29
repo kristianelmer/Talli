@@ -15,6 +15,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 API_VERSION = "v1"
 CONTRACT_VERSION = "1.0.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
+REQUEST_ID_HEADER = {
+    "description": "Correlation identifier for the request and response.",
+    "schema": {"type": "string"},
+}
+REQUEST_ID_PARAMETER = {
+    "description": "Optional caller-provided correlation identifier.",
+    "in": "header",
+    "name": "X-Request-ID",
+    "required": False,
+    "schema": {"type": "string"},
+}
 
 
 def _to_camel(value: str) -> str:
@@ -163,8 +174,13 @@ def create_app() -> FastAPI:
         operation_id="systemBoundaryGetTracerStatus",
         response_model=SystemBoundaryStatus,
         responses={
+            200: {
+                "description": "Successful Response",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            },
             500: {
                 "description": "An unexpected backend failure occurred.",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
                 "content": {
                     "application/problem+json": {
                         "schema": ProblemDetails.model_json_schema(by_alias=True)
@@ -173,6 +189,7 @@ def create_app() -> FastAPI:
             },
             503: {
                 "description": "The backend boundary is temporarily unavailable.",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
                 "content": {
                     "application/problem+json": {
                         "schema": ProblemDetails.model_json_schema(by_alias=True)
@@ -181,6 +198,7 @@ def create_app() -> FastAPI:
             }
         },
         tags=["system-boundary"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def get_system_boundary_status() -> SystemBoundaryStatus:
         return SystemBoundaryStatus(

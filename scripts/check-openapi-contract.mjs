@@ -178,6 +178,160 @@ function compareResponseSchema(
   }
 }
 
+function operationParameters(pathItem, operation) {
+  return [...(pathItem.parameters ?? []), ...(operation.parameters ?? [])];
+}
+
+function compareRequestRequirements(
+  baselineDocument,
+  currentDocument,
+  baselinePath,
+  currentPath,
+  baselineOperation,
+  currentOperation,
+) {
+  const baselineParameters = new Map(
+    operationParameters(baselinePath, baselineOperation).map((parameter) => [
+      `${parameter.in}:${parameter.name}`,
+      parameter,
+    ]),
+  );
+  const currentParameters = new Map(
+    operationParameters(currentPath, currentOperation).map((parameter) => [
+      `${parameter.in}:${parameter.name}`,
+      parameter,
+    ]),
+  );
+  for (const [key, baselineParameter] of baselineParameters) {
+    const currentParameter = currentParameters.get(key);
+    if (!currentParameter) {
+      throw new Error(
+        `${baselineOperation.operationId} removed parameter ${baselineParameter.in} ${baselineParameter.name}`,
+      );
+    }
+    const location = `${baselineOperation.operationId} parameter ${baselineParameter.in} ${baselineParameter.name}`;
+    const baselineSchema = resolveSchema(
+      baselineDocument,
+      baselineParameter.schema,
+      location,
+    );
+    const currentSchema = resolveSchema(
+      currentDocument,
+      currentParameter.schema,
+      location,
+    );
+    if (JSON.stringify(baselineSchema) !== JSON.stringify(currentSchema)) {
+      throw new Error(`${location} changed schema`);
+    }
+  }
+  for (const parameter of operationParameters(currentPath, currentOperation)) {
+    const baselineParameter = baselineParameters.get(`${parameter.in}:${parameter.name}`);
+    if (parameter.required === true && baselineParameter?.required !== true) {
+      throw new Error(
+        `${baselineOperation.operationId} added required parameter ${parameter.in} ${parameter.name}`,
+      );
+    }
+  }
+  if (
+    currentOperation.requestBody?.required === true &&
+    baselineOperation.requestBody?.required !== true
+  ) {
+    throw new Error(`${baselineOperation.operationId} made the request body required`);
+  }
+  if (baselineOperation.requestBody && !currentOperation.requestBody) {
+    throw new Error(`${baselineOperation.operationId} removed the request body`);
+  }
+  for (const [mediaType, baselineContent] of Object.entries(
+    baselineOperation.requestBody?.content ?? {},
+  )) {
+    const currentContent = currentOperation.requestBody?.content?.[mediaType];
+    if (!currentContent) {
+      throw new Error(
+        `${baselineOperation.operationId} request body removed ${mediaType}`,
+      );
+    }
+    const location = `${baselineOperation.operationId} request body ${mediaType}`;
+    const baselineSchema = resolveSchema(
+      baselineDocument,
+      baselineContent.schema,
+      location,
+    );
+    const currentSchema = resolveSchema(
+      currentDocument,
+      currentContent.schema,
+      location,
+    );
+    if (JSON.stringify(baselineSchema) !== JSON.stringify(currentSchema)) {
+      throw new Error(`${location} changed schema`);
+    }
+  }
+}
+
+function effectiveSecurity(document, operation) {
+  const security = Object.hasOwn(operation, "security")
+    ? operation.security
+    : document.security;
+  return !security?.length ? [{}] : security;
+}
+
+function requirementAllowsBaselineClients(currentRequirement, baselineRequirement) {
+  return Object.entries(currentRequirement).every(([scheme, currentScopes]) => {
+    const baselineScopes = baselineRequirement[scheme];
+    return (
+      baselineScopes !== undefined &&
+      currentScopes.every((scope) => baselineScopes.includes(scope))
+    );
+  });
+}
+
+function compareSecurityRequirements(
+  baselineDocument,
+  currentDocument,
+  baselineOperation,
+  currentOperation,
+) {
+  const baselineSecurity = effectiveSecurity(baselineDocument, baselineOperation);
+  const currentSecurity = effectiveSecurity(currentDocument, currentOperation);
+  const preservesEveryAlternative = baselineSecurity.every((baselineRequirement) =>
+    currentSecurity.some((currentRequirement) =>
+      requirementAllowsBaselineClients(currentRequirement, baselineRequirement),
+    ),
+  );
+  if (!preservesEveryAlternative) {
+    throw new Error(
+      `${baselineOperation.operationId} changed authentication requirements incompatibly`,
+    );
+  }
+
+  const referencedSchemes = new Set(
+    baselineSecurity.flatMap((requirement) => Object.keys(requirement)),
+  );
+  for (const scheme of referencedSchemes) {
+    const baselineScheme = baselineDocument.components?.securitySchemes?.[scheme];
+    const currentScheme = currentDocument.components?.securitySchemes?.[scheme];
+    if (!currentScheme) {
+      throw new Error(`security scheme ${scheme} changed incompatibly`);
+    }
+    const contractKeys = [
+      "type",
+      "scheme",
+      "bearerFormat",
+      "name",
+      "in",
+      "openIdConnectUrl",
+      "flows",
+    ];
+    if (
+      contractKeys.some(
+        (key) =>
+          JSON.stringify(baselineScheme?.[key]) !== JSON.stringify(currentScheme[key]),
+      )
+    ) {
+      throw new Error(`security scheme ${scheme} changed incompatibly`);
+    }
+  }
+}
+
 export function assertContractPackageVersion(document, packageManifest) {
   const contractVersion = document.info?.version;
   const packageVersion = packageManifest?.version;
@@ -201,12 +355,44 @@ export function assertCompatible(baseline, current) {
       if (currentOperation.operationId !== baselineOperation.operationId) {
         throw new Error(`${method.toUpperCase()} ${path} changed operationId`);
       }
+      compareRequestRequirements(
+        baseline,
+        current,
+        baselinePath,
+        currentPath,
+        baselineOperation,
+        currentOperation,
+      );
+      compareSecurityRequirements(
+        baseline,
+        current,
+        baselineOperation,
+        currentOperation,
+      );
       for (const [status, baselineResponse] of Object.entries(
         baselineOperation.responses,
       )) {
         const currentResponse = currentOperation.responses?.[status];
         if (!currentResponse) {
           throw new Error(`${baselineOperation.operationId} removed response ${status}`);
+        }
+        for (const [header, baselineHeader] of Object.entries(
+          baselineResponse.headers ?? {},
+        )) {
+          const currentHeader = currentResponse.headers?.[header];
+          if (!currentHeader) {
+            throw new Error(
+              `${baselineOperation.operationId} response ${status} removed header ${header}`,
+            );
+          }
+          if (
+            JSON.stringify(baselineHeader.schema) !==
+            JSON.stringify(currentHeader.schema)
+          ) {
+            throw new Error(
+              `${baselineOperation.operationId} response ${status} header ${header} changed schema`,
+            );
+          }
         }
         for (const [mediaType, baselineContent] of Object.entries(
           baselineResponse.content ?? {},

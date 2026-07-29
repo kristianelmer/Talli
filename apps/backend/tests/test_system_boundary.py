@@ -27,6 +27,15 @@ def test_committed_openapi_operation_is_explicit_and_problem_shaped() -> None:
     assert schema["openapi"].startswith("3.1.")
     assert schema["info"]["version"] == "1.0.0"
     assert operation["operationId"] == "systemBoundaryGetTracerStatus"
+    request_id = next(
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["in"] == "header" and parameter["name"] == "X-Request-ID"
+    )
+    assert request_id["required"] is False
+    assert request_id["schema"]["type"] == "string"
+    for status in ("200", "500", "503"):
+        assert operation["responses"][status]["headers"]["X-Request-ID"]["schema"]["type"] == "string"
     assert operation["responses"]["503"]["content"]["application/problem+json"]
     assert operation["responses"]["500"]["content"]["application/problem+json"]
     assert "application/json" not in operation["responses"]["503"]["content"]

@@ -12,6 +12,22 @@ if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
   throw new Error(`Expected systemBoundaryGetTracerStatus at ${path}`);
 }
 
+const correlationParameter = operation.parameters?.find(
+  (parameter) => parameter.in === "header" && parameter.required === false,
+);
+if (!correlationParameter || correlationParameter.schema?.type !== "string") {
+  throw new Error(`Expected an optional string correlation header at ${path}`);
+}
+for (const status of ["200", "500", "503"]) {
+  const responseHeader =
+    operation.responses?.[status]?.headers?.[correlationParameter.name];
+  if (responseHeader?.schema?.type !== "string") {
+    throw new Error(
+      `Expected response ${status} to declare correlation header ${correlationParameter.name}`,
+    );
+  }
+}
+
 function resolveSchema(schema) {
   if (!schema?.$ref) {
     return schema;
@@ -112,6 +128,7 @@ export interface TalliApiClientOptions {
 export interface TalliRequestOptions {
   signal?: AbortSignal;
   headers?: HeadersInit;
+  requestId?: string;
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -128,6 +145,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
           Accept: "application/json, application/problem+json",
           ...options.headers,
           ...request.headers,
+          ...(request.requestId === undefined
+            ? {}
+            : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
         },
         method: "GET",
         signal: request.signal,

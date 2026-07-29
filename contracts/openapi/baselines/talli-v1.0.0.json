@@ -37,6 +37,17 @@
     "/api/v1/system-boundary/tracer": {
       "get": {
         "operationId": "systemBoundaryGetTracerStatus",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -46,7 +57,15 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "500": {
             "content": {
@@ -96,7 +115,15 @@
                 }
               }
             },
-            "description": "An unexpected backend failure occurred."
+            "description": "An unexpected backend failure occurred.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "503": {
             "content": {
@@ -146,7 +173,15 @@
                 }
               }
             },
-            "description": "The backend boundary is temporarily unavailable."
+            "description": "The backend boundary is temporarily unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "summary": "Get System Boundary Status",

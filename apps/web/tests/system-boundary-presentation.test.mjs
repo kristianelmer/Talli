@@ -81,6 +81,24 @@ test("generated client accepts the declared success shape", async () => {
   );
 });
 
+test("generated client maps the typed correlation option to the declared header", async () => {
+  let capturedRequest;
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async (_url, request) => {
+      capturedRequest = request;
+      return Response.json(
+        { apiVersion: "v1", service: "talli-backend", status: "AVAILABLE" },
+        { headers: { "X-Request-ID": "request-134" } },
+      );
+    },
+  });
+
+  await client.systemBoundaryGetTracerStatus({ requestId: "request-134" });
+
+  assert.equal(new Headers(capturedRequest.headers).get("X-Request-ID"), "request-134");
+});
+
 test("generated client fails closed on an undeclared success shape", async () => {
   const client = createTalliApiClient({
     baseUrl: "https://backend.example",
