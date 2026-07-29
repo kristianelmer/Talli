@@ -21,6 +21,12 @@ function resolveSchema(schema) {
 }
 
 function schemaType(schema) {
+  if (schema?.type === "string" && schema.const !== undefined) {
+    return JSON.stringify(schema.const);
+  }
+  if (schema?.type === "string" && schema.enum?.length) {
+    return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
+  }
   if (schema?.type === "string") return "string";
   if (schema?.type === "integer" || schema?.type === "number") return "number";
   if (schema?.type === "boolean") return "boolean";
@@ -40,6 +46,15 @@ function renderInterface(name, schema) {
 
 function renderGuard(name, schema) {
   const checks = (schema.required ?? []).map((property) => {
+    if (schema.properties[property]?.const !== undefined) {
+      return `    value.${property} === ${JSON.stringify(schema.properties[property].const)}`;
+    }
+    const allowedValues = schema.properties[property]?.enum;
+    if (allowedValues?.length) {
+      return `    ${allowedValues
+        .map((value) => `value.${property} === ${JSON.stringify(value)}`)
+        .join(" || ")}`;
+    }
     const expectedType = schemaType(schema.properties[property]);
     return `    typeof value.${property} === "${expectedType}"`;
   });

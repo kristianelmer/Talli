@@ -13,6 +13,7 @@
     "test:boundary-backend": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests",
     "test:boundary-web": "node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs",
     "test:boundary-contract": "node --test tests/contract/web_fastapi_boundary.test.mjs",
+    "test:boundary-smoke": "node --test tests/production_boundary_smoke.mjs",
     "test:boundary": "npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract",
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",

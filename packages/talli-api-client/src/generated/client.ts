@@ -4,7 +4,7 @@
 export interface SystemBoundaryStatus {
   apiVersion: string;
   service: string;
-  status: string;
+  status: "AVAILABLE";
 }
 
 export interface ProblemDetails {
@@ -26,7 +26,7 @@ function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
     isRecord(value) &&
     typeof value.apiVersion === "string" &&
     typeof value.service === "string" &&
-    typeof value.status === "string"
+    value.status === "AVAILABLE"
   );
 }
 

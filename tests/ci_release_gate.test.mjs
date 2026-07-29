@@ -33,6 +33,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
     "npm run test:boundary",
+    "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",
     "npm run test:supabase:local",
     "npm run build:web",
@@ -52,6 +53,16 @@ test("release gate runs every customer-readiness check before promotion", () => 
   assert.match(workflow, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.match(workflow, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
   assert.match(workflow, /timeout-minutes:/);
+  assert.ok(
+    workflow.indexOf("npm run build:backend") <
+      workflow.indexOf("npm run test:boundary-smoke"),
+    "backend artifact must be built before the production smoke",
+  );
+  assert.ok(
+    workflow.indexOf("npm run build:web") <
+      workflow.indexOf("npm run test:boundary-smoke"),
+    "web artifact must be built before the production smoke",
+  );
 });
 
 test("database isolation uses the locked Python renderer environment", () => {

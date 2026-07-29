@@ -68,17 +68,22 @@ jobs:
       - name: Prove the web-to-FastAPI contract boundary
         run: npm run test:boundary
 
+      - name: Build the production web application
+        env:
+          TALLI_BACKEND_URL: http://127.0.0.1:8000
+        run: npm run build:web
+
+      - name: Build the production backend application
+        run: npm run build:backend
+
+      - name: Start and smoke the production artifacts
+        run: npm run test:boundary-smoke
+
       - name: Run the complete launch rehearsal
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
           TALLI_SKATTE_XSD_DIR: ${{ runner.temp }}/skattemeldingen/src/resources/xsd
         run: npm run test:launch-rehearsal
-
-      - name: Build the production web application
-        run: npm run build:web
-
-      - name: Build the production backend application
-        run: npm run build:backend
 
       - name: Audit production dependencies
         run: |

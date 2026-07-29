@@ -12,7 +12,6 @@
             "type": "string"
           },
           "status": {
-            "const": "AVAILABLE",
             "title": "Status",
             "type": "string"
           }
