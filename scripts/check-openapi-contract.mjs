@@ -156,6 +156,16 @@ function compareResponseSchema(
       `${location} changed enum from ${JSON.stringify(baseline.enum)} to ${JSON.stringify(current.enum)}`,
     );
   }
+  if (baseline.type === "array") {
+    compareResponseSchema(
+      baselineDocument,
+      currentDocument,
+      baseline.items,
+      current.items,
+      `${location}.items`,
+    );
+    return;
+  }
   if (baseline.type !== "object") return;
 
   const baselineRequired = new Set(baseline.required ?? []);
@@ -274,14 +284,17 @@ function effectiveSecurity(document, operation) {
   return !security?.length ? [{}] : security;
 }
 
-function requirementAllowsBaselineClients(currentRequirement, baselineRequirement) {
-  return Object.entries(currentRequirement).every(([scheme, currentScopes]) => {
-    const baselineScopes = baselineRequirement[scheme];
-    return (
-      baselineScopes !== undefined &&
-      currentScopes.every((scope) => baselineScopes.includes(scope))
-    );
-  });
+function canonicalSecurity(security) {
+  return security
+    .map((requirement) =>
+      Object.fromEntries(
+        Object.entries(requirement)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([scheme, scopes]) => [scheme, [...scopes].sort()]),
+      ),
+    )
+    .map((requirement) => JSON.stringify(requirement))
+    .sort();
 }
 
 function compareSecurityRequirements(
@@ -292,12 +305,10 @@ function compareSecurityRequirements(
 ) {
   const baselineSecurity = effectiveSecurity(baselineDocument, baselineOperation);
   const currentSecurity = effectiveSecurity(currentDocument, currentOperation);
-  const preservesEveryAlternative = baselineSecurity.every((baselineRequirement) =>
-    currentSecurity.some((currentRequirement) =>
-      requirementAllowsBaselineClients(currentRequirement, baselineRequirement),
-    ),
-  );
-  if (!preservesEveryAlternative) {
+  if (
+    JSON.stringify(canonicalSecurity(baselineSecurity)) !==
+    JSON.stringify(canonicalSecurity(currentSecurity))
+  ) {
     throw new Error(
       `${baselineOperation.operationId} changed authentication requirements incompatibly`,
     );

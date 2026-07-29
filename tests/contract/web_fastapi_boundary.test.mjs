@@ -107,6 +107,23 @@ test("the current response contract remains compatible with the explicit v1 base
     () => assertCompatible(baseline, changedLiteral),
     /SystemBoundaryStatus\.status changed const/,
   );
+
+  const arrayBaseline = structuredClone(baseline);
+  const arrayCurrent = structuredClone(current);
+  for (const document of [arrayBaseline, arrayCurrent]) {
+    document.components.schemas.SystemBoundaryStatus.properties.capabilities = {
+      type: "array",
+      items: { type: "string" },
+    };
+    document.components.schemas.SystemBoundaryStatus.required.push("capabilities");
+  }
+  arrayCurrent.components.schemas.SystemBoundaryStatus.properties.capabilities.items = {
+    type: "integer",
+  };
+  assert.throws(
+    () => assertCompatible(arrayBaseline, arrayCurrent),
+    /SystemBoundaryStatus\.capabilities\.items changed type from string to integer/,
+  );
 });
 
 test("compatibility rejects newly required parameters and request bodies", () => {
@@ -190,6 +207,13 @@ test("compatibility rejects narrower authentication requirements", () => {
   assert.throws(
     () => assertCompatible(alternativeBaseline, changedScheme),
     /security scheme bearerAuth changed incompatibly/,
+  );
+
+  const newlyPublic = structuredClone(alternativeBaseline);
+  newlyPublic.paths["/api/v1/system-boundary/tracer"].get.security = [];
+  assert.throws(
+    () => assertCompatible(alternativeBaseline, newlyPublic),
+    /systemBoundaryGetTracerStatus changed authentication requirements incompatibly/,
   );
 });
 
