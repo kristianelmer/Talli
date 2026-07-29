@@ -108,6 +108,14 @@ test("the current response contract remains compatible with the explicit v1 base
     /SystemBoundaryStatus\.status changed const/,
   );
 
+  const changedNullability = structuredClone(current);
+  changedNullability.components.schemas.SystemBoundaryStatus.properties.service.nullable =
+    true;
+  assert.throws(
+    () => assertCompatible(baseline, changedNullability),
+    /SystemBoundaryStatus\.service changed nullable/,
+  );
+
   const arrayBaseline = structuredClone(baseline);
   const arrayCurrent = structuredClone(current);
   for (const document of [arrayBaseline, arrayCurrent]) {

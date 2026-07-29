@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import { assertValueMatchesSchema } from "../scripts/check-openapi-contract.mjs";
+import { createBaselineTalliApiClient } from "./fixtures/talli-api-client-v1.0.0.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const baseline = JSON.parse(
@@ -145,8 +146,15 @@ test("built artifacts support both deployment orders and isolate backend failure
       await baselineResponse.json(),
       "SystemBoundaryStatus",
     );
-    // A previously deployed web client can consume the new backend because the
-    // new response still satisfies the committed baseline contract.
+    const baselineClient = createBaselineTalliApiClient({
+      baseUrl: `http://127.0.0.1:${backendPort}`,
+    });
+    assert.deepEqual(await baselineClient.systemBoundaryGetTracerStatus(), {
+      apiVersion: "v1",
+      service: "talli-backend",
+      status: "AVAILABLE",
+    });
+    // The pinned previously deployed client consumes the new backend.
 
     web = startProcess(
       process.execPath,

@@ -140,7 +140,7 @@ function compareResponseSchema(
   }
   for (const keyword of ["const", "format", "default", "nullable"]) {
     if (
-      Object.hasOwn(baseline, keyword) &&
+      (Object.hasOwn(baseline, keyword) || Object.hasOwn(current, keyword)) &&
       JSON.stringify(baseline[keyword]) !== JSON.stringify(current[keyword])
     ) {
       throw new Error(
@@ -149,7 +149,7 @@ function compareResponseSchema(
     }
   }
   if (
-    Object.hasOwn(baseline, "enum") &&
+    (Object.hasOwn(baseline, "enum") || Object.hasOwn(current, "enum")) &&
     JSON.stringify(baseline.enum) !== JSON.stringify(current.enum)
   ) {
     throw new Error(
