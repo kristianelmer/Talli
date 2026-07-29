@@ -1,4 +1,7 @@
-export { loadSystemBoundary } from "./transport/load-system-boundary.ts";
+export {
+  backendBaseUrl,
+  loadSystemBoundary,
+} from "./transport/load-system-boundary.ts";
 export {
   presentSystemBoundaryFailure,
   presentSystemBoundarySuccess,

@@ -28,6 +28,7 @@ def test_committed_openapi_operation_is_explicit_and_problem_shaped() -> None:
     assert schema["info"]["version"] == "1.0.0"
     assert operation["operationId"] == "systemBoundaryGetTracerStatus"
     assert operation["responses"]["503"]["content"]["application/problem+json"]
+    assert operation["responses"]["500"]["content"]["application/problem+json"]
     assert "application/json" not in operation["responses"]["503"]["content"]
     assert schema["components"]["schemas"]["SystemBoundaryStatus"]["properties"]["status"][
         "const"

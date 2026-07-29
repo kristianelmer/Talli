@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   assertCompatible,
+  assertContractPackageVersion,
   validateOpenApiDocument,
 } from "../../scripts/check-openapi-contract.mjs";
 
@@ -15,6 +16,10 @@ const baselinePath = new URL(
 );
 const generatedClientPath = new URL(
   "../../packages/talli-api-client/src/generated/client.ts",
+  import.meta.url,
+);
+const generatedClientPackagePath = new URL(
+  "../../packages/talli-api-client/package.json",
   import.meta.url,
 );
 const transportPath = new URL(
@@ -79,6 +84,32 @@ test("the current response contract remains compatible with the explicit v1 base
   assert.throws(
     () => assertCompatible(baseline, breaking),
     /response property SystemBoundaryStatus.status was removed/,
+  );
+
+  const changedLiteral = structuredClone(current);
+  changedLiteral.components.schemas.SystemBoundaryStatus.properties.status.const =
+    "UNAVAILABLE";
+  assert.throws(
+    () => assertCompatible(baseline, changedLiteral),
+    /SystemBoundaryStatus\.status changed const/,
+  );
+});
+
+test("the generated package version matches the OpenAPI contract version", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const packageManifest = JSON.parse(
+    readFileSync(generatedClientPackagePath, "utf8"),
+  );
+
+  assert.doesNotThrow(() =>
+    assertContractPackageVersion(contract, packageManifest),
+  );
+
+  const nextMajor = structuredClone(contract);
+  nextMajor.info.version = "2.0.0";
+  assert.throws(
+    () => assertContractPackageVersion(nextMajor, packageManifest),
+    /contract version 2\.0\.0 does not match client package version 1\.0\.0/,
   );
 });
 

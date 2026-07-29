@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readdirSync, readFileSync } from "node:fs";
-import { createServer } from "node:net";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createTcpServer } from "node:net";
 import { resolve } from "node:path";
 import test from "node:test";
 
@@ -17,7 +18,7 @@ const baseline = JSON.parse(
 );
 
 async function availablePort() {
-  const server = createServer();
+  const server = createTcpServer();
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address();
@@ -75,7 +76,34 @@ async function stopProcess(process) {
   }
 }
 
-test("built web and backend artifacts survive deployment overlap and isolate backend failure", async () => {
+async function startBaselineBackendFixture(port) {
+  const server = createHttpServer((request, response) => {
+    if (request.url === "/api/v1/system-boundary/tracer") {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          apiVersion: "v1",
+          service: "talli-backend",
+          status: "AVAILABLE",
+        }),
+      );
+      return;
+    }
+    response.writeHead(404, { "Content-Type": "text/plain" });
+    response.end("not found");
+  });
+  server.listen(port, "127.0.0.1");
+  await once(server, "listening");
+  return server;
+}
+
+async function stopServer(server) {
+  if (!server?.listening) return;
+  server.close();
+  await once(server, "close");
+}
+
+test("built artifacts support both deployment orders and isolate backend failure", async () => {
   const wheels = readdirSync(resolve(repositoryRoot, "apps/backend/dist")).filter(
     (name) => name.endsWith(".whl"),
   );
@@ -97,6 +125,7 @@ test("built web and backend artifacts survive deployment overlap and isolate bac
     { PYTHONPATH: wheel },
   );
   let web;
+  let baselineBackend;
 
   try {
     await waitFor(
@@ -116,6 +145,8 @@ test("built web and backend artifacts survive deployment overlap and isolate bac
       await baselineResponse.json(),
       "SystemBoundaryStatus",
     );
+    // A previously deployed web client can consume the new backend because the
+    // new response still satisfies the committed baseline contract.
 
     web = startProcess(
       process.execPath,
@@ -142,13 +173,22 @@ test("built web and backend artifacts survive deployment overlap and isolate bac
     assert.match(successPage, /Forbindelsen virker/);
 
     await stopProcess(backend);
+    baselineBackend = await startBaselineBackendFixture(backendPort);
+    const baselinePage = await (
+      await fetch(`http://127.0.0.1:${webPort}/system-boundary`)
+    ).text();
+    assert.match(baselinePage, /Forbindelsen virker/);
+    // The new web can consume the explicitly pinned prior backend contract.
+
+    await stopServer(baselineBackend);
+    baselineBackend = undefined;
     assert.equal(
       (await fetch(`http://127.0.0.1:${webPort}/health/live`)).status,
       200,
     );
     assert.equal(
       (await fetch(`http://127.0.0.1:${webPort}/health/ready`)).status,
-      503,
+      200,
     );
     const failurePage = await (
       await fetch(`http://127.0.0.1:${webPort}/system-boundary`)
@@ -156,6 +196,10 @@ test("built web and backend artifacts survive deployment overlap and isolate bac
     assert.match(failurePage, /Tjenesten er midlertidig utilgjengelig/);
     assert.doesNotMatch(failurePage, /ECONNREFUSED|127\.0\.0\.1/);
   } finally {
-    await Promise.all([stopProcess(backend), web ? stopProcess(web) : undefined]);
+    await Promise.all([
+      stopProcess(backend),
+      web ? stopProcess(web) : undefined,
+      stopServer(baselineBackend),
+    ]);
   }
 });

@@ -138,6 +138,24 @@ function compareResponseSchema(
   if (baseline.type !== current.type) {
     throw new Error(`${location} changed type from ${baseline.type} to ${current.type}`);
   }
+  for (const keyword of ["const", "format", "default", "nullable"]) {
+    if (
+      Object.hasOwn(baseline, keyword) &&
+      JSON.stringify(baseline[keyword]) !== JSON.stringify(current[keyword])
+    ) {
+      throw new Error(
+        `${location} changed ${keyword} from ${JSON.stringify(baseline[keyword])} to ${JSON.stringify(current[keyword])}`,
+      );
+    }
+  }
+  if (
+    Object.hasOwn(baseline, "enum") &&
+    JSON.stringify(baseline.enum) !== JSON.stringify(current.enum)
+  ) {
+    throw new Error(
+      `${location} changed enum from ${JSON.stringify(baseline.enum)} to ${JSON.stringify(current.enum)}`,
+    );
+  }
   if (baseline.type !== "object") return;
 
   const baselineRequired = new Set(baseline.required ?? []);
@@ -156,6 +174,16 @@ function compareResponseSchema(
       propertySchema,
       currentProperty,
       `${location}.${property}`,
+    );
+  }
+}
+
+export function assertContractPackageVersion(document, packageManifest) {
+  const contractVersion = document.info?.version;
+  const packageVersion = packageManifest?.version;
+  if (contractVersion !== packageVersion) {
+    throw new Error(
+      `contract version ${contractVersion} does not match client package version ${packageVersion}`,
     );
   }
 }

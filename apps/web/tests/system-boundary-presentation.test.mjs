@@ -132,3 +132,12 @@ test("web liveness stays process-only while readiness fails invalid configuratio
     assert.deepEqual(await readyResponse.json(), { status: "not_ready" });
   });
 });
+
+test("web readiness validates local configuration without depending on backend reachability", async () => {
+  await withBackendEnvironment("http://127.0.0.1:1", async () => {
+    const readyResponse = await readiness();
+
+    assert.equal(readyResponse.status, 200);
+    assert.deepEqual(await readyResponse.json(), { status: "ready" });
+  });
+});

@@ -163,6 +163,14 @@ def create_app() -> FastAPI:
         operation_id="systemBoundaryGetTracerStatus",
         response_model=SystemBoundaryStatus,
         responses={
+            500: {
+                "description": "An unexpected backend failure occurred.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": ProblemDetails.model_json_schema(by_alias=True)
+                    }
+                },
+            },
             503: {
                 "description": "The backend boundary is temporarily unavailable.",
                 "content": {
