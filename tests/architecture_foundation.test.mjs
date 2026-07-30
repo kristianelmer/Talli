@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,17 +12,35 @@ import {
 
 const repositoryRoot = new URL("..", import.meta.url);
 
+function git(root, args, date) {
+  return execFileSync("git", ["-C", root, ...args], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...(date ? { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } : {}),
+    },
+  }).trim();
+}
+
+function initializeFixtureRepository(root, date = "2026-07-30T00:00:00Z") {
+  git(root, ["init", "--quiet"]);
+  git(root, ["config", "user.name", "Architecture Test"]);
+  git(root, ["config", "user.email", "architecture@example.invalid"]);
+  git(root, ["add", "."]);
+  git(root, ["commit", "--quiet", "-m", "fixture baseline"], date);
+}
+
 test("architecture manifests, scoped documentation, and dependency evidence agree", () => {
   const result = checkArchitecture({ root: repositoryRoot, writeEvidence: false });
 
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.evidence.modules, ["backend:system_boundary", "web:system-boundary"]);
+  assert.deepEqual(result.evidence.modules, ["backend-system:system_boundary", "web:system-boundary"]);
   assert.deepEqual(result.evidence.edges, [
     {
       from: "backend-system:system-boundary-tracer",
       imports: ["talli_backend.modules.system_boundary.public"],
       kind: "workflow",
-      to: "backend:system_boundary",
+      to: "backend-system:system_boundary",
     },
   ]);
   assert.equal(existsSync(new URL("../architecture/module.schema.json", import.meta.url)), true);
@@ -163,18 +182,79 @@ test("compatibility exceptions reject semantically impossible timestamps", () =>
   }
 });
 
-test("a stable customer-ready release after approval revokes the compatibility exception", () => {
+test("a fabricated release revision is rejected against the real tag target", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-fabricated-release-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  initializeFixtureRepository(temporaryRoot);
+  git(temporaryRoot, ["tag", "customer-ready-v1"]);
+  const releaseStatePath = join(temporaryRoot, "architecture/release-state.json");
+  writeFileSync(releaseStatePath, JSON.stringify({
+    schemaVersion: "1.0",
+    latestStableCustomerReadyRelease: {
+      id: "customer-ready-v1",
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-v1"]),
+      gitRevision: "1111111111111111111111111111111111111111",
+    },
+  }));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /release-state\.json: tracked release does not match the latest reachable customer-ready Git tag/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("a stale release selection is rejected after a later reachable tag", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-stale-release-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  initializeFixtureRepository(temporaryRoot, "2026-07-30T00:00:00Z");
+  git(temporaryRoot, ["tag", "customer-ready-v1"]);
+  const firstRevision = git(temporaryRoot, ["rev-parse", "customer-ready-v1^{commit}"]);
+  const firstReleasedAt = git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-v1"]);
+  writeFileSync(join(temporaryRoot, "later-release.txt"), "later\n");
+  git(temporaryRoot, ["add", "later-release.txt"]);
+  git(temporaryRoot, ["commit", "--quiet", "-m", "later release"], "2026-07-31T00:00:00Z");
+  git(temporaryRoot, ["tag", "customer-ready-v2"]);
+  writeFileSync(join(temporaryRoot, "architecture/release-state.json"), JSON.stringify({
+    schemaVersion: "1.0",
+    latestStableCustomerReadyRelease: {
+      id: "customer-ready-v1",
+      releasedAt: firstReleasedAt,
+      gitRevision: firstRevision,
+    },
+  }));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /release-state\.json: tracked release does not match the latest reachable customer-ready Git tag customer-ready-v2/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("a real stable customer-ready release after approval revokes the compatibility exception", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-stable-release-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
+  initializeFixtureRepository(temporaryRoot, "2026-07-31T00:00:00Z");
+  git(temporaryRoot, ["tag", "customer-ready-2026-07-31"]);
   const releaseStatePath = join(temporaryRoot, "architecture/release-state.json");
   writeFileSync(releaseStatePath, JSON.stringify({
     schemaVersion: "1.0",
     latestStableCustomerReadyRelease: {
       id: "customer-ready-2026-07-31",
-      releasedAt: "2026-07-31T00:00:00Z",
-      gitRevision: "1111111111111111111111111111111111111111",
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-2026-07-31"]),
+      gitRevision: git(temporaryRoot, ["rev-parse", "customer-ready-2026-07-31^{commit}"]),
     },
   }));
 
@@ -186,6 +266,29 @@ test("a stable customer-ready release after approval revokes the compatibility e
     }).errors.join("\n");
     assert.match(errors, /compat-legacy-web-business-persistence.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
     assert.match(errors, /apps\/web\/app\/actions\.ts: direct web business persistence is forbidden/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("module test evidence cannot assign one path to multiple ownership categories", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-test-ownership-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const modulePath = join(
+    temporaryRoot,
+    "apps/backend/src/talli_backend/modules/system_boundary/module.json",
+  );
+  const module = JSON.parse(readFileSync(modulePath, "utf8"));
+  module.tests.unit = module.tests.contract;
+  writeFileSync(modulePath, JSON.stringify(module));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /module\.json: test path .*test_system_boundary\.py has multiple ownership categories contract, unit/u,
+    );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -400,6 +503,48 @@ request("/api/v1/companies");
       "fetch-property-destructure.ts",
       "fetch-property-destructure-assignment.ts",
     ]) {
+      assert.match(errors, new RegExp(`${name}: direct business fetch is forbidden`, "u"));
+    }
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("web boundary analysis preserves persistence and fetch provenance across imports and re-exports", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-cross-module-provenance-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixtures = {
+    "provenance-source.ts": `import { createClient } from "@supabase/supabase-js";
+export const database = createClient("https://example.invalid", "public-key");
+export const request = globalThis.fetch;
+`,
+    "provenance-barrel.ts": `export { database, request } from "./provenance-source";
+`,
+    "persistence-direct-consumer.ts": `import { database } from "./provenance-source";
+database.from("companies");
+`,
+    "persistence-reexport-consumer.ts": `import { database } from "./provenance-barrel";
+database.rpc("post_entry");
+`,
+    "fetch-direct-consumer.ts": `import { request } from "./provenance-source";
+request("/api/v1/companies");
+`,
+    "fetch-reexport-consumer.ts": `import { request } from "./provenance-barrel";
+request("/api/v1/companies");
+`,
+  };
+  for (const [name, source] of Object.entries(fixtures)) {
+    writeFileSync(join(temporaryRoot, "apps/web/app", name), source);
+  }
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    for (const name of ["persistence-direct-consumer.ts", "persistence-reexport-consumer.ts"]) {
+      assert.match(errors, new RegExp(`${name}: direct web business persistence is forbidden`, "u"));
+    }
+    for (const name of ["fetch-direct-consumer.ts", "fetch-reexport-consumer.ts"]) {
       assert.match(errors, new RegExp(`${name}: direct business fetch is forbidden`, "u"));
     }
   } finally {

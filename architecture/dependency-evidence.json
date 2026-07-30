@@ -6,12 +6,12 @@
         "talli_backend.modules.system_boundary.public"
       ],
       "kind": "workflow",
-      "to": "backend:system_boundary"
+      "to": "backend-system:system_boundary"
     }
   ],
   "generatedBy": "scripts/check-architecture.mjs",
   "modules": [
-    "backend:system_boundary",
+    "backend-system:system_boundary",
     "web:system-boundary"
   ],
   "schemaVersion": "1.0",

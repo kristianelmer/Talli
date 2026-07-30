@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "kind", "name", "path", "owner", "purpose", "documentation", "publicEntryPoint", "dependencies", "allowedImports", "forbiddenResponsibilities", "tests", "compatibilityExceptions"],
   "properties": {
     "schemaVersion": { "const": "1.0" },
-    "kind": { "enum": ["backend-capability", "web-feature"] },
+    "kind": { "enum": ["backend-capability", "backend-technical-module", "web-feature"] },
     "name": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
     "path": { "type": "string", "minLength": 1 },
     "owner": { "type": "string", "minLength": 1 },
@@ -29,6 +29,7 @@
   },
   "allOf": [
     { "if": { "properties": { "kind": { "const": "backend-capability" } } }, "then": { "required": ["exports", "owns", "ports"], "properties": { "path": { "pattern": "^apps/backend/src/talli_backend/modules/[a-z][a-z0-9_]*$" }, "publicEntryPoint": { "pattern": "^talli_backend\\.modules\\.[a-z][a-z0-9_]*\\.public$" }, "dependencies": { "items": { "properties": { "kind": { "enum": ["query", "event"] } } } } }, "not": { "anyOf": [{ "required": ["ownedRoutes"] }, { "required": ["apiOperations"] }, { "required": ["cachePolicy"] }, { "required": ["directBrowserFlows"] }, { "required": ["publicImportPaths"] }] } } },
+    { "if": { "properties": { "kind": { "const": "backend-technical-module" } } }, "then": { "required": ["exports", "owns", "ports"], "properties": { "owner": { "pattern": "^backend-system:" }, "path": { "pattern": "^apps/backend/src/talli_backend/modules/[a-z][a-z0-9_]*$" }, "publicEntryPoint": { "pattern": "^talli_backend\\.modules\\.[a-z][a-z0-9_]*\\.public$" }, "dependencies": { "maxItems": 0 }, "owns": { "properties": { "postgresSchemas": { "maxItems": 0 }, "tables": { "maxItems": 0 }, "storageBuckets": { "maxItems": 0 }, "projections": { "maxItems": 0 }, "migrations": { "const": "None" } } } }, "not": { "anyOf": [{ "required": ["ownedRoutes"] }, { "required": ["apiOperations"] }, { "required": ["cachePolicy"] }, { "required": ["directBrowserFlows"] }, { "required": ["publicImportPaths"] }] } } },
     { "if": { "properties": { "kind": { "const": "web-feature" } } }, "then": { "required": ["ownedRoutes", "apiOperations", "cachePolicy", "directBrowserFlows", "publicImportPaths"], "properties": { "path": { "pattern": "^apps/web/features/[a-z][a-z0-9-]*$" }, "publicEntryPoint": { "pattern": "^@/features/[a-z][a-z0-9-]*$" }, "dependencies": { "items": { "properties": { "kind": { "const": "feature" } } } } }, "not": { "anyOf": [{ "required": ["exports"] }, { "required": ["owns"] }, { "required": ["ports"] }] } } }
   ],
   "$defs": {

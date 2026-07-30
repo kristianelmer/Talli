@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0",
-  "kind": "backend-capability",
+  "kind": "backend-technical-module",
   "name": "system_boundary",
   "path": "apps/backend/src/talli_backend/modules/system_boundary",
-  "owner": "backend:system_boundary",
+  "owner": "backend-system:system_boundary",
   "purpose": "Own the stable availability contract at Talli's FastAPI production boundary without owning a business decision or business data.",
   "documentation": "apps/backend/src/talli_backend/modules/system_boundary/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.system_boundary.public",
@@ -39,7 +39,6 @@
     "Cross-module implementation imports"
   ],
   "tests": {
-    "unit": "apps/backend/tests/test_system_boundary.py",
     "contract": "apps/backend/tests/test_system_boundary.py",
     "architecture": "tests/architecture_foundation.test.mjs"
   },

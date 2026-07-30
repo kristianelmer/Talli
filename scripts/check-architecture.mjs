@@ -34,6 +34,11 @@ const BACKEND_SYSTEM_REQUIRED = [
 ];
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
+const CHECKER_REPOSITORY_ROOT = resolve(dirname(PYTHON_IMPORTS_SCRIPT), "..");
+
+function isBackendModule(manifest) {
+  return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
+}
 
 function rfc3339Timestamp(value) {
   const match = String(value ?? "").match(RFC3339);
@@ -107,7 +112,7 @@ function stable(value) {
 }
 
 function moduleSourceFiles(root, manifest) {
-  const extension = manifest.kind === "backend-capability" ? /\.py$/u : /\.[cm]?[jt]sx?$/u;
+  const extension = isBackendModule(manifest) ? /\.py$/u : /\.[cm]?[jt]sx?$/u;
   return walk(join(root, manifest.path), (path) => extension.test(path));
 }
 
@@ -298,15 +303,15 @@ function webBoundaryViolations(source, path, analysis) {
     if (!symbol || seen.has(symbol)) return false;
     seen.add(symbol);
     if (factorySymbols.has(symbol)) return true;
+    if (symbol.flags & ts.SymbolFlags.Alias) {
+      const aliased = checker.getAliasedSymbol(symbol);
+      if (aliased !== symbol && symbolIsFactory(aliased, seen)) return true;
+    }
     for (const declaration of symbol.declarations ?? []) {
       if (ts.isImportSpecifier(declaration)) {
         if (isSupabaseModule(moduleSpecifierFor(declaration))
           && ["createClient", "createServerClient"].includes(importedName(declaration))) {
           return true;
-        }
-        if (symbol.flags & ts.SymbolFlags.Alias) {
-          const aliased = checker.getAliasedSymbol(symbol);
-          if (aliased !== symbol && symbolIsFactory(aliased, seen)) return true;
         }
       }
       if (ts.isFunctionDeclaration(declaration) && declaration.body) {
@@ -331,11 +336,26 @@ function webBoundaryViolations(source, path, analysis) {
     return Boolean(access && access.name === "createClient" && namespaceExpression(access.receiver));
   }
 
-  function platformFetch(expression) {
+  function symbolIsPlatformFetch(symbol, seen = new Set()) {
+    if (!symbol || seen.has(symbol)) return false;
+    seen.add(symbol);
+    if (platformFetchSymbols.has(symbol)) return true;
+    if (symbol.flags & ts.SymbolFlags.Alias) {
+      const aliased = checker.getAliasedSymbol(symbol);
+      if (aliased !== symbol && symbolIsPlatformFetch(aliased, seen)) return true;
+    }
+    return (symbol.declarations ?? []).some((declaration) => (
+      ts.isVariableDeclaration(declaration)
+      && Boolean(declaration.initializer)
+      && platformFetch(declaration.initializer, seen)
+    ));
+  }
+
+  function platformFetch(expression, seen = new Set()) {
     const unwrapped = unwrappedExpression(expression);
     if (ts.isIdentifier(unwrapped)) {
       const symbol = symbolAt(unwrapped);
-      if (platformFetchSymbols.has(symbol)) return true;
+      if (symbolIsPlatformFetch(symbol, seen)) return true;
       return unwrapped.text === "fetch"
         && Boolean(symbol)
         && (symbol.declarations ?? []).every((declaration) => declaration.getSourceFile().isDeclarationFile);
@@ -349,11 +369,30 @@ function webBoundaryViolations(source, path, analysis) {
     return ts.isCallExpression(unwrapped) && directFactory(unwrapped.expression, seen);
   }
 
-  function persistenceExpression(expression) {
+  function symbolCarriesPersistence(symbol, seen = new Set()) {
+    if (!symbol || seen.has(symbol)) return false;
+    seen.add(symbol);
+    if (persistenceSymbols.has(symbol)) return true;
+    if (symbol.flags & ts.SymbolFlags.Alias) {
+      const aliased = checker.getAliasedSymbol(symbol);
+      if (aliased !== symbol && symbolCarriesPersistence(aliased, seen)) return true;
+    }
+    return (symbol.declarations ?? []).some((declaration) => {
+      if ((ts.isVariableDeclaration(declaration) || ts.isParameter(declaration))
+        && typeSignalsPersistence(declaration.type)) {
+        return true;
+      }
+      return ts.isVariableDeclaration(declaration)
+        && Boolean(declaration.initializer)
+        && persistenceExpression(declaration.initializer, seen);
+    });
+  }
+
+  function persistenceExpression(expression, seen = new Set()) {
     if (!expression) return false;
     const unwrapped = unwrappedExpression(expression);
-    if (factoryCall(unwrapped)) return true;
-    if (ts.isIdentifier(unwrapped)) return persistenceSymbols.has(symbolAt(unwrapped));
+    if (factoryCall(unwrapped, seen)) return true;
+    if (ts.isIdentifier(unwrapped)) return symbolCarriesPersistence(symbolAt(unwrapped), seen);
     const access = propertyAccess(unwrapped);
     return Boolean(access && persistencePropertySymbols.has(symbolAt(
       ts.isPropertyAccessExpression(unwrapped) ? unwrapped.name : unwrapped.argumentExpression,
@@ -766,7 +805,7 @@ function validateModule(root, manifestPath, errors, schema) {
     if (!(field in manifest)) errors.push(`${label}: missing ${field}`);
   }
   if (manifest.schemaVersion !== "1.0") errors.push(`${label}: unsupported schemaVersion`);
-  if (!["backend-capability", "web-feature"].includes(manifest.kind)) {
+  if (!["backend-capability", "backend-technical-module", "web-feature"].includes(manifest.kind)) {
     errors.push(`${label}: unsupported kind`);
     return manifest;
   }
@@ -775,6 +814,19 @@ function validateModule(root, manifestPath, errors, schema) {
   }
   if (!Array.isArray(manifest.dependencies) || !Array.isArray(manifest.allowedImports)) {
     errors.push(`${label}: dependencies and allowedImports must be arrays`);
+  }
+  const testPathCategories = new Map();
+  for (const [category, testPath] of Object.entries(manifest.tests ?? {})) {
+    const categories = testPathCategories.get(testPath) ?? [];
+    categories.push(category);
+    testPathCategories.set(testPath, categories);
+  }
+  for (const [testPath, categories] of testPathCategories) {
+    if (categories.length > 1) {
+      errors.push(
+        `${label}: test path ${testPath} has multiple ownership categories ${categories.sort().join(", ")}`,
+      );
+    }
   }
   if (join(root, manifest.path) !== dirname(manifestPath)) {
     errors.push(`${label}: path must name the directory containing module.json`);
@@ -792,9 +844,9 @@ function validateModule(root, manifestPath, errors, schema) {
     reconcileDocumentationInventory(documentation, label, moduleDocumentationInventory(manifest), errors);
   }
 
-  if (manifest.kind === "backend-capability") {
+  if (isBackendModule(manifest)) {
     if (!manifest.path.match(/^apps\/backend\/src\/talli_backend\/modules\/[a-z][a-z0-9_]*$/u)) {
-      errors.push(`${label}: backend path must be a capability module directory`);
+      errors.push(`${label}: backend path must be a module directory`);
     }
     if (manifest.publicEntryPoint !== `talli_backend.modules.${manifest.name}.public`) {
       errors.push(`${label}: backend publicEntryPoint must be the module public package`);
@@ -837,12 +889,12 @@ function checkModuleImports(root, manifest, errors, webAnalysis) {
     ? declaredFeatureImports(manifest)
     : declaredBackendImports(manifest);
   const sourceFiles = moduleSourceFiles(root, manifest);
-  const pythonImportMap = manifest.kind === "backend-capability"
+  const pythonImportMap = isBackendModule(manifest)
     ? pythonImports(root, sourceFiles, errors)
     : new Map();
   for (const path of sourceFiles) {
     const source = readFileSync(path, "utf8");
-    const specifiers = manifest.kind === "backend-capability"
+    const specifiers = isBackendModule(manifest)
       ? pythonImportMap.get(path) ?? []
       : importedSpecifiers(source);
     for (const specifier of specifiers) {
@@ -859,7 +911,7 @@ function checkModuleImports(root, manifest, errors, webAnalysis) {
         if (!allowedModuleImports.has(specifier)) errors.push(`${label}: undeclared feature import ${specifier}`);
         continue;
       }
-      if (manifest.kind === "backend-capability" && specifier.startsWith("talli_backend.modules.")) {
+      if (isBackendModule(manifest) && specifier.startsWith("talli_backend.modules.")) {
         const ownModule = `talli_backend.modules.${manifest.name}`;
         if (specifier === ownModule || specifier.startsWith(`${ownModule}.`)) continue;
         if (!allowedModuleImports.has(specifier)) errors.push(`${label}: forbidden backend deep import ${specifier}`);
@@ -975,7 +1027,7 @@ function validateDatabaseCatalog(root, backendSystem, errors, schema) {
 function validateSystemBindings(root, system, manifests, errors) {
   const backendByPublicEntryPoint = new Map(
     manifests
-      .filter((manifest) => manifest.kind === "backend-capability")
+      .filter((manifest) => isBackendModule(manifest))
       .map((manifest) => [manifest.publicEntryPoint, manifest]),
   );
   const knownPorts = new Map(
@@ -1196,6 +1248,55 @@ function checkSharedKernel(root, sharedKernel, errors) {
   }
 }
 
+function gitOutput(root, args) {
+  const result = spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : undefined;
+}
+
+function repositoryForReleaseRefs(root) {
+  return gitOutput(root, ["rev-parse", "--show-toplevel"]) ?? CHECKER_REPOSITORY_ROOT;
+}
+
+function latestReachableCustomerReadyRelease(root, errors) {
+  const repository = repositoryForReleaseRefs(root);
+  const tagsOutput = gitOutput(repository, ["tag", "--list", "customer-ready-*"]);
+  if (tagsOutput === undefined) {
+    errors.push("architecture/release-state.json: unable to inspect customer-ready Git tags");
+    return null;
+  }
+  const candidates = [];
+  for (const id of tagsOutput.split("\n").filter(Boolean)) {
+    const gitRevision = gitOutput(repository, ["rev-parse", `${id}^{commit}`]);
+    if (!gitRevision) {
+      errors.push(`architecture/release-state.json: customer-ready Git tag ${id} has no commit target`);
+      continue;
+    }
+    const reachable = spawnSync(
+      "git",
+      ["-C", repository, "merge-base", "--is-ancestor", gitRevision, "HEAD"],
+      { encoding: "utf8" },
+    );
+    if (reachable.status !== 0) continue;
+    const releasedAt = gitOutput(
+      repository,
+      ["for-each-ref", "--format=%(creatordate:iso-strict)", `refs/tags/${id}`],
+    );
+    const timestamp = rfc3339Timestamp(releasedAt);
+    if (timestamp === undefined) {
+      errors.push(`architecture/release-state.json: customer-ready Git tag ${id} has no valid release timestamp`);
+      continue;
+    }
+    candidates.push({ id, releasedAt, gitRevision, timestamp });
+  }
+  candidates.sort((left, right) => (
+    right.timestamp - left.timestamp || right.id.localeCompare(left.id)
+  ));
+  const latest = candidates[0];
+  return latest
+    ? { id: latest.id, releasedAt: latest.releasedAt, gitRevision: latest.gitRevision }
+    : null;
+}
+
 export function checkArchitecture({ root, writeEvidence = false, now = new Date() }) {
   const resolvedRoot = rootPath(root);
   const errors = [];
@@ -1226,19 +1327,26 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     "architecture/release-state.json",
     errors,
   );
-  const stableReleasedAt = rfc3339Timestamp(
-    releaseState.latestStableCustomerReadyRelease?.releasedAt,
-  );
-  if (stableReleasedAt === undefined) {
-    errors.push("architecture/release-state.json: releasedAt must be a valid RFC 3339 timestamp");
-  } else if (stableReleasedAt > now.getTime()) {
+  const verifiedStableRelease = latestReachableCustomerReadyRelease(resolvedRoot, errors);
+  const trackedStableRelease = releaseState.latestStableCustomerReadyRelease;
+  if (JSON.stringify(stable(trackedStableRelease)) !== JSON.stringify(stable(verifiedStableRelease))) {
+    errors.push(
+      `architecture/release-state.json: tracked release does not match the latest reachable customer-ready Git tag${verifiedStableRelease ? ` ${verifiedStableRelease.id}` : " (none)"}`,
+    );
+  }
+  const stableReleasedAt = rfc3339Timestamp(verifiedStableRelease?.releasedAt);
+  if (verifiedStableRelease && stableReleasedAt > now.getTime()) {
     errors.push("architecture/release-state.json: stable release cannot be in the future");
   }
+  const verifiedReleaseState = {
+    ...releaseState,
+    latestStableCustomerReadyRelease: verifiedStableRelease,
+  };
   errors.push(...validateCompatibilityRegistry(
     compatibilityPath,
-    { now, schema: schemas.compatibility, releaseState },
+    { now, schema: schemas.compatibility, releaseState: verifiedReleaseState },
   ));
-  checkGlobalWebBoundary(resolvedRoot, compatibility, releaseState, errors, now, webAnalysis);
+  checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
   validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {

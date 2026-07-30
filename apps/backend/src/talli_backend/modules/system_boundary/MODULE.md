@@ -1,4 +1,4 @@
-# System boundary backend module
+# System boundary backend technical module
 
 <!-- architecture-inventory
 {"dependencies":[],"ownedTables":[],"ports":["SystemBoundaryTransport"],"publicEntryPoints":["talli_backend.modules.system_boundary.public"]}
@@ -9,6 +9,8 @@
 This module owns Talli's deterministic boundary-availability contract. It is a
 technical representative module only: it owns no business rule, business table,
 provider operation, or authoritative write.
+Its manifest kind is `backend-technical-module`, so it is part of the backend
+system and is not one of ADR-0011's business capabilities.
 
 ## Owns and must not own
 
@@ -34,7 +36,7 @@ with `adapter_for(SystemBoundaryTransport)`, not selected by callers.
 
 The module has no capability dependency, so it cannot introduce a cycle.
 `SystemBoundaryTransport` is bound to `talli_backend.main.create_app` in
-`architecture/backend-system.json`. Contract and unit coverage are in
+`architecture/backend-system.json`. Contract coverage is in
 `apps/backend/tests/test_system_boundary.py`; manifest and import enforcement is
 in `tests/architecture_foundation.test.mjs`.
 

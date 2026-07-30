@@ -6,14 +6,19 @@
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "latestStableCustomerReadyRelease": {
-      "type": "object",
-      "required": ["id", "releasedAt", "gitRevision"],
-      "properties": {
-        "id": { "type": "string", "pattern": "^customer-ready-" },
-        "releasedAt": { "type": "string", "format": "date-time" },
-        "gitRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
-      },
-      "additionalProperties": false
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["id", "releasedAt", "gitRevision"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^customer-ready-" },
+            "releasedAt": { "type": "string", "format": "date-time" },
+            "gitRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "additionalProperties": false
