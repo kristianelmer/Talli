@@ -177,6 +177,8 @@ test("web boundary detection follows client provenance without flagging ordinary
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
   const adversarialPath = "apps/web/app/receiver-bypass.ts";
+  const namespaceFactoryPath = "apps/web/app/namespace-factory-bypass.ts";
+  const platformAliasPath = "apps/web/app/platform-fetch-bypass.ts";
   const benignPath = "apps/web/app/ordinary-from.ts";
   writeFileSync(
     join(temporaryRoot, adversarialPath),
@@ -189,9 +191,22 @@ globalThis.fetch("/api/v1/companies");
 `,
   );
   writeFileSync(
+    join(temporaryRoot, namespaceFactoryPath),
+    `import * as Supabase from "@supabase/supabase-js";
+const namespaceDb = Supabase.createClient("https://example.invalid", "public-key");
+namespaceDb.from("companies");
+`,
+  );
+  writeFileSync(
+    join(temporaryRoot, platformAliasPath),
+    `const platform = globalThis;
+platform.fetch("/api/v1/companies");
+`,
+  );
+  writeFileSync(
     join(temporaryRoot, benignPath),
-    `const ordinaryCollection = { from(value: string) { return value; } };
-ordinaryCollection.from("not-persistence");
+    `const supabase = { from(value: string) { return value; } };
+supabase.from("not-persistence");
 `,
   );
 
@@ -200,6 +215,8 @@ ordinaryCollection.from("not-persistence");
     const escapedAdversarialPath = adversarialPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
     assert.match(errors, new RegExp(`${escapedAdversarialPath}: direct web business persistence is forbidden`, "u"));
     assert.match(errors, new RegExp(`${escapedAdversarialPath}: direct business fetch is forbidden`, "u"));
+    assert.match(errors, new RegExp(`${namespaceFactoryPath}: direct web business persistence is forbidden`, "u"));
+    assert.match(errors, new RegExp(`${platformAliasPath}: direct business fetch is forbidden`, "u"));
     assert.doesNotMatch(errors, new RegExp(benignPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -299,7 +316,8 @@ test("architecture checker rejects representative forbidden boundary violations"
     join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"),
     `${readFileSync(join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"), "utf8")}
 fetch("/api/v1/forbidden");
-supabase.from("forbidden");
+const forbiddenPersistence = createSupabaseBoundaryClient();
+forbiddenPersistence.from("forbidden");
 import "@talli/talli-api-client/src/generated/client.ts";
 `,
   );

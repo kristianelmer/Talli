@@ -155,9 +155,11 @@ function webBoundaryViolations(source, path) {
   const scriptKind = /\.[jt]sx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
   const factoryIdentifiers = new Set();
+  const persistenceNamespaceIdentifiers = new Set();
   const persistenceIdentifiers = new Set();
   const persistenceProperties = new Set();
   const persistenceTypeProperties = new Map();
+  const platformIdentifiers = new Set(["globalThis", "window"]);
 
   function add(set, value) {
     if (!value || set.has(value)) return false;
@@ -193,7 +195,20 @@ function webBoundaryViolations(source, path) {
     const unwrapped = unwrappedExpression(expression);
     if (!ts.isCallExpression(unwrapped)) return false;
     const name = factoryTargetName(unwrapped.expression);
-    return Boolean(name && (factoryIdentifiers.has(name) || /^createSupabase[A-Za-z0-9]*Client$/u.test(name)));
+    const access = propertyAccess(unwrapped.expression);
+    const namespaceFactory = access
+      && /^create[A-Za-z0-9]*Client$/u.test(access.name)
+      && ts.isIdentifier(access.receiver)
+      && persistenceNamespaceIdentifiers.has(access.receiver.text);
+    return Boolean(
+      namespaceFactory
+      || (name && (factoryIdentifiers.has(name) || /^createSupabase[A-Za-z0-9]*Client$/u.test(name)))
+    );
+  }
+
+  function platformExpression(expression) {
+    const unwrapped = unwrappedExpression(expression);
+    return ts.isIdentifier(unwrapped) && platformIdentifiers.has(unwrapped.text);
   }
 
   function persistenceExpression(expression) {
@@ -201,14 +216,10 @@ function webBoundaryViolations(source, path) {
     const unwrapped = unwrappedExpression(expression);
     if (factoryCall(unwrapped)) return true;
     if (ts.isIdentifier(unwrapped)) {
-      return persistenceIdentifiers.has(unwrapped.text) || unwrapped.text.toLowerCase() === "supabase";
+      return persistenceIdentifiers.has(unwrapped.text);
     }
     const pathKey = expressionPath(unwrapped);
-    const access = propertyAccess(unwrapped);
-    return Boolean(
-      (pathKey && persistenceProperties.has(pathKey))
-      || access?.name.toLowerCase() === "supabase"
-    );
+    return Boolean(pathKey && persistenceProperties.has(pathKey));
   }
 
   function addObjectProperties(base, object) {
@@ -230,21 +241,23 @@ function webBoundaryViolations(source, path) {
     let changed = false;
     if (ts.isImportDeclaration(node)
       && ts.isStringLiteral(node.moduleSpecifier)
-      && /supabase/iu.test(node.moduleSpecifier.text)
-      && node.importClause?.namedBindings
-      && ts.isNamedImports(node.importClause.namedBindings)) {
-      for (const element of node.importClause.namedBindings.elements) {
-        const imported = element.propertyName?.text ?? element.name.text;
-        if (/^create[A-Za-z0-9]*Client$/u.test(imported)) {
-          changed = add(factoryIdentifiers, element.name.text) || changed;
+      && /supabase/iu.test(node.moduleSpecifier.text)) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings && ts.isNamespaceImport(bindings)) {
+        changed = add(persistenceNamespaceIdentifiers, bindings.name.text) || changed;
+      } else if (bindings && ts.isNamedImports(bindings)) {
+        for (const element of bindings.elements) {
+          const imported = element.propertyName?.text ?? element.name.text;
+          if (/^create[A-Za-z0-9]*Client$/u.test(imported)) {
+            changed = add(factoryIdentifiers, element.name.text) || changed;
+          }
         }
       }
     }
     if (ts.isFunctionDeclaration(node) && node.name && /^createSupabase[A-Za-z0-9]*Client$/u.test(node.name.text)) {
       changed = add(factoryIdentifiers, node.name.text) || changed;
     }
-    if (ts.isParameter(node) && ts.isIdentifier(node.name)
-      && (typeSignalsPersistence(node.type) || node.name.text.toLowerCase() === "supabase")) {
+    if (ts.isParameter(node) && ts.isIdentifier(node.name) && typeSignalsPersistence(node.type)) {
       changed = add(persistenceIdentifiers, node.name.text) || changed;
     }
     if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -253,9 +266,17 @@ function webBoundaryViolations(source, path) {
     if (ts.isVariableDeclaration(node)) {
       const initializer = node.initializer;
       if (ts.isIdentifier(node.name)) {
-        if (initializer && ts.isIdentifier(unwrappedExpression(initializer))
-          && factoryIdentifiers.has(unwrappedExpression(initializer).text)) {
-          changed = add(factoryIdentifiers, node.name.text) || changed;
+        if (initializer && ts.isIdentifier(unwrappedExpression(initializer))) {
+          const initializedFrom = unwrappedExpression(initializer).text;
+          if (factoryIdentifiers.has(initializedFrom)) {
+            changed = add(factoryIdentifiers, node.name.text) || changed;
+          }
+          if (persistenceNamespaceIdentifiers.has(initializedFrom)) {
+            changed = add(persistenceNamespaceIdentifiers, node.name.text) || changed;
+          }
+          if (platformIdentifiers.has(initializedFrom)) {
+            changed = add(platformIdentifiers, node.name.text) || changed;
+          }
         }
         if (typeSignalsPersistence(node.type) || persistenceExpression(initializer)) {
           changed = add(persistenceIdentifiers, node.name.text) || changed;
@@ -270,8 +291,7 @@ function webBoundaryViolations(source, path) {
         for (const element of node.name.elements) {
           if (!ts.isIdentifier(element.name)) continue;
           const name = propertyName(element.propertyName) ?? element.name.text;
-          if (name.toLowerCase() === "supabase"
-            || (base && persistenceProperties.has(`${base}.${name}`))) {
+          if (base && persistenceProperties.has(`${base}.${name}`)) {
             changed = add(persistenceIdentifiers, element.name.text) || changed;
           }
         }
@@ -281,6 +301,12 @@ function webBoundaryViolations(source, path) {
       const left = unwrappedExpression(node.left);
       if (ts.isIdentifier(left) && persistenceExpression(node.right)) {
         changed = add(persistenceIdentifiers, left.text) || changed;
+      } else if (ts.isIdentifier(left) && platformExpression(node.right)) {
+        changed = add(platformIdentifiers, left.text) || changed;
+      } else if (ts.isIdentifier(left)
+        && ts.isIdentifier(unwrappedExpression(node.right))
+        && persistenceNamespaceIdentifiers.has(unwrappedExpression(node.right).text)) {
+        changed = add(persistenceNamespaceIdentifiers, left.text) || changed;
       } else {
         const leftPath = expressionPath(left);
         if (leftPath && persistenceExpression(node.right)) {
@@ -316,8 +342,7 @@ function webBoundaryViolations(source, path) {
     if (ts.isCallExpression(node)) {
       const access = propertyAccess(node.expression);
       if (access?.name === "fetch") {
-        const receiverPath = expressionPath(access.receiver);
-        if (["globalThis", "window"].includes(receiverPath)) fetch = true;
+        if (platformExpression(access.receiver)) fetch = true;
       } else if (ts.isIdentifier(unwrappedExpression(node.expression))
         && unwrappedExpression(node.expression).text === "fetch") {
         fetch = true;
