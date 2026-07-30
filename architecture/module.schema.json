@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/module.schema.json",
+  "title": "Talli module manifest",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "name", "path", "owner", "purpose", "documentation", "publicEntryPoint", "dependencies", "allowedImports", "forbiddenResponsibilities", "tests", "compatibilityExceptions"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "kind": { "enum": ["backend-capability", "web-feature"] },
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "path": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "purpose": { "type": "string", "minLength": 1 },
+    "documentation": { "type": "string", "pattern": "MODULE\\.md$" },
+    "publicEntryPoint": { "type": "string", "minLength": 1 },
+    "dependencies": { "type": "array" },
+    "allowedImports": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "forbiddenResponsibilities": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "tests": { "type": "object" },
+    "compatibilityExceptions": { "type": "array", "items": { "type": "string", "pattern": "^compat-" } },
+    "exports": { "type": "object" },
+    "owns": { "type": "object" },
+    "ports": { "type": "array" },
+    "ownedRoutes": { "type": "array", "items": { "type": "string" } },
+    "apiOperations": { "type": "array", "items": { "type": "string" } },
+    "cachePolicy": { "type": "object" },
+    "directBrowserFlows": { "type": "array" }
+  },
+  "additionalProperties": false
+}

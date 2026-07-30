@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "1.0",
+  "purpose": "The shared kernel is restricted to stable, immutable technical primitives; it contains no business policy, persistence, workflows, adapters, or transport types.",
+  "allowedPrimitives": ["opaque identifiers", "UTC timestamps", "RFC 9457 stable error codes"],
+  "forbidden": ["business rules", "database repositories", "provider adapters", "web presentation", "cross-capability orchestration"],
+  "allowedPublicPackages": []
+}

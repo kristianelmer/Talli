@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "name": "talli-backend-system",
+  "documentation": "architecture/BACKEND-SYSTEM.md",
+  "compositionRoot": "apps/backend/src/talli_backend/main.py",
+  "workflows": [
+    {
+      "name": "system-boundary-tracer",
+      "purpose": "Returns a deterministic availability response from the independently deployable FastAPI boundary.",
+      "publicPackages": ["talli_backend.modules.system_boundary.public"],
+      "routes": ["/api/v1/system-boundary/tracer"]
+    }
+  ],
+  "operationalControlState": {
+    "owner": "backend-system",
+    "tables": ["public.launch_signoffs"],
+    "releaseDecision": "deny-by-default",
+    "consequentialAdapterRecheck": true
+  },
+  "technicalOwnership": {
+    "schemas": ["public"],
+    "tables": ["public.launch_signoffs", "public.notification_outbox"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql"],
+    "statement": "These tables implement operational control and event delivery only; they own no accounting, filing, billing, or authorization decision."
+  },
+  "infrastructure": {
+    "transactions": "Short Postgres transactions owned by backend application workflows.",
+    "idempotency": "Durable idempotency records are required for consequential commands before provider I/O.",
+    "eventDelivery": "public.notification_outbox is the persisted event-delivery boundary.",
+    "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
+    "durableWorker": "A durable worker consumes persisted delivery state outside the initiating transaction."
+  },
+  "adapterBindings": [
+    {
+      "port": "SystemBoundaryTransport",
+      "adapter": "talli_backend.main.create_app",
+      "owner": "backend-system",
+      "mode": "in-process FastAPI composition"
+    }
+  ],
+  "allowedDependencies": {
+    "transport": ["fastapi", "pydantic", "starlette", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
+    "workflows": ["talli_backend.modules.system_boundary.public"],
+    "adapters": []
+  }
+}

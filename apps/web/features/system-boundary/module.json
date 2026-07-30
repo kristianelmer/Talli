@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "system-boundary",
+  "path": "apps/web/features/system-boundary",
+  "owner": "web:system-boundary",
+  "purpose": "Present the FastAPI system-boundary tracer in Norwegian through the committed generated API client without recreating backend policy.",
+  "documentation": "apps/web/features/system-boundary/MODULE.md",
+  "publicEntryPoint": "@/features/system-boundary",
+  "ownedRoutes": ["/system-boundary"],
+  "apiOperations": ["systemBoundaryGetTracerStatus"],
+  "dependencies": [],
+  "allowedImports": ["@talli/talli-api-client"],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Business policy or handwritten business DTOs",
+    "Direct Supabase business persistence",
+    "Direct business-endpoint fetch calls",
+    "Generated-client deep imports"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/system-boundary-presentation.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

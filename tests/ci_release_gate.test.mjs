@@ -32,6 +32,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "uv sync --project apps/backend --locked",
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
+    "npm run check:architecture",
     "npm run test:boundary",
     "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",

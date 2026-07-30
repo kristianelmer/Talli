@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from talli_backend.modules.system_boundary.public import SYSTEM_BOUNDARY_AVAILABLE
+
 API_VERSION = "v1"
 CONTRACT_VERSION = "1.0.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
@@ -204,7 +206,7 @@ def create_app() -> FastAPI:
         return SystemBoundaryStatus(
             api_version=API_VERSION,
             service="talli-backend",
-            status="AVAILABLE",
+            status=SYSTEM_BOUNDARY_AVAILABLE,
         )
 
     @application.get("/health/live", include_in_schema=False)
