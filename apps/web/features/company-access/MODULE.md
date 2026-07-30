@@ -11,11 +11,12 @@ through `companyAccessGetSelectedContext` in the committed generated client.
 
 ## Owns and must not own
 
-It owns the listed owner route integration, no-store transport mapping, and
-presentation-ready company context. It must not decide membership, role,
+It owns the listed owner route integration, no-store transport mapping, and its
+feature-owned presentation model derived from the generated company context. It must not decide membership, role,
 resource-scope, AAL2, or tenant concealment; those policies belong to the backend
 capability. It must not access Supabase business persistence, call a business
-endpoint with `fetch`, write business DTOs by hand, or deep-import the client.
+endpoint with `fetch`, import Supabase persistence DTOs, or deep-import the
+client.
 
 ## Public interface and collaboration
 
@@ -28,7 +29,8 @@ The feature has no web-feature dependency and consumes only the root
 
 ## Cache, browser, and tests
 
-Authenticated company context defaults to `no-store`; no cache exception or
+Authenticated company context defaults to `no-store`; the complete context is
+available only after the backend's server-owned AAL2 policy. No cache exception or
 direct browser business-data flow is approved. Feature coverage is in
 `apps/web/tests/company-access-presentation.test.mjs`; architecture coverage is
 in `tests/architecture_foundation.test.mjs`.

@@ -252,7 +252,6 @@ def create_app(company_access: CompanyAccessService | None = None) -> FastAPI:
     async def get_selected_company_context(
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
         company_id: str | None = None,
-        resource_scope: Literal["workspace", "owner", "owner_sensitive"] = "workspace",
     ) -> CompanyContextResponse:
         if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
             raise ApiProblem(
@@ -265,7 +264,6 @@ def create_app(company_access: CompanyAccessService | None = None) -> FastAPI:
             return await company_access_service.selected_context(
                 credentials.credentials,
                 company_id=company_id,
-                resource_scope=resource_scope,
             )
         except CompanyAccessError as error:
             raise ApiProblem(

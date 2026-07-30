@@ -171,7 +171,6 @@ export interface TalliRequestOptions {
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
-  resourceScope?: "workspace" | "owner" | "owner_sensitive";
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -217,7 +216,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<CompanyContextResponse> {
       const query = new URLSearchParams();
       if (request.companyId !== undefined) query.set("company_id", request.companyId);
-      if (request.resourceScope !== undefined) query.set("resource_scope", request.resourceScope);
       const suffix = query.size ? \`?\${query}\` : "";
       const response = await fetchImplementation(\`\${baseUrl}${companyAccessPath}\${suffix}\`, {
         cache: "no-store",

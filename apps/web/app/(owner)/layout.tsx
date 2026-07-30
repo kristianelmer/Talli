@@ -23,7 +23,7 @@ export default async function OwnerLayout({
   if (needsEmailVerification(user)) {
     redirect("/verify-email");
   }
-  const { companies, error: companiesError } = await listCompanyAccessContexts({ resourceScope: "owner" });
+  const { companies, error: companiesError } = await listCompanyAccessContexts();
   const { acceptances, error: acceptancesError } = companiesError
     ? { acceptances: [], error: null }
     : await listCustomerAgreementAcceptances(companies.map(({ id }) => id));

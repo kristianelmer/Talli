@@ -1,11 +1,18 @@
 import base64
 import json
 from collections.abc import Mapping
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
-from talli_backend.modules.company_access.public import CompanyAccessService
+from talli_backend.modules.company_access.public import (
+    CompanyAccessService,
+    SupabaseCompanyAccessGateway,
+    SupabaseConfiguration,
+)
 
 
 def access_token(aal: str = "aal1") -> str:
@@ -60,6 +67,99 @@ class CompanyAccessGatewayStub:
         return [companies[company_id] for company_id in company_ids if company_id in companies]
 
 
+class LocalSupabaseGateway:
+    """Hermetic HTTP server that exercises the Auth -> PostgREST gateway path."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, str, str]] = []
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
+        self.url = f"http://127.0.0.1:{self._server.server_port}"
+        self._thread = Thread(target=self._server.serve_forever, daemon=True)
+
+    def _handler(self) -> type[BaseHTTPRequestHandler]:
+        gateway = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+                path = urlsplit(self.path).path
+                authorization = self.headers.get("Authorization", "")
+                api_key = self.headers.get("apikey", "")
+                gateway.calls.append((path, authorization, api_key, self.path))
+                token = authorization.removeprefix("Bearer ")
+                if path == "/auth/v1/user":
+                    if token == "provider-failure":
+                        self._json(500, {"message": "upstream failure"})
+                    elif token in {"malformed", "expired", "revoked"}:
+                        self._json(401, {"message": "invalid session"})
+                    elif token == access_token("aal1") or token == access_token("aal2"):
+                        self._json(200, {"id": "member-1"})
+                    elif token == f"outsider-{access_token('aal2')}":
+                        self._json(200, {"id": "outsider-1"})
+                    else:
+                        self._json(401, {"message": "invalid session"})
+                    return
+                if path == "/rest/v1/company_memberships":
+                    self._json(
+                        200,
+                        [] if token.startswith("outsider-") else [
+                            {"company_id": "company-1", "role": "owner", "accepted_at": "2026-07-30T00:00:00Z"}
+                        ],
+                    )
+                    return
+                if path == "/rest/v1/companies":
+                    # This mirrors PostgREST RLS: a member never receives a
+                    # cross-company row even if they put its ID in a filter.
+                    self._json(200, [] if "company-2" in self.path else [{
+                        "id": "company-1",
+                        "org_number": "314159265",
+                        "name": "Talli Holding AS",
+                        "entity_type": "AS",
+                        "address": "Testveien 1",
+                        "postal_code": "0150",
+                        "city": "Oslo",
+                        "status_text": "Registrert",
+                        "source": "Brønnøysundregistrene",
+                        "created_by": "owner-1",
+                        "identity_confirmed_at": None,
+                        "identity_locked_at": None,
+                        "created_at": "2026-07-30T00:00:00Z",
+                    }])
+                    return
+                self._json(404, {})
+
+            def _json(self, status: int, payload: object) -> None:
+                body = json.dumps(payload).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, _format: str, *_args: object) -> None:
+                return
+
+        return Handler
+
+    def __enter__(self) -> "LocalSupabaseGateway":
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self._server.shutdown()
+        self._thread.join()
+        self._server.server_close()
+
+
+def gateway_app(server: LocalSupabaseGateway):
+    return create_app(
+        CompanyAccessService(
+            SupabaseCompanyAccessGateway(
+                SupabaseConfiguration(url=server.url, anon_key="anon-test-key")
+            )
+        )
+    )
+
+
 def test_company_context_fails_closed_without_a_bearer_session() -> None:
     response = TestClient(create_app()).get("/api/v1/company-access/context")
 
@@ -67,12 +167,12 @@ def test_company_context_fails_closed_without_a_bearer_session() -> None:
     assert response.json()["code"] == "AUTHENTICATION_REQUIRED"
 
 
-def test_company_context_returns_only_the_authenticated_membership() -> None:
+def test_company_context_returns_full_context_only_after_aal2() -> None:
     app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
 
     response = TestClient(app).get(
         "/api/v1/company-access/context",
-        headers={"Authorization": f"Bearer {access_token()}"},
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
     )
 
     assert response.status_code == 200
@@ -92,8 +192,8 @@ def test_company_context_returns_only_the_authenticated_membership() -> None:
             "identityLockedAt": None,
             "createdAt": "2026-07-30T00:00:00Z",
             "role": "owner",
-            "resourceScope": "workspace",
-            "aal": "aal1",
+            "resourceScope": "owner_sensitive",
+            "aal": "aal2",
         },
         "companies": [{
             "id": "company-1",
@@ -110,8 +210,8 @@ def test_company_context_returns_only_the_authenticated_membership() -> None:
             "identityLockedAt": None,
             "createdAt": "2026-07-30T00:00:00Z",
             "role": "owner",
-            "resourceScope": "workspace",
-            "aal": "aal1",
+            "resourceScope": "owner_sensitive",
+            "aal": "aal2",
         }],
     }
 
@@ -121,20 +221,88 @@ def test_cross_company_context_is_concealed() -> None:
 
     response = TestClient(app).get(
         "/api/v1/company-access/context?company_id=company-2",
-        headers={"Authorization": f"Bearer {access_token()}"},
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
     )
 
     assert response.status_code == 404
     assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
 
 
-def test_sensitive_owner_context_requires_aal2() -> None:
+def test_full_company_context_cannot_be_downgraded_to_workspace_scope() -> None:
     app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
 
     response = TestClient(app).get(
-        "/api/v1/company-access/context?resource_scope=owner_sensitive",
+        "/api/v1/company-access/context?resource_scope=workspace",
         headers={"Authorization": f"Bearer {access_token()}"},
     )
 
     assert response.status_code == 403
     assert response.json()["code"] == "AAL2_REQUIRED"
+
+
+def test_resource_scope_is_not_a_public_company_context_parameter() -> None:
+    schema = create_app(CompanyAccessService(CompanyAccessGatewayStub())).openapi()
+    parameters = schema["paths"]["/api/v1/company-access/context"]["get"].get("parameters", [])
+
+    assert "resource_scope" not in {parameter["name"] for parameter in parameters}
+
+
+def test_real_gateway_validates_session_before_rls_reads_and_keeps_the_user_bearer() -> None:
+    with LocalSupabaseGateway() as server:
+        response = TestClient(gateway_app(server)).get(
+            "/api/v1/company-access/context",
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        )
+
+    assert response.status_code == 200
+    assert [path for path, *_ in server.calls] == [
+        "/auth/v1/user",
+        "/rest/v1/company_memberships",
+        "/rest/v1/companies",
+    ]
+    for _path, authorization, api_key, _request_path in server.calls:
+        assert authorization == f"Bearer {access_token('aal2')}"
+        assert api_key == "anon-test-key"
+        assert "service_role" not in authorization.lower()
+
+
+def test_real_gateway_rejects_bad_sessions_before_postgrest_and_normalizes_provider_failures() -> None:
+    for token, expected_status, expected_code in [
+        ("malformed", 401, "AUTHENTICATION_REQUIRED"),
+        ("expired", 401, "AUTHENTICATION_REQUIRED"),
+        ("revoked", 401, "AUTHENTICATION_REQUIRED"),
+        ("provider-failure", 503, "COMPANY_ACCESS_UNAVAILABLE"),
+    ]:
+        with LocalSupabaseGateway() as server:
+            response = TestClient(gateway_app(server)).get(
+                "/api/v1/company-access/context",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert response.status_code == expected_status
+        assert response.json()["code"] == expected_code
+        assert [path for path, *_ in server.calls] == ["/auth/v1/user"]
+
+
+def test_real_gateway_aal1_and_rls_outsider_or_cross_company_reads_fail_closed() -> None:
+    with LocalSupabaseGateway() as server:
+        client = TestClient(gateway_app(server))
+        aal1 = client.get(
+            "/api/v1/company-access/context?resource_scope=workspace",
+            headers={"Authorization": f"Bearer {access_token()}"},
+        )
+        outsider = client.get(
+            "/api/v1/company-access/context",
+            headers={"Authorization": f"Bearer outsider-{access_token('aal2')}"},
+        )
+        cross_company = client.get(
+            "/api/v1/company-access/context?company_id=company-2",
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        )
+
+    assert aal1.status_code == 403
+    assert aal1.json()["code"] == "AAL2_REQUIRED"
+    assert outsider.status_code == 404
+    assert outsider.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
+    assert cross_company.status_code == 404
+    assert cross_company.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"

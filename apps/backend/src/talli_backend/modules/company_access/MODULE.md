@@ -26,17 +26,20 @@ Import only `talli_backend.modules.company_access.public`.
 - Error: `CompanyAccessError`
 - Identifier: `CompanyContext`
 
-The response is selected only from an accepted membership. A foreign company or
-an insufficient role receives the tenant-concealed `COMPANY_CONTEXT_NOT_FOUND`;
-an `owner_sensitive` scope additionally requires `aal2`.
+This complete owner context has one server-owned `owner_sensitive` policy and
+always requires `aal2`; callers cannot choose or downgrade its resource scope.
+The backend validates the Supabase session before checking that session's RLS
+scope. A foreign company or outsider receives the tenant-concealed
+`COMPANY_CONTEXT_NOT_FOUND` response.
 
 ## Collaboration and tests
 
 The backend-system `company-access-context` workflow serves the generated
 contract. The web feature consumes that contract and never reads company or
-membership persistence directly. Focused policy coverage is in
-`apps/backend/tests/test_company_access.py`; architecture coverage is in
-`tests/architecture_foundation.test.mjs`.
+membership persistence directly. Focused policy and hermetic Auth/PostgREST
+gateway coverage is in `apps/backend/tests/test_company_access.py`; the
+non-skippable fresh-PostgreSQL RLS rehearsal is
+`tests/company_access_database_runtime.test.mjs`.
 
 ## Compatibility and change rule
 

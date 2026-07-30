@@ -66,7 +66,7 @@ class SupabaseGateway(Protocol):
 
 
 @dataclass(frozen=True)
-class _SupabaseConfiguration:
+class SupabaseConfiguration:
     url: str
     anon_key: str
 
@@ -74,8 +74,8 @@ class _SupabaseConfiguration:
 class SupabaseCompanyAccessGateway:
     """Uses a verified Supabase session for Auth and RLS-protected reads."""
 
-    def __init__(self, configuration: _SupabaseConfiguration | None = None) -> None:
-        self._configuration = configuration or _SupabaseConfiguration(
+    def __init__(self, configuration: SupabaseConfiguration | None = None) -> None:
+        self._configuration = configuration or SupabaseConfiguration(
             url=os.environ.get("SUPABASE_URL", "").rstrip("/"),
             anon_key=os.environ.get("SUPABASE_ANON_KEY", ""),
         )
@@ -185,10 +185,20 @@ class CompanyAccessService:
         access_token: str,
         *,
         company_id: str | None,
-        resource_scope: Literal["workspace", "owner", "owner_sensitive"],
     ) -> CompanyContextResponse:
         subject = await self._gateway.session_subject(access_token)
         aal = _token_aal(access_token)
+        # This operation deliberately has one server-owned policy.  A caller may
+        # choose a company they are already entitled to see, but may never choose
+        # a lower resource scope to obtain this complete owner context at AAL1.
+        resource_scope: Literal["owner_sensitive"] = "owner_sensitive"
+        if aal != "aal2":
+            raise CompanyAccessError(
+                status=403,
+                code="AAL2_REQUIRED",
+                title="Additional verification required",
+                detail="Additional verification is required for this company context.",
+            )
         memberships = await self._gateway.memberships(access_token, subject)
         roles = {
             str(item["company_id"]): str(item["role"])
@@ -203,7 +213,6 @@ class CompanyAccessService:
             for company in companies
             if isinstance(company.get("id"), str)
             and company["id"] in roles
-            and (resource_scope == "workspace" or roles[company["id"]] == "owner")
         ]
         if not permitted_companies:
             raise CompanyAccessError(
@@ -214,13 +223,6 @@ class CompanyAccessService:
             )
         selected = permitted_companies[0]
         role = roles[str(selected["id"])]
-        if resource_scope == "owner_sensitive" and aal != "aal2":
-            raise CompanyAccessError(
-                status=403,
-                code="AAL2_REQUIRED",
-                title="Additional verification required",
-                detail="Additional verification is required for this company context.",
-            )
         def context(company: Mapping[str, object]) -> CompanyContext:
             company_role = roles[str(company["id"])]
             return CompanyContext(
@@ -259,4 +261,6 @@ __all__ = [
     "CompanyAccessService",
     "CompanyContext",
     "CompanyContextResponse",
+    "SupabaseCompanyAccessGateway",
+    "SupabaseConfiguration",
 ]

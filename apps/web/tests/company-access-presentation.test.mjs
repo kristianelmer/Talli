@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { loadCompanyAccessContext } from "../features/company-access/transport/load-company-access-context.ts";
@@ -7,7 +8,9 @@ import { TalliApiError } from "@talli/talli-api-client";
 test("company-access transport sends the established session only through the generated client", async () => {
   const originalFetch = globalThis.fetch;
   let request;
-  globalThis.fetch = async (_url, candidate) => {
+  let requestUrl;
+  globalThis.fetch = async (url, candidate) => {
+    requestUrl = url;
     request = candidate;
     return Response.json({
       selectedCompany: {
@@ -57,11 +60,22 @@ test("company-access transport sends the established session only through the ge
     assert.equal(result.selectedCompany.id, "company-1");
     assert.equal(new Headers(request.headers).get("Authorization"), "Bearer session-token");
     assert.equal(new Headers(request.headers).get("X-Request-ID"), "request-136");
+    assert.equal(requestUrl, "https://backend.example/api/v1/company-access/context");
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
+});
+
+test("the company-access app boundary owns its presentation model instead of a Supabase row DTO", async () => {
+  const source = await readFile(new URL("../app/lib/company-access-context.ts", import.meta.url), "utf8");
+  const presentation = await readFile(new URL("../features/company-access/presentation.ts", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /supabase\/server|CompanyWorkspaceRow/);
+  assert.match(source, /presentCompanyAccessContext/);
+  assert.match(presentation, /export type CompanyAccessPresentation/);
+  assert.doesNotMatch(presentation, /created_by|identity_confirmed_at|identity_locked_at|created_at/);
 });
 
 test("company-access transport fails closed on a partial context response", async () => {

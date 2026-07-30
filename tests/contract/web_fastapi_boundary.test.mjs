@@ -42,6 +42,10 @@ test("the committed contract exposes the authenticated company-context operation
 
   assert.equal(operation?.operationId, "companyAccessGetSelectedContext");
   assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  assert.equal(
+    operation?.parameters.some((parameter) => parameter.in === "query" && parameter.name === "resource_scope"),
+    false,
+  );
   assert.ok(operation?.responses["401"].content["application/problem+json"]);
   assert.ok(operation?.responses["404"].content["application/problem+json"]);
 });

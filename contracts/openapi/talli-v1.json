@@ -197,21 +197,6 @@
             }
           },
           {
-            "in": "query",
-            "name": "resource_scope",
-            "required": false,
-            "schema": {
-              "default": "workspace",
-              "enum": [
-                "workspace",
-                "owner",
-                "owner_sensitive"
-              ],
-              "title": "Resource Scope",
-              "type": "string"
-            }
-          },
-          {
             "description": "Optional caller-provided correlation identifier.",
             "in": "header",
             "name": "X-Request-ID",

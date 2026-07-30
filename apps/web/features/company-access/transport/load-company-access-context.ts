@@ -29,7 +29,7 @@ export function companyAccessBackendBaseUrl(): string {
 export async function loadCompanyAccessContext(
   accessToken: string,
   requestId?: string,
-  options: { companyId?: string; resourceScope?: "workspace" | "owner" | "owner_sensitive" } = {},
+  options: { companyId?: string } = {},
 ) {
   const client = createTalliApiClient({
     baseUrl: companyAccessBackendBaseUrl(),
