@@ -96,6 +96,38 @@ test("compatibility exceptions must expire strictly after the controlled current
   }
 });
 
+test("compatibility exceptions cannot outlive fourteen days or the next stable release", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-expiry-bound-"));
+  const registry = join(temporaryRoot, "compatibility.json");
+  writeFileSync(
+    registry,
+    JSON.stringify({
+      schemaVersion: "1.0",
+      exceptions: [{
+        id: "compat-too-distant",
+        owner: "web:legacy-runtime",
+        creationIssue: "#135",
+        removalIssue: "#136",
+        paths: ["apps/web/app/actions.ts"],
+        rules: ["direct-web-business-persistence"],
+        approvedBy: "Kristian Elmer",
+        approvedAt: "2026-07-30T00:00:00Z",
+        releaseLimit: "next-stable-customer-ready-release",
+        expiresAt: "2026-08-14T00:00:00Z",
+        removalCondition: "Remove when #136 owns the authenticated company context.",
+      }],
+    }),
+  );
+  try {
+    assert.match(
+      validateCompatibilityRegistry(registry, { now: new Date("2026-07-30T00:00:00Z") }).join("\n"),
+      /compat-too-distant.*fourteen days after approval/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("schema constraints and declared public exports are enforced", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-schema-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -239,6 +271,15 @@ type ClientAlias = DatabaseClient;
 type Input = { gateway: ClientAlias };
 function query(input: Input) { input.gateway.rpc("post_entry"); }
 `,
+    "namespace-client-type.ts": `import type * as Supabase from "@supabase/supabase-js";
+function query(client: Supabase.SupabaseClient) { client.from("companies"); }
+`,
+    "class-client-property.ts": `import type * as Supabase from "@supabase/supabase-js";
+class Repository {
+  declare readonly client: Supabase.SupabaseClient;
+  query() { this.client.rpc("post_entry"); }
+}
+`,
     "factory-property-declaration.ts": `import * as Supabase from "@supabase/supabase-js";
 const build = Supabase.createClient;
 build("https://example.invalid", "public-key").from("companies");
@@ -252,6 +293,11 @@ build("https://example.invalid", "public-key").rpc("post_entry");
 const { createClient: build } = Supabase;
 build("https://example.invalid", "public-key").from("companies");
 `,
+    "factory-property-destructure-assignment.ts": `import * as Supabase from "@supabase/supabase-js";
+let build;
+({ createClient: build } = Supabase);
+build("https://example.invalid", "public-key").from("companies");
+`,
     "fetch-property-declaration.ts": `const request = globalThis.fetch;
 request("/api/v1/companies");
 `,
@@ -260,6 +306,10 @@ request = window.fetch;
 request("/api/v1/companies");
 `,
     "fetch-property-destructure.ts": `const { fetch: request } = globalThis;
+request("/api/v1/companies");
+`,
+    "fetch-property-destructure-assignment.ts": `let request;
+({ fetch: request } = globalThis);
 request("/api/v1/companies");
 `,
   };
@@ -272,9 +322,12 @@ request("/api/v1/companies");
     for (const name of [
       "type-alias-client.ts",
       "typed-client-property.ts",
+      "namespace-client-type.ts",
+      "class-client-property.ts",
       "factory-property-declaration.ts",
       "factory-property-assignment.ts",
       "factory-property-destructure.ts",
+      "factory-property-destructure-assignment.ts",
     ]) {
       assert.match(errors, new RegExp(`${name}: direct web business persistence is forbidden`, "u"));
     }
@@ -282,6 +335,7 @@ request("/api/v1/companies");
       "fetch-property-declaration.ts",
       "fetch-property-assignment.ts",
       "fetch-property-destructure.ts",
+      "fetch-property-destructure-assignment.ts",
     ]) {
       assert.match(errors, new RegExp(`${name}: direct business fetch is forbidden`, "u"));
     }
@@ -303,6 +357,8 @@ fetch("/api/v1/local");
 function invoke(fetch: (input: string) => string) { return fetch("/api/v1/parameter"); }
 const documentation = "@talli/talli-api-client/src/generated/client.ts";
 // import "@talli/talli-api-client/src/generated/comment.ts";
+function require(specifier: string) { return specifier; }
+require("@talli/talli-api-client/src/generated/locally-shadowed-require.ts");
 `,
   );
 
@@ -360,6 +416,34 @@ test("adapter bindings require source registration against the declared port", (
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
     assert.match(errors, /adapter is not registered for port SystemBoundaryTransport/u);
     assert.doesNotMatch(errors, /adapter symbol does not exist/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("adapter registration resolves decorator and port bindings to their declared public symbols", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-port-shadowing-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const mainPath = join(temporaryRoot, "apps/backend/src/talli_backend/main.py");
+  writeFileSync(
+    mainPath,
+    readFileSync(mainPath, "utf8").replace(
+      "@adapter_for(SystemBoundaryTransport)",
+      `def adapter_for(port):
+    return lambda adapter: adapter
+
+class SystemBoundaryTransport:
+    pass
+
+@adapter_for(SystemBoundaryTransport)`,
+    ),
+  );
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /adapter is not registered for port SystemBoundaryTransport/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }

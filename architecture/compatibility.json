@@ -22,6 +22,9 @@
         "apps/web/app/lib/system-user-flow.ts"
       ],
       "rules": ["direct-web-business-persistence"],
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
       "removalCondition": "Remove every listed direct business persistence path before the #136 company_access migration can complete."
     }

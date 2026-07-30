@@ -214,6 +214,15 @@ function webBoundaryViolations(source, path, analysis) {
     return ts.isImportSpecifier(node) ? (node.propertyName?.text ?? node.name.text) : undefined;
   }
 
+  function symbolIsSupabaseNamespace(symbol) {
+    if (!symbol) return false;
+    if (namespaceSymbols.has(symbol)) return true;
+    return (symbol.declarations ?? []).some((declaration) => (
+      ts.isNamespaceImport(declaration)
+      && isSupabaseModule(moduleSpecifierFor(declaration))
+    ));
+  }
+
   function typeSignalsPersistence(type, seen = new Set()) {
     if (!type || seen.has(type)) return false;
     seen.add(type);
@@ -222,6 +231,11 @@ function webBoundaryViolations(source, path, analysis) {
       return type.types.some((member) => typeSignalsPersistence(member, seen));
     }
     if (ts.isTypeReferenceNode(type)) {
+      if (ts.isQualifiedName(type.typeName)
+        && type.typeName.right.text === "SupabaseClient"
+        && symbolIsSupabaseNamespace(symbolAt(type.typeName.left))) {
+        return true;
+      }
       const symbol = symbolAt(type.typeName);
       for (const declaration of symbol?.declarations ?? []) {
         if (ts.isImportSpecifier(declaration)
@@ -351,7 +365,8 @@ function webBoundaryViolations(source, path, analysis) {
       && typeSignalsPersistence(node.type)) {
       changed = add(persistenceSymbols, symbolAt(node.name)) || changed;
     }
-    if (ts.isPropertySignature(node) && typeSignalsPersistence(node.type)) {
+    if ((ts.isPropertySignature(node) || ts.isPropertyDeclaration(node))
+      && typeSignalsPersistence(node.type)) {
       changed = add(persistencePropertySymbols, symbolAt(node.name)) || changed;
     }
     if (ts.isVariableDeclaration(node) && node.initializer) {
@@ -391,6 +406,19 @@ function webBoundaryViolations(source, path, analysis) {
         changed = add(platformObjectSymbols, platformObject(node.right) ? target : undefined) || changed;
         changed = add(namespaceSymbols, namespaceExpression(node.right) ? target : undefined) || changed;
         changed = add(persistenceSymbols, persistenceExpression(node.right) ? target : undefined) || changed;
+      } else if (ts.isObjectLiteralExpression(left)) {
+        for (const property of left.properties) {
+          if (!ts.isPropertyAssignment(property)
+            || !ts.isIdentifier(unwrappedExpression(property.initializer))) continue;
+          const target = symbolAt(unwrappedExpression(property.initializer));
+          const name = propertyName(property.name);
+          if (name === "createClient" && namespaceExpression(node.right)) {
+            changed = add(factorySymbols, target) || changed;
+          }
+          if (name === "fetch" && platformObject(node.right)) {
+            changed = add(platformFetchSymbols, target) || changed;
+          }
+        }
       } else {
         const access = propertyAccess(left);
         if (access && persistenceExpression(node.right)) {
@@ -434,9 +462,12 @@ function webBoundaryViolations(source, path, analysis) {
   return result;
 }
 
-function generatedClientDeepImport(source, path) {
+function generatedClientDeepImport(source, path, analysis) {
   const scriptKind = webScriptKind(path);
-  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const resolvedPath = resolve(path);
+  const sourceFile = analysis?.program.getSourceFile(resolvedPath)
+    ?? ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const checker = analysis?.program.getTypeChecker();
   let violation = false;
   function forbidden(specifier) {
     return specifier.startsWith("@talli/talli-api-client/");
@@ -455,9 +486,14 @@ function generatedClientDeepImport(source, path) {
       && forbidden(node.moduleReference.expression.text)) {
       violation = true;
     }
+    const unshadowedRequire = ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === "require"
+      && (!checker || !checker.getSymbolAtLocation(node.expression)
+        || (checker.getSymbolAtLocation(node.expression).declarations ?? [])
+          .every((declaration) => declaration.getSourceFile().isDeclarationFile));
     if (ts.isCallExpression(node)
-      && (node.expression.kind === ts.SyntaxKind.ImportKeyword
-        || (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || unshadowedRequire)
       && node.arguments.length
       && ts.isStringLiteralLike(node.arguments[0])
       && forbidden(node.arguments[0].text)) {
@@ -775,7 +811,7 @@ function checkModuleImports(root, manifest, errors, webAnalysis) {
       if (boundary.persistence) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
-      if (generatedClientDeepImport(source, path)) {
+      if (generatedClientDeepImport(source, path, webAnalysis)) {
         errors.push(`${label}: generated-client deep import is forbidden`);
       }
     }
@@ -912,10 +948,12 @@ function validateSystemBindings(root, system, manifests, errors) {
     if (!registration || registration.kind !== "function") {
       errors.push(`architecture/backend-system.json: port registration decorator does not exist ${port.registrationDecorator ?? binding.port}`);
     }
-    const decoratorName = port.registrationDecorator?.split(".").at(-1);
-    const contractName = port.contract?.split(".").at(-1);
-    const expectedDecorator = `${decoratorName}(${contractName})`;
-    if (!decoratorName || !contractName || !adapter.decorators?.includes(expectedDecorator)) {
+    const registered = adapter.decorators?.some((decorator) => (
+      decorator.callable === port.registrationDecorator
+      && decorator.arguments?.length === 1
+      && decorator.arguments[0] === port.contract
+    ));
+    if (!registered) {
       errors.push(`architecture/backend-system.json: adapter is not registered for port ${binding.port}`);
     }
   }
@@ -931,15 +969,44 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema }
   }
   for (const entry of registry.exceptions) {
     const prefix = `${entry.id ?? "compatibility exception"}:`;
-    for (const field of ["id", "owner", "creationIssue", "removalIssue", "paths", "expiresAt", "removalCondition"]) {
+    for (const field of [
+      "id",
+      "owner",
+      "creationIssue",
+      "removalIssue",
+      "paths",
+      "approvedBy",
+      "approvedAt",
+      "releaseLimit",
+      "expiresAt",
+      "removalCondition",
+    ]) {
       if (!(field in entry)) errors.push(`${prefix} missing ${field}`);
     }
     if (!String(entry.id).startsWith("compat-")) errors.push(`${prefix} id must start compat-`);
     if (!/^#[0-9]+$/u.test(entry.creationIssue ?? "")) errors.push(`${prefix} creationIssue must be an issue`);
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
     if (!Array.isArray(entry.paths) || !entry.paths.length) errors.push(`${prefix} paths must be non-empty`);
+    if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
+    if (!RFC3339.test(entry.approvedAt ?? "")) {
+      errors.push(`${prefix} approvedAt must be RFC 3339`);
+    } else if (new Date(entry.approvedAt).getTime() > now.getTime()) {
+      errors.push(`${prefix} approvedAt cannot be in the future`);
+    }
+    if (entry.releaseLimit !== "next-stable-customer-ready-release") {
+      errors.push(`${prefix} releaseLimit must be the next stable customer-ready release`);
+    }
     if (!RFC3339.test(entry.expiresAt ?? "")) errors.push(`${prefix} expiresAt must be RFC 3339`);
-    else if (new Date(entry.expiresAt).getTime() <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
+    else {
+      const expiry = new Date(entry.expiresAt).getTime();
+      if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
+      if (RFC3339.test(entry.approvedAt ?? "")) {
+        const fourteenDaysAfterApproval = new Date(entry.approvedAt).getTime() + 14 * 24 * 60 * 60 * 1000;
+        if (expiry > fourteenDaysAfterApproval) {
+          errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
+        }
+      }
+    }
     if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
   }
   return errors;
@@ -1014,7 +1081,7 @@ function checkGlobalWebBoundary(root, registry, errors, now, webAnalysis) {
       && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }
-    if (generatedClientDeepImport(source, path)
+    if (generatedClientDeepImport(source, path, webAnalysis)
       && !hasActiveCompatibility(registry, scopedPath, "generated-client-deep-import", now)) {
       errors.push(`${scopedPath}: generated-client deep import is forbidden`);
     }
