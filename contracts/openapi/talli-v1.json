@@ -4,10 +4,7 @@
       "CompanyContext": {
         "properties": {
           "aal": {
-            "enum": [
-              "aal1",
-              "aal2"
-            ],
+            "const": "aal2",
             "title": "Aal",
             "type": "string"
           },
@@ -70,20 +67,12 @@
             "type": "string"
           },
           "resourceScope": {
-            "enum": [
-              "workspace",
-              "owner",
-              "owner_sensitive"
-            ],
+            "const": "owner_sensitive",
             "title": "Resourcescope",
             "type": "string"
           },
           "role": {
-            "enum": [
-              "owner",
-              "reviewer",
-              "read_only"
-            ],
+            "const": "owner",
             "title": "Role",
             "type": "string"
           },

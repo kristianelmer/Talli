@@ -26,11 +26,13 @@ Import only `talli_backend.modules.company_access.public`.
 - Error: `CompanyAccessError`
 - Identifier: `CompanyContext`
 
-This complete owner context has one server-owned `owner_sensitive` policy and
-always requires `aal2`; callers cannot choose or downgrade its resource scope.
+This complete owner context has one server-owned `owner_sensitive` policy,
+always requires `aal2`, and accepts only an active `owner` membership; callers
+cannot choose or downgrade its role, resource scope, or assurance level. These
+three values are fixed literals in the response contract.
 The backend validates the Supabase session before checking that session's RLS
-scope. A foreign company or outsider receives the tenant-concealed
-`COMPANY_CONTEXT_NOT_FOUND` response.
+scope. A foreign company, outsider, reviewer, or read-only member receives the
+tenant-concealed `COMPANY_CONTEXT_NOT_FOUND` response.
 
 ## Collaboration and tests
 

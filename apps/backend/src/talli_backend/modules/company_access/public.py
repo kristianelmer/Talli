@@ -39,9 +39,9 @@ class CompanyContext(CompanyAccessModel):
     identity_confirmed_at: str | None
     identity_locked_at: str | None
     created_at: str
-    role: Literal["owner", "reviewer", "read_only"]
-    resource_scope: Literal["workspace", "owner", "owner_sensitive"]
-    aal: Literal["aal1", "aal2"]
+    role: Literal["owner"]
+    resource_scope: Literal["owner_sensitive"]
+    aal: Literal["aal2"]
 
 
 class CompanyContextResponse(CompanyAccessModel):
@@ -188,10 +188,9 @@ class CompanyAccessService:
     ) -> CompanyContextResponse:
         subject = await self._gateway.session_subject(access_token)
         aal = _token_aal(access_token)
-        # This operation deliberately has one server-owned policy.  A caller may
-        # choose a company they are already entitled to see, but may never choose
-        # a lower resource scope to obtain this complete owner context at AAL1.
-        resource_scope: Literal["owner_sensitive"] = "owner_sensitive"
+        # This operation deliberately has one server-owned policy. A caller may
+        # choose a company they own, but may never lower its owner-sensitive
+        # scope or AAL2 requirement.
         if aal != "aal2":
             raise CompanyAccessError(
                 status=403,
@@ -204,7 +203,7 @@ class CompanyAccessService:
             str(item["company_id"]): str(item["role"])
             for item in memberships
             if item.get("accepted_at") is not None
-            and item.get("role") in {"owner", "reviewer", "read_only"}
+            and item.get("role") == "owner"
         }
         allowed_ids = [company_id] if company_id else list(roles)
         companies = await self._gateway.companies(access_token, allowed_ids)
@@ -221,10 +220,7 @@ class CompanyAccessService:
                 title="Company context not found",
                 detail="The requested company context was not found.",
             )
-        selected = permitted_companies[0]
-        role = roles[str(selected["id"])]
         def context(company: Mapping[str, object]) -> CompanyContext:
-            company_role = roles[str(company["id"])]
             return CompanyContext(
                 id=str(company["id"]),
                 org_number=str(company["org_number"]),
@@ -247,9 +243,9 @@ class CompanyAccessService:
                     else None
                 ),
                 created_at=str(company["created_at"]),
-                role=company_role,  # type: ignore[arg-type]
-                resource_scope=resource_scope,
-                aal=aal,
+                role="owner",
+                resource_scope="owner_sensitive",
+                aal="aal2",
             )
 
         contexts = [context(company) for company in permitted_companies]

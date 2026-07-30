@@ -14,7 +14,7 @@ export type CompanyAccessPresentation = {
   city: string;
   status_text: string;
   source: string;
-  role: "owner" | "reviewer" | "read_only";
+  role: "owner";
 };
 
 export function presentCompanyAccessContext(context: CompanyContext): CompanyAccessPresentation {

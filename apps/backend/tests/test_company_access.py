@@ -21,13 +21,16 @@ def access_token(aal: str = "aal1") -> str:
 
 
 class CompanyAccessGatewayStub:
+    def __init__(self, role: str = "owner") -> None:
+        self.role = role
+
     async def session_subject(self, _access_token: str) -> str:
         return "owner-1"
 
     async def memberships(
         self, _access_token: str, _subject: str
     ) -> list[Mapping[str, object]]:
-        return [{"company_id": "company-1", "role": "owner", "accepted_at": "2026-07-30T00:00:00Z"}]
+        return [{"company_id": "company-1", "role": self.role, "accepted_at": "2026-07-30T00:00:00Z"}]
 
     async def companies(
         self, _access_token: str, company_ids: list[str]
@@ -70,8 +73,9 @@ class CompanyAccessGatewayStub:
 class LocalSupabaseGateway:
     """Hermetic HTTP server that exercises the Auth -> PostgREST gateway path."""
 
-    def __init__(self) -> None:
+    def __init__(self, membership_role: str = "owner") -> None:
         self.calls: list[tuple[str, str, str, str]] = []
+        self.membership_role = membership_role
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.url = f"http://127.0.0.1:{self._server.server_port}"
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
@@ -102,7 +106,7 @@ class LocalSupabaseGateway:
                     self._json(
                         200,
                         [] if token.startswith("outsider-") else [
-                            {"company_id": "company-1", "role": "owner", "accepted_at": "2026-07-30T00:00:00Z"}
+                            {"company_id": "company-1", "role": gateway.membership_role, "accepted_at": "2026-07-30T00:00:00Z"}
                         ],
                     )
                     return
@@ -228,6 +232,19 @@ def test_cross_company_context_is_concealed() -> None:
     assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
 
 
+def test_non_owner_memberships_are_concealed_from_owner_sensitive_context() -> None:
+    for role in ("reviewer", "read_only"):
+        app = create_app(CompanyAccessService(CompanyAccessGatewayStub(role)))
+
+        response = TestClient(app).get(
+            "/api/v1/company-access/context",
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        )
+
+        assert response.status_code == 404
+        assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
+
+
 def test_full_company_context_cannot_be_downgraded_to_workspace_scope() -> None:
     app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
 
@@ -245,6 +262,19 @@ def test_resource_scope_is_not_a_public_company_context_parameter() -> None:
     parameters = schema["paths"]["/api/v1/company-access/context"]["get"].get("parameters", [])
 
     assert "resource_scope" not in {parameter["name"] for parameter in parameters}
+
+
+def test_owner_context_contract_uses_fixed_role_scope_and_assurance_literals() -> None:
+    schema = create_app(CompanyAccessService(CompanyAccessGatewayStub())).openapi()
+    context = schema["components"]["schemas"]["CompanyContext"]
+
+    assert context["properties"]["role"] == {"const": "owner", "title": "Role", "type": "string"}
+    assert context["properties"]["resourceScope"] == {
+        "const": "owner_sensitive",
+        "title": "Resourcescope",
+        "type": "string",
+    }
+    assert context["properties"]["aal"] == {"const": "aal2", "title": "Aal", "type": "string"}
 
 
 def test_real_gateway_validates_session_before_rls_reads_and_keeps_the_user_bearer() -> None:
@@ -306,3 +336,19 @@ def test_real_gateway_aal1_and_rls_outsider_or_cross_company_reads_fail_closed()
     assert outsider.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
     assert cross_company.status_code == 404
     assert cross_company.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
+
+
+def test_real_gateway_conceals_reviewer_and_read_only_memberships() -> None:
+    for role in ("reviewer", "read_only"):
+        with LocalSupabaseGateway(role) as server:
+            response = TestClient(gateway_app(server)).get(
+                "/api/v1/company-access/context",
+                headers={"Authorization": f"Bearer {access_token('aal2')}"},
+            )
+
+        assert response.status_code == 404
+        assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
+        assert [path for path, *_ in server.calls] == [
+            "/auth/v1/user",
+            "/rest/v1/company_memberships",
+        ]

@@ -41,7 +41,7 @@ function psql(containerName, args = [], input) {
   return result.stdout;
 }
 
-test("company access RLS is executed in a fresh PostgreSQL isolation harness", { timeout: 120_000 }, () => {
+test("company access RLS isolates tenants and exposes exact membership roles to owner policy", { timeout: 120_000 }, () => {
   const dockerInfo = docker(["info", "--format", "{{.ServerVersion}}"]).status;
   assert.equal(dockerInfo, 0, "Docker is required for the mandatory company-access PostgreSQL rehearsal");
 
@@ -71,18 +71,30 @@ test("company access RLS is executed in a fresh PostgreSQL isolation harness", {
         ('00000000-0000-0000-0000-000000000001', 'creator@example.test'),
         ('00000000-0000-0000-0000-000000000011', 'member@example.test'),
         ('00000000-0000-0000-0000-000000000022', 'other@example.test'),
-        ('00000000-0000-0000-0000-000000000033', 'outsider@example.test');
+        ('00000000-0000-0000-0000-000000000033', 'outsider@example.test'),
+        ('00000000-0000-0000-0000-000000000044', 'reviewer@example.test'),
+        ('00000000-0000-0000-0000-000000000055', 'read-only@example.test');
       insert into public.companies (id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by) values
         ('10000000-0000-0000-0000-000000000001', '314159265', 'Member AS', 'AS', 'One', '0150', 'Oslo', 'Active', 'test', '00000000-0000-0000-0000-000000000001'),
         ('20000000-0000-0000-0000-000000000002', '271828182', 'Other AS', 'AS', 'Two', '5003', 'Bergen', 'Active', 'test', '00000000-0000-0000-0000-000000000001');
       insert into public.company_memberships (company_id, user_id, role, accepted_at) values
         ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'owner', now()),
-        ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000022', 'owner', now());
+        ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000022', 'owner', now()),
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000044', 'reviewer', now()),
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000055', 'read_only', now());
       set role authenticated;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
       do $$ begin
         if (select array_agg(id order by id) from public.companies) != array['10000000-0000-0000-0000-000000000001'::uuid] then raise exception 'member received a cross-company row'; end if;
         if (select array_agg(company_id order by company_id) from public.company_memberships) != array['10000000-0000-0000-0000-000000000001'::uuid] then raise exception 'member received another membership'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ begin
+        if (select role from public.company_memberships) != 'reviewer' then raise exception 'reviewer role was not preserved through RLS'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000055', false);
+      do $$ begin
+        if (select role from public.company_memberships) != 'read_only' then raise exception 'read-only role was not preserved through RLS'; end if;
       end $$;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
       do $$ begin

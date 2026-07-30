@@ -48,6 +48,9 @@ test("the committed contract exposes the authenticated company-context operation
   );
   assert.ok(operation?.responses["401"].content["application/problem+json"]);
   assert.ok(operation?.responses["404"].content["application/problem+json"]);
+  assert.equal(contract.components.schemas.CompanyContext.properties.role.const, "owner");
+  assert.equal(contract.components.schemas.CompanyContext.properties.resourceScope.const, "owner_sensitive");
+  assert.equal(contract.components.schemas.CompanyContext.properties.aal.const, "aal2");
 });
 
 test("the tracer contract declares optional request and response correlation headers", () => {

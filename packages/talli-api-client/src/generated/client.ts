@@ -8,7 +8,7 @@ export interface SystemBoundaryStatus {
 }
 
 export interface CompanyContext {
-  aal: "aal1" | "aal2";
+  aal: "aal2";
   address: string;
   city: string;
   createdAt: string;
@@ -20,8 +20,8 @@ export interface CompanyContext {
   name: string;
   orgNumber: string;
   postalCode: string;
-  resourceScope: "workspace" | "owner" | "owner_sensitive";
-  role: "owner" | "reviewer" | "read_only";
+  resourceScope: "owner_sensitive";
+  role: "owner";
   source: string;
   statusText: string;
 }
@@ -70,9 +70,9 @@ function isCompanyContext(value: unknown): value is CompanyContext {
     (value.identityConfirmedAt === null || typeof value.identityConfirmedAt === "string") &&
     (value.identityLockedAt === null || typeof value.identityLockedAt === "string") &&
     typeof value.createdAt === "string" &&
-    (value.role === "owner" || value.role === "reviewer" || value.role === "read_only") &&
-    (value.resourceScope === "workspace" || value.resourceScope === "owner" || value.resourceScope === "owner_sensitive") &&
-    (value.aal === "aal1" || value.aal === "aal2")
+    value.role === "owner" &&
+    value.resourceScope === "owner_sensitive" &&
+    value.aal === "aal2"
   );
 }
 

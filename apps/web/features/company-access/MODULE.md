@@ -30,7 +30,8 @@ The feature has no web-feature dependency and consumes only the root
 ## Cache, browser, and tests
 
 Authenticated company context defaults to `no-store`; the complete context is
-available only after the backend's server-owned AAL2 policy. No cache exception or
+available only after the backend's server-owned owner/AAL2 policy, and the
+generated decoder rejects any broader role, scope, or assurance value. No cache exception or
 direct browser business-data flow is approved. Feature coverage is in
 `apps/web/tests/company-access-presentation.test.mjs`; architecture coverage is
 in `tests/architecture_foundation.test.mjs`.
