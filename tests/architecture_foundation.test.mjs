@@ -38,8 +38,19 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   const result = checkArchitecture({ root: repositoryRoot, writeEvidence: false });
 
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.evidence.modules, ["backend-system:system_boundary", "web:system-boundary"]);
+  assert.deepEqual(result.evidence.modules, [
+    "backend-system:system_boundary",
+    "backend:company_access",
+    "web:company-access",
+    "web:system-boundary",
+  ]);
   assert.deepEqual(result.evidence.edges, [
+    {
+      from: "backend-system:company-access-context",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
     {
       from: "backend-system:system-boundary-tracer",
       imports: ["talli_backend.modules.system_boundary.public"],
@@ -814,7 +825,7 @@ from ..other import internal as other_internal
   writeFileSync(
     backendDocumentationPath,
     readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/system-boundary/tracer"]',
+      '"routes":["/api/v1/company-access/context","/api/v1/system-boundary/tracer"]',
       '"routes":["/invented-system-route"]',
     ),
   );

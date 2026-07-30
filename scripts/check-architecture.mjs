@@ -1000,7 +1000,7 @@ function discoverMigrationTables(root) {
   return [...tables].sort();
 }
 
-function validateDatabaseCatalog(root, backendSystem, errors, schema) {
+function validateDatabaseCatalog(root, backendSystem, manifests, errors, schema) {
   const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
   validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
   const discovered = new Set(discoverMigrationTables(root));
@@ -1020,6 +1020,27 @@ function validateDatabaseCatalog(root, backendSystem, errors, schema) {
   }
   for (const table of declaredTechnical) {
     if (!catalogTechnical.has(table)) errors.push(`architecture/backend-system.json: technical ownership is not catalogued ${table}`);
+  }
+  const capabilityOwners = new Map();
+  for (const manifest of manifests.filter((item) => item.kind === "backend-capability")) {
+    for (const table of manifest.owns?.tables ?? []) {
+      if (capabilityOwners.has(table)) {
+        errors.push(`backend capability table has multiple owners ${table}`);
+      }
+      capabilityOwners.set(table, manifest.owner);
+    }
+  }
+  for (const entry of catalogEntries) {
+    if (entry.kind !== "capability-business") continue;
+    if (capabilityOwners.get(entry.name) !== entry.owner) {
+      errors.push(`architecture/database-catalog.json: capability ownership disagrees for ${entry.name}`);
+    }
+  }
+  for (const [table, owner] of capabilityOwners) {
+    const entry = catalogEntries.find((candidate) => candidate.name === table);
+    if (entry?.kind !== "capability-business" || entry.owner !== owner) {
+      errors.push(`architecture/database-catalog.json: capability table ownership is not catalogued ${table}`);
+    }
   }
   return catalog;
 }
@@ -1381,7 +1402,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
   checkSharedKernel(resolvedRoot, sharedKernel, errors);
-  validateDatabaseCatalog(resolvedRoot, backendSystem, errors, schemas.databaseCatalog);
+  validateDatabaseCatalog(resolvedRoot, backendSystem, manifests, errors, schemas.databaseCatalog);
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",

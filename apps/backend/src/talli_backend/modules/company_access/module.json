@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "company_access",
+  "path": "apps/backend/src/talli_backend/modules/company_access",
+  "owner": "backend:company_access",
+  "purpose": "Own authenticated company-context authorization: validated Supabase sessions, accepted membership, role, resource scope, AAL2 policy, and tenant-concealed selection.",
+  "documentation": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.company_access.public",
+  "exports": {
+    "commands": [],
+    "queries": ["CompanyAccessService", "CompanyContextResponse"],
+    "events": [],
+    "errors": ["CompanyAccessError"],
+    "identifiers": ["CompanyContext"]
+  },
+  "owns": {
+    "postgresSchemas": ["public"],
+    "tables": ["public.companies", "public.company_memberships"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations/0001_authenticated_workspace.sql"
+  },
+  "ports": [],
+  "dependencies": [],
+  "allowedImports": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "json", "os", "pydantic", "typing", "urllib.error", "urllib.parse", "urllib.request"],
+  "forbiddenResponsibilities": [
+    "Company onboarding, invitations, agreement acceptance, cancellation, or support-operator workflows",
+    "Service-role access or RLS bypass for ordinary business reads",
+    "Web presentation, handwritten web DTOs, or direct browser persistence"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_company_access.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

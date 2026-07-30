@@ -9,6 +9,12 @@
       "purpose": "Returns a deterministic availability response from the independently deployable FastAPI boundary.",
       "publicPackages": ["talli_backend.modules.system_boundary.public"],
       "routes": ["/api/v1/system-boundary/tracer"]
+    },
+    {
+      "name": "company-access-context",
+      "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": ["/api/v1/company-access/context"]
     }
   ],
   "operationalControlState": {
@@ -39,8 +45,8 @@
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "pydantic", "starlette", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
-    "workflows": ["talli_backend.modules.system_boundary.public"],
+    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
+    "workflows": ["talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public"],
     "adapters": []
   }
 }

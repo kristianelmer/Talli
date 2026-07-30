@@ -17,7 +17,6 @@
         "apps/web/app/lib/corporate-signed-artifacts.ts",
         "apps/web/app/lib/rf1086-feedback-persistence.ts",
         "apps/web/app/lib/security.ts",
-        "apps/web/app/lib/supabase/company-workspaces.ts",
         "apps/web/app/lib/supabase/server.ts",
         "apps/web/app/lib/system-user-flow.ts"
       ],

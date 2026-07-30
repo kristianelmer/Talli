@@ -7,9 +7,9 @@ import { companiesRequiringCurrentCustomerAgreement } from "../lib/customer-agre
 import {
   getOperatorContext,
   listCustomerAgreementAcceptances,
-  listOwnedCompanyWorkspaces,
   needsEmailVerification,
 } from "../lib/supabase/server";
+import { listCompanyAccessContexts } from "../lib/company-access-context";
 import { ownerCopy } from "../lib/copy";
 import { AppNav } from "./AppNav";
 
@@ -23,7 +23,7 @@ export default async function OwnerLayout({
   if (needsEmailVerification(user)) {
     redirect("/verify-email");
   }
-  const { companies, error: companiesError } = await listOwnedCompanyWorkspaces(user.id);
+  const { companies, error: companiesError } = await listCompanyAccessContexts({ resourceScope: "owner" });
   const { acceptances, error: acceptancesError } = companiesError
     ? { acceptances: [], error: null }
     : await listCustomerAgreementAcceptances(companies.map(({ id }) => id));

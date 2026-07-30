@@ -3,8 +3,8 @@ import { ownerCopy } from "../../lib/copy";
 import {
   createSupabaseServerClient,
   getCurrentUser,
-  listCompanyWorkspaces,
 } from "../../lib/supabase/server";
+import { listCompanyAccessContexts } from "../../lib/company-access-context";
 import { SystemUserRequestControls } from "./SystemUserRequestControls";
 import {
   loadSystemUserRequestPresentations,
@@ -27,7 +27,7 @@ export default async function ConnectionsPage({ searchParams }: ConnectionsPageP
   const c = ownerCopy.connections;
   const user = await getCurrentUser();
   const { companies, error: companiesError } = user
-    ? await listCompanyWorkspaces(user.id)
+    ? await listCompanyAccessContexts()
     : { companies: [], error: "Innlogging kreves." };
   const selectedCompany = selectReadableCompany(query?.company, companies);
   const notice = systemUserCallbackNotice(query?.systembruker, c);

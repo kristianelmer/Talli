@@ -1,6 +1,14 @@
 {
   "edges": [
     {
+      "from": "backend-system:company-access-context",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
@@ -12,6 +20,8 @@
   "generatedBy": "scripts/check-architecture.mjs",
   "modules": [
     "backend-system:system_boundary",
+    "backend:company_access",
+    "web:company-access",
     "web:system-boundary"
   ],
   "schemaVersion": "1.0",
