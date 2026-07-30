@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
+import ts from "typescript";
 
 const MODULE_REQUIRED = [
   "schemaVersion",
@@ -33,6 +34,7 @@ const BACKEND_SYSTEM_REQUIRED = [
 ];
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
+const PERSISTENCE_CLIENT_NAMES = new Set(["supabase", "service", "client", "serviceRoleClient"]);
 
 function rootPath(root) {
   return root instanceof URL ? fileURLToPath(root) : resolve(root);
@@ -97,6 +99,59 @@ function importedSpecifiers(source) {
     values.push(match[1]);
   }
   return values;
+}
+
+function unwrappedExpression(expression) {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current)
+    || ts.isAsExpression(current)
+    || ts.isNonNullExpression(current)
+    || ts.isSatisfiesExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function propertyAccess(expression) {
+  const unwrapped = unwrappedExpression(expression);
+  if (ts.isPropertyAccessExpression(unwrapped)) {
+    return { receiver: unwrappedExpression(unwrapped.expression), name: unwrapped.name.text };
+  }
+  if (ts.isElementAccessExpression(unwrapped)) {
+    const argument = unwrapped.argumentExpression;
+    if (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) {
+      return { receiver: unwrappedExpression(unwrapped.expression), name: argument.text };
+    }
+  }
+  return undefined;
+}
+
+function hasDirectWebPersistence(source, path) {
+  const scriptKind = /\.[jt]sx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
+  let found = false;
+  function visit(node) {
+    if (found) return;
+    if (ts.isCallExpression(node)) {
+      const access = propertyAccess(node.expression);
+      if (access && ["from", "rpc"].includes(access.name)) {
+        if (ts.isIdentifier(access.receiver) && PERSISTENCE_CLIENT_NAMES.has(access.receiver.text)) {
+          found = true;
+          return;
+        }
+        const receiverAccess = propertyAccess(access.receiver);
+        if (access.name === "from" && receiverAccess?.name === "storage") {
+          found = true;
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return found;
 }
 
 function pythonImports(root, paths, errors) {
@@ -393,7 +448,7 @@ function checkModuleImports(root, manifest, errors) {
     }
     if (manifest.kind === "web-feature") {
       if (/\bfetch\s*\(/u.test(source)) errors.push(`${label}: direct business fetch is forbidden`);
-      if (/\b(?:supabase|service|client)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)) {
+      if (hasDirectWebPersistence(source, path)) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
       if (/@talli\/talli-api-client\//u.test(source)) {
@@ -612,7 +667,7 @@ function checkGlobalWebBoundary(root, registry, errors, now) {
       && !hasActiveCompatibility(registry, scopedPath, "direct-business-fetch", now)) {
       errors.push(`${scopedPath}: direct business fetch is forbidden`);
     }
-    if (/\b(?:supabase|service|client|serviceRoleClient)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)
+    if (hasDirectWebPersistence(source, path)
       && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }

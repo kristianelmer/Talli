@@ -139,6 +139,38 @@ test("database catalog and declared public import paths are authoritative", () =
   }
 });
 
+test("multiline web persistence requires an explicit rule-scoped exception", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-persistence-format-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const route = "apps/web/app/documents/[documentId]/download/route.ts";
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  for (const exception of compatibility.exceptions) {
+    exception.paths = exception.paths.filter((path) => path !== route);
+  }
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const realFormatErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(realFormatErrors, new RegExp(`${route.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}: direct web business persistence is forbidden`, "u"));
+
+    const routePath = join(temporaryRoot, route);
+    writeFileSync(
+      routePath,
+      readFileSync(routePath, "utf8").replace(
+        'supabase\n    .from("documents")',
+        'supabase /* repository */\n    . /* table */ from("documents")',
+      ),
+    );
+    const commentedFormatErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(commentedFormatErrors, new RegExp(`${route.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}: direct web business persistence is forbidden`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-deep-enforcement-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
