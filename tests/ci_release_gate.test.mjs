@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflowPath = new URL("../.github/workflows/release-gate.yml", import.meta.url);
+const vercelConfigPath = new URL("../vercel.json", import.meta.url);
 
 test("release gate covers pull requests and main with least privilege", () => {
   const workflow = readFileSync(workflowPath, "utf8");
@@ -86,4 +87,10 @@ test("browser owner rehearsal owns and terminates the Next.js process directly",
   assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
   assert.match(harness, /await stopServer\(server\)/);
   assert.match(harness, /server\.kill\("SIGKILL"\)/);
+});
+
+test("Vercel deploys the Next output produced by the root build", () => {
+  const config = JSON.parse(readFileSync(vercelConfigPath, "utf8"));
+
+  assert.deepEqual(config, { outputDirectory: "apps/web/.next" });
 });
