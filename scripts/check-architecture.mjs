@@ -34,7 +34,6 @@ const BACKEND_SYSTEM_REQUIRED = [
 ];
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
-const PERSISTENCE_CLIENT_NAMES = new Set(["supabase", "service", "client", "serviceRoleClient"]);
 
 function rootPath(root) {
   return root instanceof URL ? fileURLToPath(root) : resolve(root);
@@ -108,6 +107,8 @@ function unwrappedExpression(expression) {
     || ts.isAsExpression(current)
     || ts.isNonNullExpression(current)
     || ts.isSatisfiesExpression(current)
+    || ts.isTypeAssertionExpression(current)
+    || ts.isAwaitExpression(current)
   ) {
     current = current.expression;
   }
@@ -128,30 +129,212 @@ function propertyAccess(expression) {
   return undefined;
 }
 
-function hasDirectWebPersistence(source, path) {
+function expressionPath(expression) {
+  const unwrapped = unwrappedExpression(expression);
+  if (ts.isIdentifier(unwrapped)) return unwrapped.text;
+  if (unwrapped.kind === ts.SyntaxKind.ThisKeyword) return "this";
+  const access = propertyAccess(unwrapped);
+  if (!access) return undefined;
+  const receiver = expressionPath(access.receiver);
+  return receiver ? `${receiver}.${access.name}` : undefined;
+}
+
+function propertyName(node) {
+  if (!node) return undefined;
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)) return node.text;
+  return undefined;
+}
+
+function factoryTargetName(expression) {
+  const unwrapped = unwrappedExpression(expression);
+  if (ts.isIdentifier(unwrapped)) return unwrapped.text;
+  return propertyAccess(unwrapped)?.name;
+}
+
+function webBoundaryViolations(source, path) {
   const scriptKind = /\.[jt]sx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
-  let found = false;
+  const factoryIdentifiers = new Set();
+  const persistenceIdentifiers = new Set();
+  const persistenceProperties = new Set();
+  const persistenceTypeProperties = new Map();
+
+  function add(set, value) {
+    if (!value || set.has(value)) return false;
+    set.add(value);
+    return true;
+  }
+
+  function typeSignalsPersistence(type) {
+    return Boolean(type && /\bSupabase[A-Za-z0-9]*Client\b/u.test(type.getText(sourceFile)));
+  }
+
+  function namedType(type) {
+    return type && ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName)
+      ? type.typeName.text
+      : undefined;
+  }
+
+  function addTypedProperties(base, type) {
+    if (!type) return false;
+    const members = ts.isTypeLiteralNode(type)
+      ? type.members
+      : persistenceTypeProperties.get(namedType(type)) ?? [];
+    let changed = false;
+    for (const member of members) {
+      if (!ts.isPropertySignature(member) || !typeSignalsPersistence(member.type)) continue;
+      const name = propertyName(member.name);
+      if (name) changed = add(persistenceProperties, `${base}.${name}`) || changed;
+    }
+    return changed;
+  }
+
+  function factoryCall(expression) {
+    const unwrapped = unwrappedExpression(expression);
+    if (!ts.isCallExpression(unwrapped)) return false;
+    const name = factoryTargetName(unwrapped.expression);
+    return Boolean(name && (factoryIdentifiers.has(name) || /^createSupabase[A-Za-z0-9]*Client$/u.test(name)));
+  }
+
+  function persistenceExpression(expression) {
+    if (!expression) return false;
+    const unwrapped = unwrappedExpression(expression);
+    if (factoryCall(unwrapped)) return true;
+    if (ts.isIdentifier(unwrapped)) {
+      return persistenceIdentifiers.has(unwrapped.text) || unwrapped.text.toLowerCase() === "supabase";
+    }
+    const pathKey = expressionPath(unwrapped);
+    const access = propertyAccess(unwrapped);
+    return Boolean(
+      (pathKey && persistenceProperties.has(pathKey))
+      || access?.name.toLowerCase() === "supabase"
+    );
+  }
+
+  function addObjectProperties(base, object) {
+    let changed = false;
+    for (const property of object.properties) {
+      if (ts.isPropertyAssignment(property)) {
+        const name = propertyName(property.name);
+        if (name && persistenceExpression(property.initializer)) {
+          changed = add(persistenceProperties, `${base}.${name}`) || changed;
+        }
+      } else if (ts.isShorthandPropertyAssignment(property) && persistenceExpression(property.name)) {
+        changed = add(persistenceProperties, `${base}.${property.name.text}`) || changed;
+      }
+    }
+    return changed;
+  }
+
+  function collectEvidence(node) {
+    let changed = false;
+    if (ts.isImportDeclaration(node)
+      && ts.isStringLiteral(node.moduleSpecifier)
+      && /supabase/iu.test(node.moduleSpecifier.text)
+      && node.importClause?.namedBindings
+      && ts.isNamedImports(node.importClause.namedBindings)) {
+      for (const element of node.importClause.namedBindings.elements) {
+        const imported = element.propertyName?.text ?? element.name.text;
+        if (/^create[A-Za-z0-9]*Client$/u.test(imported)) {
+          changed = add(factoryIdentifiers, element.name.text) || changed;
+        }
+      }
+    }
+    if (ts.isFunctionDeclaration(node) && node.name && /^createSupabase[A-Za-z0-9]*Client$/u.test(node.name.text)) {
+      changed = add(factoryIdentifiers, node.name.text) || changed;
+    }
+    if (ts.isParameter(node) && ts.isIdentifier(node.name)
+      && (typeSignalsPersistence(node.type) || node.name.text.toLowerCase() === "supabase")) {
+      changed = add(persistenceIdentifiers, node.name.text) || changed;
+    }
+    if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+      changed = addTypedProperties(node.name.text, node.type) || changed;
+    }
+    if (ts.isVariableDeclaration(node)) {
+      const initializer = node.initializer;
+      if (ts.isIdentifier(node.name)) {
+        if (initializer && ts.isIdentifier(unwrappedExpression(initializer))
+          && factoryIdentifiers.has(unwrappedExpression(initializer).text)) {
+          changed = add(factoryIdentifiers, node.name.text) || changed;
+        }
+        if (typeSignalsPersistence(node.type) || persistenceExpression(initializer)) {
+          changed = add(persistenceIdentifiers, node.name.text) || changed;
+        }
+        changed = addTypedProperties(node.name.text, node.type) || changed;
+        const unwrapped = initializer && unwrappedExpression(initializer);
+        if (unwrapped && ts.isObjectLiteralExpression(unwrapped)) {
+          changed = addObjectProperties(node.name.text, unwrapped) || changed;
+        }
+      } else if (ts.isObjectBindingPattern(node.name) && initializer) {
+        const base = expressionPath(initializer);
+        for (const element of node.name.elements) {
+          if (!ts.isIdentifier(element.name)) continue;
+          const name = propertyName(element.propertyName) ?? element.name.text;
+          if (name.toLowerCase() === "supabase"
+            || (base && persistenceProperties.has(`${base}.${name}`))) {
+            changed = add(persistenceIdentifiers, element.name.text) || changed;
+          }
+        }
+      }
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const left = unwrappedExpression(node.left);
+      if (ts.isIdentifier(left) && persistenceExpression(node.right)) {
+        changed = add(persistenceIdentifiers, left.text) || changed;
+      } else {
+        const leftPath = expressionPath(left);
+        if (leftPath && persistenceExpression(node.right)) {
+          changed = add(persistenceProperties, leftPath) || changed;
+        }
+      }
+    }
+    ts.forEachChild(node, (child) => {
+      changed = collectEvidence(child) || changed;
+    });
+    return changed;
+  }
+
+  function collectTypeProperties(node) {
+    if (ts.isInterfaceDeclaration(node)) {
+      persistenceTypeProperties.set(node.name.text, node.members);
+    } else if (ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)) {
+      persistenceTypeProperties.set(node.name.text, node.type.members);
+    }
+    ts.forEachChild(node, collectTypeProperties);
+  }
+
+  collectTypeProperties(sourceFile);
+
+  let changed;
+  do {
+    changed = collectEvidence(sourceFile);
+  } while (changed);
+
+  let persistence = false;
+  let fetch = false;
   function visit(node) {
-    if (found) return;
     if (ts.isCallExpression(node)) {
       const access = propertyAccess(node.expression);
+      if (access?.name === "fetch") {
+        const receiverPath = expressionPath(access.receiver);
+        if (["globalThis", "window"].includes(receiverPath)) fetch = true;
+      } else if (ts.isIdentifier(unwrappedExpression(node.expression))
+        && unwrappedExpression(node.expression).text === "fetch") {
+        fetch = true;
+      }
       if (access && ["from", "rpc"].includes(access.name)) {
-        if (ts.isIdentifier(access.receiver) && PERSISTENCE_CLIENT_NAMES.has(access.receiver.text)) {
-          found = true;
-          return;
-        }
+        if (persistenceExpression(access.receiver)) persistence = true;
         const receiverAccess = propertyAccess(access.receiver);
-        if (access.name === "from" && receiverAccess?.name === "storage") {
-          found = true;
-          return;
+        if (access.name === "from" && receiverAccess?.name === "storage"
+          && persistenceExpression(receiverAccess.receiver)) {
+          persistence = true;
         }
       }
     }
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
-  return found;
+  return { fetch, persistence };
 }
 
 function pythonImports(root, paths, errors) {
@@ -447,8 +630,9 @@ function checkModuleImports(root, manifest, errors) {
       }
     }
     if (manifest.kind === "web-feature") {
-      if (/\bfetch\s*\(/u.test(source)) errors.push(`${label}: direct business fetch is forbidden`);
-      if (hasDirectWebPersistence(source, path)) {
+      const boundary = webBoundaryViolations(source, path);
+      if (boundary.fetch) errors.push(`${label}: direct business fetch is forbidden`);
+      if (boundary.persistence) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
       if (/@talli\/talli-api-client\//u.test(source)) {
@@ -663,11 +847,12 @@ function checkGlobalWebBoundary(root, registry, errors, now) {
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
-    if (/(^|[^\w.])fetch\s*\(/mu.test(source)
+    const boundary = webBoundaryViolations(source, path);
+    if (boundary.fetch
       && !hasActiveCompatibility(registry, scopedPath, "direct-business-fetch", now)) {
       errors.push(`${scopedPath}: direct business fetch is forbidden`);
     }
-    if (hasDirectWebPersistence(source, path)
+    if (boundary.persistence
       && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }

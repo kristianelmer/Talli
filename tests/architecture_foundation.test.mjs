@@ -171,6 +171,41 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   }
 });
 
+test("web boundary detection follows client provenance without flagging ordinary from methods", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-receiver-provenance-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const adversarialPath = "apps/web/app/receiver-bypass.ts";
+  const benignPath = "apps/web/app/ordinary-from.ts";
+  writeFileSync(
+    join(temporaryRoot, adversarialPath),
+    `import { createClient as buildDatabase } from "@supabase/supabase-js";
+const db = buildDatabase("https://example.invalid", "public-key");
+db.from("companies");
+const input = { gateway: db };
+input.gateway.rpc("post_entry");
+globalThis.fetch("/api/v1/companies");
+`,
+  );
+  writeFileSync(
+    join(temporaryRoot, benignPath),
+    `const ordinaryCollection = { from(value: string) { return value; } };
+ordinaryCollection.from("not-persistence");
+`,
+  );
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    const escapedAdversarialPath = adversarialPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    assert.match(errors, new RegExp(`${escapedAdversarialPath}: direct web business persistence is forbidden`, "u"));
+    assert.match(errors, new RegExp(`${escapedAdversarialPath}: direct business fetch is forbidden`, "u"));
+    assert.doesNotMatch(errors, new RegExp(benignPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-deep-enforcement-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
