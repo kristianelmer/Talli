@@ -41,7 +41,6 @@ jobs:
           uv sync --locked
           uv sync --project apps/backend --locked
           npm ci
-          npm ci --prefix apps/web
 
       - name: Fetch the pinned official tax schemas
         run: |

@@ -27,7 +27,6 @@ test("release gate runs every customer-readiness check before promotion", () => 
 
   for (const required of [
     "npm ci",
-    "npm ci --prefix apps/web",
     "python -m pip install uv==0.10.2",
     "uv sync --locked",
     "uv sync --project apps/backend --locked",
@@ -48,6 +47,11 @@ test("release gate runs every customer-readiness check before promotion", () => 
   ]) {
     assert.ok(workflow.includes(required), `missing required release check: ${required}`);
   }
+  assert.doesNotMatch(
+    workflow,
+    /npm ci --prefix apps\/web/,
+    "the root workspace install must remain the sole application install",
+  );
 
   assert.match(workflow, /uses: actions\/checkout@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-node@[0-9a-f]{40}/);
