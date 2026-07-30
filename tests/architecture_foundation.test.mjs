@@ -30,6 +30,10 @@ function initializeFixtureRepository(root, date = "2026-07-30T00:00:00Z") {
   git(root, ["commit", "--quiet", "-m", "fixture baseline"], date);
 }
 
+function tagCustomerReadyRelease(root, id, date) {
+  git(root, ["tag", "--annotate", id, "--message", `${id} fixture release`], date);
+}
+
 test("architecture manifests, scoped documentation, and dependency evidence agree", () => {
   const result = checkArchitecture({ root: repositoryRoot, writeEvidence: false });
 
@@ -188,13 +192,13 @@ test("a fabricated release revision is rejected against the real tag target", ()
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
   initializeFixtureRepository(temporaryRoot);
-  git(temporaryRoot, ["tag", "customer-ready-v1"]);
+  tagCustomerReadyRelease(temporaryRoot, "customer-ready-v1", "2026-07-30T00:00:00Z");
   const releaseStatePath = join(temporaryRoot, "architecture/release-state.json");
   writeFileSync(releaseStatePath, JSON.stringify({
     schemaVersion: "1.0",
     latestStableCustomerReadyRelease: {
       id: "customer-ready-v1",
-      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-v1"]),
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(taggerdate:iso-strict)", "refs/tags/customer-ready-v1"]),
       gitRevision: "1111111111111111111111111111111111111111",
     },
   }));
@@ -209,19 +213,73 @@ test("a fabricated release revision is rejected against the real tag target", ()
   }
 });
 
+test("a lightweight customer-ready tag is rejected as a stable release", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-lightweight-release-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  initializeFixtureRepository(temporaryRoot);
+  git(temporaryRoot, ["tag", "customer-ready-v1"]);
+  writeFileSync(join(temporaryRoot, "architecture/release-state.json"), JSON.stringify({
+    schemaVersion: "1.0",
+    latestStableCustomerReadyRelease: {
+      id: "customer-ready-v1",
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-v1"]),
+      gitRevision: git(temporaryRoot, ["rev-parse", "customer-ready-v1^{commit}"]),
+    },
+  }));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /customer-ready Git tag customer-ready-v1 must be an annotated tag object/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("reachable annotated releases with equal tagger timestamps fail closed", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-ambiguous-release-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  initializeFixtureRepository(temporaryRoot);
+  const releaseDate = "2026-07-30T00:00:00Z";
+  tagCustomerReadyRelease(temporaryRoot, "customer-ready-v1", releaseDate);
+  tagCustomerReadyRelease(temporaryRoot, "customer-ready-v2", releaseDate);
+  writeFileSync(join(temporaryRoot, "architecture/release-state.json"), JSON.stringify({
+    schemaVersion: "1.0",
+    latestStableCustomerReadyRelease: {
+      id: "customer-ready-v2",
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(taggerdate:iso-strict)", "refs/tags/customer-ready-v2"]),
+      gitRevision: git(temporaryRoot, ["rev-parse", "customer-ready-v2^{commit}"]),
+    },
+  }));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /ambiguous customer-ready Git tags customer-ready-v1, customer-ready-v2 share tagger timestamp/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("a stale release selection is rejected after a later reachable tag", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-stale-release-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
   initializeFixtureRepository(temporaryRoot, "2026-07-30T00:00:00Z");
-  git(temporaryRoot, ["tag", "customer-ready-v1"]);
+  tagCustomerReadyRelease(temporaryRoot, "customer-ready-v1", "2026-07-30T00:00:00Z");
   const firstRevision = git(temporaryRoot, ["rev-parse", "customer-ready-v1^{commit}"]);
-  const firstReleasedAt = git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-v1"]);
+  const firstReleasedAt = git(temporaryRoot, ["for-each-ref", "--format=%(taggerdate:iso-strict)", "refs/tags/customer-ready-v1"]);
   writeFileSync(join(temporaryRoot, "later-release.txt"), "later\n");
   git(temporaryRoot, ["add", "later-release.txt"]);
   git(temporaryRoot, ["commit", "--quiet", "-m", "later release"], "2026-07-31T00:00:00Z");
-  git(temporaryRoot, ["tag", "customer-ready-v2"]);
+  tagCustomerReadyRelease(temporaryRoot, "customer-ready-v2", "2026-07-31T00:00:00Z");
   writeFileSync(join(temporaryRoot, "architecture/release-state.json"), JSON.stringify({
     schemaVersion: "1.0",
     latestStableCustomerReadyRelease: {
@@ -247,13 +305,17 @@ test("a real stable customer-ready release after approval revokes the compatibil
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
   initializeFixtureRepository(temporaryRoot, "2026-07-31T00:00:00Z");
-  git(temporaryRoot, ["tag", "customer-ready-2026-07-31"]);
+  tagCustomerReadyRelease(
+    temporaryRoot,
+    "customer-ready-2026-07-31",
+    "2026-07-31T00:00:00Z",
+  );
   const releaseStatePath = join(temporaryRoot, "architecture/release-state.json");
   writeFileSync(releaseStatePath, JSON.stringify({
     schemaVersion: "1.0",
     latestStableCustomerReadyRelease: {
       id: "customer-ready-2026-07-31",
-      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(creatordate:iso-strict)", "refs/tags/customer-ready-2026-07-31"]),
+      releasedAt: git(temporaryRoot, ["for-each-ref", "--format=%(taggerdate:iso-strict)", "refs/tags/customer-ready-2026-07-31"]),
       gitRevision: git(temporaryRoot, ["rev-parse", "customer-ready-2026-07-31^{commit}"]),
     },
   }));

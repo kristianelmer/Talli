@@ -1277,9 +1277,24 @@ function latestReachableCustomerReadyRelease(root, errors) {
       { encoding: "utf8" },
     );
     if (reachable.status !== 0) continue;
+    const objectType = gitOutput(repository, ["cat-file", "-t", `refs/tags/${id}`]);
+    if (objectType !== "tag") {
+      errors.push(
+        `architecture/release-state.json: customer-ready Git tag ${id} must be an annotated tag object`,
+      );
+      continue;
+    }
+    const tagObject = gitOutput(repository, ["cat-file", "tag", `refs/tags/${id}`]);
+    const tagIdentity = tagObject?.match(/^tag (.+)$/mu)?.[1];
+    if (tagIdentity !== id) {
+      errors.push(
+        `architecture/release-state.json: customer-ready Git tag ${id} has mismatched tag object identity ${tagIdentity ?? "(missing)"}`,
+      );
+      continue;
+    }
     const releasedAt = gitOutput(
       repository,
-      ["for-each-ref", "--format=%(creatordate:iso-strict)", `refs/tags/${id}`],
+      ["for-each-ref", "--format=%(taggerdate:iso-strict)", `refs/tags/${id}`],
     );
     const timestamp = rfc3339Timestamp(releasedAt);
     if (timestamp === undefined) {
@@ -1288,9 +1303,22 @@ function latestReachableCustomerReadyRelease(root, errors) {
     }
     candidates.push({ id, releasedAt, gitRevision, timestamp });
   }
-  candidates.sort((left, right) => (
-    right.timestamp - left.timestamp || right.id.localeCompare(left.id)
-  ));
+  const tagsByTimestamp = new Map();
+  for (const candidate of candidates) {
+    const ids = tagsByTimestamp.get(candidate.timestamp) ?? [];
+    ids.push(candidate.id);
+    tagsByTimestamp.set(candidate.timestamp, ids);
+  }
+  for (const ids of tagsByTimestamp.values()) {
+    if (ids.length > 1) {
+      const sortedIds = ids.sort();
+      errors.push(
+        `architecture/release-state.json: ambiguous customer-ready Git tags ${sortedIds.join(", ")} share tagger timestamp`,
+      );
+      return null;
+    }
+  }
+  candidates.sort((left, right) => right.timestamp - left.timestamp);
   const latest = candidates[0];
   return latest
     ? { id: latest.id, releasedAt: latest.releasedAt, gitRevision: latest.gitRevision }
