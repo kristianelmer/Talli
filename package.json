@@ -14,6 +14,8 @@
     "start": "npm --prefix apps/web run start",
     "generate:openapi": "uv run --project apps/backend python apps/backend/scripts/generate_openapi.py",
     "generate:api-client": "node scripts/generate-api-client.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json",
+    "test:architecture": "node --test tests/architecture_foundation.test.mjs",
     "test:boundary-backend": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests",
     "test:boundary-web": "node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs",
     "test:boundary-contract": "node --test tests/contract/web_fastapi_boundary.test.mjs",
@@ -114,6 +116,7 @@
     "@types/node": "24.0.0",
     "@types/react": "19.0.0",
     "@types/react-dom": "19.0.0",
+    "ajv": "^8.17.1",
     "playwright": "^1.61.0",
     "supabase": "2.109.1",
     "typescript": "6.0.3"

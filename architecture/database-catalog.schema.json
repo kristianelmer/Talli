@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/database-catalog.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "source", "tables"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "source": { "const": "supabase/migrations" },
+    "tables": { "type": "array", "uniqueItems": true, "items": { "type": "object", "required": ["name", "kind"], "properties": { "name": { "type": "string", "pattern": "^public\\.[a-z_]+$" }, "kind": { "enum": ["technical", "legacy-business"] } }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}

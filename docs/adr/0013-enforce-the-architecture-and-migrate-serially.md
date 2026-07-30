@@ -30,6 +30,12 @@ and expires at that capability's numbered migration stage. It is distinct from
 active-stage compatibility debt. Debt created by the active capability must be
 removed before the next stage; the narrow human exception in issue #132 may defer
 it for at most the earlier of fourteen days or one stable customer-ready release.
+Stable customer-ready releases are annotated Git tag objects whose tag identity
+begins `customer-ready-`. Lightweight tags do not qualify. The tracked release
+state must exactly match the latest such tag reachable from the gated revision,
+including its peeled commit and tagger timestamp. Equal tagger timestamps are
+ambiguous and fail the gate rather than being ordered by tag name. Until the
+first qualifying tag exists, the explicit release state is `null`.
 
 Every capability stage uses characterization, one authoritative writer,
 expand–migrate–contract, deterministic reconciliation, rollback/recutover rehearsal,

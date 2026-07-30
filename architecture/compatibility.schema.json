@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/compatibility.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "exceptions"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "owner", "creationIssue", "removalIssue", "paths", "rules", "approvedBy", "approvedAt", "releaseLimit", "expiresAt", "removalCondition"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^compat-" },
+          "owner": { "type": "string" },
+          "creationIssue": { "type": "string", "pattern": "^#[0-9]+$" },
+          "removalIssue": { "type": "string", "pattern": "^#[0-9]+$" },
+          "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "rules": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["direct-web-business-persistence", "direct-business-fetch", "generated-client-deep-import"] } },
+          "approvedBy": { "type": "string", "minLength": 1 },
+          "approvedAt": { "type": "string", "format": "date-time" },
+          "releaseLimit": { "const": "next-stable-customer-ready-release" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "removalCondition": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

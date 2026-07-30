@@ -32,6 +32,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "uv sync --project apps/backend --locked",
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
+    "npm run check:architecture",
     "npm run test:boundary",
     "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",
@@ -54,6 +55,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
   );
 
   assert.match(workflow, /uses: actions\/checkout@[0-9a-f]{40}/);
+  assert.match(workflow, /fetch-depth:\s+0/, "release verification needs complete tags and history");
   assert.match(workflow, /uses: actions\/setup-node@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.match(workflow, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);

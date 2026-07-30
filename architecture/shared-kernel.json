@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "purpose": "No shared Python package is admitted during the foundation stage. A later capability may declare only a stable immutable primitive import here; business policy, persistence, workflows, adapters, and transport types remain forbidden.",
+  "sourceScopes": ["apps/backend/src/talli_backend/modules"],
+  "allowedPrimitives": [],
+  "forbidden": ["business rules", "database repositories", "provider adapters", "web presentation", "cross-capability orchestration"],
+  "allowedPublicPackages": [],
+  "forbiddenImportPrefixes": [
+    "talli_backend.shared.persistence",
+    "talli_backend.shared.workflows",
+    "talli_backend.shared.adapters",
+    "talli_backend.shared.transport"
+  ]
+}

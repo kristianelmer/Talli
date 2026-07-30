@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/release-state.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "latestStableCustomerReadyRelease"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "latestStableCustomerReadyRelease": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["id", "releasedAt", "gitRevision"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^customer-ready-" },
+            "releasedAt": { "type": "string", "format": "date-time" },
+            "gitRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

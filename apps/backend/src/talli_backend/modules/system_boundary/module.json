@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-technical-module",
+  "name": "system_boundary",
+  "path": "apps/backend/src/talli_backend/modules/system_boundary",
+  "owner": "backend-system:system_boundary",
+  "purpose": "Own the stable availability contract at Talli's FastAPI production boundary without owning a business decision or business data.",
+  "documentation": "apps/backend/src/talli_backend/modules/system_boundary/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.system_boundary.public",
+  "exports": {
+    "commands": [],
+    "queries": ["SYSTEM_BOUNDARY_AVAILABLE"],
+    "events": [],
+    "errors": ["BOUNDARY_UNAVAILABLE"],
+    "identifiers": ["SystemBoundaryTransport", "adapter_for"]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [
+    {
+      "name": "SystemBoundaryTransport",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.system_boundary.public.SystemBoundaryTransport",
+      "registrationDecorator": "talli_backend.modules.system_boundary.public.adapter_for",
+      "adapters": ["talli_backend.main.create_app"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": [],
+  "forbiddenResponsibilities": [
+    "Accounting, filing, billing, or authorization policy",
+    "Business-table ownership or direct persistence",
+    "Provider operations or authoritative writes",
+    "Cross-module implementation imports"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_system_boundary.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

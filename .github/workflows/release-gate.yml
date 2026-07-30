@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Check out the immutable revision
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -64,6 +66,9 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Enforce declared architecture
+        run: npm run check:architecture
+
       - name: Prove the web-to-FastAPI contract boundary
         run: npm run test:boundary
 
@@ -99,6 +104,8 @@ jobs:
     steps:
       - name: Check out the immutable revision
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
