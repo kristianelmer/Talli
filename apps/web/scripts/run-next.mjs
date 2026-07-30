@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { loadEnvFile } from "node:process";
 
 const command = process.argv[2];
@@ -11,9 +12,14 @@ if (existsSync(".env")) {
   loadEnvFile(".env");
 }
 
+const requireFromRepositoryRoot = createRequire(
+  new URL("../../../package.json", import.meta.url),
+);
+const nextCli = requireFromRepositoryRoot.resolve("next/dist/bin/next");
+
 const child = spawn(
   process.execPath,
-  ["apps/web/node_modules/next/dist/bin/next", command, "apps/web"],
+  [nextCli, command, "apps/web"],
   {
     env: process.env,
     stdio: "inherit",
