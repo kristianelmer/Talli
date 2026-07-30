@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -31,6 +32,7 @@ const BACKEND_SYSTEM_REQUIRED = [
   "allowedDependencies",
 ];
 const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
+const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
 
 function rootPath(root) {
   return root instanceof URL ? fileURLToPath(root) : resolve(root);
@@ -97,11 +99,34 @@ function importedSpecifiers(source) {
   return values;
 }
 
-function pythonImports(source) {
-  const imports = [];
-  for (const match of source.matchAll(/^\s*from\s+([A-Za-z_][\w.]*)\s+import\s+/gmu)) imports.push(match[1]);
-  for (const match of source.matchAll(/^\s*import\s+([A-Za-z_][\w.]*)/gmu)) imports.push(match[1]);
-  return imports;
+function pythonImports(root, paths, errors) {
+  if (!paths.length) return new Map();
+  const result = spawnSync(
+    "uv",
+    ["run", "--project", join(root, "apps/backend"), "python", PYTHON_IMPORTS_SCRIPT],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: JSON.stringify({
+        sourceRoot: join(root, "apps/backend/src"),
+        files: paths.map((path) => ({ path, source: readFileSync(path, "utf8") })),
+      }),
+    },
+  );
+  if (result.error || result.status !== 0) {
+    errors.push(`Python import inspection failed: ${result.error?.message ?? result.stderr.trim()}`);
+    return new Map();
+  }
+  try {
+    const parsed = JSON.parse(result.stdout);
+    return new Map(parsed.files.map((file) => {
+      if (file.error) errors.push(`${relative(root, file.path)}: Python import parse failed: ${file.error}`);
+      return [file.path, file.imports ?? []];
+    }));
+  } catch (error) {
+    errors.push(`Python import inspection returned invalid output: ${error.message}`);
+    return new Map();
+  }
 }
 
 function normalizedCompositionDependency(specifier) {
@@ -113,7 +138,7 @@ function checkCompositionRoot(root, system, errors) {
   const sourcePath = join(root, system.compositionRoot);
   if (!existsSync(sourcePath)) return;
   const allowed = new Set(system.allowedDependencies?.transport ?? []);
-  for (const specifier of pythonImports(readFileSync(sourcePath, "utf8"))) {
+  for (const specifier of pythonImports(root, [sourcePath], errors).get(sourcePath) ?? []) {
     if (specifier.startsWith("talli_backend.modules.") && !specifier.endsWith(".public")) {
       errors.push(`${system.compositionRoot}: private backend module dependency ${specifier}`);
       continue;
@@ -217,6 +242,44 @@ function moduleDocumentationInventory(manifest) {
   };
 }
 
+function backendSystemDocumentationInventory(manifest) {
+  return {
+    compositionRoots: [manifest.compositionRoot],
+    workflows: (manifest.workflows ?? []).map((workflow) => workflow.name).sort(),
+    workflowPurposes: (manifest.workflows ?? [])
+      .map((workflow) => `${workflow.name}=>${workflow.purpose}`)
+      .sort(),
+    routes: (manifest.workflows ?? []).flatMap((workflow) => workflow.routes ?? []).sort(),
+    publicPackages: (manifest.workflows ?? []).flatMap((workflow) => workflow.publicPackages ?? []).sort(),
+    operationalOwners: manifest.operationalControlState?.owner ? [manifest.operationalControlState.owner] : [],
+    operationalTables: [...(manifest.operationalControlState?.tables ?? [])].sort(),
+    operationalReleaseDecisions: manifest.operationalControlState?.releaseDecision
+      ? [manifest.operationalControlState.releaseDecision]
+      : [],
+    operationalAdapterRechecks: [String(manifest.operationalControlState?.consequentialAdapterRecheck)],
+    technicalSchemas: [...(manifest.technicalOwnership?.schemas ?? [])].sort(),
+    technicalTables: [...(manifest.technicalOwnership?.tables ?? [])].sort(),
+    technicalMigrations: [...(manifest.technicalOwnership?.migrations ?? [])].sort(),
+    technicalStatements: manifest.technicalOwnership?.statement ? [manifest.technicalOwnership.statement] : [],
+    infrastructure: Object.entries(manifest.infrastructure ?? {})
+      .map(([key, value]) => `${key}=>${value}`)
+      .sort(),
+    ports: (manifest.adapterBindings ?? []).map((binding) => binding.port).sort(),
+    adapterBindings: (manifest.adapterBindings ?? [])
+      .map((binding) => `${binding.port}=>${binding.adapter}`)
+      .sort(),
+    adapterBindingOwners: (manifest.adapterBindings ?? [])
+      .map((binding) => `${binding.port}=>${binding.owner}`)
+      .sort(),
+    adapterBindingModes: (manifest.adapterBindings ?? [])
+      .map((binding) => `${binding.port}=>${binding.mode}`)
+      .sort(),
+    transportDependencies: [...(manifest.allowedDependencies?.transport ?? [])].sort(),
+    workflowDependencies: [...(manifest.allowedDependencies?.workflows ?? [])].sort(),
+    adapterDependencies: [...(manifest.allowedDependencies?.adapters ?? [])].sort(),
+  };
+}
+
 function validateModule(root, manifestPath, errors, schema) {
   const manifest = readJson(manifestPath, errors);
   const label = relative(root, manifestPath);
@@ -295,9 +358,16 @@ function checkModuleImports(root, manifest, errors) {
   const allowedModuleImports = manifest.kind === "web-feature"
     ? declaredFeatureImports(manifest)
     : declaredBackendImports(manifest);
-  for (const path of moduleSourceFiles(root, manifest)) {
+  const sourceFiles = moduleSourceFiles(root, manifest);
+  const pythonImportMap = manifest.kind === "backend-capability"
+    ? pythonImports(root, sourceFiles, errors)
+    : new Map();
+  for (const path of sourceFiles) {
     const source = readFileSync(path, "utf8");
-    for (const specifier of importedSpecifiers(source)) {
+    const specifiers = manifest.kind === "backend-capability"
+      ? pythonImportMap.get(path) ?? []
+      : importedSpecifiers(source);
+    for (const specifier of specifiers) {
       if (specifier.startsWith(".")) {
         const sourceRoot = resolve(root, manifest.path);
         const importedPath = resolve(dirname(path), specifier);
@@ -312,6 +382,8 @@ function checkModuleImports(root, manifest, errors) {
         continue;
       }
       if (manifest.kind === "backend-capability" && specifier.startsWith("talli_backend.modules.")) {
+        const ownModule = `talli_backend.modules.${manifest.name}`;
+        if (specifier === ownModule || specifier.startsWith(`${ownModule}.`)) continue;
         if (!allowedModuleImports.has(specifier)) errors.push(`${label}: forbidden backend deep import ${specifier}`);
         continue;
       }
@@ -358,6 +430,12 @@ function validateSystemManifest(root, errors, schema) {
         errors.push(`architecture/backend-system.json: documentation omits declared ${token}`);
       }
     }
+    reconcileDocumentationInventory(
+      documentation,
+      "architecture/backend-system.json",
+      backendSystemDocumentationInventory(manifest),
+      errors,
+    );
   }
   if (!existsSync(join(root, manifest.compositionRoot ?? ""))) {
     errors.push("architecture/backend-system.json: missing composition root");
@@ -551,21 +629,24 @@ function checkSharedKernel(root, sharedKernel, errors) {
     ...(sharedKernel.allowedPrimitives ?? []),
   ]);
   const forbiddenPrefixes = sharedKernel.forbiddenImportPrefixes ?? [];
+  const files = [];
   for (const sourceScope of sharedKernel.sourceScopes ?? []) {
     const scope = join(root, sourceScope);
     if (!existsSync(scope)) {
       errors.push(`architecture/shared-kernel.json: source scope does not exist ${sourceScope}`);
       continue;
     }
-    for (const path of walk(scope, (candidate) => candidate.endsWith(".py"))) {
-      for (const specifier of pythonImports(readFileSync(path, "utf8"))) {
+    files.push(...walk(scope, (candidate) => candidate.endsWith(".py")));
+  }
+  const importsByFile = pythonImports(root, files, errors);
+  for (const path of files) {
+    for (const specifier of importsByFile.get(path) ?? []) {
         if (!specifier.startsWith("talli_backend.shared.")) continue;
         if (forbiddenPrefixes.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}.`))) {
           errors.push(`${relative(root, path)}: forbidden shared-kernel import ${specifier}`);
         } else if (!allowed.has(specifier)) {
           errors.push(`${relative(root, path)}: undeclared shared-kernel import ${specifier}`);
         }
-      }
     }
   }
 }

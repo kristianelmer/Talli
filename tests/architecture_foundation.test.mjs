@@ -149,7 +149,9 @@ test("backend composition, rule-scoped exceptions, documentation inventories, an
     mainPath,
     `${readFileSync(mainPath, "utf8")}
 from talli_backend.modules.system_boundary.internal import secret
-import requests
+import fastapi, requests
+import collections, talli_backend.modules.system_boundary.internal as private_module
+from .modules.system_boundary import internal as relative_private
 `,
   );
   const systemPath = join(temporaryRoot, "architecture/backend-system.json");
@@ -169,6 +171,7 @@ import "@talli/talli-api-client/src/generated/client.ts";
     publicPath,
     `${readFileSync(publicPath, "utf8")}
 from talli_backend.shared.persistence import SharedRepository
+from ..other import internal as other_internal
 `,
   );
   const documentationPath = join(temporaryRoot, "apps/web/features/system-boundary/MODULE.md");
@@ -178,18 +181,29 @@ from talli_backend.shared.persistence import SharedRepository
 <!-- architecture-inventory {"routes":["/invented-route"]} -->
 `,
   );
+  const backendDocumentationPath = join(temporaryRoot, "architecture/BACKEND-SYSTEM.md");
+  writeFileSync(
+    backendDocumentationPath,
+    readFileSync(backendDocumentationPath, "utf8").replace(
+      '"routes":["/api/v1/system-boundary/tracer"]',
+      '"routes":["/invented-system-route"]',
+    ),
+  );
 
   try {
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
     for (const expected of [
       "private backend module dependency",
       "undeclared composition-root dependency requests",
+      "forbidden backend deep import talli_backend.modules.other",
       "adapter binding does not match declared port adapter",
       "adapter symbol does not exist",
       "apps/web/app/actions.ts: direct business fetch is forbidden",
       "apps/web/app/actions.ts: generated-client deep import is forbidden",
       "forbidden shared-kernel import",
       "documentation inventory has extra routes",
+      "architecture/backend-system.json: documentation inventory is missing routes",
+      "architecture/backend-system.json: documentation inventory has extra routes",
     ]) {
       assert.match(errors, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
     }
