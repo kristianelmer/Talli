@@ -42,9 +42,9 @@ test("a failed object-store removal can restore only the same recent owner reque
 
 test("removed documents disappear from active lists and cannot receive signed download URLs", async () => {
   const [serverSource, downloadSource, pageSource] = await Promise.all([
-    readFile(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/documents/[documentId]/download/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/(owner)/documents/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/documents/[documentId]/download/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/(owner)/documents/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(serverSource, /\.neq\("status", "removed"\)/);

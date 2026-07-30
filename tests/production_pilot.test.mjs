@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   evaluateProductionPilotEntitlement,
   isBillingExemptProductionPilot,
-} from "../app/lib/production-pilot.ts";
-import { buildFilingReleaseGates } from "../app/lib/filing-release-gate.ts";
+} from "../apps/web/app/lib/production-pilot.ts";
+import { buildFilingReleaseGates } from "../apps/web/app/lib/filing-release-gate.ts";
 
 const context = {
   companyId: "company-id",

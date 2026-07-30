@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const layout = readFileSync(new URL("../app/(owner)/layout.tsx", import.meta.url), "utf8");
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const moduleSource = readFileSync(new URL("../app/lib/customer-agreement-reacceptance.ts", import.meta.url), "utf8");
+const layout = readFileSync(new URL("../apps/web/app/(owner)/layout.tsx", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const moduleSource = readFileSync(new URL("../apps/web/app/lib/customer-agreement-reacceptance.ts", import.meta.url), "utf8");
 
 test("owner layout replaces children with an accessible reacceptance gate", () => {
   assert.match(layout, /companiesRequiringCurrentCustomerAgreement/iu);

@@ -5,7 +5,7 @@ import {
   Rf1086AuthorityError,
   createRf1086AuthorityClient,
   executeRf1086AuthoritySubmission,
-} from "../app/lib/rf1086-authority-client.ts";
+} from "../apps/web/app/lib/rf1086-authority-client.ts";
 
 const accessToken = "opaque-authority-token";
 const ids = {

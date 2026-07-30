@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflowPath = new URL("../.github/workflows/release-gate.yml", import.meta.url);
+const vercelConfigPath = new URL("../vercel.json", import.meta.url);
 
 test("release gate covers pull requests and main with least privilege", () => {
   const workflow = readFileSync(workflowPath, "utf8");
@@ -28,11 +29,15 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "npm ci",
     "python -m pip install uv==0.10.2",
     "uv sync --locked",
+    "uv sync --project apps/backend --locked",
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
+    "npm run test:boundary",
+    "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",
     "npm run test:supabase:local",
-    "npm run build",
+    "npm run build:web",
+    "npm run build:backend",
     "npm audit --omit=dev --audit-level=high",
     "git diff --check",
     "TALLI_SKATTE_XSD_DIR",
@@ -42,12 +47,27 @@ test("release gate runs every customer-readiness check before promotion", () => 
   ]) {
     assert.ok(workflow.includes(required), `missing required release check: ${required}`);
   }
+  assert.doesNotMatch(
+    workflow,
+    /npm ci --prefix apps\/web/,
+    "the root workspace install must remain the sole application install",
+  );
 
   assert.match(workflow, /uses: actions\/checkout@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-node@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.match(workflow, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
   assert.match(workflow, /timeout-minutes:/);
+  assert.ok(
+    workflow.indexOf("npm run build:backend") <
+      workflow.indexOf("npm run test:boundary-smoke"),
+    "backend artifact must be built before the production smoke",
+  );
+  assert.ok(
+    workflow.indexOf("npm run build:web") <
+      workflow.indexOf("npm run test:boundary-smoke"),
+    "web artifact must be built before the production smoke",
+  );
 });
 
 test("database isolation uses the locked Python renderer environment", () => {
@@ -71,4 +91,10 @@ test("browser owner rehearsal owns and terminates the Next.js process directly",
   assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
   assert.match(harness, /await stopServer\(server\)/);
   assert.match(harness, /server\.kill\("SIGKILL"\)/);
+});
+
+test("Vercel deploys the Next output produced by the root build", () => {
+  const config = JSON.parse(readFileSync(vercelConfigPath, "utf8"));
+
+  assert.deepEqual(config, { outputDirectory: "apps/web/.next" });
 });

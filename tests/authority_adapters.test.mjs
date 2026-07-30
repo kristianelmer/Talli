@@ -6,7 +6,7 @@ import {
   authoritySubmissionPlans,
   createDisabledAuthorityProductionAdapter,
   currentAuthorityAdapterCapabilities,
-} from "../app/lib/authority-adapters.ts";
+} from "../apps/web/app/lib/authority-adapters.ts";
 
 const obligations = ["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"];
 

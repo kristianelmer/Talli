@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import * as rf1086Production from "../app/lib/rf1086-production.ts";
+import * as rf1086Production from "../apps/web/app/lib/rf1086-production.ts";
 
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const ownerPage = readFileSync(new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
-const operatorPage = readFileSync(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8");
-const supabaseServer = readFileSync(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8");
-const systemUserFlow = readFileSync(new URL("../app/lib/system-user-flow.ts", import.meta.url), "utf8");
-const ownerCopy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const ownerPage = readFileSync(new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
+const operatorPage = readFileSync(new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url), "utf8");
+const supabaseServer = readFileSync(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8");
+const systemUserFlow = readFileSync(new URL("../apps/web/app/lib/system-user-flow.ts", import.meta.url), "utf8");
+const ownerCopy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
 
 test("operator entitlement action is exact and database-authorized", () => {
   assert.match(actions, /export async function upsertProductionPilotEntitlement/u);

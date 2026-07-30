@@ -6,19 +6,19 @@ import {
   buildOwnerDividendAnnualBasis,
   buildOwnerDividendReviewedFacts,
   OwnerDividendDraftBasisError,
-} from "../app/lib/owner-dividend.ts";
+} from "../apps/web/app/lib/owner-dividend.ts";
 
 const ownerDividendSource = readFileSync(
-  new URL("../app/lib/owner-dividend.ts", import.meta.url),
+  new URL("../apps/web/app/lib/owner-dividend.ts", import.meta.url),
   "utf8",
 );
-const actionsSource = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const wizardSource = readFileSync(
-  new URL("../app/(owner)/actions/_components/OwnerDividendWizard.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/actions/_components/OwnerDividendWizard.tsx", import.meta.url),
   "utf8",
 );
 const workspaceSource = readFileSync(
-  new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url),
   "utf8",
 );
 const pythonHoldingActionsSource = readFileSync(

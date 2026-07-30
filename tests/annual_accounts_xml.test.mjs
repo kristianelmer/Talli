@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAnnualAccountsPayload } from "../app/lib/annual-accounts.ts";
-import { renderAnnualAccountsXml } from "../app/lib/annual-accounts-xml.ts";
+import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
+import { renderAnnualAccountsXml } from "../apps/web/app/lib/annual-accounts-xml.ts";
 
 const annualData = {
   id: "annual-data-id",

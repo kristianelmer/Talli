@@ -4,18 +4,18 @@ import test from "node:test";
 
 import {
   SYSTEM_USER_COOKIE,
-} from "../app/lib/system-user-flow.ts";
+} from "../apps/web/app/lib/system-user-flow.ts";
 import {
   createSystemUserCallbackHandler,
   systemUserSiteOrigin,
-} from "../app/auth/systembruker/confirm/route.ts";
+} from "../apps/web/app/auth/systembruker/confirm/route.ts";
 
 const requestId = "22345678-1234-4234-8234-123456789abc";
 const companyId = "12345678-1234-4234-8234-123456789abc";
 const ownerId = "32345678-1234-4234-8234-123456789abc";
 
 test("production route import defers canonical origin validation until a callback request", () => {
-  const routeUrl = new URL("../app/auth/systembruker/confirm/route.ts", import.meta.url).href;
+  const routeUrl = new URL("../apps/web/app/auth/systembruker/confirm/route.ts", import.meta.url).href;
   const result = spawnSync(
     process.execPath,
     [

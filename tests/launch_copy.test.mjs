@@ -7,21 +7,21 @@ import {
   preProductionDirectFilingCopy,
   requiredNonAffiliationCopy,
   validateLaunchCopy,
-} from "../app/lib/launch-copy.ts";
+} from "../apps/web/app/lib/launch-copy.ts";
 
-const ownerCopySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+const ownerCopySource = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
 
 test("requires non-affiliation and pre-production gate language in public app copy", () => {
   // The canonical launch strings are wired into the central owner copy module
   // (see app/lib/copy.ts -> ownerCopy.filing) since the UX rebuild (#89/#93).
-  const copy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
 
   assert.match(copy, /requiredNonAffiliationCopy/);
   assert.match(copy, /preProductionDirectFilingCopy/);
 
   // ...and that copy is surfaced where the owner reviews submission readiness.
   const submissionReview = readFileSync(
-    new URL("../app/components/annual-workspace/SubmissionReview.tsx", import.meta.url),
+    new URL("../apps/web/app/components/annual-workspace/SubmissionReview.tsx", import.meta.url),
     "utf8",
   );
 
@@ -46,7 +46,7 @@ test("rejects launch claims that outrun authority evidence", () => {
 });
 
 test("public homepage is a truthful invite-only free beta invitation", () => {
-  const publicPage = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const publicPage = readFileSync(new URL("../apps/web/app/page.tsx", import.meta.url), "utf8");
 
   assert.equal(inviteOnlyBetaCopy, "Invitasjonsbasert gratis beta");
   assert.match(ownerCopySource, /inviteOnlyBetaCopy/);
@@ -75,7 +75,7 @@ test("public legal copy identifies the real beta operator and contains no placeh
 
 test("email signup communicates the hosted twelve-character password floor", () => {
   const signupPage = readFileSync(
-    new URL("../app/(auth)/signup/page.tsx", import.meta.url),
+    new URL("../apps/web/app/(auth)/signup/page.tsx", import.meta.url),
     "utf8",
   );
 

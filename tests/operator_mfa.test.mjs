@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const component = readFileSync(
-  new URL("../app/(operator)/operator/operator-mfa.tsx", import.meta.url),
+  new URL("../apps/web/app/(operator)/operator/operator-mfa.tsx", import.meta.url),
   "utf8",
 );
-const page = readFileSync(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8");
+const page = readFileSync(new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url), "utf8");
 
 test("operator MFA uses the signed-in browser session and official TOTP APIs", () => {
   assert.match(component, /"use client"/u);

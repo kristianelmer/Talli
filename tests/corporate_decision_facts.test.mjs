@@ -7,8 +7,8 @@ import {
   buildAnnualCloseDecisionInput,
   buildOwnerDividendDecisionInput,
   corporateAnnualSourceHash,
-} from "../app/lib/corporate-decision-facts.ts";
-import { corporateDecisionHash } from "../app/lib/corporate-documents.ts";
+} from "../apps/web/app/lib/corporate-decision-facts.ts";
+import { corporateDecisionHash } from "../apps/web/app/lib/corporate-documents.ts";
 
 const company = {
   id: "22222222-2222-4222-8222-222222222222",

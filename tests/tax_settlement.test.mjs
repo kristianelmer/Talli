@@ -7,7 +7,7 @@ import {
   expectedBankAmountForTaxSettlement,
   taxSettlementLedgerLines,
   validateTaxSettlement,
-} from "../app/lib/tax-settlement.ts";
+} from "../apps/web/app/lib/tax-settlement.ts";
 
 test("estimates payable tax from persisted admin costs and dividend add-back", () => {
   const estimate = estimateAnnualTax({

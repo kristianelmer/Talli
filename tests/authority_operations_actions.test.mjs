@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const authorityAction = actions.slice(
   actions.indexOf("export async function runProductionAuthorityOperation"),
   actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
@@ -12,11 +12,11 @@ const callbackAction = actions.slice(
   actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
 );
 const operatorPage = readFileSync(
-  new URL("../app/(operator)/operator/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url),
   "utf8",
 );
-const copy = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
-const server = readFileSync(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8");
+const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
+const server = readFileSync(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8");
 
 test("authority operation is admin-only, AAL2-gated, exact, and service-audited", () => {
   assert.match(actions, /export async function runProductionAuthorityOperation/u);

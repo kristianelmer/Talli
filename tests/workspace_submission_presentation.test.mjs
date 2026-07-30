@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { buildWorkspaceSubmissionPresentation } from "../app/(owner)/workspace/_submission-presentation.ts";
+import { buildWorkspaceSubmissionPresentation } from "../apps/web/app/(owner)/workspace/_submission-presentation.ts";
 
 const workspaceSource = await readFile(
-  new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url),
   "utf8",
 );
 

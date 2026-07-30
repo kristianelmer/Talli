@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
+import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 
 const company = {
   id: "company-id",

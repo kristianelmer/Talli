@@ -7,7 +7,7 @@ import {
   buildRf1086OwnerProductionPresentation,
   isRf1086OwnerActionErrorCode,
   rf1086OwnerActionErrorMessage,
-} from "../app/lib/rf1086-production-presentation.ts";
+} from "../apps/web/app/lib/rf1086-production-presentation.ts";
 
 const productionCopy = {
   states: {
@@ -47,21 +47,21 @@ const productionCopy = {
 };
 
 const ownerPage = readFileSync(
-  new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
   "utf8",
 );
-const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
-const ownerCopySource = readFileSync(new URL("../app/lib/copy.ts", import.meta.url), "utf8");
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const ownerCopySource = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
 const productionPresentationSource = readFileSync(
-  new URL("../app/lib/rf1086-production-presentation.ts", import.meta.url),
+  new URL("../apps/web/app/lib/rf1086-production-presentation.ts", import.meta.url),
   "utf8",
 );
 const reconciliationControl = readFileSync(
-  new URL("../app/(owner)/filing/_submission-presentation.ts", import.meta.url),
+  new URL("../apps/web/app/(owner)/filing/_submission-presentation.ts", import.meta.url),
   "utf8",
 );
 const connectionControls = readFileSync(
-  new URL("../app/(owner)/connections/SystemUserRequestControls.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/connections/SystemUserRequestControls.tsx", import.meta.url),
   "utf8",
 );
 

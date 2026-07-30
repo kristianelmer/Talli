@@ -5,7 +5,7 @@ import {
   assertBankTransactionMatchesCost,
   buildAdminCostLedgerLines,
   parseBankCsv,
-} from "../app/lib/bank.ts";
+} from "../apps/web/app/lib/bank.ts";
 
 test("parses bank CSV with stable duplicate hash", () => {
   const csv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";

@@ -5,7 +5,7 @@ import {
   approvalMatchesCurrentPayload,
   buildProductionApprovalManifest,
   productionApprovalHash,
-} from "../app/lib/production-approval.ts";
+} from "../apps/web/app/lib/production-approval.ts";
 
 const input = {
   companyId: "company-id",

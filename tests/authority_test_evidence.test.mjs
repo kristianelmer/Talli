@@ -6,7 +6,7 @@ import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
   buildCompanyTaxReturnAuthorityTestRunFromEvidence,
-} from "../app/lib/authority-test-evidence.ts";
+} from "../apps/web/app/lib/authority-test-evidence.ts";
 
 const annualInstanceId = "51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51";
 const annualReceiptDataId = "f9b307e1-3534-4adb-9e5b-515c312f16f3";

@@ -14,7 +14,7 @@ import {
   summarizeCompanyTaxReturnValidation,
   waitForCompanyTaxReturnFeedback,
   waitForCompanyTaxReturnValidation,
-} from "../app/lib/company-tax-return-authority-client.ts";
+} from "../apps/web/app/lib/company-tax-return-authority-client.ts";
 
 const taxToken = "opaque-tax-token";
 const altinnToken = "opaque-altinn-token";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveTalliPythonBinary } from "../app/lib/python-runtime.ts";
+import { resolveTalliPythonBinary } from "../apps/web/app/lib/python-runtime.ts";
 
 test("uses an explicit configured Python runtime", () => {
   assert.equal(

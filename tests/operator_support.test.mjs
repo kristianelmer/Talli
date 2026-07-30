@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   assertOperatorSearchAllowed,
   buildOperatorSupportSummaries,
-} from "../app/lib/operator-support.ts";
+} from "../apps/web/app/lib/operator-support.ts";
 
 test("operator search denies non-operators and too-short queries", () => {
   assert.throws(() => assertOperatorSearchAllowed({ isOperator: false, query: "314" }), /operator_access_required/);

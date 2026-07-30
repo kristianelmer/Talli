@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildCompanyTaxReturnEvidencePersistence } from "../app/lib/company-tax-return-submission.ts";
+import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
 
 const instanceId = "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108";
 const envelopeDataId = "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5";

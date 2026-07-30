@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const actions = await readFile(new URL("../app/actions.ts", import.meta.url), "utf8");
+const actions = await readFile(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const workspace = await readFile(
-  new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
+  new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url),
   "utf8",
 );
 

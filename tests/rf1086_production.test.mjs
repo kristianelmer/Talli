@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { Rf1086AuthorityError } from "../app/lib/rf1086-authority-client.ts";
-import { createRf1086FeedbackArtifactRecorder } from "../app/lib/rf1086-feedback-persistence.ts";
+import { Rf1086AuthorityError } from "../apps/web/app/lib/rf1086-authority-client.ts";
+import { createRf1086FeedbackArtifactRecorder } from "../apps/web/app/lib/rf1086-feedback-persistence.ts";
 import {
   Rf1086FeedbackArtifactPersistenceError,
   createRf1086FeedbackArtifactPersistenceError,
   executeJournaledRf1086Production,
   reconcileJournaledRf1086Production,
-} from "../app/lib/rf1086-production.ts";
+} from "../apps/web/app/lib/rf1086-production.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 

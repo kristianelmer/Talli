@@ -4,7 +4,7 @@ import {
   MaskinportenTokenError,
   requestMaskinportenToken,
   summarizeMaskinportenToken,
-} from "../app/lib/maskinporten.ts";
+} from "../apps/web/app/lib/maskinporten.ts";
 
 function required(name) {
   const value = process.env[name]?.trim();

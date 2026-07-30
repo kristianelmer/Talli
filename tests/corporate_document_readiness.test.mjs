@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateObligationReadiness } from "../app/lib/annual-readiness.ts";
+import { evaluateObligationReadiness } from "../apps/web/app/lib/annual-readiness.ts";
 import {
   deriveCorporateDecisionState,
   evaluateCorporateDocumentReadiness,
-} from "../app/lib/corporate-document-readiness.ts";
+} from "../apps/web/app/lib/corporate-document-readiness.ts";
 
 const hash = "a".repeat(64);
 const decision = { id: "decision-1", decision_kind: "annual_close", decision_hash: hash };

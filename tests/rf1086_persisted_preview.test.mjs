@@ -5,7 +5,7 @@ import {
   buildNoActivityRf1086Case,
   renderRf1086Preview,
   renderRf1086PreviewWithPython,
-} from "../app/lib/rf1086.ts";
+} from "../apps/web/app/lib/rf1086.ts";
 
 const company = {
   id: "company-id",

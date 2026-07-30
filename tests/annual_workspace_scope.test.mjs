@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { scopeAnnualWorkspaceRecords } from "../app/lib/annual-workspace-scope.ts";
+import { scopeAnnualWorkspaceRecords } from "../apps/web/app/lib/annual-workspace-scope.ts";
 
 test("scopes every annual collection to the selected company and year", () => {
   const scoped = scopeAnnualWorkspaceRecords(

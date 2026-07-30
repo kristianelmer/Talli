@@ -39,6 +39,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends libxml2-utils
           python -m pip install uv==0.10.2
           uv sync --locked
+          uv sync --project apps/backend --locked
           npm ci
 
       - name: Fetch the pinned official tax schemas
@@ -63,17 +64,30 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Prove the web-to-FastAPI contract boundary
+        run: npm run test:boundary
+
+      - name: Build the production web application
+        env:
+          TALLI_BACKEND_URL: http://127.0.0.1:8000
+        run: npm run build:web
+
+      - name: Build the production backend application
+        run: npm run build:backend
+
+      - name: Start and smoke the production artifacts
+        run: npm run test:boundary-smoke
+
       - name: Run the complete launch rehearsal
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
           TALLI_SKATTE_XSD_DIR: ${{ runner.temp }}/skattemeldingen/src/resources/xsd
         run: npm run test:launch-rehearsal
 
-      - name: Build the production application
-        run: npm run build
-
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --prefix apps/web --omit=dev --audit-level=high
 
       - name: Reject whitespace errors
         run: git diff --check

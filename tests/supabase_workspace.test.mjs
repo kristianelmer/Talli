@@ -7,24 +7,24 @@ import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
-import { buildPersistedCompanyArchive } from "../app/lib/archive.ts";
-import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../app/lib/annual-data.ts";
-import { evaluateAnnualReadinessGates } from "../app/lib/annual-readiness.ts";
-import { productionAuthorityGate } from "../app/lib/authority-permission.ts";
-import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../app/lib/bank.ts";
-import { buildBillingAccount, productionBillingGate } from "../app/lib/billing.ts";
-import { buildCompanyTaxReturnEvidencePersistence } from "../app/lib/company-tax-return-submission.ts";
+import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
+import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
+import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
+import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
+import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../apps/web/app/lib/bank.ts";
+import { buildBillingAccount, productionBillingGate } from "../apps/web/app/lib/billing.ts";
+import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
 import {
   dividendReceivedLedgerLines,
   summarizeDividendReceivedAnnualImpact,
   validateDividendReceived,
-} from "../app/lib/dividend-received.ts";
-import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../app/lib/documents.ts";
-import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../app/lib/filing-overrides.ts";
-import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "../app/lib/invitations.ts";
-import { validateManualJournal } from "../app/lib/manual-journal.ts";
-import { openingBalanceLedgerLines } from "../app/lib/opening-balance.ts";
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../app/lib/rf1086.ts";
+} from "../apps/web/app/lib/dividend-received.ts";
+import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
+import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
+import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "../apps/web/app/lib/invitations.ts";
+import { validateManualJournal } from "../apps/web/app/lib/manual-journal.ts";
+import { openingBalanceLedgerLines } from "../apps/web/app/lib/opening-balance.ts";
+import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   rf1086PayloadHash,
@@ -34,17 +34,17 @@ import {
   rf1086SubmittedPayloadReference,
   rf1086SubmittedPayloadSnapshot,
   runRf1086SubmissionAdapter,
-} from "../app/lib/rf1086-submission.ts";
-import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../app/lib/review.ts";
-import { validateSharePurchase } from "../app/lib/share-purchase.ts";
-import { validateShareSale } from "../app/lib/share-sale.ts";
-import { shareholderLoanLedgerLines, validateShareholderLoan } from "../app/lib/shareholder-loan.ts";
-import { listCompanyWorkspacesForUser } from "../app/lib/supabase/company-workspaces.ts";
+} from "../apps/web/app/lib/rf1086-submission.ts";
+import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../apps/web/app/lib/review.ts";
+import { validateSharePurchase } from "../apps/web/app/lib/share-purchase.ts";
+import { validateShareSale } from "../apps/web/app/lib/share-sale.ts";
+import { shareholderLoanLedgerLines, validateShareholderLoan } from "../apps/web/app/lib/shareholder-loan.ts";
+import { listCompanyWorkspacesForUser } from "../apps/web/app/lib/supabase/company-workspaces.ts";
 import {
   estimateAnnualTax,
   taxSettlementLedgerLines,
   validateTaxSettlement,
-} from "../app/lib/tax-settlement.ts";
+} from "../apps/web/app/lib/tax-settlement.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 

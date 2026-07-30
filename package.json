@@ -1,11 +1,24 @@
 {
-  "name": "talli-web",
+  "name": "talli-repository",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm run build:web",
+    "build:web": "npm --prefix apps/web run build",
+    "build:backend": "uv build --project apps/backend",
+    "start": "npm --prefix apps/web run start",
+    "generate:openapi": "uv run --project apps/backend python apps/backend/scripts/generate_openapi.py",
+    "generate:api-client": "node scripts/generate-api-client.mjs",
+    "test:boundary-backend": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests",
+    "test:boundary-web": "node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs",
+    "test:boundary-contract": "node --test tests/contract/web_fastapi_boundary.test.mjs",
+    "test:boundary-smoke": "node --test tests/production_boundary_smoke.mjs",
+    "test:boundary": "npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract",
     "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
@@ -86,7 +99,7 @@
     "authority:company-tax-test": "node --experimental-strip-types scripts/company-tax-return-authority-test.mjs",
     "authority:annual-accounts-test": "node --experimental-strip-types scripts/annual-accounts-authority-test.mjs",
     "authority:rf1086-test": "node --experimental-strip-types scripts/rf1086-authority-test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "npm --prefix apps/web run typecheck"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -98,9 +111,9 @@
     "saxes": "6.0.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/node": "24.0.0",
+    "@types/react": "19.0.0",
+    "@types/react-dom": "19.0.0",
     "playwright": "^1.61.0",
     "supabase": "2.109.1",
     "typescript": "6.0.3"

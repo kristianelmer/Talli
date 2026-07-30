@@ -8,7 +8,7 @@ import {
   isDuplicateBillingEventError,
   productionBillingGate,
   simulateBillingProviderEvent,
-} from "../app/lib/billing.ts";
+} from "../apps/web/app/lib/billing.ts";
 
 test("builds founder and standard billing accounts with launch prices", () => {
   const founder = buildBillingAccount({ companyId: "company-id", pricingPlan: "founder", founderCohortNumber: 100 });

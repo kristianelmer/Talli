@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildNoActivityRf1086Case, renderRf1086Preview } from "../app/lib/rf1086.ts";
+import { buildNoActivityRf1086Case, renderRf1086Preview } from "../apps/web/app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
   assertRf1086SimulationConfirmations,
@@ -14,7 +14,7 @@ import {
   runRf1086SubmissionAdapter,
   simulateRf1086Submission,
   simulateRf1086SubmissionWithPython,
-} from "../app/lib/rf1086-submission.ts";
+} from "../apps/web/app/lib/rf1086-submission.ts";
 
 const company = {
   id: "company-id",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { openingBalanceLedgerLines, validateOpeningBalanceInput } from "../app/lib/opening-balance.ts";
+import { openingBalanceLedgerLines, validateOpeningBalanceInput } from "../apps/web/app/lib/opening-balance.ts";
 
 const validInput = {
   bankBalance: 30000,

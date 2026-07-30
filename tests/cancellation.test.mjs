@@ -8,7 +8,7 @@ import {
   cancellationStatusLabel,
   nextCancellationStatus,
   retentionClasses,
-} from "../app/lib/cancellation.ts";
+} from "../apps/web/app/lib/cancellation.ts";
 
 test("requires archive export before cancellation can move into retention hold", () => {
   assert.equal(nextCancellationStatus({}), "export_required");

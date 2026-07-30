@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   BANK_RULE_VERSION,
   suggestBankTransaction,
-} from "../app/lib/bank-suggestions.ts";
+} from "../apps/web/app/lib/bank-suggestions.ts";
 
 test("suggests the required bank fee and annual fee posting", () => {
   for (const text of ["Årsgebyr bedriftskonto", "BANKGEBYR JULI"]) {
