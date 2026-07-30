@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readdirSync, readFileSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
+import { createRequire } from "node:module";
 import { createServer as createTcpServer } from "node:net";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -11,6 +12,10 @@ import { assertValueMatchesSchema } from "../scripts/check-openapi-contract.mjs"
 import { createBaselineTalliApiClient } from "./fixtures/talli-api-client-v1.0.0.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
+const requireFromRepositoryRoot = createRequire(
+  new URL("../package.json", import.meta.url),
+);
+const nextCli = requireFromRepositoryRoot.resolve("next/dist/bin/next");
 const baseline = JSON.parse(
   readFileSync(
     resolve(repositoryRoot, "contracts/openapi/baselines/talli-v1.0.0.json"),
@@ -159,7 +164,7 @@ test("built artifacts support both deployment orders and isolate backend failure
     web = startProcess(
       process.execPath,
       [
-        "apps/web/node_modules/next/dist/bin/next",
+        nextCli,
         "start",
         "apps/web",
         "-p",

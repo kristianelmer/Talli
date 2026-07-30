@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const launcherSource = new URL("../apps/web/scripts/run-next.mjs", import.meta.url);
+const smokeSource = new URL("production_boundary_smoke.mjs", import.meta.url);
 
 test("web launcher uses the repository-root Next installation", async (t) => {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "talli-next-launcher-"));
@@ -28,4 +30,12 @@ test("web launcher uses the repository-root Next installation", async (t) => {
 
   assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
   assert.equal(result.stdout.trim(), "next build apps/web");
+});
+
+test("production smoke resolves Next from the repository root", () => {
+  const source = readFileSync(smokeSource, "utf8");
+
+  assert.match(source, /createRequire/u);
+  assert.match(source, /requireFromRepositoryRoot\.resolve\("next\/dist\/bin\/next"\)/u);
+  assert.doesNotMatch(source, /apps\/web\/node_modules\/next/u);
 });
