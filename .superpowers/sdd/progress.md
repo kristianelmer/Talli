@@ -50,12 +50,42 @@ Newly added missing capability migrations:
 - #156 — notification outbox and delivery
 - #157 — company archive composition
 
+## Accepted module-definition foundation (#135)
+
+- Exact review base: `0319776cab4bda22445370bc1c45127d74f0764d`
+- Accepted implementation head: `0ec08f1fa03b5874dd3c9197b08a4f8cb918455b`
+- Implementation commits: `a64b64b3`, `a057ac3f`, `01938ecf`, `379dcbb6`,
+  `daa213de`, `8affd0b8`, `ea33b89c`, `5d0a8886`, `d5a6b433`, `0cf762ec`,
+  `792f2817`, and `0ec08f1f`
+- Final fresh-context acceptance review: PASS, no actionable findings.
+- Scope confirmation: enabling foundation only; no business capability, rule,
+  table, provider operation, or authoritative write moved.
+
+Accepted verification:
+
+- `npm run test:architecture` — 26 passed.
+- `npm run check:architecture`
+- `npm run typecheck`
+- `npm run test:boundary` — backend 6, web 9, contract 11 passed.
+- `npm run build:backend`
+- `npm run build:web`
+- `npm run test:boundary-smoke`
+- `npm run test:launch-rehearsal`
+- `git diff --check`
+
+The foundation now has schema-valid technical and web module manifests,
+machine-checked documentation inventories, deterministic dependency evidence,
+source-derived technical table ownership, binding-aware TypeScript and Python
+boundary enforcement, a minimal shared-kernel policy, bounded compatibility
+exceptions, and annotated-tag-derived customer-ready release state.
+
 ## Next handoff
 
-- Next ticket: #135, enabling foundation only.
-- Start from the architecture-baseline commit containing this progress record.
-- Do not migrate business capability behavior in #135.
+- Next ticket: #136, `company_access` capability migration.
+- Start from the merged #135 head containing this progress record.
+- Preserve the #135 architecture gate and its explicit compatibility-expiry
+  contract.
 - Re-run the accepted checks relevant to the slice and record its exact base,
   implementation commits, independent review dispositions, and verification
-  evidence here before advancing to #136.
-- Unresolved #134 findings: none.
+  evidence here before advancing to #138.
+- Unresolved #135 findings: none.
