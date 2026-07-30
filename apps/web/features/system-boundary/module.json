@@ -7,6 +7,11 @@
   "purpose": "Present the FastAPI system-boundary tracer in Norwegian through the committed generated API client without recreating backend policy.",
   "documentation": "apps/web/features/system-boundary/MODULE.md",
   "publicEntryPoint": "@/features/system-boundary",
+  "publicImportPaths": [
+    "@/features/system-boundary",
+    "apps/web/features/system-boundary",
+    "apps/web/features/system-boundary/index.ts"
+  ],
   "ownedRoutes": ["/system-boundary"],
   "apiOperations": ["systemBoundaryGetTracerStatus"],
   "dependencies": [],

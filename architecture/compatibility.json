@@ -1,4 +1,24 @@
 {
   "schemaVersion": "1.0",
-  "exceptions": []
+  "exceptions": [
+    {
+      "id": "compat-legacy-web-business-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#136",
+      "paths": [
+        "apps/web/app/actions.ts",
+        "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+        "apps/web/app/documents/[documentId]/preview/route.ts",
+        "apps/web/app/lib/corporate-document-storage.ts",
+        "apps/web/app/lib/corporate-signed-artifacts.ts",
+        "apps/web/app/lib/rf1086-feedback-persistence.ts",
+        "apps/web/app/lib/security.ts",
+        "apps/web/app/lib/supabase/server.ts",
+        "apps/web/app/lib/system-user-flow.ts"
+      ],
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove every listed direct business persistence path before the #136 company_access migration can complete."
+    }
+  ]
 }

@@ -15,8 +15,12 @@ imports.
 
 ## Public interface and collaboration
 
-Other web code imports only `@/features/system-boundary`. This feature has no
-feature dependency, so its declared graph is acyclic. It consumes only the root
+Other web code imports `@/features/system-boundary`; the currently compiled
+relative equivalent is explicitly declared as
+`apps/web/features/system-boundary`. The Node health-route test environment uses
+the declared `apps/web/features/system-boundary/index.ts`; no transport or
+view-model deep import is public. This feature has no feature dependency, so its
+declared graph is acyclic. It consumes only the root
 `@talli/talli-api-client` generated client package.
 
 ## Cache, browser, and tests

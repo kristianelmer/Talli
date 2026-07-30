@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/shared-kernel.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "purpose", "allowedPrimitives", "forbidden", "allowedPublicPackages"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "purpose": { "type": "string", "minLength": 1 },
+    "allowedPrimitives": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "forbidden": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "allowedPublicPackages": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  },
+  "additionalProperties": false
+}

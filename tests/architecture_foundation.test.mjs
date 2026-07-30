@@ -68,6 +68,77 @@ test("compatibility exceptions require bounded expiry and a removal condition", 
   }
 });
 
+test("compatibility exceptions must expire strictly after the controlled current time", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-expiry-"));
+  const registry = join(temporaryRoot, "compatibility.json");
+  writeFileSync(
+    registry,
+    JSON.stringify({
+      schemaVersion: "1.0",
+      exceptions: [{
+        id: "compat-expired",
+        owner: "web:legacy-runtime",
+        creationIssue: "#135",
+        removalIssue: "#136",
+        paths: ["apps/web/app/actions.ts"],
+        expiresAt: "2026-07-29T00:00:00Z",
+        removalCondition: "Remove when #136 owns the authenticated company context.",
+      }],
+    }),
+  );
+  try {
+    assert.match(
+      validateCompatibilityRegistry(registry, { now: new Date("2026-07-30T00:00:00Z") }).join("\n"),
+      /compat-expired.*strictly in the future/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("schema constraints and declared public exports are enforced", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-schema-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const backendModulePath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/system_boundary/module.json");
+  const backendModule = JSON.parse(readFileSync(backendModulePath, "utf8"));
+  backendModule.ports[0].direction = "inbound";
+  backendModule.exports.errors.push("UNEXPORTED_ERROR");
+  writeFileSync(backendModulePath, JSON.stringify(backendModule));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /module\.json: schema .*ports.*direction/u);
+    assert.match(errors, /UNEXPORTED_ERROR.*missing from public package/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("database catalog and declared public import paths are authoritative", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-catalog-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const catalogPath = join(temporaryRoot, "architecture/database-catalog.json");
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  catalog.tables.push({ name: "public.idempotency_records", kind: "technical" });
+  writeFileSync(catalogPath, JSON.stringify(catalog));
+  const webModulePath = join(temporaryRoot, "apps/web/features/system-boundary/module.json");
+  const webModule = JSON.parse(readFileSync(webModulePath, "utf8"));
+  webModule.publicImportPaths = ["@/features/system-boundary"];
+  writeFileSync(webModulePath, JSON.stringify(webModule));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /undeclared technical ownership public.idempotency_records/u);
+    assert.match(errors, /health\/ready\/route\.ts: undeclared public feature entry point/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("architecture checker rejects representative forbidden boundary violations", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-rejection-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -88,7 +159,7 @@ test("architecture checker rejects representative forbidden boundary violations"
     join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"),
     `${readFileSync(join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"), "utf8")}
 fetch("/api/v1/forbidden");
-createClient();
+supabase.from("forbidden");
 import "@talli/talli-api-client/src/generated/client.ts";
 `,
   );

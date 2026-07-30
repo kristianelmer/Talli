@@ -13,18 +13,28 @@
     "purpose": { "type": "string", "minLength": 1 },
     "documentation": { "type": "string", "pattern": "MODULE\\.md$" },
     "publicEntryPoint": { "type": "string", "minLength": 1 },
-    "dependencies": { "type": "array" },
-    "allowedImports": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-    "forbiddenResponsibilities": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-    "tests": { "type": "object" },
-    "compatibilityExceptions": { "type": "array", "items": { "type": "string", "pattern": "^compat-" } },
-    "exports": { "type": "object" },
-    "owns": { "type": "object" },
-    "ports": { "type": "array" },
-    "ownedRoutes": { "type": "array", "items": { "type": "string" } },
-    "apiOperations": { "type": "array", "items": { "type": "string" } },
-    "cachePolicy": { "type": "object" },
-    "directBrowserFlows": { "type": "array" }
+    "publicImportPaths": { "$ref": "#/$defs/stringArray" },
+    "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" } },
+    "allowedImports": { "$ref": "#/$defs/stringArray" },
+    "forbiddenResponsibilities": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "tests": { "type": "object", "required": ["architecture"], "additionalProperties": { "type": "string", "minLength": 1 } },
+    "compatibilityExceptions": { "type": "array", "items": { "type": "string", "pattern": "^compat-" }, "uniqueItems": true },
+    "exports": { "type": "object", "required": ["commands", "queries", "events", "errors", "identifiers"], "properties": { "commands": { "$ref": "#/$defs/stringArray" }, "queries": { "$ref": "#/$defs/stringArray" }, "events": { "$ref": "#/$defs/stringArray" }, "errors": { "$ref": "#/$defs/stringArray" }, "identifiers": { "$ref": "#/$defs/stringArray" } }, "additionalProperties": false },
+    "owns": { "type": "object", "required": ["postgresSchemas", "tables", "storageBuckets", "projections", "migrations"], "properties": { "postgresSchemas": { "$ref": "#/$defs/stringArray" }, "tables": { "$ref": "#/$defs/stringArray" }, "storageBuckets": { "$ref": "#/$defs/stringArray" }, "projections": { "$ref": "#/$defs/stringArray" }, "migrations": { "type": "string", "minLength": 1 } }, "additionalProperties": false },
+    "ports": { "type": "array", "items": { "type": "object", "required": ["name", "direction", "adapters"], "properties": { "name": { "type": "string", "minLength": 1 }, "direction": { "const": "outbound" }, "adapters": { "$ref": "#/$defs/stringArray" } }, "additionalProperties": false } },
+    "ownedRoutes": { "$ref": "#/$defs/stringArray" },
+    "apiOperations": { "$ref": "#/$defs/stringArray" },
+    "cachePolicy": { "type": "object", "required": ["default", "allowed"], "properties": { "default": { "const": "no-store" }, "allowed": { "$ref": "#/$defs/stringArray" } }, "additionalProperties": false },
+    "directBrowserFlows": { "type": "array", "items": { "type": "object", "required": ["name", "scope", "reviewCondition"], "properties": { "name": { "type": "string" }, "scope": { "type": "string" }, "reviewCondition": { "type": "string" } }, "additionalProperties": false } }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "backend-capability" } } }, "then": { "required": ["exports", "owns", "ports"], "properties": { "path": { "pattern": "^apps/backend/src/talli_backend/modules/[a-z][a-z0-9_]*$" }, "publicEntryPoint": { "pattern": "^talli_backend\\.modules\\.[a-z][a-z0-9_]*\\.public$" }, "dependencies": { "items": { "properties": { "kind": { "enum": ["query", "event"] } } } } }, "not": { "anyOf": [{ "required": ["ownedRoutes"] }, { "required": ["apiOperations"] }, { "required": ["cachePolicy"] }, { "required": ["directBrowserFlows"] }, { "required": ["publicImportPaths"] }] } } },
+    { "if": { "properties": { "kind": { "const": "web-feature" } } }, "then": { "required": ["ownedRoutes", "apiOperations", "cachePolicy", "directBrowserFlows", "publicImportPaths"], "properties": { "path": { "pattern": "^apps/web/features/[a-z][a-z0-9-]*$" }, "publicEntryPoint": { "pattern": "^@/features/[a-z][a-z0-9-]*$" }, "dependencies": { "items": { "properties": { "kind": { "const": "feature" } } } } }, "not": { "anyOf": [{ "required": ["exports"] }, { "required": ["owns"] }, { "required": ["ports"] }] } } }
+  ],
+  "$defs": {
+    "stringArray": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "nonEmptyStringArray": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1, "uniqueItems": true },
+    "dependency": { "type": "object", "required": ["module", "kind", "imports"], "properties": { "module": { "type": "string", "minLength": 1 }, "kind": { "enum": ["query", "event", "feature"] }, "imports": { "$ref": "#/$defs/nonEmptyStringArray" } }, "additionalProperties": false }
   },
   "additionalProperties": false
 }

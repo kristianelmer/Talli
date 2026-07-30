@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
+import Ajv2020 from "ajv/dist/2020.js";
 
 const MODULE_REQUIRED = [
   "schemaVersion",
@@ -46,6 +47,16 @@ function readJson(path, errors) {
   } catch (error) {
     errors.push(`${path}: ${error.message}`);
     return {};
+  }
+}
+
+function validateAgainstSchema(schema, value, label, errors) {
+  if (!schema) return;
+  const validate = new Ajv2020({ allErrors: true, logger: false, strict: false }).compile(schema);
+  if (!validate(value)) {
+    for (const error of validate.errors ?? []) {
+      errors.push(`${label}: schema ${error.instancePath || "/"} ${error.message}`);
+    }
   }
 }
 
@@ -104,7 +115,7 @@ function declaredBackendImports(manifest) {
 function documentationTokens(manifest) {
   const tokens = [manifest.publicEntryPoint];
   if (manifest.kind === "web-feature") {
-    tokens.push(...manifest.ownedRoutes, ...manifest.apiOperations);
+    tokens.push(...(manifest.publicImportPaths ?? []), ...(manifest.ownedRoutes ?? []), ...(manifest.apiOperations ?? []));
   } else {
     for (const values of Object.values(manifest.exports)) tokens.push(...values);
     tokens.push(...manifest.owns.tables, ...manifest.ports.map((port) => port.name));
@@ -112,9 +123,10 @@ function documentationTokens(manifest) {
   return tokens;
 }
 
-function validateModule(root, manifestPath, errors) {
+function validateModule(root, manifestPath, errors, schema) {
   const manifest = readJson(manifestPath, errors);
   const label = relative(root, manifestPath);
+  validateAgainstSchema(schema, manifest, label, errors);
   for (const field of MODULE_REQUIRED) {
     if (!(field in manifest)) errors.push(`${label}: missing ${field}`);
   }
@@ -153,6 +165,15 @@ function validateModule(root, manifestPath, errors) {
     }
     if (!existsSync(join(root, manifest.path, "public.py"))) {
       errors.push(`${label}: backend publicEntryPoint has no public.py`);
+    } else {
+      const publicSource = readFileSync(join(root, manifest.path, "public.py"), "utf8");
+      const exported = new Set(
+        [...publicSource.matchAll(/__all__\s*=\s*\[([^\]]*)\]/gu)]
+          .flatMap((match) => [...match[1].matchAll(/["']([^"']+)["']/gu)].map((item) => item[1])),
+      );
+      for (const name of Object.values(manifest.exports ?? {}).flat()) {
+        if (!exported.has(name)) errors.push(`${label}: declared public export ${name} missing from public package`);
+      }
     }
     for (const field of ["exports", "owns", "ports"]) {
       if (!(field in manifest)) errors.push(`${label}: backend manifest missing ${field}`);
@@ -167,7 +188,7 @@ function validateModule(root, manifestPath, errors) {
     if (!existsSync(join(root, manifest.path, "index.ts"))) {
       errors.push(`${label}: web publicEntryPoint has no index.ts`);
     }
-    for (const field of ["ownedRoutes", "apiOperations", "cachePolicy", "directBrowserFlows"]) {
+    for (const field of ["ownedRoutes", "apiOperations", "cachePolicy", "directBrowserFlows", "publicImportPaths"]) {
       if (!(field in manifest)) errors.push(`${label}: web manifest missing ${field}`);
     }
   }
@@ -205,7 +226,7 @@ function checkModuleImports(root, manifest, errors) {
     }
     if (manifest.kind === "web-feature") {
       if (/\bfetch\s*\(/u.test(source)) errors.push(`${label}: direct business fetch is forbidden`);
-      if (/\bcreate(?:Browser|Server)?Client\s*\(|\.(?:from|rpc|storage|channel)\s*\(/u.test(source)) {
+      if (/\b(?:supabase|service|client)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
       if (/@talli\/talli-api-client\//u.test(source)) {
@@ -215,9 +236,10 @@ function checkModuleImports(root, manifest, errors) {
   }
 }
 
-function validateSystemManifest(root, errors) {
+function validateSystemManifest(root, errors, schema) {
   const path = join(root, "architecture/backend-system.json");
   const manifest = readJson(path, errors);
+  validateAgainstSchema(schema, manifest, "architecture/backend-system.json", errors);
   for (const field of BACKEND_SYSTEM_REQUIRED) {
     if (!(field in manifest)) errors.push(`architecture/backend-system.json: missing ${field}`);
   }
@@ -253,21 +275,49 @@ function validateSystemManifest(root, errors) {
   for (const table of technical.tables ?? []) {
     if (!/^public\.[a-z_]+$/u.test(table)) errors.push(`architecture/backend-system.json: invalid technical table ${table}`);
   }
-  const knownTechnicalTables = new Set(["public.launch_signoffs", "public.notification_outbox"]);
   for (const migrationPath of technical.migrations ?? []) {
     const sourcePath = join(root, migrationPath);
     if (!existsSync(sourcePath)) {
       errors.push(`architecture/backend-system.json: missing migration ${migrationPath}`);
       continue;
     }
-    const source = readFileSync(sourcePath, "utf8");
-    for (const table of knownTechnicalTables) {
-      if (source.includes(table) && !technical.tables?.includes(table)) {
-        errors.push(`architecture/backend-system.json: undeclared technical ownership ${table}`);
-      }
-    }
   }
   return manifest;
+}
+
+function discoverMigrationTables(root) {
+  const tables = new Set();
+  for (const path of walk(join(root, "supabase/migrations"), (candidate) => candidate.endsWith(".sql"))) {
+    const source = readFileSync(path, "utf8");
+    for (const match of source.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(public\.[a-z_]+)/giu)) {
+      tables.add(match[1].toLowerCase());
+    }
+  }
+  return [...tables].sort();
+}
+
+function validateDatabaseCatalog(root, backendSystem, errors, schema) {
+  const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
+  validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
+  const discovered = new Set(discoverMigrationTables(root));
+  const catalogEntries = catalog.tables ?? [];
+  const catalogNames = new Set(catalogEntries.map((entry) => entry.name));
+  if (catalogNames.size !== catalogEntries.length) errors.push("architecture/database-catalog.json: duplicate table name");
+  for (const table of discovered) {
+    if (!catalogNames.has(table)) errors.push(`architecture/database-catalog.json: migration table missing from catalog ${table}`);
+  }
+  for (const table of catalogNames) {
+    if (!discovered.has(table)) errors.push(`architecture/database-catalog.json: catalog table missing from migrations ${table}`);
+  }
+  const declaredTechnical = new Set(backendSystem.technicalOwnership?.tables ?? []);
+  const catalogTechnical = new Set(catalogEntries.filter((entry) => entry.kind === "technical").map((entry) => entry.name));
+  for (const table of catalogTechnical) {
+    if (!declaredTechnical.has(table)) errors.push(`architecture/backend-system.json: undeclared technical ownership ${table}`);
+  }
+  for (const table of declaredTechnical) {
+    if (!catalogTechnical.has(table)) errors.push(`architecture/backend-system.json: technical ownership is not catalogued ${table}`);
+  }
+  return catalog;
 }
 
 function validateSystemBindings(system, manifests, errors) {
@@ -293,9 +343,10 @@ function validateSystemBindings(system, manifests, errors) {
   }
 }
 
-export function validateCompatibilityRegistry(path) {
+export function validateCompatibilityRegistry(path, { now = new Date(), schema } = {}) {
   const errors = [];
   const registry = readJson(path, errors);
+  validateAgainstSchema(schema, registry, path, errors);
   if (registry.schemaVersion !== "1.0" || !Array.isArray(registry.exceptions)) {
     errors.push(`${path}: invalid compatibility registry`);
     return errors;
@@ -310,6 +361,7 @@ export function validateCompatibilityRegistry(path) {
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
     if (!Array.isArray(entry.paths) || !entry.paths.length) errors.push(`${prefix} paths must be non-empty`);
     if (!RFC3339.test(entry.expiresAt ?? "")) errors.push(`${prefix} expiresAt must be RFC 3339`);
+    else if (new Date(entry.expiresAt).getTime() <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
     if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
   }
   return errors;
@@ -341,17 +393,20 @@ function assertAcyclic(manifests, errors) {
 }
 
 function checkRouteImports(root, manifests, errors) {
-  const allowed = new Set(manifests.filter((manifest) => manifest.kind === "web-feature").map((manifest) => manifest.publicEntryPoint));
+  const allowed = new Map(
+    manifests
+      .filter((manifest) => manifest.kind === "web-feature")
+      .map((manifest) => [manifest.name, new Set(manifest.publicImportPaths)]),
+  );
   for (const path of walk(join(root, "apps/web/app"), (candidate) => /\.[jt]sx?$/u.test(candidate))) {
     for (const specifier of importedSpecifiers(readFileSync(path, "utf8"))) {
       if (specifier.includes("/features/")) {
         const feature = specifier.match(/(?:^@\/features\/|features\/)([a-z][a-z0-9-]*)(?:\/|$)/u)?.[1];
-        const expected = feature ? `@/features/${feature}` : undefined;
-        const isDeepImport = feature
-          && !specifier.endsWith(`features/${feature}`)
-          && !specifier.endsWith(`features/${feature}/index.ts`)
-          && specifier !== expected;
-        if (!expected || !allowed.has(expected) || isDeepImport) {
+        const declared = feature ? allowed.get(feature) : undefined;
+        const normalized = specifier.startsWith("@/")
+          ? specifier
+          : relative(root, resolve(dirname(path), specifier));
+        if (!declared || !declared.has(normalized)) {
           errors.push(`${relative(root, path)}: undeclared public feature entry point ${specifier}`);
         }
       }
@@ -359,24 +414,60 @@ function checkRouteImports(root, manifests, errors) {
   }
 }
 
-export function checkArchitecture({ root, writeEvidence = false }) {
+function activeCompatibilityPaths(registry, now) {
+  return new Set(
+    (registry.exceptions ?? [])
+      .filter((entry) => RFC3339.test(entry.expiresAt ?? "") && new Date(entry.expiresAt).getTime() > now.getTime())
+      .flatMap((entry) => entry.paths),
+  );
+}
+
+function checkGlobalWebBoundary(root, registry, errors, now) {
+  const compatibilityPaths = activeCompatibilityPaths(registry, now);
+  for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
+    const scopedPath = relative(root, path);
+    if (compatibilityPaths.has(scopedPath)) continue;
+    const source = readFileSync(path, "utf8");
+    if (/(^|[^\w.])fetch\s*\(/mu.test(source)) {
+      errors.push(`${scopedPath}: direct business fetch is forbidden`);
+    }
+    if (/\b(?:supabase|service|client|serviceRoleClient)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)) {
+      errors.push(`${scopedPath}: direct web business persistence is forbidden`);
+    }
+    if (/@talli\/talli-api-client\//u.test(source)) {
+      errors.push(`${scopedPath}: generated-client deep import is forbidden`);
+    }
+  }
+}
+
+export function checkArchitecture({ root, writeEvidence = false, now = new Date() }) {
   const resolvedRoot = rootPath(root);
   const errors = [];
-  for (const schema of ["module.schema.json", "backend-system.schema.json", "compatibility.schema.json"]) {
-    readJson(join(resolvedRoot, "architecture", schema), errors);
-  }
+  const schemas = Object.fromEntries([
+    ["module", "module.schema.json"],
+    ["backendSystem", "backend-system.schema.json"],
+    ["compatibility", "compatibility.schema.json"],
+    ["sharedKernel", "shared-kernel.schema.json"],
+    ["databaseCatalog", "database-catalog.schema.json"],
+    ["evidence", "dependency-evidence.schema.json"],
+  ].map(([name, file]) => [name, readJson(join(resolvedRoot, "architecture", file), errors)]));
   const manifests = walk(join(resolvedRoot, "apps"), (path) => path.endsWith("/module.json"))
     .sort()
-    .map((path) => validateModule(resolvedRoot, path, errors));
+    .map((path) => validateModule(resolvedRoot, path, errors, schemas.module));
   for (const manifest of manifests) checkModuleImports(resolvedRoot, manifest, errors);
   checkRouteImports(resolvedRoot, manifests, errors);
-  const backendSystem = validateSystemManifest(resolvedRoot, errors);
+  const backendSystem = validateSystemManifest(resolvedRoot, errors, schemas.backendSystem);
   validateSystemBindings(backendSystem, manifests, errors);
-  errors.push(...validateCompatibilityRegistry(join(resolvedRoot, "architecture/compatibility.json")));
+  const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
+  const compatibility = readJson(compatibilityPath, []);
+  errors.push(...validateCompatibilityRegistry(compatibilityPath, { now, schema: schemas.compatibility }));
+  checkGlobalWebBoundary(resolvedRoot, compatibility, errors, now);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
+  validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
+  validateDatabaseCatalog(resolvedRoot, backendSystem, errors, schemas.databaseCatalog);
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",
@@ -405,6 +496,7 @@ export function checkArchitecture({ root, writeEvidence = false }) {
   if (writeEvidence && !errors.length) {
     writeFileSync(join(resolvedRoot, "architecture/dependency-evidence.json"), `${JSON.stringify(evidence, null, 2)}\n`);
   }
+  validateAgainstSchema(schemas.evidence, evidence, "architecture/dependency-evidence.json", errors);
   return { errors, evidence };
 }
 
