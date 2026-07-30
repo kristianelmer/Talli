@@ -26,6 +26,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   ]);
   assert.equal(existsSync(new URL("../architecture/module.schema.json", import.meta.url)), true);
   assert.equal(existsSync(new URL("../architecture/backend-system.schema.json", import.meta.url)), true);
+  assert.equal(existsSync(new URL("../architecture/release-state.schema.json", import.meta.url)), true);
 });
 
 test("architecture evidence is deterministic and committed output is current", () => {
@@ -123,6 +124,68 @@ test("compatibility exceptions cannot outlive fourteen days or the next stable r
       validateCompatibilityRegistry(registry, { now: new Date("2026-07-30T00:00:00Z") }).join("\n"),
       /compat-too-distant.*fourteen days after approval/u,
     );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility exceptions reject semantically impossible timestamps", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-invalid-timestamp-"));
+  const registry = join(temporaryRoot, "compatibility.json");
+  writeFileSync(
+    registry,
+    JSON.stringify({
+      schemaVersion: "1.0",
+      exceptions: [{
+        id: "compat-invalid-date",
+        owner: "web:legacy-runtime",
+        creationIssue: "#135",
+        removalIssue: "#136",
+        paths: ["apps/web/app/actions.ts"],
+        rules: ["direct-web-business-persistence"],
+        approvedBy: "Kristian Elmer",
+        approvedAt: "2026-99-99T25:99:99Z",
+        releaseLimit: "next-stable-customer-ready-release",
+        expiresAt: "2026-99-99T25:99:99Z",
+        removalCondition: "Remove when #136 owns the authenticated company context.",
+      }],
+    }),
+  );
+  try {
+    const errors = validateCompatibilityRegistry(
+      registry,
+      { now: new Date("2026-07-30T00:00:00Z") },
+    ).join("\n");
+    assert.match(errors, /compat-invalid-date.*approvedAt must be a valid RFC 3339 timestamp/u);
+    assert.match(errors, /compat-invalid-date.*expiresAt must be a valid RFC 3339 timestamp/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("a stable customer-ready release after approval revokes the compatibility exception", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-stable-release-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const releaseStatePath = join(temporaryRoot, "architecture/release-state.json");
+  writeFileSync(releaseStatePath, JSON.stringify({
+    schemaVersion: "1.0",
+    latestStableCustomerReadyRelease: {
+      id: "customer-ready-2026-07-31",
+      releasedAt: "2026-07-31T00:00:00Z",
+      gitRevision: "1111111111111111111111111111111111111111",
+    },
+  }));
+
+  try {
+    const errors = checkArchitecture({
+      root: temporaryRoot,
+      writeEvidence: false,
+      now: new Date("2026-07-31T12:00:00Z"),
+    }).errors.join("\n");
+    assert.match(errors, /compat-legacy-web-business-persistence.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
+    assert.match(errors, /apps\/web\/app\/actions\.ts: direct web business persistence is forbidden/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -379,6 +442,13 @@ test("generated-client deep imports are detected from every executable module-sp
     "generated-import.ts": 'import "@talli/talli-api-client/src/generated/import.ts";\n',
     "generated-export.ts": 'export * from "@talli/talli-api-client/src/generated/export.ts";\n',
     "generated-require.ts": 'require("@talli/talli-api-client/src/generated/require.ts");\n',
+    "generated-require-alias.ts": `const load = require;
+load("@talli/talli-api-client/src/generated/require-alias.ts");
+`,
+    "generated-require-assignment-alias.ts": `let load;
+load = require;
+load("@talli/talli-api-client/src/generated/require-assignment-alias.ts");
+`,
     "generated-dynamic-import.ts": 'void import("@talli/talli-api-client/src/generated/dynamic.ts");\n',
   };
   for (const [name, source] of Object.entries(fixtures)) {
@@ -446,6 +516,48 @@ class SystemBoundaryTransport:
     assert.match(errors, /adapter is not registered for port SystemBoundaryTransport/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("adapter registration accepts legitimate aliases of the declared public symbols", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-port-aliases-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const mainPath = join(temporaryRoot, "apps/backend/src/talli_backend/main.py");
+  writeFileSync(
+    mainPath,
+    readFileSync(mainPath, "utf8")
+      .replace("SystemBoundaryTransport,\n    adapter_for,", "SystemBoundaryTransport as BoundaryPort,\n    adapter_for as bind_adapter,")
+      .replace("@adapter_for(SystemBoundaryTransport)", "@bind_adapter(BoundaryPort)"),
+  );
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.doesNotMatch(errors, /adapter is not registered for port SystemBoundaryTransport/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("adapter registration validates the final effective top-level binding", () => {
+  for (const [name, replacement] of [
+    ["duplicate", "\ndef create_app():\n    return object()\n"],
+    ["assignment", "\ncreate_app = lambda: object()\n"],
+  ]) {
+    const temporaryRoot = mkdtempSync(join(tmpdir(), `talli-architecture-port-${name}-`));
+    for (const directory of ["architecture", "apps", "supabase"]) {
+      cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+    }
+    const mainPath = join(temporaryRoot, "apps/backend/src/talli_backend/main.py");
+    writeFileSync(mainPath, `${readFileSync(mainPath, "utf8")}${replacement}`);
+
+    try {
+      const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+      assert.match(errors, /adapter is not registered for port SystemBoundaryTransport/u);
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   }
 });
 

@@ -32,8 +32,33 @@ const BACKEND_SYSTEM_REQUIRED = [
   "adapterBindings",
   "allowedDependencies",
 ];
-const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
+
+function rfc3339Timestamp(value) {
+  const match = String(value ?? "").match(RFC3339);
+  if (!match) return undefined;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, zone, zoneHourText, zoneMinuteText] = match;
+  const [year, month, day, hour, minute, second] = [
+    yearText,
+    monthText,
+    dayText,
+    hourText,
+    minuteText,
+    secondText,
+  ].map(Number);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]
+    || hour > 23 || minute > 59 || second > 59) {
+    return undefined;
+  }
+  if (zone !== "Z" && (Number(zoneHourText) > 23 || Number(zoneMinuteText) > 59)) {
+    return undefined;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
 
 function rootPath(root) {
   return root instanceof URL ? fileURLToPath(root) : resolve(root);
@@ -468,10 +493,55 @@ function generatedClientDeepImport(source, path, analysis) {
   const sourceFile = analysis?.program.getSourceFile(resolvedPath)
     ?? ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
   const checker = analysis?.program.getTypeChecker();
+  const requireLoaderSymbols = new Set();
   let violation = false;
   function forbidden(specifier) {
     return specifier.startsWith("@talli/talli-api-client/");
   }
+  function symbolAt(node) {
+    return checker?.getSymbolAtLocation(node);
+  }
+  function requireLoader(expression) {
+    const unwrapped = unwrappedExpression(expression);
+    if (!ts.isIdentifier(unwrapped)) return false;
+    const symbol = symbolAt(unwrapped);
+    if (requireLoaderSymbols.has(symbol)) return true;
+    return unwrapped.text === "require"
+      && (!symbol || (symbol.declarations ?? [])
+        .every((declaration) => declaration.getSourceFile().isDeclarationFile));
+  }
+  function collectRequireAliases(node) {
+    let changed = false;
+    if (ts.isVariableDeclaration(node)
+      && ts.isIdentifier(node.name)
+      && node.initializer
+      && requireLoader(node.initializer)) {
+      const symbol = symbolAt(node.name);
+      if (symbol && !requireLoaderSymbols.has(symbol)) {
+        requireLoaderSymbols.add(symbol);
+        changed = true;
+      }
+    }
+    if (ts.isBinaryExpression(node)
+      && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+      && ts.isIdentifier(unwrappedExpression(node.left))
+      && requireLoader(node.right)) {
+      const symbol = symbolAt(unwrappedExpression(node.left));
+      if (symbol && !requireLoaderSymbols.has(symbol)) {
+        requireLoaderSymbols.add(symbol);
+        changed = true;
+      }
+    }
+    ts.forEachChild(node, (child) => {
+      changed = collectRequireAliases(child) || changed;
+    });
+    return changed;
+  }
+  let changed;
+  do {
+    changed = collectRequireAliases(sourceFile);
+  } while (changed);
+
   function visit(node) {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
       && node.moduleSpecifier
@@ -486,14 +556,8 @@ function generatedClientDeepImport(source, path, analysis) {
       && forbidden(node.moduleReference.expression.text)) {
       violation = true;
     }
-    const unshadowedRequire = ts.isCallExpression(node)
-      && ts.isIdentifier(node.expression)
-      && node.expression.text === "require"
-      && (!checker || !checker.getSymbolAtLocation(node.expression)
-        || (checker.getSymbolAtLocation(node.expression).declarations ?? [])
-          .every((declaration) => declaration.getSourceFile().isDeclarationFile));
     if (ts.isCallExpression(node)
-      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || unshadowedRequire)
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || requireLoader(node.expression))
       && node.arguments.length
       && ts.isStringLiteralLike(node.arguments[0])
       && forbidden(node.arguments[0].text)) {
@@ -959,7 +1023,7 @@ function validateSystemBindings(root, system, manifests, errors) {
   }
 }
 
-export function validateCompatibilityRegistry(path, { now = new Date(), schema } = {}) {
+export function validateCompatibilityRegistry(path, { now = new Date(), schema, releaseState } = {}) {
   const errors = [];
   const registry = readJson(path, errors);
   validateAgainstSchema(schema, registry, path, errors);
@@ -988,24 +1052,33 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema }
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
     if (!Array.isArray(entry.paths) || !entry.paths.length) errors.push(`${prefix} paths must be non-empty`);
     if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
-    if (!RFC3339.test(entry.approvedAt ?? "")) {
-      errors.push(`${prefix} approvedAt must be RFC 3339`);
-    } else if (new Date(entry.approvedAt).getTime() > now.getTime()) {
+    const approvedAt = rfc3339Timestamp(entry.approvedAt);
+    if (approvedAt === undefined) {
+      errors.push(`${prefix} approvedAt must be a valid RFC 3339 timestamp`);
+    } else if (approvedAt > now.getTime()) {
       errors.push(`${prefix} approvedAt cannot be in the future`);
     }
     if (entry.releaseLimit !== "next-stable-customer-ready-release") {
       errors.push(`${prefix} releaseLimit must be the next stable customer-ready release`);
     }
-    if (!RFC3339.test(entry.expiresAt ?? "")) errors.push(`${prefix} expiresAt must be RFC 3339`);
+    const expiry = rfc3339Timestamp(entry.expiresAt);
+    if (expiry === undefined) errors.push(`${prefix} expiresAt must be a valid RFC 3339 timestamp`);
     else {
-      const expiry = new Date(entry.expiresAt).getTime();
       if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
-      if (RFC3339.test(entry.approvedAt ?? "")) {
-        const fourteenDaysAfterApproval = new Date(entry.approvedAt).getTime() + 14 * 24 * 60 * 60 * 1000;
+      if (approvedAt !== undefined) {
+        const fourteenDaysAfterApproval = approvedAt + 14 * 24 * 60 * 60 * 1000;
         if (expiry > fourteenDaysAfterApproval) {
           errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
         }
       }
+    }
+    const stableRelease = releaseState?.latestStableCustomerReadyRelease;
+    const stableReleasedAt = rfc3339Timestamp(stableRelease?.releasedAt);
+    if (approvedAt !== undefined
+      && stableReleasedAt !== undefined
+      && stableReleasedAt > approvedAt
+      && stableReleasedAt <= now.getTime()) {
+      errors.push(`${prefix} superseded by stable customer-ready release ${stableRelease.id}`);
     }
     if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
   }
@@ -1059,30 +1132,37 @@ function checkRouteImports(root, manifests, errors) {
   }
 }
 
-function hasActiveCompatibility(registry, path, rule, now) {
+function hasActiveCompatibility(registry, releaseState, path, rule, now) {
+  const stableReleasedAt = rfc3339Timestamp(
+    releaseState.latestStableCustomerReadyRelease?.releasedAt,
+  );
   return (registry.exceptions ?? []).some((entry) => (
     entry.paths?.includes(path)
     && entry.rules?.includes(rule)
-    && RFC3339.test(entry.expiresAt ?? "")
-    && new Date(entry.expiresAt).getTime() > now.getTime()
+    && rfc3339Timestamp(entry.expiresAt) > now.getTime()
+    && (
+      stableReleasedAt === undefined
+      || stableReleasedAt <= rfc3339Timestamp(entry.approvedAt)
+      || stableReleasedAt > now.getTime()
+    )
   ));
 }
 
-function checkGlobalWebBoundary(root, registry, errors, now, webAnalysis) {
+function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
     const boundary = webBoundaryViolations(source, path, webAnalysis);
     if (boundary.fetch
-      && !hasActiveCompatibility(registry, scopedPath, "direct-business-fetch", now)) {
+      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-business-fetch", now)) {
       errors.push(`${scopedPath}: direct business fetch is forbidden`);
     }
     if (boundary.persistence
-      && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
+      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }
     if (generatedClientDeepImport(source, path, webAnalysis)
-      && !hasActiveCompatibility(registry, scopedPath, "generated-client-deep-import", now)) {
+      && !hasActiveCompatibility(registry, releaseState, scopedPath, "generated-client-deep-import", now)) {
       errors.push(`${scopedPath}: generated-client deep import is forbidden`);
     }
   }
@@ -1124,6 +1204,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     ["module", "module.schema.json"],
     ["backendSystem", "backend-system.schema.json"],
     ["compatibility", "compatibility.schema.json"],
+    ["releaseState", "release-state.schema.json"],
     ["sharedKernel", "shared-kernel.schema.json"],
     ["databaseCatalog", "database-catalog.schema.json"],
     ["evidence", "dependency-evidence.schema.json"],
@@ -1138,8 +1219,26 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   checkCompositionRoot(resolvedRoot, backendSystem, errors);
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
   const compatibility = readJson(compatibilityPath, []);
-  errors.push(...validateCompatibilityRegistry(compatibilityPath, { now, schema: schemas.compatibility }));
-  checkGlobalWebBoundary(resolvedRoot, compatibility, errors, now, webAnalysis);
+  const releaseState = readJson(join(resolvedRoot, "architecture/release-state.json"), errors);
+  validateAgainstSchema(
+    schemas.releaseState,
+    releaseState,
+    "architecture/release-state.json",
+    errors,
+  );
+  const stableReleasedAt = rfc3339Timestamp(
+    releaseState.latestStableCustomerReadyRelease?.releasedAt,
+  );
+  if (stableReleasedAt === undefined) {
+    errors.push("architecture/release-state.json: releasedAt must be a valid RFC 3339 timestamp");
+  } else if (stableReleasedAt > now.getTime()) {
+    errors.push("architecture/release-state.json: stable release cannot be in the future");
+  }
+  errors.push(...validateCompatibilityRegistry(
+    compatibilityPath,
+    { now, schema: schemas.compatibility, releaseState },
+  ));
+  checkGlobalWebBoundary(resolvedRoot, compatibility, releaseState, errors, now, webAnalysis);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
   validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {

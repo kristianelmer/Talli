@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0",
+  "latestStableCustomerReadyRelease": {
+    "id": "customer-ready-0319776c",
+    "releasedAt": "2026-07-30T00:00:00Z",
+    "gitRevision": "0319776cab4bda22445370bc1c45127d74f0764d"
+  }
+}

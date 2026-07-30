@@ -86,7 +86,7 @@ def imports_for(file: dict[str, str], source_root: str) -> dict[str, Any]:
                 if resolved:
                     imports.append(resolved)
         bindings: dict[str, str] = {}
-        symbols = []
+        symbols: dict[str, dict[str, Any]] = {}
         for node in tree.body:
             if isinstance(node, ast.Import):
                 for alias in node.names:
@@ -99,36 +99,37 @@ def imports_for(file: dict[str, str], source_root: str) -> dict[str, Any]:
                         if alias.name != "*":
                             bindings[alias.asname or alias.name] = f"{resolved}.{alias.name}"
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                symbols.append(
-                    {
-                        "name": node.name,
-                        "kind": "function",
-                        "decorators": [
-                            decorator_fact(decorator, bindings)
-                            for decorator in node.decorator_list
-                        ],
-                    }
-                )
+                symbols[node.name] = {
+                    "name": node.name,
+                    "kind": "function",
+                    "decorators": [
+                        decorator_fact(decorator, bindings)
+                        for decorator in node.decorator_list
+                    ],
+                }
                 bindings[node.name] = f"{module}.{node.name}"
             elif isinstance(node, ast.ClassDef):
-                symbols.append(
-                    {
-                        "name": node.name,
-                        "kind": "class",
-                        "bases": [ast.unparse(base) for base in node.bases],
-                        "decorators": [
-                            decorator_fact(decorator, bindings)
-                            for decorator in node.decorator_list
-                        ],
-                    }
-                )
+                symbols[node.name] = {
+                    "name": node.name,
+                    "kind": "class",
+                    "bases": [ast.unparse(base) for base in node.bases],
+                    "decorators": [
+                        decorator_fact(decorator, bindings)
+                        for decorator in node.decorator_list
+                    ],
+                }
                 bindings[node.name] = f"{module}.{node.name}"
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 targets = node.targets if isinstance(node, ast.Assign) else [node.target]
                 for target in targets:
                     if isinstance(target, ast.Name):
                         bindings[target.id] = f"{module}.{target.id}"
-        return {"path": path, "imports": imports, "symbols": symbols}
+                        symbols[target.id] = {
+                            "name": target.id,
+                            "kind": "assignment",
+                            "decorators": [],
+                        }
+        return {"path": path, "imports": imports, "symbols": list(symbols.values())}
     except (SyntaxError, ValueError) as error:
         return {"path": path, "error": str(error)}
 
