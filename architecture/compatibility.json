@@ -17,6 +17,7 @@
         "apps/web/app/lib/supabase/server.ts",
         "apps/web/app/lib/system-user-flow.ts"
       ],
+      "rules": ["direct-web-business-persistence"],
       "expiresAt": "2026-08-13T00:00:00Z",
       "removalCondition": "Remove every listed direct business persistence path before the #136 company_access migration can complete."
     }

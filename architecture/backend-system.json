@@ -39,7 +39,7 @@
     }
   ],
   "allowedDependencies": {
-    "transport": ["fastapi", "pydantic", "starlette", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
+    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "pydantic", "starlette", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
     "workflows": ["talli_backend.modules.system_boundary.public"],
     "adapters": []
   }

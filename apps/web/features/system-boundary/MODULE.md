@@ -1,5 +1,9 @@
 # System boundary web feature
 
+<!-- architecture-inventory
+{"apiOperations":["systemBoundaryGetTracerStatus"],"dependencies":[],"publicEntryPoints":["@/features/system-boundary","apps/web/features/system-boundary","apps/web/features/system-boundary/index.ts"],"routes":["/system-boundary"]}
+-->
+
 ## Purpose
 
 This feature presents the FastAPI system-boundary tracer in Norwegian. It maps

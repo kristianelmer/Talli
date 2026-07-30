@@ -139,6 +139,65 @@ test("database catalog and declared public import paths are authoritative", () =
   }
 });
 
+test("backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-deep-enforcement-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const mainPath = join(temporaryRoot, "apps/backend/src/talli_backend/main.py");
+  writeFileSync(
+    mainPath,
+    `${readFileSync(mainPath, "utf8")}
+from talli_backend.modules.system_boundary.internal import secret
+import requests
+`,
+  );
+  const systemPath = join(temporaryRoot, "architecture/backend-system.json");
+  const system = JSON.parse(readFileSync(systemPath, "utf8"));
+  system.adapterBindings[0].adapter = "talli_backend.main.not_real";
+  writeFileSync(systemPath, JSON.stringify(system));
+  const actionsPath = join(temporaryRoot, "apps/web/app/actions.ts");
+  writeFileSync(
+    actionsPath,
+    `${readFileSync(actionsPath, "utf8")}
+fetch("/api/v1/forbidden");
+import "@talli/talli-api-client/src/generated/client.ts";
+`,
+  );
+  const publicPath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/system_boundary/public.py");
+  writeFileSync(
+    publicPath,
+    `${readFileSync(publicPath, "utf8")}
+from talli_backend.shared.persistence import SharedRepository
+`,
+  );
+  const documentationPath = join(temporaryRoot, "apps/web/features/system-boundary/MODULE.md");
+  writeFileSync(
+    documentationPath,
+    `${readFileSync(documentationPath, "utf8")}
+<!-- architecture-inventory {"routes":["/invented-route"]} -->
+`,
+  );
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    for (const expected of [
+      "private backend module dependency",
+      "undeclared composition-root dependency requests",
+      "adapter binding does not match declared port adapter",
+      "adapter symbol does not exist",
+      "apps/web/app/actions.ts: direct business fetch is forbidden",
+      "apps/web/app/actions.ts: generated-client deep import is forbidden",
+      "forbidden shared-kernel import",
+      "documentation inventory has extra routes",
+    ]) {
+      assert.match(errors, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+    }
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("architecture checker rejects representative forbidden boundary violations", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-rejection-"));
   for (const directory of ["architecture", "apps", "supabase"]) {

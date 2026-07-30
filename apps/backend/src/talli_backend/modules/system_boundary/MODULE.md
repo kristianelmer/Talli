@@ -1,5 +1,9 @@
 # System boundary backend module
 
+<!-- architecture-inventory
+{"dependencies":[],"ownedTables":[],"ports":["SystemBoundaryTransport"],"publicEntryPoints":["talli_backend.modules.system_boundary.public"]}
+-->
+
 ## Purpose
 
 This module owns Talli's deterministic boundary-availability contract. It is a

@@ -97,6 +97,42 @@ function importedSpecifiers(source) {
   return values;
 }
 
+function pythonImports(source) {
+  const imports = [];
+  for (const match of source.matchAll(/^\s*from\s+([A-Za-z_][\w.]*)\s+import\s+/gmu)) imports.push(match[1]);
+  for (const match of source.matchAll(/^\s*import\s+([A-Za-z_][\w.]*)/gmu)) imports.push(match[1]);
+  return imports;
+}
+
+function normalizedCompositionDependency(specifier) {
+  if (specifier.startsWith("talli_backend.")) return specifier;
+  return specifier.split(".")[0];
+}
+
+function checkCompositionRoot(root, system, errors) {
+  const sourcePath = join(root, system.compositionRoot);
+  if (!existsSync(sourcePath)) return;
+  const allowed = new Set(system.allowedDependencies?.transport ?? []);
+  for (const specifier of pythonImports(readFileSync(sourcePath, "utf8"))) {
+    if (specifier.startsWith("talli_backend.modules.") && !specifier.endsWith(".public")) {
+      errors.push(`${system.compositionRoot}: private backend module dependency ${specifier}`);
+      continue;
+    }
+    const dependency = normalizedCompositionDependency(specifier);
+    if (!allowed.has(dependency)) {
+      errors.push(`${system.compositionRoot}: undeclared composition-root dependency ${dependency}`);
+    }
+  }
+}
+
+function adapterSymbolExists(root, adapter) {
+  const parts = adapter.split(".");
+  const symbol = parts.pop();
+  const modulePath = join(root, "apps/backend/src", ...parts) + ".py";
+  return existsSync(modulePath)
+    && new RegExp(`(?:async\\s+def|def|class)\\s+${symbol}\\b`, "u").test(readFileSync(modulePath, "utf8"));
+}
+
 function declaredFeatureImports(manifest) {
   return new Set(
     manifest.dependencies
@@ -121,6 +157,64 @@ function documentationTokens(manifest) {
     tokens.push(...manifest.owns.tables, ...manifest.ports.map((port) => port.name));
   }
   return tokens;
+}
+
+function readDocumentationInventory(documentation, label, errors) {
+  const inventory = {};
+  const matches = [...documentation.matchAll(/<!--\s*architecture-inventory\s*([\s\S]*?)-->/gu)];
+  if (!matches.length) {
+    errors.push(`${label}: documentation is missing architecture inventory`);
+    return inventory;
+  }
+  for (const match of matches) {
+    try {
+      const fragment = JSON.parse(match[1].trim());
+      for (const [key, values] of Object.entries(fragment)) {
+        if (!Array.isArray(values) || values.some((value) => typeof value !== "string")) {
+          errors.push(`${label}: documentation inventory ${key} must be a string array`);
+          continue;
+        }
+        inventory[key] = [...new Set([...(inventory[key] ?? []), ...values])].sort();
+      }
+    } catch (error) {
+      errors.push(`${label}: invalid architecture inventory: ${error.message}`);
+    }
+  }
+  return inventory;
+}
+
+function reconcileDocumentationInventory(documentation, label, expected, errors) {
+  const actual = readDocumentationInventory(documentation, label, errors);
+  for (const [key, expectedValues] of Object.entries(expected)) {
+    const expectedSet = new Set(expectedValues);
+    const actualValues = actual[key] ?? [];
+    const missing = expectedValues.filter((value) => !actualValues.includes(value));
+    const extra = actualValues.filter((value) => !expectedSet.has(value));
+    if (missing.length) errors.push(`${label}: documentation inventory is missing ${key} ${missing.join(", ")}`);
+    if (extra.length) errors.push(`${label}: documentation inventory has extra ${key} ${extra.join(", ")}`);
+  }
+  for (const key of Object.keys(actual)) {
+    if (!(key in expected) && actual[key].length) {
+      errors.push(`${label}: documentation inventory has extra material field ${key}`);
+    }
+  }
+}
+
+function moduleDocumentationInventory(manifest) {
+  if (manifest.kind === "web-feature") {
+    return {
+      publicEntryPoints: [...manifest.publicImportPaths].sort(),
+      routes: [...manifest.ownedRoutes].sort(),
+      apiOperations: [...manifest.apiOperations].sort(),
+      dependencies: manifest.dependencies.map((dependency) => `${dependency.kind}:${dependency.module}`).sort(),
+    };
+  }
+  return {
+    publicEntryPoints: [manifest.publicEntryPoint],
+    ownedTables: [...manifest.owns.tables].sort(),
+    ports: manifest.ports.map((port) => port.name).sort(),
+    dependencies: manifest.dependencies.map((dependency) => `${dependency.kind}:${dependency.module}`).sort(),
+  };
 }
 
 function validateModule(root, manifestPath, errors, schema) {
@@ -154,6 +248,7 @@ function validateModule(root, manifestPath, errors, schema) {
         errors.push(`${label}: documentation omits declared ${token}`);
       }
     }
+    reconcileDocumentationInventory(documentation, label, moduleDocumentationInventory(manifest), errors);
   }
 
   if (manifest.kind === "backend-capability") {
@@ -320,14 +415,14 @@ function validateDatabaseCatalog(root, backendSystem, errors, schema) {
   return catalog;
 }
 
-function validateSystemBindings(system, manifests, errors) {
+function validateSystemBindings(root, system, manifests, errors) {
   const backendByPublicEntryPoint = new Map(
     manifests
       .filter((manifest) => manifest.kind === "backend-capability")
       .map((manifest) => [manifest.publicEntryPoint, manifest]),
   );
-  const knownPorts = new Set(
-    manifests.flatMap((manifest) => manifest.ports?.map((port) => port.name) ?? []),
+  const knownPorts = new Map(
+    manifests.flatMap((manifest) => (manifest.ports ?? []).map((port) => [port.name, port])),
   );
   for (const workflow of system.workflows ?? []) {
     for (const publicPackage of workflow.publicPackages ?? []) {
@@ -337,8 +432,16 @@ function validateSystemBindings(system, manifests, errors) {
     }
   }
   for (const binding of system.adapterBindings ?? []) {
-    if (!knownPorts.has(binding.port)) {
+    const port = knownPorts.get(binding.port);
+    if (!port) {
       errors.push(`architecture/backend-system.json: adapter binding has undeclared port ${binding.port}`);
+      continue;
+    }
+    if (!port.adapters.includes(binding.adapter)) {
+      errors.push(`architecture/backend-system.json: adapter binding does not match declared port adapter ${binding.port}`);
+    }
+    if (!adapterSymbolExists(root, binding.adapter)) {
+      errors.push(`architecture/backend-system.json: adapter symbol does not exist ${binding.adapter}`);
     }
   }
 }
@@ -414,28 +517,55 @@ function checkRouteImports(root, manifests, errors) {
   }
 }
 
-function activeCompatibilityPaths(registry, now) {
-  return new Set(
-    (registry.exceptions ?? [])
-      .filter((entry) => RFC3339.test(entry.expiresAt ?? "") && new Date(entry.expiresAt).getTime() > now.getTime())
-      .flatMap((entry) => entry.paths),
-  );
+function hasActiveCompatibility(registry, path, rule, now) {
+  return (registry.exceptions ?? []).some((entry) => (
+    entry.paths?.includes(path)
+    && entry.rules?.includes(rule)
+    && RFC3339.test(entry.expiresAt ?? "")
+    && new Date(entry.expiresAt).getTime() > now.getTime()
+  ));
 }
 
 function checkGlobalWebBoundary(root, registry, errors, now) {
-  const compatibilityPaths = activeCompatibilityPaths(registry, now);
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
-    if (compatibilityPaths.has(scopedPath)) continue;
     const source = readFileSync(path, "utf8");
-    if (/(^|[^\w.])fetch\s*\(/mu.test(source)) {
+    if (/(^|[^\w.])fetch\s*\(/mu.test(source)
+      && !hasActiveCompatibility(registry, scopedPath, "direct-business-fetch", now)) {
       errors.push(`${scopedPath}: direct business fetch is forbidden`);
     }
-    if (/\b(?:supabase|service|client|serviceRoleClient)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)) {
+    if (/\b(?:supabase|service|client|serviceRoleClient)\.(?:from|rpc)\s*\(|\.storage\.from\s*\(/u.test(source)
+      && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }
-    if (/@talli\/talli-api-client\//u.test(source)) {
+    if (/@talli\/talli-api-client\//u.test(source)
+      && !hasActiveCompatibility(registry, scopedPath, "generated-client-deep-import", now)) {
       errors.push(`${scopedPath}: generated-client deep import is forbidden`);
+    }
+  }
+}
+
+function checkSharedKernel(root, sharedKernel, errors) {
+  const allowed = new Set([
+    ...(sharedKernel.allowedPublicPackages ?? []),
+    ...(sharedKernel.allowedPrimitives ?? []),
+  ]);
+  const forbiddenPrefixes = sharedKernel.forbiddenImportPrefixes ?? [];
+  for (const sourceScope of sharedKernel.sourceScopes ?? []) {
+    const scope = join(root, sourceScope);
+    if (!existsSync(scope)) {
+      errors.push(`architecture/shared-kernel.json: source scope does not exist ${sourceScope}`);
+      continue;
+    }
+    for (const path of walk(scope, (candidate) => candidate.endsWith(".py"))) {
+      for (const specifier of pythonImports(readFileSync(path, "utf8"))) {
+        if (!specifier.startsWith("talli_backend.shared.")) continue;
+        if (forbiddenPrefixes.some((prefix) => specifier === prefix || specifier.startsWith(`${prefix}.`))) {
+          errors.push(`${relative(root, path)}: forbidden shared-kernel import ${specifier}`);
+        } else if (!allowed.has(specifier)) {
+          errors.push(`${relative(root, path)}: undeclared shared-kernel import ${specifier}`);
+        }
+      }
     }
   }
 }
@@ -457,7 +587,8 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   for (const manifest of manifests) checkModuleImports(resolvedRoot, manifest, errors);
   checkRouteImports(resolvedRoot, manifests, errors);
   const backendSystem = validateSystemManifest(resolvedRoot, errors, schemas.backendSystem);
-  validateSystemBindings(backendSystem, manifests, errors);
+  validateSystemBindings(resolvedRoot, backendSystem, manifests, errors);
+  checkCompositionRoot(resolvedRoot, backendSystem, errors);
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
   const compatibility = readJson(compatibilityPath, []);
   errors.push(...validateCompatibilityRegistry(compatibilityPath, { now, schema: schemas.compatibility }));
@@ -467,6 +598,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
+  checkSharedKernel(resolvedRoot, sharedKernel, errors);
   validateDatabaseCatalog(resolvedRoot, backendSystem, errors, schemas.databaseCatalog);
   assertAcyclic(manifests, errors);
   const evidence = stable({

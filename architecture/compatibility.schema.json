@@ -9,13 +9,14 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "owner", "creationIssue", "removalIssue", "paths", "expiresAt", "removalCondition"],
+        "required": ["id", "owner", "creationIssue", "removalIssue", "paths", "rules", "expiresAt", "removalCondition"],
         "properties": {
           "id": { "type": "string", "pattern": "^compat-" },
           "owner": { "type": "string" },
           "creationIssue": { "type": "string", "pattern": "^#[0-9]+$" },
           "removalIssue": { "type": "string", "pattern": "^#[0-9]+$" },
           "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "rules": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["direct-web-business-persistence", "direct-business-fetch", "generated-client-deep-import"] } },
           "expiresAt": { "type": "string", "format": "date-time" },
           "removalCondition": { "type": "string", "minLength": 1 }
         },

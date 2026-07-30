@@ -1,5 +1,9 @@
 # Backend system boundary
 
+<!-- architecture-inventory
+{"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"operationalTables":["public.launch_signoffs"],"publicPackages":["talli_backend.modules.system_boundary.public"],"routes":["/api/v1/system-boundary/tracer"],"technicalTables":["public.launch_signoffs","public.notification_outbox"],"workflows":["system-boundary-tracer"]}
+-->
+
 ## Purpose
 
 `backend-system.json` is the source of truth for backend composition that no

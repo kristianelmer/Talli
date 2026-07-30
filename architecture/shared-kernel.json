@@ -1,7 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "purpose": "The shared kernel is restricted to stable, immutable technical primitives; it contains no business policy, persistence, workflows, adapters, or transport types.",
-  "allowedPrimitives": ["opaque identifiers", "UTC timestamps", "RFC 9457 stable error codes"],
+  "purpose": "No shared Python package is admitted during the foundation stage. A later capability may declare only a stable immutable primitive import here; business policy, persistence, workflows, adapters, and transport types remain forbidden.",
+  "sourceScopes": ["apps/backend/src/talli_backend/modules"],
+  "allowedPrimitives": [],
   "forbidden": ["business rules", "database repositories", "provider adapters", "web presentation", "cross-capability orchestration"],
-  "allowedPublicPackages": []
+  "allowedPublicPackages": [],
+  "forbiddenImportPrefixes": [
+    "talli_backend.shared.persistence",
+    "talli_backend.shared.workflows",
+    "talli_backend.shared.adapters",
+    "talli_backend.shared.transport"
+  ]
 }
