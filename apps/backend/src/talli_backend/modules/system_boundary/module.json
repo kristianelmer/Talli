@@ -12,7 +12,7 @@
     "queries": ["SYSTEM_BOUNDARY_AVAILABLE"],
     "events": [],
     "errors": ["BOUNDARY_UNAVAILABLE"],
-    "identifiers": []
+    "identifiers": ["SystemBoundaryTransport", "adapter_for"]
   },
   "owns": {
     "postgresSchemas": [],
@@ -25,6 +25,8 @@
     {
       "name": "SystemBoundaryTransport",
       "direction": "outbound",
+      "contract": "talli_backend.modules.system_boundary.public.SystemBoundaryTransport",
+      "registrationDecorator": "talli_backend.modules.system_boundary.public.adapter_for",
       "adapters": ["talli_backend.main.create_app"]
     }
   ],

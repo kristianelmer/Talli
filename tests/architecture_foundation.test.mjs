@@ -223,6 +223,148 @@ supabase.from("not-persistence");
   }
 });
 
+test("web boundary analysis follows compiler bindings, type aliases, and callable aliases", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-binding-provenance-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const violations = {
+    "type-alias-client.ts": `import type { SupabaseClient as DatabaseClient } from "@supabase/supabase-js";
+type ClientAlias = DatabaseClient;
+type NestedAlias = ClientAlias;
+function query(client: NestedAlias) { client.from("companies"); }
+`,
+    "typed-client-property.ts": `import type { SupabaseClient as DatabaseClient } from "@supabase/supabase-js";
+type ClientAlias = DatabaseClient;
+type Input = { gateway: ClientAlias };
+function query(input: Input) { input.gateway.rpc("post_entry"); }
+`,
+    "factory-property-declaration.ts": `import * as Supabase from "@supabase/supabase-js";
+const build = Supabase.createClient;
+build("https://example.invalid", "public-key").from("companies");
+`,
+    "factory-property-assignment.ts": `import * as Supabase from "@supabase/supabase-js";
+let build;
+build = Supabase.createClient;
+build("https://example.invalid", "public-key").rpc("post_entry");
+`,
+    "factory-property-destructure.ts": `import * as Supabase from "@supabase/supabase-js";
+const { createClient: build } = Supabase;
+build("https://example.invalid", "public-key").from("companies");
+`,
+    "fetch-property-declaration.ts": `const request = globalThis.fetch;
+request("/api/v1/companies");
+`,
+    "fetch-property-assignment.ts": `let request;
+request = window.fetch;
+request("/api/v1/companies");
+`,
+    "fetch-property-destructure.ts": `const { fetch: request } = globalThis;
+request("/api/v1/companies");
+`,
+  };
+  for (const [name, source] of Object.entries(violations)) {
+    writeFileSync(join(temporaryRoot, "apps/web/app", name), source);
+  }
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    for (const name of [
+      "type-alias-client.ts",
+      "typed-client-property.ts",
+      "factory-property-declaration.ts",
+      "factory-property-assignment.ts",
+      "factory-property-destructure.ts",
+    ]) {
+      assert.match(errors, new RegExp(`${name}: direct web business persistence is forbidden`, "u"));
+    }
+    for (const name of [
+      "fetch-property-declaration.ts",
+      "fetch-property-assignment.ts",
+      "fetch-property-destructure.ts",
+    ]) {
+      assert.match(errors, new RegExp(`${name}: direct business fetch is forbidden`, "u"));
+    }
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("web boundary analysis permits local fetch bindings and non-import generated-client text", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-binding-false-positives-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const benignPath = "apps/web/app/binding-false-positives.ts";
+  writeFileSync(
+    join(temporaryRoot, benignPath),
+    `function fetch(input: string) { return input; }
+fetch("/api/v1/local");
+function invoke(fetch: (input: string) => string) { return fetch("/api/v1/parameter"); }
+const documentation = "@talli/talli-api-client/src/generated/client.ts";
+// import "@talli/talli-api-client/src/generated/comment.ts";
+`,
+  );
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.doesNotMatch(errors, new RegExp(benignPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("generated-client deep imports are detected from every executable module-specifier form", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-generated-imports-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixtures = {
+    "generated-import.ts": 'import "@talli/talli-api-client/src/generated/import.ts";\n',
+    "generated-export.ts": 'export * from "@talli/talli-api-client/src/generated/export.ts";\n',
+    "generated-require.ts": 'require("@talli/talli-api-client/src/generated/require.ts");\n',
+    "generated-dynamic-import.ts": 'void import("@talli/talli-api-client/src/generated/dynamic.ts");\n',
+  };
+  for (const [name, source] of Object.entries(fixtures)) {
+    writeFileSync(join(temporaryRoot, "apps/web/app", name), source);
+  }
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    for (const name of Object.keys(fixtures)) {
+      assert.match(errors, new RegExp(`${name}: generated-client deep import is forbidden`, "u"));
+    }
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("adapter bindings require source registration against the declared port", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-port-registration-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const modulePath = join(
+    temporaryRoot,
+    "apps/backend/src/talli_backend/modules/system_boundary/module.json",
+  );
+  const module = JSON.parse(readFileSync(modulePath, "utf8"));
+  module.ports[0].adapters = ["talli_backend.main._request_id"];
+  writeFileSync(modulePath, JSON.stringify(module));
+  const systemPath = join(temporaryRoot, "architecture/backend-system.json");
+  const system = JSON.parse(readFileSync(systemPath, "utf8"));
+  system.adapterBindings[0].adapter = "talli_backend.main._request_id";
+  writeFileSync(systemPath, JSON.stringify(system));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /adapter is not registered for port SystemBoundaryTransport/u);
+    assert.doesNotMatch(errors, /adapter symbol does not exist/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-deep-enforcement-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -316,7 +458,8 @@ test("architecture checker rejects representative forbidden boundary violations"
     join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"),
     `${readFileSync(join(temporaryRoot, "apps/web/features/system-boundary/transport/load-system-boundary.ts"), "utf8")}
 fetch("/api/v1/forbidden");
-const forbiddenPersistence = createSupabaseBoundaryClient();
+import { createClient } from "@supabase/supabase-js";
+const forbiddenPersistence = createClient("https://example.invalid", "public-key");
 forbiddenPersistence.from("forbidden");
 import "@talli/talli-api-client/src/generated/client.ts";
 `,

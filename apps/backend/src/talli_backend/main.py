@@ -12,7 +12,11 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from talli_backend.modules.system_boundary.public import SYSTEM_BOUNDARY_AVAILABLE
+from talli_backend.modules.system_boundary.public import (
+    SYSTEM_BOUNDARY_AVAILABLE,
+    SystemBoundaryTransport,
+    adapter_for,
+)
 
 API_VERSION = "v1"
 CONTRACT_VERSION = "1.0.0"
@@ -106,6 +110,7 @@ def _problem_response(
     )
 
 
+@adapter_for(SystemBoundaryTransport)
 def create_app() -> FastAPI:
     application = FastAPI(
         title="Talli API",

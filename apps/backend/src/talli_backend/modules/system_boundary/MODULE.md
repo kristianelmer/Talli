@@ -24,8 +24,11 @@ Import only `talli_backend.modules.system_boundary.public`.
 
 - Query contract: `SYSTEM_BOUNDARY_AVAILABLE`
 - Stable error code: `BOUNDARY_UNAVAILABLE`
+- Port protocol: `SystemBoundaryTransport`
+- Adapter registration: `adapter_for`
 
-The FastAPI adapter is selected by backend composition, not by callers.
+The FastAPI adapter is selected by backend composition and registered in source
+with `adapter_for(SystemBoundaryTransport)`, not selected by callers.
 
 ## Collaboration, ports, and tests
 

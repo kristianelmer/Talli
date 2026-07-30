@@ -51,7 +51,26 @@ def imports_for(file: dict[str, str], source_root: str) -> dict[str, Any]:
                 resolved = resolved_from_import(node, package)
                 if resolved:
                     imports.append(resolved)
-        return {"path": path, "imports": imports}
+        symbols = []
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                symbols.append(
+                    {
+                        "name": node.name,
+                        "kind": "function",
+                        "decorators": [ast.unparse(decorator) for decorator in node.decorator_list],
+                    }
+                )
+            elif isinstance(node, ast.ClassDef):
+                symbols.append(
+                    {
+                        "name": node.name,
+                        "kind": "class",
+                        "bases": [ast.unparse(base) for base in node.bases],
+                        "decorators": [ast.unparse(decorator) for decorator in node.decorator_list],
+                    }
+                )
+        return {"path": path, "imports": imports, "symbols": symbols}
     except (SyntaxError, ValueError) as error:
         return {"path": path, "error": str(error)}
 

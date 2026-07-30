@@ -129,37 +129,66 @@ function propertyAccess(expression) {
   return undefined;
 }
 
-function expressionPath(expression) {
-  const unwrapped = unwrappedExpression(expression);
-  if (ts.isIdentifier(unwrapped)) return unwrapped.text;
-  if (unwrapped.kind === ts.SyntaxKind.ThisKeyword) return "this";
-  const access = propertyAccess(unwrapped);
-  if (!access) return undefined;
-  const receiver = expressionPath(access.receiver);
-  return receiver ? `${receiver}.${access.name}` : undefined;
-}
-
 function propertyName(node) {
   if (!node) return undefined;
   if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)) return node.text;
   return undefined;
 }
 
-function factoryTargetName(expression) {
-  const unwrapped = unwrappedExpression(expression);
-  if (ts.isIdentifier(unwrapped)) return unwrapped.text;
-  return propertyAccess(unwrapped)?.name;
+const WEB_COMPILER_OPTIONS = {
+    target: ts.ScriptTarget.Latest,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    moduleDetection: ts.ModuleDetectionKind.Force,
+    jsx: ts.JsxEmit.ReactJSX,
+    allowJs: true,
+    checkJs: false,
+    skipLibCheck: true,
+};
+
+function webScriptKind(path) {
+  if (/\.[cm]?jsx$/u.test(path)) return ts.ScriptKind.JSX;
+  if (/\.[cm]?js$/u.test(path)) return ts.ScriptKind.JS;
+  return /\.[cm]?tsx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
 }
 
-function webBoundaryViolations(source, path) {
-  const scriptKind = /\.[jt]sx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
-  const factoryIdentifiers = new Set();
-  const persistenceNamespaceIdentifiers = new Set();
-  const persistenceIdentifiers = new Set();
-  const persistenceProperties = new Set();
-  const persistenceTypeProperties = new Map();
-  const platformIdentifiers = new Set(["globalThis", "window"]);
+function createWebBoundaryAnalysis(root) {
+  const files = walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate));
+  const sources = new Map(files.map((path) => [resolve(path), readFileSync(path, "utf8")]));
+  const host = ts.createCompilerHost(WEB_COMPILER_OPTIONS);
+  const defaultGetSourceFile = host.getSourceFile.bind(host);
+  host.fileExists = (candidate) => sources.has(resolve(candidate)) || ts.sys.fileExists(candidate);
+  host.readFile = (candidate) => sources.get(resolve(candidate)) ?? ts.sys.readFile(candidate);
+  host.getSourceFile = (candidate, languageVersion, onError, shouldCreateNewSourceFile) => (
+    sources.has(resolve(candidate))
+      ? ts.createSourceFile(
+        resolve(candidate),
+        sources.get(resolve(candidate)),
+        languageVersion,
+        true,
+        webScriptKind(candidate),
+      )
+      : defaultGetSourceFile(candidate, languageVersion, onError, shouldCreateNewSourceFile)
+  );
+  return {
+    program: ts.createProgram([...sources.keys()], WEB_COMPILER_OPTIONS, host),
+    results: new Map(),
+  };
+}
+
+function webBoundaryViolations(source, path, analysis) {
+  const resolvedPath = resolve(path);
+  if (analysis.results.has(resolvedPath)) return analysis.results.get(resolvedPath);
+  const program = analysis.program;
+  const sourceFile = program.getSourceFile(resolvedPath);
+  if (!sourceFile) throw new Error(`TypeScript program omitted architecture source ${resolvedPath}`);
+  const checker = program.getTypeChecker();
+  const factorySymbols = new Set();
+  const namespaceSymbols = new Set();
+  const persistenceSymbols = new Set();
+  const persistencePropertySymbols = new Set();
+  const platformObjectSymbols = new Set();
+  const platformFetchSymbols = new Set();
 
   function add(set, value) {
     if (!value || set.has(value)) return false;
@@ -167,150 +196,207 @@ function webBoundaryViolations(source, path) {
     return true;
   }
 
-  function typeSignalsPersistence(type) {
-    return Boolean(type && /\bSupabase[A-Za-z0-9]*Client\b/u.test(type.getText(sourceFile)));
+  function symbolAt(node) {
+    return node ? checker.getSymbolAtLocation(node) : undefined;
   }
 
-  function namedType(type) {
-    return type && ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName)
-      ? type.typeName.text
-      : undefined;
+  function moduleSpecifierFor(node) {
+    let current = node;
+    while (current && !ts.isImportDeclaration(current)) current = current.parent;
+    return current && ts.isStringLiteral(current.moduleSpecifier) ? current.moduleSpecifier.text : undefined;
   }
 
-  function addTypedProperties(base, type) {
-    if (!type) return false;
-    const members = ts.isTypeLiteralNode(type)
-      ? type.members
-      : persistenceTypeProperties.get(namedType(type)) ?? [];
-    let changed = false;
-    for (const member of members) {
-      if (!ts.isPropertySignature(member) || !typeSignalsPersistence(member.type)) continue;
-      const name = propertyName(member.name);
-      if (name) changed = add(persistenceProperties, `${base}.${name}`) || changed;
+  function isSupabaseModule(specifier) {
+    return specifier === "@supabase/supabase-js" || specifier === "@supabase/ssr";
+  }
+
+  function importedName(node) {
+    return ts.isImportSpecifier(node) ? (node.propertyName?.text ?? node.name.text) : undefined;
+  }
+
+  function typeSignalsPersistence(type, seen = new Set()) {
+    if (!type || seen.has(type)) return false;
+    seen.add(type);
+    if (ts.isParenthesizedTypeNode(type)) return typeSignalsPersistence(type.type, seen);
+    if (ts.isUnionTypeNode(type) || ts.isIntersectionTypeNode(type)) {
+      return type.types.some((member) => typeSignalsPersistence(member, seen));
     }
-    return changed;
+    if (ts.isTypeReferenceNode(type)) {
+      const symbol = symbolAt(type.typeName);
+      for (const declaration of symbol?.declarations ?? []) {
+        if (ts.isImportSpecifier(declaration)
+          && importedName(declaration) === "SupabaseClient"
+          && isSupabaseModule(moduleSpecifierFor(declaration))) {
+          return true;
+        }
+        if (ts.isTypeAliasDeclaration(declaration)
+          && typeSignalsPersistence(declaration.type, seen)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
-  function factoryCall(expression) {
-    const unwrapped = unwrappedExpression(expression);
-    if (!ts.isCallExpression(unwrapped)) return false;
-    const name = factoryTargetName(unwrapped.expression);
-    const access = propertyAccess(unwrapped.expression);
-    const namespaceFactory = access
-      && /^create[A-Za-z0-9]*Client$/u.test(access.name)
-      && ts.isIdentifier(access.receiver)
-      && persistenceNamespaceIdentifiers.has(access.receiver.text);
-    return Boolean(
-      namespaceFactory
-      || (name && (factoryIdentifiers.has(name) || /^createSupabase[A-Za-z0-9]*Client$/u.test(name)))
-    );
+  function isPlatformGlobal(identifier) {
+    if (!ts.isIdentifier(identifier) || !["globalThis", "window"].includes(identifier.text)) return false;
+    const symbol = symbolAt(identifier);
+    return Boolean(symbol && (symbol.declarations ?? []).every((declaration) => declaration.getSourceFile().isDeclarationFile));
   }
 
-  function platformExpression(expression) {
+  function platformObject(expression) {
     const unwrapped = unwrappedExpression(expression);
-    return ts.isIdentifier(unwrapped) && platformIdentifiers.has(unwrapped.text);
+    return ts.isIdentifier(unwrapped)
+      && (platformObjectSymbols.has(symbolAt(unwrapped)) || isPlatformGlobal(unwrapped));
+  }
+
+  function namespaceExpression(expression) {
+    const unwrapped = unwrappedExpression(expression);
+    return ts.isIdentifier(unwrapped) && namespaceSymbols.has(symbolAt(unwrapped));
+  }
+
+  function symbolIsFactory(symbol, seen = new Set()) {
+    if (!symbol || seen.has(symbol)) return false;
+    seen.add(symbol);
+    if (factorySymbols.has(symbol)) return true;
+    for (const declaration of symbol.declarations ?? []) {
+      if (ts.isImportSpecifier(declaration)) {
+        if (isSupabaseModule(moduleSpecifierFor(declaration))
+          && ["createClient", "createServerClient"].includes(importedName(declaration))) {
+          return true;
+        }
+        if (symbol.flags & ts.SymbolFlags.Alias) {
+          const aliased = checker.getAliasedSymbol(symbol);
+          if (aliased !== symbol && symbolIsFactory(aliased, seen)) return true;
+        }
+      }
+      if (ts.isFunctionDeclaration(declaration) && declaration.body) {
+        let returnsFactory = false;
+        function inspectReturn(node) {
+          if (ts.isReturnStatement(node) && node.expression && factoryCall(node.expression, seen)) {
+            returnsFactory = true;
+          }
+          ts.forEachChild(node, inspectReturn);
+        }
+        inspectReturn(declaration.body);
+        if (returnsFactory) return true;
+      }
+    }
+    return false;
+  }
+
+  function directFactory(expression, seen = new Set()) {
+    const unwrapped = unwrappedExpression(expression);
+    if (ts.isIdentifier(unwrapped) && symbolIsFactory(symbolAt(unwrapped), seen)) return true;
+    const access = propertyAccess(unwrapped);
+    return Boolean(access && access.name === "createClient" && namespaceExpression(access.receiver));
+  }
+
+  function platformFetch(expression) {
+    const unwrapped = unwrappedExpression(expression);
+    if (ts.isIdentifier(unwrapped)) {
+      const symbol = symbolAt(unwrapped);
+      if (platformFetchSymbols.has(symbol)) return true;
+      return unwrapped.text === "fetch"
+        && Boolean(symbol)
+        && (symbol.declarations ?? []).every((declaration) => declaration.getSourceFile().isDeclarationFile);
+    }
+    const access = propertyAccess(unwrapped);
+    return Boolean(access && access.name === "fetch" && platformObject(access.receiver));
+  }
+
+  function factoryCall(expression, seen = new Set()) {
+    const unwrapped = unwrappedExpression(expression);
+    return ts.isCallExpression(unwrapped) && directFactory(unwrapped.expression, seen);
   }
 
   function persistenceExpression(expression) {
     if (!expression) return false;
     const unwrapped = unwrappedExpression(expression);
     if (factoryCall(unwrapped)) return true;
-    if (ts.isIdentifier(unwrapped)) {
-      return persistenceIdentifiers.has(unwrapped.text);
-    }
-    const pathKey = expressionPath(unwrapped);
-    return Boolean(pathKey && persistenceProperties.has(pathKey));
+    if (ts.isIdentifier(unwrapped)) return persistenceSymbols.has(symbolAt(unwrapped));
+    const access = propertyAccess(unwrapped);
+    return Boolean(access && persistencePropertySymbols.has(symbolAt(
+      ts.isPropertyAccessExpression(unwrapped) ? unwrapped.name : unwrapped.argumentExpression,
+    )));
   }
 
-  function addObjectProperties(base, object) {
-    let changed = false;
-    for (const property of object.properties) {
-      if (ts.isPropertyAssignment(property)) {
-        const name = propertyName(property.name);
-        if (name && persistenceExpression(property.initializer)) {
-          changed = add(persistenceProperties, `${base}.${name}`) || changed;
-        }
-      } else if (ts.isShorthandPropertyAssignment(property) && persistenceExpression(property.name)) {
-        changed = add(persistenceProperties, `${base}.${property.name.text}`) || changed;
-      }
-    }
-    return changed;
+  function bindingElementSource(element, initializer) {
+    const property = propertyName(element.propertyName) ?? (ts.isIdentifier(element.name) ? element.name.text : undefined);
+    return { property, initializer: unwrappedExpression(initializer) };
   }
 
   function collectEvidence(node) {
     let changed = false;
     if (ts.isImportDeclaration(node)
       && ts.isStringLiteral(node.moduleSpecifier)
-      && /supabase/iu.test(node.moduleSpecifier.text)) {
+      && isSupabaseModule(node.moduleSpecifier.text)) {
       const bindings = node.importClause?.namedBindings;
       if (bindings && ts.isNamespaceImport(bindings)) {
-        changed = add(persistenceNamespaceIdentifiers, bindings.name.text) || changed;
+        changed = add(namespaceSymbols, symbolAt(bindings.name)) || changed;
       } else if (bindings && ts.isNamedImports(bindings)) {
         for (const element of bindings.elements) {
-          const imported = element.propertyName?.text ?? element.name.text;
-          if (/^create[A-Za-z0-9]*Client$/u.test(imported)) {
-            changed = add(factoryIdentifiers, element.name.text) || changed;
+          if (importedName(element) === "createClient" || importedName(element) === "createServerClient") {
+            changed = add(factorySymbols, symbolAt(element.name)) || changed;
           }
         }
       }
     }
-    if (ts.isFunctionDeclaration(node) && node.name && /^createSupabase[A-Za-z0-9]*Client$/u.test(node.name.text)) {
-      changed = add(factoryIdentifiers, node.name.text) || changed;
+    if ((ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))
+      && node.type && typeSignalsPersistence(node.type) && node.name) {
+      changed = add(factorySymbols, symbolAt(node.name)) || changed;
     }
-    if (ts.isParameter(node) && ts.isIdentifier(node.name) && typeSignalsPersistence(node.type)) {
-      changed = add(persistenceIdentifiers, node.name.text) || changed;
+    if ((ts.isParameter(node) || ts.isVariableDeclaration(node))
+      && ts.isIdentifier(node.name)
+      && typeSignalsPersistence(node.type)) {
+      changed = add(persistenceSymbols, symbolAt(node.name)) || changed;
     }
-    if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
-      changed = addTypedProperties(node.name.text, node.type) || changed;
+    if (ts.isPropertySignature(node) && typeSignalsPersistence(node.type)) {
+      changed = add(persistencePropertySymbols, symbolAt(node.name)) || changed;
     }
-    if (ts.isVariableDeclaration(node)) {
-      const initializer = node.initializer;
+    if (ts.isVariableDeclaration(node) && node.initializer) {
       if (ts.isIdentifier(node.name)) {
-        if (initializer && ts.isIdentifier(unwrappedExpression(initializer))) {
-          const initializedFrom = unwrappedExpression(initializer).text;
-          if (factoryIdentifiers.has(initializedFrom)) {
-            changed = add(factoryIdentifiers, node.name.text) || changed;
-          }
-          if (persistenceNamespaceIdentifiers.has(initializedFrom)) {
-            changed = add(persistenceNamespaceIdentifiers, node.name.text) || changed;
-          }
-          if (platformIdentifiers.has(initializedFrom)) {
-            changed = add(platformIdentifiers, node.name.text) || changed;
-          }
-        }
-        if (typeSignalsPersistence(node.type) || persistenceExpression(initializer)) {
-          changed = add(persistenceIdentifiers, node.name.text) || changed;
-        }
-        changed = addTypedProperties(node.name.text, node.type) || changed;
-        const unwrapped = initializer && unwrappedExpression(initializer);
-        if (unwrapped && ts.isObjectLiteralExpression(unwrapped)) {
-          changed = addObjectProperties(node.name.text, unwrapped) || changed;
-        }
-      } else if (ts.isObjectBindingPattern(node.name) && initializer) {
-        const base = expressionPath(initializer);
+        const target = symbolAt(node.name);
+        changed = add(factorySymbols, directFactory(node.initializer) ? target : undefined) || changed;
+        changed = add(platformFetchSymbols, platformFetch(node.initializer) ? target : undefined) || changed;
+        changed = add(platformObjectSymbols, platformObject(node.initializer) ? target : undefined) || changed;
+        changed = add(namespaceSymbols, namespaceExpression(node.initializer) ? target : undefined) || changed;
+        changed = add(persistenceSymbols, persistenceExpression(node.initializer) ? target : undefined) || changed;
+      } else if (ts.isObjectBindingPattern(node.name)) {
         for (const element of node.name.elements) {
           if (!ts.isIdentifier(element.name)) continue;
-          const name = propertyName(element.propertyName) ?? element.name.text;
-          if (base && persistenceProperties.has(`${base}.${name}`)) {
-            changed = add(persistenceIdentifiers, element.name.text) || changed;
+          const binding = bindingElementSource(element, node.initializer);
+          const target = symbolAt(element.name);
+          if (binding.property === "createClient" && namespaceExpression(binding.initializer)) {
+            changed = add(factorySymbols, target) || changed;
+          }
+          if (binding.property === "fetch" && platformObject(binding.initializer)) {
+            changed = add(platformFetchSymbols, target) || changed;
           }
         }
       }
+    }
+    if (ts.isPropertyAssignment(node) && persistenceExpression(node.initializer)) {
+      changed = add(persistencePropertySymbols, symbolAt(node.name)) || changed;
+    }
+    if (ts.isShorthandPropertyAssignment(node) && persistenceExpression(node.name)) {
+      changed = add(persistencePropertySymbols, symbolAt(node.name)) || changed;
     }
     if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       const left = unwrappedExpression(node.left);
-      if (ts.isIdentifier(left) && persistenceExpression(node.right)) {
-        changed = add(persistenceIdentifiers, left.text) || changed;
-      } else if (ts.isIdentifier(left) && platformExpression(node.right)) {
-        changed = add(platformIdentifiers, left.text) || changed;
-      } else if (ts.isIdentifier(left)
-        && ts.isIdentifier(unwrappedExpression(node.right))
-        && persistenceNamespaceIdentifiers.has(unwrappedExpression(node.right).text)) {
-        changed = add(persistenceNamespaceIdentifiers, left.text) || changed;
+      if (ts.isIdentifier(left)) {
+        const target = symbolAt(left);
+        changed = add(factorySymbols, directFactory(node.right) ? target : undefined) || changed;
+        changed = add(platformFetchSymbols, platformFetch(node.right) ? target : undefined) || changed;
+        changed = add(platformObjectSymbols, platformObject(node.right) ? target : undefined) || changed;
+        changed = add(namespaceSymbols, namespaceExpression(node.right) ? target : undefined) || changed;
+        changed = add(persistenceSymbols, persistenceExpression(node.right) ? target : undefined) || changed;
       } else {
-        const leftPath = expressionPath(left);
-        if (leftPath && persistenceExpression(node.right)) {
-          changed = add(persistenceProperties, leftPath) || changed;
+        const access = propertyAccess(left);
+        if (access && persistenceExpression(node.right)) {
+          changed = add(persistencePropertySymbols, symbolAt(
+            ts.isPropertyAccessExpression(left) ? left.name : left.argumentExpression,
+          )) || changed;
         }
       }
     }
@@ -319,17 +405,6 @@ function webBoundaryViolations(source, path) {
     });
     return changed;
   }
-
-  function collectTypeProperties(node) {
-    if (ts.isInterfaceDeclaration(node)) {
-      persistenceTypeProperties.set(node.name.text, node.members);
-    } else if (ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)) {
-      persistenceTypeProperties.set(node.name.text, node.type.members);
-    }
-    ts.forEachChild(node, collectTypeProperties);
-  }
-
-  collectTypeProperties(sourceFile);
 
   let changed;
   do {
@@ -340,13 +415,8 @@ function webBoundaryViolations(source, path) {
   let fetch = false;
   function visit(node) {
     if (ts.isCallExpression(node)) {
+      if (platformFetch(node.expression)) fetch = true;
       const access = propertyAccess(node.expression);
-      if (access?.name === "fetch") {
-        if (platformExpression(access.receiver)) fetch = true;
-      } else if (ts.isIdentifier(unwrappedExpression(node.expression))
-        && unwrappedExpression(node.expression).text === "fetch") {
-        fetch = true;
-      }
       if (access && ["from", "rpc"].includes(access.name)) {
         if (persistenceExpression(access.receiver)) persistence = true;
         const receiverAccess = propertyAccess(access.receiver);
@@ -359,10 +429,47 @@ function webBoundaryViolations(source, path) {
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
-  return { fetch, persistence };
+  const result = { fetch, persistence };
+  analysis.results.set(resolvedPath, result);
+  return result;
 }
 
-function pythonImports(root, paths, errors) {
+function generatedClientDeepImport(source, path) {
+  const scriptKind = webScriptKind(path);
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind);
+  let violation = false;
+  function forbidden(specifier) {
+    return specifier.startsWith("@talli/talli-api-client/");
+  }
+  function visit(node) {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+      && node.moduleSpecifier
+      && ts.isStringLiteralLike(node.moduleSpecifier)
+      && forbidden(node.moduleSpecifier.text)) {
+      violation = true;
+    }
+    if (ts.isImportEqualsDeclaration(node)
+      && ts.isExternalModuleReference(node.moduleReference)
+      && node.moduleReference.expression
+      && ts.isStringLiteralLike(node.moduleReference.expression)
+      && forbidden(node.moduleReference.expression.text)) {
+      violation = true;
+    }
+    if (ts.isCallExpression(node)
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword
+        || (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+      && node.arguments.length
+      && ts.isStringLiteralLike(node.arguments[0])
+      && forbidden(node.arguments[0].text)) {
+      violation = true;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return violation;
+}
+
+function pythonInspection(root, paths, errors) {
   if (!paths.length) return new Map();
   const result = spawnSync(
     "uv",
@@ -384,12 +491,19 @@ function pythonImports(root, paths, errors) {
     const parsed = JSON.parse(result.stdout);
     return new Map(parsed.files.map((file) => {
       if (file.error) errors.push(`${relative(root, file.path)}: Python import parse failed: ${file.error}`);
-      return [file.path, file.imports ?? []];
+      return [file.path, file];
     }));
   } catch (error) {
     errors.push(`Python import inspection returned invalid output: ${error.message}`);
     return new Map();
   }
+}
+
+function pythonImports(root, paths, errors) {
+  return new Map(
+    [...pythonInspection(root, paths, errors)]
+      .map(([path, inspection]) => [path, inspection.imports ?? []]),
+  );
 }
 
 function normalizedCompositionDependency(specifier) {
@@ -413,12 +527,13 @@ function checkCompositionRoot(root, system, errors) {
   }
 }
 
-function adapterSymbolExists(root, adapter) {
-  const parts = adapter.split(".");
-  const symbol = parts.pop();
+function pythonSymbol(root, qualifiedName, errors) {
+  const parts = qualifiedName.split(".");
+  const symbolName = parts.pop();
   const modulePath = join(root, "apps/backend/src", ...parts) + ".py";
-  return existsSync(modulePath)
-    && new RegExp(`(?:async\\s+def|def|class)\\s+${symbol}\\b`, "u").test(readFileSync(modulePath, "utf8"));
+  if (!existsSync(modulePath)) return undefined;
+  const inspection = pythonInspection(root, [modulePath], errors).get(modulePath);
+  return inspection?.symbols?.find((symbol) => symbol.name === symbolName);
 }
 
 function declaredFeatureImports(manifest) {
@@ -616,7 +731,7 @@ function validateModule(root, manifestPath, errors, schema) {
   return manifest;
 }
 
-function checkModuleImports(root, manifest, errors) {
+function checkModuleImports(root, manifest, errors, webAnalysis) {
   const label = `${manifest.owner} (${manifest.path})`;
   const allowedModuleImports = manifest.kind === "web-feature"
     ? declaredFeatureImports(manifest)
@@ -655,12 +770,12 @@ function checkModuleImports(root, manifest, errors) {
       }
     }
     if (manifest.kind === "web-feature") {
-      const boundary = webBoundaryViolations(source, path);
+      const boundary = webBoundaryViolations(source, path, webAnalysis);
       if (boundary.fetch) errors.push(`${label}: direct business fetch is forbidden`);
       if (boundary.persistence) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
-      if (/@talli\/talli-api-client\//u.test(source)) {
+      if (generatedClientDeepImport(source, path)) {
         errors.push(`${label}: generated-client deep import is forbidden`);
       }
     }
@@ -782,8 +897,26 @@ function validateSystemBindings(root, system, manifests, errors) {
     if (!port.adapters.includes(binding.adapter)) {
       errors.push(`architecture/backend-system.json: adapter binding does not match declared port adapter ${binding.port}`);
     }
-    if (!adapterSymbolExists(root, binding.adapter)) {
+    const adapter = pythonSymbol(root, binding.adapter, errors);
+    if (!adapter) {
       errors.push(`architecture/backend-system.json: adapter symbol does not exist ${binding.adapter}`);
+      continue;
+    }
+    const contract = port.contract ? pythonSymbol(root, port.contract, errors) : undefined;
+    if (!contract || contract.kind !== "class" || !contract.bases?.includes("Protocol")) {
+      errors.push(`architecture/backend-system.json: port contract is not a Protocol ${port.contract ?? binding.port}`);
+    }
+    const registration = port.registrationDecorator
+      ? pythonSymbol(root, port.registrationDecorator, errors)
+      : undefined;
+    if (!registration || registration.kind !== "function") {
+      errors.push(`architecture/backend-system.json: port registration decorator does not exist ${port.registrationDecorator ?? binding.port}`);
+    }
+    const decoratorName = port.registrationDecorator?.split(".").at(-1);
+    const contractName = port.contract?.split(".").at(-1);
+    const expectedDecorator = `${decoratorName}(${contractName})`;
+    if (!decoratorName || !contractName || !adapter.decorators?.includes(expectedDecorator)) {
+      errors.push(`architecture/backend-system.json: adapter is not registered for port ${binding.port}`);
     }
   }
 }
@@ -868,11 +1001,11 @@ function hasActiveCompatibility(registry, path, rule, now) {
   ));
 }
 
-function checkGlobalWebBoundary(root, registry, errors, now) {
+function checkGlobalWebBoundary(root, registry, errors, now, webAnalysis) {
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
-    const boundary = webBoundaryViolations(source, path);
+    const boundary = webBoundaryViolations(source, path, webAnalysis);
     if (boundary.fetch
       && !hasActiveCompatibility(registry, scopedPath, "direct-business-fetch", now)) {
       errors.push(`${scopedPath}: direct business fetch is forbidden`);
@@ -881,7 +1014,7 @@ function checkGlobalWebBoundary(root, registry, errors, now) {
       && !hasActiveCompatibility(registry, scopedPath, "direct-web-business-persistence", now)) {
       errors.push(`${scopedPath}: direct web business persistence is forbidden`);
     }
-    if (/@talli\/talli-api-client\//u.test(source)
+    if (generatedClientDeepImport(source, path)
       && !hasActiveCompatibility(registry, scopedPath, "generated-client-deep-import", now)) {
       errors.push(`${scopedPath}: generated-client deep import is forbidden`);
     }
@@ -919,6 +1052,7 @@ function checkSharedKernel(root, sharedKernel, errors) {
 export function checkArchitecture({ root, writeEvidence = false, now = new Date() }) {
   const resolvedRoot = rootPath(root);
   const errors = [];
+  const webAnalysis = createWebBoundaryAnalysis(resolvedRoot);
   const schemas = Object.fromEntries([
     ["module", "module.schema.json"],
     ["backendSystem", "backend-system.schema.json"],
@@ -930,7 +1064,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   const manifests = walk(join(resolvedRoot, "apps"), (path) => path.endsWith("/module.json"))
     .sort()
     .map((path) => validateModule(resolvedRoot, path, errors, schemas.module));
-  for (const manifest of manifests) checkModuleImports(resolvedRoot, manifest, errors);
+  for (const manifest of manifests) checkModuleImports(resolvedRoot, manifest, errors, webAnalysis);
   checkRouteImports(resolvedRoot, manifests, errors);
   const backendSystem = validateSystemManifest(resolvedRoot, errors, schemas.backendSystem);
   validateSystemBindings(resolvedRoot, backendSystem, manifests, errors);
@@ -938,7 +1072,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
   const compatibility = readJson(compatibilityPath, []);
   errors.push(...validateCompatibilityRegistry(compatibilityPath, { now, schema: schemas.compatibility }));
-  checkGlobalWebBoundary(resolvedRoot, compatibility, errors, now);
+  checkGlobalWebBoundary(resolvedRoot, compatibility, errors, now, webAnalysis);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
   validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {
