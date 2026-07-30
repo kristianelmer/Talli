@@ -2,6 +2,10 @@
   "name": "talli-repository",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
     "build": "npm run build:web",
