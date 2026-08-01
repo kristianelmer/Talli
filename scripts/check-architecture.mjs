@@ -525,14 +525,15 @@ function webBoundaryViolations(source, path, analysis) {
       && (ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name))
       ? node.name.text
       : undefined;
-    if (ts.isMethodDeclaration(node) && ts.isClassLike(node.parent) && node.parent.name) {
+    if (ts.isMethodDeclaration(node) && ownName && ts.isClassLike(node.parent) && node.parent.name) {
       return `${node.parent.name.text}.${ownName}`;
     }
-    if (ts.isMethodDeclaration(node) && ts.isObjectLiteralExpression(node.parent)) {
+    if (ts.isMethodDeclaration(node) && ownName && ts.isObjectLiteralExpression(node.parent)) {
       const declaration = node.parent.parent;
       if (ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)) {
         return `${declaration.name.text}.${ownName}`;
       }
+      return undefined;
     }
     if (ownName) {
       return ownName;
@@ -549,7 +550,7 @@ function webBoundaryViolations(source, path, analysis) {
       const declaration = node.parent.parent.parent;
       return ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)
         ? `${declaration.name.text}.${propertyName}`
-        : propertyName;
+        : undefined;
     }
     if ((ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node))
       && ts.isExportAssignment(node.parent)) {
@@ -574,7 +575,7 @@ function webBoundaryViolations(source, path, analysis) {
 
   function addFinding(findings, resource, node) {
     const operation = enclosingOperation(node) ?? "<unscoped>";
-    findings.set(`${resource}\u0000${operation}`, { resource, operation });
+    findings.set(`${resource}\u0000${operation}\u0000${node.pos}`, { resource, operation });
   }
 
   const persistence = new Map();
@@ -1242,7 +1243,7 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
       const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
       const previous = scopeOwners.get(key);
-      if (previous && previous.removalIssue !== entry.removalIssue) {
+      if (previous) {
         errors.push(
           `duplicate compatibility scope ${compatibilityScopeLabel(scope)} across ${previous.removalIssue} and ${entry.removalIssue}`,
         );
@@ -1364,7 +1365,7 @@ function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAn
       const resource = "module:@talli/talli-api-client/*";
       const operation = "module";
       actualScopes.add(compatibilityScopeKey(scopedPath, rule, resource, operation));
-      if (!activeCompatibilityMatches(
+      const matches = activeCompatibilityMatches(
         registry,
         releaseState,
         scopedPath,
@@ -1372,8 +1373,11 @@ function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAn
         resource,
         operation,
         now,
-      ).length) {
+      );
+      if (!matches.length) {
         errors.push(`${scopedPath}: generated-client deep import is forbidden`);
+      } else if (matches.length > 1) {
+        errors.push(`${scopedPath}: generated-client deep import has ambiguous compatibility`);
       }
     }
   }

@@ -509,14 +509,25 @@ test("compatibility operations map to their serialized future tickets", () => {
   const onboarding = byRemovalIssue.get("#138");
   const membershipAdministration = byRemovalIssue.get("#160");
   const cancellation = byRemovalIssue.get("#161");
-  const ownerOf = (resource, operation) => compatibility.exceptions.find((entry) => (
-    entry.scopes.some((scope) => scope.path === "apps/web/app/actions.ts"
+  const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.exceptions.find((entry) => (
+    entry.scopes.some((scope) => scope.path === path
       && scope.resource === resource
       && scope.operation === operation)
   ))?.removalIssue;
 
   assert.equal(ownerOf("rpc:create_company_workspace_with_acceptance", "createWorkspace"), "#138");
-  assert.equal(ownerOf("table:companies", "generateRf1086Preview"), "#138");
+  assert.equal(ownerOf("table:companies", "generateRf1086Preview"), "#151");
+  assert.equal(ownerOf("table:companies", "approveProductionFiling"), "#151");
+  assert.equal(ownerOf("table:companies", "createAnnualCorporateDecisionDraft"), "#148");
+  assert.equal(ownerOf("table:companies", "createOwnerDividendDecisionDraft"), "#144");
+  assert.equal(ownerOf("table:company_memberships", "queueDeadlineReminders"), "#149");
+  assert.equal(ownerOf("table:companies", "recordAnnualAccountsTt02Evidence"), "#153");
+  assert.equal(ownerOf("table:companies", "recordCompanyTaxReturnTt02Evidence"), "#152");
+  assert.equal(ownerOf(
+    "table:companies",
+    "searchOperatorSupportDashboard",
+    "apps/web/app/lib/supabase/server.ts",
+  ), "#150");
   assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), "#160");
   assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), "#160");
   assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), "#161");
@@ -527,9 +538,51 @@ test("compatibility operations map to their serialized future tickets", () => {
   assert.equal(ownerOf("table:investment_lots", "recordShareSale"), "#142");
   assert.equal(ownerOf("table:audit_events", "uploadDocument"), "#155");
   assert.equal(ownerOf("table:notification_outbox", "inviteWorkspaceReviewer"), "#156");
-  assert.match(onboarding.removalCondition, /After #160 and #161.*#138/u);
+  assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
   assert.match(membershipAdministration.removalCondition, /invitations and membership administration.*#160/u);
   assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
+  assert.deepEqual(
+    onboarding.scopes.map(({ resource, operation }) => `${resource}:${operation}`).sort(),
+    [
+      "rpc:append_company_agreement_acceptance:reacceptCompanyAgreement",
+      "rpc:create_company_workspace_with_acceptance:createWorkspace",
+      "table:customer_agreement_acceptances:listCustomerAgreementAcceptances",
+    ],
+  );
+});
+
+test("anonymous object methods fail closed without merging separate call sites", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-anonymous-methods-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/anonymous-object-methods.ts";
+  writeFileSync(join(temporaryRoot, fixture), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://example.invalid", "public-key");
+function consume(_value) {}
+consume({ handler() { client.from("companies"); } });
+consume({ handler() { client.from("companies"); } });
+`);
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  compatibility.exceptions[0].scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "handler",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.equal(
+      errors.match(new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies in operation:<unscoped>`, "gu"))?.length,
+      2,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("compatibility scopes match the exact enclosing operation", () => {
@@ -880,6 +933,41 @@ load("@talli/talli-api-client/src/generated/require-assignment-alias.ts");
     for (const name of Object.keys(fixtures)) {
       assert.match(errors, new RegExp(`${name}: generated-client deep import is forbidden`, "u"));
     }
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("generated-client deep imports reject ambiguous same-ticket exceptions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-generated-ambiguity-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/generated-ambiguity.ts";
+  writeFileSync(
+    join(temporaryRoot, fixture),
+    'import "@talli/talli-api-client/src/generated/ambiguous.ts";\n',
+  );
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const scope = {
+    path: fixture,
+    rule: "generated-client-deep-import",
+    resource: "module:@talli/talli-api-client/*",
+    operation: "module",
+  };
+  compatibility.exceptions.push({
+    ...compatibility.exceptions[0],
+    id: "compat-billing-persistence-duplicate",
+    scopes: [scope],
+  });
+  compatibility.exceptions[0].scopes.push(scope);
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /duplicate compatibility scope.*#137.*#137/u);
+    assert.match(errors, new RegExp(`${fixture}: generated-client deep import has ambiguous compatibility`, "u"));
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
