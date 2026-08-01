@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -392,7 +392,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def revoke_company_invitation(
-        invitation_id: str,
+        invitation_id: UUID,
         command: CompanyInvitationCommandRequest,
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
     ) -> CompanyInvitationResponse:
@@ -413,7 +413,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def resend_company_invitation(
-        invitation_id: str,
+        invitation_id: UUID,
         command: CompanyInvitationCommandRequest,
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
     ) -> CompanyInvitationResponse:
@@ -452,7 +452,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def administer_company_membership(
-        user_id: str,
+        user_id: UUID,
         command: AdministerCompanyMembershipRequest,
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
     ) -> CompanyMembershipResponse:

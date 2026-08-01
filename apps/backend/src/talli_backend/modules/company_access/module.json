@@ -16,7 +16,7 @@
   },
   "owns": {
     "postgresSchemas": ["public"],
-    "tables": ["public.companies", "public.company_access_command_receipts", "public.company_invitations", "public.company_memberships"],
+    "tables": ["public.companies", "public.company_invitations", "public.company_memberships"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260801090000_company_access_invitations.sql"
@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "base64", "collections.abc", "datetime", "hashlib", "json", "pydantic", "re", "secrets", "typing"],
+  "allowedImports": ["__future__", "base64", "collections.abc", "datetime", "hashlib", "json", "pydantic", "re", "secrets", "typing", "uuid"],
   "forbiddenResponsibilities": [
     "Company onboarding, agreement acceptance, cancellation, deletion, or support-operator workflows",
     "Service-role access or RLS bypass for ordinary business reads",

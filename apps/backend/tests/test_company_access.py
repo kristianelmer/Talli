@@ -46,17 +46,17 @@ def test_rpc_reconciles_one_unknown_outcome_with_the_identical_command() -> None
                 title="Company access unavailable",
                 detail="Company access is temporarily unavailable.",
             )
-        return [{"id": "invitation-1"}]
+        return [{"id": "30000000-0000-0000-0000-000000000001"}]
 
     adapter._request = request  # type: ignore[method-assign]
     body = {
         "p_operation_id": "40000000-0000-0000-0000-000000000001",
-        "p_company_id": "company-1",
+        "p_company_id": "10000000-0000-0000-0000-000000000001",
     }
 
     result = asyncio.run(adapter._rpc_row("bearer", "company_access_create_invitation", body))
 
-    assert result == {"id": "invitation-1"}
+    assert result == {"id": "30000000-0000-0000-0000-000000000001"}
     assert calls == [
         ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
         ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
@@ -82,14 +82,14 @@ class CompanyAccessGatewayStub:
     async def memberships(
         self, _access_token: str, _subject: str
     ) -> list[Mapping[str, object]]:
-        return [{"company_id": "company-1", "role": self.role, "accepted_at": "2026-07-30T00:00:00Z"}]
+        return [{"company_id": "10000000-0000-0000-0000-000000000001", "role": self.role, "accepted_at": "2026-07-30T00:00:00Z"}]
 
     async def companies(
         self, _access_token: str, company_ids: list[str]
     ) -> list[Mapping[str, object]]:
         companies = {
-            "company-1": {
-                "id": "company-1",
+            "10000000-0000-0000-0000-000000000001": {
+                "id": "10000000-0000-0000-0000-000000000001",
                 "org_number": "314159265",
                 "name": "Talli Holding AS",
                 "entity_type": "AS",
@@ -103,8 +103,8 @@ class CompanyAccessGatewayStub:
                 "identity_locked_at": None,
                 "created_at": "2026-07-30T00:00:00Z",
             },
-            "company-2": {
-                "id": "company-2",
+            "20000000-0000-0000-0000-000000000002": {
+                "id": "20000000-0000-0000-0000-000000000002",
                 "org_number": "271828182",
                 "name": "Other Holding AS",
                 "entity_type": "AS",
@@ -191,8 +191,8 @@ class CompanyAccessGatewayStub:
         status: str | None = None,
     ) -> Mapping[str, object]:
         return {
-            "id": "invitation-1",
-            "company_id": "company-1",
+            "id": "30000000-0000-0000-0000-000000000001",
+            "company_id": "10000000-0000-0000-0000-000000000001",
             "invited_email": email or self.invitation_email,
             "role": role,
             "status": status or self.invitation_status,
@@ -206,8 +206,8 @@ class CompanyAccessGatewayStub:
         *, role: str = "reviewer", state: str = "active"
     ) -> Mapping[str, object]:
         return {
-            "company_id": "company-1",
-            "user_id": "reviewer-1",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "user_id": "00000000-0000-0000-0000-000000000044",
             "role": role,
             "state": state,
             "accepted_at": "2026-08-01T00:00:00Z",
@@ -256,15 +256,15 @@ class LocalSupabaseGateway:
                     self._json(
                         200,
                         [] if token.startswith("outsider-") else [
-                            {"company_id": "company-1", "role": gateway.membership_role, "accepted_at": "2026-07-30T00:00:00Z"}
+                            {"company_id": "10000000-0000-0000-0000-000000000001", "role": gateway.membership_role, "accepted_at": "2026-07-30T00:00:00Z"}
                         ],
                     )
                     return
                 if path == "/rest/v1/companies":
                     # This mirrors PostgREST RLS: a member never receives a
                     # cross-company row even if they put its ID in a filter.
-                    self._json(200, [] if "company-2" in self.path else [{
-                        "id": "company-1",
+                    self._json(200, [] if "20000000-0000-0000-0000-000000000002" in self.path else [{
+                        "id": "10000000-0000-0000-0000-000000000001",
                         "org_number": "314159265",
                         "name": "Talli Holding AS",
                         "entity_type": "AS",
@@ -293,7 +293,7 @@ class LocalSupabaseGateway:
                 payload = json.loads(self.rfile.read(content_length) or b"{}")
                 if path == "/rest/v1/rpc/company_access_create_invitation":
                     self._json(200, [{
-                        "id": "invitation-1",
+                        "id": "30000000-0000-0000-0000-000000000001",
                         "company_id": payload["p_company_id"],
                         "invited_email": payload["p_invited_email"],
                         "role": payload["p_role"],
@@ -355,7 +355,7 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "selectedCompany": {
-            "id": "company-1",
+            "id": "10000000-0000-0000-0000-000000000001",
             "orgNumber": "314159265",
             "name": "Talli Holding AS",
             "entityType": "AS",
@@ -373,7 +373,7 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
             "aal": "aal2",
         },
         "companies": [{
-            "id": "company-1",
+            "id": "10000000-0000-0000-0000-000000000001",
             "orgNumber": "314159265",
             "name": "Talli Holding AS",
             "entityType": "AS",
@@ -397,7 +397,7 @@ def test_cross_company_context_is_concealed() -> None:
     app = create_app(CompanyAccessGatewayStub())
 
     response = TestClient(app).get(
-        "/api/v1/company-access/context?company_id=company-2",
+        "/api/v1/company-access/context?company_id=20000000-0000-0000-0000-000000000002",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
     )
 
@@ -499,7 +499,7 @@ def test_real_gateway_aal1_and_rls_outsider_or_cross_company_reads_fail_closed()
             headers={"Authorization": f"Bearer outsider-{access_token('aal2')}"},
         )
         cross_company = client.get(
-            "/api/v1/company-access/context?company_id=company-2",
+            "/api/v1/company-access/context?company_id=20000000-0000-0000-0000-000000000002",
             headers={"Authorization": f"Bearer {access_token('aal2')}"},
         )
 
@@ -515,7 +515,7 @@ def test_real_gateway_conceals_reviewer_and_read_only_memberships() -> None:
     for role in ("reviewer", "read_only"):
         with LocalSupabaseGateway(role) as server:
             response = TestClient(gateway_app(server)).get(
-                "/api/v1/company-access/context?company_id=company-1",
+                "/api/v1/company-access/context?company_id=10000000-0000-0000-0000-000000000001",
                 headers={"Authorization": f"Bearer {access_token('aal2')}"},
             )
 
@@ -534,7 +534,7 @@ def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc()
             headers={"Authorization": f"Bearer {access_token('aal2')}"},
             json={
                 "operationId": "40000000-0000-0000-0000-000000000001",
-                "companyId": "company-1",
+                "companyId": "10000000-0000-0000-0000-000000000001",
                 "invitedEmail": "reviewer@example.no",
                 "role": "reviewer",
             },
@@ -553,6 +553,43 @@ def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc()
         assert "service_role" not in authorization.lower()
 
 
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        (
+            "/api/v1/company-access/invitations",
+            {
+                "operationId": "not-a-uuid",
+                "companyId": "10000000-0000-0000-0000-000000000001",
+                "invitedEmail": "reviewer@example.no",
+                "role": "reviewer",
+            },
+        ),
+        (
+            "/api/v1/company-access/invitations/30000000-0000-0000-0000-000000000001/revoke",
+            {
+                "operationId": "40000000-0000-0000-0000-000000000001",
+                "companyId": "40000000-0000-0000-0000-000000000002",
+                "expectedUpdatedAt": "yesterday",
+            },
+        ),
+    ],
+)
+def test_real_gateway_rejects_malformed_command_identifiers_before_postgrest(
+    path: str, payload: Mapping[str, object]
+) -> None:
+    with LocalSupabaseGateway() as server:
+        response = TestClient(gateway_app(server)).post(
+            path,
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+            json=payload,
+        )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "REQUEST_VALIDATION_FAILED"
+    assert server.calls == []
+
+
 @pytest.mark.parametrize("role", ["reviewer", "read_only"])
 def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) -> None:
     gateway = CompanyAccessGatewayStub()
@@ -561,7 +598,7 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
         json={
             "operationId": "40000000-0000-0000-0000-000000000001",
-            "companyId": "company-1",
+            "companyId": "10000000-0000-0000-0000-000000000001",
             "invitedEmail": " Reviewer@Example.No ",
             "role": role,
         },
@@ -582,11 +619,11 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
 def test_owner_invitation_administration_requires_aal2_and_conceals_foreign_company() -> None:
     gateway = CompanyAccessGatewayStub()
     aal1 = TestClient(create_app(gateway)).get(
-        "/api/v1/company-access/invitations?company_id=company-1",
+        "/api/v1/company-access/invitations?company_id=10000000-0000-0000-0000-000000000001",
         headers={"Authorization": f"Bearer {access_token('aal1')}"},
     )
     foreign = TestClient(create_app(gateway)).get(
-        "/api/v1/company-access/invitations?company_id=company-2",
+        "/api/v1/company-access/invitations?company_id=20000000-0000-0000-0000-000000000002",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
     )
 
@@ -640,32 +677,32 @@ def test_owner_can_atomically_change_or_remove_only_non_owner_memberships() -> N
     gateway = CompanyAccessGatewayStub()
     client = TestClient(create_app(gateway))
     changed = client.patch(
-        "/api/v1/company-access/memberships/reviewer-1",
+        "/api/v1/company-access/memberships/00000000-0000-0000-0000-000000000044",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
         json={
             "operationId": "40000000-0000-0000-0000-000000000003",
-            "companyId": "company-1",
+            "companyId": "10000000-0000-0000-0000-000000000001",
             "expectedRole": "reviewer",
             "role": "read_only",
             "state": "active",
         },
     )
     removed = client.patch(
-        "/api/v1/company-access/memberships/reviewer-1",
+        "/api/v1/company-access/memberships/00000000-0000-0000-0000-000000000044",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
         json={
             "operationId": "40000000-0000-0000-0000-000000000004",
-            "companyId": "company-1",
+            "companyId": "10000000-0000-0000-0000-000000000001",
             "expectedRole": "reviewer",
             "state": "removed",
         },
     )
     forbidden_owner_role = client.patch(
-        "/api/v1/company-access/memberships/reviewer-1",
+        "/api/v1/company-access/memberships/00000000-0000-0000-0000-000000000044",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
         json={
             "operationId": "40000000-0000-0000-0000-000000000005",
-            "companyId": "company-1",
+            "companyId": "10000000-0000-0000-0000-000000000001",
             "expectedRole": "reviewer",
             "role": "owner",
             "state": "active",

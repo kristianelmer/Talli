@@ -10,8 +10,9 @@ import secrets
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Callable, Literal, Protocol, TypeVar
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict
 
 
 def _to_camel(value: str) -> str:
@@ -62,8 +63,8 @@ MembershipState = Literal["active", "removed"]
 
 
 class CreateCompanyInvitationRequest(CompanyAccessCommandModel):
-    operation_id: str
-    company_id: str
+    operation_id: UUID
+    company_id: UUID
     invited_email: str
     role: InvitationRole
 
@@ -73,19 +74,19 @@ class InvitationTokenRequest(CompanyAccessCommandModel):
 
 
 class AcceptCompanyInvitationRequest(CompanyAccessCommandModel):
-    operation_id: str
+    operation_id: UUID
     token: str
 
 
 class CompanyInvitationCommandRequest(CompanyAccessCommandModel):
-    operation_id: str
-    company_id: str
-    expected_updated_at: str
+    operation_id: UUID
+    company_id: UUID
+    expected_updated_at: AwareDatetime
 
 
 class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
-    operation_id: str
-    company_id: str
+    operation_id: UUID
+    company_id: UUID
     expected_role: InvitationRole
     role: InvitationRole | None = None
     state: MembershipState | None = None
@@ -350,15 +351,16 @@ class CompanyAccessService:
         access_token: str,
         command: CreateCompanyInvitationRequest,
     ) -> CompanyInvitationResponse:
-        await self._authorize_owner(access_token, command.company_id)
-        company = await self._company(access_token, command.company_id)
+        company_id = str(command.company_id)
+        await self._authorize_owner(access_token, company_id)
+        company = await self._company(access_token, company_id)
         normalized_email = _normalize_email(command.invited_email)
         acceptance_token = secrets.token_urlsafe(32)
         row = await self._gateway.create_invitation(
             access_token,
             CreateInvitationGatewayCommand(
-                operation_id=command.operation_id,
-                company_id=command.company_id,
+                operation_id=str(command.operation_id),
+                company_id=company_id,
                 invited_email=normalized_email,
                 role=command.role,
                 token_hash=_token_hash(acceptance_token),
@@ -410,7 +412,7 @@ class CompanyAccessService:
         row = await self._gateway.accept_invitation(
             access_token,
             AcceptInvitationGatewayCommand(
-                operation_id=command.operation_id,
+                operation_id=str(command.operation_id),
                 token_hash=_required_token_hash(command.token),
                 verified_subject=str(identity["id"]),
                 verified_email=email,
@@ -421,16 +423,17 @@ class CompanyAccessService:
         return CompanyMembershipResponse(membership=self._membership(row))
 
     async def revoke_invitation(
-        self, access_token: str, invitation_id: str, command: CompanyInvitationCommandRequest
+        self, access_token: str, invitation_id: UUID, command: CompanyInvitationCommandRequest
     ) -> CompanyInvitationResponse:
-        await self._authorize_owner(access_token, command.company_id)
+        company_id = str(command.company_id)
+        await self._authorize_owner(access_token, company_id)
         row = await self._gateway.revoke_invitation(
             access_token,
             InvitationMutationGatewayCommand(
-                operation_id=command.operation_id,
-                company_id=command.company_id,
-                invitation_id=invitation_id,
-                expected_updated_at=command.expected_updated_at,
+                operation_id=str(command.operation_id),
+                company_id=company_id,
+                invitation_id=str(invitation_id),
+                expected_updated_at=command.expected_updated_at.isoformat(),
             ),
         )
         if row is None:
@@ -443,18 +446,19 @@ class CompanyAccessService:
         )
 
     async def resend_invitation(
-        self, access_token: str, invitation_id: str, command: CompanyInvitationCommandRequest
+        self, access_token: str, invitation_id: UUID, command: CompanyInvitationCommandRequest
     ) -> CompanyInvitationResponse:
-        await self._authorize_owner(access_token, command.company_id)
-        company = await self._company(access_token, command.company_id)
+        company_id = str(command.company_id)
+        await self._authorize_owner(access_token, company_id)
+        company = await self._company(access_token, company_id)
         acceptance_token = secrets.token_urlsafe(32)
         row = await self._gateway.resend_invitation(
             access_token,
             ResendInvitationGatewayCommand(
-                operation_id=command.operation_id,
-                company_id=command.company_id,
-                invitation_id=invitation_id,
-                expected_updated_at=command.expected_updated_at,
+                operation_id=str(command.operation_id),
+                company_id=company_id,
+                invitation_id=str(invitation_id),
+                expected_updated_at=command.expected_updated_at.isoformat(),
                 token_hash=_token_hash(acceptance_token),
                 acceptance_token=acceptance_token,
             ),
@@ -487,7 +491,7 @@ class CompanyAccessService:
     async def administer_membership(
         self,
         access_token: str,
-        user_id: str,
+        user_id: UUID,
         command: AdministerCompanyMembershipRequest,
     ) -> CompanyMembershipResponse:
         if command.role is None and command.state is None:
@@ -497,15 +501,17 @@ class CompanyAccessService:
                 title="Request validation failed",
                 detail="A membership role or state change is required.",
             )
-        identity = await self._authorize_owner(access_token, command.company_id)
-        if user_id == identity["id"]:
+        company_id = str(command.company_id)
+        target_user_id = str(user_id)
+        identity = await self._authorize_owner(access_token, company_id)
+        if target_user_id == identity["id"]:
             raise _company_access_not_found()
         row = await self._gateway.administer_membership(
             access_token,
             AdministerMembershipGatewayCommand(
-                operation_id=command.operation_id,
-                company_id=command.company_id,
-                user_id=user_id,
+                operation_id=str(command.operation_id),
+                company_id=company_id,
+                user_id=target_user_id,
                 expected_role=command.expected_role,
                 role=command.role,
                 state=command.state,
