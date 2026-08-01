@@ -85,7 +85,12 @@ test("compatibility exceptions require bounded expiry and a removal condition", 
           owner: "backend:system_boundary",
           creationIssue: "#135",
           removalIssue: "#136",
-          paths: ["apps/backend/src/talli_backend/legacy.py"],
+          scopes: [{
+            path: "apps/web/app/legacy.ts",
+            rule: "direct-web-business-persistence",
+            resource: "table:companies",
+            operation: "legacyOperation",
+          }],
           expiresAt: "never",
           removalCondition: "",
         },
@@ -115,7 +120,12 @@ test("compatibility exceptions must expire strictly after the controlled current
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         expiresAt: "2026-07-29T00:00:00Z",
         removalCondition: "Remove when #136 owns the authenticated company context.",
       }],
@@ -143,9 +153,12 @@ test("compatibility exceptions cannot outlive fourteen days or the next stable r
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
-        rules: ["direct-web-business-persistence"],
-        resources: ["table:companies"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         approvedBy: "Kristian Elmer",
         approvedAt: "2026-07-30T00:00:00Z",
         releaseLimit: "next-stable-customer-ready-release",
@@ -176,9 +189,12 @@ test("compatibility exceptions reject semantically impossible timestamps", () =>
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
-        rules: ["direct-web-business-persistence"],
-        resources: ["table:companies"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         approvedBy: "Kristian Elmer",
         approvedAt: "2026-99-99T25:99:99Z",
         releaseLimit: "next-stable-customer-ready-release",
@@ -421,7 +437,7 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   for (const exception of compatibility.exceptions) {
-    exception.paths = exception.paths.filter((path) => path !== route);
+    exception.scopes = exception.scopes.filter((scope) => scope.path !== route);
   }
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
@@ -444,7 +460,7 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   }
 });
 
-test("web persistence exceptions match path, rule, and AST-derived resource", () => {
+test("web persistence exceptions match exact path, rule, AST-derived resource, and operation", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-resource-scope-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
@@ -453,13 +469,18 @@ test("web persistence exceptions match path, rule, and AST-derived resource", ()
   writeFileSync(join(temporaryRoot, fixture), `
 import { createClient } from "@supabase/supabase-js";
 const client = createClient("https://example.invalid", "public-key");
-client.from("companies");
-client.from("documents");
+export function readCompany() { client.from("companies"); }
+export function readDocument() { client.from("documents"); }
 `);
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  compatibility.exceptions[0].paths.push(fixture);
-  compatibility.exceptions[0].resources = ["table:companies"];
+  const exactScope = {
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "readCompany",
+  };
+  compatibility.exceptions[0].scopes.push(exactScope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
@@ -467,7 +488,7 @@ client.from("documents");
     assert.doesNotMatch(errors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies`, "u"));
     assert.match(errors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:documents`, "u"));
 
-    compatibility.exceptions[0].resources = ["table:*"];
+    exactScope.resource = "table:*";
     writeFileSync(compatibilityPath, JSON.stringify(compatibility));
     const wildcardErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
     assert.match(wildcardErrors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies`, "u"));
@@ -477,7 +498,7 @@ client.from("documents");
   }
 });
 
-test("company-access compatibility resources name their serialized migration tickets", () => {
+test("compatibility operations map to their serialized future tickets", () => {
   const compatibility = JSON.parse(readFileSync(
     new URL("../architecture/compatibility.json", import.meta.url),
     "utf8",
@@ -488,33 +509,139 @@ test("company-access compatibility resources name their serialized migration tic
   const onboarding = byRemovalIssue.get("#138");
   const membershipAdministration = byRemovalIssue.get("#160");
   const cancellation = byRemovalIssue.get("#161");
+  const ownerOf = (resource, operation) => compatibility.exceptions.find((entry) => (
+    entry.scopes.some((scope) => scope.path === "apps/web/app/actions.ts"
+      && scope.resource === resource
+      && scope.operation === operation)
+  ))?.removalIssue;
 
-  assert.ok(onboarding.resources.includes("table:companies"));
-  assert.ok(onboarding.resources.includes("table:company_memberships"));
-  assert.ok(onboarding.resources.includes("rpc:create_company_workspace_with_acceptance"));
-  assert.ok(!onboarding.resources.includes("table:company_invitations"));
-  assert.ok(!onboarding.resources.includes("table:company_cancellations"));
+  assert.equal(ownerOf("rpc:create_company_workspace_with_acceptance", "createWorkspace"), "#138");
+  assert.equal(ownerOf("table:companies", "generateRf1086Preview"), "#138");
+  assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), "#160");
+  assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), "#160");
+  assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), "#161");
+  assert.equal(ownerOf("table:companies", "completeCompanyDeletionRecord"), "#161");
+  assert.equal(ownerOf("table:holding_actions", "recordShareholderLoan"), "#145");
+  assert.equal(ownerOf("table:holding_actions", "recordTaxSettlement"), "#146");
+  assert.equal(ownerOf("table:authority_test_runs", "recordAnnualAccountsTt02Evidence"), "#153");
+  assert.equal(ownerOf("table:investment_lots", "recordShareSale"), "#142");
+  assert.equal(ownerOf("table:audit_events", "uploadDocument"), "#155");
+  assert.equal(ownerOf("table:notification_outbox", "inviteWorkspaceReviewer"), "#156");
   assert.match(onboarding.removalCondition, /After #160 and #161.*#138/u);
-
-  assert.deepEqual(
-    membershipAdministration.resources.toSorted(),
-    ["table:company_invitations", "table:company_memberships"],
-  );
-  assert.deepEqual(membershipAdministration.paths.toSorted(), [
-    "apps/web/app/actions.ts",
-    "apps/web/app/lib/supabase/server.ts",
-  ]);
   assert.match(membershipAdministration.removalCondition, /invitations and membership administration.*#160/u);
-
-  assert.deepEqual(
-    cancellation.resources.toSorted(),
-    ["table:companies", "table:company_cancellations", "table:company_memberships"],
-  );
-  assert.deepEqual(cancellation.paths.toSorted(), [
-    "apps/web/app/actions.ts",
-    "apps/web/app/lib/supabase/server.ts",
-  ]);
   assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
+});
+
+test("compatibility scopes match the exact enclosing operation", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-scope-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/operation-scoped-persistence.ts";
+  writeFileSync(join(temporaryRoot, fixture), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://example.invalid", "public-key");
+export async function onboardCompany() {
+  await Promise.resolve().then(() => client.from("companies"));
+}
+export async function cancelCompany() { client.from("companies"); }
+export async function unregisteredCompany() { client.from("companies"); }
+Promise.resolve().then(() => client.from("documents"));
+`);
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const cancellation = compatibility.exceptions.find((entry) => entry.removalIssue === "#161");
+  onboarding.scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "onboardCompany",
+  });
+  cancellation.scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "cancelCompany",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.doesNotMatch(errors, /operation:onboardCompany/u);
+    assert.doesNotMatch(errors, /operation:cancelCompany/u);
+    assert.match(errors, new RegExp(`${fixture}.*table:companies.*operation:unregisteredCompany`, "u"));
+    assert.match(errors, new RegExp(`${fixture}.*table:documents.*operation:<unscoped>`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility scopes cannot overlap across future tickets", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-overlap-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const membership = compatibility.exceptions.find((entry) => entry.removalIssue === "#160");
+  const duplicateScope = {
+    path: "apps/web/app/actions.ts",
+    rule: "direct-web-business-persistence",
+    resource: "table:company_memberships",
+    operation: "inviteWorkspaceMemberAction",
+  };
+  onboarding.scopes.push(duplicateScope);
+  membership.scopes.push(duplicateScope);
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /duplicate compatibility scope.*#138.*#160/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility registry is complete in both directions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-completeness-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const missingScope = onboarding.scopes.find((scope) => (
+    scope.path === "apps/web/app/actions.ts"
+    && scope.resource === "rpc:create_company_workspace_with_acceptance"
+    && scope.operation === "createWorkspace"
+  ));
+  assert.ok(missingScope);
+  onboarding.scopes = onboarding.scopes.filter((scope) => scope !== missingScope);
+  onboarding.scopes.push({
+    path: "apps/web/app/actions.ts",
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "nonexistentCompanyOperation",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(
+      errors,
+      /actions\.ts: direct web business persistence is forbidden for rpc:create_company_workspace_with_acceptance in operation:createWorkspace/u,
+    );
+    assert.match(
+      errors,
+      /registered compatibility scope has no matching finding: .*operation:nonexistentCompanyOperation/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("web boundary detection follows client provenance without flagging ordinary from methods", () => {

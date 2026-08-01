@@ -2,297 +2,1819 @@
   "schemaVersion": "1.0",
   "exceptions": [
     {
-      "id": "compat-company-onboarding-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#138",
-      "paths": [
-        "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-        "apps/web/app/actions.ts",
-        "apps/web/app/auth/systembruker/confirm/route.ts",
-        "apps/web/app/documents/[documentId]/preview/route.ts",
-        "apps/web/app/lib/supabase/server.ts"
-      ],
-      "rules": ["direct-web-business-persistence"],
-      "resources": [
-        "rpc:append_company_agreement_acceptance",
-        "rpc:create_company_workspace_with_acceptance",
-        "table:companies",
-        "table:company_memberships",
-        "table:customer_agreement_acceptances"
-      ],
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "After #160 and #161, remove onboarding plus the final company/company-membership stage-exit operations in #138; authenticated company-context reads have no exception."
-    },
-    {
-      "id": "compat-company-membership-administration-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#160",
-      "paths": [
-        "apps/web/app/actions.ts",
-        "apps/web/app/lib/supabase/server.ts"
-      ],
-      "rules": ["direct-web-business-persistence"],
-      "resources": [
-        "table:company_invitations",
-        "table:company_memberships"
-      ],
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove company invitations and membership administration persistence in #160."
-    },
-    {
-      "id": "compat-company-cancellation-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#161",
-      "paths": [
-        "apps/web/app/actions.ts",
-        "apps/web/app/lib/supabase/server.ts"
-      ],
-      "rules": ["direct-web-business-persistence"],
-      "resources": [
-        "table:companies",
-        "table:company_cancellations",
-        "table:company_memberships"
-      ],
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove the company cancellation and deletion lifecycle persistence in #161."
-    },
-    {
       "id": "compat-billing-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#137",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:manage_production_pilot_entitlement", "table:billing_accounts", "table:billing_payment_events", "table:production_pilot_entitlements"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove billing and filing-entitlement persistence in #137."
+      "removalCondition": "Remove billing and filing-entitlement persistence in #137.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "activateBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "activateBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "cancelBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "cancelBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "markBillingRefundEligible"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "markBillingRefundEligible"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "markBillingUnsupported"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_pilot_entitlements",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "requestFilingPackagePayment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "requestFilingPackagePayment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "saveBillingAccount"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_pilot_entitlements",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:manage_production_pilot_entitlement",
+          "operation": "upsertProductionPilotEntitlement"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "listBillingAccounts"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "listBillingPaymentEvents"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_pilot_entitlements",
+          "operation": "listProductionFilingState"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "searchOperatorSupportDashboard"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_payment_events",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
+    },
+    {
+      "id": "compat-company-onboarding-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#138",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "After #160 and #161, remove onboarding plus the final company/company-membership stage-exit operations in #138; authenticated company-context reads have no exception.",
+      "scopes": [
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "approveProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:create_company_workspace_with_acceptance",
+          "operation": "createWorkspace"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "generateRf1086Preview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "queueDeadlineReminders"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:append_company_agreement_acceptance",
+          "operation": "reacceptCompanyAgreement"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "recordAnnualAccountsTt02Evidence"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "recordCompanyTaxReturnTt02Evidence"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:customer_agreement_acceptances",
+          "operation": "listCustomerAgreementAcceptances"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     },
     {
       "id": "compat-ledger-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#139",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["table:ledger_entries", "table:opening_balance_setups", "table:opening_shareholders", "table:period_locks"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove narrow-ledger and opening-balance persistence in #139."
+      "removalCondition": "Remove narrow-ledger and opening-balance persistence in #139.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "createOpeningBalanceSetup"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "createOpeningBalanceSetup"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "createOpeningBalanceSetup"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:period_locks",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "generateRf1086Preview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "generateRf1086Preview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:period_locks",
+          "operation": "lockCompanyYear"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "postManualJournal"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "recordAdminCost"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "recordDividendReceived"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "recordShareholderLoan"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "recordTaxSettlement"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:period_locks",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "listLedgerEntries"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "listOpeningSetups"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "listOpeningSetups"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:period_locks",
+          "operation": "listPeriodLocks"
+        }
+      ]
     },
     {
       "id": "compat-banking-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#140",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:accept_bank_transaction_suggestion", "table:bank_suggestion_acceptances", "table:bank_transactions"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove bank import and reconciliation persistence in #140."
+      "removalCondition": "Remove bank import and reconciliation persistence in #140.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:accept_bank_transaction_suggestion",
+          "operation": "acceptBankTransactionSuggestion"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "acceptBankTransactionSuggestion"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "importBankCsv"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "recordAdminCost"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "recordDividendReceived"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "recordShareholderLoan"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "recordTaxSettlement"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_suggestion_acceptances",
+          "operation": "listBankSuggestionAcceptances"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_transactions",
+          "operation": "listBankTransactions"
+        }
+      ]
     },
     {
       "id": "compat-investment-purchase-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#141",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:record_share_purchase_fifo", "table:investment_lots", "table:investment_positions"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove share-purchase and acquisition-lot persistence in #141."
+      "removalCondition": "Remove share-purchase and acquisition-lot persistence in #141.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:record_share_purchase_fifo",
+          "operation": "recordSharePurchase"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_lots",
+          "operation": "listInvestmentLots"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_positions",
+          "operation": "listInvestmentPositions"
+        }
+      ]
     },
     {
       "id": "compat-investment-sale-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#142",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:record_share_sale_fifo", "table:investment_lot_allocations"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142."
+      "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:record_share_sale_fifo",
+          "operation": "recordShareSale"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_lots",
+          "operation": "recordShareSale"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_positions",
+          "operation": "recordShareSale"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_lot_allocations",
+          "operation": "listInvestmentLotAllocations"
+        }
+      ]
     },
     {
       "id": "compat-investment-stage-exit-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#143",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["table:holding_actions"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove the shared legacy holding-action persistence at investments stage exit in #143."
+      "removalCondition": "Remove received-dividend and shared holding-action reads in #143.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "recordDividendReceived"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "listHoldingActions"
+        }
+      ]
+    },
+    {
+      "id": "compat-shareholder-loan-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#145",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove shareholder-loan holding-action persistence in #145.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "recordShareholderLoan"
+        }
+      ]
+    },
+    {
+      "id": "compat-tax-settlement-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#146",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove tax-settlement holding-action persistence in #146.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "recordTaxSettlement"
+        }
+      ]
     },
     {
       "id": "compat-documents-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#147",
-      "paths": [
-        "apps/web/app/actions.ts",
-        "apps/web/app/documents/[documentId]/download/route.ts",
-        "apps/web/app/documents/[documentId]/preview/route.ts",
-        "apps/web/app/lib/corporate-document-storage.ts",
-        "apps/web/app/lib/rf1086-feedback-persistence.ts",
-        "apps/web/app/lib/supabase/server.ts"
-      ],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:remove_unlinked_document", "rpc:restore_unlinked_document_after_storage_failure", "storage:company-documents", "table:documents"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove accounting-document and private-storage persistence in #147."
+      "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "recordDividendReceived"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "recordShareholderLoan"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "recordTaxSettlement"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:remove_unlinked_document",
+          "operation": "removeUnlinkedDocument"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:restore_unlinked_document_after_storage_failure",
+          "operation": "removeUnlinkedDocument"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "storage:company-documents",
+          "operation": "removeUnlinkedDocument"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "requestCompanyCancellation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "storage:company-documents",
+          "operation": "uploadDocument"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "uploadDocument"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "storage:company-documents",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "storage:company-documents",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "listDocumentsForCompanies"
+        }
+      ]
     },
     {
       "id": "compat-corporate-governance-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#148",
-      "paths": [
-        "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-        "apps/web/app/actions.ts",
-        "apps/web/app/documents/[documentId]/preview/route.ts",
-        "apps/web/app/lib/corporate-document-storage.ts",
-        "apps/web/app/lib/corporate-signed-artifacts.ts",
-        "apps/web/app/lib/supabase/server.ts"
-      ],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:attest_corporate_signed_artifact", "rpc:create_corporate_document_draft", "rpc:finalize_corporate_decision", "rpc:record_corporate_document_event", "table:corporate_decision_finalizations", "table:corporate_decisions", "table:corporate_document_artifacts", "table:corporate_document_events", "table:corporate_document_sets"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148."
+      "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148.",
+      "scopes": [
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decision_finalizations",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decisions",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_events",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_sets",
+          "operation": "CorporateDecisionPage"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decision_finalizations",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decisions",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_events",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_sets",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "requestCompanyCancellation"
+        },
+        {
+          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decision_finalizations",
+          "operation": "listCorporateDocumentLifecycle"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decisions",
+          "operation": "listCorporateDocumentLifecycle"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "listCorporateDocumentLifecycle"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_events",
+          "operation": "listCorporateDocumentLifecycle"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_sets",
+          "operation": "listCorporateDocumentLifecycle"
+        }
+      ]
     },
     {
       "id": "compat-annual-compliance-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#149",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["table:annual_data", "table:filing_overrides", "table:filing_readiness_snapshots", "table:filing_review_comments"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove annual compliance workspace persistence in #149."
+      "removalCondition": "Remove annual compliance workspace persistence in #149.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_review_comments",
+          "operation": "acknowledgeFilingReviewComment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_overrides",
+          "operation": "addFilingOverride"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_review_comments",
+          "operation": "addFilingReviewComment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_overrides",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_review_comments",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "queueDeadlineReminders"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_overrides",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "requestFilingPackagePayment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "saveYearEndInterview"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "listAnnualData"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_overrides",
+          "operation": "listFilingOverrides"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "listFilingReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_review_comments",
+          "operation": "listFilingReviewComments"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_readiness_snapshots",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     },
     {
       "id": "compat-authority-connections-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#150",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/auth/systembruker/confirm/route.ts", "apps/web/app/lib/supabase/server.ts", "apps/web/app/lib/system-user-flow.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:<dynamic>", "table:authority_operations", "table:launch_signoffs", "table:support_operators", "table:system_user_requests"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150."
+      "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:system_user_requests",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:launch_signoffs",
+          "operation": "recordLaunchSignoff"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "recordLaunchSignoff"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_operations",
+          "operation": "runProductionAuthorityOperation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "runProductionAuthorityOperation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_operations",
+          "operation": "runProductionSystembrukerCallbackOperation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "runProductionSystembrukerCallbackOperation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:system_user_requests",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "getOperatorContext"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_operations",
+          "operation": "listAuthorityOperations"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "listAuthorityOperations"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:launch_signoffs",
+          "operation": "listLaunchSignoffs"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "listLaunchSignoffs"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:system_user_requests",
+          "operation": "listSystemUserRequests"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:support_operators",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     },
     {
       "id": "compat-rf1086-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#151",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/rf1086-feedback-persistence.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:approve_production_filing", "rpc:begin_production_filing", "rpc:claim_production_feedback_reconciliation", "rpc:record_production_feedback_artifact", "rpc:release_production_feedback_reconciliation", "table:authority_permissions", "table:authority_test_runs", "table:filing_approval_snapshots", "table:filing_previews", "table:filing_submissions", "table:production_feedback_artifacts", "table:production_filing_submissions"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove RF-1086 filing and feedback persistence in #151."
+      "removalCondition": "Remove RF-1086 filing and feedback persistence in #151.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "addFilingOverride"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "addFilingReviewComment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:approve_production_filing",
+          "operation": "approveProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "approveProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_permissions",
+          "operation": "confirmAuthorityPermission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "generateRf1086Preview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "queueDeadlineReminders"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:claim_production_feedback_reconciliation",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:release_production_feedback_reconciliation",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_approval_snapshots",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_filing_submissions",
+          "operation": "reconcileRf1086ProductionAction"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_test_runs",
+          "operation": "recordAuthorityTestEvidence"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_permissions",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:begin_production_filing",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_approval_snapshots",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "sendApprovedRf1086ProductionFiling"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_permissions",
+          "operation": "listAuthorityPermissions"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_test_runs",
+          "operation": "listAuthorityTestRuns"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "listFilingPreviews"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "listFilingSubmissions"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_approval_snapshots",
+          "operation": "listProductionFilingState"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_feedback_artifacts",
+          "operation": "listProductionFilingState"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:production_filing_submissions",
+          "operation": "listProductionFilingState"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_permissions",
+          "operation": "searchOperatorSupportDashboard"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     },
     {
       "id": "compat-company-tax-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#152",
-      "paths": ["apps/web/app/actions.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["rpc:import_company_tax_tt02_evidence"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove company-tax evidence persistence in #152."
+      "removalCondition": "Remove company-tax evidence persistence in #152.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:import_company_tax_tt02_evidence",
+          "operation": "recordCompanyTaxReturnTt02Evidence"
+        }
+      ]
+    },
+    {
+      "id": "compat-annual-accounts-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#153",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove annual-accounts authority-evidence persistence in #153.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_test_runs",
+          "operation": "recordAnnualAccountsTt02Evidence"
+        }
+      ]
     },
     {
       "id": "compat-audit-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#155",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/security.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["table:audit_events"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove append-only audit persistence in #155."
+      "removalCondition": "Remove append-only audit persistence in #155.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "acceptWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "acknowledgeFilingReviewComment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "activateBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "addFilingOverride"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "addFilingReviewComment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "cancelBillingSubscription"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "completeCompanyDeletionRecord"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "confirmAuthorityPermission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "confirmSimulatedRf1086Submission"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "createOpeningBalanceSetup"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "generateRf1086Preview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "importBankCsv"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "inviteWorkspaceReviewer"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "lockCompanyYear"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "markBillingRefundEligible"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "markBillingUnsupported"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "postManualJournal"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "queueDeadlineReminders"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordAdminCost"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordAnnualAccountsTt02Evidence"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordAuthorityTestEvidence"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordDividendReceived"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordShareholderLoan"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "recordTaxSettlement"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "refreshAnnualReadinessSnapshots"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "requestCompanyCancellation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "requestFilingPackagePayment"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "resendWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "revokeWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "saveBillingAccount"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "saveYearEndInterview"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "uploadDocument"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     },
     {
       "id": "compat-notification-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#156",
-      "paths": ["apps/web/app/actions.ts", "apps/web/app/lib/supabase/server.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": ["table:notification_outbox"],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove notification outbox persistence in #156."
+      "removalCondition": "Remove notification outbox persistence in #156.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:notification_outbox",
+          "operation": "inviteWorkspaceReviewer"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:notification_outbox",
+          "operation": "queueDeadlineReminders"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:notification_outbox",
+          "operation": "resendWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:notification_outbox",
+          "operation": "listNotificationOutbox"
+        }
+      ]
     },
     {
       "id": "compat-company-archive-persistence",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
       "removalIssue": "#157",
-      "paths": ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts"],
-      "rules": ["direct-web-business-persistence"],
-      "resources": [
-        "table:audit_events", "table:authority_permissions", "table:authority_test_runs", "table:bank_suggestion_acceptances", "table:billing_accounts", "table:companies", "table:corporate_decision_finalizations", "table:corporate_decisions", "table:corporate_document_artifacts", "table:corporate_document_events", "table:corporate_document_sets", "table:documents", "table:filing_previews", "table:filing_review_comments", "table:filing_submissions", "table:holding_actions", "table:investment_lot_allocations", "table:investment_lots", "table:investment_positions", "table:ledger_entries", "table:opening_balance_setups", "table:opening_shareholders"
-      ],
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove cross-capability direct archive reads when #157 composes published export projections."
+      "removalCondition": "Remove cross-capability direct archive reads when #157 composes published export projections.",
+      "scopes": [
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:audit_events",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_permissions",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:authority_test_runs",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:bank_suggestion_acceptances",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:billing_accounts",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decision_finalizations",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_decisions",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_artifacts",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_events",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:corporate_document_sets",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:documents",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_previews",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_review_comments",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:filing_submissions",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:holding_actions",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_lot_allocations",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_lots",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:investment_positions",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:ledger_entries",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_balance_setups",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:opening_shareholders",
+          "operation": "GET"
+        }
+      ]
+    },
+    {
+      "id": "compat-company-membership-administration-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#160",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove company invitations and membership administration persistence in #160.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_invitations",
+          "operation": "acceptWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "acceptWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "inviteWorkspaceReviewer"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_invitations",
+          "operation": "inviteWorkspaceReviewer"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_invitations",
+          "operation": "resendWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_invitations",
+          "operation": "revokeWorkspaceInvitation"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_invitations",
+          "operation": "listWorkspaceInvitations"
+        }
+      ]
+    },
+    {
+      "id": "compat-company-cancellation-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#161",
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove the company cancellation and deletion lifecycle persistence in #161.",
+      "scopes": [
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:companies",
+          "operation": "completeCompanyDeletionRecord"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_cancellations",
+          "operation": "completeCompanyDeletionRecord"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_cancellations",
+          "operation": "requestCompanyCancellation"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_memberships",
+          "operation": "requestCompanyCancellation"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_cancellations",
+          "operation": "listCompanyCancellations"
+        },
+        {
+          "path": "apps/web/app/lib/supabase/server.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:company_cancellations",
+          "operation": "searchOperatorSupportDashboard"
+        }
+      ]
     }
   ]
 }

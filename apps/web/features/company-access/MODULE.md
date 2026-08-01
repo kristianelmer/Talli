@@ -46,8 +46,9 @@ cache policy, or responsibilities change.
 
 The backend capability's ownership of `public.companies` and
 `public.company_memberships` is authoritative. Separately, legacy callers
-registered by exact path, rule, and resource remain temporary compatibility
-adapters: invitations and membership administration exit in #160, cancellation
+registered by exact path, rule, resource, and AST-derived enclosing operation
+remain temporary compatibility adapters: invitations and membership
+administration exit in #160, cancellation
 and deletion exit in #161, and onboarding plus final stage exit complete in
 #138. They do not belong to this feature and cannot serve authenticated
 company-context reads.

@@ -40,9 +40,10 @@ scope. A foreign company, outsider, reviewer, or read-only member receives the
 tenant-concealed `COMPANY_CONTEXT_NOT_FOUND` response.
 
 Ownership of `public.companies` and `public.company_memberships` is authoritative
-here. Temporary web callers are explicitly registered by path, rule, and
-resource in `architecture/compatibility.json`: invitation and membership
-administration exits in #160, cancellation and deletion exits in #161, then
+here. Temporary web callers are explicitly registered by exact path, rule,
+resource, and AST-derived enclosing operation in
+`architecture/compatibility.json`: invitation and membership administration
+exits in #160, cancellation and deletion exits in #161, then
 onboarding and final stage exit complete in #138. They are adapters during
 migration, not co-owners, and authenticated context reads have no compatibility
 exception.
