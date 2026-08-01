@@ -26,9 +26,13 @@ with ten-second deadlines and the root `@talli/talli-api-client` package.
 
 ## Cache, browser, and tests
 
-Calls default to `no-store`; generated decoders fail closed and explicitly reject
-invitation token hashes. Feature coverage is in the company-access web tests and
-architecture coverage is in `tests/architecture_foundation.test.mjs`.
+Calls default to `no-store`; generated decoders reject every undeclared response
+field, including all token/hash spellings at invitation boundaries. Consequential
+forms carry durable operation IDs and expected revisions. The retained #156
+outbox write uses the same UUID as its row ID and reconciles an existing matching
+delivery after a timeout instead of duplicating it. Feature coverage is in the
+company-access web tests and architecture coverage is in
+`tests/architecture_foundation.test.mjs`.
 
 ## Compatibility and change rule
 

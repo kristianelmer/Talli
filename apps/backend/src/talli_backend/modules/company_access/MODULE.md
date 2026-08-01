@@ -1,7 +1,7 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_access_command_receipts","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
@@ -13,9 +13,9 @@ recipient binding, expiry, supported roles, atomic transitions, and concealment.
 
 ## Owns and must not own
 
-It owns `public.companies`, `public.company_invitations`, and
-`public.company_memberships`, sourced from the authenticated-workspace schema and
-`20260801090000_company_access_invitations.sql`. It must not own onboarding,
+It owns `public.companies`, `public.company_access_command_receipts`,
+`public.company_invitations`, and `public.company_memberships`, attributed by the
+manifest to `20260801090000_company_access_invitations.sql`. It must not own onboarding,
 agreement acceptance, cancellation, deletion, or support-operator workflows.
 It must not use service-role access or bypass RLS for ordinary business calls.
 
@@ -28,7 +28,11 @@ Import only `talli_backend.modules.company_access.public`.
 - Error: `CompanyAccessError`
 - Port: `CompanyAccessGateway`
 
-The public names are `CompanyAccessService`, `CompanyContext`,
+Business request contracts are immutable, reject undeclared fields, and live in
+this public entry point rather than the composition root. The public names include
+`CreateCompanyInvitationRequest`, `AcceptCompanyInvitationRequest`,
+`CompanyInvitationCommandRequest`, `AdministerCompanyMembershipRequest`,
+`CompanyAccessService`, `CompanyContext`,
 `CompanyContextResponse`, `CompanyInvitation`, `CompanyInvitationResponse`,
 `CompanyInvitationListResponse`, `InvitationLookup`, `CompanyMembership`,
 `CompanyMembershipResponse`, `CompanyMembershipListResponse`, `InvitationRole`,
@@ -38,9 +42,37 @@ The system boundary injects `SupabaseCompanyAccessAdapter`; capability policy
 never constructs Supabase or HTTP infrastructure. Owner context and administration
 require accepted owner membership and AAL2. Invitation lookup and acceptance bind
 the validated subject and normalized Auth email to a pending, unexpired token hash.
-Acceptance and every role/removal transition execute in one database transaction;
-owner creation, demotion, and removal are not exposed. Public responses never
+Acceptance and every role/removal transition execute in one database transaction
+as the restricted `company_access_executor` NOLOGIN/NOBYPASSRLS role. Explicit RLS
+policies remain the authorization boundary even though the RPCs are security
+definers; the executor neither owns the tables nor bypasses RLS.
+Durable operation receipts replay consequential commands and optimistic expected
+revisions reject competing resend, revoke, and membership changes. If a command's
+transport outcome is unknown, the adapter retries the identical operation once;
+the receipt returns the committed result instead of repeating the mutation.
+Owner creation, demotion, and removal are not exposed. Public responses never
 contain token hashes.
+
+Create/resend delivery tokens are deliberately persisted in two places: the
+private command receipt until it is cleared by acceptance, revocation, or a newer
+resend, and the existing `notification_outbox` payload written by the exact #156
+compatibility action. Authenticated Data API roles have no receipt-table grant;
+outbox readability remains the existing accepted-owner policy. #160 adds no
+automatic purge: an uncleared token can remain stored after its 14-day invitation
+expiry, although it is no longer accepted. Retention/delivery migration remains
+#156. This is delivery-secret persistence, never token-hash disclosure.
+
+The rollout is staged. Release A applies `20260801090000` only: it expands the
+RPC/RLS boundary while the prior web policies still work. Release B deploys the
+backend and generated-client web revision, verifies create/resend receipt replay,
+and leaves that overlap in place. Release C applies `20260801091000`, which
+contracts only #160's direct invitation and membership policies. Before Release C,
+rollback means returning to the prior web/backend revision while retaining the
+additive database objects. After Release C, application rollback is bounded to a
+generated-client revision; restoring the direct writer would require a reviewed
+forward migration that reinstates the overlap and is not an implicit rollback.
+The PostgreSQL runtime test executes the old direct writer, contract transition,
+and new RPC writer in that exact sequence.
 
 Ownership is authoritative here. Remaining compatibility adapters are registered
 by exact path/rule/resource/operation: cancellation/deletion exits in #161 and
