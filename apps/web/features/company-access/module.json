@@ -11,7 +11,7 @@
   "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/companies/[companyId]/annual-reporting/[incomeYear]"],
   "apiOperations": ["companyAccessGetSelectedContext"],
   "dependencies": [],
-  "allowedImports": ["@talli/talli-api-client"],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
   "directBrowserFlows": [],
   "forbiddenResponsibilities": [

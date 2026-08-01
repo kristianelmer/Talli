@@ -477,6 +477,46 @@ client.from("documents");
   }
 });
 
+test("company-access compatibility resources name their serialized migration tickets", () => {
+  const compatibility = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility.json", import.meta.url),
+    "utf8",
+  ));
+  const byRemovalIssue = new Map(
+    compatibility.exceptions.map((entry) => [entry.removalIssue, entry]),
+  );
+  const onboarding = byRemovalIssue.get("#138");
+  const membershipAdministration = byRemovalIssue.get("#160");
+  const cancellation = byRemovalIssue.get("#161");
+
+  assert.ok(onboarding.resources.includes("table:companies"));
+  assert.ok(onboarding.resources.includes("table:company_memberships"));
+  assert.ok(onboarding.resources.includes("rpc:create_company_workspace_with_acceptance"));
+  assert.ok(!onboarding.resources.includes("table:company_invitations"));
+  assert.ok(!onboarding.resources.includes("table:company_cancellations"));
+  assert.match(onboarding.removalCondition, /After #160 and #161.*#138/u);
+
+  assert.deepEqual(
+    membershipAdministration.resources.toSorted(),
+    ["table:company_invitations", "table:company_memberships"],
+  );
+  assert.deepEqual(membershipAdministration.paths.toSorted(), [
+    "apps/web/app/actions.ts",
+    "apps/web/app/lib/supabase/server.ts",
+  ]);
+  assert.match(membershipAdministration.removalCondition, /invitations and membership administration.*#160/u);
+
+  assert.deepEqual(
+    cancellation.resources.toSorted(),
+    ["table:companies", "table:company_cancellations", "table:company_memberships"],
+  );
+  assert.deepEqual(cancellation.paths.toSorted(), [
+    "apps/web/app/actions.ts",
+    "apps/web/app/lib/supabase/server.ts",
+  ]);
+  assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
+});
+
 test("web boundary detection follows client provenance without flagging ordinary from methods", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-receiver-provenance-"));
   for (const directory of ["architecture", "apps", "supabase"]) {

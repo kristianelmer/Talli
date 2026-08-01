@@ -2,8 +2,33 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { loadCompanyAccessContext } from "../features/company-access/transport/load-company-access-context.ts";
+import {
+  BackendConfigurationError as CompanyAccessBackendConfigurationError,
+  companyAccessBackendBaseUrl,
+  loadCompanyAccessContext,
+} from "../features/company-access/transport/load-company-access-context.ts";
+import {
+  BackendConfigurationError,
+  backendBaseUrl,
+  loadSystemBoundary,
+} from "../features/system-boundary/transport/load-system-boundary.ts";
 import { TalliApiError } from "@talli/talli-api-client";
+
+async function withBackendConfiguration(url, nodeEnvironment, callback) {
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const originalNodeEnvironment = process.env.NODE_ENV;
+  if (url === undefined) delete process.env.TALLI_BACKEND_URL;
+  else process.env.TALLI_BACKEND_URL = url;
+  process.env.NODE_ENV = nodeEnvironment;
+  try {
+    return await callback();
+  } finally {
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+    if (originalNodeEnvironment === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnvironment;
+  }
+}
 
 function ownerContext(overrides = {}) {
   const company = {
@@ -27,6 +52,56 @@ function ownerContext(overrides = {}) {
   };
   return { selectedCompany: company, companies: [{ ...company }] };
 }
+
+test("company-access and system-boundary transports share typed fail-closed backend configuration", async () => {
+  assert.equal(CompanyAccessBackendConfigurationError, BackendConfigurationError);
+  assert.equal(companyAccessBackendBaseUrl, backendBaseUrl);
+
+  for (const [url, code] of [
+    [undefined, "BACKEND_URL_MISSING"],
+    ["not a url containing secret-material", "BACKEND_URL_INVALID"],
+    ["http://backend.example", "BACKEND_URL_INSECURE"],
+  ]) {
+    await withBackendConfiguration(url, "production", async () => {
+      const isExpectedError = (error) => (
+        error instanceof BackendConfigurationError
+        && error.code === code
+        && !error.message.includes("secret-material")
+      );
+      await assert.rejects(loadCompanyAccessContext("session-token"), isExpectedError);
+      await assert.rejects(loadSystemBoundary("request-136"), isExpectedError);
+    });
+  }
+});
+
+test("company-access and system-boundary accept the same HTTPS and loopback origins", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (requestUrl) => (
+    String(requestUrl).endsWith("/api/v1/company-access/context")
+      ? Response.json(ownerContext())
+      : Response.json({ apiVersion: "v1", service: "talli-backend", status: "AVAILABLE" })
+  );
+  try {
+    for (const [url, expected] of [
+      ["https://backend.example/", "https://backend.example"],
+      ["http://127.0.0.1:8000", "http://127.0.0.1:8000"],
+      ["http://localhost:8000", "http://localhost:8000"],
+      ["http://[::1]:8000", "http://[::1]:8000"],
+    ]) {
+      await withBackendConfiguration(url, "production", async () => {
+        assert.equal(companyAccessBackendBaseUrl(), expected);
+        assert.equal(backendBaseUrl(), expected);
+        assert.equal(
+          (await loadCompanyAccessContext("session-token")).selectedCompany.id,
+          "company-1",
+        );
+        assert.equal((await loadSystemBoundary("request-136")).status, "AVAILABLE");
+      });
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("company-access transport sends the established session only through the generated client", async () => {
   const originalFetch = globalThis.fetch;

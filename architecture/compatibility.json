@@ -18,8 +18,6 @@
         "rpc:append_company_agreement_acceptance",
         "rpc:create_company_workspace_with_acceptance",
         "table:companies",
-        "table:company_cancellations",
-        "table:company_invitations",
         "table:company_memberships",
         "table:customer_agreement_acceptances"
       ],
@@ -27,7 +25,48 @@
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove the remaining company onboarding and stage-exit table operations in #138; authenticated company-context reads have no exception."
+      "removalCondition": "After #160 and #161, remove onboarding plus the final company/company-membership stage-exit operations in #138; authenticated company-context reads have no exception."
+    },
+    {
+      "id": "compat-company-membership-administration-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#160",
+      "paths": [
+        "apps/web/app/actions.ts",
+        "apps/web/app/lib/supabase/server.ts"
+      ],
+      "rules": ["direct-web-business-persistence"],
+      "resources": [
+        "table:company_invitations",
+        "table:company_memberships"
+      ],
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove company invitations and membership administration persistence in #160."
+    },
+    {
+      "id": "compat-company-cancellation-persistence",
+      "owner": "web:legacy-runtime",
+      "creationIssue": "#135",
+      "removalIssue": "#161",
+      "paths": [
+        "apps/web/app/actions.ts",
+        "apps/web/app/lib/supabase/server.ts"
+      ],
+      "rules": ["direct-web-business-persistence"],
+      "resources": [
+        "table:companies",
+        "table:company_cancellations",
+        "table:company_memberships"
+      ],
+      "approvedBy": "Kristian Elmer",
+      "approvedAt": "2026-07-30T00:00:00Z",
+      "releaseLimit": "next-stable-customer-ready-release",
+      "expiresAt": "2026-08-13T00:00:00Z",
+      "removalCondition": "Remove the company cancellation and deletion lifecycle persistence in #161."
     },
     {
       "id": "compat-billing-persistence",

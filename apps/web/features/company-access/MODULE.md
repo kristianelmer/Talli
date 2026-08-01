@@ -24,8 +24,10 @@ Other web code imports `@/features/company-access`; the declared compiled paths
 are `apps/web/features/company-access` and
 `apps/web/features/company-access/index.ts`. The web establishes the Supabase
 session, then passes its access token only as generated-client transport headers.
-The feature has no web-feature dependency and consumes only the root
-`@talli/talli-api-client` package.
+The feature has no web-feature dependency. It consumes the root
+`@talli/talli-api-client` package and the same package-private
+`#backend-configuration` helper as system boundary, preserving one typed,
+fail-closed origin contract without exposing configuration values.
 
 ## Cache, browser, and tests
 
@@ -43,7 +45,9 @@ document and `module.json` together when routes, operation, public imports,
 cache policy, or responsibilities change.
 
 The backend capability's ownership of `public.companies` and
-`public.company_memberships` is authoritative. Separately, the legacy onboarding
-callers registered by exact path, rule, and resource under #138 remain temporary
-compatibility adapters; they do not belong to this feature and cannot serve
-authenticated company-context reads.
+`public.company_memberships` is authoritative. Separately, legacy callers
+registered by exact path, rule, and resource remain temporary compatibility
+adapters: invitations and membership administration exit in #160, cancellation
+and deletion exit in #161, and onboarding plus final stage exit complete in
+#138. They do not belong to this feature and cannot serve authenticated
+company-context reads.
