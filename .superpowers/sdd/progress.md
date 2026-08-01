@@ -180,8 +180,9 @@ Resolved review findings:
 - Pgcrypto hashing resolves the installed extension schema under an empty
   function search path, with real fresh-PostgreSQL create and resend coverage.
 - Invitation and membership commands execute as the restricted
-  `company_access_executor` NOLOGIN/NOBYPASSRLS role against forced RLS rather
-  than as a table owner. Invitees cannot enumerate invitation rows directly.
+  `company_access_executor` NOLOGIN/NOBYPASSRLS non-owner and are therefore
+  filtered by genuine RLS. Only technical command receipts use FORCE RLS.
+  Invitees cannot enumerate invitation rows directly.
 - Lookup and acceptance atomically bind both the current verified Auth subject
   and normalized email and reject disagreement with stale JWT claims.
 - Consequential commands carry durable operation IDs, persisted replay receipts,
@@ -213,3 +214,61 @@ Review-fix verification:
   schema checks remained skipped because no external schema directory was set.
 - `git diff --check 2ae2708d206ede406b24f39c04b1dd84f29fe163..114b82f7`
   passed, and the implementation tree was clean before this progress update.
+
+## Issue #160 review-fix round 2
+
+- Review input: `/tmp/talli-issue-160-architecture-review-2.md` and
+  `/tmp/talli-issue-160-standards-review-2.md`.
+- Exact reviewed head: `80d40453`.
+- Corrected implementation head before this progress-only record:
+  `55178b7dc5dfff0fc6b8eb654e11b876c90411c8`.
+- Review-fix commits: `b344f455`, `274b199b`, and `55178b7d`.
+- Acceptance state: every Critical, Important, and Minor round-2 finding is
+  implemented; a new fresh-context architecture and standards review remains
+  required before #160 is accepted.
+
+Resolved review findings:
+
+- Pgcrypto access is isolated behind a fixed-empty-search-path, security-definer
+  token-hash helper. The command executor has no `extensions` schema usage, and
+  authenticated callers cannot execute either narrow privileged helper.
+- Token lookup and acceptance derive the current subject and normalized email
+  from `auth.users`, then require caller arguments and JWT claims to agree. A
+  direct authenticated RPC with stale email claims is rejected.
+- The destructive contract release artifact now lives under
+  `supabase/contract-migrations/`, outside the automatic migration runner. The
+  expand release remains compatible; a later immutable Release C must move and
+  apply the artifact only after the cutoff evidence is approved.
+- Command receipts are classified as backend-system technical state in the
+  catalog, backend-system inventory, generated dependency evidence, and
+  capability documentation.
+- Auth/database helpers use the `_v1` convention. FORCE RLS evidence now states
+  exactly that only the technical receipt table is forced; invitation and
+  membership commands instead use genuine RLS through a non-owner,
+  NOBYPASSRLS executor.
+- The legacy authenticated self-membership update policy and UPDATE grant are
+  removed during expand, preventing reviewer self-promotion to owner or
+  re-opening membership acceptance.
+- Public company-access UUIDs and optimistic revisions are validated before the
+  PostgREST boundary. Malformed UUIDs and naive/non-RFC3339 revisions return a
+  stable RFC 9457 HTTP 422 without making an upstream call.
+
+Round-2 TDD and verification evidence:
+
+- The initial review regression suite failed 6/6; the two malformed-command API
+  regressions failed with 201/404 instead of 422; and the target-shaped database
+  runtime failed with `permission denied for schema extensions` before the fixes.
+- `npm run test:boundary` passed: backend 28, web 19, contract 26.
+- `npm run test:supabase` passed 16 with 4 pre-existing optional
+  environment-dependent skips. The mandatory target-shaped PostgreSQL runtime
+  performed real create/resend/replay, rejected stale direct-RPC identity,
+  denied reviewer promotion, verified helper grants, and exercised manual
+  expand/contract staging.
+- `npm run test:supabase-grants` passed 3/3; `npm run test:architecture` passed
+  34/34; `npm run check:architecture`, generated OpenAPI/client checks,
+  `npm run typecheck`, backend/web builds, and `npm run test:boundary-smoke`
+  passed.
+- `npm run test:launch-rehearsal` passed, including launch copy, signoff, legal,
+  CI-gate, and the remaining rehearsal suites.
+- No hosted provider, deployment, GitHub mutation, push, or chargeable action
+  was performed.
