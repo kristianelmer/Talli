@@ -35,6 +35,7 @@ import {
   recordTaxSettlement,
   refreshAnnualReadinessSnapshots,
   resendWorkspaceInvitation,
+  administerWorkspaceMembership,
   requestCompanyCancellation,
   requestFilingPackagePayment,
   revokeWorkspaceInvitation,
@@ -92,7 +93,6 @@ import {
   listOpeningSetups,
   listPeriodLocks,
   searchOperatorSupportDashboard,
-  listWorkspaceInvitations,
 } from "../../lib/supabase/server";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
@@ -136,6 +136,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     authorityPermissions,
     authorityTestRuns,
     invitations,
+    memberships,
     notifications,
     cancellations,
     billingAccounts,
@@ -580,8 +581,8 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                         <strong data-status={status === "pending" ? "warning" : status === "accepted" ? "ready" : "blocked"}>
                           {status}
                         </strong>
-                        <p>{invitation.invited_email}</p>
-                        <p>Utløper {new Date(invitation.expires_at).toLocaleDateString("nb-NO")}</p>
+                        <p>{invitation.invitedEmail}</p>
+                        <p>Utløper {new Date(invitation.expiresAt).toLocaleDateString("nb-NO")}</p>
                         {status === "pending" ? (
                           <div className="inlineActions">
                             <form action={resendWorkspaceInvitation}>
@@ -599,6 +600,31 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                       </div>
                     );
                   })}
+                </div>
+                <div className="readinessGrid">
+                  {memberships.map((membership) => (
+                    <div className="readinessItem" key={membership.userId}>
+                      <span>Medlem</span>
+                      <strong data-status="ready">{membership.role}</strong>
+                      <p>{membership.userId}</p>
+                      <form action={administerWorkspaceMembership}>
+                        <input name="companyId" type="hidden" value={primaryCompanyId} />
+                        <input name="userId" type="hidden" value={membership.userId} />
+                        <input name="state" type="hidden" value="active" />
+                        <select name="role" defaultValue={membership.role}>
+                          <option value="reviewer">Reviewer</option>
+                          <option value="read_only">Read-only</option>
+                        </select>
+                        <button className="secondaryButton" type="submit">Endre rolle</button>
+                      </form>
+                      <form action={administerWorkspaceMembership}>
+                        <input name="companyId" type="hidden" value={primaryCompanyId} />
+                        <input name="userId" type="hidden" value={membership.userId} />
+                        <input name="state" type="hidden" value="removed" />
+                        <button className="secondaryButton" type="submit">Fjern tilgang</button>
+                      </form>
+                    </div>
+                  ))}
                 </div>
                 <div className="readinessGrid">
                   {previews.map((preview) => {
