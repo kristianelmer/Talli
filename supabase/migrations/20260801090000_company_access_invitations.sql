@@ -100,7 +100,12 @@ $function$;
 -- Owner-command receipt RLS intentionally hides expired or no-longer-authorized
 -- rows. This narrow executor-only definer reports existence without exposing
 -- receipt metadata, so a hidden replay is denied instead of re-executed.
-create or replace function public.company_access_receipt_exists_v1(p_operation_id uuid)
+create or replace function public.company_access_receipt_exists_v1(
+  p_operation_id uuid,
+  p_company_id uuid,
+  p_command_name text,
+  p_request_fingerprint text
+)
 returns boolean
 language sql
 stable
@@ -110,6 +115,10 @@ as $function$
   select exists (
     select 1 from public.company_access_command_receipts r
     where r.operation_id = p_operation_id
+      and r.actor_id = (select auth.uid())
+      and r.company_id = p_company_id
+      and r.command_name = p_command_name
+      and r.request_fingerprint = p_request_fingerprint
   );
 $function$;
 
@@ -316,7 +325,9 @@ begin
   end if;
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.operation_id = p_operation_id;
-  if not found and public.company_access_receipt_exists_v1(p_operation_id) then
+  if not found and public.company_access_receipt_exists_v1(
+    p_operation_id, p_company_id, 'create_invitation', v_fingerprint
+  ) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   if found then
@@ -546,7 +557,9 @@ begin
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
-  if not found and public.company_access_receipt_exists_v1(p_operation_id) then
+  if not found and public.company_access_receipt_exists_v1(
+    p_operation_id, p_company_id, 'revoke_invitation', v_fingerprint
+  ) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   if found then
@@ -627,7 +640,9 @@ begin
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
-  if not found and public.company_access_receipt_exists_v1(p_operation_id) then
+  if not found and public.company_access_receipt_exists_v1(
+    p_operation_id, p_company_id, 'resend_invitation', v_fingerprint
+  ) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   if found then
@@ -715,7 +730,9 @@ begin
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
-  if not found and public.company_access_receipt_exists_v1(p_operation_id) then
+  if not found and public.company_access_receipt_exists_v1(
+    p_operation_id, p_company_id, 'administer_membership', v_fingerprint
+  ) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   if found then
@@ -779,7 +796,7 @@ grant execute on function auth.uid(), auth.jwt() to company_access_executor;
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to company_access_executor;
 grant execute on function public.company_access_current_identity_v1() to company_access_executor;
 grant execute on function public.company_access_token_hash_v1(text) to company_access_executor;
-grant execute on function public.company_access_receipt_exists_v1(uuid) to company_access_executor;
+grant execute on function public.company_access_receipt_exists_v1(uuid, uuid, text, text) to company_access_executor;
 
 alter function public.company_access_create_invitation(uuid, uuid, text, text, text, text)
   owner to company_access_executor;
@@ -798,7 +815,7 @@ revoke all on table public.company_access_command_receipts from public, anon, au
 revoke all on function public.company_access_is_accepted_owner_v1(uuid) from public, anon;
 revoke all on function public.company_access_current_identity_v1() from public, anon, authenticated;
 revoke all on function public.company_access_token_hash_v1(text) from public, anon, authenticated;
-revoke all on function public.company_access_receipt_exists_v1(uuid) from public, anon, authenticated;
+revoke all on function public.company_access_receipt_exists_v1(uuid, uuid, text, text) from public, anon, authenticated;
 revoke all on function public.company_access_create_invitation(uuid, uuid, text, text, text, text) from public, anon;
 revoke all on function public.company_access_lookup_invitation(text, uuid, text) from public, anon;
 revoke all on function public.company_access_accept_invitation(uuid, text, uuid, text) from public, anon;

@@ -297,7 +297,8 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         if has_function_privilege('authenticated', 'public.company_access_token_hash_v1(text)', 'EXECUTE') then
           raise exception 'authenticated can directly execute token hash helper';
         end if;
-        if has_function_privilege('authenticated', 'public.company_access_receipt_exists_v1(uuid)', 'EXECUTE') then
+        if pg_catalog.to_regprocedure('public.company_access_receipt_exists_v1(uuid, uuid, text, text)') is not null
+           and has_function_privilege('authenticated', 'public.company_access_receipt_exists_v1(uuid, uuid, text, text)', 'EXECUTE') then
           raise exception 'authenticated can directly execute receipt existence helper';
         end if;
       end $$;
@@ -584,6 +585,68 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       select 'company_access_rls_ok';
     `);
     assert.match(output, /company_access_rls_ok/);
+
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000022', false);
+      select set_config('request.jwt.claims', '{"email":"other@example.test","aal":"aal2"}', false);
+      select * from public.company_access_create_invitation(
+        '50000000-0000-0000-0000-000000000001',
+        '20000000-0000-0000-0000-000000000002',
+        'foreign-receipt@example.test', 'reviewer',
+        encode(extensions.digest(convert_to('foreign-token', 'UTF8'), 'sha256'), 'hex'),
+        'foreign-token'
+      );
+    `);
+    const oracleOutput = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      do $$
+      declare
+        v_foreign_error text;
+        v_unknown_error text;
+        v_invitation_count bigint;
+      begin
+        select count(*) into v_invitation_count from public.company_invitations
+        where company_id = '10000000-0000-0000-0000-000000000001';
+        begin
+          perform * from public.company_access_create_invitation(
+            '50000000-0000-0000-0000-000000000001',
+            '10000000-0000-0000-0000-000000000001',
+            'oracle-probe@example.test', 'reviewer', repeat('0', 64), 'invalid-token'
+          );
+        exception when sqlstate 'P0001' then
+          v_foreign_error := sqlerrm;
+        end;
+        begin
+          perform * from public.company_access_create_invitation(
+            '50000000-0000-0000-0000-000000000099',
+            '10000000-0000-0000-0000-000000000001',
+            'oracle-probe@example.test', 'reviewer', repeat('0', 64), 'invalid-token'
+          );
+        exception when sqlstate 'P0001' then
+          v_unknown_error := sqlerrm;
+        end;
+        if v_foreign_error is distinct from v_unknown_error then
+          raise exception 'foreign receipt oracle: foreign=%, unknown=%', v_foreign_error, v_unknown_error;
+        end if;
+        if v_foreign_error <> 'company_access_invalid_request' then
+          raise exception 'invalid probes were not handled identically: %', v_foreign_error;
+        end if;
+        if (select count(*) from public.company_invitations
+            where company_id = '10000000-0000-0000-0000-000000000001') <> v_invitation_count then
+          raise exception 'oracle probes mutated invitations';
+        end if;
+      end $$;
+      select 'company_access_receipt_oracle_concealed';
+    `);
+    assert.match(oracleOutput, /company_access_receipt_oracle_concealed/u);
+    const unknownProbeReceipts = psql(containerName, ["-Atc", String.raw`
+      select count(*) from public.company_access_command_receipts
+      where operation_id = '50000000-0000-0000-0000-000000000099'
+    `]).trim();
+    assert.equal(unknownProbeReceipts, "0", "unknown probe created a receipt");
 
     const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
       select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)

@@ -90,15 +90,37 @@ test("owner receipt visibility is atomic while acceptance keeps actor replay sem
   assert.match(receiptPolicy, /expires_at > statement_timestamp\(\)/u);
   assert.match(receiptPolicy, /auth\.jwt\(\)[\s\S]+aal2/u);
   assert.match(receiptPolicy, /company_access_is_accepted_owner_v1\(company_id\)/u);
-  assert.match(sql, /function public\.company_access_receipt_exists_v1\(p_operation_id uuid\)/u);
   assert.match(
     sql,
-    /revoke all on function public\.company_access_receipt_exists_v1\(uuid\) from public, anon, authenticated/u,
+    /function public\.company_access_receipt_exists_v1\(\s*p_operation_id uuid,\s*p_company_id uuid,\s*p_command_name text,\s*p_request_fingerprint text\s*\)/u,
+  );
+  assert.match(sql, /r\.actor_id = \(select auth\.uid\(\)\)/u);
+  assert.match(sql, /r\.company_id = p_company_id/u);
+  assert.match(sql, /r\.command_name = p_command_name/u);
+  assert.match(sql, /r\.request_fingerprint = p_request_fingerprint/u);
+  assert.match(
+    sql,
+    /revoke all on function public\.company_access_receipt_exists_v1\(uuid, uuid, text, text\) from public, anon, authenticated/u,
   );
   assert.match(
     sql,
-    /grant execute on function public\.company_access_receipt_exists_v1\(uuid\) to company_access_executor/u,
+    /grant execute on function public\.company_access_receipt_exists_v1\(uuid, uuid, text, text\) to company_access_executor/u,
   );
+  for (const command of [
+    "create_invitation",
+    "revoke_invitation",
+    "resend_invitation",
+    "administer_membership",
+  ]) {
+    assert.match(
+      sql,
+      new RegExp(
+        `company_access_receipt_exists_v1\\(\\s*p_operation_id, p_company_id, '${command}', v_fingerprint\\s*\\)`,
+        "u",
+      ),
+      command,
+    );
+  }
 });
 
 test("evidence distinguishes forced receipt RLS from genuine non-owner RLS", async () => {
