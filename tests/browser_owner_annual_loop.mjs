@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -27,6 +27,8 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
   const port = 3217;
   const baseUrl = `http://127.0.0.1:${port}`;
+  const backendPort = 3218;
+  const backendBaseUrl = `http://127.0.0.1:${backendPort}`;
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
   const ownerEmail = `owner-${randomUUID()}@example.test`;
   const password = `Pw-${randomUUID()}-talli`;
@@ -46,6 +48,16 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
   await seedAnnualLoop(admin, { companyId, setupId, shareholderId, previewId, ownerId, orgNumber });
 
+  const backend = startBackendServer({
+    port: backendPort,
+    supabaseUrl,
+    anonKey,
+  });
+  t.after(async () => {
+    await stopServer(backend);
+  });
+  await waitForBackend(backendBaseUrl, backend);
+
   const server = spawn(
     process.execPath,
     [
@@ -59,10 +71,12 @@ test("browser owner annual loop uses persisted state and survives reload", async
     ],
     {
       cwd: process.cwd(),
-      env: process.env,
-      stdio: ["ignore", "inherit", "inherit"],
+      env: { ...process.env, TALLI_BACKEND_URL: backendBaseUrl },
+      stdio: ["ignore", "pipe", "pipe"],
     },
   );
+  server.stdout.resume();
+  server.stderr.resume();
   t.after(async () => {
     await stopServer(server);
   });
@@ -83,6 +97,9 @@ test("browser owner annual loop uses persisted state and survives reload", async
   await loginForm.getByLabel("E-post").fill(ownerEmail);
   await loginForm.getByLabel("Passord").fill(password);
   await loginForm.getByRole("button", { name: "Logg inn" }).click();
+  await page.waitForLoadState("networkidle");
+  await establishSyntheticAal2(page, baseUrl);
+  await page.goto(`${baseUrl}/dashboard`);
   await page.waitForLoadState("networkidle");
 
   if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") {
@@ -159,6 +176,13 @@ async function seedAnnualLoop(admin, ids) {
       role: "owner",
       invited_by: ownerId,
       accepted_at: new Date().toISOString(),
+    }),
+  );
+  await assertNoError(
+    admin.from("support_operators").insert({
+      user_id: ownerId,
+      role: "admin",
+      active: true,
     }),
   );
   await assertNoError(
@@ -288,6 +312,101 @@ async function waitForServer(baseUrl) {
     }
   }
   throw new Error(`Server did not start at ${baseUrl}`);
+}
+
+async function establishSyntheticAal2(page, baseUrl) {
+  await page.goto(`${baseUrl}/operator`);
+  const enrollmentResponsePromise = page.waitForResponse((response) => (
+    response.request().method() === "POST"
+    && new URL(response.url()).pathname.endsWith("/auth/v1/factors")
+  ));
+  await page.getByRole("button", { name: "Sett opp autentiseringsapp" }).click();
+  const enrollment = await (await enrollmentResponsePromise).json();
+  const secret = enrollment?.totp?.secret;
+  assert.equal(typeof secret, "string");
+  assert.match(secret, /^[A-Z2-7]+$/iu);
+  await page.getByLabel("Sekssifret kode").fill(totp(secret));
+  await page.getByRole("button", { name: "Bekreft AAL2" }).click();
+  await page.waitForURL((url) => (
+    url.pathname === "/operator" && url.searchParams.get("authority") === "authority_mfa_ready"
+  ));
+  await page.getByText("Denne økten er bekreftet med AAL2.", { exact: true }).waitFor();
+}
+
+function totp(secret) {
+  const key = base32Decode(secret);
+  const counter = BigInt(Math.floor(Date.now() / 30_000));
+  const message = Buffer.alloc(8);
+  message.writeBigUInt64BE(counter);
+  const digest = createHmac("sha1", key).update(message).digest();
+  const offset = digest.at(-1) & 0x0f;
+  const number = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return String(number).padStart(6, "0");
+}
+
+function base32Decode(value) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const character of value.toUpperCase().replace(/=+$/u, "")) {
+    const index = alphabet.indexOf(character);
+    assert.notEqual(index, -1);
+    bits += index.toString(2).padStart(5, "0");
+  }
+  const bytes = [];
+  for (let index = 0; index + 8 <= bits.length; index += 8) {
+    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey }) {
+  const backendPython = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
+  if (!existsSync(backendPython)) {
+    throw new Error("backend_python_missing");
+  }
+  const backend = spawn(
+    backendPython,
+    [
+      "-m",
+      "uvicorn",
+      "talli_backend.main:app",
+      "--app-dir",
+      "apps/backend/src",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        SUPABASE_URL: localSupabaseUrl,
+        SUPABASE_ANON_KEY: localAnonKey,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  backend.stdout.resume();
+  backend.stderr.resume();
+  return backend;
+}
+
+async function waitForBackend(baseUrl, backend) {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    if (backend.exitCode !== null || backend.signalCode !== null) {
+      throw new Error("backend_server_exited");
+    }
+    try {
+      const response = await fetch(`${baseUrl}/health/ready`);
+      if (response.ok) return;
+    } catch {
+      // Bounded local backend startup polling.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error("backend_server_start_deadline_exceeded");
 }
 
 async function stopServer(server) {

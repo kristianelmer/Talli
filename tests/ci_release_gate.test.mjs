@@ -79,17 +79,23 @@ test("database isolation uses the locked Python renderer environment", () => {
   assert.match(databaseJob, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.ok(databaseJob.includes("python -m pip install uv==0.10.2"));
   assert.ok(databaseJob.includes("uv sync --locked"));
+  assert.ok(databaseJob.includes("uv sync --project apps/backend --locked"));
   assert.match(databaseJob, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
   assert.ok(databaseJob.includes("npx playwright install --with-deps chromium"));
 });
 
-test("browser owner rehearsal owns and terminates the Next.js process directly", () => {
+test("browser owner rehearsal owns the local FastAPI and Next.js processes", () => {
   const harness = readFileSync(
     new URL("browser_owner_annual_loop.mjs", import.meta.url),
     "utf8",
   );
 
   assert.doesNotMatch(harness, /spawn\("npm"/);
+  assert.match(harness, /startBackendServer/);
+  assert.match(harness, /talli_backend\.main:app/);
+  assert.match(harness, /TALLI_BACKEND_URL:\s*backendBaseUrl/);
+  assert.match(harness, /await establishSyntheticAal2\(page, baseUrl\)/);
+  assert.match(harness, /await stopServer\(backend\)/);
   assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
   assert.match(harness, /await stopServer\(server\)/);
   assert.match(harness, /server\.kill\("SIGKILL"\)/);
