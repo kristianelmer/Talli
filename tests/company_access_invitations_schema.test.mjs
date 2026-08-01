@@ -29,6 +29,12 @@ test("invitation and membership mutations are not directly granted to authentica
 
   assert.match(sql, /revoke insert, update, delete on public\.company_invitations from authenticated/iu);
   assert.match(sql, /revoke insert, update, delete on public\.company_memberships from authenticated/iu);
+  assert.match(sql, /revoke select on public\.company_invitations from authenticated/iu);
+  assert.match(sql, /grant select \([\s\S]+\) on public\.company_invitations to authenticated/iu);
+  const invitationSelectGrant = sql.match(
+    /grant select \(([\s\S]+?)\) on public\.company_invitations to authenticated/iu,
+  )?.[1] ?? "";
+  assert.doesNotMatch(invitationSelectGrant, /token_hash/iu);
   assert.match(sql, /accepted_at is not null/iu);
   assert.match(sql, /role = 'owner'/iu);
   assert.match(sql, /role in \('reviewer', 'read_only'\)/iu);

@@ -356,6 +356,12 @@ using (
 
 revoke insert, update, delete on public.company_invitations from authenticated;
 revoke insert, update, delete on public.company_memberships from authenticated;
+revoke select on public.company_invitations from authenticated;
+grant select (
+  id, company_id, invited_email, invited_user_id, role, status, expires_at,
+  invited_by, accepted_by, accepted_at, revoked_by, revoked_at, resent_at,
+  delivery_events, created_at, updated_at
+) on public.company_invitations to authenticated;
 
 revoke all on function public.company_access_is_accepted_owner(uuid) from public;
 revoke all on function public.company_access_create_invitation(uuid, text, text, text, text) from public;

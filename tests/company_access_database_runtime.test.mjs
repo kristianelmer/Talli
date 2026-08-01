@@ -165,6 +165,9 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
            or has_table_privilege('authenticated', 'public.company_memberships', 'UPDATE') then
           raise exception 'direct authenticated mutation grant remains';
         end if;
+        if has_column_privilege('authenticated', 'public.company_invitations', 'token_hash', 'SELECT') then
+          raise exception 'invitation token hash remains readable';
+        end if;
       end $$;
       select set_config('request.jwt.claim.sub', '', false);
       select set_config('request.jwt.claims', '', false);
