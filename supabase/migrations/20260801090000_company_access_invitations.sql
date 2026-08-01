@@ -16,7 +16,7 @@ end
 $role$;
 
 create table if not exists public.company_access_command_receipts (
-  operation_id uuid primary key,
+  operation_id uuid not null,
   command_name text not null check (command_name in (
     'create_invitation', 'accept_invitation', 'revoke_invitation',
     'resend_invitation', 'administer_membership'
@@ -28,7 +28,8 @@ create table if not exists public.company_access_command_receipts (
   result jsonb not null,
   delivery_token text,
   expires_at timestamptz not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  primary key (actor_id, operation_id)
 );
 
 alter table public.company_access_command_receipts enable row level security;
@@ -317,14 +318,14 @@ declare
   v_receipt public.company_access_command_receipts%rowtype;
   v_now timestamptz := statement_timestamp();
 begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 160));
   if v_actor_id is null
      or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
   select r.* into v_receipt from public.company_access_command_receipts r
-  where r.operation_id = p_operation_id;
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if not found and public.company_access_receipt_exists_v1(
     p_operation_id, p_company_id, 'create_invitation', v_fingerprint
   ) then
@@ -475,9 +476,9 @@ begin
      or v_current_email <> pg_catalog.lower(coalesce(auth.jwt() ->> 'email', '')) then
     raise exception 'invitation_not_found' using errcode = 'P0001';
   end if;
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 160));
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
   select r.* into v_receipt from public.company_access_command_receipts r
-  where r.operation_id = p_operation_id;
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if found then
     if v_receipt.command_name <> 'accept_invitation'
        or v_receipt.actor_id <> v_actor_id
@@ -551,12 +552,13 @@ declare
   v_receipt public.company_access_command_receipts%rowtype;
   v_now timestamptz := statement_timestamp();
 begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 160));
   if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
+  select r.* into v_receipt from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if not found and public.company_access_receipt_exists_v1(
     p_operation_id, p_company_id, 'revoke_invitation', v_fingerprint
   ) then
@@ -634,12 +636,13 @@ declare
   v_receipt public.company_access_command_receipts%rowtype;
   v_now timestamptz := statement_timestamp();
 begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 160));
   if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
+  select r.* into v_receipt from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if not found and public.company_access_receipt_exists_v1(
     p_operation_id, p_company_id, 'resend_invitation', v_fingerprint
   ) then
@@ -724,12 +727,13 @@ declare
   v_result_role text;
   v_now timestamptz := statement_timestamp();
 begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_operation_id::text, 160));
   if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  select r.* into v_receipt from public.company_access_command_receipts r where r.operation_id = p_operation_id;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
+  select r.* into v_receipt from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if not found and public.company_access_receipt_exists_v1(
     p_operation_id, p_company_id, 'administer_membership', v_fingerprint
   ) then

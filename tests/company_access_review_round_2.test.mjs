@@ -121,6 +121,18 @@ test("owner receipt visibility is atomic while acceptance keeps actor replay sem
       command,
     );
   }
+  assert.equal(
+    sql.match(/where r\.actor_id = v_actor_id and r\.operation_id = p_operation_id/gu)?.length,
+    5,
+    "every owner and acceptance receipt lookup must use the actor namespace",
+  );
+  assert.equal(
+    sql.match(
+      /pg_advisory_xact_lock\(pg_catalog\.hashtextextended\(v_actor_id::text \|\| '\|' \|\| p_operation_id::text, 160\)\)/gu,
+    )?.length,
+    5,
+    "every command lock must use the same actor and operation namespace",
+  );
 });
 
 test("evidence distinguishes forced receipt RLS from genuine non-owner RLS", async () => {

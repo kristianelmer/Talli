@@ -103,7 +103,8 @@ test("consequential commands have durable replay receipts and concurrency precon
   const sql = await readFile(migrationUrl, "utf8");
 
   assert.match(sql, /create table if not exists public\.company_access_command_receipts/iu);
-  assert.match(sql, /operation_id uuid primary key/iu);
+  assert.match(sql, /operation_id uuid not null/iu);
+  assert.match(sql, /primary key \(actor_id, operation_id\)/iu);
   assert.match(sql, /request_fingerprint text not null/iu);
   assert.match(sql, /delivery_token text/iu);
   assert.match(sql, /p_operation_id uuid/iu);

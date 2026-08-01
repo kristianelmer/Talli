@@ -648,6 +648,62 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     `]).trim();
     assert.equal(unknownProbeReceipts, "0", "unknown probe created a receipt");
 
+    const validProbe = (operationId) => docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      begin;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select invited_email, role, status, delivery_token
+      from public.company_access_create_invitation(
+        '${operationId}',
+        '10000000-0000-0000-0000-000000000001',
+        'valid-oracle-probe@example.test', 'reviewer',
+        encode(extensions.digest(convert_to('valid-oracle-token', 'UTF8'), 'sha256'), 'hex'),
+        'valid-oracle-token'
+      );
+      rollback;
+    ` });
+    const validForeign = validProbe("50000000-0000-0000-0000-000000000001");
+    const validUnknown = validProbe("50000000-0000-0000-0000-000000000098");
+    assert.equal(
+      validForeign.status,
+      validUnknown.status,
+      `valid receipt probes diverged: foreign=${validForeign.stderr} unknown=${validUnknown.stderr}`,
+    );
+    assert.equal(validForeign.status, 0, validForeign.stderr);
+    for (const result of [validForeign, validUnknown]) {
+      assert.match(result.stdout, /valid-oracle-probe@example\.test[\s\S]+reviewer[\s\S]+pending[\s\S]+valid-oracle-token/u);
+    }
+    const validProbeState = psql(containerName, ["-Atc", String.raw`
+      select
+        (select count(*) from public.company_invitations
+          where company_id = '10000000-0000-0000-0000-000000000001'
+            and invited_email = 'valid-oracle-probe@example.test')::text
+        || ':' ||
+        (select count(*) from public.company_access_command_receipts
+          where actor_id = '00000000-0000-0000-0000-000000000011'
+            and operation_id in (
+              '50000000-0000-0000-0000-000000000001',
+              '50000000-0000-0000-0000-000000000098'
+            ))::text
+        || ':' ||
+        (select count(*) from public.company_access_command_receipts
+          where actor_id = '00000000-0000-0000-0000-000000000022'
+            and operation_id = '50000000-0000-0000-0000-000000000001')::text
+    `]).trim();
+    assert.equal(validProbeState, "0:0:1", "valid probes leaked mutation across rollback or tenant");
+    psql(containerName, [], String.raw`
+      do $$ begin
+        if pg_catalog.hashtextextended(
+          '00000000-0000-0000-0000-000000000011|50000000-0000-0000-0000-000000000001', 160
+        ) = pg_catalog.hashtextextended(
+          '00000000-0000-0000-0000-000000000022|50000000-0000-0000-0000-000000000001', 160
+        ) then raise exception 'test actors unexpectedly share an advisory namespace'; end if;
+      end $$;
+    `);
+
     const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
       select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)
       from public.company_access_command_receipts
