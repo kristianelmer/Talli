@@ -42,13 +42,47 @@ versioning, plus pinned mixed-version consumers in both deployment orders.
 
 The repaired dependency chain is:
 
-`#135 -> #136 -> #138 -> #139 -> #140 -> #141 -> #142 -> #143 -> #147 -> #144 -> #145 -> #148 -> #137 -> #150 -> #151 -> #146 -> #152 -> #153 -> #149 -> #155 -> #156 -> #157 -> #154`
+`#135 -> #136 -> #160 -> #161 -> #138 -> #139 -> #140 -> #141 -> #142 -> #143 -> #147 -> #144 -> #145 -> #148 -> #137 -> #150 -> #151 -> #146 -> #152 -> #153 -> #149 -> #155 -> #156 -> #157 -> #154`
 
 Newly added missing capability migrations:
 
+- #160 — company invitations and membership administration
+- #161 — company cancellation and deletion lifecycle
 - #155 — append-only audit evidence
 - #156 — notification outbox and delivery
 - #157 — company archive composition
+
+## Accepted authenticated company context (#136)
+
+- Exact review base: `3c05ddfa7532eea40a02fdf5325a1d6d96d4a388`
+- Accepted implementation head: `681e4523094f34cd42dcbf77a4c07bcb18bb62b8`
+- Implementation commits: `b583b7df`, `eb8b2a66`, `124d37d1`, `9c872c5d`,
+  `951dc0a8`, `4549a367`, `e1ac5222`, and `681e4523`
+- Final fresh-context acceptance review: PASS, no findings.
+- Scope confirmation: authenticated company context only; onboarding,
+  membership administration, and cancellation/deletion remain serialized in
+  #160, #161, and #138.
+
+Accepted verification:
+
+- `npm run test:architecture` — 34 passed.
+- `npm run check:architecture`
+- `npm run typecheck`
+- `npm run test:boundary` — backend 19, web 16, contract 12 passed.
+- `npm run test:supabase` — 7 mandatory/static tests passed; 4 pre-existing
+  optional local-environment tests skipped.
+- Fresh PostgreSQL company-access RLS rehearsal — passed.
+- `npm run build:backend`
+- `npm run build:web`
+- `npm run test:boundary-smoke`
+- `npm run test:launch-rehearsal`
+- `git diff --check`
+
+The slice now validates Supabase sessions before RLS reads, injects a declared
+credential-safe Supabase adapter, enforces owner/AAL2/tenant-concealed policy,
+returns literal-checked context through the generated client, removes direct web
+selected-context persistence, and records every remaining legacy operation as
+one exact path/rule/resource/operation compatibility scope.
 
 ## Accepted module-definition foundation (#135)
 
@@ -81,11 +115,11 @@ exceptions, and annotated-tag-derived customer-ready release state.
 
 ## Next handoff
 
-- Next ticket: #136, `company_access` capability migration.
-- Start from the merged #135 head containing this progress record.
-- Preserve the #135 architecture gate and its explicit compatibility-expiry
-  contract.
+- Next ticket: #160, company invitations and membership administration.
+- Start from the merged #136 head containing this progress record.
+- Preserve the #135 architecture gate, #136 session/RLS boundary, and exact
+  operation-scoped compatibility contract.
 - Re-run the accepted checks relevant to the slice and record its exact base,
   implementation commits, independent review dispositions, and verification
-  evidence here before advancing to #138.
-- Unresolved #135 findings: none.
+  evidence here before advancing to #161.
+- Unresolved #136 findings: none.
