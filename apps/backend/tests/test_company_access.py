@@ -573,6 +573,22 @@ def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc()
                 "expectedUpdatedAt": "yesterday",
             },
         ),
+        (
+            "/api/v1/company-access/invitations/30000000-0000-0000-0000-000000000001/revoke",
+            {
+                "operationId": "40000000-0000-0000-0000-000000000001",
+                "companyId": "40000000-0000-0000-0000-000000000002",
+                "expectedUpdatedAt": 1704067200,
+            },
+        ),
+        (
+            "/api/v1/company-access/invitations/30000000-0000-0000-0000-000000000001/resend",
+            {
+                "operationId": "40000000-0000-0000-0000-000000000001",
+                "companyId": "40000000-0000-0000-0000-000000000002",
+                "expectedUpdatedAt": "2024-01-01 00:00:00+00:00",
+            },
+        ),
     ],
 )
 def test_real_gateway_rejects_malformed_command_identifiers_before_postgrest(

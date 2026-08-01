@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Callable, Literal, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict, field_validator
 
 
 def _to_camel(value: str) -> str:
@@ -60,6 +60,9 @@ class CompanyContextResponse(CompanyAccessModel):
 InvitationRole = Literal["reviewer", "read_only"]
 InvitationStatus = Literal["pending", "accepted", "revoked", "expired"]
 MembershipState = Literal["active", "removed"]
+_RFC3339_TIMESTAMP = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$"
+)
 
 
 class CreateCompanyInvitationRequest(CompanyAccessCommandModel):
@@ -82,6 +85,13 @@ class CompanyInvitationCommandRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
     expected_updated_at: AwareDatetime
+
+    @field_validator("expected_updated_at", mode="before")
+    @classmethod
+    def require_rfc3339_string(cls, value: object) -> object:
+        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
+            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
+        return value
 
 
 class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
