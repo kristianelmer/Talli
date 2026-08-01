@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
-import os
 from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Literal, Protocol
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from typing import Callable, Literal, Protocol, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -57,7 +51,9 @@ class CompanyAccessError(Exception):
         self.detail = detail
 
 
-class SupabaseGateway(Protocol):
+class CompanyAccessGateway(Protocol):
+    """Validate sessions and read company data through that session's RLS scope."""
+
     async def session_subject(self, access_token: str) -> str: ...
 
     async def memberships(self, access_token: str, subject: str) -> list[Mapping[str, object]]: ...
@@ -65,100 +61,17 @@ class SupabaseGateway(Protocol):
     async def companies(self, access_token: str, company_ids: list[str]) -> list[Mapping[str, object]]: ...
 
 
-@dataclass(frozen=True)
-class SupabaseConfiguration:
-    url: str
-    anon_key: str
+Adapter = TypeVar("Adapter", bound=type)
 
 
-class SupabaseCompanyAccessGateway:
-    """Uses a verified Supabase session for Auth and RLS-protected reads."""
+def company_access_adapter(port: type[CompanyAccessGateway]) -> Callable[[Adapter], Adapter]:
+    """Register a source-level outbound adapter binding for architecture verification."""
 
-    def __init__(self, configuration: SupabaseConfiguration | None = None) -> None:
-        self._configuration = configuration or SupabaseConfiguration(
-            url=os.environ.get("SUPABASE_URL", "").rstrip("/"),
-            anon_key=os.environ.get("SUPABASE_ANON_KEY", ""),
-        )
+    def register(adapter: Adapter) -> Adapter:
+        setattr(adapter, "__talli_port__", port)
+        return adapter
 
-    def _headers(self, access_token: str) -> dict[str, str]:
-        return {
-            "Accept": "application/json",
-            "apikey": self._configuration.anon_key,
-            "Authorization": f"Bearer {access_token}",
-        }
-
-    async def _request(self, path: str, access_token: str) -> object:
-        if not self._configuration.url or not self._configuration.anon_key:
-            raise CompanyAccessError(
-                status=503,
-                code="COMPANY_ACCESS_UNAVAILABLE",
-                title="Company access unavailable",
-                detail="Company access is temporarily unavailable.",
-            )
-
-        def send() -> object:
-            request = Request(
-                f"{self._configuration.url}{path}",
-                headers=self._headers(access_token),
-                method="GET",
-            )
-            try:
-                with urlopen(request, timeout=5) as response:  # noqa: S310 - configured HTTPS endpoint
-                    return json.loads(response.read())
-            except HTTPError as error:
-                if error.code in {401, 403}:
-                    raise CompanyAccessError(
-                        status=401,
-                        code="AUTHENTICATION_REQUIRED",
-                        title="Authentication required",
-                        detail="A valid session is required.",
-                    ) from None
-                raise CompanyAccessError(
-                    status=503,
-                    code="COMPANY_ACCESS_UNAVAILABLE",
-                    title="Company access unavailable",
-                    detail="Company access is temporarily unavailable.",
-                ) from None
-            except (URLError, TimeoutError, json.JSONDecodeError):
-                raise CompanyAccessError(
-                    status=503,
-                    code="COMPANY_ACCESS_UNAVAILABLE",
-                    title="Company access unavailable",
-                    detail="Company access is temporarily unavailable.",
-                ) from None
-
-        return await asyncio.to_thread(send)
-
-    async def session_subject(self, access_token: str) -> str:
-        response = await self._request("/auth/v1/user", access_token)
-        if not isinstance(response, Mapping) or not isinstance(response.get("id"), str):
-            raise CompanyAccessError(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session is required.",
-            )
-        return response["id"]
-
-    async def memberships(self, access_token: str, subject: str) -> list[Mapping[str, object]]:
-        query = urlencode({
-            "select": "company_id,role,accepted_at",
-            "user_id": f"eq.{subject}",
-            "accepted_at": "not.is.null",
-        })
-        response = await self._request(f"/rest/v1/company_memberships?{query}", access_token)
-        return response if isinstance(response, list) else []
-
-    async def companies(self, access_token: str, company_ids: list[str]) -> list[Mapping[str, object]]:
-        if not company_ids:
-            return []
-        query = urlencode({
-            "select": "id,org_number,name,entity_type,address,postal_code,city,status_text,source,created_by,identity_confirmed_at,identity_locked_at,created_at",
-            "id": f"in.({','.join(company_ids)})",
-            "order": "created_at.desc",
-        }, safe="(),")
-        response = await self._request(f"/rest/v1/companies?{query}", access_token)
-        return response if isinstance(response, list) else []
+    return register
 
 
 def _token_aal(access_token: str) -> Literal["aal1", "aal2"]:
@@ -177,8 +90,8 @@ def _token_aal(access_token: str) -> Literal["aal1", "aal2"]:
 
 
 class CompanyAccessService:
-    def __init__(self, gateway: SupabaseGateway | None = None) -> None:
-        self._gateway = gateway or SupabaseCompanyAccessGateway()
+    def __init__(self, gateway: CompanyAccessGateway) -> None:
+        self._gateway = gateway
 
     async def selected_context(
         self,
@@ -205,6 +118,13 @@ class CompanyAccessService:
             if item.get("accepted_at") is not None
             and item.get("role") == "owner"
         }
+        if company_id is not None and company_id not in roles:
+            raise CompanyAccessError(
+                status=404,
+                code="COMPANY_CONTEXT_NOT_FOUND",
+                title="Company context not found",
+                detail="The requested company context was not found.",
+            )
         allowed_ids = [company_id] if company_id else list(roles)
         companies = await self._gateway.companies(access_token, allowed_ids)
         permitted_companies = [
@@ -220,6 +140,7 @@ class CompanyAccessService:
                 title="Company context not found",
                 detail="The requested company context was not found.",
             )
+
         def context(company: Mapping[str, object]) -> CompanyContext:
             return CompanyContext(
                 id=str(company["id"]),
@@ -254,9 +175,9 @@ class CompanyAccessService:
 
 __all__ = [
     "CompanyAccessError",
+    "CompanyAccessGateway",
     "CompanyAccessService",
     "CompanyContext",
     "CompanyContextResponse",
-    "SupabaseCompanyAccessGateway",
-    "SupabaseConfiguration",
+    "company_access_adapter",
 ]

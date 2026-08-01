@@ -5,12 +5,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from urllib.parse import urlsplit
 
+import pytest
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
-from talli_backend.modules.company_access.public import (
-    CompanyAccessService,
-    SupabaseCompanyAccessGateway,
+from talli_backend.adapters.supabase_company_access import (
+    SupabaseCompanyAccessAdapter,
     SupabaseConfiguration,
 )
 
@@ -38,33 +38,33 @@ class CompanyAccessGatewayStub:
         companies = {
             "company-1": {
                 "id": "company-1",
-            "org_number": "314159265",
-            "name": "Talli Holding AS",
-            "entity_type": "AS",
-            "address": "Testveien 1",
-            "postal_code": "0150",
-            "city": "Oslo",
-            "status_text": "Registrert",
-            "source": "Brønnøysundregistrene",
-            "created_by": "owner-1",
-            "identity_confirmed_at": "2026-07-30T00:00:00Z",
-            "identity_locked_at": None,
-            "created_at": "2026-07-30T00:00:00Z",
+                "org_number": "314159265",
+                "name": "Talli Holding AS",
+                "entity_type": "AS",
+                "address": "Testveien 1",
+                "postal_code": "0150",
+                "city": "Oslo",
+                "status_text": "Registrert",
+                "source": "Brønnøysundregistrene",
+                "created_by": "owner-1",
+                "identity_confirmed_at": "2026-07-30T00:00:00Z",
+                "identity_locked_at": None,
+                "created_at": "2026-07-30T00:00:00Z",
             },
             "company-2": {
                 "id": "company-2",
-            "org_number": "271828182",
-            "name": "Other Holding AS",
-            "entity_type": "AS",
-            "address": "Annen vei 2",
-            "postal_code": "5003",
-            "city": "Bergen",
-            "status_text": "Registrert",
-            "source": "Brønnøysundregistrene",
-            "created_by": "owner-2",
-            "identity_confirmed_at": "2026-07-30T00:00:00Z",
-            "identity_locked_at": None,
-            "created_at": "2026-07-30T00:00:00Z",
+                "org_number": "271828182",
+                "name": "Other Holding AS",
+                "entity_type": "AS",
+                "address": "Annen vei 2",
+                "postal_code": "5003",
+                "city": "Bergen",
+                "status_text": "Registrert",
+                "source": "Brønnøysundregistrene",
+                "created_by": "owner-2",
+                "identity_confirmed_at": "2026-07-30T00:00:00Z",
+                "identity_locked_at": None,
+                "created_at": "2026-07-30T00:00:00Z",
             },
         }
         return [companies[company_id] for company_id in company_ids if company_id in companies]
@@ -73,9 +73,10 @@ class CompanyAccessGatewayStub:
 class LocalSupabaseGateway:
     """Hermetic HTTP server that exercises the Auth -> PostgREST gateway path."""
 
-    def __init__(self, membership_role: str = "owner") -> None:
+    def __init__(self, membership_role: str = "owner", redirect_to: str | None = None) -> None:
         self.calls: list[tuple[str, str, str, str]] = []
         self.membership_role = membership_role
+        self.redirect_to = redirect_to
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.url = f"http://127.0.0.1:{self._server.server_port}"
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
@@ -91,6 +92,11 @@ class LocalSupabaseGateway:
                 gateway.calls.append((path, authorization, api_key, self.path))
                 token = authorization.removeprefix("Bearer ")
                 if path == "/auth/v1/user":
+                    if gateway.redirect_to:
+                        self.send_response(302)
+                        self.send_header("Location", gateway.redirect_to)
+                        self.end_headers()
+                        return
                     if token == "provider-failure":
                         self._json(500, {"message": "upstream failure"})
                     elif token in {"malformed", "expired", "revoked"}:
@@ -156,10 +162,8 @@ class LocalSupabaseGateway:
 
 def gateway_app(server: LocalSupabaseGateway):
     return create_app(
-        CompanyAccessService(
-            SupabaseCompanyAccessGateway(
-                SupabaseConfiguration(url=server.url, anon_key="anon-test-key")
-            )
+        SupabaseCompanyAccessAdapter(
+            SupabaseConfiguration(url=server.url, anon_key="anon-test-key")
         )
     )
 
@@ -172,7 +176,7 @@ def test_company_context_fails_closed_without_a_bearer_session() -> None:
 
 
 def test_company_context_returns_full_context_only_after_aal2() -> None:
-    app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
+    app = create_app(CompanyAccessGatewayStub())
 
     response = TestClient(app).get(
         "/api/v1/company-access/context",
@@ -221,7 +225,7 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
 
 
 def test_cross_company_context_is_concealed() -> None:
-    app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
+    app = create_app(CompanyAccessGatewayStub())
 
     response = TestClient(app).get(
         "/api/v1/company-access/context?company_id=company-2",
@@ -234,7 +238,7 @@ def test_cross_company_context_is_concealed() -> None:
 
 def test_non_owner_memberships_are_concealed_from_owner_sensitive_context() -> None:
     for role in ("reviewer", "read_only"):
-        app = create_app(CompanyAccessService(CompanyAccessGatewayStub(role)))
+        app = create_app(CompanyAccessGatewayStub(role))
 
         response = TestClient(app).get(
             "/api/v1/company-access/context",
@@ -246,7 +250,7 @@ def test_non_owner_memberships_are_concealed_from_owner_sensitive_context() -> N
 
 
 def test_full_company_context_cannot_be_downgraded_to_workspace_scope() -> None:
-    app = create_app(CompanyAccessService(CompanyAccessGatewayStub()))
+    app = create_app(CompanyAccessGatewayStub())
 
     response = TestClient(app).get(
         "/api/v1/company-access/context?resource_scope=workspace",
@@ -258,14 +262,14 @@ def test_full_company_context_cannot_be_downgraded_to_workspace_scope() -> None:
 
 
 def test_resource_scope_is_not_a_public_company_context_parameter() -> None:
-    schema = create_app(CompanyAccessService(CompanyAccessGatewayStub())).openapi()
+    schema = create_app(CompanyAccessGatewayStub()).openapi()
     parameters = schema["paths"]["/api/v1/company-access/context"]["get"].get("parameters", [])
 
     assert "resource_scope" not in {parameter["name"] for parameter in parameters}
 
 
 def test_owner_context_contract_uses_fixed_role_scope_and_assurance_literals() -> None:
-    schema = create_app(CompanyAccessService(CompanyAccessGatewayStub())).openapi()
+    schema = create_app(CompanyAccessGatewayStub()).openapi()
     context = schema["components"]["schemas"]["CompanyContext"]
 
     assert context["properties"]["role"] == {"const": "owner", "title": "Role", "type": "string"}
@@ -342,7 +346,7 @@ def test_real_gateway_conceals_reviewer_and_read_only_memberships() -> None:
     for role in ("reviewer", "read_only"):
         with LocalSupabaseGateway(role) as server:
             response = TestClient(gateway_app(server)).get(
-                "/api/v1/company-access/context",
+                "/api/v1/company-access/context?company_id=company-1",
                 headers={"Authorization": f"Bearer {access_token('aal2')}"},
             )
 
@@ -352,3 +356,43 @@ def test_real_gateway_conceals_reviewer_and_read_only_memberships() -> None:
             "/auth/v1/user",
             "/rest/v1/company_memberships",
         ]
+
+
+def test_supabase_gateway_rejects_unsafe_origins_and_accepts_https_or_loopback() -> None:
+    for unsafe in [
+        "http://supabase.example",
+        "ftp://supabase.example",
+        "https://user:password@supabase.example",
+        "https://supabase.example/rest/v1",
+        "https://supabase.example?tenant=other",
+        "https://supabase.example#fragment",
+    ]:
+        with pytest.raises(ValueError, match="Supabase origin"):
+            SupabaseCompanyAccessAdapter(SupabaseConfiguration(url=unsafe, anon_key="anon-test-key"))
+
+    SupabaseCompanyAccessAdapter(SupabaseConfiguration(url="https://project.supabase.co", anon_key="anon-test-key"))
+    SupabaseCompanyAccessAdapter(SupabaseConfiguration(url="http://127.0.0.1:54321", anon_key="anon-test-key"))
+    SupabaseCompanyAccessAdapter(SupabaseConfiguration(url="http://localhost:54321", anon_key="anon-test-key"))
+
+
+def test_supabase_gateway_never_follows_same_or_cross_origin_redirects() -> None:
+    with LocalSupabaseGateway() as target:
+        with LocalSupabaseGateway(redirect_to=f"{target.url}/redirect-target") as source:
+            cross_origin = TestClient(gateway_app(source)).get(
+                "/api/v1/company-access/context",
+                headers={"Authorization": f"Bearer {access_token('aal2')}"},
+            )
+
+        assert cross_origin.status_code == 503
+        assert [path for path, *_ in source.calls] == ["/auth/v1/user"]
+        assert target.calls == []
+
+    with LocalSupabaseGateway() as source:
+        source.redirect_to = f"{source.url}/redirect-target"
+        same_origin = TestClient(gateway_app(source)).get(
+            "/api/v1/company-access/context",
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        )
+
+    assert same_origin.status_code == 503
+    assert [path for path, *_ in source.calls] == ["/auth/v1/user"]

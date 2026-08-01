@@ -1,7 +1,7 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_memberships"],"ports":[],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
@@ -24,7 +24,12 @@ Import only `talli_backend.modules.company_access.public`.
 
 - Queries: `CompanyAccessService`, `CompanyContextResponse`
 - Error: `CompanyAccessError`
-- Identifier: `CompanyContext`
+- Identifiers: `CompanyAccessGateway`, `CompanyContext`, `company_access_adapter`
+
+`CompanyAccessGateway` is the narrow outbound port for validated session identity
+and bearer-scoped membership/company reads. The system boundary injects the
+registered `SupabaseCompanyAccessAdapter`; capability policy never constructs
+Supabase or HTTP infrastructure.
 
 This complete owner context has one server-owned `owner_sensitive` policy,
 always requires `aal2`, and accepts only an active `owner` membership; callers
@@ -33,6 +38,12 @@ three values are fixed literals in the response contract.
 The backend validates the Supabase session before checking that session's RLS
 scope. A foreign company, outsider, reviewer, or read-only member receives the
 tenant-concealed `COMPANY_CONTEXT_NOT_FOUND` response.
+
+Ownership of `public.companies` and `public.company_memberships` is authoritative
+here. Temporary web callers used by onboarding are explicitly registered by
+path, rule, and resource in `architecture/compatibility.json` under #138; they
+are adapters during migration, not co-owners, and authenticated context reads
+have no compatibility exception.
 
 ## Collaboration and tests
 

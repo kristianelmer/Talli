@@ -1,6 +1,8 @@
 {
   "schemaVersion": "1.0",
   "source": "supabase/migrations",
+  "ownershipPolicy": "capability owners are authoritative",
+  "compatibilityAdapterRegistry": "architecture/compatibility.json",
   "tables": [
     { "name": "public.annual_data", "kind": "legacy-business" },
     { "name": "public.audit_events", "kind": "legacy-business" },

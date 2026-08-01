@@ -41,3 +41,9 @@ in `tests/architecture_foundation.test.mjs`.
 There are no compatibility exceptions for selected company context. Change this
 document and `module.json` together when routes, operation, public imports,
 cache policy, or responsibilities change.
+
+The backend capability's ownership of `public.companies` and
+`public.company_memberships` is authoritative. Separately, the legacy onboarding
+callers registered by exact path, rule, and resource under #138 remain temporary
+compatibility adapters; they do not belong to this feature and cannot serve
+authenticated company-context reads.

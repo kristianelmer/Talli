@@ -2,10 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talli.no/schemas/architecture/database-catalog.schema.json",
   "type": "object",
-  "required": ["schemaVersion", "source", "tables"],
+  "required": ["schemaVersion", "source", "ownershipPolicy", "compatibilityAdapterRegistry", "tables"],
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "source": { "const": "supabase/migrations" },
+    "ownershipPolicy": { "const": "capability owners are authoritative" },
+    "compatibilityAdapterRegistry": { "const": "architecture/compatibility.json" },
     "tables": {
       "type": "array",
       "uniqueItems": true,

@@ -12,7 +12,7 @@
     "queries": ["CompanyAccessService", "CompanyContextResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyContext"]
+    "identifiers": ["CompanyAccessGateway", "CompanyContext", "company_access_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
@@ -21,9 +21,17 @@
     "projections": [],
     "migrations": "supabase/migrations/0001_authenticated_workspace.sql"
   },
-  "ports": [],
+  "ports": [
+    {
+      "name": "CompanyAccessGateway",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_access.public.CompanyAccessGateway",
+      "registrationDecorator": "talli_backend.modules.company_access.public.company_access_adapter",
+      "adapters": ["talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"]
+    }
+  ],
   "dependencies": [],
-  "allowedImports": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "json", "os", "pydantic", "typing", "urllib.error", "urllib.parse", "urllib.request"],
+  "allowedImports": ["__future__", "base64", "collections.abc", "json", "pydantic", "typing"],
   "forbiddenResponsibilities": [
     "Company onboarding, invitations, agreement acceptance, cancellation, or support-operator workflows",
     "Service-role access or RLS bypass for ordinary business reads",

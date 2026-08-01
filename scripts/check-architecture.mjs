@@ -503,18 +503,39 @@ function webBoundaryViolations(source, path, analysis) {
     changed = collectEvidence(sourceFile);
   } while (changed);
 
-  let persistence = false;
-  let fetch = false;
+  function literalString(expression, seen = new Set()) {
+    const unwrapped = unwrappedExpression(expression);
+    if (ts.isStringLiteralLike(unwrapped)) return unwrapped.text;
+    if (!ts.isIdentifier(unwrapped)) return undefined;
+    let symbol = symbolAt(unwrapped);
+    if (!symbol || seen.has(symbol)) return undefined;
+    seen.add(symbol);
+    if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    for (const declaration of symbol.declarations ?? []) {
+      if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+        const value = literalString(declaration.initializer, seen);
+        if (value !== undefined) return value;
+      }
+    }
+    return undefined;
+  }
+
+  const persistence = new Set();
+  const fetch = new Set();
   function visit(node) {
     if (ts.isCallExpression(node)) {
-      if (platformFetch(node.expression)) fetch = true;
+      if (platformFetch(node.expression)) {
+        fetch.add(`url:${literalString(node.arguments[0]) ?? "<dynamic>"}`);
+      }
       const access = propertyAccess(node.expression);
       if (access && ["from", "rpc"].includes(access.name)) {
-        if (persistenceExpression(access.receiver)) persistence = true;
         const receiverAccess = propertyAccess(access.receiver);
+        const resourceName = literalString(node.arguments[0]) ?? "<dynamic>";
         if (access.name === "from" && receiverAccess?.name === "storage"
           && persistenceExpression(receiverAccess.receiver)) {
-          persistence = true;
+          persistence.add(`storage:${resourceName}`);
+        } else if (persistenceExpression(access.receiver)) {
+          persistence.add(`${access.name === "rpc" ? "rpc" : "table"}:${resourceName}`);
         }
       }
     }
@@ -923,8 +944,8 @@ function checkModuleImports(root, manifest, errors, webAnalysis) {
     }
     if (manifest.kind === "web-feature") {
       const boundary = webBoundaryViolations(source, path, webAnalysis);
-      if (boundary.fetch) errors.push(`${label}: direct business fetch is forbidden`);
-      if (boundary.persistence) {
+      if (boundary.fetch.size) errors.push(`${label}: direct business fetch is forbidden`);
+      if (boundary.persistence.size) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
       if (generatedClientDeepImport(source, path, webAnalysis)) {
@@ -1112,6 +1133,7 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
       "creationIssue",
       "removalIssue",
       "paths",
+      "resources",
       "approvedBy",
       "approvedAt",
       "releaseLimit",
@@ -1124,6 +1146,7 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     if (!/^#[0-9]+$/u.test(entry.creationIssue ?? "")) errors.push(`${prefix} creationIssue must be an issue`);
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
     if (!Array.isArray(entry.paths) || !entry.paths.length) errors.push(`${prefix} paths must be non-empty`);
+    if (!Array.isArray(entry.resources) || !entry.resources.length) errors.push(`${prefix} resources must be non-empty`);
     if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
     const approvedAt = rfc3339Timestamp(entry.approvedAt);
     if (approvedAt === undefined) {
@@ -1205,13 +1228,14 @@ function checkRouteImports(root, manifests, errors) {
   }
 }
 
-function hasActiveCompatibility(registry, releaseState, path, rule, now) {
+function hasActiveCompatibility(registry, releaseState, path, rule, resource, now) {
   const stableReleasedAt = rfc3339Timestamp(
     releaseState.latestStableCustomerReadyRelease?.releasedAt,
   );
   return (registry.exceptions ?? []).some((entry) => (
     entry.paths?.includes(path)
     && entry.rules?.includes(rule)
+    && entry.resources?.includes(resource)
     && rfc3339Timestamp(entry.expiresAt) > now.getTime()
     && (
       stableReleasedAt === undefined
@@ -1226,16 +1250,25 @@ function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAn
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
     const boundary = webBoundaryViolations(source, path, webAnalysis);
-    if (boundary.fetch
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-business-fetch", now)) {
-      errors.push(`${scopedPath}: direct business fetch is forbidden`);
+    for (const resource of boundary.fetch) {
+      if (!hasActiveCompatibility(registry, releaseState, scopedPath, "direct-business-fetch", resource, now)) {
+        errors.push(`${scopedPath}: direct business fetch is forbidden for ${resource}`);
+      }
     }
-    if (boundary.persistence
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-web-business-persistence", now)) {
-      errors.push(`${scopedPath}: direct web business persistence is forbidden`);
+    for (const resource of boundary.persistence) {
+      if (!hasActiveCompatibility(registry, releaseState, scopedPath, "direct-web-business-persistence", resource, now)) {
+        errors.push(`${scopedPath}: direct web business persistence is forbidden for ${resource}`);
+      }
     }
     if (generatedClientDeepImport(source, path, webAnalysis)
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "generated-client-deep-import", now)) {
+      && !hasActiveCompatibility(
+        registry,
+        releaseState,
+        scopedPath,
+        "generated-client-deep-import",
+        "module:@talli/talli-api-client/*",
+        now,
+      )) {
       errors.push(`${scopedPath}: generated-client deep import is forbidden`);
     }
   }

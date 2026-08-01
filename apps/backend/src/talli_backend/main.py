@@ -13,15 +13,17 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
+from talli_backend.modules.company_access.public import (
+    CompanyAccessError,
+    CompanyAccessGateway,
+    CompanyAccessService,
+    CompanyContextResponse,
+)
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
     SystemBoundaryTransport,
     adapter_for,
-)
-from talli_backend.modules.company_access.public import (
-    CompanyAccessError,
-    CompanyAccessService,
-    CompanyContextResponse,
 )
 
 API_VERSION = "v1"
@@ -118,7 +120,7 @@ def _problem_response(
 
 
 @adapter_for(SystemBoundaryTransport)
-def create_app(company_access: CompanyAccessService | None = None) -> FastAPI:
+def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> FastAPI:
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -128,7 +130,12 @@ def create_app(company_access: CompanyAccessService | None = None) -> FastAPI:
         redoc_url=None,
     )
     application.add_middleware(RequestIdMiddleware)
-    company_access_service = company_access or CompanyAccessService()
+    gateway = (
+        company_access_gateway
+        if company_access_gateway is not None
+        else SupabaseCompanyAccessAdapter.from_environment()
+    )
+    company_access_service = CompanyAccessService(gateway)
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
