@@ -84,6 +84,43 @@ returns literal-checked context through the generated client, removes direct web
 selected-context persistence, and records every remaining legacy operation as
 one exact path/rule/resource/operation compatibility scope.
 
+## Implemented company invitations and membership administration (#160)
+
+- Exact implementation base: `2ae2708d206ede406b24f39c04b1dd84f29fe163`
+- Implementation head before this progress-only record: `41b5352d`
+- Implementation commits: `c20c81c1`, `306f1fef`, `ef673514`, and `41b5352d`
+- Acceptance state: implementation complete; fresh-context architecture and
+  standards review remain before this slice is accepted and the queue advances.
+- Scope confirmation: invitation and membership administration only;
+  cancellation/deletion remains serialized in #161 and no later capability was
+  moved early.
+
+Implementation verification:
+
+- `npm run test:boundary` — backend 25, web 18, contract 13 passed.
+- `npm run test:supabase` — 7 mandatory/static tests passed; 4 pre-existing
+  optional local-environment tests skipped.
+- Fresh PostgreSQL invitation/membership runtime rehearsal — passed.
+- Invitation migration schema tests — 3 passed.
+- `npm run test:review` — 5 passed.
+- `npm run test:supabase-grants` — 3 passed.
+- Architecture tests — 34 passed in four resource-bounded shards (11 + 10 + 6
+  + 7); `npm run check:architecture` passed.
+- `npm run typecheck`
+- `npm run build:backend`
+- `npm run build:web`
+- `npm run test:boundary-smoke`
+- `npm run test:launch-rehearsal`
+- `git diff --check`
+
+The slice adds authenticated invitation lookup, create, revoke, resend, and
+accept flows plus reviewer/read-only membership administration through stable
+generated contracts. Supabase sessions are independently validated, owner
+administration requires AAL2, invitation acceptance is atomic, tenant discovery
+is concealed, token hashes are denied at the database and API boundaries, and
+the migrated web operations no longer persist invitation, membership, or
+company records directly.
+
 ## Accepted module-definition foundation (#135)
 
 - Exact review base: `0319776cab4bda22445370bc1c45127d74f0764d`
@@ -115,11 +152,13 @@ exceptions, and annotated-tag-derived customer-ready release state.
 
 ## Next handoff
 
-- Next ticket: #160, company invitations and membership administration.
-- Start from the merged #136 head containing this progress record.
-- Preserve the #135 architecture gate, #136 session/RLS boundary, and exact
-  operation-scoped compatibility contract.
-- Re-run the accepted checks relevant to the slice and record its exact base,
+- Next ticket: #161, company cancellation and deletion lifecycle.
+- Start only after #160 receives fresh-context architecture and standards
+  acceptance review and is merged.
+- Preserve the #135 architecture gate, #136 session/RLS boundary, #160
+  invitation/membership contracts, and exact operation-scoped compatibility
+  contract.
+- Re-run the accepted checks relevant to #161 and record its exact base,
   implementation commits, independent review dispositions, and verification
-  evidence here before advancing to #161.
-- Unresolved #136 findings: none.
+  evidence here before advancing to #138.
+- Unresolved #160 implementation findings: none; independent review is pending.
