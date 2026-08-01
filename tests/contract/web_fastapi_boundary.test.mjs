@@ -53,6 +53,32 @@ test("the committed contract exposes the authenticated company-context operation
   assert.equal(contract.components.schemas.CompanyContext.properties.aal.const, "aal2");
 });
 
+test("the committed contract exposes company-access invitation and membership administration", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operations = [
+    ["/api/v1/company-access/invitations", "get", "companyAccessListInvitations"],
+    ["/api/v1/company-access/invitations", "post", "companyAccessCreateInvitation"],
+    ["/api/v1/company-access/invitations/lookup", "post", "companyAccessLookupInvitation"],
+    ["/api/v1/company-access/invitations/accept", "post", "companyAccessAcceptInvitation"],
+    ["/api/v1/company-access/invitations/{invitation_id}/revoke", "post", "companyAccessRevokeInvitation"],
+    ["/api/v1/company-access/invitations/{invitation_id}/resend", "post", "companyAccessResendInvitation"],
+    ["/api/v1/company-access/memberships", "get", "companyAccessListMemberships"],
+    ["/api/v1/company-access/memberships/{user_id}", "patch", "companyAccessAdministerMembership"],
+  ];
+  for (const [path, method, operationId] of operations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+  const invitationProperties = contract.components.schemas.CompanyInvitation.properties;
+  assert.ok(invitationProperties.invitedEmail);
+  assert.ok(invitationProperties.expiresAt);
+  assert.equal(invitationProperties.tokenHash, undefined);
+  assert.deepEqual(invitationProperties.role.enum, ["reviewer", "read_only"]);
+  assert.deepEqual(contract.components.schemas.CompanyMembership.properties.state.enum, ["active", "removed"]);
+});
+
 test("the tracer contract declares optional request and response correlation headers", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operation = contract.paths["/api/v1/system-boundary/tracer"].get;

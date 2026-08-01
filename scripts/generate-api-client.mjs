@@ -9,12 +9,27 @@ const path = "/api/v1/system-boundary/tracer";
 const operation = contract.paths?.[path]?.get;
 const companyAccessPath = "/api/v1/company-access/context";
 const companyAccessOperation = contract.paths?.[companyAccessPath]?.get;
+const companyAccessOperations = {
+  listInvitations: ["/api/v1/company-access/invitations", "get", "companyAccessListInvitations"],
+  createInvitation: ["/api/v1/company-access/invitations", "post", "companyAccessCreateInvitation"],
+  lookupInvitation: ["/api/v1/company-access/invitations/lookup", "post", "companyAccessLookupInvitation"],
+  acceptInvitation: ["/api/v1/company-access/invitations/accept", "post", "companyAccessAcceptInvitation"],
+  revokeInvitation: ["/api/v1/company-access/invitations/{invitation_id}/revoke", "post", "companyAccessRevokeInvitation"],
+  resendInvitation: ["/api/v1/company-access/invitations/{invitation_id}/resend", "post", "companyAccessResendInvitation"],
+  listMemberships: ["/api/v1/company-access/memberships", "get", "companyAccessListMemberships"],
+  administerMembership: ["/api/v1/company-access/memberships/{user_id}", "patch", "companyAccessAdministerMembership"],
+};
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
   throw new Error(`Expected systemBoundaryGetTracerStatus at ${path}`);
 }
 if (companyAccessOperation?.operationId !== "companyAccessGetSelectedContext") {
   throw new Error(`Expected companyAccessGetSelectedContext at ${companyAccessPath}`);
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(companyAccessOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
 }
 
 const correlationParameter = operation.parameters?.find(
@@ -73,7 +88,9 @@ function renderInterface(name, schema) {
 }
 
 function renderGuard(name, schema) {
-  const checks = (schema.required ?? []).map((property) => {
+  const checks = [
+    ...(name === "CompanyInvitation" ? ['    !("tokenHash" in value)'] : []),
+    ...(schema.required ?? []).map((property) => {
     if (schema.properties[property]?.$ref) {
       return `    is${schemaType(schema.properties[property])}(value.${property})`;
     }
@@ -99,7 +116,8 @@ function renderGuard(name, schema) {
     }
     const expectedType = schemaType(schema.properties[property]);
     return `    typeof value.${property} === "${expectedType}"`;
-  });
+    }),
+  ];
   return `function is${name}(value: unknown): value is ${name} {
   return (
     isRecord(value) &&
@@ -115,6 +133,19 @@ const companyContextSchema = contract.components.schemas.CompanyContext;
 const companyContextResponseSchema = resolveSchema(
   companyAccessOperation.responses["200"].content["application/json"].schema,
 );
+const additionalSchemas = Object.fromEntries([
+  "CompanyInvitation",
+  "CompanyInvitationListResponse",
+  "CompanyInvitationResponse",
+  "CompanyMembership",
+  "CompanyMembershipListResponse",
+  "CompanyMembershipResponse",
+  "CreateCompanyInvitationRequest",
+  "InvitationLookup",
+  "InvitationTokenRequest",
+  "CompanyInvitationCommandRequest",
+  "AdministerCompanyMembershipRequest",
+].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
 );
@@ -128,6 +159,8 @@ ${renderInterface("CompanyContext", companyContextSchema)}
 
 ${renderInterface("CompanyContextResponse", companyContextResponseSchema)}
 
+${Object.entries(additionalSchemas).map(([name, schema]) => renderInterface(name, schema)).join("\n\n")}
+
 ${renderInterface("ProblemDetails", problemSchema)}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -139,6 +172,16 @@ ${renderGuard("SystemBoundaryStatus", successSchema)}
 ${renderGuard("CompanyContext", companyContextSchema)}
 
 ${renderGuard("CompanyContextResponse", companyContextResponseSchema)}
+
+${[
+  "CompanyInvitation",
+  "CompanyInvitationListResponse",
+  "CompanyInvitationResponse",
+  "CompanyMembership",
+  "CompanyMembershipListResponse",
+  "CompanyMembershipResponse",
+  "InvitationLookup",
+].map((name) => renderGuard(name, additionalSchemas[name])).join("\n\n")}
 
 ${renderGuard("ProblemDetails", problemSchema)}
 
@@ -176,6 +219,43 @@ export interface CompanyAccessContextRequest extends TalliRequestOptions {
 export function createTalliApiClient(options: TalliApiClientOptions) {
   const fetchImplementation = options.fetch ?? globalThis.fetch;
   const baseUrl = options.baseUrl.replace(/\\/$/, "");
+
+  async function executeJson<T>(
+    url: string,
+    method: string,
+    request: TalliRequestOptions,
+    body: unknown,
+    guard: (value: unknown) => value is T,
+  ): Promise<T> {
+    const response = await fetchImplementation(url, {
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+      headers: {
+        Accept: "application/json, application/problem+json",
+        ...(body === undefined ? {} : { ["Content-Type"]: "application/json" }),
+        ...options.headers,
+        ...request.headers,
+        ...(request.requestId === undefined
+          ? {}
+          : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
+      },
+      method,
+      signal: request.signal,
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      const candidate = contentType.includes("application/problem+json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+      throw new TalliApiError(
+        response.status,
+        isProblemDetails(candidate) ? candidate : undefined,
+      );
+    }
+    const candidate: unknown = await response.json();
+    if (!guard(candidate)) throw new TalliApiError(502, undefined);
+    return candidate;
+  }
 
   return {
     async ${operation.operationId}(
@@ -245,6 +325,115 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return candidate;
+    },
+
+    async companyAccessListInvitations(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyInvitationListResponse> {
+      const query = new URLSearchParams({ company_id: companyId });
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCompanyInvitationListResponse,
+      );
+    },
+
+    async companyAccessCreateInvitation(
+      body: CreateCompanyInvitationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyInvitationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations\`,
+        "POST",
+        request,
+        body,
+        isCompanyInvitationResponse,
+      );
+    },
+
+    async companyAccessLookupInvitation(
+      body: InvitationTokenRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<InvitationLookup> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations/lookup\`,
+        "POST",
+        request,
+        body,
+        isInvitationLookup,
+      );
+    },
+
+    async companyAccessAcceptInvitation(
+      body: InvitationTokenRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyMembershipResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations/accept\`,
+        "POST",
+        request,
+        body,
+        isCompanyMembershipResponse,
+      );
+    },
+
+    async companyAccessRevokeInvitation(
+      invitationId: string,
+      body: CompanyInvitationCommandRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyInvitationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations/\${encodeURIComponent(invitationId)}/revoke\`,
+        "POST",
+        request,
+        body,
+        isCompanyInvitationResponse,
+      );
+    },
+
+    async companyAccessResendInvitation(
+      invitationId: string,
+      body: CompanyInvitationCommandRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyInvitationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitations/\${encodeURIComponent(invitationId)}/resend\`,
+        "POST",
+        request,
+        body,
+        isCompanyInvitationResponse,
+      );
+    },
+
+    async companyAccessListMemberships(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyMembershipListResponse> {
+      const query = new URLSearchParams({ company_id: companyId });
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/memberships?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCompanyMembershipListResponse,
+      );
+    },
+
+    async companyAccessAdministerMembership(
+      userId: string,
+      body: AdministerCompanyMembershipRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyMembershipResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/memberships/\${encodeURIComponent(userId)}\`,
+        "PATCH",
+        request,
+        body,
+        isCompanyMembershipResponse,
+      );
     },
   };
 }

@@ -15,6 +15,20 @@
       "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
       "routes": ["/api/v1/company-access/context"]
+    },
+    {
+      "name": "company-access-administration",
+      "purpose": "Runs invitation and reviewer/read-only membership workflows atomically through the company_access public package.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": [
+        "/api/v1/company-access/invitations",
+        "/api/v1/company-access/invitations/lookup",
+        "/api/v1/company-access/invitations/accept",
+        "/api/v1/company-access/invitations/{invitation_id}/revoke",
+        "/api/v1/company-access/invitations/{invitation_id}/resend",
+        "/api/v1/company-access/memberships",
+        "/api/v1/company-access/memberships/{user_id}"
+      ]
     }
   ],
   "operationalControlState": {

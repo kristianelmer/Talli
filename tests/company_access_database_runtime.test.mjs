@@ -66,6 +66,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     assert.equal(readyChecks, 2, "PostgreSQL container did not become ready");
     psql(containerName, [], bootstrapSql);
     psql(containerName, ["--file", "/repo/supabase/migrations/0001_authenticated_workspace.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/20260801090000_company_access_invitations.sql"]);
     const output = psql(containerName, [], String.raw`
       insert into auth.users (id, email) values
         ('00000000-0000-0000-0000-000000000001', 'creator@example.test'),
@@ -82,11 +83,24 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000022', 'owner', now()),
         ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000044', 'reviewer', now()),
         ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000055', 'read_only', now());
+      insert into public.company_invitations (
+        id, company_id, invited_email, role, token_hash, status, expires_at, invited_by
+      ) values (
+        '30000000-0000-0000-0000-000000000001',
+        '10000000-0000-0000-0000-000000000001',
+        'outsider@example.test',
+        'reviewer',
+        encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+        'pending',
+        now() + interval '1 day',
+        '00000000-0000-0000-0000-000000000011'
+      );
       set role authenticated;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
       do $$ begin
         if (select array_agg(id order by id) from public.companies) != array['10000000-0000-0000-0000-000000000001'::uuid] then raise exception 'member received a cross-company row'; end if;
-        if (select array_agg(company_id order by company_id) from public.company_memberships) != array['10000000-0000-0000-0000-000000000001'::uuid] then raise exception 'member received another membership'; end if;
+        if (select array_agg(distinct company_id order by company_id) from public.company_memberships) != array['10000000-0000-0000-0000-000000000001'::uuid] then raise exception 'owner received another company membership'; end if;
+        if (select count(*) from public.company_memberships) != 3 then raise exception 'owner could not administer company memberships'; end if;
       end $$;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
       do $$ begin
@@ -100,6 +114,64 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       do $$ begin
         if exists (select 1 from public.companies) then raise exception 'outsider received company rows'; end if;
         if exists (select 1 from public.company_memberships) then raise exception 'outsider received membership rows'; end if;
+      end $$;
+      select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
+      do $$ begin
+        if (select count(*) from public.company_access_lookup_invitation(encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'))) != 1 then
+          raise exception 'recipient could not look up pending invitation';
+        end if;
+      end $$;
+      select * from public.company_access_accept_invitation(
+        encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex')
+      );
+      do $$ begin
+        if not exists (
+          select 1 from public.company_memberships
+          where company_id = '10000000-0000-0000-0000-000000000001'
+            and user_id = '00000000-0000-0000-0000-000000000033'
+            and role = 'reviewer' and accepted_at is not null
+        ) then raise exception 'atomic acceptance did not create membership'; end if;
+        if not exists (
+          select 1 from public.company_invitations
+          where id = '30000000-0000-0000-0000-000000000001'
+            and status = 'accepted'
+            and accepted_by = '00000000-0000-0000-0000-000000000033'
+        ) then raise exception 'atomic acceptance did not transition invitation'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select * from public.company_access_administer_membership(
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000033',
+        'read_only',
+        'active'
+      );
+      do $$ begin
+        if (select role from public.company_memberships where user_id = '00000000-0000-0000-0000-000000000033') != 'read_only' then
+          raise exception 'membership role transition did not commit';
+        end if;
+      end $$;
+      select * from public.company_access_administer_membership(
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000033',
+        null,
+        'removed'
+      );
+      do $$ begin
+        if exists (select 1 from public.company_memberships where user_id = '00000000-0000-0000-0000-000000000033') then
+          raise exception 'membership removal did not commit';
+        end if;
+        if has_table_privilege('authenticated', 'public.company_invitations', 'INSERT')
+           or has_table_privilege('authenticated', 'public.company_memberships', 'UPDATE') then
+          raise exception 'direct authenticated mutation grant remains';
+        end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '', false);
+      select set_config('request.jwt.claims', '', false);
+      do $$ begin
+        if public.company_access_is_accepted_owner('10000000-0000-0000-0000-000000000001') then
+          raise exception 'connection context leaked after claims were cleared';
+        end if;
       end $$;
       reset role;
       select 'company_access_rls_ok';

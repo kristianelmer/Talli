@@ -75,14 +75,24 @@ class SupabaseCompanyAccessAdapter:
             anon_key=os.environ.get("SUPABASE_ANON_KEY", ""),
         ))
 
-    def _headers(self, access_token: str) -> dict[str, str]:
-        return {
+    def _headers(self, access_token: str, *, content: bool = False) -> dict[str, str]:
+        headers = {
             "Accept": "application/json",
             "apikey": self._anon_key,
             "Authorization": f"Bearer {access_token}",
         }
+        if content:
+            headers["Content-Type"] = "application/json"
+        return headers
 
-    async def _request(self, path: str, access_token: str) -> object:
+    async def _request(
+        self,
+        path: str,
+        access_token: str,
+        *,
+        method: str = "GET",
+        body: Mapping[str, object] | None = None,
+    ) -> object:
         if not self._origin or not self._anon_key:
             raise CompanyAccessError(
                 status=503,
@@ -94,8 +104,9 @@ class SupabaseCompanyAccessAdapter:
         def send() -> object:
             request = Request(
                 f"{self._origin}{path}",
-                headers=self._headers(access_token),
-                method="GET",
+                headers=self._headers(access_token, content=body is not None),
+                data=json.dumps(body).encode() if body is not None else None,
+                method=method,
             )
             try:
                 with self._opener.open(request, timeout=5) as response:
@@ -107,6 +118,37 @@ class SupabaseCompanyAccessAdapter:
                         code="AUTHENTICATION_REQUIRED",
                         title="Authentication required",
                         detail="A valid session is required.",
+                    ) from None
+                try:
+                    provider_error = json.loads(error.read())
+                except json.JSONDecodeError:
+                    provider_error = {}
+                message = provider_error.get("message") if isinstance(provider_error, Mapping) else None
+                if message in {"company_access_not_found", "invitation_not_found"}:
+                    invitation = message == "invitation_not_found"
+                    raise CompanyAccessError(
+                        status=404,
+                        code="INVITATION_NOT_FOUND" if invitation else "COMPANY_ACCESS_NOT_FOUND",
+                        title="Invitation not found" if invitation else "Company access not found",
+                        detail=(
+                            "The requested invitation was not found or is no longer available."
+                            if invitation
+                            else "The requested company access resource was not found."
+                        ),
+                    ) from None
+                if message == "company_access_invalid_request":
+                    raise CompanyAccessError(
+                        status=422,
+                        code="REQUEST_VALIDATION_FAILED",
+                        title="Request validation failed",
+                        detail="The request did not satisfy the company access policy.",
+                    ) from None
+                if error.code == 409:
+                    raise CompanyAccessError(
+                        status=409,
+                        code="COMPANY_ACCESS_CONFLICT",
+                        title="Company access conflict",
+                        detail="The company access change conflicts with existing state.",
                     ) from None
                 raise CompanyAccessError(
                     status=503,
@@ -135,6 +177,21 @@ class SupabaseCompanyAccessAdapter:
             )
         return response["id"]
 
+    async def session_identity(self, access_token: str) -> Mapping[str, object]:
+        response = await self._request("/auth/v1/user", access_token)
+        if (
+            not isinstance(response, Mapping)
+            or not isinstance(response.get("id"), str)
+            or not isinstance(response.get("email"), str)
+        ):
+            raise CompanyAccessError(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session with a verified email is required.",
+            )
+        return {"id": response["id"], "email": response["email"]}
+
     async def memberships(self, access_token: str, subject: str) -> list[Mapping[str, object]]:
         query = urlencode({
             "select": "company_id,role,accepted_at",
@@ -154,6 +211,98 @@ class SupabaseCompanyAccessAdapter:
         }, safe="(),")
         response = await self._request(f"/rest/v1/companies?{query}", access_token)
         return response if isinstance(response, list) else []
+
+    async def invitations(
+        self, access_token: str, company_id: str
+    ) -> list[Mapping[str, object]]:
+        query = urlencode({
+            "select": "id,company_id,invited_email,role,status,expires_at,created_at,updated_at",
+            "company_id": f"eq.{company_id}",
+            "order": "updated_at.desc",
+        })
+        response = await self._request(f"/rest/v1/company_invitations?{query}", access_token)
+        return response if isinstance(response, list) else []
+
+    async def create_invitation(
+        self, access_token: str, invitation: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        return await self._rpc_row(access_token, "company_access_create_invitation", {
+            "p_company_id": invitation["company_id"],
+            "p_invited_email": invitation["invited_email"],
+            "p_role": invitation["role"],
+            "p_token_hash": invitation["token_hash"],
+            "p_acceptance_token": invitation["acceptance_token"],
+        }) or {}
+
+    async def lookup_invitation(
+        self, access_token: str, token_hash: str
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token, "company_access_lookup_invitation", {"p_token_hash": token_hash}
+        )
+
+    async def accept_invitation(
+        self, access_token: str, token_hash: str
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token, "company_access_accept_invitation", {"p_token_hash": token_hash}
+        )
+
+    async def revoke_invitation(
+        self, access_token: str, company_id: str, invitation_id: str
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(access_token, "company_access_revoke_invitation", {
+            "p_company_id": company_id,
+            "p_invitation_id": invitation_id,
+        })
+
+    async def resend_invitation(
+        self, access_token: str, command: Mapping[str, object]
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(access_token, "company_access_resend_invitation", {
+            "p_company_id": command["company_id"],
+            "p_invitation_id": command["invitation_id"],
+            "p_token_hash": command["token_hash"],
+            "p_acceptance_token": command["acceptance_token"],
+        })
+
+    async def company_memberships(
+        self, access_token: str, company_id: str
+    ) -> list[Mapping[str, object]]:
+        query = urlencode({
+            "select": "company_id,user_id,role,accepted_at",
+            "company_id": f"eq.{company_id}",
+            "role": "in.(reviewer,read_only)",
+            "accepted_at": "not.is.null",
+            "order": "created_at.asc",
+        }, safe="(),")
+        response = await self._request(f"/rest/v1/company_memberships?{query}", access_token)
+        if not isinstance(response, list):
+            return []
+        return [{**row, "state": "active"} for row in response if isinstance(row, Mapping)]
+
+    async def administer_membership(
+        self, access_token: str, command: Mapping[str, object]
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(access_token, "company_access_administer_membership", {
+            "p_company_id": command["company_id"],
+            "p_user_id": command["user_id"],
+            "p_role": command.get("role"),
+            "p_state": command.get("state"),
+        })
+
+    async def _rpc_row(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+    ) -> Mapping[str, object] | None:
+        response = await self._request(
+            f"/rest/v1/rpc/{function_name}", access_token, method="POST", body=body
+        )
+        if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
+            return None
+        return response[0]
 
 
 __all__ = ["SupabaseCompanyAccessAdapter", "SupabaseConfiguration"]

@@ -15,7 +15,7 @@
     { "name": "public.billing_payment_events", "kind": "legacy-business" },
     { "name": "public.companies", "kind": "capability-business", "owner": "backend:company_access" },
     { "name": "public.company_cancellations", "kind": "legacy-business" },
-    { "name": "public.company_invitations", "kind": "legacy-business" },
+    { "name": "public.company_invitations", "kind": "capability-business", "owner": "backend:company_access" },
     { "name": "public.company_memberships", "kind": "capability-business", "owner": "backend:company_access" },
     { "name": "public.corporate_accounting_policies", "kind": "legacy-business" },
     { "name": "public.corporate_decision_finalizations", "kind": "legacy-business" },
