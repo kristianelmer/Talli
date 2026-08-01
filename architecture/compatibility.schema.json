@@ -9,14 +9,28 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "owner", "creationIssue", "removalIssue", "paths", "rules", "approvedBy", "approvedAt", "releaseLimit", "expiresAt", "removalCondition"],
+        "required": ["id", "owner", "creationIssue", "removalIssue", "scopes", "approvedBy", "approvedAt", "releaseLimit", "expiresAt", "removalCondition"],
         "properties": {
           "id": { "type": "string", "pattern": "^compat-" },
           "owner": { "type": "string" },
           "creationIssue": { "type": "string", "pattern": "^#[0-9]+$" },
           "removalIssue": { "type": "string", "pattern": "^#[0-9]+$" },
-          "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-          "rules": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["direct-web-business-persistence", "direct-business-fetch", "generated-client-deep-import"] } },
+          "scopes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": ["path", "rule", "resource", "operation"],
+              "properties": {
+                "path": { "type": "string", "pattern": "^apps/web/[^\\s]+$" },
+                "rule": { "enum": ["direct-web-business-persistence", "direct-business-fetch", "generated-client-deep-import"] },
+                "resource": { "type": "string", "pattern": "^(table|rpc|storage|url|module):[^\\s]+$" },
+                "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" }
+              },
+              "additionalProperties": false
+            }
+          },
           "approvedBy": { "type": "string", "minLength": 1 },
           "approvedAt": { "type": "string", "format": "date-time" },
           "releaseLimit": { "const": "next-stable-customer-ready-release" },

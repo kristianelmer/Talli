@@ -34,7 +34,14 @@ function resolveSchema(document, schema, location) {
 
 function validateSchema(document, schema, location) {
   const resolved = resolveSchema(document, schema, location);
-  if (!["array", "boolean", "integer", "number", "object", "string"].includes(resolved.type)) {
+  if (resolved.anyOf) {
+    if (!Array.isArray(resolved.anyOf) || resolved.anyOf.length === 0) {
+      throw new Error(`${location} has invalid anyOf`);
+    }
+    for (const member of resolved.anyOf) validateSchema(document, member, location);
+    return;
+  }
+  if (!["array", "boolean", "integer", "null", "number", "object", "string"].includes(resolved.type)) {
     throw new Error(`${location} has unsupported or missing type`);
   }
   if (resolved.type === "object") {
@@ -96,6 +103,17 @@ export function validateOpenApiDocument(document) {
 
 export function assertValueMatchesSchema(document, schema, value, location = "response") {
   const resolved = resolveSchema(document, schema, location);
+  if (resolved.anyOf) {
+    for (const member of resolved.anyOf) {
+      try {
+        assertValueMatchesSchema(document, member, value, location);
+        return;
+      } catch {
+        // Try the next permitted schema.
+      }
+    }
+    throw new Error(`${location} does not match any allowed schema`);
+  }
   if (resolved.const !== undefined && value !== resolved.const) {
     throw new Error(`${location} does not match const ${resolved.const}`);
   }
@@ -114,6 +132,10 @@ export function assertValueMatchesSchema(document, schema, value, location = "re
         );
       }
     }
+    return;
+  }
+  if (resolved.type === "null") {
+    if (value !== null) throw new Error(`${location} must be null`);
     return;
   }
   const expectedType =

@@ -78,7 +78,6 @@ import {
   listBillingAccounts,
   listBillingPaymentEvents,
   listCompanyCancellations,
-  listCompanyWorkspaces,
   listDocumentsForCompanies,
   listFilingPreviews,
   listFilingOverrides,

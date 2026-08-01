@@ -1,22 +1,37 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
+import { createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
+import pg from "pg";
 
-import { isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+import {
+  cleanupBrowserOwnerResources,
+  cleanupFailure,
+} from "./support/browser-owner-cleanup.mjs";
+import {
+  allocateLoopbackPort,
+  startOwnedProcess,
+  waitForOwnedReadiness,
+} from "./support/owned-process-lifecycle.mjs";
+import {
+  isLoopbackPostgresUrl,
+  isLoopbackSupabaseUrl,
+} from "./support/supabase_fixture_safety.mjs";
 
 loadDotEnv();
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const anonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 
 test("browser owner annual loop uses persisted state and survives reload", async (t) => {
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+  if (!supabaseUrl || !serviceRoleKey || !anonKey || !databaseUrl) {
     t.skip("Supabase env missing");
     return;
   }
@@ -24,118 +39,196 @@ test("browser owner annual loop uses persisted state and survives reload", async
     t.skip("Browser fixtures require local Supabase");
     return;
   }
-
-  const port = 3217;
-  const baseUrl = `http://127.0.0.1:${port}`;
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-  const ownerEmail = `owner-${randomUUID()}@example.test`;
-  const password = `Pw-${randomUUID()}-talli`;
-  const orgNumber = String(Math.floor(100000000 + Math.random() * 899999999));
-  const companyId = randomUUID();
-  const setupId = randomUUID();
-  const shareholderId = randomUUID();
-  const previewId = randomUUID();
-
-  const { data: createdUser, error: createUserError } = await admin.auth.admin.createUser({
-    email: ownerEmail,
-    password,
-    email_confirm: true,
-  });
-  assert.ifError(createUserError);
-  const ownerId = createdUser.user.id;
-
-  await seedAnnualLoop(admin, { companyId, setupId, shareholderId, previewId, ownerId, orgNumber });
-
-  const server = spawn(
-    process.execPath,
-    [
-      "node_modules/next/dist/bin/next",
-      "dev",
-      "apps/web",
-      "--hostname",
-      "127.0.0.1",
-      "--port",
-      String(port),
-    ],
-    {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: ["ignore", "inherit", "inherit"],
-    },
-  );
-  t.after(async () => {
-    await stopServer(server);
-  });
-  t.after(async () => {
-    await admin.from("companies").delete().eq("id", companyId);
-    await admin.auth.admin.deleteUser(ownerId);
-  });
-
-  await waitForServer(baseUrl);
-  const browser = await chromium.launch({ headless: true });
-  t.after(async () => browser.close());
-  const page = await browser.newPage();
-
-  // The public landing page moved to `/` in #90; authentication is a distinct
-  // route and the browser rehearsal must exercise the real login surface.
-  await page.goto(`${baseUrl}/login`);
-  const loginForm = page.locator("form").filter({ hasText: "Logg inn" }).first();
-  await loginForm.getByLabel("E-post").fill(ownerEmail);
-  await loginForm.getByLabel("Passord").fill(password);
-  await loginForm.getByRole("button", { name: "Logg inn" }).click();
-  await page.waitForLoadState("networkidle");
-
-  if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") {
-    await page.goto(`${baseUrl}/companies/${companyId}/annual-reporting/2025`);
-    await page.waitForLoadState("networkidle");
-    await page.getByRole("heading", { name: "Årsrapportering" }).waitFor({ state: "visible", timeout: 15_000 });
-    assert.equal(await page.locator("[data-obligation]").count(), 3);
-    assert.deepEqual(
-      await page.locator("[data-obligation]").evaluateAll((items) => items.map((item) => item.getAttribute("data-obligation"))),
-      ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
-    );
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.evaluate(() => document.body.scrollWidth <= window.innerWidth), true);
-    const workspaceNav = page.getByRole("navigation", { name: "Arbeidsflate" });
-    assert.equal(await workspaceNav.getByRole("link").count(), 6);
-    assert.equal(
-      await workspaceNav.evaluate((node) => node.scrollWidth <= node.clientWidth),
-      true,
-    );
+  if (!isLoopbackPostgresUrl(databaseUrl)) {
+    t.skip("Browser fixtures require local database");
     return;
   }
 
-  await expectText(page, "Talli Browser Holding AS");
-  await page.getByRole("heading", { name: "Årsrapportering" }).waitFor({ state: "visible", timeout: 15_000 });
-  assert.equal(await page.locator("[data-obligation]").count(), 3);
+  const port = await allocateLoopbackPort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const backendPort = await allocateLoopbackPort();
+  const backendBaseUrl = `http://127.0.0.1:${backendPort}`;
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+  const database = new pg.Client({ connectionString: databaseUrl });
+  const resources = {
+    admin,
+    backend: undefined,
+    browser: undefined,
+    companyId: undefined,
+    database,
+    databaseStarted: false,
+    ownerId: undefined,
+    primaryFailure: undefined,
+    server: undefined,
+  };
+  t.after(async () => {
+    const cleanupErrors = await cleanupBrowserOwnerResources(resources);
+    const failure = cleanupFailure(resources.primaryFailure, cleanupErrors);
+    if (cleanupErrors.length > 0 && resources.primaryFailure) {
+      t.diagnostic(
+        `Cleanup encountered ${cleanupErrors.length} error(s) after the primary setup failure.`,
+      );
+    }
+    if (failure) throw failure;
+  });
 
-  // The owner workflow tools now live under the /workspace route group (#90).
-  await page.goto(`${baseUrl}/workspace`);
-  await page.waitForLoadState("networkidle");
+  try {
+    resources.databaseStarted = true;
+    await database.connect();
+    const ownerEmail = `owner-${randomUUID()}@example.test`;
+    const password = `Pw-${randomUUID()}-talli`;
+    const orgNumber = String(Math.floor(100000000 + Math.random() * 899999999));
+    const companyId = randomUUID();
+    const setupId = randomUUID();
+    const shareholderId = randomUUID();
+    const previewId = randomUUID();
 
-  await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
-  await page.waitForLoadState("networkidle");
-  await expectText(page, "Filing readiness må være klar før filingpakke kan betales.");
+    const { data: createdUser, error: createUserError } =
+      await admin.auth.admin.createUser({
+        email: ownerEmail,
+        password,
+        email_confirm: true,
+      });
+    assert.ifError(createUserError);
+    const ownerId = createdUser.user.id;
+    resources.ownerId = ownerId;
 
-  await page.getByRole("button", { name: "Oppdater readiness" }).click();
-  await page.waitForLoadState("networkidle");
-  await page.reload();
-  await page.waitForLoadState("networkidle");
-  await expectText(page, "Klar for produksjonsinnsending");
+    await seedAnnualLoop(
+      admin,
+      {
+        companyId,
+        setupId,
+        shareholderId,
+        previewId,
+        ownerId,
+        orgNumber,
+      },
+      () => {
+        resources.companyId = companyId;
+      },
+    );
 
-  await page.getByRole("button", { name: "Marker filingpakke betalt" }).click();
-  await page.waitForLoadState("networkidle");
-  await page.getByLabel("Jeg bekrefter rett til å sende inn for selskapet.").check();
-  await page.getByLabel("Jeg har kontrollert endelig forhåndsvisning.").check();
-  await page.getByRole("button", { name: "Arkiver simulert kvittering" }).click();
-  await page.waitForLoadState("networkidle");
+    resources.backend = startBackendServer({
+      port: backendPort,
+      supabaseUrl,
+      anonKey,
+    });
+    await waitForOwnedReadiness({
+      process: resources.backend,
+      url: `${backendBaseUrl}/health/ready`,
+    });
 
-  await expectText(page, "sim-rf1086-");
-  await expectText(page, "Eksporter arkiv");
+    resources.server = startNextServer({ port, backendBaseUrl });
+
+    await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
+    resources.browser = await chromium.launch({ headless: true });
+    const page = await resources.browser.newPage();
+
+    // The public landing page moved to `/` in #90; authentication is a distinct
+    // route and the browser rehearsal must exercise the real login surface.
+    await page.goto(`${baseUrl}/login`);
+    const loginForm = page
+      .locator("form")
+      .filter({ hasText: "Logg inn" })
+      .first();
+    await loginForm.getByLabel("E-post").fill(ownerEmail);
+    await loginForm.getByLabel("Passord").fill(password);
+    await loginForm.getByRole("button", { name: "Logg inn" }).click();
+    await page.waitForLoadState("networkidle");
+    await establishSyntheticAal2(page, baseUrl);
+    await page.goto(`${baseUrl}/dashboard`);
+    await page.waitForLoadState("networkidle");
+
+    if (process.env.TALLI_ANNUAL_WORKSPACE_ONLY === "1") {
+      await page.goto(
+        `${baseUrl}/companies/${companyId}/annual-reporting/2025`,
+      );
+      await page.waitForLoadState("networkidle");
+      await page
+        .getByRole("heading", { name: "Årsrapportering" })
+        .waitFor({ state: "visible", timeout: 15_000 });
+      assert.equal(await page.locator("[data-obligation]").count(), 3);
+      assert.deepEqual(
+        await page
+          .locator("[data-obligation]")
+          .evaluateAll((items) =>
+            items.map((item) => item.getAttribute("data-obligation")),
+          ),
+        ["aksjonaerregisteroppgaven", "aarsregnskap", "skattemelding"],
+      );
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(
+          () => document.body.scrollWidth <= window.innerWidth,
+        ),
+        true,
+      );
+      const workspaceNav = page.getByRole("navigation", {
+        name: "Arbeidsflate",
+      });
+      assert.equal(await workspaceNav.getByRole("link").count(), 6);
+      assert.equal(
+        await workspaceNav.evaluate(
+          (node) => node.scrollWidth <= node.clientWidth,
+        ),
+        true,
+      );
+      return;
+    }
+
+    await expectText(page, "Talli Browser Holding AS");
+    await page
+      .getByRole("heading", { name: "Årsrapportering" })
+      .waitFor({ state: "visible", timeout: 15_000 });
+    assert.equal(await page.locator("[data-obligation]").count(), 3);
+
+    // The owner workflow tools now live under the /workspace route group (#90).
+    await page.goto(`${baseUrl}/workspace`);
+    await page.waitForLoadState("networkidle");
+
+    await page
+      .getByRole("button", { name: "Marker filingpakke betalt" })
+      .click();
+    await page.waitForLoadState("networkidle");
+    await expectText(
+      page,
+      "Filing readiness må være klar før filingpakke kan betales.",
+    );
+
+    await page.getByRole("button", { name: "Oppdater readiness" }).click();
+    await page.waitForLoadState("networkidle");
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expectText(page, "Klar for produksjonsinnsending");
+
+    await page
+      .getByRole("button", { name: "Marker filingpakke betalt" })
+      .click();
+    await page.waitForLoadState("networkidle");
+    await page
+      .getByLabel("Jeg bekrefter rett til å sende inn for selskapet.")
+      .check();
+    await page
+      .getByLabel("Jeg har kontrollert endelig forhåndsvisning.")
+      .check();
+    await page
+      .getByRole("button", { name: "Arkiver simulert kvittering" })
+      .click();
+    await page.waitForLoadState("networkidle");
+
+    await expectText(page, "sim-rf1086-");
+    await expectText(page, "Eksporter arkiv");
+  } catch (error) {
+    resources.primaryFailure = error;
+    throw error;
+  }
 });
 
-async function seedAnnualLoop(admin, ids) {
-  const { companyId, setupId, shareholderId, previewId, ownerId, orgNumber } = ids;
+async function seedAnnualLoop(admin, ids, onCompanyCreated) {
+  const { companyId, setupId, shareholderId, previewId, ownerId, orgNumber } =
+    ids;
   await assertNoError(
     admin.from("companies").insert({
       id: companyId,
@@ -152,6 +245,7 @@ async function seedAnnualLoop(admin, ids) {
       identity_locked_at: new Date().toISOString(),
     }),
   );
+  onCompanyCreated();
   await assertNoError(
     admin.from("company_memberships").insert({
       company_id: companyId,
@@ -162,17 +256,26 @@ async function seedAnnualLoop(admin, ids) {
     }),
   );
   await assertNoError(
+    admin.from("support_operators").insert({
+      user_id: ownerId,
+      role: "admin",
+      active: true,
+    }),
+  );
+  await assertNoError(
     admin.rpc("append_company_agreement_acceptance", {
       p_actor_id: ownerId,
       p_company_id: companyId,
       p_business_terms_version: "2026-07-17",
       p_business_terms_effective_date: "2026-07-17",
       p_business_terms_path: "/vilkar",
-      p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+      p_business_terms_sha256:
+        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
       p_dpa_version: "2026-07-17",
       p_dpa_effective_date: "2026-07-17",
       p_dpa_path: "/databehandleravtale",
-      p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+      p_dpa_sha256:
+        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
       p_authority_statement_version: "authority-v1",
       p_acceptance_method: "in_app_clickwrap",
     }),
@@ -231,7 +334,12 @@ async function seedAnnualLoop(admin, ids) {
         general_meeting_approved: true,
         authority_to_submit_confirmed: true,
       },
-      confirmations: ["bank_balance_confirmed", "general_meeting_approved", "authority_to_submit_confirmed", "no_activity_confirmed"],
+      confirmations: [
+        "bank_balance_confirmed",
+        "general_meeting_approved",
+        "authority_to_submit_confirmed",
+        "no_activity_confirmed",
+      ],
       no_activity_confirmed: true,
       completed_by: ownerId,
       updated_by: ownerId,
@@ -254,9 +362,27 @@ async function seedAnnualLoop(admin, ids) {
   );
   await assertNoError(
     admin.from("authority_permissions").insert([
-      { company_id: companyId, obligation: "aksjonaerregisteroppgaven", submitter_user_id: ownerId, confirmed_by: ownerId, production_enabled: true },
-      { company_id: companyId, obligation: "skattemelding", submitter_user_id: ownerId, confirmed_by: ownerId, production_enabled: true },
-      { company_id: companyId, obligation: "aarsregnskap", submitter_user_id: ownerId, confirmed_by: ownerId, production_enabled: true },
+      {
+        company_id: companyId,
+        obligation: "aksjonaerregisteroppgaven",
+        submitter_user_id: ownerId,
+        confirmed_by: ownerId,
+        production_enabled: true,
+      },
+      {
+        company_id: companyId,
+        obligation: "skattemelding",
+        submitter_user_id: ownerId,
+        confirmed_by: ownerId,
+        production_enabled: true,
+      },
+      {
+        company_id: companyId,
+        obligation: "aarsregnskap",
+        submitter_user_id: ownerId,
+        confirmed_by: ownerId,
+        production_enabled: true,
+      },
     ]),
   );
   await assertNoError(
@@ -270,50 +396,116 @@ async function seedAnnualLoop(admin, ids) {
       issues: [],
       preview: "RF-1086 forhåndsvisning for Talli Browser Holding AS",
       hovedskjema_xml: "<RF-1086><org>test</org></RF-1086>",
-      underskjema_xml: { [shareholderId]: "<RF-1086U><shareholder>test</shareholder></RF-1086U>" },
+      underskjema_xml: {
+        [shareholderId]: "<RF-1086U><shareholder>test</shareholder></RF-1086U>",
+      },
       source: "browser_test",
       created_by: ownerId,
     }),
   );
 }
 
-async function waitForServer(baseUrl) {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(baseUrl);
-      if (response.ok) return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-  throw new Error(`Server did not start at ${baseUrl}`);
+async function establishSyntheticAal2(page, baseUrl) {
+  await page.goto(`${baseUrl}/operator`);
+  const enrollmentResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith("/auth/v1/factors"),
+  );
+  await page
+    .getByRole("button", { name: "Sett opp autentiseringsapp" })
+    .click();
+  const enrollment = await (await enrollmentResponsePromise).json();
+  const secret = enrollment?.totp?.secret;
+  assert.equal(typeof secret, "string");
+  assert.match(secret, /^[A-Z2-7]+$/iu);
+  await page.getByLabel("Sekssifret kode").fill(totp(secret));
+  await page.getByRole("button", { name: "Bekreft AAL2" }).click();
+  await page.waitForURL(
+    (url) =>
+      url.pathname === "/operator" &&
+      url.searchParams.get("authority") === "authority_mfa_ready",
+  );
+  await page
+    .getByText("Denne økten er bekreftet med AAL2.", { exact: true })
+    .waitFor();
 }
 
-async function stopServer(server) {
-  if (server.exitCode !== null || server.signalCode !== null) return;
+function totp(secret) {
+  const key = base32Decode(secret);
+  const counter = BigInt(Math.floor(Date.now() / 30_000));
+  const message = Buffer.alloc(8);
+  message.writeBigUInt64BE(counter);
+  const digest = createHmac("sha1", key).update(message).digest();
+  const offset = digest.at(-1) & 0x0f;
+  const number = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return String(number).padStart(6, "0");
+}
 
-  const exited = new Promise((resolve) => server.once("exit", resolve));
-  server.kill("SIGTERM");
-  let timeoutId;
-  const gracefulTimeout = new Promise((resolve) => {
-    timeoutId = setTimeout(() => resolve(false), 5_000);
-    timeoutId.unref?.();
-  });
-  const stopped = await Promise.race([
-    exited.then(() => true),
-    gracefulTimeout,
-  ]);
-  clearTimeout(timeoutId);
-
-  if (!stopped && server.exitCode === null && server.signalCode === null) {
-    server.kill("SIGKILL");
-    await exited;
+function base32Decode(value) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const character of value.toUpperCase().replace(/=+$/u, "")) {
+    const index = alphabet.indexOf(character);
+    assert.notEqual(index, -1);
+    bits += index.toString(2).padStart(5, "0");
   }
+  const bytes = [];
+  for (let index = 0; index + 8 <= bits.length; index += 8) {
+    bytes.push(Number.parseInt(bits.slice(index, index + 8), 2));
+  }
+  return Buffer.from(bytes);
+}
+
+function startBackendServer({
+  port,
+  supabaseUrl: localSupabaseUrl,
+  anonKey: localAnonKey,
+}) {
+  const backendPython =
+    process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
+  if (!existsSync(backendPython)) {
+    throw new Error("backend_python_missing");
+  }
+  const readinessNonce = randomUUID();
+  return startOwnedProcess({
+    command: backendPython,
+    args: ["tests/fixtures/start_talli_backend.py"],
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SUPABASE_URL: localSupabaseUrl,
+      SUPABASE_ANON_KEY: localAnonKey,
+      TALLI_BACKEND_PORT: String(port),
+      TALLI_READINESS_NONCE: readinessNonce,
+    },
+    readinessProof: `TALLI_BACKEND_BOUND:${readinessNonce}`,
+  });
+}
+
+function startNextServer({ port, backendBaseUrl }) {
+  return startOwnedProcess({
+    command: process.execPath,
+    args: [
+      "node_modules/next/dist/bin/next",
+      "dev",
+      "apps/web",
+      "--hostname",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    cwd: process.cwd(),
+    env: { ...process.env, TALLI_BACKEND_URL: backendBaseUrl },
+    readinessProof: "Ready in",
+  });
 }
 
 async function expectText(page, text) {
-  await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 });
+  await page
+    .getByText(text, { exact: false })
+    .first()
+    .waitFor({ timeout: 15000 });
 }
 
 async function assertNoError(query) {

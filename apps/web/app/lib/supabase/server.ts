@@ -17,7 +17,6 @@ import type {
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
 import type { SystemUserRequestStatus } from "../system-user-requests";
-import { listCompanyWorkspacesForUser } from "./company-workspaces";
 
 export type CompanyWorkspaceRow = {
   id: string;
@@ -33,13 +32,7 @@ export type CompanyWorkspaceRow = {
   identity_confirmed_at: string | null;
   identity_locked_at: string | null;
   created_at: string;
-};
-
-export type CompanyMembershipRow = {
-  company_id: string;
-  user_id: string;
-  role: "owner" | "reviewer" | "read_only";
-  accepted_at: string | null;
+  role?: "owner" | "reviewer" | "read_only";
 };
 
 export type CustomerAgreementAcceptanceRow = {
@@ -737,58 +730,6 @@ export async function getOperatorContext() {
     .maybeSingle();
   const isOperator = Boolean(operator);
   return { user, isOperator, isAdminOperator: operator?.role === "admin" };
-}
-
-export async function listCompanyWorkspaces(userId: string) {
-  if (!hasSupabaseEnv()) {
-    return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { companies, error } = await listCompanyWorkspacesForUser(supabase, userId);
-  return {
-    companies: companies as CompanyWorkspaceRow[],
-    error,
-  };
-}
-
-export async function getCompanyMembership(companyId: string, userId: string) {
-  if (!hasSupabaseEnv()) {
-    return { membership: null as CompanyMembershipRow | null, error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("company_memberships")
-    .select("company_id, user_id, role, accepted_at")
-    .eq("company_id", companyId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  return {
-    membership: (data ?? null) as CompanyMembershipRow | null,
-    error: error?.message ?? null,
-  };
-}
-
-export async function listOwnedCompanyWorkspaces(userId: string) {
-  if (!hasSupabaseEnv()) {
-    return { companies: [] as CompanyWorkspaceRow[], error: "Supabase environment variables are missing." };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data: memberships, error: membershipError } = await supabase
-    .from("company_memberships")
-    .select("company_id")
-    .eq("user_id", userId)
-    .eq("role", "owner")
-    .not("accepted_at", "is", null);
-  if (membershipError || !memberships?.length) {
-    return { companies: [] as CompanyWorkspaceRow[], error: membershipError?.message ?? null };
-  }
-  const { data, error } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .in("id", memberships.map(({ company_id }) => company_id))
-    .order("created_at", { ascending: false });
-  return { companies: (data ?? []) as CompanyWorkspaceRow[], error: error?.message ?? null };
 }
 
 export async function listCustomerAgreementAcceptances(companyIds: string[]) {

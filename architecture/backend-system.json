@@ -9,6 +9,12 @@
       "purpose": "Returns a deterministic availability response from the independently deployable FastAPI boundary.",
       "publicPackages": ["talli_backend.modules.system_boundary.public"],
       "routes": ["/api/v1/system-boundary/tracer"]
+    },
+    {
+      "name": "company-access-context",
+      "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": ["/api/v1/company-access/context"]
     }
   ],
   "operationalControlState": {
@@ -36,11 +42,17 @@
       "adapter": "talli_backend.main.create_app",
       "owner": "backend-system",
       "mode": "in-process FastAPI composition"
+    },
+    {
+      "port": "CompanyAccessGateway",
+      "adapter": "talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter",
+      "owner": "backend-system",
+      "mode": "injected Supabase Auth and PostgREST adapter"
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "pydantic", "starlette", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
-    "workflows": ["talli_backend.modules.system_boundary.public"],
-    "adapters": []
+    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.supabase_company_access", "talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
+    "workflows": ["talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public"],
+    "adapters": ["__future__", "asyncio", "collections.abc", "dataclasses", "ipaddress", "json", "os", "talli_backend.modules.company_access.public", "urllib.error", "urllib.parse", "urllib.request"]
   }
 }

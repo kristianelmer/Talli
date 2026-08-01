@@ -7,6 +7,30 @@ export interface SystemBoundaryStatus {
   status: "AVAILABLE";
 }
 
+export interface CompanyContext {
+  aal: "aal2";
+  address: string;
+  city: string;
+  createdAt: string;
+  createdBy: string;
+  entityType: string;
+  id: string;
+  identityConfirmedAt: string | null;
+  identityLockedAt: string | null;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  resourceScope: "owner_sensitive";
+  role: "owner";
+  source: string;
+  statusText: string;
+}
+
+export interface CompanyContextResponse {
+  companies: CompanyContext[];
+  selectedCompany: CompanyContext;
+}
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -27,6 +51,36 @@ function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
     typeof value.apiVersion === "string" &&
     typeof value.service === "string" &&
     value.status === "AVAILABLE"
+  );
+}
+
+function isCompanyContext(value: unknown): value is CompanyContext {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.name === "string" &&
+    typeof value.entityType === "string" &&
+    typeof value.address === "string" &&
+    typeof value.postalCode === "string" &&
+    typeof value.city === "string" &&
+    typeof value.statusText === "string" &&
+    typeof value.source === "string" &&
+    typeof value.createdBy === "string" &&
+    (value.identityConfirmedAt === null || typeof value.identityConfirmedAt === "string") &&
+    (value.identityLockedAt === null || typeof value.identityLockedAt === "string") &&
+    typeof value.createdAt === "string" &&
+    value.role === "owner" &&
+    value.resourceScope === "owner_sensitive" &&
+    value.aal === "aal2"
+  );
+}
+
+function isCompanyContextResponse(value: unknown): value is CompanyContextResponse {
+  return (
+    isRecord(value) &&
+    isCompanyContext(value.selectedCompany) &&
+    Array.isArray(value.companies) && value.companies.every((item) => isCompanyContext(item))
   );
 }
 
@@ -70,6 +124,10 @@ export interface TalliRequestOptions {
   requestId?: string;
 }
 
+export interface CompanyAccessContextRequest extends TalliRequestOptions {
+  companyId?: string;
+}
+
 export function createTalliApiClient(options: TalliApiClientOptions) {
   const fetchImplementation = options.fetch ?? globalThis.fetch;
   const baseUrl = options.baseUrl.replace(/\/$/, "");
@@ -103,6 +161,42 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
       const candidate: unknown = await response.json();
       if (!isSystemBoundaryStatus(candidate)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return candidate;
+    },
+
+    async companyAccessGetSelectedContext(
+      request: CompanyAccessContextRequest = {},
+    ): Promise<CompanyContextResponse> {
+      const query = new URLSearchParams();
+      if (request.companyId !== undefined) query.set("company_id", request.companyId);
+      const suffix = query.size ? `?${query}` : "";
+      const response = await fetchImplementation(`${baseUrl}/api/v1/company-access/context${suffix}`, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json, application/problem+json",
+          ...options.headers,
+          ...request.headers,
+          ...(request.requestId === undefined
+            ? {}
+            : { ["X-Request-ID"]: request.requestId }),
+        },
+        method: "GET",
+        signal: request.signal,
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") ?? "";
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined)
+          : undefined;
+        const problem = isProblemDetails(candidate) ? candidate : undefined;
+        throw new TalliApiError(response.status, problem);
+      }
+
+      const candidate: unknown = await response.json();
+      if (!isCompanyContextResponse(candidate)) {
         throw new TalliApiError(502, undefined);
       }
       return candidate;

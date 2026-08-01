@@ -11,8 +11,8 @@ transport outcomes to safe presentation without recreating backend policy.
 
 ## Owns and must not own
 
-It owns the `/system-boundary` route, presentation state, typed configuration,
-and the generated-client mapping for `systemBoundaryGetTracerStatus`. It must not
+It owns the `/system-boundary` route, presentation state, and the generated-client
+mapping for `systemBoundaryGetTracerStatus`. It must not
 own business policy, handwritten business DTOs, direct Supabase business
 persistence, direct business-endpoint `fetch` calls, or generated-client deep
 imports.
@@ -24,8 +24,10 @@ relative equivalent is explicitly declared as
 `apps/web/features/system-boundary`. The Node health-route test environment uses
 the declared `apps/web/features/system-boundary/index.ts`; no transport or
 view-model deep import is public. This feature has no feature dependency, so its
-declared graph is acyclic. It consumes only the root
-`@talli/talli-api-client` generated client package.
+declared graph is acyclic. It consumes the root `@talli/talli-api-client`
+generated client package and the package-private `#backend-configuration`
+boundary shared by both generated-client transports. That boundary owns the
+typed `BackendConfigurationError` codes and fail-closed origin rules.
 
 ## Cache, browser, and tests
 

@@ -18,7 +18,6 @@ import {
   listBillingAccounts,
   listBillingPaymentEvents,
   listCompanyCancellations,
-  listCompanyWorkspaces,
   listCorporateDocumentLifecycle,
   listDocumentsForCompanies,
   listFilingPreviews,
@@ -37,6 +36,7 @@ import {
   listPeriodLocks,
   listWorkspaceInvitations,
 } from "./supabase/server";
+import { listCompanyAccessContexts } from "./company-access-context";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -48,7 +48,7 @@ import {
  */
 export async function loadWorkspaceData() {
   const user = await getCurrentUser();
-  const { companies, error } = user ? await listCompanyWorkspaces(user.id) : { companies: [], error: null };
+  const { companies, error } = user ? await listCompanyAccessContexts() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
   const { error: corporateLifecycleError, ...corporateLifecycle } = user

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#backend-configuration": "./lib/backend-configuration.ts"
+  },
   "scripts": {
     "dev": "cd ../.. && node apps/web/scripts/run-next.mjs dev",
     "build": "cd ../.. && node apps/web/scripts/run-next.mjs build",

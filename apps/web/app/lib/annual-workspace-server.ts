@@ -6,13 +6,11 @@ import { scopeAnnualWorkspaceRecords } from "./annual-workspace-scope.ts";
 import { companiesRequiringCurrentCustomerAgreement } from "./customer-agreement-reacceptance.ts";
 import { buildDeadlineDashboard } from "./deadlines.ts";
 import {
-  getCompanyMembership,
   getCurrentUser,
   listAnnualData,
   listAuthorityPermissions,
   listBankTransactions,
   listBillingAccounts,
-  listCompanyWorkspaces,
   listCustomerAgreementAcceptances,
   listDocumentsForCompanies,
   listFilingOverrides,
@@ -26,6 +24,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./supabase/server.ts";
+import { listCompanyAccessContexts } from "./company-access-context.ts";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
@@ -33,18 +32,15 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
   const user = await getCurrentUser();
   if (!user) redirect("/?error=Innlogging%20kreves");
 
-  const { companies, error: companyError } = await listCompanyWorkspaces(user.id);
+  const { companies, error: companyError } = await listCompanyAccessContexts({ companyId: context.companyId });
   if (companyError) throw new Error("Kunne ikke laste selskapsarbeidsflaten.");
   const company = companies.find((item) => item.id === context.companyId);
   if (!company) notFound();
 
-  const { membership, error: membershipError } = await getCompanyMembership(company.id, user.id);
-  if (membershipError || !membership?.accepted_at) notFound();
-
   const { acceptances, error: agreementError } = await listCustomerAgreementAcceptances([company.id]);
   if (agreementError) throw new Error("Kunne ikke kontrollere gjeldende avtaleaksept.");
   if (companiesRequiringCurrentCustomerAgreement([company], acceptances).length > 0) {
-    redirect(membership.role === "owner" ? "/dashboard" : "/dashboard?agreement=required");
+    redirect(company.role === "owner" ? "/dashboard" : "/dashboard?agreement=required");
   }
 
   const companyIds = [company.id];
@@ -126,7 +122,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
   const model = buildAnnualWorkspaceViewModel({
     context,
     company,
-    role: membership.role,
+    role: company.role ?? "read_only",
     snapshots: records.snapshots,
     deadlines,
     documents: records.documents,

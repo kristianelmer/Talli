@@ -5,13 +5,21 @@ from collections.abc import Awaitable, Callable
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
+from talli_backend.modules.company_access.public import (
+    CompanyAccessError,
+    CompanyAccessGateway,
+    CompanyAccessService,
+    CompanyContextResponse,
+)
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
     SystemBoundaryTransport,
@@ -32,6 +40,7 @@ REQUEST_ID_PARAMETER = {
     "required": False,
     "schema": {"type": "string"},
 }
+BEARER_AUTH = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
 
 
 def _to_camel(value: str) -> str:
@@ -111,7 +120,7 @@ def _problem_response(
 
 
 @adapter_for(SystemBoundaryTransport)
-def create_app() -> FastAPI:
+def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> FastAPI:
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -121,6 +130,12 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
     application.add_middleware(RequestIdMiddleware)
+    gateway = (
+        company_access_gateway
+        if company_access_gateway is not None
+        else SupabaseCompanyAccessAdapter.from_environment()
+    )
+    company_access_service = CompanyAccessService(gateway)
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
@@ -213,6 +228,57 @@ def create_app() -> FastAPI:
             service="talli-backend",
             status=SYSTEM_BOUNDARY_AVAILABLE,
         )
+
+    @application.get(
+        "/api/v1/company-access/context",
+        operation_id="companyAccessGetSelectedContext",
+        response_model=CompanyContextResponse,
+        responses=(
+            {
+                200: {
+                    "description": "Selected company context.",
+                    "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+                }
+            }
+            | {
+                status: {
+                    "description": "Company context request failed.",
+                    "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+                    "content": {
+                        "application/problem+json": {
+                            "schema": ProblemDetails.model_json_schema(by_alias=True)
+                        }
+                    },
+                }
+                for status in (401, 403, 404, 422, 503)
+            }
+        ),
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_selected_company_context(
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        company_id: str | None = None,
+    ) -> CompanyContextResponse:
+        if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            )
+        try:
+            return await company_access_service.selected_context(
+                credentials.credentials,
+                company_id=company_id,
+            )
+        except CompanyAccessError as error:
+            raise ApiProblem(
+                status=error.status,
+                code=error.code,
+                title=error.title,
+                detail=error.detail,
+            ) from None
 
     @application.get("/health/live", include_in_schema=False)
     async def liveness() -> JSONResponse:

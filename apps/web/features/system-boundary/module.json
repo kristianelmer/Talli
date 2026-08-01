@@ -15,7 +15,7 @@
   "ownedRoutes": ["/system-boundary"],
   "apiOperations": ["systemBoundaryGetTracerStatus"],
   "dependencies": [],
-  "allowedImports": ["@talli/talli-api-client"],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": {
     "default": "no-store",
     "allowed": []

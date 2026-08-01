@@ -39,7 +39,6 @@ import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../ap
 import { validateSharePurchase } from "../apps/web/app/lib/share-purchase.ts";
 import { validateShareSale } from "../apps/web/app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../apps/web/app/lib/shareholder-loan.ts";
-import { listCompanyWorkspacesForUser } from "../apps/web/app/lib/supabase/company-workspaces.ts";
 import {
   estimateAnnualTax,
   taxSettlementLedgerLines,
@@ -47,6 +46,23 @@ import {
 } from "../apps/web/app/lib/tax-settlement.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+
+async function listRlsVisibleCompanies(client, userId) {
+  const { data: memberships, error: membershipError } = await client
+    .from("company_memberships")
+    .select("company_id")
+    .eq("user_id", userId)
+    .not("accepted_at", "is", null);
+  if (membershipError || !memberships?.length) {
+    return { companies: [], error: membershipError?.message ?? null };
+  }
+  const { data, error } = await client
+    .from("companies")
+    .select("id")
+    .in("id", memberships.map(({ company_id }) => company_id))
+    .order("created_at", { ascending: false });
+  return { companies: data ?? [], error: error?.message ?? null };
+}
 
 function loadDotenv() {
   if (!existsSync(".env")) {
@@ -473,11 +489,11 @@ test(
       [reviewer, reviewerUser.id],
       [readOnly, readOnlyUser.id],
     ]) {
-      const scoped = await listCompanyWorkspacesForUser(client, userId);
+      const scoped = await listRlsVisibleCompanies(client, userId);
       assert.ifError(scoped.error);
       assert.deepEqual(scoped.companies.map(({ id }) => id), [companyId]);
     }
-    const pending = await listCompanyWorkspacesForUser(invitee, inviteeUser.id);
+    const pending = await listRlsVisibleCompanies(invitee, inviteeUser.id);
     assert.ifError(pending.error);
     assert.deepEqual(pending.companies, []);
 

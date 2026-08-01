@@ -122,6 +122,7 @@ jobs:
         run: |
           python -m pip install uv==0.10.2
           uv sync --locked
+          uv sync --project apps/backend --locked
           npm ci
           npx playwright install --with-deps chromium
 

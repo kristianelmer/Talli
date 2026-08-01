@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const workflowPath = new URL("../.github/workflows/release-gate.yml", import.meta.url);
+const workflowPath = new URL(
+  "../.github/workflows/release-gate.yml",
+  import.meta.url,
+);
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
 
 test("release gate covers pull requests and main with least privilege", () => {
@@ -46,7 +49,10 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "v1.62.47",
     "Release gate",
   ]) {
-    assert.ok(workflow.includes(required), `missing required release check: ${required}`);
+    assert.ok(
+      workflow.includes(required),
+      `missing required release check: ${required}`,
+    );
   }
   assert.doesNotMatch(
     workflow,
@@ -55,7 +61,11 @@ test("release gate runs every customer-readiness check before promotion", () => 
   );
 
   assert.match(workflow, /uses: actions\/checkout@[0-9a-f]{40}/);
-  assert.match(workflow, /fetch-depth:\s+0/, "release verification needs complete tags and history");
+  assert.match(
+    workflow,
+    /fetch-depth:\s+0/,
+    "release verification needs complete tags and history",
+  );
   assert.match(workflow, /uses: actions\/setup-node@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.match(workflow, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
@@ -74,25 +84,45 @@ test("release gate runs every customer-readiness check before promotion", () => 
 
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
-  const databaseJob = workflow.match(/\n  database:[\s\S]*?\n  release-gate:/)?.[0] ?? "";
+  const databaseJob =
+    workflow.match(/\n  database:[\s\S]*?\n  release-gate:/)?.[0] ?? "";
 
   assert.match(databaseJob, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.ok(databaseJob.includes("python -m pip install uv==0.10.2"));
   assert.ok(databaseJob.includes("uv sync --locked"));
+  assert.ok(databaseJob.includes("uv sync --project apps/backend --locked"));
   assert.match(databaseJob, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
-  assert.ok(databaseJob.includes("npx playwright install --with-deps chromium"));
+  assert.ok(
+    databaseJob.includes("npx playwright install --with-deps chromium"),
+  );
 });
 
-test("browser owner rehearsal owns and terminates the Next.js process directly", () => {
+test("browser owner rehearsal includes executable owned-process lifecycle coverage", () => {
   const harness = readFileSync(
     new URL("browser_owner_annual_loop.mjs", import.meta.url),
     "utf8",
   );
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  );
 
-  assert.doesNotMatch(harness, /spawn\("npm"/);
-  assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
-  assert.match(harness, /await stopServer\(server\)/);
-  assert.match(harness, /server\.kill\("SIGKILL"\)/);
+  assert.ok(
+    packageJson.scripts["test:browser-owner"].includes(
+      "browser_process_lifecycle.test.mjs",
+    ),
+  );
+  assert.match(harness, /startBackendServer/);
+  assert.match(harness, /allocateLoopbackPort/);
+  assert.match(harness, /TALLI_BACKEND_URL:\s*backendBaseUrl/);
+  assert.match(harness, /await establishSyntheticAal2\(page, baseUrl\)/);
+  assert.match(harness, /cleanupBrowserOwnerResources\(resources\)/);
+  assert.match(harness, /TALLI_BACKEND_BOUND:/);
+  assert.match(harness, /readinessProof:\s*"Ready in"/);
+  assert.ok(
+    harness.indexOf("t.after(async ()") <
+      harness.indexOf("resources.databaseStarted = true"),
+    "fixture cleanup must be registered before database connection and fixture setup",
+  );
 });
 
 test("Vercel deploys the Next output produced by the root build", () => {

@@ -503,18 +503,101 @@ function webBoundaryViolations(source, path, analysis) {
     changed = collectEvidence(sourceFile);
   } while (changed);
 
-  let persistence = false;
-  let fetch = false;
+  function literalString(expression, seen = new Set()) {
+    const unwrapped = unwrappedExpression(expression);
+    if (ts.isStringLiteralLike(unwrapped)) return unwrapped.text;
+    if (!ts.isIdentifier(unwrapped)) return undefined;
+    let symbol = symbolAt(unwrapped);
+    if (!symbol || seen.has(symbol)) return undefined;
+    seen.add(symbol);
+    if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    for (const declaration of symbol.declarations ?? []) {
+      if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+        const value = literalString(declaration.initializer, seen);
+        if (value !== undefined) return value;
+      }
+    }
+    return undefined;
+  }
+
+  function declarationName(node) {
+    const ownName = node.name
+      && (ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name))
+      ? node.name.text
+      : undefined;
+    if (ts.isMethodDeclaration(node) && ownName && ts.isClassLike(node.parent) && node.parent.name) {
+      return `${node.parent.name.text}.${ownName}`;
+    }
+    if (ts.isMethodDeclaration(node) && ownName && ts.isObjectLiteralExpression(node.parent)) {
+      const declaration = node.parent.parent;
+      if (ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)) {
+        return `${declaration.name.text}.${ownName}`;
+      }
+      return undefined;
+    }
+    if (ownName) {
+      return ownName;
+    }
+    if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+      && ts.isVariableDeclaration(node.parent)
+      && ts.isIdentifier(node.parent.name)) {
+      return node.parent.name.text;
+    }
+    if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+      && ts.isPropertyAssignment(node.parent)
+      && (ts.isIdentifier(node.parent.name) || ts.isStringLiteralLike(node.parent.name))) {
+      const propertyName = node.parent.name.text;
+      const declaration = node.parent.parent.parent;
+      return ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)
+        ? `${declaration.name.text}.${propertyName}`
+        : undefined;
+    }
+    if ((ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+      && ts.isExportAssignment(node.parent)) {
+      return "default";
+    }
+    if (ts.isFunctionDeclaration(node)
+      && node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
+      return "default";
+    }
+    return undefined;
+  }
+
+  function enclosingOperation(node) {
+    let operation;
+    for (let current = node.parent; current; current = current.parent) {
+      if (!ts.isFunctionLike(current)) continue;
+      const name = declarationName(current);
+      if (name) operation = name;
+    }
+    return operation;
+  }
+
+  function addFinding(findings, resource, node) {
+    const operation = enclosingOperation(node) ?? "<unscoped>";
+    findings.set(`${resource}\u0000${operation}\u0000${node.pos}`, { resource, operation });
+  }
+
+  const persistence = new Map();
+  const fetch = new Map();
   function visit(node) {
     if (ts.isCallExpression(node)) {
-      if (platformFetch(node.expression)) fetch = true;
+      if (platformFetch(node.expression)) {
+        addFinding(fetch, `url:${literalString(node.arguments[0]) ?? "<dynamic>"}`, node);
+      }
       const access = propertyAccess(node.expression);
       if (access && ["from", "rpc"].includes(access.name)) {
-        if (persistenceExpression(access.receiver)) persistence = true;
         const receiverAccess = propertyAccess(access.receiver);
+        const resourceName = literalString(node.arguments[0]) ?? "<dynamic>";
         if (access.name === "from" && receiverAccess?.name === "storage"
           && persistenceExpression(receiverAccess.receiver)) {
-          persistence = true;
+          addFinding(persistence, `storage:${resourceName}`, node);
+        } else if (persistenceExpression(access.receiver)) {
+          addFinding(
+            persistence,
+            `${access.name === "rpc" ? "rpc" : "table"}:${resourceName}`,
+            node,
+          );
         }
       }
     }
@@ -923,8 +1006,8 @@ function checkModuleImports(root, manifest, errors, webAnalysis) {
     }
     if (manifest.kind === "web-feature") {
       const boundary = webBoundaryViolations(source, path, webAnalysis);
-      if (boundary.fetch) errors.push(`${label}: direct business fetch is forbidden`);
-      if (boundary.persistence) {
+      if (boundary.fetch.size) errors.push(`${label}: direct business fetch is forbidden`);
+      if (boundary.persistence.size) {
         errors.push(`${label}: direct web business persistence is forbidden`);
       }
       if (generatedClientDeepImport(source, path, webAnalysis)) {
@@ -1000,7 +1083,7 @@ function discoverMigrationTables(root) {
   return [...tables].sort();
 }
 
-function validateDatabaseCatalog(root, backendSystem, errors, schema) {
+function validateDatabaseCatalog(root, backendSystem, manifests, errors, schema) {
   const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
   validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
   const discovered = new Set(discoverMigrationTables(root));
@@ -1020,6 +1103,27 @@ function validateDatabaseCatalog(root, backendSystem, errors, schema) {
   }
   for (const table of declaredTechnical) {
     if (!catalogTechnical.has(table)) errors.push(`architecture/backend-system.json: technical ownership is not catalogued ${table}`);
+  }
+  const capabilityOwners = new Map();
+  for (const manifest of manifests.filter((item) => item.kind === "backend-capability")) {
+    for (const table of manifest.owns?.tables ?? []) {
+      if (capabilityOwners.has(table)) {
+        errors.push(`backend capability table has multiple owners ${table}`);
+      }
+      capabilityOwners.set(table, manifest.owner);
+    }
+  }
+  for (const entry of catalogEntries) {
+    if (entry.kind !== "capability-business") continue;
+    if (capabilityOwners.get(entry.name) !== entry.owner) {
+      errors.push(`architecture/database-catalog.json: capability ownership disagrees for ${entry.name}`);
+    }
+  }
+  for (const [table, owner] of capabilityOwners) {
+    const entry = catalogEntries.find((candidate) => candidate.name === table);
+    if (entry?.kind !== "capability-business" || entry.owner !== owner) {
+      errors.push(`architecture/database-catalog.json: capability table ownership is not catalogued ${table}`);
+    }
   }
   return catalog;
 }
@@ -1090,7 +1194,7 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
       "owner",
       "creationIssue",
       "removalIssue",
-      "paths",
+      "scopes",
       "approvedBy",
       "approvedAt",
       "releaseLimit",
@@ -1102,7 +1206,7 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     if (!String(entry.id).startsWith("compat-")) errors.push(`${prefix} id must start compat-`);
     if (!/^#[0-9]+$/u.test(entry.creationIssue ?? "")) errors.push(`${prefix} creationIssue must be an issue`);
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
-    if (!Array.isArray(entry.paths) || !entry.paths.length) errors.push(`${prefix} paths must be non-empty`);
+    if (!Array.isArray(entry.scopes) || !entry.scopes.length) errors.push(`${prefix} scopes must be non-empty`);
     if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
     const approvedAt = rfc3339Timestamp(entry.approvedAt);
     if (approvedAt === undefined) {
@@ -1133,6 +1237,20 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
       errors.push(`${prefix} superseded by stable customer-ready release ${stableRelease.id}`);
     }
     if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
+  }
+  const scopeOwners = new Map();
+  for (const entry of registry.exceptions) {
+    for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+      const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+      const previous = scopeOwners.get(key);
+      if (previous) {
+        errors.push(
+          `duplicate compatibility scope ${compatibilityScopeLabel(scope)} across ${previous.removalIssue} and ${entry.removalIssue}`,
+        );
+      } else if (!previous) {
+        scopeOwners.set(key, entry);
+      }
+    }
   }
   return errors;
 }
@@ -1184,13 +1302,25 @@ function checkRouteImports(root, manifests, errors) {
   }
 }
 
-function hasActiveCompatibility(registry, releaseState, path, rule, now) {
+function compatibilityScopeKey(path, rule, resource, operation) {
+  return [path, rule, resource, operation].join("\u0000");
+}
+
+function compatibilityScopeLabel(scope) {
+  return `${scope.path} ${scope.rule} ${scope.resource} operation:${scope.operation}`;
+}
+
+function activeCompatibilityMatches(registry, releaseState, path, rule, resource, operation, now) {
   const stableReleasedAt = rfc3339Timestamp(
     releaseState.latestStableCustomerReadyRelease?.releasedAt,
   );
-  return (registry.exceptions ?? []).some((entry) => (
-    entry.paths?.includes(path)
-    && entry.rules?.includes(rule)
+  return (registry.exceptions ?? []).filter((entry) => (
+    Array.isArray(entry.scopes) && entry.scopes.some((scope) => (
+      scope.path === path
+      && scope.rule === rule
+      && scope.resource === resource
+      && scope.operation === operation
+    ))
     && rfc3339Timestamp(entry.expiresAt) > now.getTime()
     && (
       stableReleasedAt === undefined
@@ -1201,21 +1331,62 @@ function hasActiveCompatibility(registry, releaseState, path, rule, now) {
 }
 
 function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
+  const actualScopes = new Set();
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
     const boundary = webBoundaryViolations(source, path, webAnalysis);
-    if (boundary.fetch
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-business-fetch", now)) {
-      errors.push(`${scopedPath}: direct business fetch is forbidden`);
+    for (const { resource, operation } of boundary.fetch.values()) {
+      const rule = "direct-business-fetch";
+      actualScopes.add(compatibilityScopeKey(scopedPath, rule, resource, operation));
+      const matches = activeCompatibilityMatches(
+        registry, releaseState, scopedPath, rule, resource, operation, now,
+      );
+      if (!matches.length) {
+        errors.push(`${scopedPath}: direct business fetch is forbidden for ${resource} in operation:${operation}`);
+      } else if (matches.length > 1) {
+        errors.push(`${scopedPath}: direct business fetch has ambiguous compatibility for ${resource} in operation:${operation}`);
+      }
     }
-    if (boundary.persistence
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "direct-web-business-persistence", now)) {
-      errors.push(`${scopedPath}: direct web business persistence is forbidden`);
+    for (const { resource, operation } of boundary.persistence.values()) {
+      const rule = "direct-web-business-persistence";
+      actualScopes.add(compatibilityScopeKey(scopedPath, rule, resource, operation));
+      const matches = activeCompatibilityMatches(
+        registry, releaseState, scopedPath, rule, resource, operation, now,
+      );
+      if (!matches.length) {
+        errors.push(`${scopedPath}: direct web business persistence is forbidden for ${resource} in operation:${operation}`);
+      } else if (matches.length > 1) {
+        errors.push(`${scopedPath}: direct web business persistence has ambiguous compatibility for ${resource} in operation:${operation}`);
+      }
     }
-    if (generatedClientDeepImport(source, path, webAnalysis)
-      && !hasActiveCompatibility(registry, releaseState, scopedPath, "generated-client-deep-import", now)) {
-      errors.push(`${scopedPath}: generated-client deep import is forbidden`);
+    if (generatedClientDeepImport(source, path, webAnalysis)) {
+      const rule = "generated-client-deep-import";
+      const resource = "module:@talli/talli-api-client/*";
+      const operation = "module";
+      actualScopes.add(compatibilityScopeKey(scopedPath, rule, resource, operation));
+      const matches = activeCompatibilityMatches(
+        registry,
+        releaseState,
+        scopedPath,
+        rule,
+        resource,
+        operation,
+        now,
+      );
+      if (!matches.length) {
+        errors.push(`${scopedPath}: generated-client deep import is forbidden`);
+      } else if (matches.length > 1) {
+        errors.push(`${scopedPath}: generated-client deep import has ambiguous compatibility`);
+      }
+    }
+  }
+  for (const entry of registry.exceptions ?? []) {
+    for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+      const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+      if (!actualScopes.has(key)) {
+        errors.push(`${entry.id}: registered compatibility scope has no matching finding: ${compatibilityScopeLabel(scope)}`);
+      }
     }
   }
 }
@@ -1381,7 +1552,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
   checkSharedKernel(resolvedRoot, sharedKernel, errors);
-  validateDatabaseCatalog(resolvedRoot, backendSystem, errors, schemas.databaseCatalog);
+  validateDatabaseCatalog(resolvedRoot, backendSystem, manifests, errors, schemas.databaseCatalog);
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",

@@ -36,6 +36,23 @@ test("the committed contract exposes one stable capability-prefixed tracer opera
   assert.equal(operation.operationId, "systemBoundaryGetTracerStatus");
 });
 
+test("the committed contract exposes the authenticated company-context operation", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operation = contract.paths["/api/v1/company-access/context"]?.get;
+
+  assert.equal(operation?.operationId, "companyAccessGetSelectedContext");
+  assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  assert.equal(
+    operation?.parameters.some((parameter) => parameter.in === "query" && parameter.name === "resource_scope"),
+    false,
+  );
+  assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  assert.ok(operation?.responses["404"].content["application/problem+json"]);
+  assert.equal(contract.components.schemas.CompanyContext.properties.role.const, "owner");
+  assert.equal(contract.components.schemas.CompanyContext.properties.resourceScope.const, "owner_sensitive");
+  assert.equal(contract.components.schemas.CompanyContext.properties.aal.const, "aal2");
+});
+
 test("the tracer contract declares optional request and response correlation headers", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operation = contract.paths["/api/v1/system-boundary/tracer"].get;

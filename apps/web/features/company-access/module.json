@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "company-access",
+  "path": "apps/web/features/company-access",
+  "owner": "web:company-access",
+  "purpose": "Load authenticated company context for owner presentation through the committed generated API client.",
+  "documentation": "apps/web/features/company-access/MODULE.md",
+  "publicEntryPoint": "@/features/company-access",
+  "publicImportPaths": ["@/features/company-access", "apps/web/features/company-access", "apps/web/features/company-access/index.ts"],
+  "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/companies/[companyId]/annual-reporting/[incomeYear]"],
+  "apiOperations": ["companyAccessGetSelectedContext"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Company membership, role, resource-scope, AAL2, or tenant-concealment policy",
+    "Direct Supabase business persistence or business-endpoint fetch calls",
+    "Handwritten business DTOs or generated-client deep imports"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/company-access-presentation.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

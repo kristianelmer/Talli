@@ -11,7 +11,6 @@ import {
 import type {
   BankTransactionRow,
   AnnualDataRow,
-  CompanyWorkspaceRow,
   DocumentRow,
   FilingOverrideRow,
   FilingPreviewRow,
@@ -45,7 +44,7 @@ export type AnnualReadinessSnapshot = {
 };
 
 export type AnnualReadinessInput = {
-  company: CompanyWorkspaceRow;
+  company: { id: string; name: string; entity_type: string };
   incomeYear: number;
   setups: OpeningBalanceSetupRow[];
   ledgerEntries: LedgerEntryRow[];

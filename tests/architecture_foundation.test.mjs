@@ -38,8 +38,19 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   const result = checkArchitecture({ root: repositoryRoot, writeEvidence: false });
 
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.evidence.modules, ["backend-system:system_boundary", "web:system-boundary"]);
+  assert.deepEqual(result.evidence.modules, [
+    "backend-system:system_boundary",
+    "backend:company_access",
+    "web:company-access",
+    "web:system-boundary",
+  ]);
   assert.deepEqual(result.evidence.edges, [
+    {
+      from: "backend-system:company-access-context",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
     {
       from: "backend-system:system-boundary-tracer",
       imports: ["talli_backend.modules.system_boundary.public"],
@@ -74,7 +85,12 @@ test("compatibility exceptions require bounded expiry and a removal condition", 
           owner: "backend:system_boundary",
           creationIssue: "#135",
           removalIssue: "#136",
-          paths: ["apps/backend/src/talli_backend/legacy.py"],
+          scopes: [{
+            path: "apps/web/app/legacy.ts",
+            rule: "direct-web-business-persistence",
+            resource: "table:companies",
+            operation: "legacyOperation",
+          }],
           expiresAt: "never",
           removalCondition: "",
         },
@@ -104,7 +120,12 @@ test("compatibility exceptions must expire strictly after the controlled current
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         expiresAt: "2026-07-29T00:00:00Z",
         removalCondition: "Remove when #136 owns the authenticated company context.",
       }],
@@ -132,8 +153,12 @@ test("compatibility exceptions cannot outlive fourteen days or the next stable r
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
-        rules: ["direct-web-business-persistence"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         approvedBy: "Kristian Elmer",
         approvedAt: "2026-07-30T00:00:00Z",
         releaseLimit: "next-stable-customer-ready-release",
@@ -164,8 +189,12 @@ test("compatibility exceptions reject semantically impossible timestamps", () =>
         owner: "web:legacy-runtime",
         creationIssue: "#135",
         removalIssue: "#136",
-        paths: ["apps/web/app/actions.ts"],
-        rules: ["direct-web-business-persistence"],
+        scopes: [{
+          path: "apps/web/app/actions.ts",
+          rule: "direct-web-business-persistence",
+          resource: "table:companies",
+          operation: "legacyOperation",
+        }],
         approvedBy: "Kristian Elmer",
         approvedAt: "2026-99-99T25:99:99Z",
         releaseLimit: "next-stable-customer-ready-release",
@@ -326,7 +355,7 @@ test("a real stable customer-ready release after approval revokes the compatibil
       writeEvidence: false,
       now: new Date("2026-07-31T12:00:00Z"),
     }).errors.join("\n");
-    assert.match(errors, /compat-legacy-web-business-persistence.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
+    assert.match(errors, /compat-company-onboarding-persistence.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
     assert.match(errors, /apps\/web\/app\/actions\.ts: direct web business persistence is forbidden/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -408,7 +437,7 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   for (const exception of compatibility.exceptions) {
-    exception.paths = exception.paths.filter((path) => path !== route);
+    exception.scopes = exception.scopes.filter((scope) => scope.path !== route);
   }
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
@@ -426,6 +455,243 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
     );
     const commentedFormatErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
     assert.match(commentedFormatErrors, new RegExp(`${route.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}: direct web business persistence is forbidden`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("web persistence exceptions match exact path, rule, AST-derived resource, and operation", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-resource-scope-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/resource-scoped-persistence.ts";
+  writeFileSync(join(temporaryRoot, fixture), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://example.invalid", "public-key");
+export function readCompany() { client.from("companies"); }
+export function readDocument() { client.from("documents"); }
+`);
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const exactScope = {
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "readCompany",
+  };
+  compatibility.exceptions[0].scopes.push(exactScope);
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.doesNotMatch(errors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies`, "u"));
+    assert.match(errors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:documents`, "u"));
+
+    exactScope.resource = "table:*";
+    writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+    const wildcardErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(wildcardErrors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies`, "u"));
+    assert.match(wildcardErrors, new RegExp(`${fixture}: direct web business persistence is forbidden for table:documents`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility operations map to their serialized future tickets", () => {
+  const compatibility = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility.json", import.meta.url),
+    "utf8",
+  ));
+  const byRemovalIssue = new Map(
+    compatibility.exceptions.map((entry) => [entry.removalIssue, entry]),
+  );
+  const onboarding = byRemovalIssue.get("#138");
+  const membershipAdministration = byRemovalIssue.get("#160");
+  const cancellation = byRemovalIssue.get("#161");
+  const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.exceptions.find((entry) => (
+    entry.scopes.some((scope) => scope.path === path
+      && scope.resource === resource
+      && scope.operation === operation)
+  ))?.removalIssue;
+
+  assert.equal(ownerOf("rpc:create_company_workspace_with_acceptance", "createWorkspace"), "#138");
+  assert.equal(ownerOf("table:companies", "generateRf1086Preview"), "#151");
+  assert.equal(ownerOf("table:companies", "approveProductionFiling"), "#151");
+  assert.equal(ownerOf("table:companies", "createAnnualCorporateDecisionDraft"), "#148");
+  assert.equal(ownerOf("table:companies", "createOwnerDividendDecisionDraft"), "#144");
+  assert.equal(ownerOf("table:company_memberships", "queueDeadlineReminders"), "#149");
+  assert.equal(ownerOf("table:companies", "recordAnnualAccountsTt02Evidence"), "#153");
+  assert.equal(ownerOf("table:companies", "recordCompanyTaxReturnTt02Evidence"), "#152");
+  assert.equal(ownerOf(
+    "table:companies",
+    "searchOperatorSupportDashboard",
+    "apps/web/app/lib/supabase/server.ts",
+  ), "#150");
+  assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), "#160");
+  assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), "#160");
+  assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), "#161");
+  assert.equal(ownerOf("table:companies", "completeCompanyDeletionRecord"), "#161");
+  assert.equal(ownerOf("table:holding_actions", "recordShareholderLoan"), "#145");
+  assert.equal(ownerOf("table:holding_actions", "recordTaxSettlement"), "#146");
+  assert.equal(ownerOf("table:authority_test_runs", "recordAnnualAccountsTt02Evidence"), "#153");
+  assert.equal(ownerOf("table:investment_lots", "recordShareSale"), "#142");
+  assert.equal(ownerOf("table:audit_events", "uploadDocument"), "#155");
+  assert.equal(ownerOf("table:notification_outbox", "inviteWorkspaceReviewer"), "#156");
+  assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
+  assert.match(membershipAdministration.removalCondition, /invitations and membership administration.*#160/u);
+  assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
+  assert.deepEqual(
+    onboarding.scopes.map(({ resource, operation }) => `${resource}:${operation}`).sort(),
+    [
+      "rpc:append_company_agreement_acceptance:reacceptCompanyAgreement",
+      "rpc:create_company_workspace_with_acceptance:createWorkspace",
+      "table:customer_agreement_acceptances:listCustomerAgreementAcceptances",
+    ],
+  );
+});
+
+test("anonymous object methods fail closed without merging separate call sites", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-anonymous-methods-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/anonymous-object-methods.ts";
+  writeFileSync(join(temporaryRoot, fixture), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://example.invalid", "public-key");
+function consume(_value) {}
+consume({ handler() { client.from("companies"); } });
+consume({ handler() { client.from("companies"); } });
+`);
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  compatibility.exceptions[0].scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "handler",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.equal(
+      errors.match(new RegExp(`${fixture}: direct web business persistence is forbidden for table:companies in operation:<unscoped>`, "gu"))?.length,
+      2,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility scopes match the exact enclosing operation", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-scope-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/operation-scoped-persistence.ts";
+  writeFileSync(join(temporaryRoot, fixture), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://example.invalid", "public-key");
+export async function onboardCompany() {
+  await Promise.resolve().then(() => client.from("companies"));
+}
+export async function cancelCompany() { client.from("companies"); }
+export async function unregisteredCompany() { client.from("companies"); }
+Promise.resolve().then(() => client.from("documents"));
+`);
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const cancellation = compatibility.exceptions.find((entry) => entry.removalIssue === "#161");
+  onboarding.scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "onboardCompany",
+  });
+  cancellation.scopes.push({
+    path: fixture,
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "cancelCompany",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.doesNotMatch(errors, /operation:onboardCompany/u);
+    assert.doesNotMatch(errors, /operation:cancelCompany/u);
+    assert.match(errors, new RegExp(`${fixture}.*table:companies.*operation:unregisteredCompany`, "u"));
+    assert.match(errors, new RegExp(`${fixture}.*table:documents.*operation:<unscoped>`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility scopes cannot overlap across future tickets", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-overlap-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const membership = compatibility.exceptions.find((entry) => entry.removalIssue === "#160");
+  const duplicateScope = {
+    path: "apps/web/app/actions.ts",
+    rule: "direct-web-business-persistence",
+    resource: "table:company_memberships",
+    operation: "inviteWorkspaceMemberAction",
+  };
+  onboarding.scopes.push(duplicateScope);
+  membership.scopes.push(duplicateScope);
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /duplicate compatibility scope.*#138.*#160/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility registry is complete in both directions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-operation-completeness-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const missingScope = onboarding.scopes.find((scope) => (
+    scope.path === "apps/web/app/actions.ts"
+    && scope.resource === "rpc:create_company_workspace_with_acceptance"
+    && scope.operation === "createWorkspace"
+  ));
+  assert.ok(missingScope);
+  onboarding.scopes = onboarding.scopes.filter((scope) => scope !== missingScope);
+  onboarding.scopes.push({
+    path: "apps/web/app/actions.ts",
+    rule: "direct-web-business-persistence",
+    resource: "table:companies",
+    operation: "nonexistentCompanyOperation",
+  });
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(
+      errors,
+      /actions\.ts: direct web business persistence is forbidden for rpc:create_company_workspace_with_acceptance in operation:createWorkspace/u,
+    );
+    assert.match(
+      errors,
+      /registered compatibility scope has no matching finding: .*operation:nonexistentCompanyOperation/u,
+    );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -672,6 +938,41 @@ load("@talli/talli-api-client/src/generated/require-assignment-alias.ts");
   }
 });
 
+test("generated-client deep imports reject ambiguous same-ticket exceptions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-generated-ambiguity-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const fixture = "apps/web/app/generated-ambiguity.ts";
+  writeFileSync(
+    join(temporaryRoot, fixture),
+    'import "@talli/talli-api-client/src/generated/ambiguous.ts";\n',
+  );
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const scope = {
+    path: fixture,
+    rule: "generated-client-deep-import",
+    resource: "module:@talli/talli-api-client/*",
+    operation: "module",
+  };
+  compatibility.exceptions.push({
+    ...compatibility.exceptions[0],
+    id: "compat-billing-persistence-duplicate",
+    scopes: [scope],
+  });
+  compatibility.exceptions[0].scopes.push(scope);
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /duplicate compatibility scope.*#137.*#137/u);
+    assert.match(errors, new RegExp(`${fixture}: generated-client deep import has ambiguous compatibility`, "u"));
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("adapter bindings require source registration against the declared port", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-port-registration-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -696,6 +997,44 @@ test("adapter bindings require source registration against the declared port", (
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test("company access declares and injects its Supabase port adapter", () => {
+  const module = JSON.parse(readFileSync(new URL(
+    "../apps/backend/src/talli_backend/modules/company_access/module.json",
+    import.meta.url,
+  ), "utf8"));
+  const system = JSON.parse(readFileSync(new URL("../architecture/backend-system.json", import.meta.url), "utf8"));
+  const capability = readFileSync(new URL(
+    "../apps/backend/src/talli_backend/modules/company_access/public.py",
+    import.meta.url,
+  ), "utf8");
+  const adapterUrl = new URL(
+    "../apps/backend/src/talli_backend/adapters/supabase_company_access.py",
+    import.meta.url,
+  );
+  assert.equal(existsSync(adapterUrl), true, "company-access adapter module must exist");
+  const adapter = readFileSync(adapterUrl, "utf8");
+  const composition = readFileSync(new URL(
+    "../apps/backend/src/talli_backend/main.py",
+    import.meta.url,
+  ), "utf8");
+
+  assert.deepEqual(module.ports, [{
+    name: "CompanyAccessGateway",
+    direction: "outbound",
+    contract: "talli_backend.modules.company_access.public.CompanyAccessGateway",
+    registrationDecorator: "talli_backend.modules.company_access.public.company_access_adapter",
+    adapters: ["talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"],
+  }]);
+  assert.ok(system.adapterBindings.some((binding) => (
+    binding.port === "CompanyAccessGateway"
+    && binding.adapter === "talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"
+  )));
+  assert.doesNotMatch(capability, /urllib|SupabaseCompanyAccessAdapter|os\.environ/u);
+  assert.match(adapter, /@company_access_adapter\(CompanyAccessGateway\)/u);
+  assert.match(composition, /else SupabaseCompanyAccessAdapter\.from_environment\(\)/u);
+  assert.match(composition, /CompanyAccessService\(gateway\)/u);
 });
 
 test("adapter registration resolves decorator and port bindings to their declared public symbols", () => {
@@ -814,7 +1153,7 @@ from ..other import internal as other_internal
   writeFileSync(
     backendDocumentationPath,
     readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/system-boundary/tracer"]',
+      '"routes":["/api/v1/company-access/context","/api/v1/system-boundary/tracer"]',
       '"routes":["/invented-system-route"]',
     ),
   );
