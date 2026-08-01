@@ -162,3 +162,54 @@ exceptions, and annotated-tag-derived customer-ready release state.
   implementation commits, independent review dispositions, and verification
   evidence here before advancing to #138.
 - Unresolved #160 implementation findings: none; independent review is pending.
+
+## Issue #160 review-fix round 1
+
+- Review input: `/tmp/talli-issue-160-architecture-review-1.md` and
+  `/tmp/talli-issue-160-standards-review-1.md`.
+- Exact reviewed head: `373f85ccac5fb6f7c2a36e2ea25cd72fada729a8`.
+- Corrected implementation head before this progress-only record:
+  `114b82f72c8efe40044357e17be612d03af5ec17`.
+- Review-fix commits: `6dbe9405`, `da9c8c94`, and `114b82f7`.
+- Acceptance state: every Critical, Important, and Minor round-1 finding is
+  implemented; a new fresh-context architecture and standards review remains
+  required before #160 is accepted.
+
+Resolved review findings:
+
+- Pgcrypto hashing resolves the installed extension schema under an empty
+  function search path, with real fresh-PostgreSQL create and resend coverage.
+- Invitation and membership commands execute as the restricted
+  `company_access_executor` NOLOGIN/NOBYPASSRLS role against forced RLS rather
+  than as a table owner. Invitees cannot enumerate invitation rows directly.
+- Lookup and acceptance atomically bind both the current verified Auth subject
+  and normalized email and reject disagreement with stale JWT claims.
+- Consequential commands carry durable operation IDs, persisted replay receipts,
+  optimistic revision preconditions, one bounded identical-operation retry, and
+  deterministic notification/audit IDs without moving #155 or #156 ownership.
+- The migration is split into expand and contract files; the PostgreSQL runtime
+  test proves the old direct writer, the overlap, and the final RPC-only writer.
+- Immutable request contracts now belong to the capability public entry point;
+  generated invitation decoders reject every unknown field.
+- Login continuation, membership selector labeling, manifest attribution, and
+  success `X-Request-ID` OpenAPI declarations are covered by regression tests.
+- Delivery-secret persistence is documented truthfully: private command receipts
+  and the legacy notification outbox can contain raw tokens; authenticated roles
+  cannot read receipts, accepted owners retain the existing outbox policy, and
+  #160 adds no automatic purge beyond token invalidation/expiry.
+
+Review-fix verification:
+
+- `npm run test:boundary` — backend 26, web 19, contract 20 passed.
+- `npm run test:supabase` — 16 passed, 4 optional environment-dependent tests
+  skipped; the mandatory fresh PostgreSQL 16 test exercised real create, resend,
+  replay, RLS, concealment, identity binding, and expand/contract overlap.
+- `npm run test:architecture` — all 34 cases passed in one run.
+- `npm run check:architecture`, `npm run test:supabase-grants`,
+  `npm run typecheck`, OpenAPI generation check, and generated-client check passed.
+- `npm run build:backend`, `npm run build:web`, and
+  `npm run test:boundary-smoke` passed.
+- `npm run test:launch-rehearsal` passed; its two pre-existing optional official
+  schema checks remained skipped because no external schema directory was set.
+- `git diff --check 2ae2708d206ede406b24f39c04b1dd84f29fe163..114b82f7`
+  passed, and the implementation tree was clean before this progress update.
