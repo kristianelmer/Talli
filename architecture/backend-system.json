@@ -39,9 +39,9 @@
   },
   "technicalOwnership": {
     "schemas": ["public"],
-    "tables": ["public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql"],
-    "statement": "These tables implement operational control and event delivery only; they own no accounting, filing, billing, or authorization decision."
+    "tables": ["public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql"],
+    "statement": "These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",

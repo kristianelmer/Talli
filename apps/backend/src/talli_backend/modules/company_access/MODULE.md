@@ -1,7 +1,7 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_access_command_receipts","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
@@ -13,9 +13,10 @@ recipient binding, expiry, supported roles, atomic transitions, and concealment.
 
 ## Owns and must not own
 
-It owns `public.companies`, `public.company_access_command_receipts`,
-`public.company_invitations`, and `public.company_memberships`, attributed by the
-manifest to `20260801090000_company_access_invitations.sql`. It must not own onboarding,
+It owns `public.companies`, `public.company_invitations`, and
+`public.company_memberships`, attributed by the manifest to
+`20260801090000_company_access_invitations.sql`. The backend system owns
+`public.company_access_command_receipts` as technical idempotency state. It must not own onboarding,
 agreement acceptance, cancellation, deletion, or support-operator workflows.
 It must not use service-role access or bypass RLS for ordinary business calls.
 
@@ -46,6 +47,9 @@ Acceptance and every role/removal transition execute in one database transaction
 as the restricted `company_access_executor` NOLOGIN/NOBYPASSRLS role. Explicit RLS
 policies remain the authorization boundary even though the RPCs are security
 definers; the executor neither owns the tables nor bypasses RLS.
+Forced RLS applies only to the technical command-receipt table; invitation and
+membership RLS is genuine because the command executor is a non-owner with
+NOBYPASSRLS.
 Durable operation receipts replay consequential commands and optimistic expected
 revisions reject competing resend, revoke, and membership changes. If a command's
 transport outcome is unknown, the adapter retries the identical operation once;
@@ -62,10 +66,12 @@ automatic purge: an uncleared token can remain stored after its 14-day invitatio
 expiry, although it is no longer accepted. Retention/delivery migration remains
 #156. This is delivery-secret persistence, never token-hash disclosure.
 
-The rollout is staged. Release A applies `20260801090000` only: it expands the
+The rollout is staged. Release A's automatic runner applies `20260801090000` only: it expands the
 RPC/RLS boundary while the prior web policies still work. Release B deploys the
 backend and generated-client web revision, verifies create/resend receipt replay,
-and leaves that overlap in place. Release C applies `20260801091000`, which
+and leaves that overlap in place. The destructive `20260801091000` artifact lives
+under `supabase/contract-migrations`, outside the declared automatic runner.
+Release C moves that immutable artifact into a later release's migration set; it
 contracts only #160's direct invitation and membership policies. Before Release C,
 rollback means returning to the prior web/backend revision while retaining the
 additive database objects. After Release C, application rollback is bounded to a
