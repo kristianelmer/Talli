@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -44,7 +44,53 @@ function psql(containerName, args = [], input) {
   return result.stdout;
 }
 
-test("company access RLS isolates tenants and exposes exact membership roles to owner policy", { timeout: 120_000 }, () => {
+function interactivePsql(containerName) {
+  const child = spawn("docker", [
+    "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "talli_test",
+  ], { stdio: ["pipe", "pipe", "pipe"] });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const exited = new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => resolve({
+      code,
+      stdout: () => stdout,
+      stderr: () => stderr,
+    }));
+  });
+  return { child, exited, stdout: () => stdout, stderr: () => stderr };
+}
+
+function waitForOutput(process, pattern, timeoutMs = 10_000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(
+      `Timed out waiting for ${pattern}; stdout=${process.stdout()} stderr=${process.stderr()}`,
+    )), timeoutMs);
+    const inspect = () => {
+      if (pattern.test(`${process.stdout()}\n${process.stderr()}`)) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    };
+    process.child.stdout.on("data", inspect);
+    process.child.stderr.on("data", inspect);
+    inspect();
+  });
+}
+
+function waitForExit(process) {
+  return process.exited.then(({ code, stdout, stderr }) => ({
+    code,
+    stdout: stdout(),
+    stderr: stderr(),
+  }));
+}
+
+test("company access RLS isolates tenants and exposes exact membership roles to owner policy", { timeout: 120_000 }, async () => {
   const dockerInfo = docker(["info", "--format", "{{.ServerVersion}}"]).status;
   assert.equal(dockerInfo, 0, "Docker is required for the mandatory company-access PostgreSQL rehearsal");
 
@@ -250,6 +296,9 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         end if;
         if has_function_privilege('authenticated', 'public.company_access_token_hash_v1(text)', 'EXECUTE') then
           raise exception 'authenticated can directly execute token hash helper';
+        end if;
+        if has_function_privilege('authenticated', 'public.company_access_receipt_exists_v1(uuid)', 'EXECUTE') then
+          raise exception 'authenticated can directly execute receipt existence helper';
         end if;
       end $$;
       select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
@@ -535,6 +584,113 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       select 'company_access_rls_ok';
     `);
     assert.match(output, /company_access_rls_ok/);
+
+    const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
+      select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)
+      from public.company_access_command_receipts
+      where operation_id = '40000000-0000-0000-0000-000000000002'
+    `]).trim().split("\t");
+
+    psql(containerName, [], String.raw`
+      create or replace function public.company_access_is_accepted_owner_v1(p_company_id uuid)
+      returns boolean
+      language plpgsql
+      stable
+      security definer
+      set search_path = ''
+      as $function$
+      declare
+        v_authorized boolean;
+      begin
+        select exists (
+          select 1 from public.company_memberships m
+          where m.company_id = p_company_id
+            and m.user_id = (select auth.uid())
+            and m.role = 'owner'
+            and m.accepted_at is not null
+        ) into v_authorized;
+        if current_setting('test.receipt_race_hook', true) = 'on' then
+          perform pg_catalog.pg_advisory_lock(160, 4);
+        end if;
+        return v_authorized;
+      end;
+      $function$;
+    `);
+
+    const authorizationLocker = interactivePsql(containerName);
+    authorizationLocker.child.stdin.write(String.raw`
+      select pg_catalog.pg_advisory_lock(160, 4);
+      select 'authorization_race_lock_ready';
+    `);
+    await waitForOutput(authorizationLocker, /authorization_race_lock_ready/u);
+
+    const racingReplay = interactivePsql(containerName);
+    racingReplay.child.stdin.end(String.raw`
+      set application_name = 'company_access_receipt_race';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select set_config('test.receipt_race_hook', 'on', false);
+      select delivery_token from public.company_access_resend_invitation(
+        '40000000-0000-0000-0000-000000000002',
+        '10000000-0000-0000-0000-000000000001',
+        '${raceInvitationId}'::uuid,
+        '${raceExpectedRevision}'::timestamptz,
+        encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'),
+        'resend-token'
+      );
+    `);
+
+    let replayBlockedAfterAuthorization = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const waiting = psql(containerName, ["-Atc", String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'company_access_receipt_race'
+          and wait_event_type = 'Lock'
+          and wait_event = 'advisory'
+          and query like '%company_access_resend_invitation%'
+      `]).trim();
+      if (waiting === "1") {
+        replayBlockedAfterAuthorization = true;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(replayBlockedAfterAuthorization, true, "replay did not pause after computing owner authorization");
+
+    psql(containerName, [], String.raw`
+      delete from public.company_memberships
+      where company_id = '10000000-0000-0000-0000-000000000001'
+        and user_id = '00000000-0000-0000-0000-000000000011';
+    `);
+    authorizationLocker.child.stdin.end("select pg_catalog.pg_advisory_unlock(160, 4);\n");
+    const raced = await waitForExit(racingReplay);
+    await waitForExit(authorizationLocker);
+    assert.notEqual(raced.code, 0, `concurrent demotion disclosed receipt: ${raced.stdout}`);
+    assert.match(raced.stderr, /company_access_not_found/u);
+    assert.doesNotMatch(raced.stdout, /resend-token/u);
+
+    psql(containerName, [], String.raw`
+      insert into public.company_memberships (company_id, user_id, role, accepted_at)
+      values (
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011', 'owner', statement_timestamp()
+      );
+    `);
+    const reconciled = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select delivery_token from public.company_access_resend_invitation(
+        '40000000-0000-0000-0000-000000000002',
+        '10000000-0000-0000-0000-000000000001',
+        '${raceInvitationId}'::uuid,
+        '${raceExpectedRevision}'::timestamptz,
+        encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'),
+        'resend-token'
+      );
+    `);
+    assert.match(reconciled, /resend-token/u);
     const persisted = psql(containerName, [], String.raw`
       select status, accepted_by from public.company_invitations
       where id = '30000000-0000-0000-0000-000000000001';
