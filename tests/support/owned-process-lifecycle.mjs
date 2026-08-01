@@ -52,18 +52,13 @@ export async function waitForOwnedReadiness({
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     assertProcessAlive(process);
-    let response;
-    try {
-      response = await fetchImpl(url, { cache: "no-store" });
-    } catch {
-      // Bounded local process startup polling.
-    }
+    const response = await fetchBeforeDeadline(fetchImpl, url, deadline);
     if (response?.ok && process[READINESS_STATE]?.matched) {
       await delay(0);
       assertProcessAlive(process);
       if (process[READINESS_STATE]?.matched) return;
     }
-    await delay(pollMs);
+    await delay(Math.min(pollMs, Math.max(0, deadline - Date.now())));
   }
   assertProcessAlive(process);
   throw new Error("owned_process_readiness_deadline_exceeded");
@@ -99,6 +94,34 @@ function hasExited(process) {
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function fetchBeforeDeadline(fetchImpl, url, deadline) {
+  const remainingMs = deadline - Date.now();
+  if (remainingMs <= 0) return undefined;
+
+  const controller = new AbortController();
+  const deadlineReached = Symbol("readiness-fetch-deadline");
+  let timer;
+  try {
+    const result = await Promise.race([
+      Promise.resolve().then(() =>
+        fetchImpl(url, { cache: "no-store", signal: controller.signal }),
+      ),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(deadlineReached), remainingMs);
+      }),
+    ]);
+    if (result === deadlineReached) {
+      controller.abort();
+      return undefined;
+    }
+    return result;
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function exitsBefore(exited, timeoutMs) {

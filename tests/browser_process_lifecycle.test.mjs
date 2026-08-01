@@ -70,6 +70,37 @@ test("readiness failure tears down a live owned process", async () => {
   assert.equal(hasExited(child), true);
 });
 
+test("a listener that never responds cannot outlive the readiness deadline", async () => {
+  const port = await allocateLoopbackPort();
+  const readinessProof = "HANGING_SERVER_BOUND";
+  const child = startOwnedProcess({
+    command: process.execPath,
+    args: ["-e", hangingServerProgram(readinessProof)],
+    cwd: root,
+    env: { ...globalThis.process.env, TEST_PORT: String(port) },
+    readinessProof,
+  });
+  const readiness = waitForOwnedReadiness({
+    process: child,
+    url: `http://127.0.0.1:${port}/health/ready`,
+    timeoutMs: 100,
+    pollMs: 10,
+  });
+  const outcome = await Promise.race([
+    readiness.then(
+      () => ({ result: "ready" }),
+      (error) => ({ error, result: "rejected" }),
+    ),
+    delay(500).then(() => ({ result: "hung" })),
+  ]);
+
+  await stopOwnedProcess(child);
+  await readiness.catch(() => {});
+  assert.equal(outcome.result, "rejected");
+  assert.match(outcome.error.message, /owned_process_readiness_deadline_exceeded/u);
+  assert.equal(hasExited(child), true);
+});
+
 test("a ready owned process is terminated and cleanup is idempotent", async () => {
   const port = await allocateLoopbackPort();
   const readinessProof = "OWNED_SERVER_BOUND";
@@ -171,4 +202,16 @@ function serverProgram(readinessProof) {
     'http.createServer((_request, response) => response.end("ready"))',
     `.listen(Number(process.env.TEST_PORT), "127.0.0.1", () => console.log(${JSON.stringify(readinessProof)}));`,
   ].join("");
+}
+
+function hangingServerProgram(readinessProof) {
+  return [
+    'const http = require("node:http");',
+    "http.createServer(() => {})",
+    `.listen(Number(process.env.TEST_PORT), "127.0.0.1", () => console.log(${JSON.stringify(readinessProof)}));`,
+  ].join("");
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

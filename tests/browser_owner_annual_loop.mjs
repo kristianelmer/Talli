@@ -16,7 +16,10 @@ import {
   startOwnedProcess,
   waitForOwnedReadiness,
 } from "./support/owned-process-lifecycle.mjs";
-import { isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+import {
+  isLoopbackPostgresUrl,
+  isLoopbackSupabaseUrl,
+} from "./support/supabase_fixture_safety.mjs";
 
 loadDotEnv();
 
@@ -34,6 +37,10 @@ test("browser owner annual loop uses persisted state and survives reload", async
   }
   if (!isLoopbackSupabaseUrl(supabaseUrl)) {
     t.skip("Browser fixtures require local Supabase");
+    return;
+  }
+  if (!isLoopbackPostgresUrl(databaseUrl)) {
+    t.skip("Browser fixtures require local database");
     return;
   }
 
