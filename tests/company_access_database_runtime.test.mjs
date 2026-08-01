@@ -166,6 +166,8 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       do $$ declare invitation_id uuid; expected timestamptz; recovered text; superseded text; begin
         select id, updated_at into invitation_id, expected
         from public.company_invitations where invited_email = 'delivery@example.test';
+        perform set_config('test.resend_invitation_id', invitation_id::text, false);
+        perform set_config('test.resend_expected', expected::text, false);
         select delivery_token into recovered from public.company_access_resend_invitation(
           '40000000-0000-0000-0000-000000000002',
           '10000000-0000-0000-0000-000000000001', invitation_id, expected,
@@ -186,6 +188,31 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         if superseded is not null then
           raise exception 'resend retained superseded raw token';
         end if;
+      end $$;
+
+      select * from public.company_access_create_invitation(
+        '40000000-0000-0000-0000-000000000007',
+        '10000000-0000-0000-0000-000000000001',
+        'retained-secret@example.test', 'reviewer',
+        encode(extensions.digest(convert_to('retained-token', 'UTF8'), 'sha256'), 'hex'),
+        'retained-token'
+      );
+      select * from public.company_access_create_invitation(
+        '40000000-0000-0000-0000-000000000008',
+        '10000000-0000-0000-0000-000000000001',
+        'revoke-replay@example.test', 'reviewer',
+        encode(extensions.digest(convert_to('revoke-token', 'UTF8'), 'sha256'), 'hex'),
+        'revoke-token'
+      );
+      do $$ declare invitation_id uuid; expected timestamptz; begin
+        select id, updated_at into invitation_id, expected
+        from public.company_invitations where invited_email = 'revoke-replay@example.test';
+        perform set_config('test.revoke_invitation_id', invitation_id::text, false);
+        perform set_config('test.revoke_expected', expected::text, false);
+        perform * from public.company_access_revoke_invitation(
+          '40000000-0000-0000-0000-000000000009',
+          '10000000-0000-0000-0000-000000000001', invitation_id, expected
+        );
       end $$;
 
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
@@ -355,6 +382,144 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         if public.company_access_is_accepted_owner_v1('10000000-0000-0000-0000-000000000001') then
           raise exception 'connection context leaked after claims were cleared';
         end if;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal1"}', false);
+      do $$ declare leaked text; begin
+        begin
+          select delivery_token into leaked from public.company_access_create_invitation(
+            '40000000-0000-0000-0000-000000000007',
+            '10000000-0000-0000-0000-000000000001',
+            'retained-secret@example.test', 'reviewer',
+            encode(extensions.digest(convert_to('retained-token', 'UTF8'), 'sha256'), 'hex'),
+            'retained-token'
+          );
+          raise exception 'aal1 create replay returned token %', leaked;
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+        begin
+          select delivery_token into leaked from public.company_access_resend_invitation(
+            '40000000-0000-0000-0000-000000000002',
+            '10000000-0000-0000-0000-000000000001',
+            current_setting('test.resend_invitation_id')::uuid,
+            current_setting('test.resend_expected')::timestamptz,
+            encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'),
+            'resend-token'
+          );
+          raise exception 'aal1 resend replay returned token %', leaked;
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_revoke_invitation(
+            '40000000-0000-0000-0000-000000000009',
+            '10000000-0000-0000-0000-000000000001',
+            current_setting('test.revoke_invitation_id')::uuid,
+            current_setting('test.revoke_expected')::timestamptz
+          );
+          raise exception 'aal1 revoke replay returned a receipt';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_administer_membership(
+            '40000000-0000-0000-0000-000000000006',
+            '10000000-0000-0000-0000-000000000001',
+            '00000000-0000-0000-0000-000000000033',
+            'read_only', null, 'removed'
+          );
+          raise exception 'aal1 membership replay returned a receipt';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+      end $$;
+
+      reset role;
+      delete from public.company_memberships
+      where company_id = '10000000-0000-0000-0000-000000000001'
+        and user_id = '00000000-0000-0000-0000-000000000011';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      do $$ declare leaked text; begin
+        begin
+          select delivery_token into leaked from public.company_access_create_invitation(
+            '40000000-0000-0000-0000-000000000007',
+            '10000000-0000-0000-0000-000000000001',
+            'retained-secret@example.test', 'reviewer',
+            encode(extensions.digest(convert_to('retained-token', 'UTF8'), 'sha256'), 'hex'),
+            'retained-token'
+          );
+          raise exception 'demoted create replay returned token %', leaked;
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+        begin
+          select delivery_token into leaked from public.company_access_resend_invitation(
+            '40000000-0000-0000-0000-000000000002',
+            '10000000-0000-0000-0000-000000000001',
+            current_setting('test.resend_invitation_id')::uuid,
+            current_setting('test.resend_expected')::timestamptz,
+            encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'),
+            'resend-token'
+          );
+          raise exception 'demoted resend replay returned token %', leaked;
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+      end $$;
+
+      reset role;
+      insert into public.company_memberships (company_id, user_id, role, accepted_at)
+      values (
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011', 'owner', statement_timestamp()
+      );
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      do $$ declare recovered text; begin
+        select delivery_token into recovered from public.company_access_create_invitation(
+          '40000000-0000-0000-0000-000000000007',
+          '10000000-0000-0000-0000-000000000001',
+          'retained-secret@example.test', 'reviewer',
+          encode(extensions.digest(convert_to('retained-token', 'UTF8'), 'sha256'), 'hex'),
+          'retained-token'
+        );
+        if recovered <> 'retained-token' then raise exception 'authorized create reconciliation failed'; end if;
+        select delivery_token into recovered from public.company_access_resend_invitation(
+          '40000000-0000-0000-0000-000000000002',
+          '10000000-0000-0000-0000-000000000001',
+          current_setting('test.resend_invitation_id')::uuid,
+          current_setting('test.resend_expected')::timestamptz,
+          encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'),
+          'resend-token'
+        );
+        if recovered <> 'resend-token' then raise exception 'authorized resend reconciliation failed'; end if;
+      end $$;
+
+      reset role;
+      update public.company_access_command_receipts
+      set expires_at = statement_timestamp() - interval '1 second'
+      where operation_id = '40000000-0000-0000-0000-000000000007';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      do $$ declare leaked text; begin
+        begin
+          select delivery_token into leaked from public.company_access_create_invitation(
+            '40000000-0000-0000-0000-000000000007',
+            '10000000-0000-0000-0000-000000000001',
+            'retained-secret@example.test', 'reviewer',
+            encode(extensions.digest(convert_to('retained-token', 'UTF8'), 'sha256'), 'hex'),
+            'retained-token'
+          );
+          raise exception 'expired create receipt returned token %', leaked;
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
       end $$;
       reset role;
       set role company_access_executor;
