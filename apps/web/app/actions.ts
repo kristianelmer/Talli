@@ -24,6 +24,7 @@ import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { onboardCustomer } from "./lib/customer-onboarding";
 import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
 import { getSiteUrl } from "./lib/site-url";
+import { sanitizeInternalRedirect } from "./lib/internal-redirect";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
@@ -500,8 +501,9 @@ async function loadCorporateLifecycleActionContext(input: {
 }
 
 export async function signIn(formData: FormData) {
+  const next = sanitizeInternalRedirect(formString(formData, "next"));
   if (!hasSupabaseEnv()) {
-    redirect("/login?error=Supabase%20env%20mangler");
+    redirect(`/login?error=Supabase%20env%20mangler&next=${encodeURIComponent(next)}`);
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
@@ -513,10 +515,10 @@ export async function signIn(formData: FormData) {
     if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
       redirect(`/verify-email?email=${encodeURIComponent(email)}`);
     }
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
   }
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  redirect(next);
 }
 
 export async function signUp(formData: FormData) {
@@ -562,7 +564,8 @@ export async function resendConfirmation(formData: FormData) {
   redirect(`/verify-email?email=${encodeURIComponent(email)}&resent=1`);
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(formData: FormData) {
+  const next = sanitizeInternalRedirect(formString(formData, "next"));
   if (!hasSupabaseEnv()) {
     redirect("/login?error=Supabase%20env%20mangler");
   }
@@ -570,10 +573,10 @@ export async function signInWithGoogle() {
   const siteUrl = await getSiteUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${siteUrl}/auth/confirm?next=/dashboard` },
+    options: { redirectTo: `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}` },
   });
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}`);
+    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}&next=${encodeURIComponent(next)}`);
   }
   redirect(data.url);
 }
@@ -1291,6 +1294,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
   const companyId = formString(formData, "companyId");
+  const operationId = requiredFormUuid(formData, "operationId");
   const requestedRole = formString(formData, "role") || "reviewer";
   if (requestedRole !== "reviewer" && requestedRole !== "read_only") {
     redirect("/workspace?error=Ugyldig%20invitasjonsrolle");
@@ -1298,6 +1302,7 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   let created;
   try {
     created = await createCompanyInvitation(accessToken, {
+      operationId,
       companyId,
       invitedEmail: formString(formData, "email"),
       role: requestedRole,
@@ -1311,20 +1316,40 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const deliveryPayload = {
+    operationId,
+    invitationId: created.invitation.id,
+    subject: created.deliverySubject,
+    body: created.deliveryBody,
+  };
   const { error: outboxError } = await supabase.from("notification_outbox").insert({
+    id: operationId,
     company_id: companyId,
     recipient_email: created.invitation.invitedEmail,
     template: "workspace_invitation",
-    payload: {
-      invitationId: created.invitation.id,
-      subject: created.deliverySubject,
-      body: created.deliveryBody,
-    },
+    payload: deliveryPayload,
     status: "queued",
     created_by: user.id,
   });
-  if (outboxError) redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
+  if (outboxError) {
+    const { data: existing, error: lookupError } = await supabase
+      .from("notification_outbox")
+      .select("id, company_id, recipient_email, template, payload, created_by")
+      .eq("id", operationId)
+      .maybeSingle();
+    const payload = existing?.payload as Record<string, unknown> | undefined;
+    if (
+      lookupError || !existing || existing.company_id !== companyId ||
+      existing.recipient_email !== created.invitation.invitedEmail ||
+      existing.template !== "workspace_invitation" || existing.created_by !== user.id ||
+      payload?.operationId !== operationId || payload?.invitationId !== created.invitation.id ||
+      payload?.subject !== created.deliverySubject || payload?.body !== created.deliveryBody
+    ) {
+      redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
+    }
+  }
   await supabase.from("audit_events").insert({
+    id: operationId,
     company_id: companyId,
     actor_id: user.id,
     category: "review",
@@ -1342,8 +1367,13 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
     redirect("/workspace?error=Innlogging%20med%20e-post%20kreves");
   }
   let accepted;
+  const operationId = requiredFormUuid(formData, "operationId");
   try {
-    accepted = await acceptCompanyInvitation(accessToken, formString(formData, "token"));
+    accepted = await acceptCompanyInvitation(
+      accessToken,
+      formString(formData, "token"),
+      operationId,
+    );
   } catch {
     redirect("/workspace?error=Invitasjonen%20ble%20ikke%20funnet%20eller%20er%20ikke%20lenger%20aktiv");
   }
@@ -1351,6 +1381,7 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
   await supabase.from("audit_events").insert({
+    id: operationId,
     company_id: accepted.membership.companyId,
     actor_id: user.id,
     category: "review",
@@ -1369,8 +1400,12 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const operationId = requiredFormUuid(formData, "operationId");
   try {
-    await revokeCompanyInvitation(accessToken, companyId, invitationId);
+    await revokeCompanyInvitation(
+      accessToken, companyId, invitationId, expectedUpdatedAt, operationId,
+    );
   } catch {
     redirect("/workspace?error=Kunne%20ikke%20tilbakekalle%20invitasjonen");
   }
@@ -1378,6 +1413,7 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
   await supabase.from("audit_events").insert({
+    id: operationId,
     company_id: companyId,
     actor_id: user.id,
     category: "review",
@@ -1395,9 +1431,13 @@ export async function resendWorkspaceInvitation(formData: FormData) {
   }
   const companyId = formString(formData, "companyId");
   const invitationId = formString(formData, "invitationId");
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const operationId = requiredFormUuid(formData, "operationId");
   let resent;
   try {
-    resent = await resendCompanyInvitation(accessToken, companyId, invitationId);
+    resent = await resendCompanyInvitation(
+      accessToken, companyId, invitationId, expectedUpdatedAt, operationId,
+    );
   } catch {
     redirect("/workspace?error=Kunne%20ikke%20sende%20invitasjonen%20p%C3%A5%20nytt");
   }
@@ -1407,20 +1447,40 @@ export async function resendWorkspaceInvitation(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const deliveryPayload = {
+    operationId,
+    invitationId: resent.invitation.id,
+    role: resent.invitation.role,
+    acceptUrl: `/invite/accept?token=${resent.deliveryToken}`,
+  };
   const { error: outboxError } = await supabase.from("notification_outbox").insert({
+    id: operationId,
     company_id: companyId,
     recipient_email: resent.invitation.invitedEmail,
     template: "workspace_invitation",
-    payload: {
-      invitationId: resent.invitation.id,
-      role: resent.invitation.role,
-      acceptUrl: `/invite/accept?token=${resent.deliveryToken}`,
-    },
+    payload: deliveryPayload,
     status: "queued",
     created_by: user.id,
   });
-  if (outboxError) redirect(`/workspace?error=${encodeURIComponent(outboxError.message)}`);
+  if (outboxError) {
+    const { data: existing, error: lookupError } = await supabase
+      .from("notification_outbox")
+      .select("id, company_id, recipient_email, template, payload, created_by")
+      .eq("id", operationId)
+      .maybeSingle();
+    const payload = existing?.payload as Record<string, unknown> | undefined;
+    if (
+      lookupError || !existing || existing.company_id !== companyId ||
+      existing.recipient_email !== resent.invitation.invitedEmail ||
+      existing.template !== "workspace_invitation" || existing.created_by !== user.id ||
+      payload?.operationId !== operationId || payload?.invitationId !== resent.invitation.id ||
+      payload?.role !== resent.invitation.role || payload?.acceptUrl !== deliveryPayload.acceptUrl
+    ) {
+      redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
+    }
+  }
   await supabase.from("audit_events").insert({
+    id: operationId,
     company_id: companyId,
     actor_id: user.id,
     category: "review",
@@ -1438,16 +1498,23 @@ export async function administerWorkspaceMembership(formData: FormData) {
   const userId = formString(formData, "userId");
   const state = formString(formData, "state");
   const role = formString(formData, "role");
+  const expectedRole = formString(formData, "expectedRole");
+  const operationId = requiredFormUuid(formData, "operationId");
   if (state !== "active" && state !== "removed") {
     redirect("/workspace?error=Ugyldig%20medlemsstatus");
   }
   if (role && role !== "reviewer" && role !== "read_only") {
     redirect("/workspace?error=Ugyldig%20medlemsrolle");
   }
+  if (expectedRole !== "reviewer" && expectedRole !== "read_only") {
+    redirect("/workspace?error=Ugyldig%20forventet%20medlemsrolle");
+  }
   const membershipRole = role === "reviewer" || role === "read_only" ? role : undefined;
   try {
     await administerCompanyMembership(accessToken, userId, {
+      operationId,
       companyId,
+      expectedRole,
       state,
       ...(membershipRole ? { role: membershipRole } : {}),
     });

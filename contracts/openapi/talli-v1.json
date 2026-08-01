@@ -1,10 +1,42 @@
 {
   "components": {
     "schemas": {
+      "AcceptCompanyInvitationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "operationId": {
+            "title": "Operationid",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operationId",
+          "token"
+        ],
+        "title": "AcceptCompanyInvitationRequest",
+        "type": "object"
+      },
       "AdministerCompanyMembershipRequest": {
+        "additionalProperties": false,
         "properties": {
           "companyId": {
             "title": "Companyid",
+            "type": "string"
+          },
+          "expectedRole": {
+            "enum": [
+              "reviewer",
+              "read_only"
+            ],
+            "title": "Expectedrole",
+            "type": "string"
+          },
+          "operationId": {
+            "title": "Operationid",
             "type": "string"
           },
           "role": {
@@ -39,7 +71,9 @@
           }
         },
         "required": [
-          "companyId"
+          "operationId",
+          "companyId",
+          "expectedRole"
         ],
         "title": "AdministerCompanyMembershipRequest",
         "type": "object"
@@ -228,14 +262,25 @@
         "type": "object"
       },
       "CompanyInvitationCommandRequest": {
+        "additionalProperties": false,
         "properties": {
           "companyId": {
             "title": "Companyid",
             "type": "string"
+          },
+          "expectedUpdatedAt": {
+            "title": "Expectedupdatedat",
+            "type": "string"
+          },
+          "operationId": {
+            "title": "Operationid",
+            "type": "string"
           }
         },
         "required": [
-          "companyId"
+          "operationId",
+          "companyId",
+          "expectedUpdatedAt"
         ],
         "title": "CompanyInvitationCommandRequest",
         "type": "object"
@@ -374,6 +419,7 @@
         "type": "object"
       },
       "CreateCompanyInvitationRequest": {
+        "additionalProperties": false,
         "properties": {
           "companyId": {
             "title": "Companyid",
@@ -381,6 +427,10 @@
           },
           "invitedEmail": {
             "title": "Invitedemail",
+            "type": "string"
+          },
+          "operationId": {
+            "title": "Operationid",
             "type": "string"
           },
           "role": {
@@ -393,6 +443,7 @@
           }
         },
         "required": [
+          "operationId",
           "companyId",
           "invitedEmail",
           "role"
@@ -428,6 +479,7 @@
         "type": "object"
       },
       "InvitationTokenRequest": {
+        "additionalProperties": false,
         "properties": {
           "token": {
             "title": "Token",
@@ -862,7 +914,15 @@
                 }
               }
             },
-            "description": "Company invitations."
+            "description": "Company invitations.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -1255,7 +1315,15 @@
                 }
               }
             },
-            "description": "Company invitation created."
+            "description": "Company invitation created.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -1635,7 +1703,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InvitationTokenRequest"
+                "$ref": "#/components/schemas/AcceptCompanyInvitationRequest"
               }
             }
           },
@@ -1650,7 +1718,15 @@
                 }
               }
             },
-            "description": "Invitation accepted."
+            "description": "Invitation accepted.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -2045,7 +2121,15 @@
                 }
               }
             },
-            "description": "Available invitation."
+            "description": "Available invitation.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -2449,7 +2533,15 @@
                 }
               }
             },
-            "description": "Invitation resent."
+            "description": "Invitation resent.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -2853,7 +2945,15 @@
                 }
               }
             },
-            "description": "Invitation revoked."
+            "description": "Invitation revoked.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3247,7 +3347,15 @@
                 }
               }
             },
-            "description": "Company memberships."
+            "description": "Company memberships.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3651,7 +3759,15 @@
                 }
               }
             },
-            "description": "Membership changed."
+            "description": "Membership changed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {

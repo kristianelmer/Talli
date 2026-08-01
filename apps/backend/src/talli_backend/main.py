@@ -15,17 +15,20 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.modules.company_access.public import (
+    AcceptCompanyInvitationRequest,
+    AdministerCompanyMembershipRequest,
     CompanyAccessError,
     CompanyAccessGateway,
     CompanyAccessService,
     CompanyInvitationListResponse,
+    CompanyInvitationCommandRequest,
     CompanyInvitationResponse,
     CompanyMembershipListResponse,
     CompanyMembershipResponse,
     CompanyContextResponse,
+    CreateCompanyInvitationRequest,
     InvitationLookup,
-    InvitationRole,
-    MembershipState,
+    InvitationTokenRequest,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -73,26 +76,6 @@ class ProblemDetails(TransportModel):
     instance: str
     code: str
     request_id: str
-
-
-class CreateCompanyInvitationRequest(TransportModel):
-    company_id: str
-    invited_email: str
-    role: InvitationRole
-
-
-class InvitationTokenRequest(TransportModel):
-    token: str
-
-
-class CompanyInvitationCommandRequest(TransportModel):
-    company_id: str
-
-
-class AdministerCompanyMembershipRequest(TransportModel):
-    company_id: str
-    role: InvitationRole | None = None
-    state: MembershipState | None = None
 
 
 class ApiProblem(Exception):
@@ -329,12 +312,13 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         }
         for status in (401, 403, 404, 409, 422, 503)
     }
+    company_access_success = {"headers": {"X-Request-ID": REQUEST_ID_HEADER}}
 
     @application.get(
         "/api/v1/company-access/invitations",
         operation_id="companyAccessListInvitations",
         response_model=CompanyInvitationListResponse,
-        responses={200: {"description": "Company invitations."}} | company_access_errors,
+        responses={200: {"description": "Company invitations."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -353,7 +337,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         operation_id="companyAccessCreateInvitation",
         response_model=CompanyInvitationResponse,
         status_code=201,
-        responses={201: {"description": "Company invitation created."}} | company_access_errors,
+        responses={201: {"description": "Company invitation created."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -362,19 +346,14 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
     ) -> CompanyInvitationResponse:
         return await company_access_call(
-            company_access_service.invite(
-                bearer_token(credentials),
-                company_id=command.company_id,
-                invited_email=command.invited_email,
-                role=command.role,
-            )
+            company_access_service.invite(bearer_token(credentials), command)
         )
 
     @application.post(
         "/api/v1/company-access/invitations/lookup",
         operation_id="companyAccessLookupInvitation",
         response_model=InvitationLookup,
-        responses={200: {"description": "Available invitation."}} | company_access_errors,
+        responses={200: {"description": "Available invitation."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -392,25 +371,23 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         "/api/v1/company-access/invitations/accept",
         operation_id="companyAccessAcceptInvitation",
         response_model=CompanyMembershipResponse,
-        responses={200: {"description": "Invitation accepted."}} | company_access_errors,
+        responses={200: {"description": "Invitation accepted."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def accept_company_invitation(
-        command: InvitationTokenRequest,
+        command: AcceptCompanyInvitationRequest,
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
     ) -> CompanyMembershipResponse:
         return await company_access_call(
-            company_access_service.accept_invitation(
-                bearer_token(credentials), token=command.token
-            )
+            company_access_service.accept_invitation(bearer_token(credentials), command)
         )
 
     @application.post(
         "/api/v1/company-access/invitations/{invitation_id}/revoke",
         operation_id="companyAccessRevokeInvitation",
         response_model=CompanyInvitationResponse,
-        responses={200: {"description": "Invitation revoked."}} | company_access_errors,
+        responses={200: {"description": "Invitation revoked."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -422,8 +399,8 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         return await company_access_call(
             company_access_service.revoke_invitation(
                 bearer_token(credentials),
-                company_id=command.company_id,
                 invitation_id=invitation_id,
+                command=command,
             )
         )
 
@@ -431,7 +408,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         "/api/v1/company-access/invitations/{invitation_id}/resend",
         operation_id="companyAccessResendInvitation",
         response_model=CompanyInvitationResponse,
-        responses={200: {"description": "Invitation resent."}} | company_access_errors,
+        responses={200: {"description": "Invitation resent."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -443,8 +420,8 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         return await company_access_call(
             company_access_service.resend_invitation(
                 bearer_token(credentials),
-                company_id=command.company_id,
                 invitation_id=invitation_id,
+                command=command,
             )
         )
 
@@ -452,7 +429,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         "/api/v1/company-access/memberships",
         operation_id="companyAccessListMemberships",
         response_model=CompanyMembershipListResponse,
-        responses={200: {"description": "Company memberships."}} | company_access_errors,
+        responses={200: {"description": "Company memberships."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -470,7 +447,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         "/api/v1/company-access/memberships/{user_id}",
         operation_id="companyAccessAdministerMembership",
         response_model=CompanyMembershipResponse,
-        responses={200: {"description": "Membership changed."}} | company_access_errors,
+        responses={200: {"description": "Membership changed."} | company_access_success} | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -482,10 +459,8 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         return await company_access_call(
             company_access_service.administer_membership(
                 bearer_token(credentials),
-                company_id=command.company_id,
                 user_id=user_id,
-                role=command.role,
-                state=command.state,
+                command=command,
             )
         )
 

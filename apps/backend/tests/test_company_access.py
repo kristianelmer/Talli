@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 from collections.abc import Mapping
@@ -13,6 +14,53 @@ from talli_backend.adapters.supabase_company_access import (
     SupabaseCompanyAccessAdapter,
     SupabaseConfiguration,
 )
+from talli_backend.modules.company_access.public import (
+    AcceptInvitationGatewayCommand,
+    AdministerMembershipGatewayCommand,
+    CompanyAccessError,
+    CreateInvitationGatewayCommand,
+    InvitationIdentityGatewayCommand,
+    InvitationMutationGatewayCommand,
+    ResendInvitationGatewayCommand,
+)
+
+
+def test_rpc_reconciles_one_unknown_outcome_with_the_identical_command() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    calls: list[tuple[str, str, str, Mapping[str, object] | None]] = []
+
+    async def request(
+        path: str,
+        access_token: str,
+        *,
+        method: str = "GET",
+        body: Mapping[str, object] | None = None,
+    ) -> object:
+        calls.append((path, access_token, method, body))
+        if len(calls) == 1:
+            raise CompanyAccessError(
+                status=503,
+                code="COMPANY_ACCESS_UNAVAILABLE",
+                title="Company access unavailable",
+                detail="Company access is temporarily unavailable.",
+            )
+        return [{"id": "invitation-1"}]
+
+    adapter._request = request  # type: ignore[method-assign]
+    body = {
+        "p_operation_id": "40000000-0000-0000-0000-000000000001",
+        "p_company_id": "company-1",
+    }
+
+    result = asyncio.run(adapter._rpc_row("bearer", "company_access_create_invitation", body))
+
+    assert result == {"id": "invitation-1"}
+    assert calls == [
+        ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
+        ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
+    ]
 
 
 def access_token(aal: str = "aal1") -> str:
@@ -83,15 +131,18 @@ class CompanyAccessGatewayStub:
         return [self._invitation()]
 
     async def create_invitation(
-        self, _access_token: str, invitation: Mapping[str, object]
+        self, _access_token: str, invitation: CreateInvitationGatewayCommand
     ) -> Mapping[str, object]:
         self.calls.append(("create_invitation", invitation))
-        return self._invitation(role=str(invitation["role"]), email=str(invitation["invited_email"]))
+        return {
+            **self._invitation(role=invitation.role, email=invitation.invited_email),
+            "delivery_token": invitation.acceptance_token,
+        }
 
     async def lookup_invitation(
-        self, _access_token: str, token_hash: str
+        self, _access_token: str, command: InvitationIdentityGatewayCommand
     ) -> Mapping[str, object] | None:
-        self.calls.append(("lookup_invitation", token_hash))
+        self.calls.append(("lookup_invitation", command))
         if self.invitation_status != "pending":
             return None
         return {
@@ -100,22 +151,22 @@ class CompanyAccessGatewayStub:
         }
 
     async def accept_invitation(
-        self, _access_token: str, token_hash: str
+        self, _access_token: str, command: AcceptInvitationGatewayCommand
     ) -> Mapping[str, object] | None:
-        self.calls.append(("accept_invitation", token_hash))
+        self.calls.append(("accept_invitation", command))
         return None if self.invitation_status != "pending" else self._membership()
 
     async def revoke_invitation(
-        self, _access_token: str, company_id: str, invitation_id: str
+        self, _access_token: str, command: InvitationMutationGatewayCommand
     ) -> Mapping[str, object] | None:
-        self.calls.append(("revoke_invitation", (company_id, invitation_id)))
+        self.calls.append(("revoke_invitation", command))
         return self._invitation(status="revoked")
 
     async def resend_invitation(
-        self, _access_token: str, command: Mapping[str, object]
+        self, _access_token: str, command: ResendInvitationGatewayCommand
     ) -> Mapping[str, object] | None:
         self.calls.append(("resend_invitation", command))
-        return self._invitation()
+        return {**self._invitation(), "delivery_token": command.acceptance_token}
 
     async def company_memberships(
         self, _access_token: str, company_id: str
@@ -124,12 +175,12 @@ class CompanyAccessGatewayStub:
         return [self._membership()]
 
     async def administer_membership(
-        self, _access_token: str, command: Mapping[str, object]
+        self, _access_token: str, command: AdministerMembershipGatewayCommand
     ) -> Mapping[str, object] | None:
         self.calls.append(("administer_membership", command))
         return self._membership(
-            role=str(command.get("role") or "reviewer"),
-            state=str(command.get("state") or "active"),
+            role=str(command.role or "reviewer"),
+            state=str(command.state or "active"),
         )
 
     def _invitation(
@@ -250,6 +301,7 @@ class LocalSupabaseGateway:
                         "expires_at": "2026-08-15T00:00:00Z",
                         "created_at": "2026-08-01T00:00:00Z",
                         "updated_at": "2026-08-01T00:00:00Z",
+                        "delivery_token": payload["p_acceptance_token"],
                     }])
                     return
                 self._json(404, {})
@@ -481,6 +533,7 @@ def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc()
             "/api/v1/company-access/invitations",
             headers={"Authorization": f"Bearer {access_token('aal2')}"},
             json={
+                "operationId": "40000000-0000-0000-0000-000000000001",
                 "companyId": "company-1",
                 "invitedEmail": "reviewer@example.no",
                 "role": "reviewer",
@@ -506,7 +559,12 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
     response = TestClient(create_app(gateway)).post(
         "/api/v1/company-access/invitations",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
-        json={"companyId": "company-1", "invitedEmail": " Reviewer@Example.No ", "role": role},
+        json={
+            "operationId": "40000000-0000-0000-0000-000000000001",
+            "companyId": "company-1",
+            "invitedEmail": " Reviewer@Example.No ",
+            "role": role,
+        },
     )
 
     assert response.status_code == 201
@@ -516,9 +574,9 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
     assert isinstance(response.json()["deliveryToken"], str)
     assert response.json()["deliverySubject"] == "Invitasjon til Talli: Talli Holding AS"
     command = gateway.calls[-1][1]
-    assert isinstance(command, Mapping)
-    assert len(str(command["token_hash"])) == 64
-    assert command["token_hash"] != command["acceptance_token"]
+    assert isinstance(command, CreateInvitationGatewayCommand)
+    assert len(command.token_hash) == 64
+    assert command.token_hash != command.acceptance_token
 
 
 def test_owner_invitation_administration_requires_aal2_and_conceals_foreign_company() -> None:
@@ -549,7 +607,7 @@ def test_invitee_lookup_and_acceptance_are_concealed_and_never_return_token_hash
     accepted = client.post(
         "/api/v1/company-access/invitations/accept",
         headers={"Authorization": f"Bearer {access_token('aal1')}"},
-        json={"token": "raw-invitation-token"},
+        json={"operationId": "40000000-0000-0000-0000-000000000002", "token": "raw-invitation-token"},
     )
 
     assert lookup.status_code == 200
@@ -561,8 +619,12 @@ def test_invitee_lookup_and_acceptance_are_concealed_and_never_return_token_hash
     assert accepted.status_code == 200
     assert accepted.json()["membership"]["state"] == "active"
     assert "token" not in json.dumps(lookup.json()).lower()
-    assert gateway.calls[-2][1] == gateway.calls[-1][1]
-    assert len(str(gateway.calls[-1][1])) == 64
+    lookup_command = gateway.calls[-2][1]
+    accept_command = gateway.calls[-1][1]
+    assert isinstance(lookup_command, InvitationIdentityGatewayCommand)
+    assert isinstance(accept_command, AcceptInvitationGatewayCommand)
+    assert lookup_command.token_hash == accept_command.token_hash
+    assert len(accept_command.token_hash) == 64
 
     gateway.invitation_status = "revoked"
     concealed = client.post(
@@ -580,17 +642,34 @@ def test_owner_can_atomically_change_or_remove_only_non_owner_memberships() -> N
     changed = client.patch(
         "/api/v1/company-access/memberships/reviewer-1",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
-        json={"companyId": "company-1", "role": "read_only", "state": "active"},
+        json={
+            "operationId": "40000000-0000-0000-0000-000000000003",
+            "companyId": "company-1",
+            "expectedRole": "reviewer",
+            "role": "read_only",
+            "state": "active",
+        },
     )
     removed = client.patch(
         "/api/v1/company-access/memberships/reviewer-1",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
-        json={"companyId": "company-1", "state": "removed"},
+        json={
+            "operationId": "40000000-0000-0000-0000-000000000004",
+            "companyId": "company-1",
+            "expectedRole": "reviewer",
+            "state": "removed",
+        },
     )
     forbidden_owner_role = client.patch(
         "/api/v1/company-access/memberships/reviewer-1",
         headers={"Authorization": f"Bearer {access_token('aal2')}"},
-        json={"companyId": "company-1", "role": "owner", "state": "active"},
+        json={
+            "operationId": "40000000-0000-0000-0000-000000000005",
+            "companyId": "company-1",
+            "expectedRole": "reviewer",
+            "role": "owner",
+            "state": "active",
+        },
     )
 
     assert changed.status_code == 200

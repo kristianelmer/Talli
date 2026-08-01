@@ -13,8 +13,14 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from talli_backend.modules.company_access.public import (
+    AcceptInvitationGatewayCommand,
+    AdministerMembershipGatewayCommand,
     CompanyAccessError,
     CompanyAccessGateway,
+    CreateInvitationGatewayCommand,
+    InvitationIdentityGatewayCommand,
+    InvitationMutationGatewayCommand,
+    ResendInvitationGatewayCommand,
     company_access_adapter,
 )
 
@@ -143,6 +149,13 @@ class SupabaseCompanyAccessAdapter:
                         title="Request validation failed",
                         detail="The request did not satisfy the company access policy.",
                     ) from None
+                if message == "company_access_conflict":
+                    raise CompanyAccessError(
+                        status=409,
+                        code="COMPANY_ACCESS_CONFLICT",
+                        title="Company access conflict",
+                        detail="The company access change conflicts with existing state.",
+                    ) from None
                 if error.code == 409:
                     raise CompanyAccessError(
                         status=409,
@@ -224,46 +237,60 @@ class SupabaseCompanyAccessAdapter:
         return response if isinstance(response, list) else []
 
     async def create_invitation(
-        self, access_token: str, invitation: Mapping[str, object]
+        self, access_token: str, command: CreateInvitationGatewayCommand
     ) -> Mapping[str, object]:
         return await self._rpc_row(access_token, "company_access_create_invitation", {
-            "p_company_id": invitation["company_id"],
-            "p_invited_email": invitation["invited_email"],
-            "p_role": invitation["role"],
-            "p_token_hash": invitation["token_hash"],
-            "p_acceptance_token": invitation["acceptance_token"],
+            "p_operation_id": command.operation_id,
+            "p_company_id": command.company_id,
+            "p_invited_email": command.invited_email,
+            "p_role": command.role,
+            "p_token_hash": command.token_hash,
+            "p_acceptance_token": command.acceptance_token,
         }) or {}
 
     async def lookup_invitation(
-        self, access_token: str, token_hash: str
+        self, access_token: str, command: InvitationIdentityGatewayCommand
     ) -> Mapping[str, object] | None:
         return await self._rpc_row(
-            access_token, "company_access_lookup_invitation", {"p_token_hash": token_hash}
+            access_token, "company_access_lookup_invitation", {
+                "p_token_hash": command.token_hash,
+                "p_verified_subject": command.verified_subject,
+                "p_verified_email": command.verified_email,
+            }
         )
 
     async def accept_invitation(
-        self, access_token: str, token_hash: str
+        self, access_token: str, command: AcceptInvitationGatewayCommand
     ) -> Mapping[str, object] | None:
         return await self._rpc_row(
-            access_token, "company_access_accept_invitation", {"p_token_hash": token_hash}
+            access_token, "company_access_accept_invitation", {
+                "p_operation_id": command.operation_id,
+                "p_token_hash": command.token_hash,
+                "p_verified_subject": command.verified_subject,
+                "p_verified_email": command.verified_email,
+            }
         )
 
     async def revoke_invitation(
-        self, access_token: str, company_id: str, invitation_id: str
+        self, access_token: str, command: InvitationMutationGatewayCommand
     ) -> Mapping[str, object] | None:
         return await self._rpc_row(access_token, "company_access_revoke_invitation", {
-            "p_company_id": company_id,
-            "p_invitation_id": invitation_id,
+            "p_operation_id": command.operation_id,
+            "p_company_id": command.company_id,
+            "p_invitation_id": command.invitation_id,
+            "p_expected_updated_at": command.expected_updated_at,
         })
 
     async def resend_invitation(
-        self, access_token: str, command: Mapping[str, object]
+        self, access_token: str, command: ResendInvitationGatewayCommand
     ) -> Mapping[str, object] | None:
         return await self._rpc_row(access_token, "company_access_resend_invitation", {
-            "p_company_id": command["company_id"],
-            "p_invitation_id": command["invitation_id"],
-            "p_token_hash": command["token_hash"],
-            "p_acceptance_token": command["acceptance_token"],
+            "p_operation_id": command.operation_id,
+            "p_company_id": command.company_id,
+            "p_invitation_id": command.invitation_id,
+            "p_expected_updated_at": command.expected_updated_at,
+            "p_token_hash": command.token_hash,
+            "p_acceptance_token": command.acceptance_token,
         })
 
     async def company_memberships(
@@ -282,13 +309,15 @@ class SupabaseCompanyAccessAdapter:
         return [{**row, "state": "active"} for row in response if isinstance(row, Mapping)]
 
     async def administer_membership(
-        self, access_token: str, command: Mapping[str, object]
+        self, access_token: str, command: AdministerMembershipGatewayCommand
     ) -> Mapping[str, object] | None:
         return await self._rpc_row(access_token, "company_access_administer_membership", {
-            "p_company_id": command["company_id"],
-            "p_user_id": command["user_id"],
-            "p_role": command.get("role"),
-            "p_state": command.get("state"),
+            "p_operation_id": command.operation_id,
+            "p_company_id": command.company_id,
+            "p_user_id": command.user_id,
+            "p_expected_role": command.expected_role,
+            "p_role": command.role,
+            "p_state": command.state,
         })
 
     async def _rpc_row(
@@ -297,9 +326,20 @@ class SupabaseCompanyAccessAdapter:
         function_name: str,
         body: Mapping[str, object],
     ) -> Mapping[str, object] | None:
-        response = await self._request(
-            f"/rest/v1/rpc/{function_name}", access_token, method="POST", body=body
-        )
+        path = f"/rest/v1/rpc/{function_name}"
+        try:
+            response = await self._request(
+                path, access_token, method="POST", body=body
+            )
+        except CompanyAccessError as error:
+            if error.code != "COMPANY_ACCESS_UNAVAILABLE" or "p_operation_id" not in body:
+                raise
+            # The first request may have committed before the transport outcome
+            # became unknown. Replay the identical durable operation once; the
+            # database receipt reconciles it without repeating the mutation.
+            response = await self._request(
+                path, access_token, method="POST", body=body
+            )
         if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
             return None
         return response[0]

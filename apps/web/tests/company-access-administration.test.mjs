@@ -54,13 +54,13 @@ test("company-access administration transport uses only generated client operati
 
   try {
     await listCompanyInvitations("session-token", "company-1");
-    await createCompanyInvitation("session-token", { companyId: "company-1", invitedEmail: "reviewer@example.no", role: "reviewer" });
+    await createCompanyInvitation("session-token", { operationId: "operation-1", companyId: "company-1", invitedEmail: "reviewer@example.no", role: "reviewer" });
     await lookupCompanyInvitation("session-token", "raw-token");
-    await acceptCompanyInvitation("session-token", "raw-token");
-    await revokeCompanyInvitation("session-token", "company-1", "invitation-1");
-    await resendCompanyInvitation("session-token", "company-1", "invitation-1");
+    await acceptCompanyInvitation("session-token", "raw-token", "operation-2");
+    await revokeCompanyInvitation("session-token", "company-1", "invitation-1", invitation.updatedAt, "operation-3");
+    await resendCompanyInvitation("session-token", "company-1", "invitation-1", invitation.updatedAt, "operation-4");
     await listCompanyMemberships("session-token", "company-1");
-    await administerCompanyMembership("session-token", "reviewer-1", { companyId: "company-1", state: "removed" });
+    await administerCompanyMembership("session-token", "reviewer-1", { operationId: "operation-5", companyId: "company-1", expectedRole: "reviewer", state: "removed" });
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
@@ -74,16 +74,24 @@ test("company-access administration transport uses only generated client operati
   assert.ok(calls.every(({ url }) => url.startsWith("https://backend.example/api/v1/company-access/")));
 });
 
-test("generated decoder fails closed when invitations expose token hashes", async () => {
+test("generated decoders fail closed on every unknown or token-shaped invitation field", async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = "https://backend.example";
-  globalThis.fetch = async () => Response.json({ invitations: [{ ...invitation, tokenHash: "secret" }] });
   try {
-    await assert.rejects(
-      listCompanyInvitations("session-token", "company-1"),
-      (error) => error instanceof TalliApiError && error.status === 502,
-    );
+    const cases = [
+      [{ invitations: [{ ...invitation, tokenHash: "secret" }] }, () => listCompanyInvitations("session-token", "company-1")],
+      [{ invitations: [{ ...invitation, token_hash: "secret" }] }, () => listCompanyInvitations("session-token", "company-1")],
+      [{ invitation, deliveryToken: null, deliverySubject: null, deliveryBody: null, deliveryTokenHash: "secret" }, () => createCompanyInvitation("session-token", { operationId: "operation-1", companyId: "company-1", invitedEmail: "reviewer@example.no", role: "reviewer" })],
+      [{ companyName: "Talli Holding AS", role: "reviewer", expiresAt: invitation.expiresAt, acceptanceToken: "secret" }, () => lookupCompanyInvitation("session-token", "raw-token")],
+    ];
+    for (const [payload, invoke] of cases) {
+      globalThis.fetch = async () => Response.json(payload);
+      await assert.rejects(
+        invoke(),
+        (error) => error instanceof TalliApiError && error.status === 502,
+      );
+    }
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;

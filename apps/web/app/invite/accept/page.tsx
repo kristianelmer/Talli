@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 
 import { acceptWorkspaceInvitation } from "../../actions";
 import { lookupCompanyInvitation } from "../../../features/company-access";
@@ -31,6 +32,7 @@ export default async function InvitationAcceptancePage({
         <p>Du er invitert som {invitation.role}.</p>
         <p>Invitasjonen utløper {new Date(invitation.expiresAt).toLocaleString("nb-NO")}.</p>
         <form action={acceptWorkspaceInvitation}>
+          <input name="operationId" type="hidden" value={randomUUID()} />
           <input name="token" type="hidden" value={token} />
           <button className="primaryButton" type="submit">Godta tilgang</button>
         </form>

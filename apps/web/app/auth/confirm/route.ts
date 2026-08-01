@@ -2,14 +2,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseServerClient, hasSupabaseEnv } from "../../lib/supabase/server";
-
-/** Only allow internal redirect targets to avoid an open-redirect. */
-function sanitizeNext(value: string | null): string {
-  if (value && value.startsWith("/") && !value.startsWith("//")) {
-    return value;
-  }
-  return "/email-confirmed";
-}
+import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
 
 /**
  * Email-confirmation callback. Supabase redirects here from the confirmation
@@ -20,7 +13,7 @@ function sanitizeNext(value: string | null): string {
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const next = sanitizeNext(searchParams.get("next"));
+  const next = sanitizeInternalRedirect(searchParams.get("next"), "/email-confirmed");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const code = searchParams.get("code");

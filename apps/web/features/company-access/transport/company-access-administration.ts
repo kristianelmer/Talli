@@ -43,20 +43,23 @@ export function lookupCompanyInvitation(
 export function acceptCompanyInvitation(
   accessToken: string,
   token: string,
+  operationId: string,
   requestId?: string,
 ) {
-  return client(accessToken).companyAccessAcceptInvitation({ token }, request(requestId));
+  return client(accessToken).companyAccessAcceptInvitation({ operationId, token }, request(requestId));
 }
 
 export function revokeCompanyInvitation(
   accessToken: string,
   companyId: string,
   invitationId: string,
+  expectedUpdatedAt: string,
+  operationId: string,
   requestId?: string,
 ) {
   return client(accessToken).companyAccessRevokeInvitation(
     invitationId,
-    { companyId },
+    { companyId, expectedUpdatedAt, operationId },
     request(requestId),
   );
 }
@@ -65,11 +68,13 @@ export function resendCompanyInvitation(
   accessToken: string,
   companyId: string,
   invitationId: string,
+  expectedUpdatedAt: string,
+  operationId: string,
   requestId?: string,
 ) {
   return client(accessToken).companyAccessResendInvitation(
     invitationId,
-    { companyId },
+    { companyId, expectedUpdatedAt, operationId },
     request(requestId),
   );
 }

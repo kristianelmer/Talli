@@ -69,9 +69,15 @@ export interface CompanyMembershipResponse {
   membership: CompanyMembership;
 }
 
+export interface AcceptCompanyInvitationRequest {
+  operationId: string;
+  token: string;
+}
+
 export interface CreateCompanyInvitationRequest {
   companyId: string;
   invitedEmail: string;
+  operationId: string;
   role: "reviewer" | "read_only";
 }
 
@@ -87,10 +93,14 @@ export interface InvitationTokenRequest {
 
 export interface CompanyInvitationCommandRequest {
   companyId: string;
+  expectedUpdatedAt: string;
+  operationId: string;
 }
 
 export interface AdministerCompanyMembershipRequest {
   companyId: string;
+  expectedRole: "reviewer" | "read_only";
+  operationId: string;
   role?: "reviewer" | "read_only" | null;
   state?: "active" | "removed" | null;
 }
@@ -109,9 +119,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function hasOnlyProperties(
+  value: Record<string, unknown>,
+  allowedProperties: readonly string[],
+): boolean {
+  return Object.keys(value).every((property) => allowedProperties.includes(property));
+}
+
 function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["apiVersion","service","status"]) &&
     typeof value.apiVersion === "string" &&
     typeof value.service === "string" &&
     value.status === "AVAILABLE"
@@ -121,6 +139,7 @@ function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
 function isCompanyContext(value: unknown): value is CompanyContext {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["aal","address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
     typeof value.id === "string" &&
     typeof value.orgNumber === "string" &&
     typeof value.name === "string" &&
@@ -143,6 +162,7 @@ function isCompanyContext(value: unknown): value is CompanyContext {
 function isCompanyContextResponse(value: unknown): value is CompanyContextResponse {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["companies","selectedCompany"]) &&
     isCompanyContext(value.selectedCompany) &&
     Array.isArray(value.companies) && value.companies.every((item) => isCompanyContext(item))
   );
@@ -151,7 +171,7 @@ function isCompanyContextResponse(value: unknown): value is CompanyContextRespon
 function isCompanyInvitation(value: unknown): value is CompanyInvitation {
   return (
     isRecord(value) &&
-    !("tokenHash" in value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","expiresAt","id","invitedEmail","role","status","updatedAt"]) &&
     typeof value.id === "string" &&
     typeof value.companyId === "string" &&
     typeof value.invitedEmail === "string" &&
@@ -166,6 +186,7 @@ function isCompanyInvitation(value: unknown): value is CompanyInvitation {
 function isCompanyInvitationListResponse(value: unknown): value is CompanyInvitationListResponse {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["invitations"]) &&
     Array.isArray(value.invitations) && value.invitations.every((item) => isCompanyInvitation(item))
   );
 }
@@ -173,6 +194,7 @@ function isCompanyInvitationListResponse(value: unknown): value is CompanyInvita
 function isCompanyInvitationResponse(value: unknown): value is CompanyInvitationResponse {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["deliveryBody","deliverySubject","deliveryToken","invitation"]) &&
     isCompanyInvitation(value.invitation) &&
     (value.deliveryToken === null || typeof value.deliveryToken === "string") &&
     (value.deliverySubject === null || typeof value.deliverySubject === "string") &&
@@ -183,6 +205,7 @@ function isCompanyInvitationResponse(value: unknown): value is CompanyInvitation
 function isCompanyMembership(value: unknown): value is CompanyMembership {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedAt","companyId","role","state","userId"]) &&
     typeof value.companyId === "string" &&
     typeof value.userId === "string" &&
     (value.role === "reviewer" || value.role === "read_only") &&
@@ -194,6 +217,7 @@ function isCompanyMembership(value: unknown): value is CompanyMembership {
 function isCompanyMembershipListResponse(value: unknown): value is CompanyMembershipListResponse {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["memberships"]) &&
     Array.isArray(value.memberships) && value.memberships.every((item) => isCompanyMembership(item))
   );
 }
@@ -201,6 +225,7 @@ function isCompanyMembershipListResponse(value: unknown): value is CompanyMember
 function isCompanyMembershipResponse(value: unknown): value is CompanyMembershipResponse {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["membership"]) &&
     isCompanyMembership(value.membership)
   );
 }
@@ -208,6 +233,7 @@ function isCompanyMembershipResponse(value: unknown): value is CompanyMembership
 function isInvitationLookup(value: unknown): value is InvitationLookup {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["companyName","expiresAt","role"]) &&
     typeof value.companyName === "string" &&
     (value.role === "reviewer" || value.role === "read_only") &&
     typeof value.expiresAt === "string"
@@ -217,6 +243,7 @@ function isInvitationLookup(value: unknown): value is InvitationLookup {
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
+    hasOnlyProperties(value, ["code","detail","instance","requestId","status","title","type"]) &&
     typeof value.type === "string" &&
     typeof value.title === "string" &&
     typeof value.status === "number" &&
@@ -410,7 +437,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     },
 
     async companyAccessAcceptInvitation(
-      body: InvitationTokenRequest,
+      body: AcceptCompanyInvitationRequest,
       request: TalliRequestOptions = {},
     ): Promise<CompanyMembershipResponse> {
       return executeJson(

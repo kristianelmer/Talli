@@ -23,6 +23,15 @@ class CompanyAccessModel(BaseModel):
     model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True)
 
 
+class CompanyAccessCommandModel(CompanyAccessModel):
+    model_config = ConfigDict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+        frozen=True,
+        extra="forbid",
+    )
+
+
 class CompanyContext(CompanyAccessModel):
     id: str
     org_number: str
@@ -50,6 +59,76 @@ class CompanyContextResponse(CompanyAccessModel):
 InvitationRole = Literal["reviewer", "read_only"]
 InvitationStatus = Literal["pending", "accepted", "revoked", "expired"]
 MembershipState = Literal["active", "removed"]
+
+
+class CreateCompanyInvitationRequest(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    invited_email: str
+    role: InvitationRole
+
+
+class InvitationTokenRequest(CompanyAccessCommandModel):
+    token: str
+
+
+class AcceptCompanyInvitationRequest(CompanyAccessCommandModel):
+    operation_id: str
+    token: str
+
+
+class CompanyInvitationCommandRequest(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    expected_updated_at: str
+
+
+class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    expected_role: InvitationRole
+    role: InvitationRole | None = None
+    state: MembershipState | None = None
+
+
+class CreateInvitationGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    invited_email: str
+    role: InvitationRole
+    token_hash: str
+    acceptance_token: str
+
+
+class InvitationIdentityGatewayCommand(CompanyAccessCommandModel):
+    token_hash: str
+    verified_subject: str
+    verified_email: str
+
+
+class AcceptInvitationGatewayCommand(InvitationIdentityGatewayCommand):
+    operation_id: str
+
+
+class InvitationMutationGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    invitation_id: str
+    expected_updated_at: str
+
+
+class ResendInvitationGatewayCommand(InvitationMutationGatewayCommand):
+    token_hash: str
+    acceptance_token: str
+
+
+class AdministerMembershipGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    user_id: str
+    expected_role: InvitationRole
+    role: InvitationRole | None
+    state: MembershipState | None
 
 
 class CompanyInvitation(CompanyAccessModel):
@@ -118,23 +197,23 @@ class CompanyAccessGateway(Protocol):
     async def invitations(self, access_token: str, company_id: str) -> list[Mapping[str, object]]: ...
 
     async def create_invitation(
-        self, access_token: str, invitation: Mapping[str, object]
+        self, access_token: str, command: CreateInvitationGatewayCommand
     ) -> Mapping[str, object]: ...
 
     async def lookup_invitation(
-        self, access_token: str, token_hash: str
+        self, access_token: str, command: InvitationIdentityGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
     async def accept_invitation(
-        self, access_token: str, token_hash: str
+        self, access_token: str, command: AcceptInvitationGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
     async def revoke_invitation(
-        self, access_token: str, company_id: str, invitation_id: str
+        self, access_token: str, command: InvitationMutationGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
     async def resend_invitation(
-        self, access_token: str, command: Mapping[str, object]
+        self, access_token: str, command: ResendInvitationGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
     async def company_memberships(
@@ -142,7 +221,7 @@ class CompanyAccessGateway(Protocol):
     ) -> list[Mapping[str, object]]: ...
 
     async def administer_membership(
-        self, access_token: str, command: Mapping[str, object]
+        self, access_token: str, command: AdministerMembershipGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
 
@@ -269,34 +348,34 @@ class CompanyAccessService:
     async def invite(
         self,
         access_token: str,
-        *,
-        company_id: str,
-        invited_email: str,
-        role: InvitationRole,
+        command: CreateCompanyInvitationRequest,
     ) -> CompanyInvitationResponse:
-        identity = await self._authorize_owner(access_token, company_id)
-        company = await self._company(access_token, company_id)
-        normalized_email = _normalize_email(invited_email)
+        await self._authorize_owner(access_token, command.company_id)
+        company = await self._company(access_token, command.company_id)
+        normalized_email = _normalize_email(command.invited_email)
         acceptance_token = secrets.token_urlsafe(32)
         row = await self._gateway.create_invitation(
             access_token,
-            {
-                "company_id": company_id,
-                "invited_email": normalized_email,
-                "role": role,
-                "token_hash": _token_hash(acceptance_token),
-                "acceptance_token": acceptance_token,
-                "invited_by": str(identity["id"]),
-            },
+            CreateInvitationGatewayCommand(
+                operation_id=command.operation_id,
+                company_id=command.company_id,
+                invited_email=normalized_email,
+                role=command.role,
+                token_hash=_token_hash(acceptance_token),
+                acceptance_token=acceptance_token,
+            ),
         )
+        delivery_token = str(row.get("delivery_token", ""))
+        if not delivery_token:
+            raise _company_access_unavailable()
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
-            delivery_token=acceptance_token,
+            delivery_token=delivery_token,
             delivery_subject=f"Invitasjon til Talli: {company['name']}",
             delivery_body=_invitation_body(
                 company_name=str(company["name"]),
-                role=role,
-                acceptance_token=acceptance_token,
+                role=command.role,
+                acceptance_token=delivery_token,
             ),
         )
 
@@ -305,7 +384,14 @@ class CompanyAccessService:
     ) -> InvitationLookup:
         identity = await self._gateway.session_identity(access_token)
         email = _identity_email(identity)
-        row = await self._gateway.lookup_invitation(access_token, _required_token_hash(token))
+        row = await self._gateway.lookup_invitation(
+            access_token,
+            InvitationIdentityGatewayCommand(
+                token_hash=_required_token_hash(token),
+                verified_subject=str(identity["id"]),
+                verified_email=email,
+            ),
+        )
         if row is None or _normalize_email(str(row.get("invited_email", ""))) != email:
             raise _invitation_not_found()
         if row.get("status") != "pending" or _is_expired(str(row.get("expires_at", ""))):
@@ -317,20 +403,36 @@ class CompanyAccessService:
         )
 
     async def accept_invitation(
-        self, access_token: str, *, token: str
+        self, access_token: str, command: AcceptCompanyInvitationRequest
     ) -> CompanyMembershipResponse:
         identity = await self._gateway.session_identity(access_token)
-        _identity_email(identity)
-        row = await self._gateway.accept_invitation(access_token, _required_token_hash(token))
+        email = _identity_email(identity)
+        row = await self._gateway.accept_invitation(
+            access_token,
+            AcceptInvitationGatewayCommand(
+                operation_id=command.operation_id,
+                token_hash=_required_token_hash(command.token),
+                verified_subject=str(identity["id"]),
+                verified_email=email,
+            ),
+        )
         if row is None:
             raise _invitation_not_found()
         return CompanyMembershipResponse(membership=self._membership(row))
 
     async def revoke_invitation(
-        self, access_token: str, *, company_id: str, invitation_id: str
+        self, access_token: str, invitation_id: str, command: CompanyInvitationCommandRequest
     ) -> CompanyInvitationResponse:
-        await self._authorize_owner(access_token, company_id)
-        row = await self._gateway.revoke_invitation(access_token, company_id, invitation_id)
+        await self._authorize_owner(access_token, command.company_id)
+        row = await self._gateway.revoke_invitation(
+            access_token,
+            InvitationMutationGatewayCommand(
+                operation_id=command.operation_id,
+                company_id=command.company_id,
+                invitation_id=invitation_id,
+                expected_updated_at=command.expected_updated_at,
+            ),
+        )
         if row is None:
             raise _company_access_not_found()
         return CompanyInvitationResponse(
@@ -341,31 +443,35 @@ class CompanyAccessService:
         )
 
     async def resend_invitation(
-        self, access_token: str, *, company_id: str, invitation_id: str
+        self, access_token: str, invitation_id: str, command: CompanyInvitationCommandRequest
     ) -> CompanyInvitationResponse:
-        identity = await self._authorize_owner(access_token, company_id)
-        company = await self._company(access_token, company_id)
+        await self._authorize_owner(access_token, command.company_id)
+        company = await self._company(access_token, command.company_id)
         acceptance_token = secrets.token_urlsafe(32)
         row = await self._gateway.resend_invitation(
             access_token,
-            {
-                "company_id": company_id,
-                "invitation_id": invitation_id,
-                "token_hash": _token_hash(acceptance_token),
-                "acceptance_token": acceptance_token,
-                "actor_id": str(identity["id"]),
-            },
+            ResendInvitationGatewayCommand(
+                operation_id=command.operation_id,
+                company_id=command.company_id,
+                invitation_id=invitation_id,
+                expected_updated_at=command.expected_updated_at,
+                token_hash=_token_hash(acceptance_token),
+                acceptance_token=acceptance_token,
+            ),
         )
         if row is None:
             raise _company_access_not_found()
+        delivery_token = str(row.get("delivery_token", ""))
+        if not delivery_token:
+            raise _company_access_unavailable()
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
-            delivery_token=acceptance_token,
+            delivery_token=delivery_token,
             delivery_subject=f"Invitasjon til Talli: {company['name']}",
             delivery_body=_invitation_body(
                 company_name=str(company["name"]),
                 role=str(row["role"]),
-                acceptance_token=acceptance_token,
+                acceptance_token=delivery_token,
             ),
         )
 
@@ -381,31 +487,29 @@ class CompanyAccessService:
     async def administer_membership(
         self,
         access_token: str,
-        *,
-        company_id: str,
         user_id: str,
-        role: InvitationRole | None,
-        state: MembershipState | None,
+        command: AdministerCompanyMembershipRequest,
     ) -> CompanyMembershipResponse:
-        if role is None and state is None:
+        if command.role is None and command.state is None:
             raise CompanyAccessError(
                 status=422,
                 code="REQUEST_VALIDATION_FAILED",
                 title="Request validation failed",
                 detail="A membership role or state change is required.",
             )
-        identity = await self._authorize_owner(access_token, company_id)
+        identity = await self._authorize_owner(access_token, command.company_id)
         if user_id == identity["id"]:
             raise _company_access_not_found()
         row = await self._gateway.administer_membership(
             access_token,
-            {
-                "company_id": company_id,
-                "user_id": user_id,
-                "role": role,
-                "state": state,
-                "actor_id": str(identity["id"]),
-            },
+            AdministerMembershipGatewayCommand(
+                operation_id=command.operation_id,
+                company_id=command.company_id,
+                user_id=user_id,
+                expected_role=command.expected_role,
+                role=command.role,
+                state=command.state,
+            ),
         )
         if row is None or row.get("role") == "owner":
             raise _company_access_not_found()
@@ -509,6 +613,15 @@ def _company_access_not_found() -> CompanyAccessError:
     )
 
 
+def _company_access_unavailable() -> CompanyAccessError:
+    return CompanyAccessError(
+        status=503,
+        code="COMPANY_ACCESS_UNAVAILABLE",
+        title="Company access unavailable",
+        detail="Company access is temporarily unavailable.",
+    )
+
+
 def _invitation_not_found() -> CompanyAccessError:
     return CompanyAccessError(
         status=404,
@@ -519,10 +632,13 @@ def _invitation_not_found() -> CompanyAccessError:
 
 
 __all__ = [
+    "AcceptCompanyInvitationRequest",
+    "AdministerCompanyMembershipRequest",
     "CompanyAccessError",
     "CompanyAccessGateway",
     "CompanyAccessService",
     "CompanyInvitation",
+    "CompanyInvitationCommandRequest",
     "CompanyInvitationListResponse",
     "CompanyInvitationResponse",
     "CompanyMembership",
@@ -530,7 +646,9 @@ __all__ = [
     "CompanyMembershipResponse",
     "CompanyContext",
     "CompanyContextResponse",
+    "CreateCompanyInvitationRequest",
     "InvitationLookup",
+    "InvitationTokenRequest",
     "InvitationRole",
     "MembershipState",
     "company_access_adapter",

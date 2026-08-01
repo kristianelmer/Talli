@@ -527,6 +527,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Forhåndsvisning av RF-1086.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={inviteWorkspaceReviewer}>
+                  <input name="operationId" type="hidden" value={randomUUID()} />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <span className="panelLabel">Inviter reviewer</span>
                   <label>
@@ -546,6 +547,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <p>Krever ny identitetsbekreftelse. Vi sender e-postvarselet automatisk.</p>
                 </form>
                 <form className="dataPanel formPanel widePanel" action={acceptWorkspaceInvitation}>
+                  <input name="operationId" type="hidden" value={randomUUID()} />
                   <span className="panelLabel">Godta invitasjon</span>
                   <label>
                     Invitasjonstoken
@@ -586,13 +588,17 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                         {status === "pending" ? (
                           <div className="inlineActions">
                             <form action={resendWorkspaceInvitation}>
+                              <input name="operationId" type="hidden" value={randomUUID()} />
                               <input name="companyId" type="hidden" value={primaryCompanyId} />
                               <input name="invitationId" type="hidden" value={invitation.id} />
+                              <input name="expectedUpdatedAt" type="hidden" value={invitation.updatedAt} />
                               <button className="secondaryButton" type="submit">Send på nytt</button>
                             </form>
                             <form action={revokeWorkspaceInvitation}>
+                              <input name="operationId" type="hidden" value={randomUUID()} />
                               <input name="companyId" type="hidden" value={primaryCompanyId} />
                               <input name="invitationId" type="hidden" value={invitation.id} />
+                              <input name="expectedUpdatedAt" type="hidden" value={invitation.updatedAt} />
                               <button className="secondaryButton" type="submit">Tilbakekall</button>
                             </form>
                           </div>
@@ -608,19 +614,27 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                       <strong data-status="ready">{membership.role}</strong>
                       <p>{membership.userId}</p>
                       <form action={administerWorkspaceMembership}>
+                        <input name="operationId" type="hidden" value={randomUUID()} />
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
                         <input name="userId" type="hidden" value={membership.userId} />
                         <input name="state" type="hidden" value="active" />
-                        <select name="role" defaultValue={membership.role}>
+                        <input name="expectedRole" type="hidden" value={membership.role} />
+                        <select
+                          aria-label={`Medlemsrolle for ${membership.userId}`}
+                          name="role"
+                          defaultValue={membership.role}
+                        >
                           <option value="reviewer">Reviewer</option>
                           <option value="read_only">Read-only</option>
                         </select>
                         <button className="secondaryButton" type="submit">Endre rolle</button>
                       </form>
                       <form action={administerWorkspaceMembership}>
+                        <input name="operationId" type="hidden" value={randomUUID()} />
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
                         <input name="userId" type="hidden" value={membership.userId} />
                         <input name="state" type="hidden" value="removed" />
+                        <input name="expectedRole" type="hidden" value={membership.role} />
                         <button className="secondaryButton" type="submit">Fjern tilgang</button>
                       </form>
                     </div>

@@ -88,8 +88,9 @@ function renderInterface(name, schema) {
 }
 
 function renderGuard(name, schema) {
+  const allowedProperties = Object.keys(schema.properties ?? {});
   const checks = [
-    ...(name === "CompanyInvitation" ? ['    !("tokenHash" in value)'] : []),
+    `    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`,
     ...(schema.required ?? []).map((property) => {
     if (schema.properties[property]?.$ref) {
       return `    is${schemaType(schema.properties[property])}(value.${property})`;
@@ -140,6 +141,7 @@ const additionalSchemas = Object.fromEntries([
   "CompanyMembership",
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
+  "AcceptCompanyInvitationRequest",
   "CreateCompanyInvitationRequest",
   "InvitationLookup",
   "InvitationTokenRequest",
@@ -165,6 +167,13 @@ ${renderInterface("ProblemDetails", problemSchema)}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function hasOnlyProperties(
+  value: Record<string, unknown>,
+  allowedProperties: readonly string[],
+): boolean {
+  return Object.keys(value).every((property) => allowedProperties.includes(property));
 }
 
 ${renderGuard("SystemBoundaryStatus", successSchema)}
@@ -368,7 +377,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     },
 
     async companyAccessAcceptInvitation(
-      body: InvitationTokenRequest,
+      body: AcceptCompanyInvitationRequest,
       request: TalliRequestOptions = {},
     ): Promise<CompanyMembershipResponse> {
       return executeJson(
