@@ -358,6 +358,49 @@ Round-5 TDD and verification evidence:
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
 
+## Issue #160 review-fix round 6
+
+- Review input: `/tmp/talli-issue-160-architecture-review-6.md` and
+  `/tmp/talli-issue-160-standards-review-6.md`.
+- Exact reviewed head: `f85fffed06a1faae10c56c352c865ac4d38dc87b`.
+- Corrected implementation head before this progress-only record:
+  `d407bb3c8ce31bb7236824903e679ec05f8ee83a`.
+- Review-fix commit: `d407bb3c`.
+- Acceptance state: the shared Important storage/locking namespace finding is
+  implemented; fresh-context acceptance review remains required.
+
+Resolved review finding:
+
+- Command receipts now use `(actor_id, operation_id)` as their composite primary
+  key. Different actors may safely reuse the same operation UUID, while the same
+  actor deliberately retains one idempotency/conflict namespace across companies.
+- Every owner and acceptance receipt read selects by both internally derived
+  actor and operation ID. The existing company, command, and fingerprint checks
+  continue to define exact replay semantics.
+- All five command advisory locks hash the internally derived actor together
+  with the operation ID. The tested company-A/company-B actors have distinct
+  lock keys for the same operation UUID; the per-email create serialization lock
+  remains independently scoped to company and recipient.
+
+Round-6 TDD and verification evidence:
+
+- RED: a valid company-A create using company B's operation ID rolled back on
+  the global receipt primary key, while the identical unknown-ID request
+  succeeded. Static contracts also rejected the global key, actor-unscoped
+  receipt reads, and operation-only advisory locks.
+- GREEN: both valid requests reach identical successful create semantics inside
+  isolated rollback transactions. No company-A invitation/receipt remains and
+  company B's receipt is unchanged. Focused runtime/schema/review tests passed
+  24/24, including acceptance replay, exact replay, demotion concealment,
+  restored reconciliation, and prior invalid-payload concealment.
+- `npm run test:boundary` passed: backend 30, web 19, contract 27.
+- `npm run test:supabase` passed 16 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run typecheck`, and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
+
 ## Issue #160 review-fix round 4
 
 - Review input: `/tmp/talli-issue-160-architecture-review-4.md`; the matching
