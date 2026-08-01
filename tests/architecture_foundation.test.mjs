@@ -46,6 +46,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   ]);
   assert.deepEqual(result.evidence.edges, [
     {
+      from: "backend-system:company-access-administration",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
+    {
       from: "backend-system:company-access-context",
       imports: ["talli_backend.modules.company_access.public"],
       kind: "workflow",
@@ -507,7 +513,6 @@ test("compatibility operations map to their serialized future tickets", () => {
     compatibility.exceptions.map((entry) => [entry.removalIssue, entry]),
   );
   const onboarding = byRemovalIssue.get("#138");
-  const membershipAdministration = byRemovalIssue.get("#160");
   const cancellation = byRemovalIssue.get("#161");
   const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.exceptions.find((entry) => (
     entry.scopes.some((scope) => scope.path === path
@@ -528,8 +533,9 @@ test("compatibility operations map to their serialized future tickets", () => {
     "searchOperatorSupportDashboard",
     "apps/web/app/lib/supabase/server.ts",
   ), "#150");
-  assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), "#160");
-  assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), "#160");
+  assert.equal(byRemovalIssue.has("#160"), false);
+  assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), undefined);
+  assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), undefined);
   assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), "#161");
   assert.equal(ownerOf("table:companies", "completeCompanyDeletionRecord"), "#161");
   assert.equal(ownerOf("table:holding_actions", "recordShareholderLoan"), "#145");
@@ -539,7 +545,6 @@ test("compatibility operations map to their serialized future tickets", () => {
   assert.equal(ownerOf("table:audit_events", "uploadDocument"), "#155");
   assert.equal(ownerOf("table:notification_outbox", "inviteWorkspaceReviewer"), "#156");
   assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
-  assert.match(membershipAdministration.removalCondition, /invitations and membership administration.*#160/u);
   assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
   assert.deepEqual(
     onboarding.scopes.map(({ resource, operation }) => `${resource}:${operation}`).sort(),
@@ -638,7 +643,7 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
-  const membership = compatibility.exceptions.find((entry) => entry.removalIssue === "#160");
+  const cancellation = compatibility.exceptions.find((entry) => entry.removalIssue === "#161");
   const duplicateScope = {
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
@@ -646,13 +651,13 @@ test("compatibility scopes cannot overlap across future tickets", () => {
     operation: "inviteWorkspaceMemberAction",
   };
   onboarding.scopes.push(duplicateScope);
-  membership.scopes.push(duplicateScope);
+  cancellation.scopes.push(duplicateScope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     assert.match(
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
-      /duplicate compatibility scope.*#138.*#160/u,
+      /duplicate compatibility scope.*#138.*#161/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -1153,7 +1158,7 @@ from ..other import internal as other_internal
   writeFileSync(
     backendDocumentationPath,
     readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/company-access/context","/api/v1/system-boundary/tracer"]',
+      '"routes":["/api/v1/company-access/context","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
       '"routes":["/invented-system-route"]',
     ),
   );
