@@ -316,3 +316,43 @@ Round-3 TDD and verification evidence:
   and `npm run build:backend` passed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
+
+## Issue #160 review-fix round 4
+
+- Review input: `/tmp/talli-issue-160-architecture-review-4.md`; the matching
+  standards review passed without findings.
+- Exact reviewed head: `a660c3eee3c8742f407bcc0b63dbc7a733169142`.
+- Corrected implementation head before this progress-only record:
+  `6ddb2d29778bbbcd7382e0b41e9fec7970313bc8`.
+- Review-fix commit: `6ddb2d29`.
+- Acceptance state: the one Important concurrency finding is implemented;
+  fresh-context architecture acceptance review remains required before merge.
+
+Resolved review finding:
+
+- Receipt SELECT RLS preserves actor-only acceptance replay while requiring the
+  original actor, AAL2, current accepted ownership, and unexpired lifetime for
+  all four owner-command receipt families in the SELECT statement's snapshot.
+- A narrow security-definer existence helper is executable only by the
+  restricted command executor. It exposes no receipt fields and prevents a
+  hidden demoted/expired operation ID from being re-executed.
+- The authorized receipt read is now the replay linearization point. A demotion
+  committed after preliminary authorization but before receipt selection is
+  concealed as `company_access_not_found`; create/resend tokens cannot cross
+  that boundary. Restoring owner authority preserves exact unexpired replay.
+
+Round-4 TDD and verification evidence:
+
+- RED: a disposable-database helper hook computed and cached owner authorization,
+  blocked on an advisory lock, allowed a second connection to commit demotion,
+  then resumed the receipt SELECT. The old policy returned `resend-token`.
+- GREEN: the coordinated two-connection runtime denied the same race without a
+  token and reconciled the original resend after owner restoration. Focused
+  database/schema/review tests passed 17/17.
+- `npm run test:boundary` passed: backend 30, web 19, contract 27.
+- `npm run test:supabase` passed 16 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run typecheck`, and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
