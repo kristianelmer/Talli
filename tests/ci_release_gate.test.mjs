@@ -84,21 +84,25 @@ test("database isolation uses the locked Python renderer environment", () => {
   assert.ok(databaseJob.includes("npx playwright install --with-deps chromium"));
 });
 
-test("browser owner rehearsal owns the local FastAPI and Next.js processes", () => {
+test("browser owner rehearsal includes executable owned-process lifecycle coverage", () => {
   const harness = readFileSync(
     new URL("browser_owner_annual_loop.mjs", import.meta.url),
     "utf8",
   );
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
-  assert.doesNotMatch(harness, /spawn\("npm"/);
+  assert.ok(packageJson.scripts["test:browser-owner"].includes("browser_process_lifecycle.test.mjs"));
   assert.match(harness, /startBackendServer/);
-  assert.match(harness, /talli_backend\.main:app/);
+  assert.match(harness, /allocateLoopbackPort/);
   assert.match(harness, /TALLI_BACKEND_URL:\s*backendBaseUrl/);
   assert.match(harness, /await establishSyntheticAal2\(page, baseUrl\)/);
-  assert.match(harness, /await stopServer\(backend\)/);
-  assert.match(harness, /node_modules\/next\/dist\/bin\/next/);
-  assert.match(harness, /await stopServer\(server\)/);
-  assert.match(harness, /server\.kill\("SIGKILL"\)/);
+  assert.match(harness, /teardownAnnualLoop/);
+  assert.match(harness, /stopOwnedProcess\(backend\)/);
+  assert.match(harness, /stopOwnedProcess\(server\)/);
+  assert.ok(
+    harness.indexOf("await teardownAnnualLoop") < harness.indexOf("backend = startBackendServer"),
+    "fixture cleanup must be registered before backend startup",
+  );
 });
 
 test("Vercel deploys the Next output produced by the root build", () => {

@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { createHmac, randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
+import pg from "pg";
 
+import {
+  allocateLoopbackPort,
+  startOwnedProcess,
+  stopOwnedProcess,
+  waitForOwnedReadiness,
+} from "./support/owned-process-lifecycle.mjs";
 import { isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
 
 loadDotEnv();
@@ -14,9 +20,10 @@ loadDotEnv();
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 
 test("browser owner annual loop uses persisted state and survives reload", async (t) => {
-  if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+  if (!supabaseUrl || !serviceRoleKey || !anonKey || !databaseUrl) {
     t.skip("Supabase env missing");
     return;
   }
@@ -25,11 +32,13 @@ test("browser owner annual loop uses persisted state and survives reload", async
     return;
   }
 
-  const port = 3217;
+  const port = await allocateLoopbackPort();
   const baseUrl = `http://127.0.0.1:${port}`;
-  const backendPort = 3218;
+  const backendPort = await allocateLoopbackPort();
   const backendBaseUrl = `http://127.0.0.1:${backendPort}`;
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+  const database = new pg.Client({ connectionString: databaseUrl });
+  await database.connect();
   const ownerEmail = `owner-${randomUUID()}@example.test`;
   const password = `Pw-${randomUUID()}-talli`;
   const orgNumber = String(Math.floor(100000000 + Math.random() * 899999999));
@@ -47,47 +56,27 @@ test("browser owner annual loop uses persisted state and survives reload", async
   const ownerId = createdUser.user.id;
 
   await seedAnnualLoop(admin, { companyId, setupId, shareholderId, previewId, ownerId, orgNumber });
+  let backend;
+  let server;
+  let browser;
+  t.after(async () => {
+    await teardownAnnualLoop({ admin, database, companyId, ownerId, backend, server, browser });
+  });
 
-  const backend = startBackendServer({
+  backend = startBackendServer({
     port: backendPort,
     supabaseUrl,
     anonKey,
   });
-  t.after(async () => {
-    await stopServer(backend);
-  });
-  await waitForBackend(backendBaseUrl, backend);
-
-  const server = spawn(
-    process.execPath,
-    [
-      "node_modules/next/dist/bin/next",
-      "dev",
-      "apps/web",
-      "--hostname",
-      "127.0.0.1",
-      "--port",
-      String(port),
-    ],
-    {
-      cwd: process.cwd(),
-      env: { ...process.env, TALLI_BACKEND_URL: backendBaseUrl },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  server.stdout.resume();
-  server.stderr.resume();
-  t.after(async () => {
-    await stopServer(server);
-  });
-  t.after(async () => {
-    await admin.from("companies").delete().eq("id", companyId);
-    await admin.auth.admin.deleteUser(ownerId);
+  await waitForOwnedReadiness({
+    process: backend,
+    url: `${backendBaseUrl}/health/ready`,
   });
 
-  await waitForServer(baseUrl);
-  const browser = await chromium.launch({ headless: true });
-  t.after(async () => browser.close());
+  server = startNextServer({ port, backendBaseUrl });
+
+  await waitForOwnedReadiness({ process: server, url: baseUrl });
+  browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
   // The public landing page moved to `/` in #90; authentication is a distinct
@@ -301,17 +290,51 @@ async function seedAnnualLoop(admin, ids) {
   );
 }
 
-async function waitForServer(baseUrl) {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
+async function teardownAnnualLoop({ admin, database, companyId, ownerId, backend, server, browser }) {
+  const errors = [];
+  for (const cleanup of [
+    () => browser?.close(),
+    () => stopOwnedProcess(server),
+    () => stopOwnedProcess(backend),
+    () => cleanupAnnualLoopFixture({ admin, database, companyId, ownerId }),
+    () => database.end(),
+  ]) {
     try {
-      const response = await fetch(baseUrl);
-      if (response.ok) return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await cleanup();
+    } catch (error) {
+      errors.push(error);
     }
   }
-  throw new Error(`Server did not start at ${baseUrl}`);
+  if (errors.length > 0) throw new AggregateError(errors, "annual_loop_teardown_failed");
+}
+
+async function cleanupAnnualLoopFixture({ admin, database, companyId, ownerId }) {
+  const errors = [];
+  try {
+    await database.query("begin");
+    await database.query("set local session_replication_role = replica");
+    await database.query("delete from public.customer_agreement_acceptances where company_id = $1", [companyId]);
+    await database.query("commit");
+  } catch (error) {
+    errors.push(error);
+    try {
+      await database.query("rollback");
+    } catch (rollbackError) {
+      errors.push(rollbackError);
+    }
+  }
+  try {
+    await assertNoError(admin.from("companies").delete().eq("id", companyId));
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    const { error } = await admin.auth.admin.deleteUser(ownerId);
+    assert.ifError(error);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length > 0) throw new AggregateError(errors, "annual_loop_fixture_cleanup_failed");
 }
 
 async function establishSyntheticAal2(page, baseUrl) {
@@ -364,9 +387,9 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
   if (!existsSync(backendPython)) {
     throw new Error("backend_python_missing");
   }
-  const backend = spawn(
-    backendPython,
-    [
+  return startOwnedProcess({
+    command: backendPython,
+    args: [
       "-m",
       "uvicorn",
       "talli_backend.main:app",
@@ -377,58 +400,30 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
       "--port",
       String(port),
     ],
-    {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        SUPABASE_URL: localSupabaseUrl,
-        SUPABASE_ANON_KEY: localAnonKey,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SUPABASE_URL: localSupabaseUrl,
+      SUPABASE_ANON_KEY: localAnonKey,
     },
-  );
-  backend.stdout.resume();
-  backend.stderr.resume();
-  return backend;
-}
-
-async function waitForBackend(baseUrl, backend) {
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    if (backend.exitCode !== null || backend.signalCode !== null) {
-      throw new Error("backend_server_exited");
-    }
-    try {
-      const response = await fetch(`${baseUrl}/health/ready`);
-      if (response.ok) return;
-    } catch {
-      // Bounded local backend startup polling.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error("backend_server_start_deadline_exceeded");
-}
-
-async function stopServer(server) {
-  if (server.exitCode !== null || server.signalCode !== null) return;
-
-  const exited = new Promise((resolve) => server.once("exit", resolve));
-  server.kill("SIGTERM");
-  let timeoutId;
-  const gracefulTimeout = new Promise((resolve) => {
-    timeoutId = setTimeout(() => resolve(false), 5_000);
-    timeoutId.unref?.();
   });
-  const stopped = await Promise.race([
-    exited.then(() => true),
-    gracefulTimeout,
-  ]);
-  clearTimeout(timeoutId);
+}
 
-  if (!stopped && server.exitCode === null && server.signalCode === null) {
-    server.kill("SIGKILL");
-    await exited;
-  }
+function startNextServer({ port, backendBaseUrl }) {
+  return startOwnedProcess({
+    command: process.execPath,
+    args: [
+      "node_modules/next/dist/bin/next",
+      "dev",
+      "apps/web",
+      "--hostname",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    cwd: process.cwd(),
+    env: { ...process.env, TALLI_BACKEND_URL: backendBaseUrl },
+  });
 }
 
 async function expectText(page, text) {
