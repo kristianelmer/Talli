@@ -36,7 +36,7 @@ export function backendBaseUrl(): string {
   }
   const hostname = url.hostname.replace(/^\[|\]$/gu, "");
   const isLoopback = ["127.0.0.1", "localhost", "::1"].includes(hostname);
-  if (process.env.NODE_ENV === "production" && url.protocol !== "https:" && !isLoopback) {
+  if (url.protocol !== "https:" && !isLoopback) {
     throw new BackendConfigurationError("BACKEND_URL_INSECURE");
   }
   return url.origin;

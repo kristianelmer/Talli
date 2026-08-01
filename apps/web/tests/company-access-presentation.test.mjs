@@ -19,7 +19,8 @@ async function withBackendConfiguration(url, nodeEnvironment, callback) {
   const originalNodeEnvironment = process.env.NODE_ENV;
   if (url === undefined) delete process.env.TALLI_BACKEND_URL;
   else process.env.TALLI_BACKEND_URL = url;
-  process.env.NODE_ENV = nodeEnvironment;
+  if (nodeEnvironment === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = nodeEnvironment;
   try {
     return await callback();
   } finally {
@@ -74,6 +75,19 @@ test("company-access and system-boundary transports share typed fail-closed back
   }
 });
 
+test("both transports reject remote HTTP in every Node environment", async () => {
+  for (const nodeEnvironment of ["production", "development", "test", undefined]) {
+    await withBackendConfiguration("http://backend.example", nodeEnvironment, async () => {
+      const isInsecure = (error) => (
+        error instanceof BackendConfigurationError
+        && error.code === "BACKEND_URL_INSECURE"
+      );
+      await assert.rejects(loadCompanyAccessContext("session-token"), isInsecure);
+      await assert.rejects(loadSystemBoundary("request-136"), isInsecure);
+    });
+  }
+});
+
 test("company-access and system-boundary accept the same HTTPS and loopback origins", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (requestUrl) => (
@@ -82,21 +96,23 @@ test("company-access and system-boundary accept the same HTTPS and loopback orig
       : Response.json({ apiVersion: "v1", service: "talli-backend", status: "AVAILABLE" })
   );
   try {
-    for (const [url, expected] of [
-      ["https://backend.example/", "https://backend.example"],
-      ["http://127.0.0.1:8000", "http://127.0.0.1:8000"],
-      ["http://localhost:8000", "http://localhost:8000"],
-      ["http://[::1]:8000", "http://[::1]:8000"],
-    ]) {
-      await withBackendConfiguration(url, "production", async () => {
-        assert.equal(companyAccessBackendBaseUrl(), expected);
-        assert.equal(backendBaseUrl(), expected);
-        assert.equal(
-          (await loadCompanyAccessContext("session-token")).selectedCompany.id,
-          "company-1",
-        );
-        assert.equal((await loadSystemBoundary("request-136")).status, "AVAILABLE");
-      });
+    for (const nodeEnvironment of ["production", "development", "test", undefined]) {
+      for (const [url, expected] of [
+        ["https://backend.example/", "https://backend.example"],
+        ["http://127.0.0.1:8000", "http://127.0.0.1:8000"],
+        ["http://localhost:8000", "http://localhost:8000"],
+        ["http://[::1]:8000", "http://[::1]:8000"],
+      ]) {
+        await withBackendConfiguration(url, nodeEnvironment, async () => {
+          assert.equal(companyAccessBackendBaseUrl(), expected);
+          assert.equal(backendBaseUrl(), expected);
+          assert.equal(
+            (await loadCompanyAccessContext("session-token")).selectedCompany.id,
+            "company-1",
+          );
+          assert.equal((await loadSystemBoundary("request-136")).status, "AVAILABLE");
+        });
+      }
     }
   } finally {
     globalThis.fetch = originalFetch;
