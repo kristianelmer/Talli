@@ -272,3 +272,47 @@ Round-2 TDD and verification evidence:
   CI-gate, and the remaining rehearsal suites.
 - No hosted provider, deployment, GitHub mutation, push, or chargeable action
   was performed.
+
+## Issue #160 review-fix round 3
+
+- Review input: `/tmp/talli-issue-160-architecture-review-3.md` and
+  `/tmp/talli-issue-160-standards-review-3.md`.
+- Exact reviewed head: `94e3f3dec5c2689e6585a513cce4f09e1f4026d7`.
+- Corrected implementation head before this progress-only record:
+  `20ee4c9d475d4b8f8f55ad6ca7026f70a50cfe21`.
+- Review-fix commits: `c79eb3b7` and `20ee4c9d`.
+- Acceptance state: the one Important architecture finding and one Minor
+  standards finding are implemented; fresh-context acceptance review remains
+  required before #160 is merged.
+
+Resolved review findings:
+
+- Create, resend, revoke, and membership-administration RPCs now require the
+  caller to remain a currently accepted owner at AAL2 before reading or
+  returning any historical receipt. Authorization loss is concealed as
+  `company_access_not_found`, including token-bearing create/resend receipts.
+- Receipt replay now rejects expired receipts before fingerprint comparison or
+  result/token recovery. An authorized caller can still reconcile the exact
+  unexpired operation after authority is restored, preserving idempotency.
+- Invitation revision fields must arrive as JSON strings matching RFC3339's
+  date/time shape before Pydantic converts them to aware datetimes. Numeric
+  epochs and space-separated timestamps return RFC 9457 HTTP 422 without any
+  Auth or PostgREST gateway call.
+
+Round-3 TDD and verification evidence:
+
+- RED: the target-shaped PostgreSQL regression disclosed `retained-token` to a
+  demoted historical actor; the two strict timestamp requests reached the
+  gateway and returned 404 instead of 422.
+- Focused GREEN: backend company-access tests passed 24/24; the real PostgreSQL
+  runtime passed 1/1; migration/schema and prior-review tests passed 15/15.
+- `npm run test:boundary` passed: backend 30, web 19, contract 26.
+- `npm run test:supabase` passed 16 with 4 unchanged optional environment
+  skips. Its mandatory PostgreSQL case denied all four receipt families at
+  AAL1, denied create/resend after owner demotion, preserved exact reconciliation
+  after authority restoration, and concealed an expired token-bearing receipt.
+- `npm run typecheck`, `npm run check:architecture`,
+  `npm run test:supabase-grants` (3/3), OpenAPI/client reproducibility checks,
+  and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
