@@ -1,5 +1,7 @@
--- CONTRACT: apply only after the generated-client web/backend revision is live.
--- The preceding expansion migration deliberately supports both revisions.
+-- CONTRACT RELEASE ARTIFACT: intentionally outside supabase/migrations so the
+-- automatic deployment runner cannot apply it in the expansion release. Move
+-- this immutable file into the runner only in Release C, after the generated-
+-- client web/backend revision is live and its overlap checks pass.
 
 drop policy if exists "owners and invitees can read company invitations" on public.company_invitations;
 drop policy if exists "accepted owners and invitees can read company invitations" on public.company_invitations;
@@ -12,7 +14,7 @@ drop policy if exists "accepted owners can read company invitations" on public.c
 create policy "accepted owners can read company invitations"
 on public.company_invitations for select
 to authenticated
-using (public.company_access_is_accepted_owner(company_id));
+using (public.company_access_is_accepted_owner_v1(company_id));
 
 revoke insert, update, delete on public.company_invitations from authenticated;
 revoke select on public.company_invitations from authenticated;

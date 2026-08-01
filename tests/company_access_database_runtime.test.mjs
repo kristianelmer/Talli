@@ -10,6 +10,9 @@ const bootstrapSql = String.raw`
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
+create schema extensions;
+create extension pgcrypto with schema extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
 create schema auth;
 create table auth.users (id uuid primary key, email text);
 create or replace function auth.uid() returns uuid language sql stable as $$
@@ -90,7 +93,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         '10000000-0000-0000-0000-000000000001',
         'outsider@example.test',
         'reviewer',
-        encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+        encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
         'pending',
         now() + interval '1 day',
         '00000000-0000-0000-0000-000000000011'
@@ -117,7 +120,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     psql(containerName, [], String.raw`
       delete from public.company_invitations where id = '30000000-0000-0000-0000-000000000099';
     `);
-    psql(containerName, ["--file", "/repo/supabase/migrations/20260801091000_company_access_invitations_contract.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/contract-migrations/20260801091000_company_access_invitations_contract.sql"]);
 
     const output = psql(containerName, [], String.raw`
       set role authenticated;
@@ -135,14 +138,14 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         '40000000-0000-0000-0000-000000000001',
         '10000000-0000-0000-0000-000000000001',
         'delivery@example.test', 'reviewer',
-        encode(digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'),
+        encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'),
         'create-token'
       );
       select * from public.company_access_create_invitation(
         '40000000-0000-0000-0000-000000000001',
         '10000000-0000-0000-0000-000000000001',
         'delivery@example.test', 'reviewer',
-        encode(digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'),
+        encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'),
         'create-token'
       );
       do $$ declare recovered text; begin
@@ -153,7 +156,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
           '40000000-0000-0000-0000-000000000001',
           '10000000-0000-0000-0000-000000000001',
           'delivery@example.test', 'reviewer',
-          encode(digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'), 'create-token'
+          encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'), 'create-token'
         );
         if recovered <> 'create-token' then
           raise exception 'create receipt cannot recover delivery token';
@@ -166,19 +169,19 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         select delivery_token into recovered from public.company_access_resend_invitation(
           '40000000-0000-0000-0000-000000000002',
           '10000000-0000-0000-0000-000000000001', invitation_id, expected,
-          encode(digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'), 'resend-token'
+          encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'), 'resend-token'
         );
         if recovered <> 'resend-token' then raise exception 'resend did not return delivery token'; end if;
         select delivery_token into recovered from public.company_access_resend_invitation(
           '40000000-0000-0000-0000-000000000002',
           '10000000-0000-0000-0000-000000000001', invitation_id, expected,
-          encode(digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'), 'resend-token'
+          encode(extensions.digest(convert_to('resend-token', 'UTF8'), 'sha256'), 'hex'), 'resend-token'
         );
         if recovered <> 'resend-token' then raise exception 'resend receipt cannot recover delivery token'; end if;
         select delivery_token into superseded from public.company_access_create_invitation(
           '40000000-0000-0000-0000-000000000001',
           '10000000-0000-0000-0000-000000000001', 'delivery@example.test', 'reviewer',
-          encode(digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'), 'create-token'
+          encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'), 'create-token'
         );
         if superseded is not null then
           raise exception 'resend retained superseded raw token';
@@ -186,6 +189,24 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       end $$;
 
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare changed integer; v_membership_role text; v_membership_accepted timestamptz; begin
+        begin
+          update public.company_memberships set role = 'owner', accepted_at = null
+          where company_id = '10000000-0000-0000-0000-000000000001'
+            and user_id = '00000000-0000-0000-0000-000000000044';
+          get diagnostics changed = row_count;
+        exception when insufficient_privilege then
+          changed := 0;
+        end;
+        select role, accepted_at into v_membership_role, v_membership_accepted
+        from public.company_memberships
+        where company_id = '10000000-0000-0000-0000-000000000001'
+          and user_id = '00000000-0000-0000-0000-000000000044';
+        if changed <> 0 or v_membership_role <> 'reviewer' or v_membership_accepted is null then
+          raise exception 'reviewer directly promoted or cleared accepted_at: changed=%, role=%, accepted=%',
+            changed, v_membership_role, v_membership_accepted;
+        end if;
+      end $$;
       do $$ begin
         if (select role from public.company_memberships) != 'reviewer' then raise exception 'reviewer role was not preserved through RLS'; end if;
       end $$;
@@ -197,14 +218,52 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       do $$ begin
         if exists (select 1 from public.companies) then raise exception 'outsider received company rows'; end if;
         if exists (select 1 from public.company_memberships) then raise exception 'outsider received membership rows'; end if;
+        if has_function_privilege('authenticated', 'public.company_access_current_identity_v1()', 'EXECUTE') then
+          raise exception 'authenticated can directly execute current identity helper';
+        end if;
+        if has_function_privilege('authenticated', 'public.company_access_token_hash_v1(text)', 'EXECUTE') then
+          raise exception 'authenticated can directly execute token hash helper';
+        end if;
       end $$;
       select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
       do $$ begin
         if exists (select 1 from public.company_invitations) then
           raise exception 'invitee enumerated an invitation without the token RPC';
         end if;
+      end $$;
+      reset role;
+      update auth.users set email = 'current-outsider@example.test'
+      where id = '00000000-0000-0000-0000-000000000033';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
+      select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
+      do $$ begin
         if (select count(*) from public.company_access_lookup_invitation(
-          encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+          encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+          '00000000-0000-0000-0000-000000000033', 'outsider@example.test'
+        )) <> 0 then
+          raise exception 'direct stale-JWT lookup forged current Auth identity';
+        end if;
+        begin
+          perform * from public.company_access_accept_invitation(
+            '40000000-0000-0000-0000-000000000099',
+            encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+            '00000000-0000-0000-0000-000000000033', 'outsider@example.test'
+          );
+          raise exception 'direct stale-JWT acceptance forged current Auth identity';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'invitation_not_found' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      update auth.users set email = 'outsider@example.test'
+      where id = '00000000-0000-0000-0000-000000000033';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
+      select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
+      do $$ begin
+        if (select count(*) from public.company_access_lookup_invitation(
+          encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
           '00000000-0000-0000-0000-000000000033', 'outsider@example.test'
         )) != 1 then
           raise exception 'recipient could not look up pending invitation';
@@ -213,7 +272,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       do $$ begin
         perform * from public.company_access_accept_invitation(
           '40000000-0000-0000-0000-000000000003',
-          encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+          encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
           '00000000-0000-0000-0000-000000000033', 'stale@example.test'
         );
         raise exception 'stale JWT disagreement was accepted';
@@ -222,12 +281,12 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       end $$;
       select * from public.company_access_accept_invitation(
         '40000000-0000-0000-0000-000000000004',
-        encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+        encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
         '00000000-0000-0000-0000-000000000033', 'outsider@example.test'
       );
       select * from public.company_access_accept_invitation(
         '40000000-0000-0000-0000-000000000004',
-        encode(digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
+        encode(extensions.digest(convert_to('accept-token', 'UTF8'), 'sha256'), 'hex'),
         '00000000-0000-0000-0000-000000000033', 'outsider@example.test'
       );
       do $$ begin
@@ -272,18 +331,28 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
           raise exception 'membership removal did not commit';
         end if;
         if (select rolbypassrls from pg_catalog.pg_roles where rolname = 'company_access_executor') then raise exception 'executor bypasses RLS'; end if;
+        if has_schema_privilege('company_access_executor', 'extensions', 'USAGE') then raise exception 'executor received broad pgcrypto schema usage'; end if;
+        if exists (
+          select 1 from pg_catalog.pg_class
+          where oid in ('public.company_invitations'::regclass, 'public.company_memberships'::regclass)
+            and relforcerowsecurity
+        ) then raise exception 'business tables unexpectedly force RLS'; end if;
       end $$;
       do $$ declare changed integer; begin
-        update public.company_memberships set role = 'reviewer'
-        where company_id = '10000000-0000-0000-0000-000000000001'
-          and user_id = '00000000-0000-0000-0000-000000000055';
-        get diagnostics changed = row_count;
+        begin
+          update public.company_memberships set role = 'reviewer'
+          where company_id = '10000000-0000-0000-0000-000000000001'
+            and user_id = '00000000-0000-0000-0000-000000000055';
+          get diagnostics changed = row_count;
+        exception when insufficient_privilege then
+          changed := 0;
+        end;
         if changed <> 0 then raise exception 'authenticated owner bypassed command RLS'; end if;
       end $$;
       select set_config('request.jwt.claim.sub', '', false);
       select set_config('request.jwt.claims', '', false);
       do $$ begin
-        if public.company_access_is_accepted_owner('10000000-0000-0000-0000-000000000001') then
+        if public.company_access_is_accepted_owner_v1('10000000-0000-0000-0000-000000000001') then
           raise exception 'connection context leaked after claims were cleared';
         end if;
       end $$;

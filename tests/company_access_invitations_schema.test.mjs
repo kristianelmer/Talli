@@ -7,7 +7,7 @@ const migrationUrl = new URL(
   import.meta.url,
 );
 const contractMigrationUrl = new URL(
-  "../supabase/migrations/20260801091000_company_access_invitations_contract.sql",
+  "../supabase/contract-migrations/20260801091000_company_access_invitations_contract.sql",
   import.meta.url,
 );
 
@@ -91,8 +91,10 @@ test("acceptance binds the verified Auth identity and rejects stale JWT claims a
 
   assert.match(accept, /p_verified_subject uuid/iu);
   assert.match(accept, /p_verified_email text/iu);
-  assert.match(accept, /p_verified_subject[^;]+auth\.uid\(\)/iu);
-  assert.match(accept, /v_email <> lower\(coalesce\(auth\.jwt\(\) ->> 'email', ''\)\)/iu);
+  assert.match(accept, /company_access_current_identity_v1\(\)/iu);
+  assert.match(accept, /p_verified_subject <> v_current_subject/iu);
+  assert.match(accept, /v_email <> v_current_email/iu);
+  assert.match(accept, /v_current_email <> pg_catalog\.lower\(coalesce\(auth\.jwt\(\) ->> 'email', ''\)\)/iu);
   assert.match(accept, /for update/iu);
   assert.match(accept, /insert into public\.company_memberships[\s\S]+update public\.company_invitations/iu);
 });
