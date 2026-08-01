@@ -317,6 +317,47 @@ Round-3 TDD and verification evidence:
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
 
+## Issue #160 review-fix round 5
+
+- Review input: `/tmp/talli-issue-160-architecture-review-5.md`.
+- Exact reviewed head: `176e9ed8f9fd65f8d6e197398aed0ed088e765aa`.
+- Corrected implementation head before this progress-only record:
+  `89ec3685c661fd97e9f81124b42336949d0b04c2`.
+- Review-fix commit: `89ec3685`.
+- Acceptance state: the one Important cross-tenant oracle finding is
+  implemented; fresh-context architecture acceptance remains required.
+
+Resolved review finding:
+
+- The privileged hidden-receipt check now requires operation ID, company,
+  command name, and request fingerprint, and derives the original actor from
+  `auth.uid()` internally. Authenticated callers cannot execute it directly or
+  spoof an actor parameter.
+- All four owner RPCs pass a constant command name plus their existing stable
+  business fingerprint. A foreign tenant/actor/command/fingerprint receipt is
+  therefore indistinguishable from an unknown operation before ordinary input
+  validation, while this caller's exact hidden demoted/expired replay remains
+  concealed rather than re-executed.
+- Acceptance replay remains outside the helper, and the round-four receipt-read
+  authorization linearization point is unchanged.
+
+Round-5 TDD and verification evidence:
+
+- RED: a real company-A AAL2 owner probed a company-B receipt and an unknown ID
+  with identical invalid create payloads. The old helper returned
+  `company_access_not_found` versus `company_access_invalid_request`; the static
+  contract also rejected the globally scoped signature.
+- GREEN: both probes return the exact same `company_access_invalid_request`, and
+  PostgreSQL verifies no invitation or receipt mutation. Focused runtime/schema/
+  review tests passed 24/24, including the prior concurrent-demotion case.
+- `npm run test:boundary` passed: backend 30, web 19, contract 27.
+- `npm run test:supabase` passed 16 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run typecheck`, and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
+
 ## Issue #160 review-fix round 4
 
 - Review input: `/tmp/talli-issue-160-architecture-review-4.md`; the matching
