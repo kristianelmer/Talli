@@ -20,6 +20,9 @@ from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     CompanyAccessGateway,
     CompanyAccessService,
+    CompanyCancellationListResponse,
+    CompanyCancellationResponse,
+    CompanyDeletionReviewResponse,
     CompanyInvitationListResponse,
     CompanyInvitationCommandRequest,
     CompanyInvitationResponse,
@@ -27,10 +30,13 @@ from talli_backend.modules.company_access.public import (
     CompanyMembershipResponse,
     CompanyContextResponse,
     CreateCompanyInvitationRequest,
+    FinalizeCompanyDeletionRequest,
     InvitationLookup,
     InvitationSideEffectCompletion,
     InvitationSideEffectContinuationList,
     InvitationTokenRequest,
+    RequestCompanyCancellationRequest,
+    ReviewCompanyDeletionRequest,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -498,6 +504,79 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
                 bearer_token(credentials),
                 user_id=user_id,
                 command=command,
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/cancellations",
+        operation_id="companyAccessListCancellations",
+        response_model=CompanyCancellationListResponse,
+        responses={200: {"description": "Visible company cancellation lifecycle records."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_company_cancellations(
+        company_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyCancellationListResponse:
+        return await company_access_call(
+            company_access_service.list_cancellations(
+                bearer_token(credentials), company_id=str(company_id)
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/cancellations",
+        operation_id="companyAccessRequestCancellation",
+        response_model=CompanyCancellationResponse,
+        status_code=201,
+        responses={201: {"description": "Cancellation entered retention hold."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def request_company_cancellation(
+        command: RequestCompanyCancellationRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyCancellationResponse:
+        return await company_access_call(
+            company_access_service.request_cancellation(bearer_token(credentials), command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/cancellations/{cancellation_id}/reviews",
+        operation_id="companyAccessReviewDeletion",
+        response_model=CompanyDeletionReviewResponse,
+        responses={200: {"description": "Append-only deletion review recorded."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def review_company_deletion(
+        cancellation_id: UUID,
+        command: ReviewCompanyDeletionRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyDeletionReviewResponse:
+        return await company_access_call(
+            company_access_service.review_deletion(
+                bearer_token(credentials), cancellation_id, command
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/cancellations/{cancellation_id}/finalize",
+        operation_id="companyAccessFinalizeDeletion",
+        response_model=CompanyCancellationResponse,
+        responses={200: {"description": "Deletion lifecycle finalized without physical business-data deletion."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def finalize_company_deletion(
+        cancellation_id: UUID,
+        command: FinalizeCompanyDeletionRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyCancellationResponse:
+        return await company_access_call(
+            company_access_service.finalize_deletion(
+                bearer_token(credentials), cancellation_id, command
             )
         )
 

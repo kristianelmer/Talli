@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Callable, Literal, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 
 def _to_camel(value: str) -> str:
@@ -102,6 +102,61 @@ class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
     state: MembershipState | None = None
 
 
+CancellationStatus = Literal["retention_hold", "deletion_approved", "deleted"]
+DeletionReviewDecision = Literal["approved", "rejected"]
+
+
+class RequestCompanyCancellationRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    reason: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("reason must not be blank")
+        return normalized
+
+
+class ReviewCompanyDeletionRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    expected_updated_at: AwareDatetime
+    decision: DeletionReviewDecision
+    evidence_reference: str = Field(min_length=1, max_length=500)
+
+    @field_validator("expected_updated_at", mode="before")
+    @classmethod
+    def require_rfc3339_string(cls, value: object) -> object:
+        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
+            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
+        return value
+
+    @field_validator("evidence_reference")
+    @classmethod
+    def normalize_evidence_reference(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("evidenceReference must not be blank")
+        return normalized
+
+
+class FinalizeCompanyDeletionRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    expected_updated_at: AwareDatetime
+
+    @field_validator("expected_updated_at", mode="before")
+    @classmethod
+    def require_rfc3339_string(cls, value: object) -> object:
+        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
+            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
+        return value
+
+
 class CreateInvitationGatewayCommand(CompanyAccessCommandModel):
     operation_id: str
     company_id: str
@@ -140,6 +195,29 @@ class AdministerMembershipGatewayCommand(CompanyAccessCommandModel):
     expected_role: InvitationRole
     role: InvitationRole | None
     state: MembershipState | None
+
+
+class RequestCompanyCancellationGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    company_id: str
+    income_year: int
+    reason: str
+
+
+class ReviewCompanyDeletionGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    cancellation_id: str
+    company_id: str
+    expected_updated_at: str
+    decision: DeletionReviewDecision
+    evidence_reference: str
+
+
+class FinalizeCompanyDeletionGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    cancellation_id: str
+    company_id: str
+    expected_updated_at: str
 
 
 class CompanyInvitation(CompanyAccessModel):
@@ -184,6 +262,46 @@ class CompanyMembershipResponse(CompanyAccessModel):
 
 class CompanyMembershipListResponse(CompanyAccessModel):
     memberships: list[CompanyMembership]
+
+
+class CompanyCancellation(CompanyAccessModel):
+    id: str
+    company_id: str
+    status: CancellationStatus
+    reason: str
+    evidence: dict[str, object]
+    requested_by: str
+    requested_at: str
+    reviewed_by: str | None
+    reviewed_at: str | None
+    deleted_by: str | None
+    deleted_at: str | None
+    updated_at: str
+
+
+class CompanyCancellationResponse(CompanyAccessModel):
+    cancellation: CompanyCancellation
+
+
+class CompanyCancellationListResponse(CompanyAccessModel):
+    cancellations: list[CompanyCancellation]
+
+
+class CompanyDeletionReview(CompanyAccessModel):
+    id: str
+    cancellation_id: str
+    company_id: str
+    decision: DeletionReviewDecision
+    evidence_reference: str
+    reviewed_by: str
+    reviewed_at: str
+    operation_id: str
+    cancellation_revision: str
+
+
+class CompanyDeletionReviewResponse(CompanyAccessModel):
+    cancellation: CompanyCancellation
+    review: CompanyDeletionReview
 
 
 InvitationSideEffectCommand = Literal[
@@ -267,6 +385,22 @@ class CompanyAccessGateway(Protocol):
     async def complete_invitation_side_effect(
         self, access_token: str, operation_id: str
     ) -> bool: ...
+
+    async def cancellations(
+        self, access_token: str, company_id: str
+    ) -> list[Mapping[str, object]]: ...
+
+    async def request_cancellation(
+        self, access_token: str, command: RequestCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None: ...
+
+    async def review_deletion(
+        self, access_token: str, command: ReviewCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None: ...
+
+    async def finalize_deletion(
+        self, access_token: str, command: FinalizeCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None: ...
 
 
 Adapter = TypeVar("Adapter", bound=type)
@@ -633,6 +767,90 @@ class CompanyAccessService:
             raise _company_access_not_found()
         return CompanyMembershipResponse(membership=self._membership(row))
 
+    async def list_cancellations(
+        self, access_token: str, *, company_id: str
+    ) -> CompanyCancellationListResponse:
+        await self._gateway.session_subject(access_token)
+        rows = await self._gateway.cancellations(access_token, company_id)
+        return CompanyCancellationListResponse(
+            cancellations=[self._cancellation(row) for row in rows]
+        )
+
+    async def request_cancellation(
+        self,
+        access_token: str,
+        command: RequestCompanyCancellationRequest,
+    ) -> CompanyCancellationResponse:
+        company_id = str(command.company_id)
+        await self._authorize_lifecycle_owner(access_token, company_id)
+        await self._company(access_token, company_id)
+        row = await self._gateway.request_cancellation(
+            access_token,
+            RequestCompanyCancellationGatewayCommand(
+                operation_id=str(command.operation_id),
+                company_id=company_id,
+                income_year=command.income_year,
+                reason=command.reason,
+            ),
+        )
+        if row is None:
+            raise _company_access_not_found()
+        return CompanyCancellationResponse(cancellation=self._cancellation(row))
+
+    async def review_deletion(
+        self,
+        access_token: str,
+        cancellation_id: UUID,
+        command: ReviewCompanyDeletionRequest,
+    ) -> CompanyDeletionReviewResponse:
+        await self._gateway.session_subject(access_token)
+        _require_fresh_mfa(access_token)
+        row = await self._gateway.review_deletion(
+            access_token,
+            ReviewCompanyDeletionGatewayCommand(
+                operation_id=str(command.operation_id),
+                cancellation_id=str(cancellation_id),
+                company_id=str(command.company_id),
+                expected_updated_at=command.expected_updated_at.isoformat(),
+                decision=command.decision,
+                evidence_reference=command.evidence_reference,
+            ),
+        )
+        if row is None or not isinstance(row.get("review"), Mapping):
+            raise _company_access_not_found()
+        return CompanyDeletionReviewResponse(
+            cancellation=self._cancellation(row),
+            review=CompanyDeletionReview(**row["review"]),
+        )
+
+    async def finalize_deletion(
+        self,
+        access_token: str,
+        cancellation_id: UUID,
+        command: FinalizeCompanyDeletionRequest,
+    ) -> CompanyCancellationResponse:
+        company_id = str(command.company_id)
+        await self._authorize_lifecycle_owner(access_token, company_id)
+        row = await self._gateway.finalize_deletion(
+            access_token,
+            FinalizeCompanyDeletionGatewayCommand(
+                operation_id=str(command.operation_id),
+                cancellation_id=str(cancellation_id),
+                company_id=company_id,
+                expected_updated_at=command.expected_updated_at.isoformat(),
+            ),
+        )
+        if row is None:
+            raise _company_access_not_found()
+        return CompanyCancellationResponse(cancellation=self._cancellation(row))
+
+    async def _authorize_lifecycle_owner(
+        self, access_token: str, company_id: str
+    ) -> Mapping[str, object]:
+        identity = await self._authorize_owner(access_token, company_id)
+        _require_fresh_mfa(access_token)
+        return identity
+
     async def _authorize_owner(
         self, access_token: str, company_id: str
     ) -> Mapping[str, object]:
@@ -669,6 +887,10 @@ class CompanyAccessService:
     @staticmethod
     def _membership(row: Mapping[str, object]) -> CompanyMembership:
         return CompanyMembership(**row)
+
+    @staticmethod
+    def _cancellation(row: Mapping[str, object]) -> CompanyCancellation:
+        return CompanyCancellation(**row)
 
 
 def _normalize_email(email: str) -> str:
@@ -710,6 +932,32 @@ def _is_expired(value: str) -> bool:
     except ValueError:
         return True
     return expires_at <= datetime.now(timezone.utc)
+
+
+def _require_fresh_mfa(access_token: str) -> None:
+    try:
+        payload = access_token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload))
+        entries = claims.get("amr")
+        timestamps = [
+            item.get("timestamp")
+            for item in entries
+            if isinstance(item, Mapping)
+            and item.get("method") in {"totp", "mfa/totp", "mfa/phone", "mfa/webauthn"}
+            and isinstance(item.get("timestamp"), (int, float))
+        ] if isinstance(entries, list) else []
+        newest = max(timestamps) if timestamps else None
+        age = datetime.now(timezone.utc).timestamp() - newest if newest is not None else None
+    except (IndexError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        age = None
+    if _token_aal(access_token) != "aal2" or age is None or age < 0 or age > 15 * 60:
+        raise CompanyAccessError(
+            status=403,
+            code="FRESH_MFA_REQUIRED",
+            title="Fresh verification required",
+            detail="Fresh multi-factor verification is required for this lifecycle transition.",
+        )
 
 
 def _invitation_body(
@@ -755,6 +1003,11 @@ __all__ = [
     "CompanyAccessError",
     "CompanyAccessGateway",
     "CompanyAccessService",
+    "CompanyCancellation",
+    "CompanyCancellationListResponse",
+    "CompanyCancellationResponse",
+    "CompanyDeletionReview",
+    "CompanyDeletionReviewResponse",
     "CompanyInvitation",
     "CompanyInvitationCommandRequest",
     "CompanyInvitationListResponse",
@@ -765,6 +1018,8 @@ __all__ = [
     "CompanyContext",
     "CompanyContextResponse",
     "CreateCompanyInvitationRequest",
+    "FinalizeCompanyDeletionGatewayCommand",
+    "FinalizeCompanyDeletionRequest",
     "InvitationLookup",
     "InvitationSideEffectCompletion",
     "InvitationSideEffectContinuation",
@@ -772,5 +1027,9 @@ __all__ = [
     "InvitationTokenRequest",
     "InvitationRole",
     "MembershipState",
+    "RequestCompanyCancellationGatewayCommand",
+    "RequestCompanyCancellationRequest",
+    "ReviewCompanyDeletionGatewayCommand",
+    "ReviewCompanyDeletionRequest",
     "company_access_adapter",
 ]

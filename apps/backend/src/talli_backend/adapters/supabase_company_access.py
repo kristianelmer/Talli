@@ -18,9 +18,12 @@ from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     CompanyAccessGateway,
     CreateInvitationGatewayCommand,
+    FinalizeCompanyDeletionGatewayCommand,
     InvitationIdentityGatewayCommand,
     InvitationMutationGatewayCommand,
     ResendInvitationGatewayCommand,
+    RequestCompanyCancellationGatewayCommand,
+    ReviewCompanyDeletionGatewayCommand,
     company_access_adapter,
 )
 
@@ -155,6 +158,23 @@ class SupabaseCompanyAccessAdapter:
                         code="COMPANY_ACCESS_CONFLICT",
                         title="Company access conflict",
                         detail="The company access change conflicts with existing state.",
+                    ) from None
+                lifecycle_errors = {
+                    "cancellation_prerequisite_failed": (
+                        "CANCELLATION_PREREQUISITE_FAILED",
+                        "Cancellation prerequisite failed",
+                        "A current complete company archive export is required.",
+                    ),
+                    "deletion_review_required": (
+                        "DELETION_REVIEW_REQUIRED",
+                        "Deletion review required",
+                        "An approved deletion review is required.",
+                    ),
+                }
+                if message in lifecycle_errors:
+                    code, title, detail = lifecycle_errors[message]
+                    raise CompanyAccessError(
+                        status=409, code=code, title=title, detail=detail
                     ) from None
                 if error.code == 409:
                     raise CompanyAccessError(
@@ -341,6 +361,63 @@ class SupabaseCompanyAccessAdapter:
             body={"p_operation_id": operation_id},
         )
         return response is True
+
+    async def cancellations(
+        self, access_token: str, company_id: str
+    ) -> list[Mapping[str, object]]:
+        query = urlencode({
+            "select": "id,company_id,status,reason,evidence,requested_by,requested_at,reviewed_by,reviewed_at,deleted_by,deleted_at,updated_at",
+            "company_id": f"eq.{company_id}",
+            "order": "updated_at.desc",
+        })
+        response = await self._request(
+            f"/rest/v1/company_cancellations?{query}", access_token
+        )
+        return response if isinstance(response, list) else []
+
+    async def request_cancellation(
+        self, access_token: str, command: RequestCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_request_cancellation",
+            {
+                "p_operation_id": command.operation_id,
+                "p_company_id": command.company_id,
+                "p_income_year": command.income_year,
+                "p_reason": command.reason,
+            },
+        )
+
+    async def review_deletion(
+        self, access_token: str, command: ReviewCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_review_deletion",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_expected_updated_at": command.expected_updated_at,
+                "p_decision": command.decision,
+                "p_evidence_reference": command.evidence_reference,
+            },
+        )
+
+    async def finalize_deletion(
+        self, access_token: str, command: FinalizeCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_finalize_deletion",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_expected_updated_at": command.expected_updated_at,
+            },
+        )
 
     async def _rpc_row(
         self,
