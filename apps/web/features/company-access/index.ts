@@ -8,3 +8,15 @@ export {
   presentCompanyAccessContext,
   type CompanyAccessPresentation,
 } from "./presentation.ts";
+export {
+  acceptCompanyInvitation,
+  administerCompanyMembership,
+  createCompanyInvitation,
+  completeInvitationSideEffect,
+  listCompanyInvitations,
+  listCompanyMemberships,
+  listPendingInvitationSideEffects,
+  lookupCompanyInvitation,
+  resendCompanyInvitation,
+  revokeCompanyInvitation,
+} from "./transport/company-access-administration.ts";

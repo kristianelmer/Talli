@@ -15,6 +15,22 @@
       "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
       "routes": ["/api/v1/company-access/context"]
+    },
+    {
+      "name": "company-access-administration",
+      "purpose": "Runs invitation and reviewer/read-only membership workflows atomically through the company_access public package.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": [
+        "/api/v1/company-access/invitations",
+        "/api/v1/company-access/invitations/lookup",
+        "/api/v1/company-access/invitations/accept",
+        "/api/v1/company-access/invitations/{invitation_id}/revoke",
+        "/api/v1/company-access/invitations/{invitation_id}/resend",
+        "/api/v1/company-access/invitation-side-effects/pending",
+        "/api/v1/company-access/invitation-side-effects/{operation_id}/complete",
+        "/api/v1/company-access/memberships",
+        "/api/v1/company-access/memberships/{user_id}"
+      ]
     }
   ],
   "operationalControlState": {
@@ -25,9 +41,9 @@
   },
   "technicalOwnership": {
     "schemas": ["public"],
-    "tables": ["public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql"],
-    "statement": "These tables implement operational control and event delivery only; they own no accounting, filing, billing, or authorization decision."
+    "tables": ["public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql"],
+    "statement": "These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",

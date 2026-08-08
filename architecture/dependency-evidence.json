@@ -1,6 +1,14 @@
 {
   "edges": [
     {
+      "from": "backend-system:company-access-administration",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
       "from": "backend-system:company-access-context",
       "imports": [
         "talli_backend.modules.company_access.public"
@@ -26,6 +34,10 @@
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "public.company_access_command_receipts"
+    },
     {
       "owner": "backend-system",
       "table": "public.launch_signoffs"

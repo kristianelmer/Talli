@@ -4,23 +4,23 @@
   "name": "company-access",
   "path": "apps/web/features/company-access",
   "owner": "web:company-access",
-  "purpose": "Load authenticated company context for owner presentation through the committed generated API client.",
+  "purpose": "Load authenticated company context and perform invitation and non-owner membership administration through the committed generated API client.",
   "documentation": "apps/web/features/company-access/MODULE.md",
   "publicEntryPoint": "@/features/company-access",
   "publicImportPaths": ["@/features/company-access", "apps/web/features/company-access", "apps/web/features/company-access/index.ts"],
-  "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/companies/[companyId]/annual-reporting/[incomeYear]"],
-  "apiOperations": ["companyAccessGetSelectedContext"],
+  "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/invite/accept", "/companies/[companyId]/annual-reporting/[incomeYear]"],
+  "apiOperations": ["companyAccessGetSelectedContext", "companyAccessListInvitations", "companyAccessCreateInvitation", "companyAccessLookupInvitation", "companyAccessAcceptInvitation", "companyAccessRevokeInvitation", "companyAccessResendInvitation", "companyAccessListPendingInvitationSideEffects", "companyAccessCompleteInvitationSideEffect", "companyAccessListMemberships", "companyAccessAdministerMembership"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
   "directBrowserFlows": [],
   "forbiddenResponsibilities": [
-    "Company membership, role, resource-scope, AAL2, or tenant-concealment policy",
+    "Company membership, invitation, role, resource-scope, AAL2, or tenant-concealment policy",
     "Direct Supabase business persistence or business-endpoint fetch calls",
     "Handwritten business DTOs or generated-client deep imports"
   ],
   "tests": {
-    "feature": "apps/web/tests/company-access-presentation.test.mjs",
+    "feature": "apps/web/tests/company-access-administration.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
   "compatibilityExceptions": []

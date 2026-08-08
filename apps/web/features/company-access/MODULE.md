@@ -1,54 +1,53 @@
 # Company access web feature
 
 <!-- architecture-inventory
-{"apiOperations":["companyAccessGetSelectedContext"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/workspace"]}
+{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessGetSelectedContext","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessResendInvitation","companyAccessRevokeInvitation"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/workspace"]}
 -->
 
 ## Purpose
 
-This feature loads authenticated company context for Norwegian owner presentation
-through `companyAccessGetSelectedContext` in the committed generated client.
+This feature loads authenticated company context and carries invitation and
+reviewer/read-only membership administration through the committed generated client.
 
 ## Owns and must not own
 
-It owns the listed owner route integration, no-store transport mapping, and its
-feature-owned presentation model derived from the generated company context. It must not decide membership, role,
-resource-scope, AAL2, or tenant concealment; those policies belong to the backend
-capability. It must not access Supabase business persistence, call a business
-endpoint with `fetch`, import Supabase persistence DTOs, or deep-import the
-client.
+It owns the listed route integration, no-store transport mapping, and presentation
+derived from generated contracts. It must not decide invitation, membership, role,
+AAL2, or tenant-concealment policy; those belong to the backend capability. It must
+not access Supabase business persistence, use business `fetch`, import persistence
+DTOs, or deep-import the client.
 
 ## Public interface and collaboration
 
-Other web code imports `@/features/company-access`; the declared compiled paths
-are `apps/web/features/company-access` and
-`apps/web/features/company-access/index.ts`. The web establishes the Supabase
-session, then passes its access token only as generated-client transport headers.
-The feature has no web-feature dependency. It consumes the root
-`@talli/talli-api-client` package and the same package-private
-`#backend-configuration` helper as system boundary, preserving one typed,
-fail-closed origin contract without exposing configuration values.
+Other web code imports `@/features/company-access`. The web establishes the
+Supabase session, then passes its access token only as generated-client headers.
+Invitation lookup/acceptance and owner administration use the same thin transport
+with ten-second deadlines and the root `@talli/talli-api-client` package.
 
 ## Cache, browser, and tests
 
-Authenticated company context defaults to `no-store`; the complete context is
-available only after the backend's server-owned owner/AAL2 policy, and the
-generated decoder rejects any broader role, scope, or assurance value. No cache exception or
-direct browser business-data flow is approved. Feature coverage is in
-`apps/web/tests/company-access-presentation.test.mjs`; architecture coverage is
-in `tests/architecture_foundation.test.mjs`.
+Calls default to `no-store`; generated decoders reject every undeclared response
+field, including all token/hash spellings at invitation boundaries. Consequential
+forms carry durable operation IDs and expected revisions. The retained #155 audit
+write uses a deterministic UUIDv8 derived from the authenticated actor, original
+operation ID, and command/purpose. The backend receipt atomically owns a pending
+side-effect continuation, so the no-input recovery form can finish the original
+operation without issuing another business command. The restricted completion
+RPC locks the receipt, reauthorizes current owner AAL2 or accepted membership even
+for completed retries, verifies exact audit evidence, and captures one advancing
+post-lock timestamp. That same timestamp governs both outbox RLS and persistence,
+so it atomically inserts or reconciles the deterministic invitation outbox row
+only before expiry, then completes and scrubs the receipt. Recovery remains
+available after invitation expiry for audit evidence, but an expired delivery
+token is cleared and no obsolete email is queued; the owner must issue a new
+invite/resend if delivery is still wanted.
+Feature coverage is in the company-access web tests and architecture coverage is in
+`tests/architecture_foundation.test.mjs`.
 
 ## Compatibility and change rule
 
-There are no compatibility exceptions for selected company context. Change this
-document and `module.json` together when routes, operation, public imports,
-cache policy, or responsibilities change.
-
-The backend capability's ownership of `public.companies` and
-`public.company_memberships` is authoritative. Separately, legacy callers
-registered by exact path, rule, resource, and AST-derived enclosing operation
-remain temporary compatibility adapters: invitations and membership
-administration exit in #160, cancellation
-and deletion exit in #161, and onboarding plus final stage exit complete in
-#138. They do not belong to this feature and cannot serve authenticated
-company-context reads.
+The backend owns `public.companies`, `public.company_invitations`, and
+`public.company_memberships`. Invitation delivery no longer uses the #156
+direct-web exception; the temporary #155 invitation-audit exception remains exact
+and bounded. Cancellation/deletion and onboarding compatibility
+adapters remain scoped to their later serialized tickets.

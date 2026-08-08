@@ -34,9 +34,9 @@ import {
   listNotificationOutbox,
   listOpeningSetups,
   listPeriodLocks,
-  listWorkspaceInvitations,
 } from "./supabase/server";
 import { listCompanyAccessContexts } from "./company-access-context";
+import { listCompanyAccessAdministration } from "./company-access-administration";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -78,7 +78,10 @@ export async function loadWorkspaceData() {
   const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
   const { authorityPermissions } = user ? await listAuthorityPermissions(companies.map((company) => company.id)) : { authorityPermissions: [] };
   const { authorityTestRuns } = user ? await listAuthorityTestRuns(companies.map((company) => company.id)) : { authorityTestRuns: [] };
-  const { invitations } = user ? await listWorkspaceInvitations(companies.map((company) => company.id)) : { invitations: [] };
+  const primaryCompanyId = companies[0]?.id;
+  const { invitations, memberships, error: companyAccessAdministrationError } = user
+    ? await listCompanyAccessAdministration(primaryCompanyId)
+    : { invitations: [], memberships: [], error: null };
   const { notifications } = user ? await listNotificationOutbox(companies.map((company) => company.id)) : { notifications: [] };
   const { cancellations } = user ? await listCompanyCancellations(companies.map((company) => company.id)) : { cancellations: [] };
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
@@ -95,7 +98,6 @@ export async function loadWorkspaceData() {
     : { allocations: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
-  const primaryCompanyId = companies[0]?.id;
   const unmatchedTransactions = transactions.filter(
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
   );
@@ -139,7 +141,7 @@ export async function loadWorkspaceData() {
   const primaryBillingGate = primaryBillingAccount ? productionBillingGate(primaryBillingAccount, primaryFilingReady) : null;
   const primaryAuthorityPermissions = authorityPermissions.filter((permission) => permission.company_id === primaryCompanyId);
   const primaryAuthorityTestRuns = authorityTestRuns.filter((run) => run.company_id === primaryCompanyId);
-  const primaryInvitations = invitations.filter((invitation) => invitation.company_id === primaryCompanyId);
+  const primaryInvitations = invitations.filter((invitation) => invitation.companyId === primaryCompanyId);
   const primaryNotifications = notifications.filter((notification) => notification.company_id === primaryCompanyId);
   const primaryCancellation = cancellations.find((cancellation) => cancellation.company_id === primaryCompanyId);
   const cancellationLifecycle = buildCancellationLifecycle(primaryCancellation);
@@ -161,7 +163,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? productionStateError,
+    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError,
     companies,
     documents,
     annualData,
@@ -177,6 +179,7 @@ export async function loadWorkspaceData() {
     authorityPermissions,
     authorityTestRuns,
     invitations,
+    memberships,
     notifications,
     cancellations,
     billingAccounts,

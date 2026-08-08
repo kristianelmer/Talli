@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -21,7 +21,6 @@ import {
 } from "../apps/web/app/lib/dividend-received.ts";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
-import { invitationDeliveryEvent, invitationExpiry, invitationTokenHash } from "../apps/web/app/lib/invitations.ts";
 import { validateManualJournal } from "../apps/web/app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../apps/web/app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
@@ -46,6 +45,16 @@ import {
 } from "../apps/web/app/lib/tax-settlement.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+
+const invitationTokenHash = async (token) => createHash("sha256").update(token).digest("hex");
+const invitationExpiry = () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+const invitationDeliveryEvent = ({ recipientEmail, queuedAt = new Date().toISOString() }) => ({
+  channel: "email",
+  status: "queued",
+  template: "workspace_invitation",
+  recipientEmail: recipientEmail.trim().toLowerCase(),
+  queuedAt,
+});
 
 async function listRlsVisibleCompanies(client, userId) {
   const { data: memberships, error: membershipError } = await client
@@ -95,10 +104,41 @@ async function applyMigration() {
   });
   await client.connect();
   try {
-    for (const migrationFile of migrationFiles) {
-      const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
-      await client.query(sql);
+    const latestMigrationState = await client.query(String.raw`
+      select pg_catalog.to_regprocedure(
+        'public.company_access_complete_invitation_side_effect(uuid)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'public.company_access_auth_uid_v1()'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'public.company_access_auth_jwt_v1()'
+      ) is not null as company_access_expand_applied
+    `);
+    if (!latestMigrationState.rows[0]?.company_access_expand_applied) {
+      for (const migrationFile of migrationFiles) {
+        const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
+        await client.query(sql);
+      }
     }
+    // This current-application security rehearsal runs after Release C. The
+    // automatic migration directory intentionally stops at the mixed-revision
+    // overlap, so apply the staged immutable contract artifact explicitly.
+    const companyAccessContract = await readFile(
+      "supabase/contract-migrations/20260801091000_company_access_invitations_contract.sql",
+      "utf8",
+    );
+    await client.query(companyAccessContract);
+    const contractState = await client.query(String.raw`
+      select not pg_catalog.has_table_privilege(
+        'authenticated', 'public.company_invitations', 'INSERT'
+      ) as invitation_insert_contracted
+    `);
+    assert.equal(
+      contractState.rows[0]?.invitation_insert_contracted,
+      true,
+      "current-app rehearsal must explicitly reach the company-access contract state",
+    );
   } finally {
     await client.end();
   }
@@ -400,7 +440,7 @@ test(
     assert.equal(company.created_by, ownerUser.id);
     companyId = company.id;
 
-    const { error: membershipError } = await owner.from("company_memberships").insert({
+    const { error: membershipError } = await admin.from("company_memberships").insert({
       company_id: companyId,
       user_id: ownerUser.id,
       role: "owner",
@@ -417,7 +457,7 @@ test(
     });
     assert.ifError(secondOwnerMembershipError);
 
-    const { error: reviewerInviteError } = await owner.from("company_memberships").insert({
+    const { error: reviewerInviteError } = await admin.from("company_memberships").insert({
       company_id: companyId,
       user_id: reviewerUser.id,
       role: "reviewer",
@@ -425,7 +465,7 @@ test(
       accepted_at: new Date().toISOString(),
     });
     assert.ifError(reviewerInviteError);
-    const { error: readOnlyInviteError } = await owner.from("company_memberships").insert({
+    const { error: readOnlyInviteError } = await admin.from("company_memberships").insert({
       company_id: companyId,
       user_id: readOnlyUser.id,
       role: "read_only",
@@ -537,7 +577,21 @@ test(
       recipientEmail: inviteeUser.email,
       queuedAt: new Date().toISOString(),
     });
-    const { data: invitation, error: invitationError } = await owner
+    const { error: directInvitationError } = await owner
+      .from("company_invitations")
+      .insert({
+        company_id: companyId,
+        invited_email: inviteeUser.email,
+        role: "reviewer",
+        token_hash: invitationHash,
+        status: "pending",
+        expires_at: invitationExpiry(),
+        invited_by: ownerUser.id,
+        delivery_events: [invitationEvent],
+      });
+    assert.ok(directInvitationError);
+
+    const { data: invitation, error: invitationError } = await admin
       .from("company_invitations")
       .insert({
         company_id: companyId,
@@ -569,27 +623,31 @@ test(
       .select("id, role, status")
       .eq("id", invitation.id);
     assert.ifError(inviteeInvitationReadError);
-    assert.deepEqual(inviteeInvitations, [{ id: invitation.id, role: "reviewer", status: "pending" }]);
+    assert.deepEqual(inviteeInvitations, []);
 
-    const acceptedAt = new Date().toISOString();
-    const { error: acceptedMembershipError } = await invitee.from("company_memberships").insert({
-      company_id: companyId,
-      user_id: inviteeUser.id,
-      role: "reviewer",
-      invited_by: ownerUser.id,
-      accepted_at: acceptedAt,
-    });
-    assert.ifError(acceptedMembershipError);
+    const { data: lookedUpInvitations, error: invitationLookupError } = await invitee.rpc(
+      "company_access_lookup_invitation",
+      {
+        p_token_hash: invitationHash,
+        p_verified_subject: inviteeUser.id,
+        p_verified_email: inviteeUser.email,
+      },
+    );
+    assert.ifError(invitationLookupError);
+    assert.deepEqual(
+      lookedUpInvitations.map(({ id, role, status }) => ({ id, role, status })),
+      [{ id: invitation.id, role: "reviewer", status: "pending" }],
+    );
 
-    const { error: acceptedInvitationError } = await invitee
-      .from("company_invitations")
-      .update({
-        invited_user_id: inviteeUser.id,
-        status: "accepted",
-        accepted_by: inviteeUser.id,
-        accepted_at: acceptedAt,
-      })
-      .eq("id", invitation.id);
+    const { error: acceptedInvitationError } = await invitee.rpc(
+      "company_access_accept_invitation",
+      {
+        p_operation_id: randomUUID(),
+        p_token_hash: invitationHash,
+        p_verified_subject: inviteeUser.id,
+        p_verified_email: inviteeUser.email,
+      },
+    );
     assert.ifError(acceptedInvitationError);
 
     const { data: acceptedInvitation, error: acceptedInvitationReadError } = await owner
@@ -601,7 +659,7 @@ test(
     assert.deepEqual(acceptedInvitation, { status: "accepted", accepted_by: inviteeUser.id });
 
     const revokeTokenHash = await invitationTokenHash(randomUUID());
-    const { data: revokedCandidate, error: revokedCandidateError } = await owner
+    const { data: revokedCandidate, error: revokedCandidateError } = await admin
       .from("company_invitations")
       .insert({
         company_id: companyId,
@@ -617,7 +675,7 @@ test(
       .single();
     assert.ifError(revokedCandidateError);
     const revokedAt = new Date().toISOString();
-    const { error: revokeError } = await owner
+    const { error: revokeError } = await admin
       .from("company_invitations")
       .update({ status: "revoked", revoked_by: ownerUser.id, revoked_at: revokedAt })
       .eq("id", revokedCandidate.id);

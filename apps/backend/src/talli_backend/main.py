@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -15,10 +15,22 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.modules.company_access.public import (
+    AcceptCompanyInvitationRequest,
+    AdministerCompanyMembershipRequest,
     CompanyAccessError,
     CompanyAccessGateway,
     CompanyAccessService,
+    CompanyInvitationListResponse,
+    CompanyInvitationCommandRequest,
+    CompanyInvitationResponse,
+    CompanyMembershipListResponse,
+    CompanyMembershipResponse,
     CompanyContextResponse,
+    CreateCompanyInvitationRequest,
+    InvitationLookup,
+    InvitationSideEffectCompletion,
+    InvitationSideEffectContinuationList,
+    InvitationTokenRequest,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -136,6 +148,29 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         else SupabaseCompanyAccessAdapter.from_environment()
     )
     company_access_service = CompanyAccessService(gateway)
+
+    def bearer_token(
+        credentials: HTTPAuthorizationCredentials | None,
+    ) -> str:
+        if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            )
+        return credentials.credentials
+
+    async def company_access_call(call: Awaitable[object]) -> object:
+        try:
+            return await call
+        except CompanyAccessError as error:
+            raise ApiProblem(
+                status=error.status,
+                code=error.code,
+                title=error.title,
+                detail=error.detail,
+            ) from None
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
@@ -260,25 +295,211 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
         company_id: str | None = None,
     ) -> CompanyContextResponse:
-        if credentials is None or credentials.scheme.lower() != "bearer" or not credentials.credentials:
-            raise ApiProblem(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session is required.",
-            )
-        try:
-            return await company_access_service.selected_context(
-                credentials.credentials,
+        return await company_access_call(
+            company_access_service.selected_context(
+                bearer_token(credentials),
                 company_id=company_id,
             )
-        except CompanyAccessError as error:
-            raise ApiProblem(
-                status=error.status,
-                code=error.code,
-                title=error.title,
-                detail=error.detail,
-            ) from None
+        )
+
+    company_access_errors = {
+        status: {
+            "description": "Company access request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (401, 403, 404, 409, 422, 503)
+    }
+    company_access_success = {"headers": {"X-Request-ID": REQUEST_ID_HEADER}}
+
+    @application.get(
+        "/api/v1/company-access/invitations",
+        operation_id="companyAccessListInvitations",
+        response_model=CompanyInvitationListResponse,
+        responses={200: {"description": "Company invitations."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_company_invitations(
+        company_id: str,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyInvitationListResponse:
+        return await company_access_call(
+            company_access_service.list_invitations(
+                bearer_token(credentials), company_id=company_id
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitations",
+        operation_id="companyAccessCreateInvitation",
+        response_model=CompanyInvitationResponse,
+        status_code=201,
+        responses={201: {"description": "Company invitation created."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def create_company_invitation(
+        command: CreateCompanyInvitationRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyInvitationResponse:
+        return await company_access_call(
+            company_access_service.invite(bearer_token(credentials), command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitations/lookup",
+        operation_id="companyAccessLookupInvitation",
+        response_model=InvitationLookup,
+        responses={200: {"description": "Available invitation."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def lookup_company_invitation(
+        command: InvitationTokenRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> InvitationLookup:
+        return await company_access_call(
+            company_access_service.lookup_invitation(
+                bearer_token(credentials), token=command.token
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitations/accept",
+        operation_id="companyAccessAcceptInvitation",
+        response_model=CompanyMembershipResponse,
+        responses={200: {"description": "Invitation accepted."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def accept_company_invitation(
+        command: AcceptCompanyInvitationRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyMembershipResponse:
+        return await company_access_call(
+            company_access_service.accept_invitation(bearer_token(credentials), command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitations/{invitation_id}/revoke",
+        operation_id="companyAccessRevokeInvitation",
+        response_model=CompanyInvitationResponse,
+        responses={200: {"description": "Invitation revoked."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def revoke_company_invitation(
+        invitation_id: UUID,
+        command: CompanyInvitationCommandRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyInvitationResponse:
+        return await company_access_call(
+            company_access_service.revoke_invitation(
+                bearer_token(credentials),
+                invitation_id=invitation_id,
+                command=command,
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitations/{invitation_id}/resend",
+        operation_id="companyAccessResendInvitation",
+        response_model=CompanyInvitationResponse,
+        responses={200: {"description": "Invitation resent."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def resend_company_invitation(
+        invitation_id: UUID,
+        command: CompanyInvitationCommandRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyInvitationResponse:
+        return await company_access_call(
+            company_access_service.resend_invitation(
+                bearer_token(credentials),
+                invitation_id=invitation_id,
+                command=command,
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/invitation-side-effects/pending",
+        operation_id="companyAccessListPendingInvitationSideEffects",
+        response_model=InvitationSideEffectContinuationList,
+        responses={200: {"description": "Pending invitation side effects."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_pending_invitation_side_effects(
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> InvitationSideEffectContinuationList:
+        return await company_access_call(
+            company_access_service.pending_invitation_side_effects(
+                bearer_token(credentials)
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitation-side-effects/{operation_id}/complete",
+        operation_id="companyAccessCompleteInvitationSideEffect",
+        response_model=InvitationSideEffectCompletion,
+        responses={200: {"description": "Invitation side effects completed."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def complete_invitation_side_effect(
+        operation_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> InvitationSideEffectCompletion:
+        return await company_access_call(
+            company_access_service.complete_invitation_side_effect(
+                bearer_token(credentials), operation_id
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/memberships",
+        operation_id="companyAccessListMemberships",
+        response_model=CompanyMembershipListResponse,
+        responses={200: {"description": "Company memberships."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_company_memberships(
+        company_id: str,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyMembershipListResponse:
+        return await company_access_call(
+            company_access_service.list_memberships(
+                bearer_token(credentials), company_id=company_id
+            )
+        )
+
+    @application.patch(
+        "/api/v1/company-access/memberships/{user_id}",
+        operation_id="companyAccessAdministerMembership",
+        response_model=CompanyMembershipResponse,
+        responses={200: {"description": "Membership changed."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def administer_company_membership(
+        user_id: UUID,
+        command: AdministerCompanyMembershipRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyMembershipResponse:
+        return await company_access_call(
+            company_access_service.administer_membership(
+                bearer_token(credentials),
+                user_id=user_id,
+                command=command,
+            )
+        )
 
     @application.get("/health/live", include_in_schema=False)
     async def liveness() -> JSONResponse:

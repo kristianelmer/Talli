@@ -4,14 +4,16 @@ import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { signIn } from "../../actions";
 import { hasSupabaseEnv } from "../../lib/supabase/server";
 import { ownerCopy } from "../../lib/copy";
+import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
 import { GoogleSignInButton } from "../GoogleSignInButton";
 
 type LoginProps = {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; next?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginProps) {
   const params = await searchParams;
+  const next = sanitizeInternalRedirect(params?.next);
   return (
     <div className="authCard">
       <div className="appBrand">
@@ -27,6 +29,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
         </Banner>
       ) : null}
       <form className="authForm" action={signIn}>
+        <input name="next" type="hidden" value={next} />
         <FormField
           label={ownerCopy.auth.emailLabel}
           name="email"
@@ -47,7 +50,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
         </SubmitButton>
       </form>
       <p className="authDivider">{ownerCopy.auth.orDivider}</p>
-      <GoogleSignInButton />
+      <GoogleSignInButton next={next} />
       <p className="authAlt">
         {ownerCopy.auth.noAccount}{" "}
         <Link href="/signup">{ownerCopy.auth.toSignUp}</Link>

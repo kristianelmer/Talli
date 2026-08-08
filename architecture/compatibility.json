@@ -1335,12 +1335,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "acceptWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "acknowledgeFilingReviewComment"
         },
         {
@@ -1414,12 +1408,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "importBankCsv"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "inviteWorkspaceReviewer"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1506,16 +1494,10 @@
           "operation": "requestFilingPackagePayment"
         },
         {
-          "path": "apps/web/app/actions.ts",
+          "path": "apps/web/app/lib/invitation-side-effects.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "resendWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "revokeWorkspaceInvitation"
+          "operation": "createInvitationSideEffectStore"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1558,19 +1540,7 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",
-          "operation": "inviteWorkspaceReviewer"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:notification_outbox",
           "operation": "queueDeadlineReminders"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:notification_outbox",
-          "operation": "resendWorkspaceInvitation"
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
@@ -1722,61 +1692,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
           "operation": "GET"
-        }
-      ]
-    },
-    {
-      "id": "compat-company-membership-administration-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#160",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove company invitations and membership administration persistence in #160.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_invitations",
-          "operation": "acceptWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "acceptWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "inviteWorkspaceReviewer"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_invitations",
-          "operation": "inviteWorkspaceReviewer"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_invitations",
-          "operation": "resendWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_invitations",
-          "operation": "revokeWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_invitations",
-          "operation": "listWorkspaceInvitations"
         }
       ]
     },

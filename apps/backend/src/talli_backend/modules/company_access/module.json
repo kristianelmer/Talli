@@ -4,22 +4,22 @@
   "name": "company_access",
   "path": "apps/backend/src/talli_backend/modules/company_access",
   "owner": "backend:company_access",
-  "purpose": "Own authenticated company-context authorization: validated Supabase sessions, accepted membership, role, resource scope, AAL2 policy, and tenant-concealed selection.",
+  "purpose": "Own authenticated company context, invitation lifecycle, and non-owner membership administration with validated sessions, AAL2 owner policy, RLS, atomic transitions, and tenant concealment.",
   "documentation": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
-    "commands": [],
-    "queries": ["CompanyAccessService", "CompanyContextResponse"],
+    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyInvitationCommandRequest", "CreateCompanyInvitationRequest"],
+    "queries": ["CompanyAccessService", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyAccessGateway", "CompanyContext", "company_access_adapter"]
+    "identifiers": ["CompanyAccessGateway", "CompanyContext", "CompanyInvitation", "CompanyMembership", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "company_access_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
-    "tables": ["public.companies", "public.company_memberships"],
+    "tables": ["public.companies", "public.company_invitations", "public.company_memberships"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/0001_authenticated_workspace.sql"
+    "migrations": "supabase/migrations/20260801090000_company_access_invitations.sql"
   },
   "ports": [
     {
@@ -31,9 +31,9 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "base64", "collections.abc", "json", "pydantic", "typing"],
+  "allowedImports": ["__future__", "base64", "collections.abc", "datetime", "hashlib", "json", "pydantic", "re", "secrets", "typing", "uuid"],
   "forbiddenResponsibilities": [
-    "Company onboarding, invitations, agreement acceptance, cancellation, or support-operator workflows",
+    "Company onboarding, agreement acceptance, cancellation, deletion, or support-operator workflows",
     "Service-role access or RLS bypass for ordinary business reads",
     "Web presentation, handwritten web DTOs, or direct browser persistence"
   ],
