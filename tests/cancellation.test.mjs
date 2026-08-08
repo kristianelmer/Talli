@@ -28,7 +28,7 @@ test("requires archive export before cancellation can move into retention hold",
 test("keeps final deletion behind legal review and explicit deletion state", () => {
   assert.equal(nextCancellationStatus({ archiveExportedAt: "2026-06-17T10:00:00.000Z", legalReviewApproved: true }), "deletion_approved");
   assert.equal(nextCancellationStatus({ deletedAt: "2026-06-17T11:00:00.000Z" }), "deleted");
-  assert.equal(cancellationStatusLabel("retention_hold"), "Retention hold");
+  assert.equal(cancellationStatusLabel("retention_hold"), "Oppbevaringsstans");
 });
 
 test("builds archive and retention evidence for launch-critical records", () => {
@@ -69,6 +69,7 @@ test("shows explicit export, soft-delete, retention, and final deletion lifecycl
   });
   assert.deepEqual(hold.map((item) => item.key), ["archive_export", "soft_delete", "retention_hold", "final_deletion"]);
   assert.deepEqual(hold.map((item) => item.state), ["done", "current", "done", "blocked"]);
+  assert.doesNotMatch(JSON.stringify(hold.map(({ label, message }) => ({ label, message }))), /retention|soft-delete|accounting|legal|security review/iu);
 
   const deleted = buildCancellationLifecycle({
     status: "deleted",

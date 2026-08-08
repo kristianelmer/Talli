@@ -48,7 +48,7 @@ export function cancellationStatusLabel(status: CancellationStatus) {
     case "export_required":
       return "Arkiv må eksporteres";
     case "retention_hold":
-      return "Retention hold";
+      return "Oppbevaringsstans";
     case "deletion_approved":
       return "Sletting godkjent";
     case "deleted":
@@ -114,7 +114,7 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
     },
     {
       key: "soft_delete",
-      label: "Soft-delete",
+      label: "Logisk sletting",
       state: archiveDone ? (deleted ? "done" : "current") : "blocked",
       message: archiveDone
         ? "Arbeidsflaten kan markeres kansellert uten å slette pliktig dokumentasjon."
@@ -122,11 +122,11 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
     },
     {
       key: "retention_hold",
-      label: "Retention hold",
+      label: "Oppbevaringsstans",
       state: retentionDone ? "done" : archiveDone ? "current" : "blocked",
       message: retentionDone
-        ? "Retention-vurdering er aktiv eller godkjent."
-        : "Juridisk/accounting retention må avklares før endelig sletting.",
+        ? "Oppbevaringsvurderingen er aktiv eller godkjent."
+        : "Juridisk og regnskapsmessig oppbevaring må avklares før endelig sletting.",
     },
     {
       key: "final_deletion",
@@ -136,7 +136,7 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
         ? "Endelig sletting er registrert."
         : deletionApproved
           ? "Klar for separat destruktiv sletting etter godkjenning."
-          : "Blokkert til legal/security review og retention er godkjent.",
+          : "Blokkert til juridisk vurdering, sikkerhetsvurdering og oppbevaring er godkjent.",
     },
   ];
 }
