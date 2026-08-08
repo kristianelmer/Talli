@@ -188,3 +188,8 @@ test("contract migration removes direct cancellation access only after generated
   assert.match(source, /grant execute on function public\.company_access_finalize_deletion/iu);
   assert.match(source, /grant execute on function public\.company_access_list_cancellations/iu);
 });
+
+test("the release Supabase suite includes cancellation schema coverage", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.match(packageJson.scripts["test:supabase"], /tests\/company_access_cancellation_schema\.test\.mjs/u);
+});
