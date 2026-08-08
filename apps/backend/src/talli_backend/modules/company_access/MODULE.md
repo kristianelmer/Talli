@@ -53,6 +53,13 @@ Pending recovery and completion use the separate restricted
 evidence, and workspace-invitation outbox policies. Explicit RLS policies remain
 the authorization boundary even though the RPCs are security definers; neither
 executor owns a table, inherits another role, or bypasses RLS.
+Supabase's migration role cannot delegate `auth` schema usage. Versioned
+migration-owned claim wrappers expose only the current request UID and JWT to
+authenticated company-access policies and the two executor roles; public and
+anonymous execution, direct Auth helper execution, Auth schema usage, and
+executor schema creation remain denied. Function ownership transfer grants the
+migration role only transient `SET` membership and grants the executors only
+transient `CREATE` on `public`, revoking both in the same atomic block.
 Forced RLS applies only to the technical command-receipt table; invitation and
 membership RLS is genuine because the command executor is a non-owner with
 NOBYPASSRLS.

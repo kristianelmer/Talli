@@ -82,19 +82,19 @@ test("owner receipt visibility is atomic while acceptance keeps actor replay sem
   )?.[0];
 
   assert.ok(receiptPolicy);
-  assert.match(receiptPolicy, /command_name = 'accept_invitation'[\s\S]+actor_id = \(select auth\.uid\(\)\)/u);
+  assert.match(receiptPolicy, /command_name = 'accept_invitation'[\s\S]+actor_id = \(select public\.company_access_auth_uid_v1\(\)\)/u);
   assert.match(
     receiptPolicy,
     /command_name in \('create_invitation', 'revoke_invitation', 'resend_invitation', 'administer_membership'\)/u,
   );
   assert.match(receiptPolicy, /expires_at > statement_timestamp\(\)/u);
-  assert.match(receiptPolicy, /auth\.jwt\(\)[\s\S]+aal2/u);
+  assert.match(receiptPolicy, /public\.company_access_auth_jwt_v1\(\)[\s\S]+aal2/u);
   assert.match(receiptPolicy, /company_access_is_accepted_owner_v1\(company_id\)/u);
   assert.match(
     sql,
     /function public\.company_access_receipt_exists_v1\(\s*p_operation_id uuid,\s*p_company_id uuid,\s*p_command_name text,\s*p_request_fingerprint text\s*\)/u,
   );
-  assert.match(sql, /r\.actor_id = \(select auth\.uid\(\)\)/u);
+  assert.match(sql, /r\.actor_id = \(select public\.company_access_auth_uid_v1\(\)\)/u);
   assert.match(sql, /r\.company_id = p_company_id/u);
   assert.match(sql, /r\.command_name = p_command_name/u);
   assert.match(sql, /r\.request_fingerprint = p_request_fingerprint/u);

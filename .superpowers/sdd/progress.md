@@ -616,3 +616,40 @@ Round-9 TDD and verification evidence:
   high findings plus the unchanged `ajv` moderate finding; no dependencies changed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
+
+## 2026-08-08 — Issue #160 PR #163 hosted-CI remediation
+
+- Hosted CI exposed PostgreSQL SQLSTATE `42501`: the non-superuser Supabase
+  migration role could create executor roles but could not transfer function
+  ownership without being able to `SET ROLE` to each new owner.
+- RED reproduced the failure in the actual local Supabase PG17 target and a
+  dedicated PG17 harness whose migration login is CREATEROLE/BYPASSRLS but not
+  superuser. The old superuser-owned harness had masked the boundary.
+- Ownership transfer now derives the migration login from `current_user` and
+  atomically grants/revokes executor SET membership plus executor `CREATE` on
+  `public`. PostgreSQL's unavoidable creator-admin records remain non-inheriting
+  and non-settable; no executor schema creation privilege remains.
+- The same local target proved Supabase's migration login cannot delegate `auth`
+  schema usage. Two versioned, migration-owned SECURITY DEFINER wrappers with an
+  empty search path expose only request UID/JWT claims. Public/anon execution,
+  executor Auth schema usage, and direct executor Auth helper execution are denied.
+- The current-app workspace rehearsal now explicitly applies and asserts the
+  staged contract artifact after automatic expand migrations, while the separate
+  real-PG test retains expand-only compatibility and expand→contract ordering.
+  It also uses recipient-bound lookup and the current acceptance RPC signature.
+- Actual `npm run test:supabase:local` passed: advisors had zero blocking
+  findings, database tests passed 21/21, and browser-owner tests passed 12/12.
+- Production audit RED found transitive `nanoid@3.3.16` in both root and web
+  lockfiles. Both now resolve the existing PostCSS-compatible range to 3.3.18,
+  with no direct dependency or unrelated resolution changes.
+- `npm audit --omit=dev --audit-level=high` passed with zero root vulnerabilities.
+  The equivalent web audit passed the high threshold with only the existing
+  PostCSS moderate advisory, whose suggested fix requires out-of-range Next 16.3.
+- Migration/harness commit: `65971203`; lockfile commit: `3f217e26`.
+- `npm run test:boundary` passed: backend 33, web 31, contract 28.
+- `npm run test:supabase-grants` passed 3/3; `npm run test:architecture`
+  passed 34/34 and `npm run check:architecture` passed.
+- `npm run test:boundary-smoke`, `npm run test:ci-gate`, `npm run typecheck`,
+  `npm run build:web`, and `npm run build:backend` passed.
+- No deployment, GitHub mutation, push, hosted write, or chargeable operation was
+  performed.
