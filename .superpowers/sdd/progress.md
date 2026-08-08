@@ -525,3 +525,56 @@ Round-8 TDD and verification evidence:
   `npm run typecheck`, `npm run build:web`, and `npm run build:backend` passed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
+
+## Issue #160 review-fix round 9
+
+- Review input: `/tmp/talli-issue-160-architecture-review-9.md` and
+  `/tmp/talli-issue-160-standards-review-9.md`.
+- Clean starting head: `566dd06463f387744af73afe277e96bdee6b4332`.
+- Implementation commit: `5727aabb`.
+- Architecture/documentation commit: `590c018f`.
+- Acceptance state: all six Important findings across the two reviews are
+  implemented; fresh-context acceptance review remains required.
+
+Round-8 correction and resolved findings:
+
+- Round 8's receipt-token clearing claim covered only the scalar column. Round 9
+  proves the complete receipt JSON and removes the token-bearing delivery body
+  from durable receipt results. Token-independent company/role metadata plus the
+  committed scalar token now reconstruct delivery deterministically.
+- Command RPCs retain `company_access_executor`; pending/completion RPCs use a
+  separate NOLOGIN/NOINHERIT/NOBYPASSRLS `company_access_recovery_executor`.
+  Their RLS/grants are non-overlapping: recovery sees only actor-owned invitation
+  receipts, exact invitation audit evidence, and actor/company-scoped
+  `workspace_invitation` outbox rows.
+- Completion is the delivery linearization point. It locks the receipt, verifies
+  exact audit evidence, atomically inserts/reconciles the deterministic outbox row
+  only if still unexpired, then completes and scrubs the receipt. The browser no
+  longer writes invitation outbox rows, and only that invitation-specific #156
+  compatibility scope was removed.
+- Create/resend responses and pending continuations build subject/body only from
+  committed receipt metadata and the token returned by PostgreSQL. Cross-request
+  replay cannot mix a new candidate body with an older committed token.
+- Both recovery routes are declared in `architecture/backend-system.json` and
+  `architecture/BACKEND-SYSTEM.md`; module documentation describes the two
+  restricted execution seams and single-copy receipt secret lifecycle.
+
+Round-9 TDD and verification evidence:
+
+- RED reproduced the old-token/new-body service replay, expired API body leak,
+  migration-owner recovery functions, browser outbox persistence, and missing
+  restricted policies/atomic insert. Focused GREEN covers two different generated
+  token candidates and an expired continuation response with no secret-bearing body.
+- Real PostgreSQL proves restricted function ownership, no role inheritance or
+  membership, concurrent-demotion replay denial, actor concealment, exact proof,
+  atomic/idempotent enqueue, full JSON/token scrubbing, and an advancing expiry
+  between list and completion producing zero outbox rows.
+- `npm run test:boundary` passed: backend 33, web 31, contract 28.
+- `npm run test:supabase` passed 17 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run typecheck`, `npm run build:web`, and `npm run build:backend` passed.
+- `npm audit --audit-level=high` reported pre-existing `fast-uri` and `nanoid`
+  high findings plus an `ajv` moderate finding; dependency mutation is outside #160.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
