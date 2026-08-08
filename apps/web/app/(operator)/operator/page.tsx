@@ -297,7 +297,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
               <p>Refund: {summary.refundStatus}</p>
               <p>Restore/archive: {summary.restoreStatus}</p>
               <p>Audit: {summary.recentAuditActions.join(", ") || "Ingen"}</p>
-              {launchSignoffState.isAdminOperator
+              {!operatorDashboard.error && launchSignoffState.isAdminOperator
                 && summary.cancellationId
                 && summary.cancellationStatus === "retention_hold"
                 && summary.cancellationUpdatedAt ? (

@@ -121,10 +121,11 @@ test("generated cancellation decoders reject malformed optional fields, UUIDs, a
 });
 
 test("web cancellation lifecycle has no direct Supabase persistence or caller-owned proof", async () => {
-  const [actions, server, workspace, operator, lifecycle, archiveRoute] = await Promise.all([
+  const [actions, server, workspace, workspaceData, operator, lifecycle, archiveRoute] = await Promise.all([
     readFile(new URL("../app/actions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/(owner)/workspace/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/workspace-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/company-access-cancellation.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url), "utf8"),
@@ -135,8 +136,15 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.doesNotMatch(actions, /buildCancellationEvidence|buildDeletionCompletionUpdate|nextCancellationStatus/u);
   assert.doesNotMatch(workspace, /legalRetentionConfirmed/u);
   assert.match(workspace, /primaryCancellation\.status === "deletion_approved"/u);
+  assert.match(workspaceData, /error: cancellationLifecycleError/u);
+  assert.match(workspaceData, /companyAccessAdministrationError \?\? cancellationLifecycleError/u);
+  assert.match(workspace, /!cancellationLifecycleError && primaryCompanyId/u);
+  assert.match(workspace, /!cancellationLifecycleError && primaryCancellation/u);
   assert.match(operator, /reviewCompanyDeletion/u);
+  assert.match(operator, /!operatorDashboard\.error/u);
   assert.match(operator, /evidenceReference/u);
+  assert.match(server, /error: cancellationLifecycleError/u);
+  assert.match(server, /error: cancellationLifecycleError \?\? null/u);
   assert.match(lifecycle, /getCurrentSessionAccessToken/u);
   assert.doesNotMatch(lifecycle, /supabase\.from|createSupabaseServerClient/u);
   assert.match(archiveRoute, /rpc\(\s*"company_archive_begin_export"/u);

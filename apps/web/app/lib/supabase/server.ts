@@ -1348,7 +1348,7 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
       .limit(50),
   ]);
 
-  const { cancellations } = await (
+  const { cancellations, error: cancellationLifecycleError } = await (
     await import("../company-access-cancellation")
   ).listCompanyCancellationLifecycle(companyIds);
 
@@ -1374,6 +1374,6 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
       auditEvents: auditEvents ?? [],
     }),
     isOperator,
-    error: null,
+    error: cancellationLifecycleError ?? null,
   };
 }

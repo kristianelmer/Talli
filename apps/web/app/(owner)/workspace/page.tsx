@@ -123,6 +123,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
   const {
     user,
     error,
+    cancellationLifecycleError,
     companies,
     documents,
     annualData,
@@ -455,7 +456,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </div>
                   ))}
                 </div>
-                {primaryCompanyId ? (
+                {!cancellationLifecycleError && primaryCompanyId ? (
                   <form className="dataPanel formPanel widePanel" action={requestCompanyCancellation}>
                     <input name="operationId" type="hidden" value={randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
@@ -469,7 +470,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </button>
                   </form>
                 ) : null}
-                {primaryCancellation && primaryCancellation.status === "deletion_approved" ? (
+                {!cancellationLifecycleError && primaryCancellation && primaryCancellation.status === "deletion_approved" ? (
                   <form className="dataPanel formPanel widePanel" action={completeCompanyDeletionRecord}>
                     <input name="operationId" type="hidden" value={randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCancellation.company_id} />

@@ -83,7 +83,9 @@ export async function loadWorkspaceData() {
     ? await listCompanyAccessAdministration(primaryCompanyId)
     : { invitations: [], memberships: [], error: null };
   const { notifications } = user ? await listNotificationOutbox(companies.map((company) => company.id)) : { notifications: [] };
-  const { cancellations } = user ? await listCompanyCancellationLifecycle(companies.map((company) => company.id)) : { cancellations: [] };
+  const { cancellations, error: cancellationLifecycleError } = user
+    ? await listCompanyCancellationLifecycle(companies.map((company) => company.id))
+    : { cancellations: [], error: null };
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
   const { billingPaymentEvents } = user ? await listBillingPaymentEvents(companies.map((company) => company.id)) : { billingPaymentEvents: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
@@ -163,7 +165,8 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError,
+    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    cancellationLifecycleError,
     companies,
     documents,
     annualData,
