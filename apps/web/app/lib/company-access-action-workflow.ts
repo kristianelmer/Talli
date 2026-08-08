@@ -56,18 +56,6 @@ export type CompanyAccessActionWorkflowDependencies = {
   revoke(command: MutationCommand): Promise<InvitationSideEffectContinuation>;
   resend(command: MutationCommand): Promise<InvitationSideEffectContinuation>;
   listPending(actorId: string): Promise<InvitationSideEffectContinuation[]>;
-  persistOutbox(input: {
-    actorId: string;
-    operationId: string;
-    commandName: "create_invitation" | "resend_invitation";
-    companyId: string;
-    recipientEmail: string;
-    invitationId: string;
-    role: "reviewer" | "read_only";
-    deliveryToken: string;
-    deliverySubject: string;
-    deliveryBody: string;
-  }): Promise<void>;
   persistAudit(input: {
     actorId: string;
     operationId: string;
@@ -105,26 +93,7 @@ export function createCompanyAccessActionWorkflow(
 ) {
   async function finish(actorId: string, continuation: InvitationSideEffectContinuation) {
     try {
-      if (continuation.commandName === "create_invitation" || continuation.commandName === "resend_invitation") {
-        const invitation = requiredInvitation(continuation);
-        if (continuation.deliveryToken && (!continuation.deliverySubject || !continuation.deliveryBody)) {
-          throw new InvitationContinuationPendingError();
-        }
-        if (continuation.deliveryToken) {
-          await dependencies.persistOutbox({
-            actorId,
-            operationId: continuation.operationId,
-            commandName: continuation.commandName,
-            companyId: continuation.companyId,
-            recipientEmail: invitation.invitedEmail,
-            invitationId: invitation.id,
-            role: invitation.role,
-            deliveryToken: continuation.deliveryToken,
-            deliverySubject: continuation.deliverySubject!,
-            deliveryBody: continuation.deliveryBody!,
-          });
-        }
-      }
+      if (continuation.commandName !== "accept_invitation") requiredInvitation(continuation);
       await dependencies.persistAudit({
         actorId,
         operationId: continuation.operationId,

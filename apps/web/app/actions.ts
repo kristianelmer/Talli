@@ -107,7 +107,6 @@ import {
 import {
   createInvitationSideEffectStore,
   persistInvitationAudit,
-  persistInvitationOutbox,
 } from "./lib/invitation-side-effects";
 import { validateManualJournal } from "./lib/manual-journal";
 import {
@@ -268,30 +267,6 @@ function companyAccessInvitationWorkflow(input: {
     async listPending() {
       const result = await listPendingInvitationSideEffects(input.accessToken);
       return result.continuations as InvitationSideEffectContinuation[];
-    },
-    async persistOutbox(sideEffect) {
-      const payload = sideEffect.commandName === "create_invitation"
-        ? {
-            operationId: sideEffect.operationId,
-            invitationId: sideEffect.invitationId,
-            subject: sideEffect.deliverySubject,
-            body: sideEffect.deliveryBody,
-          }
-        : {
-            operationId: sideEffect.operationId,
-            invitationId: sideEffect.invitationId,
-            role: sideEffect.role,
-            acceptUrl: `/invite/accept?token=${sideEffect.deliveryToken}`,
-          };
-      await persistInvitationOutbox(store, {
-        actorId: input.actorId,
-        operationId: sideEffect.operationId,
-        purpose: `${sideEffect.commandName}:delivery`,
-        companyId: sideEffect.companyId,
-        recipientEmail: sideEffect.recipientEmail,
-        template: "workspace_invitation",
-        payload,
-      });
     },
     async persistAudit(sideEffect) {
       const message = sideEffect.commandName === "create_invitation"

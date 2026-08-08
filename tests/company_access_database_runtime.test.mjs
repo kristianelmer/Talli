@@ -193,8 +193,8 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         '40000000-0000-0000-0000-000000000001',
         '10000000-0000-0000-0000-000000000001',
         'delivery@example.test', 'reviewer',
-        encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'),
-        'create-token'
+        encode(extensions.digest(convert_to('discarded-create-candidate', 'UTF8'), 'sha256'), 'hex'),
+        'discarded-create-candidate'
       );
       do $$ declare recovered text; begin
         if (select count(*) from public.company_invitations where invited_email = 'delivery@example.test') != 1 then
@@ -204,7 +204,8 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
           '40000000-0000-0000-0000-000000000001',
           '10000000-0000-0000-0000-000000000001',
           'delivery@example.test', 'reviewer',
-          encode(extensions.digest(convert_to('create-token', 'UTF8'), 'sha256'), 'hex'), 'create-token'
+          encode(extensions.digest(convert_to('another-discarded-candidate', 'UTF8'), 'sha256'), 'hex'),
+          'another-discarded-candidate'
         );
         if recovered <> 'create-token' then
           raise exception 'create receipt cannot recover delivery token';
@@ -742,20 +743,10 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       },
     ];
     for (const workflow of actorWorkflows) {
-      const createOutboxId = deriveInvitationSideEffectId({
-        actorId: workflow.actorId,
-        operationId: sharedCreateOperationId,
-        purpose: "create_invitation:delivery",
-      });
       const createAuditId = deriveInvitationSideEffectId({
         actorId: workflow.actorId,
         operationId: sharedCreateOperationId,
         purpose: "create_invitation:audit",
-      });
-      const resendOutboxId = deriveInvitationSideEffectId({
-        actorId: workflow.actorId,
-        operationId: sharedResendOperationId,
-        purpose: "resend_invitation:delivery",
       });
       const resendAuditId = deriveInvitationSideEffectId({
         actorId: workflow.actorId,
@@ -768,8 +759,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         select set_config('request.jwt.claims', '{"email":"${workflow.actorEmail}","aal":"aal2"}', false);
         select * from public.company_access_create_invitation(
           '${sharedCreateOperationId}', '${workflow.companyId}', '${workflow.recipientEmail}', 'reviewer',
-          encode(extensions.digest(convert_to('${workflow.token}', 'UTF8'), 'sha256'), 'hex'), '${workflow.token}',
-          'Invite subject', 'Create body'
+          encode(extensions.digest(convert_to('${workflow.token}', 'UTF8'), 'sha256'), 'hex'), '${workflow.token}'
         );
         do $$ begin
           begin
@@ -779,39 +769,25 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
             if sqlerrm <> 'company_access_side_effect_pending' then raise; end if;
           end;
         end $$;
-        insert into public.notification_outbox (
-          id, company_id, recipient_email, template, payload, status, created_by
-        ) select
-          '${createOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
-          jsonb_build_object(
-            'operationId', '${sharedCreateOperationId}', 'invitationId', id,
-            'subject', 'Invite subject', 'body', 'Create body'
-          ),
-          'queued', '${workflow.actorId}'
-        from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
         insert into public.audit_events (id, company_id, actor_id, category, action, message)
         values (
           '${createAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
           'reviewer_invitation_created',
           'Reviewer/read-only invitasjon køet for reviewer. Forespørsels-ID: ${sharedCreateOperationId}.'
         );
+        do $$ begin
+          if not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}')
+             or not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}') then
+            raise exception 'create side-effect completion was not idempotent';
+          end if;
+        end $$;
         select * from public.company_access_resend_invitation(
           '${sharedResendOperationId}', '${workflow.companyId}',
           (select id from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
           (select updated_at from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
           encode(extensions.digest(convert_to('${workflow.token}-resent', 'UTF8'), 'sha256'), 'hex'),
-          '${workflow.token}-resent', 'Invite again subject', 'Resend body'
+          '${workflow.token}-resent'
         );
-        insert into public.notification_outbox (
-          id, company_id, recipient_email, template, payload, status, created_by
-        ) select
-          '${resendOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
-          jsonb_build_object(
-            'operationId', '${sharedResendOperationId}', 'invitationId', id, 'role', role,
-            'acceptUrl', '/invite/accept?token=${workflow.token}-resent'
-          ),
-          'queued', '${workflow.actorId}'
-        from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
         insert into public.audit_events (id, company_id, actor_id, category, action, message)
         values (
           '${resendAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
@@ -820,12 +796,10 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         );
         do $$ begin
           if (select count(*) from public.company_access_pending_invitation_side_effects()
-              where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')) <> 2 then
-            raise exception 'actor could not list both pending continuations';
+              where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')) <> 1 then
+            raise exception 'actor could not list the pending resend continuation';
           end if;
-          if not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}')
-             or not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}')
-             or not public.company_access_complete_invitation_side_effect('${sharedResendOperationId}') then
+          if not public.company_access_complete_invitation_side_effect('${sharedResendOperationId}') then
             raise exception 'side-effect completion was not idempotent';
           end if;
           if exists (select 1 from public.company_access_pending_invitation_side_effects()
@@ -868,12 +842,83 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     `]).trim();
     assert.equal(persistedSideEffects, "4:4:2:2", "shared operation ids lost or merged side effects");
     const completedContinuations = psql(containerName, ["-Atc", String.raw`
-      select count(*)::text || ':' || count(*) filter (where delivery_token is null)::text
+      select count(*)::text || ':' ||
+        count(*) filter (where delivery_token is null)::text || ':' ||
+        count(*) filter (where result ? 'delivery_body' or result ? 'delivery_subject')::text || ':' ||
+        count(*) filter (where result::text like '%side-effect-token%')::text
       from public.company_access_command_receipts
       where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')
         and side_effects_completed_at is not null
     `]).trim();
-    assert.equal(completedContinuations, "4:4", "completion did not clear all token-bearing continuations");
+    assert.equal(completedContinuations, "4:4:0:0", "completion did not scrub every receipt secret copy");
+
+    const recoveryRoleBoundary = psql(containerName, ["-Atc", String.raw`
+      select
+        (select rolname from pg_catalog.pg_roles where oid =
+          (select proowner from pg_catalog.pg_proc where oid =
+            'public.company_access_pending_invitation_side_effects()'::regprocedure)) || ':' ||
+        (select rolname from pg_catalog.pg_roles where oid =
+          (select proowner from pg_catalog.pg_proc where oid =
+            'public.company_access_complete_invitation_side_effect(uuid)'::regprocedure)) || ':' ||
+        (select rolinherit::text || ':' || rolbypassrls::text || ':' || rolcanlogin::text
+          from pg_catalog.pg_roles where rolname = 'company_access_recovery_executor') || ':' ||
+        pg_catalog.pg_has_role('company_access_recovery_executor', 'company_access_executor', 'member')::text || ':' ||
+        pg_catalog.pg_has_role('company_access_executor', 'company_access_recovery_executor', 'member')::text
+    `]).trim();
+    assert.equal(
+      recoveryRoleBoundary,
+      "company_access_recovery_executor:company_access_recovery_executor:false:false:false:false:false",
+      "recovery functions escaped the restricted non-inheriting executor",
+    );
+
+    const expiryOperationId = "70000000-0000-4000-8000-000000000001";
+    const expiryAuditId = deriveInvitationSideEffectId({
+      actorId: "00000000-0000-0000-0000-000000000011",
+      operationId: expiryOperationId,
+      purpose: "create_invitation:audit",
+    });
+    const expiryOutput = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select * from public.company_access_create_invitation(
+        '${expiryOperationId}', '10000000-0000-0000-0000-000000000001',
+        'expiry-race@example.test', 'reviewer',
+        encode(extensions.digest(convert_to('expiry-race-token', 'UTF8'), 'sha256'), 'hex'),
+        'expiry-race-token'
+      );
+      insert into public.audit_events (id, company_id, actor_id, category, action, message)
+      values (
+        '${expiryAuditId}', '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011', 'review', 'reviewer_invitation_created',
+        'Reviewer/read-only invitasjon køet for reviewer. Forespørsels-ID: ${expiryOperationId}.'
+      );
+      select delivery_token from public.company_access_pending_invitation_side_effects()
+      where operation_id = '${expiryOperationId}';
+    `);
+    assert.match(expiryOutput, /expiry-race-token/u, "pre-expiry recovery did not expose its committed token");
+    psql(containerName, [], String.raw`
+      update public.company_access_command_receipts
+      set expires_at = statement_timestamp() - interval '1 second'
+      where actor_id = '00000000-0000-0000-0000-000000000011'
+        and operation_id = '${expiryOperationId}';
+    `);
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      select public.company_access_complete_invitation_side_effect('${expiryOperationId}');
+    `);
+    const expiryState = psql(containerName, ["-Atc", String.raw`
+      select
+        (select count(*) from public.notification_outbox
+          where payload ->> 'operationId' = '${expiryOperationId}')::text || ':' ||
+        (select count(*) from public.company_access_command_receipts
+          where operation_id = '${expiryOperationId}' and delivery_token is null
+            and side_effects_completed_at is not null
+            and not (result ? 'delivery_body') and result::text not like '%expiry-race-token%')::text
+    `]).trim();
+    assert.equal(expiryState, "0:1", "expiry crossing queued obsolete mail or retained its receipt secret");
 
     const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
       select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)

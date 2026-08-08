@@ -85,15 +85,16 @@ function fakeRuntime(failurePoint) {
       if (actorId !== ACTOR_ID) throw new Error("continuation actor mismatch");
       return [...pending.values()].map((value) => structuredClone(value));
     },
-    async persistOutbox(row) {
-      failOnce(`${row.commandName}:outbox`);
-      outbox.set(`${row.actorId}:${row.operationId}:${row.commandName}`, structuredClone(row));
-    },
     async persistAudit(row) {
       failOnce(`${row.commandName}:audit`);
       audits.set(`${row.actorId}:${row.operationId}:${row.commandName}`, structuredClone(row));
     },
     async complete(operationId) {
+      const continuation = pending.get(operationId);
+      if (continuation?.commandName === "create_invitation" || continuation?.commandName === "resend_invitation") {
+        failOnce(`${continuation.commandName}:outbox`);
+        outbox.set(`${ACTOR_ID}:${operationId}:${continuation.commandName}`, structuredClone(continuation));
+      }
       pending.delete(operationId);
     },
   };
@@ -157,4 +158,30 @@ test("recovery actor comes from the server context and cannot claim another acto
   );
   assert.equal(runtime.pending.size, 1);
   assert.equal(runtime.audits.size, 0);
+});
+
+test("delivery persistence is owned by atomic completion, never by a browser outbox insert", async () => {
+  let completed = false;
+  const workflow = createCompanyAccessActionWorkflow({
+    async create(command) {
+      return {
+        operationId: command.operationId,
+        commandName: "create_invitation",
+        companyId: command.companyId,
+        invitation: invitation(),
+        deliveryToken: "committed-token",
+        deliverySubject: "Invite",
+        deliveryBody: "Body",
+      };
+    },
+    async accept() { throw new Error("unused"); },
+    async revoke() { throw new Error("unused"); },
+    async resend() { throw new Error("unused"); },
+    async listPending() { return []; },
+    async persistAudit() {},
+    async complete() { completed = true; },
+  });
+
+  await workflow.execute(ACTOR_ID, "create_invitation", commands.create_invitation);
+  assert.equal(completed, true);
 });

@@ -7,6 +7,7 @@ from threading import Thread
 from urllib.parse import urlsplit
 
 import pytest
+import talli_backend.modules.company_access.public as company_access_public
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
@@ -137,6 +138,7 @@ class CompanyAccessGatewayStub:
         return {
             **self._invitation(role=invitation.role, email=invitation.invited_email),
             "delivery_token": invitation.acceptance_token,
+            "delivery_company_name": "Talli Holding AS",
         }
 
     async def lookup_invitation(
@@ -166,7 +168,11 @@ class CompanyAccessGatewayStub:
         self, _access_token: str, command: ResendInvitationGatewayCommand
     ) -> Mapping[str, object] | None:
         self.calls.append(("resend_invitation", command))
-        return {**self._invitation(), "delivery_token": command.acceptance_token}
+        return {
+            **self._invitation(),
+            "delivery_token": command.acceptance_token,
+            "delivery_company_name": "Talli Holding AS",
+        }
 
     async def company_memberships(
         self, _access_token: str, company_id: str
@@ -193,8 +199,7 @@ class CompanyAccessGatewayStub:
             "company_id": "10000000-0000-0000-0000-000000000001",
             "result": {
                 **self._invitation(),
-                "delivery_subject": "Invitasjon til Talli: Talli Holding AS",
-                "delivery_body": "Delivery body",
+                "delivery_company_name": "Talli Holding AS",
             },
             "delivery_token": "delivery-token",
         }]
@@ -324,6 +329,7 @@ class LocalSupabaseGateway:
                         "created_at": "2026-08-01T00:00:00Z",
                         "updated_at": "2026-08-01T00:00:00Z",
                         "delivery_token": payload["p_acceptance_token"],
+                        "delivery_company_name": "Talli Holding AS",
                     }])
                     return
                 self._json(404, {})
@@ -652,6 +658,84 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
     assert isinstance(command, CreateInvitationGatewayCommand)
     assert len(command.token_hash) == 64
     assert command.token_hash != command.acceptance_token
+
+
+def test_create_replay_builds_delivery_from_the_committed_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    class ReplayGateway(CompanyAccessGatewayStub):
+        committed: CreateInvitationGatewayCommand | None = None
+
+        async def create_invitation(
+            self, _access_token: str, invitation: CreateInvitationGatewayCommand
+        ) -> Mapping[str, object]:
+            self.calls.append(("create_invitation", invitation))
+            if self.committed is None:
+                self.committed = invitation
+            return {
+                **self._invitation(
+                    role=self.committed.role,
+                    email=self.committed.invited_email,
+                ),
+                "delivery_token": self.committed.acceptance_token,
+                "delivery_company_name": "Talli Holding AS",
+            }
+
+    candidates = iter(["first-committed-token", "second-discarded-token"])
+    monkeypatch.setattr(company_access_public.secrets, "token_urlsafe", lambda _size: next(candidates))
+    gateway = ReplayGateway()
+    client = TestClient(create_app(gateway))
+    payload = {
+        "operationId": "40000000-0000-0000-0000-000000000001",
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "invitedEmail": "reviewer@example.no",
+        "role": "reviewer",
+    }
+
+    first = client.post(
+        "/api/v1/company-access/invitations",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        json=payload,
+    )
+    replay = client.post(
+        "/api/v1/company-access/invitations",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        json=payload,
+    )
+
+    assert first.status_code == replay.status_code == 201
+    assert replay.json()["deliveryToken"] == "first-committed-token"
+    assert replay.json()["deliveryBody"] == first.json()["deliveryBody"]
+    assert "first-committed-token" in replay.json()["deliveryBody"]
+    assert "second-discarded-token" not in replay.json()["deliveryBody"]
+
+
+def test_expired_pending_continuation_never_returns_body_with_a_cleared_token() -> None:
+    class ExpiredContinuationGateway(CompanyAccessGatewayStub):
+        async def pending_invitation_side_effects(
+            self, _access_token: str
+        ) -> list[Mapping[str, object]]:
+            return [{
+                "operation_id": "40000000-0000-0000-0000-000000000009",
+                "command_name": "create_invitation",
+                "company_id": "10000000-0000-0000-0000-000000000001",
+                "result": {
+                    **self._invitation(),
+                    "delivery_company_name": "Talli Holding AS",
+                    "delivery_body": "legacy /invite/accept?token=expired-secret",
+                },
+                "delivery_token": None,
+            }]
+
+    response = TestClient(create_app(ExpiredContinuationGateway())).get(
+        "/api/v1/company-access/invitation-side-effects/pending",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+
+    assert response.status_code == 200
+    continuation = response.json()["continuations"][0]
+    assert continuation["deliveryToken"] is None
+    assert continuation["deliverySubject"] is None
+    assert continuation["deliveryBody"] is None
+    assert "expired-secret" not in json.dumps(response.json())
 
 
 def test_owner_invitation_administration_requires_aal2_and_conceals_foreign_company() -> None:

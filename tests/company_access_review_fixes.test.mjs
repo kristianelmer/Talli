@@ -66,13 +66,13 @@ test("invitation side effects reconcile in the trusted actor and command namespa
   const sideEffects = await source("apps/web/app/lib/invitation-side-effects.ts");
 
   assert.doesNotMatch(actions, /id: operationId/u);
-  assert.match(actions, /persistInvitationOutbox/u);
+  assert.doesNotMatch(actions, /persistInvitationOutbox/u);
   assert.match(actions, /persistInvitationAudit/u);
   assert.match(sideEffects, /deriveInvitationSideEffectId/u);
   assert.match(sideEffects, /actorId/u);
   assert.match(sideEffects, /operationId/u);
   assert.match(sideEffects, /purpose/u);
-  assert.match(sideEffects, /existing\.payload/u);
+  assert.doesNotMatch(sideEffects, /notification_outbox|insertOutbox/u);
   assert.match(sideEffects, /existing\.message/u);
 });
 

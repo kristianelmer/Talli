@@ -137,6 +137,18 @@ test("invitation side-effect recovery is receipt-owned, actor-derived, and proof
   assert.doesNotMatch(complete, /p_actor_id/iu);
   assert.match(sql, /grant execute on function public\.company_access_pending_invitation_side_effects/iu);
   assert.match(sql, /grant execute on function public\.company_access_complete_invitation_side_effect/iu);
+  assert.match(sql, /create role company_access_recovery_executor nologin noinherit nobypassrls/iu);
+  assert.match(sql, /alter function public\.company_access_pending_invitation_side_effects\(\)[\s\S]+owner to company_access_recovery_executor/iu);
+  assert.match(sql, /alter function public\.company_access_complete_invitation_side_effect\(uuid\)[\s\S]+owner to company_access_recovery_executor/iu);
+  assert.match(sql, /create policy "company access recovery reads own receipts"[\s\S]+actor_id = \(select auth\.uid\(\)\)/iu);
+  assert.match(sql, /create policy "company access recovery reads own audit evidence"[\s\S]+actor_id = \(select auth\.uid\(\)\)/iu);
+  assert.match(sql, /create policy "company access recovery reads own delivery evidence"[\s\S]+created_by = \(select auth\.uid\(\)\)/iu);
+  assert.match(complete, /insert into public\.notification_outbox/iu);
+  assert.doesNotMatch(sql, /grant (?:select|insert)[^;]*notification_outbox to company_access_executor/iu);
+  assert.match(sql, /grant select, insert on public\.notification_outbox to company_access_recovery_executor/iu);
+  assert.match(sql, /revoke all on function public\.company_access_pending_invitation_side_effects\(\) from public, anon/iu);
+  assert.doesNotMatch(sql, /'delivery_body'\s*,\s*(?:p_delivery_body|coalesce|')/iu);
+  assert.match(sql, /result = r\.result - 'delivery_body' - 'delivery_subject'/iu);
 });
 
 test("pgcrypto hashing resolves the extension schema under an empty search path", async () => {

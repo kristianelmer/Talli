@@ -109,8 +109,6 @@ class CreateInvitationGatewayCommand(CompanyAccessCommandModel):
     role: InvitationRole
     token_hash: str
     acceptance_token: str
-    delivery_subject: str
-    delivery_body: str
 
 
 class InvitationIdentityGatewayCommand(CompanyAccessCommandModel):
@@ -133,8 +131,6 @@ class InvitationMutationGatewayCommand(CompanyAccessCommandModel):
 class ResendInvitationGatewayCommand(InvitationMutationGatewayCommand):
     token_hash: str
     acceptance_token: str
-    delivery_subject: str
-    delivery_body: str
 
 
 class AdministerMembershipGatewayCommand(CompanyAccessCommandModel):
@@ -400,15 +396,9 @@ class CompanyAccessService:
     ) -> CompanyInvitationResponse:
         company_id = str(command.company_id)
         await self._authorize_owner(access_token, company_id)
-        company = await self._company(access_token, company_id)
+        await self._company(access_token, company_id)
         normalized_email = _normalize_email(command.invited_email)
         acceptance_token = secrets.token_urlsafe(32)
-        delivery_subject = f"Invitasjon til Talli: {company['name']}"
-        delivery_body = _invitation_body(
-            company_name=str(company["name"]),
-            role=command.role,
-            acceptance_token=acceptance_token,
-        )
         row = await self._gateway.create_invitation(
             access_token,
             CreateInvitationGatewayCommand(
@@ -418,13 +408,18 @@ class CompanyAccessService:
                 role=command.role,
                 token_hash=_token_hash(acceptance_token),
                 acceptance_token=acceptance_token,
-                delivery_subject=delivery_subject,
-                delivery_body=delivery_body,
             ),
         )
         delivery_token = str(row.get("delivery_token", ""))
-        if not delivery_token:
+        delivery_company_name = str(row.get("delivery_company_name", ""))
+        if not delivery_token or not delivery_company_name:
             raise _company_access_unavailable()
+        delivery_subject = f"Invitasjon til Talli: {delivery_company_name}"
+        delivery_body = _invitation_body(
+            company_name=delivery_company_name,
+            role=str(row.get("role", "")),
+            acceptance_token=delivery_token,
+        )
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
             delivery_token=delivery_token,
@@ -450,23 +445,28 @@ class CompanyAccessService:
                 membership = self._membership(result)
             else:
                 invitation = self._invitation(result)
+            delivery_token = (
+                str(row["delivery_token"])
+                if row.get("delivery_token") is not None else None
+            )
+            delivery_company_name = str(result.get("delivery_company_name", ""))
+            has_delivery = bool(delivery_token and delivery_company_name and invitation)
             continuations.append(InvitationSideEffectContinuation(
                 operation_id=str(row.get("operation_id", "")),
                 command_name=command_name,
                 company_id=str(row.get("company_id", "")),
                 invitation=invitation,
                 membership=membership,
-                delivery_token=(
-                    str(row["delivery_token"])
-                    if row.get("delivery_token") is not None else None
-                ),
+                delivery_token=delivery_token if has_delivery else None,
                 delivery_subject=(
-                    str(result["delivery_subject"])
-                    if result.get("delivery_subject") is not None else None
+                    f"Invitasjon til Talli: {delivery_company_name}" if has_delivery else None
                 ),
                 delivery_body=(
-                    str(result["delivery_body"])
-                    if result.get("delivery_body") is not None else None
+                    _invitation_body(
+                        company_name=delivery_company_name,
+                        role=str(result.get("role", "")),
+                        acceptance_token=delivery_token or "",
+                    ) if has_delivery else None
                 ),
             ))
         return InvitationSideEffectContinuationList(continuations=continuations)
@@ -552,7 +552,7 @@ class CompanyAccessService:
     ) -> CompanyInvitationResponse:
         company_id = str(command.company_id)
         await self._authorize_owner(access_token, company_id)
-        company = await self._company(access_token, company_id)
+        await self._company(access_token, company_id)
         existing_invitations = await self._gateway.invitations(access_token, company_id)
         existing = next(
             (item for item in existing_invitations if str(item.get("id")) == str(invitation_id)),
@@ -561,12 +561,6 @@ class CompanyAccessService:
         if existing is None:
             raise _company_access_not_found()
         acceptance_token = secrets.token_urlsafe(32)
-        delivery_subject = f"Invitasjon til Talli: {company['name']}"
-        delivery_body = _invitation_body(
-            company_name=str(company["name"]),
-            role=str(existing.get("role", "read_only")),
-            acceptance_token=acceptance_token,
-        )
         row = await self._gateway.resend_invitation(
             access_token,
             ResendInvitationGatewayCommand(
@@ -576,15 +570,20 @@ class CompanyAccessService:
                 expected_updated_at=command.expected_updated_at.isoformat(),
                 token_hash=_token_hash(acceptance_token),
                 acceptance_token=acceptance_token,
-                delivery_subject=delivery_subject,
-                delivery_body=delivery_body,
             ),
         )
         if row is None:
             raise _company_access_not_found()
         delivery_token = str(row.get("delivery_token", ""))
-        if not delivery_token:
+        delivery_company_name = str(row.get("delivery_company_name", ""))
+        if not delivery_token or not delivery_company_name:
             raise _company_access_unavailable()
+        delivery_subject = f"Invitasjon til Talli: {delivery_company_name}"
+        delivery_body = _invitation_body(
+            company_name=delivery_company_name,
+            role=str(row.get("role", "")),
+            acceptance_token=delivery_token,
+        )
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
             delivery_token=delivery_token,

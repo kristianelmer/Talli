@@ -246,8 +246,6 @@ class SupabaseCompanyAccessAdapter:
             "p_role": command.role,
             "p_token_hash": command.token_hash,
             "p_acceptance_token": command.acceptance_token,
-            "p_delivery_subject": command.delivery_subject,
-            "p_delivery_body": command.delivery_body,
         }) or {}
 
     async def lookup_invitation(
@@ -293,8 +291,6 @@ class SupabaseCompanyAccessAdapter:
             "p_expected_updated_at": command.expected_updated_at,
             "p_token_hash": command.token_hash,
             "p_acceptance_token": command.acceptance_token,
-            "p_delivery_subject": command.delivery_subject,
-            "p_delivery_body": command.delivery_body,
         })
 
     async def company_memberships(
