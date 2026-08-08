@@ -96,40 +96,34 @@ function renderInterface(name, schema) {
 
 function renderGuard(name, schema) {
   const allowedProperties = Object.keys(schema.properties ?? {});
+  const required = new Set(schema.required ?? []);
+  const propertyCheck = (propertySchema, value) => {
+    if (propertySchema?.$ref) return `is${schemaType(propertySchema)}(${value})`;
+    if (propertySchema?.anyOf) {
+      return `(${propertySchema.anyOf.map((candidate) => propertyCheck(candidate, value)).join(" || ")})`;
+    }
+    if (propertySchema?.type === "null") return `${value} === null`;
+    if (propertySchema?.type === "array") {
+      return `Array.isArray(${value}) && ${value}.every((item) => ${propertyCheck(propertySchema.items, "item")})`;
+    }
+    if (propertySchema?.const !== undefined) return `${value} === ${JSON.stringify(propertySchema.const)}`;
+    if (propertySchema?.enum?.length) {
+      return `(${propertySchema.enum.map((candidate) => `${value} === ${JSON.stringify(candidate)}`).join(" || ")})`;
+    }
+    if (propertySchema?.type === "object") return `isRecord(${value})`;
+    if (propertySchema?.type === "string" && propertySchema.format === "uuid") return `isUuid(${value})`;
+    if (propertySchema?.type === "string" && propertySchema.format === "date-time") return `isDateTime(${value})`;
+    if (propertySchema?.type === "integer") return `typeof ${value} === "number" && Number.isInteger(${value})`;
+    if (propertySchema?.type === "number") return `typeof ${value} === "number" && Number.isFinite(${value})`;
+    return `typeof ${value} === "${schemaType(propertySchema)}"`;
+  };
   const checks = [
     `    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`,
-    ...(schema.required ?? []).map((property) => {
-    if (schema.properties[property]?.$ref) {
-      return `    is${schemaType(schema.properties[property])}(value.${property})`;
-    }
-    if (schema.properties[property]?.type === "array") {
-      const item = schema.properties[property].items;
-      const itemCheck = item?.$ref
-        ? `is${schemaType(item)}(item)`
-        : `typeof item === "${schemaType(item)}"`;
-      return `    Array.isArray(value.${property}) && value.${property}.every((item) => ${itemCheck})`;
-    }
-    if (schema.properties[property]?.anyOf) {
-      const nonNull = schema.properties[property].anyOf.find((candidate) => candidate.type !== "null");
-      if (nonNull?.$ref) {
-        return `    (value.${property} === null || is${schemaType(nonNull)}(value.${property}))`;
-      }
-      return `    (value.${property} === null || typeof value.${property} === "${schemaType(nonNull)}")`;
-    }
-    if (schema.properties[property]?.const !== undefined) {
-      return `    value.${property} === ${JSON.stringify(schema.properties[property].const)}`;
-    }
-    if (schema.properties[property]?.type === "object") {
-      return `    isRecord(value.${property})`;
-    }
-    const allowedValues = schema.properties[property]?.enum;
-    if (allowedValues?.length) {
-      return `    (${allowedValues
-        .map((value) => `value.${property} === ${JSON.stringify(value)}`)
-        .join(" || ")})`;
-    }
-    const expectedType = schemaType(schema.properties[property]);
-    return `    typeof value.${property} === "${expectedType}"`;
+    ...Object.entries(schema.properties ?? {}).map(([property, propertySchema]) => {
+      const check = propertyCheck(propertySchema, `value.${property}`);
+      return required.has(property)
+        ? `    ${check}`
+        : `    (value.${property} === undefined || ${check})`;
     }),
   ];
   return `function is${name}(value: unknown): value is ${name} {
@@ -199,6 +193,17 @@ function hasOnlyProperties(
   allowedProperties: readonly string[],
 ): boolean {
   return Object.keys(value).every((property) => allowedProperties.includes(property));
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+}
+
+function isDateTime(value: unknown): value is string {
+  return typeof value === "string"
+    && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/u.test(value)
+    && !Number.isNaN(Date.parse(value));
 }
 
 ${renderGuard("SystemBoundaryStatus", successSchema)}

@@ -15,7 +15,7 @@ const cancellation = {
   status: "retention_hold",
   reason: "Customer requested cancellation",
   evidence: { archiveIncomeYear: 2025, archiveExportedAt: "2026-08-08T10:00:00Z" },
-  requestedBy: "owner-1",
+  requestedBy: "00000000-0000-0000-0000-000000000011",
   requestedAt: "2026-08-08T10:30:00Z",
   reviewedBy: null,
   reviewedAt: null,
@@ -34,14 +34,14 @@ test("cancellation lifecycle transport uses generated operations with bearer and
     if (init.method === "GET") return Response.json({ cancellations: [cancellation] });
     if (String(url).endsWith("/reviews")) {
       return Response.json({
-        cancellation: { ...cancellation, status: "deletion_approved", reviewedBy: "admin-1", reviewedAt: "2026-08-08T11:00:00Z", updatedAt: "2026-08-08T11:00:00Z" },
+        cancellation: { ...cancellation, status: "deletion_approved", reviewedBy: "00000000-0000-0000-0000-000000000044", reviewedAt: "2026-08-08T11:00:00Z", updatedAt: "2026-08-08T11:00:00Z" },
         review: {
           id: "60000000-0000-0000-0000-000000000001",
           cancellationId: cancellation.id,
           companyId: cancellation.companyId,
           decision: "approved",
           evidenceReference: "legal/case-161",
-          reviewedBy: "admin-1",
+          reviewedBy: "00000000-0000-0000-0000-000000000044",
           reviewedAt: "2026-08-08T11:00:00Z",
           operationId: "40000000-0000-0000-0000-000000000002",
           cancellationRevision: "2026-08-08T11:00:00Z",
@@ -89,6 +89,35 @@ test("cancellation lifecycle transport uses generated operations with bearer and
     `/api/v1/company-access/cancellations/${cancellation.id}/reviews`,
     `/api/v1/company-access/cancellations/${cancellation.id}/finalize`,
   ]);
+});
+
+test("generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  const malformed = [
+    { ...cancellation, id: "not-a-uuid" },
+    { ...cancellation, requestedAt: "2026-08-08" },
+    { ...cancellation, reviewedBy: "not-a-uuid" },
+    { ...cancellation, reviewedAt: "tomorrow" },
+    { ...cancellation, evidence: { ...cancellation.evidence, legalReviewRequired: "yes" } },
+    { ...cancellation, evidence: { ...cancellation.evidence, missingDocumentIds: ["not-a-uuid"] } },
+    { ...cancellation, evidence: { ...cancellation.evidence, archiveExportedAt: "not-a-date" } },
+  ];
+
+  try {
+    for (const candidate of malformed) {
+      globalThis.fetch = async () => Response.json({ cancellations: [candidate] });
+      await assert.rejects(
+        listCompanyCancellations("session-token", cancellation.companyId),
+        (error) => error?.status === 502,
+      );
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
 });
 
 test("web cancellation lifecycle has no direct Supabase persistence or caller-owned proof", async () => {

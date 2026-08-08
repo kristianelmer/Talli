@@ -82,14 +82,17 @@
         "type": "object"
       },
       "CompanyCancellation": {
+        "additionalProperties": false,
         "properties": {
           "companyId": {
+            "format": "uuid",
             "title": "Companyid",
             "type": "string"
           },
           "deletedAt": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
@@ -101,6 +104,7 @@
           "deletedBy": {
             "anyOf": [
               {
+                "format": "uuid",
                 "type": "string"
               },
               {
@@ -113,24 +117,30 @@
             "$ref": "#/components/schemas/CompanyCancellationEvidence"
           },
           "id": {
+            "format": "uuid",
             "title": "Id",
             "type": "string"
           },
           "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
             "title": "Reason",
             "type": "string"
           },
           "requestedAt": {
+            "format": "date-time",
             "title": "Requestedat",
             "type": "string"
           },
           "requestedBy": {
+            "format": "uuid",
             "title": "Requestedby",
             "type": "string"
           },
           "reviewedAt": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
@@ -142,6 +152,7 @@
           "reviewedBy": {
             "anyOf": [
               {
+                "format": "uuid",
                 "type": "string"
               },
               {
@@ -161,6 +172,7 @@
             "type": "string"
           },
           "updatedAt": {
+            "format": "date-time",
             "title": "Updatedat",
             "type": "string"
           }
@@ -199,6 +211,7 @@
           "archiveExportedAt": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
@@ -210,6 +223,8 @@
           "archiveIncomeYear": {
             "anyOf": [
               {
+                "maximum": 2100.0,
+                "minimum": 2000.0,
                 "type": "integer"
               },
               {
@@ -250,6 +265,7 @@
           },
           "missingDocumentIds": {
             "items": {
+              "format": "uuid",
               "type": "string"
             },
             "title": "Missingdocumentids",
@@ -267,6 +283,7 @@
         "type": "object"
       },
       "CompanyCancellationListResponse": {
+        "additionalProperties": false,
         "properties": {
           "cancellations": {
             "items": {
@@ -283,6 +300,7 @@
         "type": "object"
       },
       "CompanyCancellationResponse": {
+        "additionalProperties": false,
         "properties": {
           "cancellation": {
             "$ref": "#/components/schemas/CompanyCancellation"
@@ -420,16 +438,20 @@
         "type": "object"
       },
       "CompanyDeletionReview": {
+        "additionalProperties": false,
         "properties": {
           "cancellationId": {
+            "format": "uuid",
             "title": "Cancellationid",
             "type": "string"
           },
           "cancellationRevision": {
+            "format": "date-time",
             "title": "Cancellationrevision",
             "type": "string"
           },
           "companyId": {
+            "format": "uuid",
             "title": "Companyid",
             "type": "string"
           },
@@ -442,22 +464,28 @@
             "type": "string"
           },
           "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
             "title": "Evidencereference",
             "type": "string"
           },
           "id": {
+            "format": "uuid",
             "title": "Id",
             "type": "string"
           },
           "operationId": {
+            "format": "uuid",
             "title": "Operationid",
             "type": "string"
           },
           "reviewedAt": {
+            "format": "date-time",
             "title": "Reviewedat",
             "type": "string"
           },
           "reviewedBy": {
+            "format": "uuid",
             "title": "Reviewedby",
             "type": "string"
           }
@@ -477,6 +505,7 @@
         "type": "object"
       },
       "CompanyDeletionReviewResponse": {
+        "additionalProperties": false,
         "properties": {
           "cancellation": {
             "$ref": "#/components/schemas/CompanyCancellation"

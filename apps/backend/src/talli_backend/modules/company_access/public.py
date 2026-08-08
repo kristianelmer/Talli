@@ -33,6 +33,10 @@ class CompanyAccessCommandModel(CompanyAccessModel):
     )
 
 
+class CompanyAccessResponseModel(CompanyAccessModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid")
+
+
 class CompanyContext(CompanyAccessModel):
     id: str
     org_number: str
@@ -264,56 +268,56 @@ class CompanyMembershipListResponse(CompanyAccessModel):
     memberships: list[CompanyMembership]
 
 
-class CompanyCancellationEvidence(CompanyAccessModel):
+class CompanyCancellationEvidence(CompanyAccessResponseModel):
     model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid")
 
-    archive_exported_at: str | None = None
-    archive_income_year: int | None = None
+    archive_exported_at: AwareDatetime | None = None
+    archive_income_year: int | None = Field(default=None, ge=2000, le=2100)
     archive_download_path: str | None = None
     retention_classes: list[str] = Field(default_factory=list)
-    missing_document_ids: list[str] = Field(default_factory=list)
+    missing_document_ids: list[UUID] = Field(default_factory=list)
     legal_review_required: bool = True
     corporate_object_keys: list[str] = Field(default_factory=list)
     missing_corporate_object_keys: list[str] = Field(default_factory=list)
     corporate_evidence_complete: bool | None = None
 
 
-class CompanyCancellation(CompanyAccessModel):
-    id: str
-    company_id: str
+class CompanyCancellation(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
     status: CancellationStatus
-    reason: str
+    reason: str = Field(min_length=1, max_length=1000)
     evidence: CompanyCancellationEvidence
-    requested_by: str
-    requested_at: str
-    reviewed_by: str | None
-    reviewed_at: str | None
-    deleted_by: str | None
-    deleted_at: str | None
-    updated_at: str
+    requested_by: UUID
+    requested_at: AwareDatetime
+    reviewed_by: UUID | None
+    reviewed_at: AwareDatetime | None
+    deleted_by: UUID | None
+    deleted_at: AwareDatetime | None
+    updated_at: AwareDatetime
 
 
-class CompanyCancellationResponse(CompanyAccessModel):
+class CompanyCancellationResponse(CompanyAccessResponseModel):
     cancellation: CompanyCancellation
 
 
-class CompanyCancellationListResponse(CompanyAccessModel):
+class CompanyCancellationListResponse(CompanyAccessResponseModel):
     cancellations: list[CompanyCancellation]
 
 
-class CompanyDeletionReview(CompanyAccessModel):
-    id: str
-    cancellation_id: str
-    company_id: str
+class CompanyDeletionReview(CompanyAccessResponseModel):
+    id: UUID
+    cancellation_id: UUID
+    company_id: UUID
     decision: DeletionReviewDecision
-    evidence_reference: str
-    reviewed_by: str
-    reviewed_at: str
-    operation_id: str
-    cancellation_revision: str
+    evidence_reference: str = Field(min_length=1, max_length=500)
+    reviewed_by: UUID
+    reviewed_at: AwareDatetime
+    operation_id: UUID
+    cancellation_revision: AwareDatetime
 
 
-class CompanyDeletionReviewResponse(CompanyAccessModel):
+class CompanyDeletionReviewResponse(CompanyAccessResponseModel):
     cancellation: CompanyCancellation
     review: CompanyDeletionReview
 
@@ -904,7 +908,7 @@ class CompanyAccessService:
 
     @staticmethod
     def _cancellation(row: Mapping[str, object]) -> CompanyCancellation:
-        return CompanyCancellation(**row)
+        return CompanyCancellation(**{key: value for key, value in row.items() if key != "review"})
 
 
 def _normalize_email(email: str) -> str:

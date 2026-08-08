@@ -4,10 +4,13 @@ import json
 from datetime import datetime, timezone
 from collections.abc import Mapping
 
+import pytest
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
+    CompanyCancellation,
+    CompanyDeletionReview,
     CompanyAccessError,
     FinalizeCompanyDeletionGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
@@ -22,6 +25,7 @@ from talli_backend.adapters.supabase_company_access import (
 COMPANY_ID = "10000000-0000-0000-0000-000000000001"
 CANCELLATION_ID = "50000000-0000-0000-0000-000000000001"
 OPERATION_ID = "40000000-0000-0000-0000-000000000001"
+OWNER_ID = "00000000-0000-0000-0000-000000000011"
 
 
 def access_token(*, aal: str = "aal2", mfa_age_seconds: int = 30) -> str:
@@ -42,10 +46,10 @@ class LifecycleGatewayStub:
         self.rows: list[Mapping[str, object]] | None = None
 
     async def session_subject(self, _access_token: str) -> str:
-        return "owner-1"
+        return OWNER_ID
 
     async def session_identity(self, _access_token: str) -> Mapping[str, object]:
-        return {"id": "owner-1", "email": "owner@example.no"}
+        return {"id": OWNER_ID, "email": "owner@example.no"}
 
     async def memberships(self, _access_token: str, _subject: str) -> list[Mapping[str, object]]:
         return [{"company_id": COMPANY_ID, "role": self.role, "accepted_at": "2026-08-01T00:00:00Z"}]
@@ -61,7 +65,7 @@ class LifecycleGatewayStub:
             "city": "Oslo",
             "status_text": "Registrert",
             "source": "Brønnøysundregistrene",
-            "created_by": "owner-1",
+            "created_by": OWNER_ID,
             "identity_confirmed_at": None,
             "identity_locked_at": None,
             "created_at": "2026-07-30T00:00:00Z",
@@ -91,7 +95,7 @@ class LifecycleGatewayStub:
                 "company_id": COMPANY_ID,
                 "decision": command.decision,
                 "evidence_reference": command.evidence_reference,
-                "reviewed_by": "admin-1",
+                "reviewed_by": "00000000-0000-0000-0000-000000000044",
                 "reviewed_at": "2026-08-08T11:00:00Z",
                 "operation_id": command.operation_id,
                 "cancellation_revision": command.expected_updated_at,
@@ -116,11 +120,11 @@ class LifecycleGatewayStub:
                 "archiveExportedAt": "2026-08-08T10:00:00Z",
                 "archiveDownloadPath": f"/archive/{COMPANY_ID}/2025/download",
             },
-            "requested_by": "owner-1",
+            "requested_by": OWNER_ID,
             "requested_at": "2026-08-08T10:30:00Z",
-            "reviewed_by": "admin-1" if status in {"deletion_approved", "deleted"} else None,
+            "reviewed_by": "00000000-0000-0000-0000-000000000044" if status in {"deletion_approved", "deleted"} else None,
             "reviewed_at": "2026-08-08T11:00:00Z" if status in {"deletion_approved", "deleted"} else None,
-            "deleted_by": "owner-1" if status == "deleted" else None,
+            "deleted_by": OWNER_ID if status == "deleted" else None,
             "deleted_at": "2026-08-08T12:00:00Z" if status == "deleted" else None,
             "updated_at": "2026-08-08T12:00:00Z" if status == "deleted" else "2026-08-08T10:30:00Z",
         }
@@ -161,6 +165,44 @@ def test_lists_legacy_export_required_rows_during_the_expand_deploy_overlap() ->
 
     assert response.status_code == 200
     assert response.json()["cancellations"][0]["status"] == "export_required"
+
+
+def test_lifecycle_response_models_use_typed_ids_dates_and_forbid_extra_fields() -> None:
+    cancellation = LifecycleGatewayStub._cancellation()
+    with pytest.raises(ValueError):
+        CompanyCancellation(**{**cancellation, "id": "not-a-uuid"})
+    with pytest.raises(ValueError):
+        CompanyCancellation(**{**cancellation, "requested_at": "2026-08-08"})
+    with pytest.raises(ValueError):
+        CompanyCancellation(**{**cancellation, "unexpected": True})
+
+    review = {
+        "id": "60000000-0000-0000-0000-000000000001",
+        "cancellation_id": CANCELLATION_ID,
+        "company_id": COMPANY_ID,
+        "decision": "approved",
+        "evidence_reference": "legal/case-161",
+        "reviewed_by": "00000000-0000-0000-0000-000000000044",
+        "reviewed_at": "2026-08-08T11:00:00Z",
+        "operation_id": OPERATION_ID,
+        "cancellation_revision": "2026-08-08T10:30:00Z",
+    }
+    with pytest.raises(ValueError):
+        CompanyDeletionReview(**{**review, "operation_id": "not-a-uuid"})
+    with pytest.raises(ValueError):
+        CompanyDeletionReview(**{**review, "reviewed_at": "tomorrow"})
+
+    schemas = create_app(LifecycleGatewayStub()).openapi()["components"]["schemas"]
+    cancellation_schema = schemas["CompanyCancellation"]
+    review_schema = schemas["CompanyDeletionReview"]
+    evidence_schema = schemas["CompanyCancellationEvidence"]
+    assert cancellation_schema["additionalProperties"] is False
+    assert review_schema["additionalProperties"] is False
+    assert evidence_schema["additionalProperties"] is False
+    assert cancellation_schema["properties"]["id"]["format"] == "uuid"
+    assert cancellation_schema["properties"]["requestedAt"]["format"] == "date-time"
+    assert review_schema["properties"]["operationId"]["format"] == "uuid"
+    assert review_schema["properties"]["cancellationRevision"]["format"] == "date-time"
 
 
 def test_owner_requests_cancellation_with_a_strict_idempotent_command() -> None:
@@ -240,10 +282,10 @@ def test_admin_review_contract_binds_exact_revision_operation_and_evidence() -> 
         "companyId": COMPANY_ID,
         "decision": "approved",
         "evidenceReference": "legal-review/2026-08-08/case-161",
-        "reviewedBy": "admin-1",
+        "reviewedBy": "00000000-0000-0000-0000-000000000044",
         "reviewedAt": "2026-08-08T11:00:00Z",
         "operationId": OPERATION_ID,
-        "cancellationRevision": "2026-08-08T10:30:00+00:00",
+        "cancellationRevision": "2026-08-08T10:30:00Z",
     }
     command = gateway.calls[-1][1]
     assert isinstance(command, ReviewCompanyDeletionGatewayCommand)
