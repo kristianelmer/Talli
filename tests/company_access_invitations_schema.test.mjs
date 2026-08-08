@@ -132,7 +132,7 @@ test("invitation side-effect recovery is receipt-owned, actor-derived, and proof
   assert.match(complete, /r\.actor_id = v_actor_id/iu);
   assert.match(complete, /notification_outbox/iu);
   assert.match(complete, /audit_events/iu);
-  assert.match(complete, /side_effects_completed_at = statement_timestamp\(\)/iu);
+  assert.match(complete, /side_effects_completed_at = v_completion_time/iu);
   assert.match(complete, /delivery_token = null/iu);
   assert.doesNotMatch(complete, /p_actor_id/iu);
   assert.match(sql, /grant execute on function public\.company_access_pending_invitation_side_effects/iu);
@@ -144,6 +144,14 @@ test("invitation side-effect recovery is receipt-owned, actor-derived, and proof
   assert.match(sql, /create policy "company access recovery reads own audit evidence"[\s\S]+actor_id = \(select auth\.uid\(\)\)/iu);
   assert.match(sql, /create policy "company access recovery reads own delivery evidence"[\s\S]+created_by = \(select auth\.uid\(\)\)/iu);
   assert.match(complete, /insert into public\.notification_outbox/iu);
+  assert.ok(
+    complete.indexOf("v_receipt.command_name = 'accept_invitation'")
+      < complete.indexOf("v_receipt.side_effects_completed_at is not null"),
+    "completion must reauthorize before returning idempotent success",
+  );
+  assert.match(complete, /v_completion_time\s*:=\s*clock_timestamp\(\)/iu);
+  assert.match(sql, /set_config\(\s*'talli\.company_access_completion_time'/iu);
+  assert.match(sql, /current_setting\(\s*'talli\.company_access_completion_time'/iu);
   assert.doesNotMatch(sql, /grant (?:select|insert)[^;]*notification_outbox to company_access_executor/iu);
   assert.match(sql, /grant select, insert on public\.notification_outbox to company_access_recovery_executor/iu);
   assert.match(sql, /revoke all on function public\.company_access_pending_invitation_side_effects\(\) from public, anon/iu);

@@ -899,16 +899,57 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     assert.match(expiryOutput, /expiry-race-token/u, "pre-expiry recovery did not expose its committed token");
     psql(containerName, [], String.raw`
       update public.company_access_command_receipts
-      set expires_at = statement_timestamp() - interval '1 second'
+      set expires_at = clock_timestamp() + interval '5 seconds'
       where actor_id = '00000000-0000-0000-0000-000000000011'
         and operation_id = '${expiryOperationId}';
     `);
-    psql(containerName, [], String.raw`
+    const expiryLocker = interactivePsql(containerName);
+    expiryLocker.child.stdin.write(String.raw`
+      begin;
+      select operation_id from public.company_access_command_receipts
+      where actor_id = '00000000-0000-0000-0000-000000000011'
+        and operation_id = '${expiryOperationId}'
+      for update;
+      select 'expiry_receipt_lock_ready';
+    `);
+    await waitForOutput(expiryLocker, /expiry_receipt_lock_ready/u);
+    const blockedCompletion = interactivePsql(containerName);
+    blockedCompletion.child.stdin.end(String.raw`
+      set application_name = 'company_access_expiry_completion';
       set role authenticated;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
       select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
       select public.company_access_complete_invitation_side_effect('${expiryOperationId}');
     `);
+    let completionBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const waiting = psql(containerName, ["-Atc", String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'company_access_expiry_completion'
+          and wait_event_type = 'Lock'
+          and query like '%company_access_complete_invitation_side_effect%'
+      `]).trim();
+      if (waiting === "1") { completionBlocked = true; break; }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(completionBlocked, true, "completion did not block behind the receipt lock");
+    let receiptExpired = false;
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      receiptExpired = psql(containerName, ["-Atc", String.raw`
+        select clock_timestamp() > expires_at
+        from public.company_access_command_receipts
+        where actor_id = '00000000-0000-0000-0000-000000000011'
+          and operation_id = '${expiryOperationId}'
+      `]).trim() === "t";
+      if (receiptExpired) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(receiptExpired, true, "test clock did not advance beyond receipt expiry");
+    expiryLocker.child.stdin.end("commit;\n");
+    const blockedResult = await waitForExit(blockedCompletion);
+    await waitForExit(expiryLocker);
+    assert.equal(blockedResult.code, 0, blockedResult.stderr);
+    assert.match(blockedResult.stdout, /t/u);
     const expiryState = psql(containerName, ["-Atc", String.raw`
       select
         (select count(*) from public.notification_outbox
@@ -1031,6 +1072,74 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       where id = '30000000-0000-0000-0000-000000000001';
     `);
     assert.match(persisted, /accepted[\s\S]+00000000-0000-0000-0000-000000000033/);
+
+    const acceptanceOperationId = "40000000-0000-0000-0000-000000000004";
+    const acceptanceAuditId = deriveInvitationSideEffectId({
+      actorId: "00000000-0000-0000-0000-000000000033",
+      operationId: acceptanceOperationId,
+      purpose: "accept_invitation:audit",
+    });
+    psql(containerName, [], String.raw`
+      insert into public.company_memberships (company_id, user_id, role, accepted_at)
+      values (
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000033', 'reviewer', clock_timestamp()
+      );
+      insert into public.audit_events (id, company_id, actor_id, category, action, message)
+      values (
+        '${acceptanceAuditId}', '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000033', 'review', 'reviewer_invitation_accepted',
+        'Invitasjon akseptert som reviewer. Forespørsels-ID: ${acceptanceOperationId}.'
+      );
+    `);
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
+      select set_config('request.jwt.claims', '{"email":"outsider@example.test","aal":"aal1"}', false);
+      select public.company_access_complete_invitation_side_effect('${acceptanceOperationId}');
+    `);
+    const concealCompleted = (actorId, email, aal, operationId, unknownId) => psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '${actorId}', false);
+      select set_config('request.jwt.claims', '{"email":"${email}","aal":"${aal}"}', false);
+      do $$ declare v_completed text := 'success'; v_unknown text := 'success'; begin
+        begin perform public.company_access_complete_invitation_side_effect('${operationId}');
+        exception when sqlstate 'P0001' then v_completed := sqlerrm; end;
+        begin perform public.company_access_complete_invitation_side_effect('${unknownId}');
+        exception when sqlstate 'P0001' then v_unknown := sqlerrm; end;
+        if v_completed is distinct from v_unknown or v_unknown <> 'company_access_not_found' then
+          raise exception 'completed receipt oracle: completed=%, unknown=%', v_completed, v_unknown;
+        end if;
+      end $$;
+      select 'completed_receipt_concealed';
+    `);
+    assert.match(concealCompleted(
+      "00000000-0000-0000-0000-000000000011", "member@example.test", "aal1",
+      sharedCreateOperationId, "80000000-0000-4000-8000-000000000001",
+    ), /completed_receipt_concealed/u);
+    psql(containerName, [], String.raw`
+      delete from public.company_memberships
+      where company_id = '10000000-0000-0000-0000-000000000001'
+        and user_id = '00000000-0000-0000-0000-000000000011';
+    `);
+    assert.match(concealCompleted(
+      "00000000-0000-0000-0000-000000000011", "member@example.test", "aal2",
+      sharedCreateOperationId, "80000000-0000-4000-8000-000000000002",
+    ), /completed_receipt_concealed/u);
+    psql(containerName, [], String.raw`
+      insert into public.company_memberships (company_id, user_id, role, accepted_at)
+      values (
+        '10000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000011', 'owner', clock_timestamp()
+      );
+      delete from public.company_memberships
+      where company_id = '10000000-0000-0000-0000-000000000001'
+        and user_id = '00000000-0000-0000-0000-000000000033';
+    `);
+    assert.match(concealCompleted(
+      "00000000-0000-0000-0000-000000000033", "outsider@example.test", "aal1",
+      acceptanceOperationId, "80000000-0000-4000-8000-000000000003",
+    ), /completed_receipt_concealed/u);
   } finally {
     docker(["rm", "--force", containerName]);
   }

@@ -342,7 +342,10 @@ with check (
       and r.operation_id = (notification_outbox.payload ->> 'operationId')::uuid
       and r.company_id = notification_outbox.company_id
       and r.side_effects_completed_at is null
-      and r.expires_at > statement_timestamp()
+      and nullif(pg_catalog.current_setting('talli.company_access_completion_time', true), '') is not null
+      and r.expires_at > pg_catalog.current_setting(
+        'talli.company_access_completion_time', true
+      )::timestamptz
   )
 );
 
@@ -983,6 +986,7 @@ declare
   v_delivery_subject text;
   v_delivery_body text;
   v_delivery_payload jsonb;
+  v_completion_time timestamptz;
 begin
   if v_actor_id is null then
     raise exception 'company_access_not_found' using errcode = 'P0001';
@@ -994,7 +998,6 @@ begin
   if not found then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  if v_receipt.side_effects_completed_at is not null then return true; end if;
   if v_receipt.command_name = 'accept_invitation' then
     if not exists (
       select 1 from public.company_memberships m
@@ -1004,6 +1007,7 @@ begin
       or not public.company_access_is_accepted_owner_v1(v_receipt.company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
+  if v_receipt.side_effects_completed_at is not null then return true; end if;
 
   v_role := coalesce(v_receipt.result ->> 'role', v_receipt.result ->> 'membership_role');
   v_audit_action := case v_receipt.command_name
@@ -1031,8 +1035,13 @@ begin
       and a.action = v_audit_action and a.message = v_audit_message
   ) then raise exception 'company_access_side_effect_pending' using errcode = 'P0001'; end if;
 
+  v_completion_time := clock_timestamp();
+  perform pg_catalog.set_config(
+    'talli.company_access_completion_time', v_completion_time::text, true
+  );
+
   if v_receipt.command_name in ('create_invitation', 'resend_invitation')
-     and v_receipt.expires_at > statement_timestamp()
+     and v_receipt.expires_at > v_completion_time
      and v_receipt.delivery_token is not null then
     v_outbox_id := public.company_access_side_effect_id_v1(
       v_actor_id, p_operation_id, v_receipt.command_name || ':delivery'
@@ -1072,7 +1081,7 @@ begin
   end if;
 
   update public.company_access_command_receipts r
-  set side_effects_completed_at = statement_timestamp(), delivery_token = null,
+  set side_effects_completed_at = v_completion_time, delivery_token = null,
       result = r.result - 'delivery_body' - 'delivery_subject'
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id
     and r.side_effects_completed_at is null;
