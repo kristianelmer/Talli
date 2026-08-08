@@ -28,7 +28,9 @@ test("expand migration adds append-only revision-bound deletion reviews", () => 
 
   assert.match(source, /create table if not exists public\.company_deletion_reviews/iu);
   assert.match(source, /decision text not null check \(decision in \('approved', 'rejected'\)\)/iu);
-  assert.match(source, /evidence_reference text not null check \(btrim\(evidence_reference\) <> ''\)/iu);
+  assert.match(source, /evidence_reference text not null check \([\s\S]+btrim\(evidence_reference\) <> ''[\s\S]+char_length\(btrim\(evidence_reference\)\) <= 500/iu);
+  assert.match(source, /requester_id uuid not null/iu);
+  assert.match(source, /check \(reviewed_by <> requester_id\)/iu);
   assert.match(source, /operation_id uuid not null unique/iu);
   assert.match(source, /cancellation_revision timestamptz not null/iu);
   assert.match(source, /alter table public\.company_deletion_reviews enable row level security/iu);
@@ -62,6 +64,9 @@ test("review is admin+AAL2 only, append-only, and cannot be self-approved by an 
   assert.match(admin, /role = 'admin'/iu);
   assert.match(admin, /active/iu);
   assert.match(review, /company_access_has_fresh_mfa_v1\(\)/iu);
+  assert.match(review, /v_cancellation\.requested_by = v_actor_id/iu);
+  assert.match(review, /p_expected_updated_at is null/iu);
+  assert.match(review, /char_length\([^)]*btrim\(p_evidence_reference\)\) > 500/iu);
   assert.match(review, /insert into public\.company_deletion_reviews/iu);
   assert.match(review, /cancellation_revision/iu);
   assert.match(review, /p_expected_updated_at/iu);
@@ -75,6 +80,7 @@ test("finalize re-derives prerequisites and requires exact approved review", () 
 
   assert.match(finalize, /company_access_is_accepted_owner_v1/iu);
   assert.match(finalize, /company_access_has_fresh_mfa_v1\(\)/iu);
+  assert.match(finalize, /p_expected_updated_at is null/iu);
   assert.match(finalize, /from public\.company_deletion_reviews/iu);
   assert.match(finalize, /decision = 'approved'/iu);
   assert.match(finalize, /cancellation_revision/iu);
@@ -85,6 +91,23 @@ test("finalize re-derives prerequisites and requires exact approved review", () 
   assert.match(finalize, /update public\.company_cancellations[\s\S]+status = 'deleted'/iu);
   assert.match(finalize, /company_deletion_completed/iu);
   assert.doesNotMatch(finalize, /delete from public\./iu);
+});
+
+test("direct lifecycle RPCs mirror strict request validation before receipts", () => {
+  const source = sql(expandPath);
+  const request = functionBody(source, "company_access_request_cancellation");
+  const review = functionBody(source, "company_access_review_deletion");
+  const finalize = functionBody(source, "company_access_finalize_deletion");
+
+  assert.match(request, /p_operation_id is null[\s\S]+p_company_id is null[\s\S]+p_income_year not between 2000 and 2100/iu);
+  assert.match(request, /p_reason is null[\s\S]+btrim\(p_reason\) = ''[\s\S]+char_length\([^)]*btrim\(p_reason\)\) > 1000/iu);
+  assert.match(review, /p_operation_id is null[\s\S]+p_cancellation_id is null[\s\S]+p_company_id is null/iu);
+  assert.match(review, /p_decision not in \('approved', 'rejected'\)/iu);
+  assert.match(review, /p_evidence_reference is null[\s\S]+btrim\(p_evidence_reference\) = ''/iu);
+  assert.match(finalize, /p_operation_id is null[\s\S]+p_cancellation_id is null[\s\S]+p_company_id is null/iu);
+  for (const body of [request, review, finalize]) {
+    assert.ok(body.indexOf("company_access_invalid_request") < body.indexOf("select r.* into v_receipt"));
+  }
 });
 
 test("lifecycle commands use durable receipts and least-privilege RLS", () => {

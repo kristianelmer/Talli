@@ -1369,6 +1369,12 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       end $$;
 
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      reset role;
+      insert into public.support_operators (user_id, role, active)
+      values ('00000000-0000-0000-0000-000000000011', 'admin', true);
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
       do $$ declare c record; begin
         select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
         begin
@@ -1381,9 +1387,43 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
         end;
       end $$;
 
+      do $$ begin
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 2025, repeat('x', 1001)
+          );
+          raise exception 'oversized reason succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      do $$ begin
+        if exists (select 1 from public.company_access_command_receipts where operation_id = '40000000-0000-0000-0000-000000000008') then
+          raise exception 'invalid request wrote receipt';
+        end if;
+      end $$;
+      set role authenticated;
+
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
       do $$ declare c record; begin
         select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000009', c.id, c.company_id, null, 'approved', 'null revision'
+          );
+          raise exception 'null review revision succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000010', c.id, c.company_id, c.updated_at, 'approved', repeat('x', 501)
+          );
+          raise exception 'oversized evidence reference succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
         perform * from public.company_access_review_deletion(
           '40000000-0000-0000-0000-000000000004', c.id, c.company_id, c.updated_at, 'rejected', 'legal/case-161-rejected'
         );
@@ -1392,6 +1432,14 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
       do $$ declare c record; begin
         select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000011', c.id, c.company_id, null
+          );
+          raise exception 'null finalize revision succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
         begin
           perform * from public.company_access_finalize_deletion(
             '40000000-0000-0000-0000-000000000005', c.id, c.company_id, c.updated_at

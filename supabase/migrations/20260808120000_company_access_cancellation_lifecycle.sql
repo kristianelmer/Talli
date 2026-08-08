@@ -17,11 +17,15 @@ create table if not exists public.company_deletion_reviews (
   cancellation_id uuid not null references public.company_cancellations(id) on delete restrict,
   company_id uuid not null references public.companies(id) on delete restrict,
   decision text not null check (decision in ('approved', 'rejected')),
-  evidence_reference text not null check (btrim(evidence_reference) <> ''),
+  evidence_reference text not null check (
+    btrim(evidence_reference) <> '' and char_length(btrim(evidence_reference)) <= 500
+  ),
+  requester_id uuid not null references auth.users(id) on delete restrict,
   reviewed_by uuid not null references auth.users(id) on delete restrict,
   reviewed_at timestamptz not null,
   operation_id uuid not null unique,
-  cancellation_revision timestamptz not null
+  cancellation_revision timestamptz not null,
+  check (reviewed_by <> requester_id)
 );
 
 create unique index if not exists company_cancellations_one_active_per_company_idx
@@ -146,6 +150,13 @@ on public.company_deletion_reviews for insert
 to company_access_executor
 with check (
   reviewed_by = (select public.company_access_auth_uid_v1())
+  and reviewed_by <> requester_id
+  and exists (
+    select 1 from public.company_cancellations c
+    where c.id = company_deletion_reviews.cancellation_id
+      and c.company_id = company_deletion_reviews.company_id
+      and c.requested_by = company_deletion_reviews.requester_id
+  )
   and public.company_access_has_fresh_mfa_v1()
   and public.company_access_is_active_admin_v1()
 );
@@ -241,19 +252,23 @@ set search_path = ''
 as $function$
 declare
   v_actor_id uuid := public.company_access_auth_uid_v1();
-  v_fingerprint text := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
+  v_fingerprint text;
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
   v_archive_exported_at timestamptz;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
+  if p_operation_id is null or p_company_id is null
+     or p_income_year not between 2000 and 2100
+     or p_reason is null or pg_catalog.btrim(p_reason) = ''
+     or pg_catalog.char_length(pg_catalog.btrim(p_reason)) > 1000 then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
   if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  if p_income_year not between 2000 and 2100 or pg_catalog.btrim(p_reason) = '' then
-    raise exception 'company_access_invalid_request' using errcode = 'P0001';
-  end if;
+  v_fingerprint := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_company_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
@@ -341,19 +356,24 @@ set search_path = ''
 as $function$
 declare
   v_actor_id uuid := public.company_access_auth_uid_v1();
-  v_fingerprint text := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text, p_decision, pg_catalog.btrim(p_evidence_reference));
+  v_fingerprint text;
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
   v_review public.company_deletion_reviews%rowtype;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
+  if p_operation_id is null or p_cancellation_id is null or p_company_id is null
+     or p_expected_updated_at is null
+     or p_decision is null or p_decision not in ('approved', 'rejected')
+     or p_evidence_reference is null or pg_catalog.btrim(p_evidence_reference) = ''
+     or pg_catalog.char_length(pg_catalog.btrim(p_evidence_reference)) > 500 then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
   if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
      or not public.company_access_is_active_admin_v1() then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
-  if p_decision not in ('approved', 'rejected') or pg_catalog.btrim(p_evidence_reference) = '' then
-    raise exception 'company_access_invalid_request' using errcode = 'P0001';
-  end if;
+  v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text, p_decision, pg_catalog.btrim(p_evidence_reference));
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
@@ -378,6 +398,9 @@ begin
   if not found then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
+  if v_cancellation.requested_by = v_actor_id then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
   if v_cancellation.status <> 'retention_hold'
      or v_cancellation.updated_at <> p_expected_updated_at then
     raise exception 'company_access_conflict' using errcode = 'P0001';
@@ -390,11 +413,11 @@ begin
   returning c.* into v_cancellation;
 
   insert into public.company_deletion_reviews (
-    cancellation_id, company_id, decision, evidence_reference, reviewed_by,
+    cancellation_id, company_id, decision, evidence_reference, requester_id, reviewed_by,
     reviewed_at, operation_id, cancellation_revision
   ) values (
     p_cancellation_id, p_company_id, p_decision, pg_catalog.btrim(p_evidence_reference),
-    v_actor_id, v_now, p_operation_id, v_now
+    v_cancellation.requested_by, v_actor_id, v_now, p_operation_id, v_now
   ) returning * into v_review;
 
   insert into public.audit_events (company_id, actor_id, category, action, message)
@@ -434,17 +457,22 @@ set search_path = ''
 as $function$
 declare
   v_actor_id uuid := public.company_access_auth_uid_v1();
-  v_fingerprint text := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text);
+  v_fingerprint text;
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
   v_archive_exported_at timestamptz;
   v_income_year integer;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
+  if p_operation_id is null or p_cancellation_id is null or p_company_id is null
+     or p_expected_updated_at is null then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
   if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
+  v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text);
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
