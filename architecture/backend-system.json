@@ -18,7 +18,7 @@
     },
     {
       "name": "company-access-administration",
-      "purpose": "Runs invitation and reviewer/read-only membership workflows atomically through the company_access public package.",
+      "purpose": "Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
       "routes": [
         "/api/v1/company-access/invitations",
@@ -29,7 +29,10 @@
         "/api/v1/company-access/invitation-side-effects/pending",
         "/api/v1/company-access/invitation-side-effects/{operation_id}/complete",
         "/api/v1/company-access/memberships",
-        "/api/v1/company-access/memberships/{user_id}"
+        "/api/v1/company-access/memberships/{user_id}",
+        "/api/v1/company-access/cancellations",
+        "/api/v1/company-access/cancellations/{cancellation_id}/reviews",
+        "/api/v1/company-access/cancellations/{cancellation_id}/finalize"
       ]
     }
   ],
@@ -42,7 +45,7 @@
   "technicalOwnership": {
     "schemas": ["public"],
     "tables": ["public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],
     "statement": "These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {

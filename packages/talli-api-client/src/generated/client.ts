@@ -148,7 +148,7 @@ export interface CompanyCancellation {
   requestedBy: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
-  status: "retention_hold" | "deletion_approved" | "deleted";
+  status: "export_required" | "retention_hold" | "deletion_approved" | "deleted";
   updatedAt: string;
 }
 
@@ -378,7 +378,7 @@ function isCompanyCancellation(value: unknown): value is CompanyCancellation {
     hasOnlyProperties(value, ["companyId","deletedAt","deletedBy","evidence","id","reason","requestedAt","requestedBy","reviewedAt","reviewedBy","status","updatedAt"]) &&
     typeof value.id === "string" &&
     typeof value.companyId === "string" &&
-    (value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted") &&
+    (value.status === "export_required" || value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted") &&
     typeof value.reason === "string" &&
     isCompanyCancellationEvidence(value.evidence) &&
     typeof value.requestedBy === "string" &&

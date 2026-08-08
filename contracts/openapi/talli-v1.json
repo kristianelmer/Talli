@@ -152,6 +152,7 @@
           },
           "status": {
             "enum": [
+              "export_required",
               "retention_hold",
               "deletion_approved",
               "deleted"

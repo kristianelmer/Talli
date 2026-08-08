@@ -102,7 +102,7 @@ class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
     state: MembershipState | None = None
 
 
-CancellationStatus = Literal["retention_hold", "deletion_approved", "deleted"]
+CancellationStatus = Literal["export_required", "retention_hold", "deletion_approved", "deleted"]
 DeletionReviewDecision = Literal["approved", "rejected"]
 
 

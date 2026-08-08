@@ -1,32 +1,35 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
 
-`company_access` owns authenticated company context, company invitations, and
-reviewer/read-only membership administration. It independently validates the
-Supabase session, preserves that bearer's RLS scope, and owns AAL2 owner policy,
+`company_access` owns authenticated company context, company invitations,
+reviewer/read-only membership administration, and the cancellation-to-deletion
+lifecycle. It independently validates the Supabase session, preserves that
+bearer's RLS scope, and owns fresh-AAL2 owner and deletion-review policy,
 recipient binding, expiry, supported roles, atomic transitions, and concealment.
 
 ## Owns and must not own
 
-It owns `public.companies`, `public.company_invitations`, and
-`public.company_memberships`, attributed by the manifest to
-`20260801090000_company_access_invitations.sql`. The backend system owns
+It owns `public.companies`, `public.company_cancellations`,
+`public.company_deletion_reviews`, `public.company_invitations`, and
+`public.company_memberships`, with the latest ownership migration declared as
+`20260808120000_company_access_cancellation_lifecycle.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must not own onboarding,
-agreement acceptance, cancellation, deletion, or support-operator workflows.
+agreement acceptance, physical business-data deletion, or general support-operator workflows.
 It must not use service-role access or bypass RLS for ordinary business calls.
 
 ## Public interface
 
 Import only `talli_backend.modules.company_access.public`.
 
-- Queries: company context, invitation lookup/listing, membership listing, and
-  actor-derived pending side-effect continuations
-- Commands: invite, accept, revoke, resend, and reviewer/read-only membership transitions
+- Queries: company context, invitation/cancellation listing, membership listing,
+  and actor-derived pending side-effect continuations
+- Commands: invite, accept, revoke, resend, reviewer/read-only membership
+  transitions, owner cancellation, independent deletion review, and owner finalization
 - Error: `CompanyAccessError`
 - Port: `CompanyAccessGateway`
 
@@ -41,6 +44,12 @@ this public entry point rather than the composition root. The public names inclu
 `MembershipState`, `InvitationSideEffectContinuation`,
 `InvitationSideEffectContinuationList`, `InvitationSideEffectCompletion`, and
 `company_access_adapter`.
+
+Cancellation contracts add `CompanyCancellation`, `CompanyCancellationListResponse`,
+`CompanyDeletionReview`, `RequestCompanyCancellationRequest`,
+`ReviewCompanyDeletionRequest`, and `FinalizeCompanyDeletionRequest`. During the
+expand/deploy overlap, query responses continue to decode legacy
+`export_required` rows; new commands never create that state.
 
 The system boundary injects `SupabaseCompanyAccessAdapter`; capability policy
 never constructs Supabase or HTTP infrastructure. Owner context and administration
@@ -95,6 +104,17 @@ recovery read clears it. Until recovery or another clearing command touches the
 receipt, the expired token can remain stored at rest. Retention/delivery migration
 remains #156. This is delivery-secret persistence, never token-hash disclosure.
 
+Cancellation requests and finalization require an accepted owner with an AAL2
+authentication method no older than fifteen minutes. Independent approval or
+rejection requires an active admin support operator with the same fresh MFA; an
+owner cannot review their own request. The append-only deletion-review row is the
+authoritative company-scoped legal/security evidence. Request and finalization
+RPCs re-derive the archive audit, document, and artifact prerequisites while the
+transaction is locked, and durable receipts replay an identical outcome after an
+unknown transport result. Finalization records the lifecycle marker but never
+physically deletes company business data. RLS conceals outsiders and permits only
+accepted members or active support operators to list lifecycle evidence.
+
 The rollout is staged. Release A's automatic runner applies `20260801090000` only: it expands the
 RPC/RLS boundary while the prior web policies still work. Release B deploys the
 backend and generated-client web revision, verifies create/resend receipt replay,
@@ -109,9 +129,18 @@ forward migration that reinstates the overlap and is not an implicit rollback.
 The PostgreSQL runtime test executes the old direct writer, contract transition,
 and new RPC writer in that exact sequence.
 
+Cancellation follows the same expand/deploy/contract discipline. Release A applies
+the additive `20260808120000` migration while the legacy direct writer remains
+valid. Release B deploys the generated-client backend/web workflow and verifies
+legacy `export_required` reads plus RPC receipt replay. Release C applies the
+reviewed `20260808121000` contract artifact, revoking direct authenticated table
+access while retaining the query and command RPCs. After that contraction, an
+application rollback is bounded to a generated-client revision; restoring direct
+persistence requires a new forward migration.
+
 Ownership is authoritative here. Remaining compatibility adapters are registered
-by exact path/rule/resource/operation: cancellation/deletion exits in #161 and
-onboarding exits in #138. Audit and notification rows remain owned by their exact
+by exact path/rule/resource/operation: onboarding exits in #138. Audit and
+notification rows remain owned by their exact
 legacy/technical scopes while the transaction preserves their observable events.
 
 ## Collaboration and tests
@@ -119,11 +148,12 @@ legacy/technical scopes while the transaction preserves their observable events.
 The backend-system company-access workflows serve the generated contract. Focused
 policy and adapter coverage is in `apps/backend/tests/test_company_access.py`;
 transactional schema coverage is in
-`tests/company_access_invitations_schema.test.mjs`; fresh-PostgreSQL RLS coverage
+`tests/company_access_invitations_schema.test.mjs` and
+`tests/company_access_cancellation_schema.test.mjs`; fresh-PostgreSQL RLS coverage
 is in `tests/company_access_database_runtime.test.mjs`.
 
 ## Compatibility and change rule
 
-There are no company-access invitation or membership-administration compatibility
-exceptions. Change this document and `module.json` together when its interface,
-ownership, policy, or dependencies change.
+There are no company-access invitation, membership-administration, or cancellation
+compatibility exceptions. Change this document and `module.json` together when
+its interface, ownership, policy, or dependencies change.

@@ -39,6 +39,7 @@ class LifecycleGatewayStub:
         self.role = role
         self.calls: list[tuple[str, object]] = []
         self.hidden = False
+        self.rows: list[Mapping[str, object]] | None = None
 
     async def session_subject(self, _access_token: str) -> str:
         return "owner-1"
@@ -68,7 +69,7 @@ class LifecycleGatewayStub:
 
     async def cancellations(self, _access_token: str, company_id: str) -> list[Mapping[str, object]]:
         self.calls.append(("cancellations", company_id))
-        return [] if self.hidden else [self._cancellation()]
+        return [] if self.hidden else (self.rows or [self._cancellation()])
 
     async def request_cancellation(
         self, _access_token: str, command: RequestCompanyCancellationGatewayCommand
@@ -146,6 +147,20 @@ def test_lists_rls_visible_cancellations_and_conceals_an_empty_tenant_scope() ->
     assert visible.json()["cancellations"][0]["status"] == "retention_hold"
     assert concealed.status_code == 200
     assert concealed.json() == {"cancellations": []}
+
+
+def test_lists_legacy_export_required_rows_during_the_expand_deploy_overlap() -> None:
+    gateway = LifecycleGatewayStub(role="read_only")
+    gateway.rows = [gateway._cancellation(status="export_required")]
+    client = TestClient(create_app(gateway))
+
+    response = client.get(
+        f"/api/v1/company-access/cancellations?company_id={COMPANY_ID}",
+        headers=headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["cancellations"][0]["status"] == "export_required"
 
 
 def test_owner_requests_cancellation_with_a_strict_idempotent_command() -> None:

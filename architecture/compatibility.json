@@ -613,12 +613,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "requestCompanyCancellation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "storage:company-documents",
           "operation": "uploadDocument"
         },
@@ -748,12 +742,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
           "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "requestCompanyCancellation"
         },
         {
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
@@ -1365,12 +1353,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "completeCompanyDeletionRecord"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "confirmAuthorityPermission"
         },
         {
@@ -1480,12 +1462,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "requestCompanyCancellation"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1692,55 +1668,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
           "operation": "GET"
-        }
-      ]
-    },
-    {
-      "id": "compat-company-cancellation-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#161",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove the company cancellation and deletion lifecycle persistence in #161.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "completeCompanyDeletionRecord"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_cancellations",
-          "operation": "completeCompanyDeletionRecord"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_cancellations",
-          "operation": "requestCompanyCancellation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "requestCompanyCancellation"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_cancellations",
-          "operation": "listCompanyCancellations"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_cancellations",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     }
