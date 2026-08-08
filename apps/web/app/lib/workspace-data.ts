@@ -145,7 +145,11 @@ export async function loadWorkspaceData() {
   const primaryAuthorityTestRuns = authorityTestRuns.filter((run) => run.company_id === primaryCompanyId);
   const primaryInvitations = invitations.filter((invitation) => invitation.companyId === primaryCompanyId);
   const primaryNotifications = notifications.filter((notification) => notification.company_id === primaryCompanyId);
-  const primaryCancellation = cancellations.find((cancellation) => cancellation.company_id === primaryCompanyId);
+  const primaryCancellation = cancellations.find(
+    (cancellation) => cancellation.company_id === primaryCompanyId
+      && cancellation.status !== "deleted"
+      && cancellation.status !== "superseded",
+  );
   const cancellationLifecycle = buildCancellationLifecycle(primaryCancellation);
   const reviewChecklist = reviewChecklistStatus(
     comments

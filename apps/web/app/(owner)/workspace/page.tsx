@@ -38,6 +38,7 @@ import {
   resendWorkspaceInvitation,
   administerWorkspaceMembership,
   requestCompanyCancellation,
+  resumeCompanyCancellation,
   requestFilingPackagePayment,
   revokeWorkspaceInvitation,
   saveYearEndInterview,
@@ -481,6 +482,31 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </label>
                     <button className="secondaryButton" type="submit">
                       Be om kansellering
+                    </button>
+                  </form>
+                ) : null}
+                {!cancellationLifecycleError && primaryCancellation && primaryCancellation.status === "export_required" ? (
+                  <form className="dataPanel formPanel widePanel" action={resumeCompanyCancellation}>
+                    <input name="operationId" type="hidden" value={
+                      pendingCancellationOperation?.command === "resume"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.operationId : randomUUID()
+                    } />
+                    <input name="companyId" type="hidden" value={primaryCancellation.company_id} />
+                    <input name="cancellationId" type="hidden" value={primaryCancellation.id} />
+                    <input name="incomeYear" type="hidden" value={
+                      pendingCancellationOperation?.command === "resume"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.incomeYear : primaryIncomeYear
+                    } />
+                    <input name="expectedUpdatedAt" type="hidden" value={
+                      pendingCancellationOperation?.command === "resume"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.expectedUpdatedAt : primaryCancellation.updated_at
+                    } />
+                    <p>Eksporter selskapsarkivet for valgt inntektsår. Fortsett deretter den eksisterende kanselleringsforespørselen.</p>
+                    <button className="secondaryButton" type="submit">
+                      Fortsett kansellering etter eksport
                     </button>
                   </form>
                 ) : null}

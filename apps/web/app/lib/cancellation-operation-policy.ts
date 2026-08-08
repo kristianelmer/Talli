@@ -1,5 +1,6 @@
 export type PendingCancellationOperation =
   | { command: "request"; operationId: string; companyId: string; incomeYear: number; reason: string }
+  | { command: "resume"; operationId: string; companyId: string; cancellationId: string; incomeYear: number; expectedUpdatedAt: string }
   | { command: "finalize"; operationId: string; companyId: string; cancellationId: string; expectedUpdatedAt: string }
   | { command: "review"; operationId: string; companyId: string; cancellationId: string; expectedUpdatedAt: string; decision: "approved" | "rejected"; evidenceReference: string };
 

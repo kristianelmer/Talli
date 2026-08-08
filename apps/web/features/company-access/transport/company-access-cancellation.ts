@@ -2,6 +2,7 @@ import {
   createTalliApiClient,
   type FinalizeCompanyDeletionRequest,
   type RequestCompanyCancellationRequest,
+  type ResumeCompanyCancellationRequest,
   type ReviewCompanyDeletionRequest,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
@@ -40,6 +41,19 @@ export function reviewCompanyDeletion(
   requestId?: string,
 ) {
   return client(accessToken).companyAccessReviewDeletion(
+    cancellationId,
+    command,
+    request(requestId),
+  );
+}
+
+export function resumeCompanyCancellation(
+  accessToken: string,
+  cancellationId: string,
+  command: ResumeCompanyCancellationRequest,
+  requestId?: string,
+) {
+  return client(accessToken).companyAccessResumeCancellation(
     cancellationId,
     command,
     request(requestId),

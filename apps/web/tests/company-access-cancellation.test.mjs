@@ -6,6 +6,7 @@ import {
   finalizeCompanyDeletion,
   listCompanyCancellations,
   requestCompanyCancellation,
+  resumeCompanyCancellation,
   reviewCompanyDeletion,
 } from "../features/company-access/transport/company-access-cancellation.ts";
 import { firstArchiveSourceError } from "../app/lib/archive.ts";
@@ -64,6 +65,12 @@ test("cancellation lifecycle transport uses generated operations with bearer and
       incomeYear: 2025,
       reason: cancellation.reason,
     });
+    await resumeCompanyCancellation("session-token", cancellation.id, {
+      operationId: "40000000-0000-0000-0000-000000000004",
+      companyId: cancellation.companyId,
+      incomeYear: 2025,
+      expectedUpdatedAt: cancellation.updatedAt,
+    });
     await reviewCompanyDeletion("session-token", cancellation.id, {
       operationId: "40000000-0000-0000-0000-000000000002",
       companyId: cancellation.companyId,
@@ -82,7 +89,7 @@ test("cancellation lifecycle transport uses generated operations with bearer and
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
 
-  assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST"]);
+  assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST", "POST"]);
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
   const transport = await readFile(
@@ -93,6 +100,7 @@ test("cancellation lifecycle transport uses generated operations with bearer and
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
     "/api/v1/company-access/cancellations",
     "/api/v1/company-access/cancellations",
+    `/api/v1/company-access/cancellations/${cancellation.id}/resume`,
     `/api/v1/company-access/cancellations/${cancellation.id}/reviews`,
     `/api/v1/company-access/cancellations/${cancellation.id}/finalize`,
   ]);
@@ -169,6 +177,8 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.doesNotMatch(actions, /buildCancellationEvidence|buildDeletionCompletionUpdate|nextCancellationStatus/u);
   assert.doesNotMatch(workspace, /legalRetentionConfirmed/u);
   assert.match(workspace, /primaryCancellation\.status === "deletion_approved"/u);
+  assert.match(workspace, /primaryCancellation\.status === "export_required"/u);
+  assert.match(workspace, /resumeCompanyCancellation/u);
   assert.match(workspaceData, /error: cancellationLifecycleError/u);
   assert.match(workspaceData, /companyAccessAdministrationError \?\? cancellationLifecycleError/u);
   assert.match(workspace, /!cancellationLifecycleError && !primaryCancellation && primaryCompanyId/u);
@@ -179,6 +189,7 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.doesNotMatch(`${workspace}\n${operator}`, /retention hold|deletion review|pliktige records/iu);
   assert.match(workspace, /Eksporter et nytt arkiv etter godkjenningen/u);
   assert.match(actions, /pendingCancellationOperationForError/u);
+  assert.match(actions, /resumeCompanyCancellationThroughApi/u);
   assert.match(actions, /preservePendingCancellationOperation\(pending\)/u);
   assert.match(workspace, /pendingCancellationOperation\.operationId/u);
   assert.match(operator, /pendingCancellationOperation\.operationId/u);

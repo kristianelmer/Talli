@@ -100,6 +100,7 @@ import {
   listPendingInvitationSideEffects,
   resendCompanyInvitation,
   requestCompanyCancellation as requestCompanyCancellationThroughApi,
+  resumeCompanyCancellation as resumeCompanyCancellationThroughApi,
   reviewCompanyDeletion as reviewCompanyDeletionThroughApi,
   revokeCompanyInvitation,
 } from "../features/company-access";
@@ -3247,6 +3248,40 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
       await preservePendingCancellationOperation(pending);
     }
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_failed")}`);
+  }
+  await clearPendingCancellationOperation();
+
+  revalidatePath("/");
+  redirect("/workspace");
+}
+
+export async function resumeCompanyCancellation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = formString(formData, "companyId");
+  const cancellationId = formString(formData, "cancellationId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const command = { command: "resume" as const, operationId, companyId, cancellationId, incomeYear, expectedUpdatedAt };
+  try {
+    await resumeCompanyCancellationThroughApi(accessToken, cancellationId, {
+      operationId,
+      companyId,
+      incomeYear,
+      expectedUpdatedAt,
+    });
+  } catch (error) {
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
+    }
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_cancellation_resume_failed")}`);
   }
   await clearPendingCancellationOperation();
 

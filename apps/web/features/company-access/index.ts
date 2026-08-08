@@ -24,5 +24,6 @@ export {
   finalizeCompanyDeletion,
   listCompanyCancellations,
   requestCompanyCancellation,
+  resumeCompanyCancellation,
   reviewCompanyDeletion,
 } from "./transport/company-access-cancellation.ts";

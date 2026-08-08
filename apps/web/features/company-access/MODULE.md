@@ -1,13 +1,13 @@
 # Company access web feature
 
 <!-- architecture-inventory
-{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessFinalizeDeletion","companyAccessGetSelectedContext","companyAccessListCancellations","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessRequestCancellation","companyAccessResendInvitation","companyAccessReviewDeletion","companyAccessRevokeInvitation"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/operator","/workspace"]}
+{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessFinalizeDeletion","companyAccessGetSelectedContext","companyAccessListCancellations","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessRequestCancellation","companyAccessResendInvitation","companyAccessResumeCancellation","companyAccessReviewDeletion","companyAccessRevokeInvitation"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/operator","/workspace"]}
 -->
 
 ## Purpose
 
 This feature loads authenticated company context and carries invitation,
-reviewer/read-only membership administration, owner cancellation/finalization,
+reviewer/read-only membership administration, owner cancellation request/resume/finalization,
 and independent support deletion review through the committed generated client.
 
 ## Owns and must not own
@@ -25,9 +25,11 @@ Other web code imports `@/features/company-access`. The web establishes the
 Supabase session, then passes its access token only as generated-client headers.
 Invitation lookup/acceptance and owner administration use the same thin transport
 with ten-second deadlines and the root `@talli/talli-api-client` package.
-Cancellation request/finalization use durable operation IDs and server-issued
-revisions. The operator review form records an approval or rejection with an
-evidence reference; the workspace exposes finalization only after approval.
+Cancellation request, legacy resume, and finalization use durable operation IDs
+and server-issued revisions. The workspace exposes resume only for an active
+legacy `export_required` row and preserves the exact command after an indeterminate
+transport outcome. The operator review form records an approval or rejection with
+an evidence reference; the workspace exposes finalization only after approval.
 
 ## Cache, browser, and tests
 

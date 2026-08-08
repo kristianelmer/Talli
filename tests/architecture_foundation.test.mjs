@@ -595,6 +595,7 @@ test("company cancellation lifecycle is capability-owned with no direct-web comp
   for (const operation of [
     "companyAccessListCancellations",
     "companyAccessRequestCancellation",
+    "companyAccessResumeCancellation",
     "companyAccessReviewDeletion",
     "companyAccessFinalizeDeletion",
   ]) {

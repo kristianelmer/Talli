@@ -16,6 +16,9 @@ function valid(value: unknown): value is PendingCancellationOperation {
   }
   if (!UUID.test(String(item.cancellationId)) || typeof item.expectedUpdatedAt !== "string") return false;
   if (item.command === "finalize") return true;
+  if (item.command === "resume") {
+    return Number.isInteger(item.incomeYear) && Number(item.incomeYear) >= 2000 && Number(item.incomeYear) <= 2100;
+  }
   return item.command === "review"
     && (item.decision === "approved" || item.decision === "rejected")
     && typeof item.evidenceReference === "string"

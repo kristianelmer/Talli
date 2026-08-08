@@ -1,4 +1,4 @@
-export type CancellationStatus = "export_required" | "retention_hold" | "deletion_approved" | "deleted";
+export type CancellationStatus = "export_required" | "retention_hold" | "deletion_approved" | "deleted" | "superseded";
 
 export type CancellationEvidence = {
   archiveExportedAt?: string | null;
@@ -53,6 +53,8 @@ export function cancellationStatusLabel(status: CancellationStatus) {
       return "Sletting godkjent";
     case "deleted":
       return "Slettet";
+    case "superseded":
+      return "Erstattet av nyere forespørsel";
   }
 }
 
