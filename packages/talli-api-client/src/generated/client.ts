@@ -125,6 +125,79 @@ export interface InvitationSideEffectCompletion {
   operationId: string;
 }
 
+export interface CompanyCancellationEvidence {
+  archiveDownloadPath?: string | null;
+  archiveExportedAt?: string | null;
+  archiveIncomeYear?: number | null;
+  corporateEvidenceComplete?: boolean | null;
+  corporateObjectKeys?: string[];
+  legalReviewRequired?: boolean;
+  missingCorporateObjectKeys?: string[];
+  missingDocumentIds?: string[];
+  retentionClasses?: string[];
+}
+
+export interface CompanyCancellation {
+  companyId: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  evidence: CompanyCancellationEvidence;
+  id: string;
+  reason: string;
+  requestedAt: string;
+  requestedBy: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  status: "retention_hold" | "deletion_approved" | "deleted";
+  updatedAt: string;
+}
+
+export interface CompanyCancellationListResponse {
+  cancellations: CompanyCancellation[];
+}
+
+export interface CompanyCancellationResponse {
+  cancellation: CompanyCancellation;
+}
+
+export interface CompanyDeletionReview {
+  cancellationId: string;
+  cancellationRevision: string;
+  companyId: string;
+  decision: "approved" | "rejected";
+  evidenceReference: string;
+  id: string;
+  operationId: string;
+  reviewedAt: string;
+  reviewedBy: string;
+}
+
+export interface CompanyDeletionReviewResponse {
+  cancellation: CompanyCancellation;
+  review: CompanyDeletionReview;
+}
+
+export interface RequestCompanyCancellationRequest {
+  companyId: string;
+  incomeYear: number;
+  operationId: string;
+  reason: string;
+}
+
+export interface ReviewCompanyDeletionRequest {
+  companyId: string;
+  decision: "approved" | "rejected";
+  evidenceReference: string;
+  expectedUpdatedAt: string;
+  operationId: string;
+}
+
+export interface FinalizeCompanyDeletionRequest {
+  companyId: string;
+  expectedUpdatedAt: string;
+  operationId: string;
+}
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -289,6 +362,73 @@ function isInvitationSideEffectCompletion(value: unknown): value is InvitationSi
     hasOnlyProperties(value, ["completed","operationId"]) &&
     typeof value.operationId === "string" &&
     value.completed === true
+  );
+}
+
+function isCompanyCancellationEvidence(value: unknown): value is CompanyCancellationEvidence {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveDownloadPath","archiveExportedAt","archiveIncomeYear","corporateEvidenceComplete","corporateObjectKeys","legalReviewRequired","missingCorporateObjectKeys","missingDocumentIds","retentionClasses"])
+  );
+}
+
+function isCompanyCancellation(value: unknown): value is CompanyCancellation {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","deletedAt","deletedBy","evidence","id","reason","requestedAt","requestedBy","reviewedAt","reviewedBy","status","updatedAt"]) &&
+    typeof value.id === "string" &&
+    typeof value.companyId === "string" &&
+    (value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted") &&
+    typeof value.reason === "string" &&
+    isCompanyCancellationEvidence(value.evidence) &&
+    typeof value.requestedBy === "string" &&
+    typeof value.requestedAt === "string" &&
+    (value.reviewedBy === null || typeof value.reviewedBy === "string") &&
+    (value.reviewedAt === null || typeof value.reviewedAt === "string") &&
+    (value.deletedBy === null || typeof value.deletedBy === "string") &&
+    (value.deletedAt === null || typeof value.deletedAt === "string") &&
+    typeof value.updatedAt === "string"
+  );
+}
+
+function isCompanyCancellationListResponse(value: unknown): value is CompanyCancellationListResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellations"]) &&
+    Array.isArray(value.cancellations) && value.cancellations.every((item) => isCompanyCancellation(item))
+  );
+}
+
+function isCompanyCancellationResponse(value: unknown): value is CompanyCancellationResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellation"]) &&
+    isCompanyCancellation(value.cancellation)
+  );
+}
+
+function isCompanyDeletionReview(value: unknown): value is CompanyDeletionReview {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellationId","cancellationRevision","companyId","decision","evidenceReference","id","operationId","reviewedAt","reviewedBy"]) &&
+    typeof value.id === "string" &&
+    typeof value.cancellationId === "string" &&
+    typeof value.companyId === "string" &&
+    (value.decision === "approved" || value.decision === "rejected") &&
+    typeof value.evidenceReference === "string" &&
+    typeof value.reviewedBy === "string" &&
+    typeof value.reviewedAt === "string" &&
+    typeof value.operationId === "string" &&
+    typeof value.cancellationRevision === "string"
+  );
+}
+
+function isCompanyDeletionReviewResponse(value: unknown): value is CompanyDeletionReviewResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellation","review"]) &&
+    isCompanyCancellation(value.cancellation) &&
+    isCompanyDeletionReview(value.review)
   );
 }
 
@@ -579,6 +719,61 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyMembershipResponse,
+      );
+    },
+
+    async companyAccessListCancellations(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationListResponse> {
+      const query = new URLSearchParams({ company_id: companyId });
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations?${query}`,
+        "GET",
+        request,
+        undefined,
+        isCompanyCancellationListResponse,
+      );
+    },
+
+    async companyAccessRequestCancellation(
+      body: RequestCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
+      );
+    },
+
+    async companyAccessReviewDeletion(
+      cancellationId: string,
+      body: ReviewCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyDeletionReviewResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/reviews`,
+        "POST",
+        request,
+        body,
+        isCompanyDeletionReviewResponse,
+      );
+    },
+
+    async companyAccessFinalizeDeletion(
+      cancellationId: string,
+      body: FinalizeCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/finalize`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
       );
     },
   };

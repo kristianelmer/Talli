@@ -8,7 +8,7 @@ import type {
   AnnualReadinessIssue,
   AnnualReadinessStatus,
 } from "../annual-readiness";
-import type { CancellationEvidence, CancellationStatus } from "../cancellation";
+import type { CompanyCancellationRow } from "../cancellation";
 import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
 import { assertOperatorSearchAllowed, buildOperatorSupportSummaries } from "../operator-support";
 import type {
@@ -619,21 +619,6 @@ export type NotificationOutboxRow = {
   created_at: string;
 };
 
-export type CompanyCancellationRow = {
-  id: string;
-  company_id: string;
-  status: CancellationStatus;
-  reason: string;
-  evidence: CancellationEvidence;
-  requested_by: string;
-  requested_at: string;
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  deleted_by: string | null;
-  deleted_at: string | null;
-  updated_at: string;
-};
-
 export function hasSupabaseEnv() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
 }
@@ -1227,23 +1212,6 @@ export async function listNotificationOutbox(companyIds: string[]) {
   };
 }
 
-export async function listCompanyCancellations(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { cancellations: [] as CompanyCancellationRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("company_cancellations")
-    .select("id, company_id, status, reason, evidence, requested_by, requested_at, reviewed_by, reviewed_at, deleted_by, deleted_at, updated_at")
-    .in("company_id", companyIds)
-    .order("updated_at", { ascending: false });
-
-  return {
-    cancellations: (data ?? []) as CompanyCancellationRow[],
-    error: error?.message ?? null,
-  };
-}
-
 export async function listLaunchSignoffs(actorId?: string | null) {
   if (!hasSupabaseEnv() || !actorId) {
     return { launchSignoffs: [] as LaunchSignoffRow[], isOperator: false, isAdminOperator: false, error: null };
@@ -1349,7 +1317,6 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
     { data: authorityPermissions },
     { data: billingAccounts },
     { data: billingPaymentEvents },
-    { data: cancellations },
     { data: auditEvents },
   ] = await Promise.all([
     supabase
@@ -1374,16 +1341,16 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
       .select("id, company_id, provider, provider_reference, idempotency_key, kind, status, amount_nok, income_year, payload, created_by, created_at")
       .in("company_id", companyIds),
     supabase
-      .from("company_cancellations")
-      .select("id, company_id, status, reason, evidence, requested_by, requested_at, reviewed_by, reviewed_at, deleted_by, deleted_at, updated_at")
-      .in("company_id", companyIds),
-    supabase
       .from("audit_events")
       .select("id, company_id, actor_id, category, action, message, created_at")
       .in("company_id", companyIds)
       .order("created_at", { ascending: false })
       .limit(50),
   ]);
+
+  const { cancellations } = await (
+    await import("../company-access-cancellation")
+  ).listCompanyCancellationLifecycle(companyIds);
 
   await supabase.from("audit_events").insert(
     companyIds.map((companyId) => ({

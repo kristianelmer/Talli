@@ -264,12 +264,26 @@ class CompanyMembershipListResponse(CompanyAccessModel):
     memberships: list[CompanyMembership]
 
 
+class CompanyCancellationEvidence(CompanyAccessModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid")
+
+    archive_exported_at: str | None = None
+    archive_income_year: int | None = None
+    archive_download_path: str | None = None
+    retention_classes: list[str] = Field(default_factory=list)
+    missing_document_ids: list[str] = Field(default_factory=list)
+    legal_review_required: bool = True
+    corporate_object_keys: list[str] = Field(default_factory=list)
+    missing_corporate_object_keys: list[str] = Field(default_factory=list)
+    corporate_evidence_complete: bool | None = None
+
+
 class CompanyCancellation(CompanyAccessModel):
     id: str
     company_id: str
     status: CancellationStatus
     reason: str
-    evidence: dict[str, object]
+    evidence: CompanyCancellationEvidence
     requested_by: str
     requested_at: str
     reviewed_by: str | None
@@ -1006,6 +1020,7 @@ __all__ = [
     "CompanyCancellation",
     "CompanyCancellationListResponse",
     "CompanyCancellationResponse",
+    "CompanyCancellationEvidence",
     "CompanyDeletionReview",
     "CompanyDeletionReviewResponse",
     "CompanyInvitation",

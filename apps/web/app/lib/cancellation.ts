@@ -9,7 +9,7 @@ export type CancellationEvidence = {
   legalReviewRequired?: boolean;
   corporateObjectKeys?: string[];
   missingCorporateObjectKeys?: string[];
-  corporateEvidenceComplete?: boolean;
+  corporateEvidenceComplete?: boolean | null;
 };
 
 export type CompanyCancellationRow = {

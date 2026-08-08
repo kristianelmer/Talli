@@ -20,6 +20,10 @@ const companyAccessOperations = {
   completeInvitationSideEffect: ["/api/v1/company-access/invitation-side-effects/{operation_id}/complete", "post", "companyAccessCompleteInvitationSideEffect"],
   listMemberships: ["/api/v1/company-access/memberships", "get", "companyAccessListMemberships"],
   administerMembership: ["/api/v1/company-access/memberships/{user_id}", "patch", "companyAccessAdministerMembership"],
+  listCancellations: ["/api/v1/company-access/cancellations", "get", "companyAccessListCancellations"],
+  requestCancellation: ["/api/v1/company-access/cancellations", "post", "companyAccessRequestCancellation"],
+  reviewDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/reviews", "post", "companyAccessReviewDeletion"],
+  finalizeDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/finalize", "post", "companyAccessFinalizeDeletion"],
 };
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
@@ -75,6 +79,7 @@ function schemaType(schema) {
   if (schema?.type === "string") return "string";
   if (schema?.type === "integer" || schema?.type === "number") return "number";
   if (schema?.type === "boolean") return "boolean";
+  if (schema?.type === "object") return "Record<string, unknown>";
   throw new Error(`Unsupported generated-client schema type: ${schema?.type}`);
 }
 
@@ -113,6 +118,9 @@ function renderGuard(name, schema) {
     }
     if (schema.properties[property]?.const !== undefined) {
       return `    value.${property} === ${JSON.stringify(schema.properties[property].const)}`;
+    }
+    if (schema.properties[property]?.type === "object") {
+      return `    isRecord(value.${property})`;
     }
     const allowedValues = schema.properties[property]?.enum;
     if (allowedValues?.length) {
@@ -155,6 +163,15 @@ const additionalSchemas = Object.fromEntries([
   "InvitationSideEffectContinuation",
   "InvitationSideEffectContinuationList",
   "InvitationSideEffectCompletion",
+  "CompanyCancellationEvidence",
+  "CompanyCancellation",
+  "CompanyCancellationListResponse",
+  "CompanyCancellationResponse",
+  "CompanyDeletionReview",
+  "CompanyDeletionReviewResponse",
+  "RequestCompanyCancellationRequest",
+  "ReviewCompanyDeletionRequest",
+  "FinalizeCompanyDeletionRequest",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
@@ -201,6 +218,12 @@ ${[
   "InvitationSideEffectContinuation",
   "InvitationSideEffectContinuationList",
   "InvitationSideEffectCompletion",
+  "CompanyCancellationEvidence",
+  "CompanyCancellation",
+  "CompanyCancellationListResponse",
+  "CompanyCancellationResponse",
+  "CompanyDeletionReview",
+  "CompanyDeletionReviewResponse",
 ].map((name) => renderGuard(name, additionalSchemas[name])).join("\n\n")}
 
 ${renderGuard("ProblemDetails", problemSchema)}
@@ -478,6 +501,61 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyMembershipResponse,
+      );
+    },
+
+    async companyAccessListCancellations(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationListResponse> {
+      const query = new URLSearchParams({ company_id: companyId });
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/cancellations?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCompanyCancellationListResponse,
+      );
+    },
+
+    async companyAccessRequestCancellation(
+      body: RequestCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/cancellations\`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
+      );
+    },
+
+    async companyAccessReviewDeletion(
+      cancellationId: string,
+      body: ReviewCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyDeletionReviewResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/cancellations/\${encodeURIComponent(cancellationId)}/reviews\`,
+        "POST",
+        request,
+        body,
+        isCompanyDeletionReviewResponse,
+      );
+    },
+
+    async companyAccessFinalizeDeletion(
+      cancellationId: string,
+      body: FinalizeCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/cancellations/\${encodeURIComponent(cancellationId)}/finalize\`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
       );
     },
   };

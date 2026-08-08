@@ -20,3 +20,9 @@ export {
   resendCompanyInvitation,
   revokeCompanyInvitation,
 } from "./transport/company-access-administration.ts";
+export {
+  finalizeCompanyDeletion,
+  listCompanyCancellations,
+  requestCompanyCancellation,
+  reviewCompanyDeletion,
+} from "./transport/company-access-cancellation.ts";

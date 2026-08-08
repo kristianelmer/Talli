@@ -17,7 +17,6 @@ import {
   listBankTransactions,
   listBillingAccounts,
   listBillingPaymentEvents,
-  listCompanyCancellations,
   listCorporateDocumentLifecycle,
   listDocumentsForCompanies,
   listFilingPreviews,
@@ -35,6 +34,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./supabase/server";
+import { listCompanyCancellationLifecycle } from "./company-access-cancellation";
 import { listCompanyAccessContexts } from "./company-access-context";
 import { listCompanyAccessAdministration } from "./company-access-administration";
 
@@ -83,7 +83,7 @@ export async function loadWorkspaceData() {
     ? await listCompanyAccessAdministration(primaryCompanyId)
     : { invitations: [], memberships: [], error: null };
   const { notifications } = user ? await listNotificationOutbox(companies.map((company) => company.id)) : { notifications: [] };
-  const { cancellations } = user ? await listCompanyCancellations(companies.map((company) => company.id)) : { cancellations: [] };
+  const { cancellations } = user ? await listCompanyCancellationLifecycle(companies.map((company) => company.id)) : { cancellations: [] };
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
   const { billingPaymentEvents } = user ? await listBillingPaymentEvents(companies.map((company) => company.id)) : { billingPaymentEvents: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };

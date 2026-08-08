@@ -79,7 +79,6 @@ import {
   listBankTransactions,
   listBillingAccounts,
   listBillingPaymentEvents,
-  listCompanyCancellations,
   listDocumentsForCompanies,
   listFilingPreviews,
   listFilingOverrides,
@@ -458,6 +457,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 {primaryCompanyId ? (
                   <form className="dataPanel formPanel widePanel" action={requestCompanyCancellation}>
+                    <input name="operationId" type="hidden" value={randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
                     <label>
@@ -469,14 +469,13 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </button>
                   </form>
                 ) : null}
-                {primaryCancellation && primaryCancellation.status !== "deleted" ? (
+                {primaryCancellation && primaryCancellation.status === "deletion_approved" ? (
                   <form className="dataPanel formPanel widePanel" action={completeCompanyDeletionRecord}>
+                    <input name="operationId" type="hidden" value={randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCancellation.company_id} />
                     <input name="cancellationId" type="hidden" value={primaryCancellation.id} />
-                    <label className="checkboxLabel">
-                      <input name="legalRetentionConfirmed" type="checkbox" />
-                      Retention/legal review er bekreftet, pliktige records beholdes, fysisk sletting gjøres ikke her.
-                    </label>
+                    <input name="expectedUpdatedAt" type="hidden" value={primaryCancellation.updated_at} />
+                    <p>Uavhengig review er godkjent. Dette markerer selskapet slettet uten fysisk sletting av pliktige records.</p>
                     <button className="secondaryButton" type="submit">
                       Fullfør slettestatus
                     </button>

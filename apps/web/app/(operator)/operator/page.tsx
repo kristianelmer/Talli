@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 import {
   recordLaunchSignoff,
+  reviewCompanyDeletion,
   runProductionAuthorityOperation,
   runProductionSystembrukerCallbackOperation,
   upsertProductionPilotEntitlement,
@@ -294,6 +297,29 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
               <p>Refund: {summary.refundStatus}</p>
               <p>Restore/archive: {summary.restoreStatus}</p>
               <p>Audit: {summary.recentAuditActions.join(", ") || "Ingen"}</p>
+              {launchSignoffState.isAdminOperator
+                && summary.cancellationId
+                && summary.cancellationStatus === "retention_hold"
+                && summary.cancellationUpdatedAt ? (
+                <form className="formPanel" action={reviewCompanyDeletion}>
+                  <input name="operationId" type="hidden" value={randomUUID()} />
+                  <input name="companyId" type="hidden" value={summary.companyId} />
+                  <input name="cancellationId" type="hidden" value={summary.cancellationId} />
+                  <input name="expectedUpdatedAt" type="hidden" value={summary.cancellationUpdatedAt} />
+                  <label>
+                    Beslutning
+                    <select name="decision" defaultValue="approved">
+                      <option value="approved">Godkjenn</option>
+                      <option value="rejected">Avvis</option>
+                    </select>
+                  </label>
+                  <label>
+                    Evidensreferanse
+                    <input name="evidenceReference" required placeholder="Saks-/dokumentreferanse" />
+                  </label>
+                  <button className="secondaryButton" type="submit">Registrer uavhengig deletion review</button>
+                </form>
+              ) : null}
             </div>
           ))}
           {operatorSearch && operatorDashboard.isOperator && operatorDashboard.summaries.length === 0 ? (
