@@ -148,7 +148,7 @@ export interface CompanyCancellation {
   requestedBy: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
-  status: "export_required" | "retention_hold" | "deletion_approved" | "deleted";
+  status: "export_required" | "retention_hold" | "deletion_approved" | "deleted" | "superseded";
   updatedAt: string;
 }
 
@@ -182,6 +182,13 @@ export interface RequestCompanyCancellationRequest {
   incomeYear: number;
   operationId: string;
   reason: string;
+}
+
+export interface ResumeCompanyCancellationRequest {
+  companyId: string;
+  expectedUpdatedAt: string;
+  incomeYear: number;
+  operationId: string;
 }
 
 export interface ReviewCompanyDeletionRequest {
@@ -418,7 +425,7 @@ function isCompanyCancellation(value: unknown): value is CompanyCancellation {
     isUuid(value.requestedBy) &&
     (isDateTime(value.reviewedAt) || value.reviewedAt === null) &&
     (isUuid(value.reviewedBy) || value.reviewedBy === null) &&
-    (value.status === "export_required" || value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted") &&
+    (value.status === "export_required" || value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted" || value.status === "superseded") &&
     isDateTime(value.updatedAt)
   );
 }
@@ -792,6 +799,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyDeletionReviewResponse,
+      );
+    },
+
+    async companyAccessResumeCancellation(
+      cancellationId: string,
+      body: ResumeCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/resume`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
       );
     },
 

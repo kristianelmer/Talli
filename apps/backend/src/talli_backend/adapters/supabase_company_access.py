@@ -23,6 +23,7 @@ from talli_backend.modules.company_access.public import (
     InvitationMutationGatewayCommand,
     ResendInvitationGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
+    ResumeCompanyCancellationGatewayCommand,
     ReviewCompanyDeletionGatewayCommand,
     company_access_adapter,
 )
@@ -403,6 +404,21 @@ class SupabaseCompanyAccessAdapter:
             },
         )
 
+    async def resume_cancellation(
+        self, access_token: str, command: ResumeCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_resume_cancellation",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_income_year": command.income_year,
+                "p_expected_updated_at": command.expected_updated_at,
+            },
+        )
+
     async def finalize_deletion(
         self, access_token: str, command: FinalizeCompanyDeletionGatewayCommand
     ) -> Mapping[str, object] | None:
@@ -426,6 +442,7 @@ class SupabaseCompanyAccessAdapter:
         path = f"/rest/v1/rpc/{function_name}"
         cancellation_command = function_name in {
             "company_access_request_cancellation",
+            "company_access_resume_cancellation",
             "company_access_review_deletion",
             "company_access_finalize_deletion",
         }
@@ -486,6 +503,7 @@ class SupabaseCompanyAccessAdapter:
     ) -> tuple[str, Mapping[str, object] | None]:
         command_names = {
             "company_access_request_cancellation": "request_cancellation",
+            "company_access_resume_cancellation": "resume_cancellation",
             "company_access_review_deletion": "review_deletion",
             "company_access_finalize_deletion": "finalize_deletion",
         }

@@ -106,7 +106,7 @@ class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
     state: MembershipState | None = None
 
 
-CancellationStatus = Literal["export_required", "retention_hold", "deletion_approved", "deleted"]
+CancellationStatus = Literal["export_required", "retention_hold", "deletion_approved", "deleted", "superseded"]
 DeletionReviewDecision = Literal["approved", "rejected"]
 
 
@@ -151,6 +151,20 @@ class ReviewCompanyDeletionRequest(CompanyAccessCommandModel):
 class FinalizeCompanyDeletionRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
+    expected_updated_at: AwareDatetime
+
+    @field_validator("expected_updated_at", mode="before")
+    @classmethod
+    def require_rfc3339_string(cls, value: object) -> object:
+        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
+            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
+        return value
+
+
+class ResumeCompanyCancellationRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
     expected_updated_at: AwareDatetime
 
     @field_validator("expected_updated_at", mode="before")
@@ -215,6 +229,14 @@ class ReviewCompanyDeletionGatewayCommand(CompanyAccessCommandModel):
     expected_updated_at: str
     decision: DeletionReviewDecision
     evidence_reference: str
+
+
+class ResumeCompanyCancellationGatewayCommand(CompanyAccessCommandModel):
+    operation_id: str
+    cancellation_id: str
+    company_id: str
+    income_year: int
+    expected_updated_at: str
 
 
 class FinalizeCompanyDeletionGatewayCommand(CompanyAccessCommandModel):
@@ -414,6 +436,10 @@ class CompanyAccessGateway(Protocol):
 
     async def review_deletion(
         self, access_token: str, command: ReviewCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None: ...
+
+    async def resume_cancellation(
+        self, access_token: str, command: ResumeCompanyCancellationGatewayCommand
     ) -> Mapping[str, object] | None: ...
 
     async def finalize_deletion(
@@ -841,6 +867,28 @@ class CompanyAccessService:
             review=CompanyDeletionReview(**row["review"]),
         )
 
+    async def resume_cancellation(
+        self,
+        access_token: str,
+        cancellation_id: UUID,
+        command: ResumeCompanyCancellationRequest,
+    ) -> CompanyCancellationResponse:
+        company_id = str(command.company_id)
+        await self._authorize_lifecycle_owner(access_token, company_id)
+        row = await self._gateway.resume_cancellation(
+            access_token,
+            ResumeCompanyCancellationGatewayCommand(
+                operation_id=str(command.operation_id),
+                cancellation_id=str(cancellation_id),
+                company_id=company_id,
+                income_year=command.income_year,
+                expected_updated_at=command.expected_updated_at.isoformat(),
+            ),
+        )
+        if row is None:
+            raise _company_access_not_found()
+        return CompanyCancellationResponse(cancellation=self._cancellation(row))
+
     async def finalize_deletion(
         self,
         access_token: str,
@@ -1048,6 +1096,8 @@ __all__ = [
     "MembershipState",
     "RequestCompanyCancellationGatewayCommand",
     "RequestCompanyCancellationRequest",
+    "ResumeCompanyCancellationGatewayCommand",
+    "ResumeCompanyCancellationRequest",
     "ReviewCompanyDeletionGatewayCommand",
     "ReviewCompanyDeletionRequest",
     "company_access_adapter",

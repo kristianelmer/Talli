@@ -14,6 +14,7 @@ from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     FinalizeCompanyDeletionGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
+    ResumeCompanyCancellationGatewayCommand,
     ReviewCompanyDeletionGatewayCommand,
 )
 from talli_backend.adapters.supabase_company_access import (
@@ -101,6 +102,12 @@ class LifecycleGatewayStub:
                 "cancellation_revision": command.expected_updated_at,
             },
         }
+
+    async def resume_cancellation(
+        self, _access_token: str, command: ResumeCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None:
+        self.calls.append(("resume_cancellation", command))
+        return None if self.hidden else self._cancellation(status="retention_hold")
 
     async def finalize_deletion(
         self, _access_token: str, command: FinalizeCompanyDeletionGatewayCommand
@@ -342,6 +349,28 @@ def test_owner_finalizes_only_through_revision_bound_idempotent_command() -> Non
     command = gateway.calls[-1][1]
     assert isinstance(command, FinalizeCompanyDeletionGatewayCommand)
     assert command.cancellation_id == CANCELLATION_ID
+
+
+def test_owner_resumes_exact_legacy_cancellation_after_archive_export() -> None:
+    gateway = LifecycleGatewayStub()
+    client = TestClient(create_app(gateway))
+    response = client.post(
+        f"/api/v1/company-access/cancellations/{CANCELLATION_ID}/resume",
+        headers=headers(),
+        json={
+            "operationId": OPERATION_ID,
+            "companyId": COMPANY_ID,
+            "incomeYear": 2025,
+            "expectedUpdatedAt": "2026-08-08T10:30:00Z",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["cancellation"]["status"] == "retention_hold"
+    command = gateway.calls[-1][1]
+    assert isinstance(command, ResumeCompanyCancellationGatewayCommand)
+    assert command.cancellation_id == CANCELLATION_ID
+    assert command.income_year == 2025
 
 
 def test_lifecycle_gateway_prerequisite_failure_is_stable_and_has_no_success_body() -> None:

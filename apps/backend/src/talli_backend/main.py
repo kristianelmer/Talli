@@ -36,6 +36,7 @@ from talli_backend.modules.company_access.public import (
     InvitationSideEffectContinuationList,
     InvitationTokenRequest,
     RequestCompanyCancellationRequest,
+    ResumeCompanyCancellationRequest,
     ReviewCompanyDeletionRequest,
 )
 from talli_backend.modules.system_boundary.public import (
@@ -557,6 +558,25 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     ) -> CompanyDeletionReviewResponse:
         return await company_access_call(
             company_access_service.review_deletion(
+                bearer_token(credentials), cancellation_id, command
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/cancellations/{cancellation_id}/resume",
+        operation_id="companyAccessResumeCancellation",
+        response_model=CompanyCancellationResponse,
+        responses={200: {"description": "Legacy cancellation advanced after authoritative archive export."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def resume_company_cancellation(
+        cancellation_id: UUID,
+        command: ResumeCompanyCancellationRequest,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> CompanyCancellationResponse:
+        return await company_access_call(
+            company_access_service.resume_cancellation(
                 bearer_token(credentials), cancellation_id, command
             )
         )

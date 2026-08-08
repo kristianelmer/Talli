@@ -22,6 +22,7 @@ const companyAccessOperations = {
   administerMembership: ["/api/v1/company-access/memberships/{user_id}", "patch", "companyAccessAdministerMembership"],
   listCancellations: ["/api/v1/company-access/cancellations", "get", "companyAccessListCancellations"],
   requestCancellation: ["/api/v1/company-access/cancellations", "post", "companyAccessRequestCancellation"],
+  resumeCancellation: ["/api/v1/company-access/cancellations/{cancellation_id}/resume", "post", "companyAccessResumeCancellation"],
   reviewDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/reviews", "post", "companyAccessReviewDeletion"],
   finalizeDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/finalize", "post", "companyAccessFinalizeDeletion"],
 };
@@ -164,6 +165,7 @@ const additionalSchemas = Object.fromEntries([
   "CompanyDeletionReview",
   "CompanyDeletionReviewResponse",
   "RequestCompanyCancellationRequest",
+  "ResumeCompanyCancellationRequest",
   "ReviewCompanyDeletionRequest",
   "FinalizeCompanyDeletionRequest",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -559,6 +561,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyDeletionReviewResponse,
+      );
+    },
+
+    async companyAccessResumeCancellation(
+      cancellationId: string,
+      body: ResumeCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/cancellations/\${encodeURIComponent(cancellationId)}/resume\`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
       );
     },
 
