@@ -567,8 +567,9 @@ Round-9 TDD and verification evidence:
   token candidates and an expired continuation response with no secret-bearing body.
 - Real PostgreSQL proves restricted function ownership, no role inheritance or
   membership, concurrent-demotion replay denial, actor concealment, exact proof,
-  atomic/idempotent enqueue, full JSON/token scrubbing, and an advancing expiry
-  between list and completion producing zero outbox rows.
+  atomic/idempotent enqueue, full JSON/token scrubbing, and a pre-expired
+  completion producing zero outbox rows. Round 10 adds the missing blocked-lock
+  expiry race.
 - `npm run test:boundary` passed: backend 33, web 31, contract 28.
 - `npm run test:supabase` passed 17 with 4 unchanged optional environment skips;
   `npm run test:supabase-grants` passed 3/3.
@@ -576,5 +577,42 @@ Round-9 TDD and verification evidence:
   `npm run typecheck`, `npm run build:web`, and `npm run build:backend` passed.
 - `npm audit --audit-level=high` reported pre-existing `fast-uri` and `nanoid`
   high findings plus an `ajv` moderate finding; dependency mutation is outside #160.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
+
+## 2026-08-08 — Issue #160 round 10 completion-clock and retry authorization
+
+- Review input: `/tmp/talli-issue-160-architecture-review-10.md` and
+  `/tmp/talli-issue-160-standards-review-10.md`.
+- Clean starting head: `18fed627bf6162b13b843080c7eb2211e0b78478`.
+- Round 9 correction: its expiry regression moved expiry before completion; it
+  did not prove that a completion statement blocked before expiry would observe
+  expiry after acquiring the receipt lock.
+- Completion now captures one `clock_timestamp()` after the receipt lock,
+  current authorization, and exact audit proof. The function uses that single
+  instant for the delivery decision, transaction-local outbox RLS setting, and
+  completion stamp, keeping policy and persistence on one advancing boundary.
+- Current authorization now precedes the completed-receipt idempotent return.
+  Owner operations require current accepted-owner membership and AAL2; acceptance
+  requires the actor's current accepted membership. Lost authorization is
+  concealed identically to an unknown or foreign operation.
+- RED: the real two-connection PostgreSQL test started completion before expiry,
+  blocked it behind `FOR UPDATE`, released it after expiry, and the old frozen
+  statement timestamp incorrectly queued one outbox row. Static ordering also
+  proved completed receipts returned before current authorization.
+- GREEN: the same race completes and scrubs with zero outbox rows. Real PostgreSQL
+  also conceals completed owner receipts after AAL downgrade or demotion and a
+  completed acceptance receipt after membership removal.
+- Implementation commit: `c2508fbf`.
+- `npm run test:boundary` passed: backend 33, web 31, contract 28.
+- `npm run test:supabase` passed 17 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run test:boundary-smoke`, and `npm run test:ci-gate` passed.
+- `npm run typecheck`, `npm run build:web`, and `npm run build:backend` passed.
+  The first concurrently launched typecheck raced with the web build deleting and
+  regenerating `.next/types`; the required serial rerun passed after the build.
+- `npm audit --audit-level=high` reports the unchanged `fast-uri` and `nanoid`
+  high findings plus the unchanged `ajv` moderate finding; no dependencies changed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.

@@ -64,9 +64,13 @@ Invitation commands atomically leave their receipt continuation pending until th
 web's exact actor+operation+purpose UUIDv8 audit evidence exists. The
 recovery endpoint derives the actor from Auth, returns at most twenty of that
 actor's continuations, never invokes a business command, and completion locks the
-receipt, verifies audit evidence, then atomically inserts/reconciles outbox
-evidence only while the receipt remains unexpired. It clears the sole receipt
-token and scrubs legacy delivery fields. Expired continuations
+receipt, reauthorizes the actor's current accepted membership (and owner AAL2 for
+owner commands), and verifies audit evidence. It then captures one advancing
+post-lock timestamp for both the outbox RLS check and persistence decision, so it
+atomically inserts/reconciles outbox evidence only while the receipt remains
+unexpired. Even an already-completed retry must pass current authorization before
+idempotent success. Completion clears the sole receipt token and scrubs legacy
+delivery fields. Expired continuations
 remain recoverable for audit evidence, but their token is cleared and obsolete
 delivery is not queued; a new invite/resend is required if delivery is still
 wanted.
