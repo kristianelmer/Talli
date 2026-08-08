@@ -22,14 +22,6 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Innlogging kreves", { status: 401 });
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    return new Response("Archive not found", { status: 404 });
-  }
   try {
     await requireStepUpForAction({
       supabase,
@@ -49,6 +41,15 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   );
   if (archiveAttemptError || typeof archiveAttemptId !== "string") {
     return new Response("Kunne ikke starte autoritativ arkiveksport", { status: 500 });
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .eq("id", companyId)
+    .single();
+  if (companyError || !company) {
+    return new Response("Fant ikke arkivet", { status: 404 });
   }
 
   const { data: submissions, error: submissionError } = await supabase

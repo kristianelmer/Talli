@@ -62,7 +62,7 @@ test("request derives archive and source completeness inside one atomic RPC", ()
   assert.match(request, /status like 'missing%'/iu);
   assert.match(request, /raise exception 'cancellation_prerequisite_failed'/iu);
   assert.match(request, /pg_advisory_xact_lock/iu);
-  assert.match(request, /status <> 'deleted'/iu);
+  assert.match(request, /status not in \('deleted', 'superseded'\)/iu);
   assert.match(request, /insert into public\.audit_events/iu);
   assert.match(request, /company_cancellation_requested/iu);
 });
@@ -83,6 +83,25 @@ test("archive route and generation triggers share one complete source inventory"
   assert.match(functionBody(source, "company_archive_track_source_write_v1"), /order by scope_company_id, scope_income_year/iu);
   assert.equal(declared.has("company_archive_export_attempts"), false);
   assert.equal(declared.has("company_archive_export_receipts"), false);
+  assert.match(functionBody(source, "company_archive_lock_scope_v1"), /company_archive_lock_company_v1\(p_company_id\)/iu);
+  assert.ok(
+    route.indexOf('"company_archive_begin_export"') < route.indexOf('.from("companies")'),
+    "every authoritative source read must follow the generation boundary",
+  );
+});
+
+test("expand deterministically supersedes and conceals legacy duplicates", () => {
+  const source = sql(expandPath);
+  assert.match(source, /status in \('export_required', 'retention_hold', 'deletion_approved', 'deleted', 'superseded'\)/iu);
+  assert.match(source, /order by c\.updated_at desc, c\.requested_at desc, c\.id desc/iu);
+  assert.match(source, /legacyDuplicateReconciliation/iu);
+  assert.match(source, /company_cancellation_legacy_duplicate_superseded:/iu);
+  assert.match(source, /on conflict \(id\) do nothing/iu);
+  assert.match(source, /as restrictive for all to authenticated[\s\S]+status <> 'superseded'/iu);
+  assert.match(source, /where status not in \('deleted', 'superseded'\)/iu);
+  assert.ok(
+    source.indexOf("with ranked as") < source.indexOf("do $archive_source_inventory$"),
+  );
 });
 
 test("review is admin+AAL2 only, append-only, and cannot be self-approved by an owner", () => {
@@ -125,12 +144,25 @@ test("finalize re-derives prerequisites and requires exact approved review", () 
   assert.doesNotMatch(finalize, /delete from public\./iu);
 });
 
+test("legacy export-required cancellations resume through a receipt-bound RPC", () => {
+  const source = sql(expandPath);
+  const resume = functionBody(source, "company_access_resume_cancellation");
+  assert.match(resume, /status <> 'export_required'/iu);
+  assert.match(resume, /p_expected_updated_at/iu);
+  assert.match(resume, /company_archive_lock_company_v1\(p_company_id\)/iu);
+  assert.match(resume, /from public\.company_archive_export_receipts/iu);
+  assert.match(resume, /from public\.documents/iu);
+  assert.match(resume, /set status = 'retention_hold'/iu);
+  assert.match(resume, /'resume_cancellation'/iu);
+  assert.match(source, /grant execute on function public\.company_access_resume_cancellation/iu);
+});
+
 test("archive receipt completion is server-only, one-time, expiring, and generation-bound", () => {
   const source = sql(expandPath);
   const begin = functionBody(source, "company_archive_begin_export");
   const complete = functionBody(source, "company_archive_complete_export");
   const tracker = functionBody(source, "company_archive_track_source_write_v1");
-  const lock = functionBody(source, "company_archive_lock_scope_v1");
+  const lock = functionBody(source, "company_archive_lock_company_v1");
 
   assert.match(begin, /company_access_is_accepted_owner_v1\(p_company_id\)/iu);
   assert.match(begin, /company_access_has_fresh_mfa_v1\(\)/iu);
@@ -181,7 +213,7 @@ test("review JSON is projected to the strict public response shape", () => {
 test("lifecycle commands use durable receipts and least-privilege RLS", () => {
   const source = sql(expandPath);
 
-  for (const command of ["request_cancellation", "review_deletion", "finalize_deletion"]) {
+  for (const command of ["request_cancellation", "resume_cancellation", "review_deletion", "finalize_deletion"]) {
     assert.match(source, new RegExp(`command_name = '${command}'|command_name,.*'${command}'`, "isu"));
   }
   assert.match(source, /create policy "company access commands read cancellations"/iu);
@@ -201,6 +233,7 @@ test("unknown command outcomes reconcile behind the exact operation lock", () =>
   const reconcile = functionBody(source, "company_access_reconcile_cancellation_operation");
   for (const name of [
     "company_access_request_cancellation",
+    "company_access_resume_cancellation",
     "company_access_review_deletion",
     "company_access_finalize_deletion",
   ]) {
@@ -221,6 +254,7 @@ test("contract migration removes direct cancellation access only after generated
   assert.match(source, /drop policy if exists "owners can request cancellation"/iu);
   assert.match(source, /drop policy if exists "owners can update cancellation request"/iu);
   assert.match(source, /grant execute on function public\.company_access_request_cancellation/iu);
+  assert.match(source, /grant execute on function public\.company_access_resume_cancellation/iu);
   assert.match(source, /grant execute on function public\.company_access_review_deletion/iu);
   assert.match(source, /grant execute on function public\.company_access_finalize_deletion/iu);
   assert.match(source, /grant execute on function public\.company_access_list_cancellations/iu);

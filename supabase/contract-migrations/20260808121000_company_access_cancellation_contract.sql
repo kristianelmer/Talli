@@ -10,6 +10,7 @@ drop policy if exists "owners can update cancellation request" on public.company
 
 revoke all on table public.company_deletion_reviews from public, anon, authenticated;
 grant execute on function public.company_access_request_cancellation(uuid, uuid, integer, text) to authenticated;
+grant execute on function public.company_access_resume_cancellation(uuid, uuid, uuid, integer, timestamptz) to authenticated;
 grant execute on function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text) to authenticated;
 grant execute on function public.company_access_finalize_deletion(uuid, uuid, uuid, timestamptz) to authenticated;
 grant execute on function public.company_access_list_cancellations(uuid) to authenticated;

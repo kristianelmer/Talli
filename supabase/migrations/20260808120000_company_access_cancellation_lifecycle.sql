@@ -9,7 +9,7 @@ alter table public.company_access_command_receipts
   add constraint company_access_command_receipts_command_name_check check (command_name in (
     'create_invitation', 'accept_invitation', 'revoke_invitation',
     'resend_invitation', 'administer_membership', 'request_cancellation',
-    'review_deletion', 'finalize_deletion'
+    'resume_cancellation', 'review_deletion', 'finalize_deletion'
   ));
 
 do $roles$
@@ -73,7 +73,7 @@ on public.company_archive_source_generations for select to company_access_execut
 create policy "company access reads archive receipts"
 on public.company_archive_export_receipts for select to company_access_executor using (true);
 
-create or replace function public.company_archive_lock_scope_v1(p_company_id uuid, p_income_year integer)
+create or replace function public.company_archive_lock_company_v1(p_company_id uuid)
 returns void
 language plpgsql
 volatile
@@ -81,10 +81,65 @@ set search_path = ''
 as $function$
 begin
   perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended(p_company_id::text || ':' || p_income_year::text, 157)
+    pg_catalog.hashtextextended(p_company_id::text, 157)
   );
 end;
 $function$;
+
+create or replace function public.company_archive_lock_scope_v1(p_company_id uuid, p_income_year integer)
+returns void
+language sql
+volatile
+set search_path = ''
+as $function$
+  select public.company_archive_lock_company_v1(p_company_id);
+$function$;
+
+alter table public.company_cancellations
+  drop constraint if exists company_cancellations_status_check;
+alter table public.company_cancellations
+  add constraint company_cancellations_status_check
+  check (status in ('export_required', 'retention_hold', 'deletion_approved', 'deleted', 'superseded'));
+
+with ranked as (
+  select c.id, c.company_id,
+         first_value(c.id) over (
+           partition by c.company_id
+           order by c.updated_at desc, c.requested_at desc, c.id desc
+         ) as survivor_id,
+         row_number() over (
+           partition by c.company_id
+           order by c.updated_at desc, c.requested_at desc, c.id desc
+         ) as duplicate_rank
+  from public.company_cancellations c
+  where c.status not in ('deleted', 'superseded')
+), superseded_rows as (
+  update public.company_cancellations c
+  set status = 'superseded',
+      evidence = coalesce(c.evidence, '{}'::jsonb) || pg_catalog.jsonb_build_object(
+        'legacyDuplicateReconciliation', pg_catalog.jsonb_build_object(
+          'survivorId', ranked.survivor_id,
+          'policy', 'latest_updated_requested_id',
+          'reconciledAt', pg_catalog.statement_timestamp()
+        )
+      ),
+      updated_at = pg_catalog.statement_timestamp()
+  from ranked
+  where c.id = ranked.id and ranked.duplicate_rank > 1
+  returning c.id, c.company_id, c.requested_by, ranked.survivor_id
+)
+insert into public.audit_events(id, company_id, actor_id, category, action, message)
+select pg_catalog.md5('company_cancellation_legacy_duplicate_superseded:' || id::text)::uuid,
+       company_id, requested_by, 'retention', 'company_cancellation_legacy_duplicate_superseded',
+       'Legacy duplicate cancellation ' || id::text || ' superseded by ' || survivor_id::text || '.'
+from superseded_rows
+on conflict (id) do nothing;
+
+drop policy if exists "legacy cancellation hides superseded rows" on public.company_cancellations;
+create policy "legacy cancellation hides superseded rows"
+on public.company_cancellations as restrictive for all to authenticated
+using (status <> 'superseded')
+with check (status <> 'superseded');
 
 create or replace function public.company_archive_track_source_write_v1()
 returns trigger
@@ -257,7 +312,7 @@ create table if not exists public.company_deletion_reviews (
 );
 
 create unique index if not exists company_cancellations_one_active_per_company_idx
-  on public.company_cancellations(company_id) where status <> 'deleted';
+  on public.company_cancellations(company_id) where status not in ('deleted', 'superseded');
 create index if not exists company_deletion_reviews_cancellation_reviewed_idx
   on public.company_deletion_reviews(cancellation_id, reviewed_at desc);
 
@@ -353,7 +408,11 @@ using (
 with check (
   public.company_access_has_fresh_mfa_v1()
   and (
-    (status in ('retention_hold', 'deletion_approved') and public.company_access_is_active_admin_v1())
+    (status = 'retention_hold' and (
+      public.company_access_is_accepted_owner_v1(company_id)
+      or public.company_access_is_active_admin_v1()
+    ))
+    or (status = 'deletion_approved' and public.company_access_is_active_admin_v1())
     or (status = 'deleted' and public.company_access_is_accepted_owner_v1(company_id))
   )
 );
@@ -427,7 +486,7 @@ using (
   and (
     command_name = 'accept_invitation'
     or (
-      command_name in ('create_invitation', 'revoke_invitation', 'resend_invitation', 'administer_membership', 'request_cancellation', 'finalize_deletion')
+      command_name in ('create_invitation', 'revoke_invitation', 'resend_invitation', 'administer_membership', 'request_cancellation', 'resume_cancellation', 'finalize_deletion')
       and expires_at > statement_timestamp()
       and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
       and public.company_access_is_accepted_owner_v1(company_id)
@@ -477,7 +536,7 @@ declare
   v_receipt public.company_access_command_receipts%rowtype;
 begin
   if p_operation_id is null or p_company_id is null
-     or p_command_name not in ('request_cancellation', 'review_deletion', 'finalize_deletion') then
+     or p_command_name not in ('request_cancellation', 'resume_cancellation', 'review_deletion', 'finalize_deletion') then
     raise exception 'company_access_invalid_request' using errcode = 'P0001';
   end if;
   if p_command_name = 'request_cancellation' then
@@ -491,6 +550,16 @@ begin
       raise exception 'company_access_not_found' using errcode = 'P0001';
     end if;
     v_fingerprint := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
+  elsif p_command_name = 'resume_cancellation' then
+    if p_cancellation_id is null or p_income_year is null
+       or p_income_year not between 2000 and 2100 or p_expected_updated_at is null then
+      raise exception 'company_access_invalid_request' using errcode = 'P0001';
+    end if;
+    if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+       or not public.company_access_is_accepted_owner_v1(p_company_id) then
+      raise exception 'company_access_not_found' using errcode = 'P0001';
+    end if;
+    v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_income_year::text, p_expected_updated_at::text);
   elsif p_command_name = 'review_deletion' then
     if p_cancellation_id is null or p_expected_updated_at is null
        or p_decision not in ('approved', 'rejected') or p_evidence_reference is null
@@ -592,7 +661,7 @@ begin
 
   if exists (
     select 1 from public.company_cancellations c
-    where c.company_id = p_company_id and c.status <> 'deleted'
+    where c.company_id = p_company_id and c.status not in ('deleted', 'superseded')
   ) then
     raise exception 'company_access_conflict' using errcode = 'P0001';
   end if;
@@ -637,6 +706,105 @@ begin
     operation_id, command_name, actor_id, company_id, request_fingerprint, result, expires_at
   ) values (
     p_operation_id, 'request_cancellation', v_actor_id, p_company_id,
+    v_fingerprint, pg_catalog.to_jsonb(v_cancellation), v_now + interval '30 days'
+  );
+  return next v_cancellation;
+end;
+$function$;
+
+create or replace function public.company_access_resume_cancellation(
+  p_operation_id uuid,
+  p_cancellation_id uuid,
+  p_company_id uuid,
+  p_income_year integer,
+  p_expected_updated_at timestamptz
+)
+returns setof public.company_cancellations
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_fingerprint text;
+  v_receipt public.company_access_command_receipts%rowtype;
+  v_cancellation public.company_cancellations%rowtype;
+  v_archive_receipt public.company_archive_export_receipts%rowtype;
+  v_source_generation bigint;
+  v_now timestamptz := pg_catalog.statement_timestamp();
+begin
+  if p_operation_id is null or p_cancellation_id is null or p_company_id is null
+     or p_income_year is null or p_income_year not between 2000 and 2100
+     or p_expected_updated_at is null then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
+  if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+     or not public.company_access_is_accepted_owner_v1(p_company_id) then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_income_year::text, p_expected_updated_at::text);
+  perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
+  perform public.company_archive_lock_company_v1(p_company_id);
+
+  select r.* into v_receipt from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
+  if found then
+    if v_receipt.command_name <> 'resume_cancellation'
+       or v_receipt.company_id <> p_company_id
+       or v_receipt.request_fingerprint <> v_fingerprint then
+      raise exception 'company_access_invalid_request' using errcode = 'P0001';
+    end if;
+    return query select * from pg_catalog.jsonb_populate_record(null::public.company_cancellations, v_receipt.result);
+    return;
+  end if;
+
+  select c.* into v_cancellation from public.company_cancellations c
+  where c.id = p_cancellation_id and c.company_id = p_company_id
+  for update;
+  if not found then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  if v_cancellation.status <> 'export_required'
+     or v_cancellation.updated_at <> p_expected_updated_at then
+    raise exception 'company_access_conflict' using errcode = 'P0001';
+  end if;
+
+  select generation into v_source_generation
+  from public.company_archive_source_generations
+  where company_id = p_company_id and income_year = p_income_year;
+  select r.* into v_archive_receipt
+  from public.company_archive_export_receipts r
+  where r.company_id = p_company_id and r.income_year = p_income_year
+    and r.source_generation = v_source_generation
+  order by r.exported_at desc
+  limit 1;
+  if not found or exists (
+       select 1 from public.documents d
+       where d.company_id = p_company_id and d.income_year = p_income_year
+         and d.status like 'missing%'
+     ) then
+    raise exception 'cancellation_prerequisite_failed' using errcode = 'P0001';
+  end if;
+
+  update public.company_cancellations c
+  set status = 'retention_hold',
+      evidence = coalesce(c.evidence, '{}'::jsonb) || pg_catalog.jsonb_build_object(
+        'archiveIncomeYear', p_income_year,
+        'archiveExportedAt', v_archive_receipt.exported_at,
+        'archiveDownloadPath', '/archive/' || p_company_id::text || '/' || p_income_year::text || '/download',
+        'legalReviewRequired', true
+      ),
+      updated_at = v_now
+  where c.id = p_cancellation_id
+  returning c.* into v_cancellation;
+
+  insert into public.audit_events(company_id, actor_id, category, action, message)
+  values (p_company_id, v_actor_id, 'retention', 'company_cancellation_resumed',
+          'Legacy cancellation advanced after current authoritative archive verification.');
+  insert into public.company_access_command_receipts(
+    operation_id, command_name, actor_id, company_id, request_fingerprint, result, expires_at
+  ) values (
+    p_operation_id, 'resume_cancellation', v_actor_id, p_company_id,
     v_fingerprint, pg_catalog.to_jsonb(v_cancellation), v_now + interval '30 days'
   );
   return next v_cancellation;
@@ -894,10 +1062,13 @@ grant execute on function public.company_access_auth_uid_v1(), public.company_ac
   to company_archive_projection_executor;
 grant execute on function public.company_archive_lock_scope_v1(uuid, integer)
   to company_access_executor, company_archive_projection_executor;
+grant execute on function public.company_archive_lock_company_v1(uuid)
+  to company_access_executor, company_archive_projection_executor;
 revoke all on table public.company_archive_source_generations, public.company_archive_export_attempts, public.company_archive_export_receipts
   from public, anon, authenticated, service_role;
 revoke all on function public.company_archive_track_source_write_v1() from public, anon, authenticated, service_role;
 revoke all on function public.company_archive_lock_scope_v1(uuid, integer) from public, anon, authenticated, service_role;
+revoke all on function public.company_archive_lock_company_v1(uuid) from public, anon, authenticated, service_role;
 revoke all on function public.company_archive_begin_export(uuid, integer) from public, anon;
 revoke all on function public.company_archive_complete_export(uuid, text) from public, anon, authenticated;
 grant execute on function public.company_archive_begin_export(uuid, integer) to authenticated;
@@ -908,6 +1079,8 @@ begin
   execute pg_catalog.format('grant company_access_executor to %I', current_user);
   grant create on schema public to company_access_executor;
   alter function public.company_access_request_cancellation(uuid, uuid, integer, text)
+    owner to company_access_executor;
+  alter function public.company_access_resume_cancellation(uuid, uuid, uuid, integer, timestamptz)
     owner to company_access_executor;
   alter function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text)
     owner to company_access_executor;
@@ -939,6 +1112,7 @@ revoke all on function public.company_access_is_active_admin_v1() from public, a
 revoke all on function public.company_access_is_active_operator_v1() from public, anon, authenticated;
 revoke all on function public.company_access_has_fresh_mfa_v1() from public, anon, authenticated;
 revoke all on function public.company_access_request_cancellation(uuid, uuid, integer, text) from public, anon;
+revoke all on function public.company_access_resume_cancellation(uuid, uuid, uuid, integer, timestamptz) from public, anon;
 revoke all on function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text) from public, anon;
 revoke all on function public.company_access_finalize_deletion(uuid, uuid, uuid, timestamptz) from public, anon;
 revoke all on function public.company_access_list_cancellations(uuid) from public, anon;
@@ -946,6 +1120,7 @@ revoke all on function public.company_access_lock_operation_v1(uuid, uuid) from 
 revoke all on function public.company_access_reconcile_cancellation_operation(uuid, text, uuid, uuid, integer, text, timestamptz, text, text) from public, anon;
 
 grant execute on function public.company_access_request_cancellation(uuid, uuid, integer, text) to authenticated;
+grant execute on function public.company_access_resume_cancellation(uuid, uuid, uuid, integer, timestamptz) to authenticated;
 grant execute on function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text) to authenticated;
 grant execute on function public.company_access_finalize_deletion(uuid, uuid, uuid, timestamptz) to authenticated;
 grant execute on function public.company_access_list_cancellations(uuid) to authenticated;
