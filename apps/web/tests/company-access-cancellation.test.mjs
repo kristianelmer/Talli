@@ -103,6 +103,7 @@ test("generated cancellation decoders reject malformed optional fields, UUIDs, a
   const malformed = [
     { ...cancellation, id: "not-a-uuid" },
     { ...cancellation, requestedAt: "2026-08-08" },
+    { ...cancellation, requestedAt: "2026-02-30T10:00:00Z" },
     { ...cancellation, reviewedBy: "not-a-uuid" },
     { ...cancellation, reviewedAt: "tomorrow" },
     { ...cancellation, evidence: { ...cancellation.evidence, legalReviewRequired: "yes" } },
