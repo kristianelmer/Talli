@@ -1,12 +1,10 @@
 import { cookies } from "next/headers";
+import type { PendingCancellationOperation } from "./cancellation-operation-policy";
+
+export type { PendingCancellationOperation } from "./cancellation-operation-policy";
 
 const COOKIE = "talli_pending_cancellation_operation";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-
-export type PendingCancellationOperation =
-  | { command: "request"; operationId: string; companyId: string; incomeYear: number; reason: string }
-  | { command: "finalize"; operationId: string; companyId: string; cancellationId: string; expectedUpdatedAt: string }
-  | { command: "review"; operationId: string; companyId: string; cancellationId: string; expectedUpdatedAt: string; decision: "approved" | "rejected"; evidenceReference: string };
 
 function valid(value: unknown): value is PendingCancellationOperation {
   if (typeof value !== "object" || value === null) return false;
@@ -22,11 +20,6 @@ function valid(value: unknown): value is PendingCancellationOperation {
     && (item.decision === "approved" || item.decision === "rejected")
     && typeof item.evidenceReference === "string"
     && item.evidenceReference.length >= 1 && item.evidenceReference.length <= 500;
-}
-
-export function isIndeterminateCancellationError(error: unknown): boolean {
-  return (typeof error === "object" && error !== null && "status" in error && error.status === 503)
-    || (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name));
 }
 
 export async function preservePendingCancellationOperation(operation: PendingCancellationOperation) {

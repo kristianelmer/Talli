@@ -25,9 +25,9 @@ import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance
 import { getSiteUrl } from "./lib/site-url";
 import {
   clearPendingCancellationOperation,
-  isIndeterminateCancellationError,
   preservePendingCancellationOperation,
 } from "./lib/cancellation-operation-state";
+import { pendingCancellationOperationForError } from "./lib/cancellation-operation-policy";
 import { sanitizeInternalRedirect } from "./lib/internal-redirect";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -3210,8 +3210,9 @@ export async function requestCompanyCancellation(formData: FormData) {
   try {
     await requestCompanyCancellationThroughApi(accessToken, command);
   } catch (error) {
-    if (isIndeterminateCancellationError(error)) {
-      await preservePendingCancellationOperation(command);
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
     }
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_cancellation_failed")}`);
   }
@@ -3241,8 +3242,9 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
       expectedUpdatedAt,
     });
   } catch (error) {
-    if (isIndeterminateCancellationError(error)) {
-      await preservePendingCancellationOperation(command);
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
     }
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_failed")}`);
   }
@@ -3272,8 +3274,9 @@ export async function reviewCompanyDeletion(formData: FormData) {
       evidenceReference,
     });
   } catch (error) {
-    if (isIndeterminateCancellationError(error)) {
-      await preservePendingCancellationOperation(command);
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
     }
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_review_failed")}`);
   }

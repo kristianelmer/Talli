@@ -9,6 +9,7 @@ import {
   reviewCompanyDeletion,
 } from "../features/company-access/transport/company-access-cancellation.ts";
 import { firstArchiveSourceError } from "../app/lib/archive.ts";
+import { pendingCancellationOperationForError } from "../app/lib/cancellation-operation-policy.ts";
 
 const cancellation = {
   id: "50000000-0000-0000-0000-000000000001",
@@ -137,6 +138,21 @@ test("every concurrent archive source failure trips the completion barrier", () 
   assert.equal(firstArchiveSourceError(Array.from({ length: 18 }, () => ({ error: null }))), null);
 });
 
+test("actions preserve exact cancellation inputs for network and decoder failures", () => {
+  const operation = {
+    command: "review",
+    operationId: "40000000-0000-0000-0000-000000000002",
+    companyId: cancellation.companyId,
+    cancellationId: cancellation.id,
+    expectedUpdatedAt: cancellation.updatedAt,
+    decision: "approved",
+    evidenceReference: "legal/case-161",
+  };
+  assert.deepEqual(pendingCancellationOperationForError(new TypeError("fetch failed"), operation), operation);
+  assert.deepEqual(pendingCancellationOperationForError({ status: 502 }, operation), operation);
+  assert.equal(pendingCancellationOperationForError({ status: 409 }, operation), null);
+});
+
 test("web cancellation lifecycle has no direct Supabase persistence or caller-owned proof", async () => {
   const [actions, server, workspace, workspaceData, operator, lifecycle, archiveRoute] = await Promise.all([
     readFile(new URL("../app/actions.ts", import.meta.url), "utf8"),
@@ -162,8 +178,8 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(operator, /evidenceReference/u);
   assert.doesNotMatch(`${workspace}\n${operator}`, /retention hold|deletion review|pliktige records/iu);
   assert.match(workspace, /Eksporter et nytt arkiv etter godkjenningen/u);
-  assert.match(actions, /isIndeterminateCancellationError/u);
-  assert.match(actions, /preservePendingCancellationOperation\(command\)/u);
+  assert.match(actions, /pendingCancellationOperationForError/u);
+  assert.match(actions, /preservePendingCancellationOperation\(pending\)/u);
   assert.match(workspace, /pendingCancellationOperation\.operationId/u);
   assert.match(operator, /pendingCancellationOperation\.operationId/u);
   assert.match(server, /error: cancellationLifecycleError/u);
