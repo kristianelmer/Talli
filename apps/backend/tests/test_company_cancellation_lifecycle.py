@@ -424,3 +424,65 @@ def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
         **body,
         "p_command_name": "request_cancellation",
     }
+
+
+@pytest.mark.parametrize("reconciliation", [
+    [],
+    [{}],
+    [{"found": True}],
+    [{"found": False, "result": {}}],
+    [{"found": "false", "result": None}],
+])
+def test_adapter_never_retries_after_malformed_reconciliation(reconciliation: object) -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    calls = 0
+
+    async def request(path: str, _token: str, *, method: str = "GET", body=None) -> object:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise CompanyAccessError(
+                status=503, code="COMPANY_ACCESS_UNAVAILABLE",
+                title="Company access unavailable", detail="unknown",
+            )
+        return reconciliation
+
+    adapter._request = request  # type: ignore[method-assign]
+    with pytest.raises(CompanyAccessError) as caught:
+        asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", {
+            "p_operation_id": OPERATION_ID,
+            "p_company_id": COMPANY_ID,
+            "p_income_year": 2025,
+            "p_reason": "Customer requested cancellation",
+        }))
+    assert caught.value.code == "COMPANY_ACCESS_UNAVAILABLE"
+    assert calls == 2
+
+
+def test_adapter_retries_only_after_explicit_receipt_absence() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    responses: list[object] = [
+        CompanyAccessError(status=503, code="COMPANY_ACCESS_UNAVAILABLE", title="Unavailable", detail="unknown"),
+        [{"found": False, "result": None}],
+        [LifecycleGatewayStub._cancellation()],
+    ]
+
+    async def request(*_args: object, **_kwargs: object) -> object:
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    adapter._request = request  # type: ignore[method-assign]
+    result = asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", {
+        "p_operation_id": OPERATION_ID,
+        "p_company_id": COMPANY_ID,
+        "p_income_year": 2025,
+        "p_reason": "Customer requested cancellation",
+    }))
+    assert result == LifecycleGatewayStub._cancellation()
+    assert responses == []
