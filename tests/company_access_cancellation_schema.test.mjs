@@ -159,6 +159,22 @@ test("lifecycle commands use durable receipts and least-privilege RLS", () => {
   assert.doesNotMatch(source, /alter role company_access_executor[\s\S]+bypassrls/iu);
 });
 
+test("unknown command outcomes reconcile behind the exact operation lock", () => {
+  const source = sql(expandPath);
+  const reconcile = functionBody(source, "company_access_reconcile_cancellation_operation");
+  for (const name of [
+    "company_access_request_cancellation",
+    "company_access_review_deletion",
+    "company_access_finalize_deletion",
+  ]) {
+    assert.match(functionBody(source, name), /company_access_lock_operation_v1\(v_actor_id, p_operation_id\)/iu);
+  }
+  assert.match(reconcile, /company_access_lock_operation_v1\(v_actor_id, p_operation_id\)/iu);
+  assert.match(reconcile, /request_fingerprint <> v_fingerprint/iu);
+  assert.match(reconcile, /return query select false, null::jsonb/iu);
+  assert.match(source, /grant execute on function public\.company_access_reconcile_cancellation_operation/iu);
+});
+
 test("contract migration removes direct cancellation access only after generated-client cutover", () => {
   const source = sql(contractPath);
 

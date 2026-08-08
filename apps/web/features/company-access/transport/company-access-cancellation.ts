@@ -14,7 +14,7 @@ function client(accessToken: string) {
 }
 
 function request(requestId?: string) {
-  return { requestId, signal: AbortSignal.timeout(10_000) };
+  return { requestId, signal: AbortSignal.timeout(25_000) };
 }
 
 export function listCompanyCancellations(

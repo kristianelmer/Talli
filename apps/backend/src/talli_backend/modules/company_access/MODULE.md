@@ -76,6 +76,10 @@ Durable operation receipts replay consequential commands and optimistic expected
 revisions reject competing resend, revoke, and membership changes. If a command's
 transport outcome is unknown, the adapter retries the identical operation once;
 the receipt returns the committed result instead of repeating the mutation.
+Cancellation commands and their reconciliation RPC share an actor+operation
+transaction lock. Reconciliation recomputes the normalized request fingerprint
+from the original typed inputs, so an absent receipt is definitive before the
+backend retries the exact operation ID and payload.
 Invitation commands atomically leave their receipt continuation pending until the
 web's exact actor+operation+purpose UUIDv8 audit evidence exists. The
 recovery endpoint derives the actor from Auth, returns at most twenty of that

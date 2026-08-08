@@ -425,21 +425,75 @@ class SupabaseCompanyAccessAdapter:
     ) -> Mapping[str, object] | None:
         path = f"/rest/v1/rpc/{function_name}"
         try:
-            response = await self._request(
-                path, access_token, method="POST", body=body
-            )
+            try:
+                response = await self._request(path, access_token, method="POST", body=body)
+            except CompanyAccessError as retry_error:
+                if (
+                    retry_error.code == "COMPANY_ACCESS_UNAVAILABLE"
+                    and function_name in {
+                        "company_access_request_cancellation",
+                        "company_access_review_deletion",
+                        "company_access_finalize_deletion",
+                    }
+                ):
+                    reconciled = await self._reconcile_cancellation(
+                        access_token, function_name, body
+                    )
+                    if reconciled is not None:
+                        return reconciled
+                raise
         except CompanyAccessError as error:
             if error.code != "COMPANY_ACCESS_UNAVAILABLE" or "p_operation_id" not in body:
                 raise
-            # The first request may have committed before the transport outcome
-            # became unknown. Replay the identical durable operation once; the
-            # database receipt reconciles it without repeating the mutation.
-            response = await self._request(
-                path, access_token, method="POST", body=body
-            )
+            if function_name.startswith("company_access_") and function_name in {
+                "company_access_request_cancellation",
+                "company_access_review_deletion",
+                "company_access_finalize_deletion",
+            }:
+                reconciled = await self._reconcile_cancellation(
+                    access_token, function_name, body
+                )
+                if reconciled is not None:
+                    return reconciled
+            # A receipt is definitively absent only after reconciliation has
+            # linearized behind the original actor+operation transaction.
+            response = await self._request(path, access_token, method="POST", body=body)
         if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
             return None
         return response[0]
+
+    async def _reconcile_cancellation(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+    ) -> Mapping[str, object] | None:
+        command_names = {
+            "company_access_request_cancellation": "request_cancellation",
+            "company_access_review_deletion": "review_deletion",
+            "company_access_finalize_deletion": "finalize_deletion",
+        }
+        reconcile_body = dict(body)
+        reconcile_body["p_command_name"] = command_names[function_name]
+        response = await self._request(
+            "/rest/v1/rpc/company_access_reconcile_cancellation_operation",
+            access_token,
+            method="POST",
+            body=reconcile_body,
+        )
+        if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
+            return None
+        row = response[0]
+        if row.get("found") is not True or not isinstance(row.get("result"), Mapping):
+            return None
+        result = row["result"]
+        if function_name == "company_access_review_deletion":
+            cancellation = result.get("cancellation")
+            review = result.get("review")
+            if not isinstance(cancellation, Mapping) or not isinstance(review, Mapping):
+                return None
+            return {**cancellation, "review": review}
+        return result
 
 
 __all__ = ["SupabaseCompanyAccessAdapter", "SupabaseConfiguration"]

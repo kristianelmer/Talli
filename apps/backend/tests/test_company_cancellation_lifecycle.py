@@ -393,3 +393,34 @@ def test_adapter_lists_cancellations_through_the_query_rpc_not_direct_table_acce
         "POST",
         {"p_company_id": COMPANY_ID},
     )]
+
+
+def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    calls: list[tuple[str, Mapping[str, object] | None]] = []
+
+    async def request(path: str, _token: str, *, method: str = "GET", body=None) -> object:
+        calls.append((path, body))
+        if len(calls) == 1:
+            raise CompanyAccessError(
+                status=503, code="COMPANY_ACCESS_UNAVAILABLE",
+                title="Company access unavailable", detail="unknown",
+            )
+        return [{"found": True, "result": LifecycleGatewayStub._cancellation()}]
+
+    adapter._request = request  # type: ignore[method-assign]
+    body = {
+        "p_operation_id": OPERATION_ID,
+        "p_company_id": COMPANY_ID,
+        "p_income_year": 2025,
+        "p_reason": "Customer requested cancellation",
+    }
+    result = asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", body))
+    assert result == LifecycleGatewayStub._cancellation()
+    assert calls[1][0].endswith("/company_access_reconcile_cancellation_operation")
+    assert calls[1][1] == {
+        **body,
+        "p_command_name": "request_cancellation",
+    }

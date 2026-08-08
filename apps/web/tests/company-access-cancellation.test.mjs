@@ -83,6 +83,11 @@ test("cancellation lifecycle transport uses generated operations with bearer and
   assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST"]);
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
+  const transport = await readFile(
+    new URL("../features/company-access/transport/company-access-cancellation.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(transport, /AbortSignal\.timeout\(25_000\)/u);
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
     "/api/v1/company-access/cancellations",
     "/api/v1/company-access/cancellations",

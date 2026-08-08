@@ -410,6 +410,94 @@ using (
   )
 );
 
+create or replace function public.company_access_lock_operation_v1(
+  p_actor_id uuid,
+  p_operation_id uuid
+)
+returns void
+language sql
+volatile
+set search_path = ''
+as $function$
+  select pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_actor_id::text || ':' || p_operation_id::text, 161)
+  );
+$function$;
+
+create or replace function public.company_access_reconcile_cancellation_operation(
+  p_operation_id uuid,
+  p_command_name text,
+  p_company_id uuid,
+  p_cancellation_id uuid default null,
+  p_income_year integer default null,
+  p_reason text default null,
+  p_expected_updated_at timestamptz default null,
+  p_decision text default null,
+  p_evidence_reference text default null
+)
+returns table(found boolean, result jsonb)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_fingerprint text;
+  v_receipt public.company_access_command_receipts%rowtype;
+begin
+  if p_operation_id is null or p_company_id is null
+     or p_command_name not in ('request_cancellation', 'review_deletion', 'finalize_deletion') then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
+  if p_command_name = 'request_cancellation' then
+    if p_income_year not between 2000 and 2100 or p_reason is null
+       or pg_catalog.btrim(p_reason) = ''
+       or pg_catalog.char_length(pg_catalog.btrim(p_reason)) > 1000 then
+      raise exception 'company_access_invalid_request' using errcode = 'P0001';
+    end if;
+    if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+       or not public.company_access_is_accepted_owner_v1(p_company_id) then
+      raise exception 'company_access_not_found' using errcode = 'P0001';
+    end if;
+    v_fingerprint := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
+  elsif p_command_name = 'review_deletion' then
+    if p_cancellation_id is null or p_expected_updated_at is null
+       or p_decision not in ('approved', 'rejected') or p_evidence_reference is null
+       or pg_catalog.btrim(p_evidence_reference) = ''
+       or pg_catalog.char_length(pg_catalog.btrim(p_evidence_reference)) > 500 then
+      raise exception 'company_access_invalid_request' using errcode = 'P0001';
+    end if;
+    if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+       or not public.company_access_is_active_admin_v1() then
+      raise exception 'company_access_not_found' using errcode = 'P0001';
+    end if;
+    v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text, p_decision, pg_catalog.btrim(p_evidence_reference));
+  else
+    if p_cancellation_id is null or p_expected_updated_at is null then
+      raise exception 'company_access_invalid_request' using errcode = 'P0001';
+    end if;
+    if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+       or not public.company_access_is_accepted_owner_v1(p_company_id) then
+      raise exception 'company_access_not_found' using errcode = 'P0001';
+    end if;
+    v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text);
+  end if;
+
+  perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
+  select r.* into v_receipt from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
+  if not found then
+    return query select false, null::jsonb;
+    return;
+  end if;
+  if v_receipt.command_name <> p_command_name or v_receipt.company_id <> p_company_id
+     or v_receipt.request_fingerprint <> v_fingerprint then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
+  return query select true, v_receipt.result;
+end;
+$function$;
+
 create or replace function public.company_access_list_cancellations(p_company_id uuid)
 returns setof public.company_cancellations
 language sql
@@ -455,6 +543,8 @@ begin
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   v_fingerprint := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
+
+  perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_company_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
@@ -561,6 +651,8 @@ begin
   end if;
   v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text, p_decision, pg_catalog.btrim(p_evidence_reference));
 
+  perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
+
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
@@ -660,6 +752,8 @@ begin
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
   v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text);
+
+  perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
@@ -778,6 +872,8 @@ begin
     owner to company_access_executor;
   alter function public.company_access_list_cancellations(uuid)
     owner to company_access_executor;
+  alter function public.company_access_reconcile_cancellation_operation(uuid, text, uuid, uuid, integer, text, timestamptz, text, text)
+    owner to company_access_executor;
   revoke create on schema public from company_access_executor;
   execute pg_catalog.format('revoke company_access_executor from %I', current_user);
 end
@@ -803,8 +899,12 @@ revoke all on function public.company_access_request_cancellation(uuid, uuid, in
 revoke all on function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text) from public, anon;
 revoke all on function public.company_access_finalize_deletion(uuid, uuid, uuid, timestamptz) from public, anon;
 revoke all on function public.company_access_list_cancellations(uuid) from public, anon;
+revoke all on function public.company_access_lock_operation_v1(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.company_access_reconcile_cancellation_operation(uuid, text, uuid, uuid, integer, text, timestamptz, text, text) from public, anon;
 
 grant execute on function public.company_access_request_cancellation(uuid, uuid, integer, text) to authenticated;
 grant execute on function public.company_access_review_deletion(uuid, uuid, uuid, timestamptz, text, text) to authenticated;
 grant execute on function public.company_access_finalize_deletion(uuid, uuid, uuid, timestamptz) to authenticated;
 grant execute on function public.company_access_list_cancellations(uuid) to authenticated;
+grant execute on function public.company_access_lock_operation_v1(uuid, uuid) to company_access_executor;
+grant execute on function public.company_access_reconcile_cancellation_operation(uuid, text, uuid, uuid, integer, text, timestamptz, text, text) to authenticated;
