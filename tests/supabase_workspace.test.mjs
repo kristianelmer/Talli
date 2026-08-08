@@ -104,10 +104,41 @@ async function applyMigration() {
   });
   await client.connect();
   try {
-    for (const migrationFile of migrationFiles) {
-      const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
-      await client.query(sql);
+    const latestMigrationState = await client.query(String.raw`
+      select pg_catalog.to_regprocedure(
+        'public.company_access_complete_invitation_side_effect(uuid)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'public.company_access_auth_uid_v1()'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'public.company_access_auth_jwt_v1()'
+      ) is not null as company_access_expand_applied
+    `);
+    if (!latestMigrationState.rows[0]?.company_access_expand_applied) {
+      for (const migrationFile of migrationFiles) {
+        const sql = await readFile(`supabase/migrations/${migrationFile}`, "utf8");
+        await client.query(sql);
+      }
     }
+    // This current-application security rehearsal runs after Release C. The
+    // automatic migration directory intentionally stops at the mixed-revision
+    // overlap, so apply the staged immutable contract artifact explicitly.
+    const companyAccessContract = await readFile(
+      "supabase/contract-migrations/20260801091000_company_access_invitations_contract.sql",
+      "utf8",
+    );
+    await client.query(companyAccessContract);
+    const contractState = await client.query(String.raw`
+      select not pg_catalog.has_table_privilege(
+        'authenticated', 'public.company_invitations', 'INSERT'
+      ) as invitation_insert_contracted
+    `);
+    assert.equal(
+      contractState.rows[0]?.invitation_insert_contracted,
+      true,
+      "current-app rehearsal must explicitly reach the company-access contract state",
+    );
   } finally {
     await client.end();
   }
@@ -592,11 +623,30 @@ test(
       .select("id, role, status")
       .eq("id", invitation.id);
     assert.ifError(inviteeInvitationReadError);
-    assert.deepEqual(inviteeInvitations, [{ id: invitation.id, role: "reviewer", status: "pending" }]);
+    assert.deepEqual(inviteeInvitations, []);
+
+    const { data: lookedUpInvitations, error: invitationLookupError } = await invitee.rpc(
+      "company_access_lookup_invitation",
+      {
+        p_token_hash: invitationHash,
+        p_verified_subject: inviteeUser.id,
+        p_verified_email: inviteeUser.email,
+      },
+    );
+    assert.ifError(invitationLookupError);
+    assert.deepEqual(
+      lookedUpInvitations.map(({ id, role, status }) => ({ id, role, status })),
+      [{ id: invitation.id, role: "reviewer", status: "pending" }],
+    );
 
     const { error: acceptedInvitationError } = await invitee.rpc(
       "company_access_accept_invitation",
-      { p_token_hash: invitationHash },
+      {
+        p_operation_id: randomUUID(),
+        p_token_hash: invitationHash,
+        p_verified_subject: inviteeUser.id,
+        p_verified_email: inviteeUser.email,
+      },
     );
     assert.ifError(acceptedInvitationError);
 

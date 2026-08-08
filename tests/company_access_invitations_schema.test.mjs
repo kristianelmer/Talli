@@ -62,7 +62,37 @@ test("invitation lookup is recipient-bound, expiry-aware, and never returns toke
 test("command functions execute through a restricted RLS role instead of the migration owner", async () => {
   const sql = await readFile(migrationUrl, "utf8");
 
+  for (const wrapper of ["uid", "jwt"]) {
+    assert.match(sql, new RegExp(
+      `create or replace function public\\.company_access_auth_${wrapper}_v1\\(\\)[\\s\\S]+security definer[\\s\\S]+set search_path = ''`,
+      "iu",
+    ));
+    assert.match(sql, new RegExp(
+      `revoke all on function public\\.company_access_auth_${wrapper}_v1\\(\\) from public, anon`,
+      "iu",
+    ));
+    assert.match(sql, new RegExp(
+      `grant execute on function public\\.company_access_auth_${wrapper}_v1\\(\\) to authenticated`,
+      "iu",
+    ));
+  }
+  assert.doesNotMatch(sql, /grant usage on schema[^;]*\bauth\b[^;]*to company_access_/iu);
+  assert.doesNotMatch(sql, /grant execute on function auth\.(?:uid|jwt)\(\) to company_access_/iu);
   assert.match(sql, /create role company_access_executor[\s\S]+nobypassrls/iu);
+  assert.match(sql, /'grant company_access_executor, company_access_recovery_executor to %I'[\s\S]+current_user/iu);
+  assert.match(sql, /'revoke company_access_executor, company_access_recovery_executor from %I'[\s\S]+current_user/iu);
+  assert.match(sql, /grant create on schema public[\s\S]+to company_access_executor, company_access_recovery_executor/iu);
+  assert.match(sql, /revoke create on schema public[\s\S]+from company_access_executor, company_access_recovery_executor/iu);
+  assert.ok(
+    sql.indexOf("grant company_access_executor, company_access_recovery_executor to %I")
+      < sql.indexOf("owner to company_access_executor"),
+    "migration role membership must precede executor ownership transfer",
+  );
+  assert.ok(
+    sql.indexOf("revoke company_access_executor, company_access_recovery_executor from %I")
+      > sql.lastIndexOf("owner to company_access_executor"),
+    "transient executor membership must be revoked after ownership transfer",
+  );
   assert.match(sql, /alter function public\.company_access_create_invitation[\s\S]+owner to company_access_executor/iu);
   assert.match(sql, /alter function public\.company_access_accept_invitation[\s\S]+owner to company_access_executor/iu);
   assert.match(sql, /create policy "company access commands create invitations"[\s\S]+to company_access_executor/iu);
@@ -94,7 +124,7 @@ test("acceptance binds the verified Auth identity and rejects stale JWT claims a
   assert.match(accept, /company_access_current_identity_v1\(\)/iu);
   assert.match(accept, /p_verified_subject <> v_current_subject/iu);
   assert.match(accept, /v_email <> v_current_email/iu);
-  assert.match(accept, /v_current_email <> pg_catalog\.lower\(coalesce\(auth\.jwt\(\) ->> 'email', ''\)\)/iu);
+  assert.match(accept, /v_current_email <> pg_catalog\.lower\(coalesce\(public\.company_access_auth_jwt_v1\(\) ->> 'email', ''\)\)/iu);
   assert.match(accept, /for update/iu);
   assert.match(accept, /insert into public\.company_memberships[\s\S]+update public\.company_invitations/iu);
 });
@@ -123,12 +153,12 @@ test("invitation side-effect recovery is receipt-owned, actor-derived, and proof
   )?.[0] ?? "";
 
   assert.match(sql, /side_effects_completed_at timestamptz/iu);
-  assert.match(pending, /v_actor_id uuid := auth\.uid\(\)/iu);
+  assert.match(pending, /v_actor_id uuid := public\.company_access_auth_uid_v1\(\)/iu);
   assert.match(pending, /r\.actor_id = v_actor_id/iu);
   assert.match(pending, /side_effects_completed_at is null/iu);
   assert.match(pending, /limit 20/iu);
   assert.doesNotMatch(pending, /p_actor_id/iu);
-  assert.match(complete, /v_actor_id uuid := auth\.uid\(\)/iu);
+  assert.match(complete, /v_actor_id uuid := public\.company_access_auth_uid_v1\(\)/iu);
   assert.match(complete, /r\.actor_id = v_actor_id/iu);
   assert.match(complete, /notification_outbox/iu);
   assert.match(complete, /audit_events/iu);
@@ -140,9 +170,9 @@ test("invitation side-effect recovery is receipt-owned, actor-derived, and proof
   assert.match(sql, /create role company_access_recovery_executor nologin noinherit nobypassrls/iu);
   assert.match(sql, /alter function public\.company_access_pending_invitation_side_effects\(\)[\s\S]+owner to company_access_recovery_executor/iu);
   assert.match(sql, /alter function public\.company_access_complete_invitation_side_effect\(uuid\)[\s\S]+owner to company_access_recovery_executor/iu);
-  assert.match(sql, /create policy "company access recovery reads own receipts"[\s\S]+actor_id = \(select auth\.uid\(\)\)/iu);
-  assert.match(sql, /create policy "company access recovery reads own audit evidence"[\s\S]+actor_id = \(select auth\.uid\(\)\)/iu);
-  assert.match(sql, /create policy "company access recovery reads own delivery evidence"[\s\S]+created_by = \(select auth\.uid\(\)\)/iu);
+  assert.match(sql, /create policy "company access recovery reads own receipts"[\s\S]+actor_id = \(select public\.company_access_auth_uid_v1\(\)\)/iu);
+  assert.match(sql, /create policy "company access recovery reads own audit evidence"[\s\S]+actor_id = \(select public\.company_access_auth_uid_v1\(\)\)/iu);
+  assert.match(sql, /create policy "company access recovery reads own delivery evidence"[\s\S]+created_by = \(select public\.company_access_auth_uid_v1\(\)\)/iu);
   assert.match(complete, /insert into public\.notification_outbox/iu);
   assert.ok(
     complete.indexOf("v_receipt.command_name = 'accept_invitation'")

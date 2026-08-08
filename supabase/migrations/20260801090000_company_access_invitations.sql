@@ -18,6 +18,29 @@ begin
 end
 $role$;
 
+-- Supabase's migration role can use Auth helpers but cannot delegate USAGE on
+-- the auth schema. Keep executor roles out of that schema and expose only the
+-- two identity values this capability needs through migration-owned definers.
+create or replace function public.company_access_auth_uid_v1()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select auth.uid();
+$function$;
+
+create or replace function public.company_access_auth_jwt_v1()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select auth.jwt();
+$function$;
+
 create table if not exists public.company_access_command_receipts (
   operation_id uuid not null,
   command_name text not null check (command_name in (
@@ -50,7 +73,7 @@ as $function$
     select 1
     from public.company_memberships m
     where m.company_id = p_company_id
-      and m.user_id = (select auth.uid())
+      and m.user_id = (select public.company_access_auth_uid_v1())
       and m.role = 'owner'
       and m.accepted_at is not null
   );
@@ -68,7 +91,7 @@ set search_path = ''
 as $function$
   select u.id, pg_catalog.lower(pg_catalog.btrim(u.email::text))
   from auth.users u
-  where u.id = (select auth.uid())
+  where u.id = (select public.company_access_auth_uid_v1())
     and u.email is not null;
 $function$;
 
@@ -120,7 +143,7 @@ as $function$
   select exists (
     select 1 from public.company_access_command_receipts r
     where r.operation_id = p_operation_id
-      and r.actor_id = (select auth.uid())
+      and r.actor_id = (select public.company_access_auth_uid_v1())
       and r.company_id = p_company_id
       and r.command_name = p_command_name
       and r.request_fingerprint = p_request_fingerprint
@@ -133,7 +156,7 @@ create policy "members and accepted owners can read company memberships"
 on public.company_memberships for select
 to authenticated
 using (
-  user_id = (select auth.uid())
+  user_id = (select public.company_access_auth_uid_v1())
   or public.company_access_is_accepted_owner_v1(company_id)
 );
 
@@ -152,7 +175,7 @@ using (
   or exists (
     select 1 from public.company_invitations i
     where i.company_id = companies.id
-      and i.invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+      and i.invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
   )
 );
 
@@ -162,7 +185,7 @@ on public.company_invitations for select
 to company_access_executor
 using (
   public.company_access_is_accepted_owner_v1(company_id)
-  or invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+  or invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
 );
 
 drop policy if exists "company access commands create invitations" on public.company_invitations;
@@ -170,10 +193,10 @@ create policy "company access commands create invitations"
 on public.company_invitations for insert
 to company_access_executor
 with check (
-  invited_by = (select auth.uid())
+  invited_by = (select public.company_access_auth_uid_v1())
   and role in ('reviewer', 'read_only')
   and status = 'pending'
-  and coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+  and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
   and public.company_access_is_accepted_owner_v1(company_id)
 );
 
@@ -183,21 +206,21 @@ on public.company_invitations for update
 to company_access_executor
 using (
   (
-    coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+    coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
     and public.company_access_is_accepted_owner_v1(company_id)
   )
-  or invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+  or invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
 )
 with check (
   role in ('reviewer', 'read_only')
   and (
     (
-      coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+      coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
       and public.company_access_is_accepted_owner_v1(company_id)
     )
     or (
-      invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
-      and accepted_by = (select auth.uid())
+      invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
+      and accepted_by = (select public.company_access_auth_uid_v1())
       and status = 'accepted'
     )
   )
@@ -208,7 +231,7 @@ create policy "company access commands read memberships"
 on public.company_memberships for select
 to company_access_executor
 using (
-  user_id = (select auth.uid())
+  user_id = (select public.company_access_auth_uid_v1())
   or public.company_access_is_accepted_owner_v1(company_id)
 );
 
@@ -217,14 +240,14 @@ create policy "company access commands accept memberships"
 on public.company_memberships for insert
 to company_access_executor
 with check (
-  user_id = (select auth.uid())
+  user_id = (select public.company_access_auth_uid_v1())
   and role in ('reviewer', 'read_only')
   and accepted_at is not null
   and exists (
     select 1 from public.company_invitations i
     where i.company_id = company_memberships.company_id
       and i.role = company_memberships.role
-      and i.invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+      and i.invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
       and i.status = 'pending'
       and i.expires_at > statement_timestamp()
   )
@@ -237,13 +260,13 @@ to company_access_executor
 using (
   role in ('reviewer', 'read_only')
   and accepted_at is not null
-  and coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+  and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
   and public.company_access_is_accepted_owner_v1(company_id)
 )
 with check (
   role in ('reviewer', 'read_only')
   and accepted_at is not null
-  and coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+  and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
   and public.company_access_is_accepted_owner_v1(company_id)
 );
 
@@ -254,7 +277,7 @@ to company_access_executor
 using (
   role in ('reviewer', 'read_only')
   and accepted_at is not null
-  and coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+  and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
   and public.company_access_is_accepted_owner_v1(company_id)
 );
 
@@ -265,13 +288,13 @@ to company_access_executor
 using (
   (
     command_name = 'accept_invitation'
-    and actor_id = (select auth.uid())
+    and actor_id = (select public.company_access_auth_uid_v1())
   )
   or (
     command_name in ('create_invitation', 'revoke_invitation', 'resend_invitation', 'administer_membership')
-    and actor_id = (select auth.uid())
+    and actor_id = (select public.company_access_auth_uid_v1())
     and expires_at > statement_timestamp()
-    and coalesce((select auth.jwt()) ->> 'aal', '') = 'aal2'
+    and coalesce((select public.company_access_auth_jwt_v1()) ->> 'aal', '') = 'aal2'
     and public.company_access_is_accepted_owner_v1(company_id)
   )
 );
@@ -281,7 +304,7 @@ create policy "company access recovery reads own receipts"
 on public.company_access_command_receipts for select
 to company_access_recovery_executor
 using (
-  actor_id = (select auth.uid())
+  actor_id = (select public.company_access_auth_uid_v1())
   and command_name in ('create_invitation', 'accept_invitation', 'revoke_invitation', 'resend_invitation')
 );
 
@@ -290,11 +313,11 @@ create policy "company access recovery updates own receipts"
 on public.company_access_command_receipts for update
 to company_access_recovery_executor
 using (
-  actor_id = (select auth.uid())
+  actor_id = (select public.company_access_auth_uid_v1())
   and command_name in ('create_invitation', 'accept_invitation', 'revoke_invitation', 'resend_invitation')
 )
 with check (
-  actor_id = (select auth.uid())
+  actor_id = (select public.company_access_auth_uid_v1())
   and delivery_token is null
   and not (result ? 'delivery_body')
   and not (result ? 'delivery_subject')
@@ -304,14 +327,14 @@ drop policy if exists "company access recovery reads own membership" on public.c
 create policy "company access recovery reads own membership"
 on public.company_memberships for select
 to company_access_recovery_executor
-using (user_id = (select auth.uid()) and accepted_at is not null);
+using (user_id = (select public.company_access_auth_uid_v1()) and accepted_at is not null);
 
 drop policy if exists "company access recovery reads own audit evidence" on public.audit_events;
 create policy "company access recovery reads own audit evidence"
 on public.audit_events for select
 to company_access_recovery_executor
 using (
-  actor_id = (select auth.uid())
+  actor_id = (select public.company_access_auth_uid_v1())
   and category = 'review'
   and action in (
     'reviewer_invitation_created', 'reviewer_invitation_accepted',
@@ -324,7 +347,7 @@ create policy "company access recovery reads own delivery evidence"
 on public.notification_outbox for select
 to company_access_recovery_executor
 using (
-  created_by = (select auth.uid())
+  created_by = (select public.company_access_auth_uid_v1())
   and template = 'workspace_invitation'
 );
 
@@ -333,12 +356,12 @@ create policy "company access recovery creates own delivery evidence"
 on public.notification_outbox for insert
 to company_access_recovery_executor
 with check (
-  created_by = (select auth.uid())
+  created_by = (select public.company_access_auth_uid_v1())
   and template = 'workspace_invitation'
   and status = 'queued'
   and exists (
     select 1 from public.company_access_command_receipts r
-    where r.actor_id = (select auth.uid())
+    where r.actor_id = (select public.company_access_auth_uid_v1())
       and r.operation_id = (notification_outbox.payload ->> 'operationId')::uuid
       and r.company_id = notification_outbox.company_id
       and r.side_effects_completed_at is null
@@ -353,19 +376,19 @@ drop policy if exists "company access commands create receipts" on public.compan
 create policy "company access commands create receipts"
 on public.company_access_command_receipts for insert
 to company_access_executor
-with check (actor_id = (select auth.uid()));
+with check (actor_id = (select public.company_access_auth_uid_v1()));
 
 drop policy if exists "company access commands clear receipt tokens" on public.company_access_command_receipts;
 create policy "company access commands clear receipt tokens"
 on public.company_access_command_receipts for update
 to company_access_executor
 using (
-  actor_id = (select auth.uid())
+  actor_id = (select public.company_access_auth_uid_v1())
   or public.company_access_is_accepted_owner_v1(company_id)
   or exists (
     select 1 from public.company_invitations i
     where i.id = company_access_command_receipts.invitation_id
-      and i.invited_email = lower(coalesce((select auth.jwt()) ->> 'email', ''))
+      and i.invited_email = lower(coalesce((select public.company_access_auth_jwt_v1()) ->> 'email', ''))
   )
 )
 with check (delivery_token is null);
@@ -388,7 +411,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_email text := lower(btrim(p_invited_email));
   v_fingerprint text := pg_catalog.concat_ws('|', p_company_id::text, v_email, p_role);
   v_invitation public.company_invitations%rowtype;
@@ -396,7 +419,7 @@ declare
   v_now timestamptz := statement_timestamp();
 begin
   if v_actor_id is null
-     or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+     or coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
@@ -510,7 +533,7 @@ begin
   if v_current_subject is null
      or p_verified_subject <> v_current_subject
      or pg_catalog.lower(pg_catalog.btrim(p_verified_email)) <> v_current_email
-     or v_current_email <> pg_catalog.lower(coalesce(auth.jwt() ->> 'email', '')) then
+     or v_current_email <> pg_catalog.lower(coalesce(public.company_access_auth_jwt_v1() ->> 'email', '')) then
     return;
   end if;
   return query select
@@ -537,7 +560,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_email text := lower(btrim(p_verified_email));
   v_current_subject uuid;
   v_current_email text;
@@ -553,7 +576,7 @@ begin
      or p_verified_subject <> v_current_subject
      or v_actor_id <> v_current_subject
      or v_email <> v_current_email
-     or v_current_email <> pg_catalog.lower(coalesce(auth.jwt() ->> 'email', '')) then
+     or v_current_email <> pg_catalog.lower(coalesce(public.company_access_auth_jwt_v1() ->> 'email', '')) then
     raise exception 'invitation_not_found' using errcode = 'P0001';
   end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_actor_id::text || '|' || p_operation_id::text, 160));
@@ -628,13 +651,13 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_fingerprint text := pg_catalog.concat_ws('|', p_company_id::text, p_invitation_id::text, p_expected_updated_at::text);
   v_invitation public.company_invitations%rowtype;
   v_receipt public.company_access_command_receipts%rowtype;
   v_now timestamptz := statement_timestamp();
 begin
-  if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+  if v_actor_id is null or coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
@@ -714,13 +737,13 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_fingerprint text := pg_catalog.concat_ws('|', p_company_id::text, p_invitation_id::text, p_expected_updated_at::text);
   v_invitation public.company_invitations%rowtype;
   v_receipt public.company_access_command_receipts%rowtype;
   v_now timestamptz := statement_timestamp();
 begin
-  if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+  if v_actor_id is null or coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
@@ -809,14 +832,14 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_fingerprint text := pg_catalog.concat_ws('|', p_company_id::text, p_user_id::text, p_expected_role, p_role, p_state);
   v_membership public.company_memberships%rowtype;
   v_receipt public.company_access_command_receipts%rowtype;
   v_result_role text;
   v_now timestamptz := statement_timestamp();
 begin
-  if v_actor_id is null or coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+  if v_actor_id is null or coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
      or not public.company_access_is_accepted_owner_v1(p_company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
@@ -934,7 +957,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
 begin
   if v_actor_id is null then
     raise exception 'company_access_not_found' using errcode = 'P0001';
@@ -958,7 +981,7 @@ begin
       ))
       or (
         r.command_name <> 'accept_invitation'
-        and coalesce(auth.jwt() ->> 'aal', '') = 'aal2'
+        and coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') = 'aal2'
         and public.company_access_is_accepted_owner_v1(r.company_id)
       )
     )
@@ -976,7 +999,7 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_actor_id uuid := auth.uid();
+  v_actor_id uuid := public.company_access_auth_uid_v1();
   v_receipt public.company_access_command_receipts%rowtype;
   v_audit_id uuid;
   v_outbox_id uuid;
@@ -1003,7 +1026,7 @@ begin
       select 1 from public.company_memberships m
       where m.company_id = v_receipt.company_id and m.user_id = v_actor_id and m.accepted_at is not null
     ) then raise exception 'company_access_not_found' using errcode = 'P0001'; end if;
-  elsif coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+  elsif coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
       or not public.company_access_is_accepted_owner_v1(v_receipt.company_id) then
     raise exception 'company_access_not_found' using errcode = 'P0001';
   end if;
@@ -1089,45 +1112,68 @@ begin
 end;
 $function$;
 
-grant usage on schema public, auth to company_access_executor;
+grant usage on schema public to company_access_executor;
 grant select on public.companies to company_access_executor;
 grant select, insert, update on public.company_invitations to company_access_executor;
 grant select, insert, update, delete on public.company_memberships to company_access_executor;
 grant select, insert, update on public.company_access_command_receipts to company_access_executor;
-grant execute on function auth.uid(), auth.jwt() to company_access_executor;
+grant execute on function public.company_access_auth_uid_v1(), public.company_access_auth_jwt_v1()
+  to company_access_executor;
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to company_access_executor;
 grant execute on function public.company_access_current_identity_v1() to company_access_executor;
 grant execute on function public.company_access_token_hash_v1(text) to company_access_executor;
 grant execute on function public.company_access_receipt_exists_v1(uuid, uuid, text, text) to company_access_executor;
 grant execute on function public.company_access_side_effect_id_v1(uuid, uuid, text) to company_access_executor;
 
-grant usage on schema public, auth to company_access_recovery_executor;
+grant usage on schema public to company_access_recovery_executor;
 grant select, update on public.company_access_command_receipts to company_access_recovery_executor;
 grant select on public.company_memberships to company_access_recovery_executor;
 grant select, insert on public.notification_outbox to company_access_recovery_executor;
 grant select on public.audit_events to company_access_recovery_executor;
-grant execute on function auth.uid(), auth.jwt() to company_access_recovery_executor;
+grant execute on function public.company_access_auth_uid_v1(), public.company_access_auth_jwt_v1()
+  to company_access_recovery_executor;
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to company_access_recovery_executor;
 grant execute on function public.company_access_side_effect_id_v1(uuid, uuid, text) to company_access_recovery_executor;
 
-alter function public.company_access_create_invitation(uuid, uuid, text, text, text, text)
-  owner to company_access_executor;
-alter function public.company_access_lookup_invitation(text, uuid, text)
-  owner to company_access_executor;
-alter function public.company_access_accept_invitation(uuid, text, uuid, text)
-  owner to company_access_executor;
-alter function public.company_access_revoke_invitation(uuid, uuid, uuid, timestamptz)
-  owner to company_access_executor;
-alter function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text)
-  owner to company_access_executor;
-alter function public.company_access_pending_invitation_side_effects()
-  owner to company_access_recovery_executor;
-alter function public.company_access_complete_invitation_side_effect(uuid)
-  owner to company_access_recovery_executor;
-alter function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text)
-  owner to company_access_executor;
+-- PostgreSQL requires the current migration role to be a member of a function's
+-- new owner. Keep that membership transaction-local to this atomic block: a
+-- failed transfer rolls the grant back, and a successful transfer revokes it.
+do $ownership$
+begin
+  execute pg_catalog.format(
+    'grant company_access_executor, company_access_recovery_executor to %I',
+    current_user
+  );
+  grant create on schema public
+    to company_access_executor, company_access_recovery_executor;
+  alter function public.company_access_create_invitation(uuid, uuid, text, text, text, text)
+    owner to company_access_executor;
+  alter function public.company_access_lookup_invitation(text, uuid, text)
+    owner to company_access_executor;
+  alter function public.company_access_accept_invitation(uuid, text, uuid, text)
+    owner to company_access_executor;
+  alter function public.company_access_revoke_invitation(uuid, uuid, uuid, timestamptz)
+    owner to company_access_executor;
+  alter function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text)
+    owner to company_access_executor;
+  alter function public.company_access_pending_invitation_side_effects()
+    owner to company_access_recovery_executor;
+  alter function public.company_access_complete_invitation_side_effect(uuid)
+    owner to company_access_recovery_executor;
+  alter function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text)
+    owner to company_access_executor;
+  revoke create on schema public
+    from company_access_executor, company_access_recovery_executor;
+  execute pg_catalog.format(
+    'revoke company_access_executor, company_access_recovery_executor from %I',
+    current_user
+  );
+end
+$ownership$;
 
 revoke all on table public.company_access_command_receipts from public, anon, authenticated;
+revoke all on function public.company_access_auth_uid_v1() from public, anon;
+revoke all on function public.company_access_auth_jwt_v1() from public, anon;
 revoke all on function public.company_access_is_accepted_owner_v1(uuid) from public, anon;
 revoke all on function public.company_access_current_identity_v1() from public, anon, authenticated;
 revoke all on function public.company_access_token_hash_v1(text) from public, anon, authenticated;
@@ -1141,6 +1187,8 @@ revoke all on function public.company_access_resend_invitation(uuid, uuid, uuid,
 revoke all on function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text) from public, anon;
 
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to authenticated;
+grant execute on function public.company_access_auth_uid_v1() to authenticated;
+grant execute on function public.company_access_auth_jwt_v1() to authenticated;
 revoke all on function public.company_access_pending_invitation_side_effects() from public, anon;
 revoke all on function public.company_access_complete_invitation_side_effect(uuid) from public, anon;
 grant execute on function public.company_access_create_invitation(uuid, uuid, text, text, text, text) to authenticated;

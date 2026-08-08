@@ -24,6 +24,7 @@ create or replace function auth.jwt() returns jsonb language sql stable as $$
   select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
 $$;
 grant usage on schema auth to authenticated, anon, service_role;
+revoke all on function auth.uid(), auth.jwt() from public;
 grant execute on function auth.uid() to authenticated, anon, service_role;
 grant execute on function auth.jwt() to authenticated, anon, service_role;
 create schema storage;
@@ -101,7 +102,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     const started = docker([
       "run", "--rm", "--detach", "--name", containerName,
       "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=talli_test",
-      "--volume", `${repositoryRoot}:/repo:ro`, "postgres:16-alpine",
+      "--volume", `${repositoryRoot}:/repo:ro`, "postgres:17",
     ]);
     assert.equal(started.status, 0, started.stderr);
     let readyChecks = 0;
@@ -117,7 +118,24 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     assert.equal(readyChecks, 2, "PostgreSQL container did not become ready");
     psql(containerName, [], bootstrapSql);
     psql(containerName, ["--file", "/repo/supabase/migrations/0001_authenticated_workspace.sql"]);
-    psql(containerName, ["--file", "/repo/supabase/migrations/20260801090000_company_access_invitations.sql"]);
+    psql(containerName, [], String.raw`
+      create role talli_migration_owner login noinherit createrole bypassrls;
+      alter schema public owner to talli_migration_owner;
+      grant usage on schema auth to talli_migration_owner with grant option;
+      grant usage on schema extensions to talli_migration_owner;
+      grant select, references on auth.users to talli_migration_owner;
+      grant execute on function auth.uid(), auth.jwt()
+        to talli_migration_owner with grant option;
+      alter table public.companies owner to talli_migration_owner;
+      alter table public.company_memberships owner to talli_migration_owner;
+      alter table public.company_invitations owner to talli_migration_owner;
+      alter table public.notification_outbox owner to talli_migration_owner;
+      alter table public.audit_events owner to talli_migration_owner;
+    `);
+    psql(containerName, [
+      "-U", "talli_migration_owner",
+      "--file", "/repo/supabase/migrations/20260801090000_company_access_invitations.sql",
+    ]);
     psql(containerName, [], String.raw`
       insert into auth.users (id, email) values
         ('00000000-0000-0000-0000-000000000001', 'creator@example.test'),
@@ -870,6 +888,85 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       "company_access_recovery_executor:company_access_recovery_executor:false:false:false:false:false",
       "recovery functions escaped the restricted non-inheriting executor",
     );
+    const migrationRoleBoundary = psql(containerName, ["-Atc", String.raw`
+      select
+        (select rolname from pg_catalog.pg_roles where oid =
+          (select proowner from pg_catalog.pg_proc where oid =
+            'public.company_access_create_invitation(uuid,uuid,text,text,text,text)'::regprocedure)) || ':' ||
+        (select count(*) from pg_catalog.pg_auth_members am
+          join pg_catalog.pg_roles granted on granted.oid = am.roleid
+          join pg_catalog.pg_roles member on member.oid = am.member
+          where granted.rolname in ('company_access_executor', 'company_access_recovery_executor')
+            and member.rolname = 'talli_migration_owner'
+            and (am.inherit_option or am.set_option))::text || ':' ||
+        pg_catalog.has_schema_privilege('company_access_executor', 'public', 'CREATE')::text || ':' ||
+        pg_catalog.has_schema_privilege('company_access_recovery_executor', 'public', 'CREATE')::text
+    `]).trim();
+    assert.equal(
+      migrationRoleBoundary,
+      "company_access_executor:0:false:false",
+      "migration ownership transfer left SET, INHERIT, or schema creation behind",
+    );
+    const wrapperRoleBoundary = psql(containerName, ["-Atc", String.raw`
+      select
+        (select rolname from pg_catalog.pg_roles where oid =
+          (select proowner from pg_catalog.pg_proc where oid =
+            'public.company_access_auth_uid_v1()'::regprocedure)) || ':' ||
+        (select rolname from pg_catalog.pg_roles where oid =
+          (select proowner from pg_catalog.pg_proc where oid =
+            'public.company_access_auth_jwt_v1()'::regprocedure)) || ':' ||
+        pg_catalog.has_function_privilege(
+          'authenticated', 'public.company_access_auth_uid_v1()', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'anon', 'public.company_access_auth_uid_v1()', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'company_access_executor', 'public.company_access_auth_jwt_v1()', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'company_access_recovery_executor', 'public.company_access_auth_jwt_v1()', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_schema_privilege('company_access_executor', 'auth', 'USAGE')::text || ':' ||
+        pg_catalog.has_schema_privilege('company_access_recovery_executor', 'auth', 'USAGE')::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'company_access_executor', 'auth.uid()', 'EXECUTE'
+        )::text
+    `]).trim();
+    assert.equal(
+      wrapperRoleBoundary,
+      "talli_migration_owner:talli_migration_owner:true:false:true:true:false:false:false",
+      "claim wrappers escaped their migration-owned, least-privilege boundary",
+    );
+    const wrapperClaims = psql(containerName, ["-Atc", String.raw`
+      set role authenticated;
+      select set_config(
+        'request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false
+      );
+      select set_config(
+        'request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false
+      );
+      select public.company_access_auth_uid_v1()::text || ':' ||
+        (public.company_access_auth_jwt_v1() ->> 'email') || ':' ||
+        (public.company_access_auth_jwt_v1() ->> 'aal');
+    `]).trim().split("\n").at(-1);
+    assert.equal(
+      wrapperClaims,
+      "00000000-0000-0000-0000-000000000011:member@example.test:aal2",
+      "claim wrappers did not preserve the authenticated request identity",
+    );
+    const anonWrapperBoundary = psql(containerName, [], String.raw`
+      set role anon;
+      do $$ begin
+        begin
+          perform public.company_access_auth_uid_v1();
+          raise exception 'anon invoked company access auth wrapper';
+        exception when insufficient_privilege then null;
+        end;
+      end $$;
+      select 'anon_wrapper_concealed';
+    `);
+    assert.match(anonWrapperBoundary, /anon_wrapper_concealed/u);
 
     const expiryOperationId = "70000000-0000-4000-8000-000000000001";
     const expiryAuditId = deriveInvitationSideEffectId({
