@@ -440,3 +440,45 @@ Round-4 TDD and verification evidence:
   `npm run typecheck`, and `npm run build:backend` passed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
+
+## Issue #160 review-fix round 7
+
+- Review input: `/tmp/talli-issue-160-architecture-review-7.md` and
+  `/tmp/talli-issue-160-standards-review-7.md`.
+- Exact reviewed head: `2fc24d031b9a42725cdb17faa126808a8f091208`.
+- Corrected implementation head before this progress-only record: `a61c3ca7`.
+- Review-fix commit: `a61c3ca7`.
+- Acceptance state: the shared Important downstream side-effect namespace
+  finding is implemented; fresh-context acceptance review remains required.
+
+Resolved review finding:
+
+- Invitation delivery and audit identities are deterministic UUIDv8 values over
+  the authenticated actor, durable operation ID, and command/purpose. Different
+  actors may safely reuse one operation UUID, while exact same-actor retries
+  retain one stable continuation identity.
+- The original operation UUID remains in delivery payloads and audit correlation
+  text. Exact-row reconciliation handles duplicate/retry outcomes; missing,
+  hidden, mismatched, and transient failures fail closed instead of silently
+  dropping audit evidence.
+- The #155 audit and #156 notification compatibility registrations now point to
+  the shared helper operation without changing their owner, expiry, or removal
+  conditions.
+
+Round-7 TDD and verification evidence:
+
+- RED: workflow and static contracts failed before actor-scoped side-effect
+  derivation/persistence existed.
+- GREEN: four workflow tests cover actor/purpose determinism, two actors sharing
+  one UUID across create/resend, exact replay, no oracle, and audit failure/retry.
+- The real PostgreSQL rehearsal created/resend for two owners with the same
+  operation IDs, persisted four distinct delivery and four distinct audit rows,
+  and verified per-actor RLS visibility.
+- `npm run test:boundary` passed: backend 30, web 23, contract 27.
+- `npm run test:supabase` passed 16 with 4 unchanged optional environment skips;
+  the focused invitation runtime/schema set passed 10/10.
+- `npm run test:architecture` passed 34/34; `npm run test:supabase-grants`
+  passed 3/3; `npm run check:architecture`, `npm run typecheck`,
+  `npm run build:web`, and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
