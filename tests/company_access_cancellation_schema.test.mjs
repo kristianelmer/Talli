@@ -130,7 +130,7 @@ test("direct lifecycle RPCs mirror strict request validation before receipts", (
   const review = functionBody(source, "company_access_review_deletion");
   const finalize = functionBody(source, "company_access_finalize_deletion");
 
-  assert.match(request, /p_operation_id is null[\s\S]+p_company_id is null[\s\S]+p_income_year not between 2000 and 2100/iu);
+  assert.match(request, /p_operation_id is null[\s\S]+p_company_id is null[\s\S]+p_income_year is null[\s\S]+p_income_year not between 2000 and 2100/iu);
   assert.match(request, /p_reason is null[\s\S]+btrim\(p_reason\) = ''[\s\S]+char_length\([^)]*btrim\(p_reason\)\) > 1000/iu);
   assert.match(review, /p_operation_id is null[\s\S]+p_cancellation_id is null[\s\S]+p_company_id is null/iu);
   assert.match(review, /p_decision not in \('approved', 'rejected'\)/iu);
@@ -139,6 +139,19 @@ test("direct lifecycle RPCs mirror strict request validation before receipts", (
   for (const body of [request, review, finalize]) {
     assert.ok(body.indexOf("company_access_invalid_request") < body.indexOf("select r.* into v_receipt"));
   }
+});
+
+test("archive and reconciliation reject null income years explicitly", () => {
+  const source = sql(expandPath);
+  assert.match(functionBody(source, "company_archive_begin_export"), /p_income_year is null[\s\S]+p_income_year not between 2000 and 2100/iu);
+  const reconcile = functionBody(source, "company_access_reconcile_cancellation_operation");
+  assert.match(reconcile, /p_income_year is null[\s\S]+p_income_year not between 2000 and 2100/iu);
+});
+
+test("review JSON is projected to the strict public response shape", () => {
+  const review = functionBody(sql(expandPath), "company_access_review_deletion");
+  assert.match(review, /jsonb_build_object\([\s\S]+'cancellation_id'[\s\S]+'cancellation_revision'/iu);
+  assert.doesNotMatch(review, /to_jsonb\(v_review\)/iu);
 });
 
 test("lifecycle commands use durable receipts and least-privilege RLS", () => {

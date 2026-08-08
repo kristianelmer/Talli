@@ -1444,6 +1444,32 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       delete from public.company_cancellations where reason = 'legacy overlap';
       set role authenticated;
 
+      do $$ begin
+        begin
+          perform public.company_archive_begin_export('10000000-0000-0000-0000-000000000001', null);
+          raise exception 'null archive year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000031', '10000000-0000-0000-0000-000000000001', null, 'Null year'
+          );
+          raise exception 'null cancellation year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_reconcile_cancellation_operation(
+            '40000000-0000-0000-0000-000000000032', 'request_cancellation',
+            '10000000-0000-0000-0000-000000000001', p_income_year => null, p_reason => 'Null year'
+          );
+          raise exception 'null reconciliation year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+      end $$;
+
       select public.company_archive_begin_export('10000000-0000-0000-0000-000000000001', 2025) as archive_attempt_id \gset
       do $$ begin
         begin
@@ -1591,11 +1617,15 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       end $$;
 
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
-      do $$ declare c record; begin
+      do $$ declare c record; review_json jsonb; begin
         select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
-        perform * from public.company_access_review_deletion(
+        select review into review_json from public.company_access_review_deletion(
           '40000000-0000-0000-0000-000000000006', c.id, c.company_id, c.updated_at, 'approved', 'legal/case-161-approved'
         );
+        if review_json ? 'requester_id' or not review_json ?& array[
+          'id','cancellation_id','company_id','decision','evidence_reference',
+          'reviewed_by','reviewed_at','operation_id','cancellation_revision'
+        ] then raise exception 'review response projection mismatch: %', review_json; end if;
       end $$;
 
       reset role;

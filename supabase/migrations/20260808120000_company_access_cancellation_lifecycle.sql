@@ -149,7 +149,7 @@ declare
   v_generation bigint;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
-  if p_company_id is null or p_income_year not between 2000 and 2100 then
+  if p_company_id is null or p_income_year is null or p_income_year not between 2000 and 2100 then
     raise exception 'company_access_invalid_request' using errcode = 'P0001';
   end if;
   if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
@@ -450,7 +450,7 @@ begin
     raise exception 'company_access_invalid_request' using errcode = 'P0001';
   end if;
   if p_command_name = 'request_cancellation' then
-    if p_income_year not between 2000 and 2100 or p_reason is null
+    if p_income_year is null or p_income_year not between 2000 and 2100 or p_reason is null
        or pg_catalog.btrim(p_reason) = ''
        or pg_catalog.char_length(pg_catalog.btrim(p_reason)) > 1000 then
       raise exception 'company_access_invalid_request' using errcode = 'P0001';
@@ -533,7 +533,7 @@ declare
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
   if p_operation_id is null or p_company_id is null
-     or p_income_year not between 2000 and 2100
+     or p_income_year is null or p_income_year not between 2000 and 2100
      or p_reason is null or pg_catalog.btrim(p_reason) = ''
      or pg_catalog.char_length(pg_catalog.btrim(p_reason)) > 1000 then
     raise exception 'company_access_invalid_request' using errcode = 'P0001';
@@ -636,6 +636,7 @@ declare
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
   v_review public.company_deletion_reviews%rowtype;
+  v_review_result jsonb;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
   if p_operation_id is null or p_cancellation_id is null or p_company_id is null
@@ -697,6 +698,17 @@ begin
     p_cancellation_id, p_company_id, p_decision, pg_catalog.btrim(p_evidence_reference),
     v_cancellation.requested_by, v_actor_id, v_now, p_operation_id, v_now
   ) returning * into v_review;
+  v_review_result := pg_catalog.jsonb_build_object(
+    'id', v_review.id,
+    'cancellation_id', v_review.cancellation_id,
+    'company_id', v_review.company_id,
+    'decision', v_review.decision,
+    'evidence_reference', v_review.evidence_reference,
+    'reviewed_by', v_review.reviewed_by,
+    'reviewed_at', v_review.reviewed_at,
+    'operation_id', v_review.operation_id,
+    'cancellation_revision', v_review.cancellation_revision
+  );
 
   insert into public.audit_events (company_id, actor_id, category, action, message)
   values (
@@ -709,7 +721,7 @@ begin
     operation_id, command_name, actor_id, company_id, request_fingerprint, result, expires_at
   ) values (
     p_operation_id, 'review_deletion', v_actor_id, p_company_id, v_fingerprint,
-    pg_catalog.jsonb_build_object('cancellation', pg_catalog.to_jsonb(v_cancellation), 'review', pg_catalog.to_jsonb(v_review)),
+    pg_catalog.jsonb_build_object('cancellation', pg_catalog.to_jsonb(v_cancellation), 'review', v_review_result),
     v_now + interval '30 days'
   );
 
@@ -718,7 +730,7 @@ begin
     v_cancellation.reason, v_cancellation.evidence, v_cancellation.requested_by,
     v_cancellation.requested_at, v_cancellation.reviewed_by, v_cancellation.reviewed_at,
     v_cancellation.deleted_by, v_cancellation.deleted_at, v_cancellation.updated_at,
-    pg_catalog.to_jsonb(v_review);
+    v_review_result;
 end;
 $function$;
 
