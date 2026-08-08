@@ -1269,6 +1269,8 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
     assert.equal(readyChecks, 2, "PostgreSQL container did not become ready");
     psql(containerName, [], bootstrapSql);
     psql(containerName, ["--file", "/repo/supabase/migrations/0001_authenticated_workspace.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0002_fifo_investment_lots.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0003_bank_rule_suggestions.sql"]);
     psql(containerName, ["--file", "/repo/supabase/migrations/0004_corporate_document_artifacts.sql"]);
     psql(containerName, [], String.raw`
       create role talli_migration_owner login noinherit createrole bypassrls;
@@ -1284,8 +1286,26 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       alter table public.audit_events owner to talli_migration_owner;
       alter table public.company_cancellations owner to talli_migration_owner;
       alter table public.documents owner to talli_migration_owner;
+      alter table public.opening_balance_setups owner to talli_migration_owner;
+      alter table public.opening_shareholders owner to talli_migration_owner;
+      alter table public.ledger_entries owner to talli_migration_owner;
+      alter table public.filing_previews owner to talli_migration_owner;
+      alter table public.filing_submissions owner to talli_migration_owner;
+      alter table public.holding_actions owner to talli_migration_owner;
+      alter table public.billing_accounts owner to talli_migration_owner;
+      alter table public.authority_permissions owner to talli_migration_owner;
+      alter table public.authority_test_runs owner to talli_migration_owner;
+      alter table public.filing_review_comments owner to talli_migration_owner;
+      alter table public.investment_positions owner to talli_migration_owner;
+      alter table public.investment_lots owner to talli_migration_owner;
+      alter table public.investment_lot_allocations owner to talli_migration_owner;
+      alter table public.bank_suggestion_acceptances owner to talli_migration_owner;
       alter table public.support_operators owner to talli_migration_owner;
+      alter table public.corporate_decisions owner to talli_migration_owner;
+      alter table public.corporate_document_sets owner to talli_migration_owner;
       alter table public.corporate_document_artifacts owner to talli_migration_owner;
+      alter table public.corporate_document_events owner to talli_migration_owner;
+      alter table public.corporate_decision_finalizations owner to talli_migration_owner;
     `);
     psql(containerName, [
       "-U", "talli_migration_owner",
@@ -1345,6 +1365,24 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
         begin
           perform public.company_archive_complete_export(current_setting('test.stale_attempt_id')::uuid, repeat('e', 64));
           raise exception 'generation-mismatched attempt completed';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'archive_export_stale' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2025) as company_stale_attempt_id \gset
+      reset role;
+      update public.companies set name = 'Race AS updated'
+      where id = '30000000-0000-0000-0000-000000000003';
+      set role service_role;
+      select set_config('test.company_stale_attempt_id', :'company_stale_attempt_id', false);
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export(current_setting('test.company_stale_attempt_id')::uuid, repeat('d', 64));
+          raise exception 'company-wide generation-mismatched attempt completed';
         exception when sqlstate 'P0001' then
           if sqlerrm <> 'archive_export_stale' then raise; end if;
         end;

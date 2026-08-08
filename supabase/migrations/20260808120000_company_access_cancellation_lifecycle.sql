@@ -93,49 +93,80 @@ security definer
 set search_path = ''
 as $function$
 declare
-  v_old_company_id uuid;
-  v_old_income_year integer;
-  v_new_company_id uuid;
-  v_new_income_year integer;
+  v_scope record;
 begin
-  if tg_op in ('UPDATE', 'DELETE') then
-    v_old_company_id := old.company_id;
-    v_old_income_year := old.income_year;
-  end if;
-  if tg_op in ('INSERT', 'UPDATE') then
-    v_new_company_id := new.company_id;
-    v_new_income_year := new.income_year;
-  end if;
-
-  if v_old_company_id is not null then
-    perform public.company_archive_lock_scope_v1(v_old_company_id, v_old_income_year);
+  for v_scope in
+    with changed_rows(row_data) as (
+      select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
+      union all
+      select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
+    ), direct_scopes as (
+      select (row_data ->> tg_argv[1])::uuid as scope_company_id,
+             (row_data ->> 'income_year')::integer as scope_income_year
+      from changed_rows where tg_argv[0] = 'year'
+    ), company_scopes as (
+      select g.company_id as scope_company_id, g.income_year as scope_income_year
+      from changed_rows r
+      join public.company_archive_source_generations g
+        on g.company_id = (r.row_data ->> tg_argv[1])::uuid
+      where tg_argv[0] = 'company'
+    )
+    select distinct scope_company_id, scope_income_year from (
+      select * from direct_scopes
+      union all
+      select * from company_scopes
+    ) affected
+    where scope_company_id is not null and scope_income_year is not null
+    order by scope_company_id, scope_income_year
+  loop
+    perform public.company_archive_lock_scope_v1(v_scope.scope_company_id, v_scope.scope_income_year);
     insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
-    values (v_old_company_id, v_old_income_year, 1, pg_catalog.statement_timestamp())
+    values (v_scope.scope_company_id, v_scope.scope_income_year, 1, pg_catalog.statement_timestamp())
     on conflict (company_id, income_year) do update
       set generation = company_archive_source_generations.generation + 1,
           updated_at = excluded.updated_at;
-  end if;
-  if v_new_company_id is not null
-     and (v_old_company_id is null or (v_new_company_id, v_new_income_year) is distinct from (v_old_company_id, v_old_income_year)) then
-    perform public.company_archive_lock_scope_v1(v_new_company_id, v_new_income_year);
-    insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
-    values (v_new_company_id, v_new_income_year, 1, pg_catalog.statement_timestamp())
-    on conflict (company_id, income_year) do update
-      set generation = company_archive_source_generations.generation + 1,
-          updated_at = excluded.updated_at;
-  end if;
+  end loop;
   return coalesce(new, old);
 end;
 $function$;
 
-drop trigger if exists company_archive_track_documents on public.documents;
-create trigger company_archive_track_documents
-before insert or update or delete on public.documents
-for each row execute function public.company_archive_track_source_write_v1();
-drop trigger if exists company_archive_track_corporate_artifacts on public.corporate_document_artifacts;
-create trigger company_archive_track_corporate_artifacts
-before insert or update or delete on public.corporate_document_artifacts
-for each row execute function public.company_archive_track_source_write_v1();
+do $archive_source_inventory$
+declare
+  source record;
+begin
+  for source in select * from (values
+    ('companies', 'company', 'id'),
+    ('opening_balance_setups', 'year', 'company_id'),
+    ('opening_shareholders', 'company', 'company_id'),
+    ('ledger_entries', 'year', 'company_id'),
+    ('documents', 'year', 'company_id'),
+    ('filing_previews', 'year', 'company_id'),
+    ('filing_submissions', 'year', 'company_id'),
+    ('holding_actions', 'year', 'company_id'),
+    ('billing_accounts', 'company', 'company_id'),
+    ('authority_permissions', 'company', 'company_id'),
+    ('authority_test_runs', 'company', 'company_id'),
+    ('filing_review_comments', 'company', 'company_id'),
+    ('audit_events', 'company', 'company_id'),
+    ('investment_positions', 'company', 'company_id'),
+    ('investment_lots', 'company', 'company_id'),
+    ('investment_lot_allocations', 'company', 'company_id'),
+    ('bank_suggestion_acceptances', 'company', 'company_id'),
+    ('corporate_decisions', 'year', 'company_id'),
+    ('corporate_document_sets', 'year', 'company_id'),
+    ('corporate_document_artifacts', 'year', 'company_id'),
+    ('corporate_document_events', 'year', 'company_id'),
+    ('corporate_decision_finalizations', 'year', 'company_id')
+  ) as inventory(table_name, invalidation_scope, company_column)
+  loop
+    execute pg_catalog.format('drop trigger if exists %I on public.%I', 'company_archive_track_' || source.table_name, source.table_name);
+    execute pg_catalog.format(
+      'create trigger %I before insert or update or delete on public.%I for each row execute function public.company_archive_track_source_write_v1(%L, %L)',
+      'company_archive_track_' || source.table_name, source.table_name, source.invalidation_scope, source.company_column
+    );
+  end loop;
+end
+$archive_source_inventory$;
 
 create or replace function public.company_archive_begin_export(p_company_id uuid, p_income_year integer)
 returns uuid

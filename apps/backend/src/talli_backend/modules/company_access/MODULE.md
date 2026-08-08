@@ -146,7 +146,13 @@ Ownership is authoritative here. Remaining compatibility adapters are registered
 by exact path/rule/resource/operation. Until #157 owns published archive
 projections, `company_access` consumes the bounded legacy generation/receipt
 projection produced only by the existing server-side archive route; it does not
-own archive composition or those three projection tables. Until #155 owns the
+own archive composition or those three projection tables. Every source in
+`architecture/company-archive-sources.json` participates in the same locked
+generation protocol, and the route fails closed if any declared read fails. It
+performs no write after receipt completion. Audit events remain archive inputs:
+request and review audit writes intentionally stale the preceding receipt, so an
+owner must export a new archive after independent approval before finalization.
+Until #155 owns the
 audit capability, lifecycle RPCs retain the exact append-only audit seam for
 observable events, never as deletion authorization. Notification rows remain
 owned by their exact technical scopes.

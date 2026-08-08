@@ -10,6 +10,11 @@ const contractPath = new URL(
   "../supabase/contract-migrations/20260808121000_company_access_cancellation_contract.sql",
   import.meta.url,
 );
+const archiveRoutePath = new URL(
+  "../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+  import.meta.url,
+);
+const archiveInventoryPath = new URL("../architecture/company-archive-sources.json", import.meta.url);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -45,8 +50,9 @@ test("request derives archive and source completeness inside one atomic RPC", ()
   assert.match(source, /create table if not exists public\.company_archive_source_generations/iu);
   assert.match(source, /create table if not exists public\.company_archive_export_attempts/iu);
   assert.match(source, /create table if not exists public\.company_archive_export_receipts/iu);
-  assert.match(source, /create trigger company_archive_track_documents/iu);
-  assert.match(source, /create trigger company_archive_track_corporate_artifacts/iu);
+  assert.match(source, /create trigger %I before insert or update or delete/iu);
+  assert.match(source, /\('documents', 'year', 'company_id'\)/iu);
+  assert.match(source, /\('corporate_document_artifacts', 'year', 'company_id'\)/iu);
   assert.match(source, /create or replace function public\.company_archive_begin_export/iu);
   assert.match(source, /create or replace function public\.company_archive_complete_export/iu);
   assert.match(request, /from public\.company_archive_export_receipts/iu);
@@ -59,6 +65,24 @@ test("request derives archive and source completeness inside one atomic RPC", ()
   assert.match(request, /status <> 'deleted'/iu);
   assert.match(request, /insert into public\.audit_events/iu);
   assert.match(request, /company_cancellation_requested/iu);
+});
+
+test("archive route and generation triggers share one complete source inventory", () => {
+  const source = sql(expandPath);
+  const route = sql(archiveRoutePath);
+  const inventory = JSON.parse(sql(archiveInventoryPath));
+  const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
+  const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
+  assert.deepEqual([...routeTables].sort(), [...declared.keys()].sort());
+  const triggerInventory = new Map(
+    [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]
+      .map((match) => [match[1], match[2]]),
+  );
+  assert.deepEqual([...triggerInventory.entries()].sort(), [...declared.entries()].sort());
+  assert.match(source, /\('companies', 'company', 'id'\)/u);
+  assert.match(functionBody(source, "company_archive_track_source_write_v1"), /order by scope_company_id, scope_income_year/iu);
+  assert.equal(declared.has("company_archive_export_attempts"), false);
+  assert.equal(declared.has("company_archive_export_receipts"), false);
 });
 
 test("review is admin+AAL2 only, append-only, and cannot be self-approved by an owner", () => {
