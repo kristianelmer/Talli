@@ -365,13 +365,11 @@ class SupabaseCompanyAccessAdapter:
     async def cancellations(
         self, access_token: str, company_id: str
     ) -> list[Mapping[str, object]]:
-        query = urlencode({
-            "select": "id,company_id,status,reason,evidence,requested_by,requested_at,reviewed_by,reviewed_at,deleted_by,deleted_at,updated_at",
-            "company_id": f"eq.{company_id}",
-            "order": "updated_at.desc",
-        })
         response = await self._request(
-            f"/rest/v1/company_cancellations?{query}", access_token
+            "/rest/v1/rpc/company_access_list_cancellations",
+            access_token,
+            method="POST",
+            body={"p_company_id": company_id},
         )
         return response if isinstance(response, list) else []
 

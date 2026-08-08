@@ -1241,3 +1241,232 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     docker(["rm", "--force", containerName]);
   }
 });
+
+test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant concealed", { timeout: 120_000 }, () => {
+  assert.equal(
+    docker(["info", "--format", "{{.ServerVersion}}"]).status,
+    0,
+    "Docker is required for the mandatory cancellation PostgreSQL rehearsal",
+  );
+  const containerName = `talli-cancellation-${process.pid}-${randomUUID().slice(0, 8)}`;
+  try {
+    const started = docker([
+      "run", "--rm", "--detach", "--name", containerName,
+      "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=talli_test",
+      "--volume", `${repositoryRoot}:/repo:ro`, "postgres:17",
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+    let readyChecks = 0;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (docker(["exec", containerName, "pg_isready", "-U", "postgres", "-d", "talli_test"]).status === 0) {
+        readyChecks += 1;
+        if (readyChecks === 2) break;
+      } else {
+        readyChecks = 0;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+    assert.equal(readyChecks, 2, "PostgreSQL container did not become ready");
+    psql(containerName, [], bootstrapSql);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0001_authenticated_workspace.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0004_corporate_document_artifacts.sql"]);
+    psql(containerName, [], String.raw`
+      create role talli_migration_owner login noinherit createrole bypassrls;
+      alter schema public owner to talli_migration_owner;
+      grant usage on schema auth to talli_migration_owner with grant option;
+      grant usage on schema extensions to talli_migration_owner;
+      grant select, references on auth.users to talli_migration_owner;
+      grant execute on function auth.uid(), auth.jwt() to talli_migration_owner with grant option;
+      alter table public.companies owner to talli_migration_owner;
+      alter table public.company_memberships owner to talli_migration_owner;
+      alter table public.company_invitations owner to talli_migration_owner;
+      alter table public.notification_outbox owner to talli_migration_owner;
+      alter table public.audit_events owner to talli_migration_owner;
+      alter table public.company_cancellations owner to talli_migration_owner;
+      alter table public.documents owner to talli_migration_owner;
+      alter table public.support_operators owner to talli_migration_owner;
+      alter table public.corporate_document_artifacts owner to talli_migration_owner;
+    `);
+    psql(containerName, [
+      "-U", "talli_migration_owner",
+      "--file", "/repo/supabase/migrations/20260801090000_company_access_invitations.sql",
+    ]);
+    psql(containerName, [
+      "-U", "talli_migration_owner",
+      "--file", "/repo/supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
+    ]);
+    psql(containerName, [], String.raw`
+      insert into auth.users (id, email) values
+        ('00000000-0000-0000-0000-000000000011', 'owner@example.test'),
+        ('00000000-0000-0000-0000-000000000022', 'reviewer@example.test'),
+        ('00000000-0000-0000-0000-000000000033', 'outsider@example.test'),
+        ('00000000-0000-0000-0000-000000000044', 'admin@example.test'),
+        ('00000000-0000-0000-0000-000000000055', 'support@example.test');
+      insert into public.companies (id, org_number, name, entity_type, status_text, created_by) values
+        ('10000000-0000-0000-0000-000000000001', '314159265', 'Lifecycle AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000011'),
+        ('20000000-0000-0000-0000-000000000002', '271828182', 'Incomplete AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000011');
+      insert into public.company_memberships (company_id, user_id, role, accepted_at) values
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'owner', now()),
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000022', 'reviewer', now()),
+        ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000011', 'owner', now());
+      insert into public.support_operators (user_id, role, active) values
+        ('00000000-0000-0000-0000-000000000044', 'admin', true),
+        ('00000000-0000-0000-0000-000000000055', 'support', true);
+      insert into public.audit_events (company_id, actor_id, category, action, message, created_at)
+      values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'archive', 'company_year_archive_exported:2025', 'archive ready', now() - interval '1 minute');
+      insert into public.documents (id, company_id, income_year, document_type, name, linked_to, status, storage_key, created_by)
+      values ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'bank', 'bank.pdf', 'year', 'attached', '10000000-0000-0000-0000-000000000001/2025/bank.pdf', '00000000-0000-0000-0000-000000000011');
+    `);
+
+    const output = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+
+      insert into public.company_cancellations (company_id, status, reason, requested_by)
+      values ('10000000-0000-0000-0000-000000000001', 'retention_hold', 'legacy overlap', '00000000-0000-0000-0000-000000000011');
+      reset role;
+      delete from public.company_cancellations where reason = 'legacy overlap';
+      set role authenticated;
+
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'Customer requested cancellation'
+      );
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'Customer requested cancellation'
+      );
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'request replay duplicated cancellation'; end if;
+        if (select count(*) from public.audit_events where action in ('cancellation_archive_verified','company_cancellation_requested')) <> 2 then raise exception 'request replay duplicated audit'; end if;
+        begin
+          insert into public.company_cancellations (company_id, status, reason, requested_by)
+          values ('10000000-0000-0000-0000-000000000001', 'retention_hold', 'second active', '00000000-0000-0000-0000-000000000011');
+          raise exception 'second active cancellation succeeded';
+        exception when unique_violation then null;
+        end;
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 2025, 'Incomplete archive'
+          );
+          raise exception 'missing archive request succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'cancellation_prerequisite_failed' then raise; end if;
+        end;
+        if exists (select 1 from public.company_cancellations where company_id = '20000000-0000-0000-0000-000000000002') then raise exception 'failed request left partial cancellation'; end if;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
+      do $$ begin
+        if exists (select 1 from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) then raise exception 'outsider saw cancellation'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000022', false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'accepted reviewer lost read'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000055', false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'support operator lost narrow read'; end if;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000003', c.id, c.company_id, c.updated_at, 'approved', 'owner-self-review'
+          );
+          raise exception 'owner self-review succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        perform * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000004', c.id, c.company_id, c.updated_at, 'rejected', 'legal/case-161-rejected'
+        );
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000005', c.id, c.company_id, c.updated_at
+          );
+          raise exception 'rejected review authorized finalize';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_conflict' then raise; end if;
+        end;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        perform * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000006', c.id, c.company_id, c.updated_at, 'approved', 'legal/case-161-approved'
+        );
+      end $$;
+
+      reset role;
+      update public.documents set status = 'missing_object' where id = '70000000-0000-0000-0000-000000000001';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+          );
+          raise exception 'stale archive finalize succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'cancellation_prerequisite_failed' then raise; end if;
+        end;
+        if c.status <> 'deletion_approved' then raise exception 'failed finalize changed cancellation'; end if;
+      end $$;
+      reset role;
+      update public.documents set status = 'attached' where id = '70000000-0000-0000-0000-000000000001';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        perform * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+        );
+        perform * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+        );
+      end $$;
+      reset role;
+      do $$ begin
+        if (select status from public.company_cancellations where company_id = '10000000-0000-0000-0000-000000000001') <> 'deleted' then raise exception 'final status missing'; end if;
+        if (select status_text from public.companies where id = '10000000-0000-0000-0000-000000000001') <> 'deleted_retention_record' then raise exception 'company marker missing'; end if;
+        if (select count(*) from public.audit_events where action = 'company_deletion_completed') <> 1 then raise exception 'finalize replay duplicated audit'; end if;
+        if not exists (select 1 from public.documents where id = '70000000-0000-0000-0000-000000000001') then raise exception 'physical business data was deleted'; end if;
+        if (select count(*) from public.company_deletion_reviews) <> 2 then raise exception 'append-only reviews missing'; end if;
+      end $$;
+      select 'company_access_cancellation_runtime_ok';
+    `);
+    assert.match(output, /company_access_cancellation_runtime_ok/);
+
+    psql(containerName, ["--file", "/repo/supabase/contract-migrations/20260808121000_company_access_cancellation_contract.sql"]);
+    const contracted = psql(containerName, [], String.raw`
+      do $$ begin
+        if has_table_privilege('authenticated', 'public.company_cancellations', 'SELECT') then raise exception 'direct cancellation select remains'; end if;
+        if has_table_privilege('authenticated', 'public.company_cancellations', 'UPDATE') then raise exception 'direct cancellation update remains'; end if;
+      end $$;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'generated query RPC failed after contract'; end if;
+      end $$;
+      select 'company_access_cancellation_contract_ok';
+    `);
+    assert.match(contracted, /company_access_cancellation_contract_ok/);
+  } finally {
+    docker(["rm", "--force", containerName]);
+  }
+});

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 from datetime import datetime, timezone
@@ -11,6 +12,10 @@ from talli_backend.modules.company_access.public import (
     FinalizeCompanyDeletionGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
     ReviewCompanyDeletionGatewayCommand,
+)
+from talli_backend.adapters.supabase_company_access import (
+    SupabaseCompanyAccessAdapter,
+    SupabaseConfiguration,
 )
 
 
@@ -305,3 +310,29 @@ def test_lifecycle_gateway_prerequisite_failure_is_stable_and_has_no_success_bod
     assert response.status_code == 409
     assert response.json()["code"] == "CANCELLATION_PREREQUISITE_FAILED"
     assert "cancellation" not in response.json()
+
+
+def test_adapter_lists_cancellations_through_the_query_rpc_not_direct_table_access() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    calls: list[tuple[str, str, str, Mapping[str, object] | None]] = []
+
+    async def request(
+        path: str,
+        access_token_value: str,
+        *,
+        method: str = "GET",
+        body: Mapping[str, object] | None = None,
+    ) -> object:
+        calls.append((path, access_token_value, method, body))
+        return []
+
+    adapter._request = request  # type: ignore[method-assign]
+    assert asyncio.run(adapter.cancellations("bearer", COMPANY_ID)) == []
+    assert calls == [(
+        "/rest/v1/rpc/company_access_list_cancellations",
+        "bearer",
+        "POST",
+        {"p_company_id": COMPANY_ID},
+    )]
