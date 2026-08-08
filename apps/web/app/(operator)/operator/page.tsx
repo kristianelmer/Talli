@@ -20,6 +20,7 @@ import {
   searchOperatorSupportDashboard,
 } from "../../lib/supabase/server";
 import { OperatorMfa } from "./operator-mfa";
+import { loadPendingCancellationOperation } from "../../lib/cancellation-operation-state";
 
 type OperatorProps = {
   searchParams?: Promise<{
@@ -59,6 +60,7 @@ const authorityResultMessages: Record<string, string> = {
 
 export default async function OperatorPage({ searchParams }: OperatorProps) {
   const params = await searchParams;
+  const pendingCancellationOperation = await loadPendingCancellationOperation();
   const user = await getCurrentUser();
   const operatorSearch = params?.operatorOrg ?? "";
   const operatorDashboard = operatorSearch
@@ -302,20 +304,36 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                 && summary.cancellationStatus === "retention_hold"
                 && summary.cancellationUpdatedAt ? (
                 <form className="formPanel" action={reviewCompanyDeletion}>
-                  <input name="operationId" type="hidden" value={randomUUID()} />
+                  <input name="operationId" type="hidden" value={
+                    pendingCancellationOperation?.command === "review"
+                      && pendingCancellationOperation.cancellationId === summary.cancellationId
+                      ? pendingCancellationOperation.operationId : randomUUID()
+                  } />
                   <input name="companyId" type="hidden" value={summary.companyId} />
                   <input name="cancellationId" type="hidden" value={summary.cancellationId} />
-                  <input name="expectedUpdatedAt" type="hidden" value={summary.cancellationUpdatedAt} />
+                  <input name="expectedUpdatedAt" type="hidden" value={
+                    pendingCancellationOperation?.command === "review"
+                      && pendingCancellationOperation.cancellationId === summary.cancellationId
+                      ? pendingCancellationOperation.expectedUpdatedAt : summary.cancellationUpdatedAt
+                  } />
                   <label>
                     Beslutning
-                    <select name="decision" defaultValue="approved">
+                    <select name="decision" defaultValue={
+                      pendingCancellationOperation?.command === "review"
+                        && pendingCancellationOperation.cancellationId === summary.cancellationId
+                        ? pendingCancellationOperation.decision : "approved"
+                    }>
                       <option value="approved">Godkjenn</option>
                       <option value="rejected">Avvis</option>
                     </select>
                   </label>
                   <label>
                     Evidensreferanse
-                    <input name="evidenceReference" required placeholder="Saks-/dokumentreferanse" />
+                    <input name="evidenceReference" required placeholder="Saks-/dokumentreferanse" defaultValue={
+                      pendingCancellationOperation?.command === "review"
+                        && pendingCancellationOperation.cancellationId === summary.cancellationId
+                        ? pendingCancellationOperation.evidenceReference : undefined
+                    } />
                   </label>
                   <button className="secondaryButton" type="submit">Registrer uavhengig slettevurdering</button>
                 </form>

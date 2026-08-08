@@ -23,6 +23,11 @@ import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { onboardCustomer } from "./lib/customer-onboarding";
 import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
 import { getSiteUrl } from "./lib/site-url";
+import {
+  clearPendingCancellationOperation,
+  isIndeterminateCancellationError,
+  preservePendingCancellationOperation,
+} from "./lib/cancellation-operation-state";
 import { sanitizeInternalRedirect } from "./lib/internal-redirect";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -3201,16 +3206,16 @@ export async function requestCompanyCancellation(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const reason = formString(formData, "reason") || "Kunde ønsker kansellering og arkiv før eventuell sletting.";
+  const command = { command: "request" as const, operationId, companyId, incomeYear, reason };
   try {
-    await requestCompanyCancellationThroughApi(accessToken, {
-      operationId,
-      companyId,
-      incomeYear,
-      reason,
-    });
+    await requestCompanyCancellationThroughApi(accessToken, command);
   } catch (error) {
+    if (isIndeterminateCancellationError(error)) {
+      await preservePendingCancellationOperation(command);
+    }
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_cancellation_failed")}`);
   }
+  await clearPendingCancellationOperation();
 
   revalidatePath("/");
   redirect("/workspace");
@@ -3228,6 +3233,7 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const cancellationId = formString(formData, "cancellationId");
   const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const command = { command: "finalize" as const, operationId, companyId, cancellationId, expectedUpdatedAt };
   try {
     await finalizeCompanyDeletionThroughApi(accessToken, cancellationId, {
       operationId,
@@ -3235,8 +3241,12 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
       expectedUpdatedAt,
     });
   } catch (error) {
+    if (isIndeterminateCancellationError(error)) {
+      await preservePendingCancellationOperation(command);
+    }
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_failed")}`);
   }
+  await clearPendingCancellationOperation();
 
   revalidatePath("/");
   redirect("/workspace");
@@ -3252,6 +3262,7 @@ export async function reviewCompanyDeletion(formData: FormData) {
   const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
   const decision = formString(formData, "decision") as "approved" | "rejected";
   const evidenceReference = formString(formData, "evidenceReference");
+  const command = { command: "review" as const, operationId, cancellationId, companyId, expectedUpdatedAt, decision, evidenceReference };
   try {
     await reviewCompanyDeletionThroughApi(accessToken, cancellationId, {
       operationId,
@@ -3261,8 +3272,12 @@ export async function reviewCompanyDeletion(formData: FormData) {
       evidenceReference,
     });
   } catch (error) {
+    if (isIndeterminateCancellationError(error)) {
+      await preservePendingCancellationOperation(command);
+    }
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_review_failed")}`);
   }
+  await clearPendingCancellationOperation();
   revalidatePath("/operator");
   redirect("/operator");
 }

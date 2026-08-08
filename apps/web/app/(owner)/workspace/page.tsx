@@ -97,6 +97,7 @@ import {
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
 import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation";
+import { loadPendingCancellationOperation } from "../../lib/cancellation-operation-state";
 
 type WorkspaceProps = {
   searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string; recovery?: string }>;
@@ -119,6 +120,7 @@ function supportBoundary(entityType: string) {
 
 export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
   const params = await searchParams;
+  const pendingCancellationOperation = await loadPendingCancellationOperation();
   const data = await loadWorkspaceData();
   const {
     user,
@@ -458,12 +460,24 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 {!cancellationLifecycleError && !primaryCancellation && primaryCompanyId ? (
                   <form className="dataPanel formPanel widePanel" action={requestCompanyCancellation}>
-                    <input name="operationId" type="hidden" value={randomUUID()} />
+                    <input name="operationId" type="hidden" value={
+                      pendingCancellationOperation?.command === "request"
+                        && pendingCancellationOperation.companyId === primaryCompanyId
+                        ? pendingCancellationOperation.operationId : randomUUID()
+                    } />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
+                    <input name="incomeYear" type="hidden" value={
+                      pendingCancellationOperation?.command === "request"
+                        && pendingCancellationOperation.companyId === primaryCompanyId
+                        ? pendingCancellationOperation.incomeYear : primaryIncomeYear
+                    } />
                     <label>
                       Begrunnelse
-                      <input name="reason" placeholder="Kort begrunnelse" />
+                      <input name="reason" placeholder="Kort begrunnelse" defaultValue={
+                        pendingCancellationOperation?.command === "request"
+                          && pendingCancellationOperation.companyId === primaryCompanyId
+                          ? pendingCancellationOperation.reason : undefined
+                      } />
                     </label>
                     <button className="secondaryButton" type="submit">
                       Be om kansellering
@@ -472,10 +486,22 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 ) : null}
                 {!cancellationLifecycleError && primaryCancellation && primaryCancellation.status === "deletion_approved" ? (
                   <form className="dataPanel formPanel widePanel" action={completeCompanyDeletionRecord}>
-                    <input name="operationId" type="hidden" value={randomUUID()} />
-                    <input name="companyId" type="hidden" value={primaryCancellation.company_id} />
+                    <input name="operationId" type="hidden" value={
+                      pendingCancellationOperation?.command === "finalize"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.operationId : randomUUID()
+                    } />
+                    <input name="companyId" type="hidden" value={
+                      pendingCancellationOperation?.command === "finalize"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.companyId : primaryCancellation.company_id
+                    } />
                     <input name="cancellationId" type="hidden" value={primaryCancellation.id} />
-                    <input name="expectedUpdatedAt" type="hidden" value={primaryCancellation.updated_at} />
+                    <input name="expectedUpdatedAt" type="hidden" value={
+                      pendingCancellationOperation?.command === "finalize"
+                        && pendingCancellationOperation.cancellationId === primaryCancellation.id
+                        ? pendingCancellationOperation.expectedUpdatedAt : primaryCancellation.updated_at
+                    } />
                     <p>Den uavhengige vurderingen er godkjent. Eksporter et nytt arkiv etter godkjenningen før du fullfører. Selskapet markeres som slettet uten fysisk sletting av oppbevaringspliktige data.</p>
                     <button className="secondaryButton" type="submit">
                       Fullfør slettestatus

@@ -8,6 +8,7 @@ import {
   requestCompanyCancellation,
   reviewCompanyDeletion,
 } from "../features/company-access/transport/company-access-cancellation.ts";
+import { firstArchiveSourceError } from "../app/lib/archive.ts";
 
 const cancellation = {
   id: "50000000-0000-0000-0000-000000000001",
@@ -126,6 +127,16 @@ test("generated cancellation decoders reject malformed optional fields, UUIDs, a
   }
 });
 
+test("every concurrent archive source failure trips the completion barrier", () => {
+  for (let failed = 0; failed < 18; failed += 1) {
+    const reads = Array.from({ length: 18 }, (_, index) => ({
+      error: index === failed ? new Error(`source-${index}`) : null,
+    }));
+    assert.equal(firstArchiveSourceError(reads), reads[failed].error);
+  }
+  assert.equal(firstArchiveSourceError(Array.from({ length: 18 }, () => ({ error: null }))), null);
+});
+
 test("web cancellation lifecycle has no direct Supabase persistence or caller-owned proof", async () => {
   const [actions, server, workspace, workspaceData, operator, lifecycle, archiveRoute] = await Promise.all([
     readFile(new URL("../app/actions.ts", import.meta.url), "utf8"),
@@ -151,6 +162,10 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(operator, /evidenceReference/u);
   assert.doesNotMatch(`${workspace}\n${operator}`, /retention hold|deletion review|pliktige records/iu);
   assert.match(workspace, /Eksporter et nytt arkiv etter godkjenningen/u);
+  assert.match(actions, /isIndeterminateCancellationError/u);
+  assert.match(actions, /preservePendingCancellationOperation\(command\)/u);
+  assert.match(workspace, /pendingCancellationOperation\.operationId/u);
+  assert.match(operator, /pendingCancellationOperation\.operationId/u);
   assert.match(server, /error: cancellationLifecycleError/u);
   assert.match(server, /error: cancellationLifecycleError \?\? null/u);
   assert.match(lifecycle, /getCurrentSessionAccessToken/u);
@@ -159,9 +174,19 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(archiveRoute, /createSupabaseServiceRoleClient/u);
   assert.match(archiveRoute, /rpc\(\s*"company_archive_complete_export"/u);
   assert.match(archiveRoute, /createHash\("sha256"\)/u);
+  assert.match(archiveRoute, /submissionError/u);
+  assert.match(archiveRoute, /authorityTestRunsError/u);
+  assert.match(archiveRoute, /firstArchiveSourceError\(sourceResults\)/u);
+  assert.match(archiveRoute, /shareholdersError/u);
   assert.doesNotMatch(archiveRoute, /company_year_archive_exported:/u);
   assert.ok(
     archiveRoute.indexOf('"company_archive_complete_export"')
       < archiveRoute.indexOf("return new Response(archiveBody"),
   );
+  assert.ok(
+    archiveRoute.indexOf("firstArchiveSourceError(sourceResults)")
+      < archiveRoute.indexOf("const archive = buildPersistedCompanyArchive"),
+  );
+  const afterCompletion = archiveRoute.slice(archiveRoute.indexOf('"company_archive_complete_export"'));
+  assert.doesNotMatch(afterCompletion, /\.from\(|\.insert\(|\.update\(|\.delete\(/u);
 });
