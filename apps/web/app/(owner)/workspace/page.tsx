@@ -413,7 +413,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <section className="band">
                 <div className="sectionHeader">
                   <p className="eyebrow">Kansellering</p>
-                  <h2>Arkiv først, retention hold før sletting.</h2>
+                  <h2>Arkiv først, deretter oppbevaringsstans før sletting.</h2>
                 </div>
                 <div className="readinessGrid">
                   <div className="readinessItem">
@@ -434,8 +434,8 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </strong>
                     <p>
                       {primaryCancellation
-                        ? "Endelig sletting krever retention-vurdering og juridisk/sikkerhetsmessig godkjenning."
-                        : "Selskapet er aktivt. Kansellering oppretter retention hold, ikke umiddelbar sletting."}
+                        ? "Endelig sletting krever en oppbevaringsvurdering og juridisk og sikkerhetsmessig godkjenning."
+                        : "Selskapet er aktivt. Kansellering oppretter en oppbevaringsstans, ikke umiddelbar sletting."}
                     </p>
                   </div>
                   <div className="readinessItem">
@@ -456,7 +456,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </div>
                   ))}
                 </div>
-                {!cancellationLifecycleError && primaryCompanyId ? (
+                {!cancellationLifecycleError && !primaryCancellation && primaryCompanyId ? (
                   <form className="dataPanel formPanel widePanel" action={requestCompanyCancellation}>
                     <input name="operationId" type="hidden" value={randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
@@ -476,7 +476,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="companyId" type="hidden" value={primaryCancellation.company_id} />
                     <input name="cancellationId" type="hidden" value={primaryCancellation.id} />
                     <input name="expectedUpdatedAt" type="hidden" value={primaryCancellation.updated_at} />
-                    <p>Uavhengig review er godkjent. Dette markerer selskapet slettet uten fysisk sletting av pliktige records.</p>
+                    <p>Den uavhengige vurderingen er godkjent. Eksporter et nytt arkiv etter godkjenningen før du fullfører. Selskapet markeres som slettet uten fysisk sletting av oppbevaringspliktige data.</p>
                     <button className="secondaryButton" type="submit">
                       Fullfør slettestatus
                     </button>

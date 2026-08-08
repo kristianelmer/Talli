@@ -144,11 +144,13 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(workspace, /primaryCancellation\.status === "deletion_approved"/u);
   assert.match(workspaceData, /error: cancellationLifecycleError/u);
   assert.match(workspaceData, /companyAccessAdministrationError \?\? cancellationLifecycleError/u);
-  assert.match(workspace, /!cancellationLifecycleError && primaryCompanyId/u);
+  assert.match(workspace, /!cancellationLifecycleError && !primaryCancellation && primaryCompanyId/u);
   assert.match(workspace, /!cancellationLifecycleError && primaryCancellation/u);
   assert.match(operator, /reviewCompanyDeletion/u);
   assert.match(operator, /!operatorDashboard\.error/u);
   assert.match(operator, /evidenceReference/u);
+  assert.doesNotMatch(`${workspace}\n${operator}`, /retention hold|deletion review|pliktige records/iu);
+  assert.match(workspace, /Eksporter et nytt arkiv etter godkjenningen/u);
   assert.match(server, /error: cancellationLifecycleError/u);
   assert.match(server, /error: cancellationLifecycleError \?\? null/u);
   assert.match(lifecycle, /getCurrentSessionAccessToken/u);

@@ -317,7 +317,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                     Evidensreferanse
                     <input name="evidenceReference" required placeholder="Saks-/dokumentreferanse" />
                   </label>
-                  <button className="secondaryButton" type="submit">Registrer uavhengig deletion review</button>
+                  <button className="secondaryButton" type="submit">Registrer uavhengig slettevurdering</button>
                 </form>
               ) : null}
             </div>
