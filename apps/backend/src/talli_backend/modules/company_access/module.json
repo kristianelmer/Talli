@@ -41,5 +41,5 @@
     "contract": "apps/backend/tests/test_company_access.py",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
-  "compatibilityExceptions": []
+  "compatibilityExceptions": ["compat-audit-persistence", "compat-company-archive-persistence"]
 }

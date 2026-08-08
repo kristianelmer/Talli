@@ -1535,8 +1535,20 @@
       "approvedAt": "2026-07-30T00:00:00Z",
       "releaseLimit": "next-stable-customer-ready-release",
       "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove cross-capability direct archive reads when #157 composes published export projections.",
+      "removalCondition": "Remove cross-capability direct archive reads and the temporary receipt handoff when #157 composes and owns published export projections.",
       "scopes": [
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:company_archive_begin_export",
+          "operation": "GET"
+        },
+        {
+          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "rpc:company_archive_complete_export",
+          "operation": "GET"
+        },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",

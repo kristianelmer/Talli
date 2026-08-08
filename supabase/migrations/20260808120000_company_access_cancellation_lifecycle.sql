@@ -12,6 +12,203 @@ alter table public.company_access_command_receipts
     'review_deletion', 'finalize_deletion'
   ));
 
+do $roles$
+begin
+  if not exists (select 1 from pg_catalog.pg_roles where rolname = 'company_archive_projection_executor') then
+    create role company_archive_projection_executor nologin noinherit nobypassrls;
+  end if;
+end
+$roles$;
+
+create table if not exists public.company_archive_source_generations (
+  company_id uuid not null references public.companies(id) on delete restrict,
+  income_year integer not null check (income_year between 2000 and 2100),
+  generation bigint not null default 0 check (generation >= 0),
+  updated_at timestamptz not null default statement_timestamp(),
+  primary key (company_id, income_year)
+);
+
+create table if not exists public.company_archive_export_attempts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete restrict,
+  income_year integer not null check (income_year between 2000 and 2100),
+  actor_id uuid not null references auth.users(id) on delete restrict,
+  source_generation bigint not null check (source_generation >= 0),
+  started_at timestamptz not null,
+  expires_at timestamptz not null,
+  completed_at timestamptz,
+  check (expires_at > started_at),
+  check (completed_at is null or completed_at >= started_at)
+);
+
+create table if not exists public.company_archive_export_receipts (
+  id uuid primary key default gen_random_uuid(),
+  attempt_id uuid not null unique references public.company_archive_export_attempts(id) on delete restrict,
+  company_id uuid not null references public.companies(id) on delete restrict,
+  income_year integer not null check (income_year between 2000 and 2100),
+  actor_id uuid not null references auth.users(id) on delete restrict,
+  source_generation bigint not null check (source_generation >= 0),
+  archive_sha256 text not null check (archive_sha256 ~ '^[0-9a-f]{64}$'),
+  exported_at timestamptz not null
+);
+
+create index if not exists company_archive_export_receipts_scope_idx
+  on public.company_archive_export_receipts(company_id, income_year, exported_at desc);
+
+alter table public.company_archive_source_generations enable row level security;
+alter table public.company_archive_export_attempts enable row level security;
+alter table public.company_archive_export_receipts enable row level security;
+
+create policy "archive projection executor manages generations"
+on public.company_archive_source_generations for all to company_archive_projection_executor
+using (true) with check (true);
+create policy "archive projection executor manages attempts"
+on public.company_archive_export_attempts for all to company_archive_projection_executor
+using (true) with check (true);
+create policy "archive projection executor appends receipts"
+on public.company_archive_export_receipts for all to company_archive_projection_executor
+using (true) with check (true);
+create policy "company access reads archive generations"
+on public.company_archive_source_generations for select to company_access_executor using (true);
+create policy "company access reads archive receipts"
+on public.company_archive_export_receipts for select to company_access_executor using (true);
+
+create or replace function public.company_archive_lock_scope_v1(p_company_id uuid, p_income_year integer)
+returns void
+language plpgsql
+volatile
+set search_path = ''
+as $function$
+begin
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_company_id::text || ':' || p_income_year::text, 157)
+  );
+end;
+$function$;
+
+create or replace function public.company_archive_track_source_write_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_old_company_id uuid;
+  v_old_income_year integer;
+  v_new_company_id uuid;
+  v_new_income_year integer;
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    v_old_company_id := old.company_id;
+    v_old_income_year := old.income_year;
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') then
+    v_new_company_id := new.company_id;
+    v_new_income_year := new.income_year;
+  end if;
+
+  if v_old_company_id is not null then
+    perform public.company_archive_lock_scope_v1(v_old_company_id, v_old_income_year);
+    insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
+    values (v_old_company_id, v_old_income_year, 1, pg_catalog.statement_timestamp())
+    on conflict (company_id, income_year) do update
+      set generation = company_archive_source_generations.generation + 1,
+          updated_at = excluded.updated_at;
+  end if;
+  if v_new_company_id is not null
+     and (v_old_company_id is null or (v_new_company_id, v_new_income_year) is distinct from (v_old_company_id, v_old_income_year)) then
+    perform public.company_archive_lock_scope_v1(v_new_company_id, v_new_income_year);
+    insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
+    values (v_new_company_id, v_new_income_year, 1, pg_catalog.statement_timestamp())
+    on conflict (company_id, income_year) do update
+      set generation = company_archive_source_generations.generation + 1,
+          updated_at = excluded.updated_at;
+  end if;
+  return coalesce(new, old);
+end;
+$function$;
+
+drop trigger if exists company_archive_track_documents on public.documents;
+create trigger company_archive_track_documents
+before insert or update or delete on public.documents
+for each row execute function public.company_archive_track_source_write_v1();
+drop trigger if exists company_archive_track_corporate_artifacts on public.corporate_document_artifacts;
+create trigger company_archive_track_corporate_artifacts
+before insert or update or delete on public.corporate_document_artifacts
+for each row execute function public.company_archive_track_source_write_v1();
+
+create or replace function public.company_archive_begin_export(p_company_id uuid, p_income_year integer)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_attempt_id uuid;
+  v_generation bigint;
+  v_now timestamptz := pg_catalog.statement_timestamp();
+begin
+  if p_company_id is null or p_income_year not between 2000 and 2100 then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
+  if v_actor_id is null or not public.company_access_has_fresh_mfa_v1()
+     or not public.company_access_is_accepted_owner_v1(p_company_id) then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  perform public.company_archive_lock_scope_v1(p_company_id, p_income_year);
+  insert into public.company_archive_source_generations(company_id, income_year)
+  values (p_company_id, p_income_year)
+  on conflict (company_id, income_year) do nothing;
+  select generation into v_generation from public.company_archive_source_generations
+  where company_id = p_company_id and income_year = p_income_year;
+  insert into public.company_archive_export_attempts(
+    company_id, income_year, actor_id, source_generation, started_at, expires_at
+  ) values (
+    p_company_id, p_income_year, v_actor_id, v_generation, v_now, v_now + interval '10 minutes'
+  ) returning id into v_attempt_id;
+  return v_attempt_id;
+end;
+$function$;
+
+create or replace function public.company_archive_complete_export(p_attempt_id uuid, p_archive_sha256 text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_attempt public.company_archive_export_attempts%rowtype;
+  v_generation bigint;
+  v_receipt_id uuid;
+  v_now timestamptz := pg_catalog.statement_timestamp();
+begin
+  if p_attempt_id is null or p_archive_sha256 is null
+     or pg_catalog.btrim(p_archive_sha256) !~ '^[0-9a-f]{64}$' then
+    raise exception 'archive_export_invalid' using errcode = 'P0001';
+  end if;
+  select * into v_attempt from public.company_archive_export_attempts
+  where id = p_attempt_id for update;
+  if not found or v_attempt.completed_at is not null or v_attempt.expires_at <= v_now then
+    raise exception 'archive_export_invalid' using errcode = 'P0001';
+  end if;
+  perform public.company_archive_lock_scope_v1(v_attempt.company_id, v_attempt.income_year);
+  select generation into v_generation from public.company_archive_source_generations
+  where company_id = v_attempt.company_id and income_year = v_attempt.income_year;
+  if v_generation is null or v_attempt.source_generation <> v_generation then
+    raise exception 'archive_export_stale' using errcode = 'P0001';
+  end if;
+  insert into public.company_archive_export_receipts(
+    attempt_id, company_id, income_year, actor_id, source_generation, archive_sha256, exported_at
+  ) values (
+    v_attempt.id, v_attempt.company_id, v_attempt.income_year, v_attempt.actor_id,
+    v_attempt.source_generation, pg_catalog.btrim(p_archive_sha256), v_now
+  ) returning id into v_receipt_id;
+  update public.company_archive_export_attempts set completed_at = v_now where id = v_attempt.id;
+  return v_receipt_id;
+end;
+$function$;
+
 create table if not exists public.company_deletion_reviews (
   id uuid primary key default gen_random_uuid(),
   cancellation_id uuid not null references public.company_cancellations(id) on delete restrict,
@@ -167,18 +364,6 @@ on public.documents for select
 to company_access_executor
 using (public.company_access_is_accepted_owner_v1(company_id));
 
-drop policy if exists "company access lifecycle reads corporate artifacts" on public.corporate_document_artifacts;
-create policy "company access lifecycle reads corporate artifacts"
-on public.corporate_document_artifacts for select
-to company_access_executor
-using (public.company_access_is_accepted_owner_v1(company_id));
-
-drop policy if exists "company access lifecycle reads audit evidence" on public.audit_events;
-create policy "company access lifecycle reads audit evidence"
-on public.audit_events for select
-to company_access_executor
-using (public.company_access_is_accepted_owner_v1(company_id));
-
 drop policy if exists "company access lifecycle appends audit evidence" on public.audit_events;
 create policy "company access lifecycle appends audit evidence"
 on public.audit_events for insert
@@ -255,7 +440,8 @@ declare
   v_fingerprint text;
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
-  v_archive_exported_at timestamptz;
+  v_archive_receipt public.company_archive_export_receipts%rowtype;
+  v_source_generation bigint;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
   if p_operation_id is null or p_company_id is null
@@ -290,20 +476,20 @@ begin
     raise exception 'company_access_conflict' using errcode = 'P0001';
   end if;
 
-  select max(a.created_at) into v_archive_exported_at
-  from public.audit_events a
-  where a.company_id = p_company_id
-    and a.action = 'company_year_archive_exported:' || p_income_year::text;
-  if v_archive_exported_at is null
-     or exists (
+  perform public.company_archive_lock_scope_v1(p_company_id, p_income_year);
+  select generation into v_source_generation
+  from public.company_archive_source_generations
+  where company_id = p_company_id and income_year = p_income_year;
+  select r.* into v_archive_receipt
+  from public.company_archive_export_receipts r
+  where r.company_id = p_company_id and r.income_year = p_income_year
+    and r.source_generation = v_source_generation
+  order by r.exported_at desc
+  limit 1;
+  if not found or exists (
        select 1 from public.documents d
        where d.company_id = p_company_id and d.income_year = p_income_year
          and d.status like 'missing%'
-     )
-     or exists (
-       select 1 from public.corporate_document_artifacts a
-       where a.company_id = p_company_id and a.income_year = p_income_year
-         and a.created_at > v_archive_exported_at
      ) then
     raise exception 'cancellation_prerequisite_failed' using errcode = 'P0001';
   end if;
@@ -314,7 +500,7 @@ begin
     p_company_id, 'retention_hold', pg_catalog.btrim(p_reason),
     pg_catalog.jsonb_build_object(
       'archiveIncomeYear', p_income_year,
-      'archiveExportedAt', v_archive_exported_at,
+      'archiveExportedAt', v_archive_receipt.exported_at,
       'archiveDownloadPath', '/archive/' || p_company_id::text || '/' || p_income_year::text || '/download',
       'legalReviewRequired', true
     ),
@@ -460,7 +646,8 @@ declare
   v_fingerprint text;
   v_receipt public.company_access_command_receipts%rowtype;
   v_cancellation public.company_cancellations%rowtype;
-  v_archive_exported_at timestamptz;
+  v_archive_receipt public.company_archive_export_receipts%rowtype;
+  v_source_generation bigint;
   v_income_year integer;
   v_now timestamptz := pg_catalog.statement_timestamp();
 begin
@@ -511,20 +698,20 @@ begin
   exception when others then
     raise exception 'cancellation_prerequisite_failed' using errcode = 'P0001';
   end;
-  select max(a.created_at) into v_archive_exported_at
-  from public.audit_events a
-  where a.company_id = p_company_id
-    and a.action = 'company_year_archive_exported:' || v_income_year::text;
-  if v_archive_exported_at is null
-     or exists (
+  perform public.company_archive_lock_scope_v1(p_company_id, v_income_year);
+  select generation into v_source_generation
+  from public.company_archive_source_generations
+  where company_id = p_company_id and income_year = v_income_year;
+  select r.* into v_archive_receipt
+  from public.company_archive_export_receipts r
+  where r.company_id = p_company_id and r.income_year = v_income_year
+    and r.source_generation = v_source_generation
+  order by r.exported_at desc
+  limit 1;
+  if not found or exists (
        select 1 from public.documents d
        where d.company_id = p_company_id and d.income_year = v_income_year
          and d.status like 'missing%'
-     )
-     or exists (
-       select 1 from public.corporate_document_artifacts a
-       where a.company_id = p_company_id and a.income_year = v_income_year
-         and a.created_at > v_archive_exported_at
      ) then
     raise exception 'cancellation_prerequisite_failed' using errcode = 'P0001';
   end if;
@@ -556,11 +743,28 @@ $function$;
 
 grant select, insert, update on public.company_cancellations to company_access_executor;
 grant select, insert on public.company_deletion_reviews to company_access_executor;
-grant select on public.documents, public.corporate_document_artifacts, public.support_operators to company_access_executor;
-grant select, insert on public.audit_events to company_access_executor;
+grant select on public.documents, public.support_operators to company_access_executor;
+grant insert on public.audit_events to company_access_executor;
+grant select on public.company_archive_source_generations, public.company_archive_export_receipts to company_access_executor;
 grant select, update on public.companies to company_access_executor;
+grant select, insert, update, delete on public.company_archive_source_generations, public.company_archive_export_attempts, public.company_archive_export_receipts
+  to company_archive_projection_executor;
 grant execute on function public.company_access_is_active_admin_v1(), public.company_access_is_active_operator_v1(), public.company_access_has_fresh_mfa_v1()
   to company_access_executor;
+grant execute on function public.company_access_is_accepted_owner_v1(uuid), public.company_access_has_fresh_mfa_v1()
+  to company_archive_projection_executor;
+grant execute on function public.company_access_auth_uid_v1(), public.company_access_auth_jwt_v1()
+  to company_archive_projection_executor;
+grant execute on function public.company_archive_lock_scope_v1(uuid, integer)
+  to company_access_executor, company_archive_projection_executor;
+revoke all on table public.company_archive_source_generations, public.company_archive_export_attempts, public.company_archive_export_receipts
+  from public, anon, authenticated, service_role;
+revoke all on function public.company_archive_track_source_write_v1() from public, anon, authenticated, service_role;
+revoke all on function public.company_archive_lock_scope_v1(uuid, integer) from public, anon, authenticated, service_role;
+revoke all on function public.company_archive_begin_export(uuid, integer) from public, anon;
+revoke all on function public.company_archive_complete_export(uuid, text) from public, anon, authenticated;
+grant execute on function public.company_archive_begin_export(uuid, integer) to authenticated;
+grant execute on function public.company_archive_complete_export(uuid, text) to service_role;
 
 do $ownership$
 begin
@@ -578,6 +782,18 @@ begin
   execute pg_catalog.format('revoke company_access_executor from %I', current_user);
 end
 $ownership$;
+
+do $archive_ownership$
+begin
+  execute pg_catalog.format('grant company_archive_projection_executor to %I', current_user);
+  grant create on schema public to company_archive_projection_executor;
+  alter function public.company_archive_track_source_write_v1() owner to company_archive_projection_executor;
+  alter function public.company_archive_begin_export(uuid, integer) owner to company_archive_projection_executor;
+  alter function public.company_archive_complete_export(uuid, text) owner to company_archive_projection_executor;
+  revoke create on schema public from company_archive_projection_executor;
+  execute pg_catalog.format('revoke company_archive_projection_executor from %I', current_user);
+end
+$archive_ownership$;
 
 revoke all on table public.company_deletion_reviews from public, anon, authenticated;
 revoke all on function public.company_access_is_active_admin_v1() from public, anon, authenticated;

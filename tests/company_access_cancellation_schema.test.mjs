@@ -42,11 +42,18 @@ test("request derives archive and source completeness inside one atomic RPC", ()
   const source = sql(expandPath);
   const request = functionBody(source, "company_access_request_cancellation");
 
-  assert.match(request, /company_year_archive_exported:/iu);
+  assert.match(source, /create table if not exists public\.company_archive_source_generations/iu);
+  assert.match(source, /create table if not exists public\.company_archive_export_attempts/iu);
+  assert.match(source, /create table if not exists public\.company_archive_export_receipts/iu);
+  assert.match(source, /create trigger company_archive_track_documents/iu);
+  assert.match(source, /create trigger company_archive_track_corporate_artifacts/iu);
+  assert.match(source, /create or replace function public\.company_archive_begin_export/iu);
+  assert.match(source, /create or replace function public\.company_archive_complete_export/iu);
+  assert.match(request, /from public\.company_archive_export_receipts/iu);
+  assert.match(request, /source_generation = v_source_generation/iu);
+  assert.doesNotMatch(request, /company_year_archive_exported:/iu);
   assert.match(request, /from public\.documents/iu);
   assert.match(request, /status like 'missing%'/iu);
-  assert.match(request, /from public\.corporate_document_artifacts/iu);
-  assert.match(request, /created_at > v_archive_exported_at/iu);
   assert.match(request, /raise exception 'cancellation_prerequisite_failed'/iu);
   assert.match(request, /pg_advisory_xact_lock/iu);
   assert.match(request, /status <> 'deleted'/iu);
@@ -85,12 +92,36 @@ test("finalize re-derives prerequisites and requires exact approved review", () 
   assert.match(finalize, /decision = 'approved'/iu);
   assert.match(finalize, /cancellation_revision/iu);
   assert.match(finalize, /from public\.documents/iu);
-  assert.match(finalize, /from public\.corporate_document_artifacts/iu);
-  assert.match(finalize, /company_year_archive_exported:/iu);
+  assert.match(finalize, /from public\.company_archive_export_receipts/iu);
+  assert.match(finalize, /source_generation = v_source_generation/iu);
+  assert.doesNotMatch(finalize, /company_year_archive_exported:/iu);
   assert.match(finalize, /update public\.companies[\s\S]+status_text = 'deleted_retention_record'/iu);
   assert.match(finalize, /update public\.company_cancellations[\s\S]+status = 'deleted'/iu);
   assert.match(finalize, /company_deletion_completed/iu);
   assert.doesNotMatch(finalize, /delete from public\./iu);
+});
+
+test("archive receipt completion is server-only, one-time, expiring, and generation-bound", () => {
+  const source = sql(expandPath);
+  const begin = functionBody(source, "company_archive_begin_export");
+  const complete = functionBody(source, "company_archive_complete_export");
+  const tracker = functionBody(source, "company_archive_track_source_write_v1");
+  const lock = functionBody(source, "company_archive_lock_scope_v1");
+
+  assert.match(begin, /company_access_is_accepted_owner_v1\(p_company_id\)/iu);
+  assert.match(begin, /company_access_has_fresh_mfa_v1\(\)/iu);
+  assert.match(begin, /interval '10 minutes'/iu);
+  assert.match(complete, /for update/iu);
+  assert.match(complete, /completed_at is not null/iu);
+  assert.match(complete, /expires_at <=/iu);
+  assert.match(complete, /source_generation <>/iu);
+  assert.match(complete, /insert into public\.company_archive_export_receipts/iu);
+  assert.match(tracker, /company_archive_lock_scope_v1/iu);
+  assert.match(lock, /pg_advisory_xact_lock/iu);
+  assert.match(tracker, /insert into public\.company_archive_source_generations[\s\S]+on conflict[\s\S]+generation =/iu);
+  assert.match(source, /revoke all on function public\.company_archive_complete_export\(uuid, text\) from public, anon, authenticated/iu);
+  assert.match(source, /grant execute on function public\.company_archive_complete_export\(uuid, text\) to service_role/iu);
+  assert.doesNotMatch(source, /grant (?:select|insert|update|delete)[^;]*company_archive_export_(?:attempts|receipts)[^;]*authenticated/iu);
 });
 
 test("direct lifecycle RPCs mirror strict request validation before receipts", () => {

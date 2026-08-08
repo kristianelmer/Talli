@@ -1,6 +1,11 @@
+import { createHash } from "node:crypto";
+
 import { buildPersistedCompanyArchive } from "../../../../lib/archive";
 import { requireStepUpForAction } from "../../../../lib/security";
-import { createSupabaseServerClient } from "../../../../lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+} from "../../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
   const { companyId, incomeYear: incomeYearParam } = await params;
@@ -37,6 +42,13 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       "Ekstra identitetsbekreftelse med tofaktorautentisering kreves før arkivet kan lastes ned.",
       { status: 403 },
     );
+  }
+  const { data: archiveAttemptId, error: archiveAttemptError } = await supabase.rpc(
+    "company_archive_begin_export",
+    { p_company_id: companyId, p_income_year: incomeYear },
+  );
+  if (archiveAttemptError || typeof archiveAttemptId !== "string") {
+    return new Response("Could not begin authoritative archive export", { status: 500 });
   }
 
   const { data: submissions, error: submissionError } = await supabase
@@ -214,18 +226,23 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     corporateDecisionFinalizations: corporateDecisionFinalizations ?? [],
   });
 
-  const { error: auditError } = await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "archive",
-    action: `company_year_archive_exported:${incomeYear}`,
-    message: `Company-year archive exported with ${(corporateDocumentArtifacts ?? []).length} corporate object references.`,
-  });
-  if (auditError) {
-    return new Response("Could not record archive export evidence", { status: 500 });
+  const archiveBody = JSON.stringify(archive, null, 2);
+  const archiveSha256 = createHash("sha256").update(archiveBody, "utf8").digest("hex");
+  let archiveProjection;
+  try {
+    archiveProjection = createSupabaseServiceRoleClient();
+  } catch {
+    return new Response("Archive receipt service is unavailable", { status: 503 });
+  }
+  const { error: archiveReceiptError } = await archiveProjection.rpc(
+    "company_archive_complete_export",
+    { p_attempt_id: archiveAttemptId, p_archive_sha256: archiveSha256 },
+  );
+  if (archiveReceiptError) {
+    return new Response("Could not record authoritative archive export receipt", { status: 409 });
   }
 
-  return new Response(JSON.stringify(archive, null, 2), {
+  return new Response(archiveBody, {
     headers: {
       "content-disposition": `attachment; filename="talli-${company.org_number}-${incomeYear}-archive.json"`,
       "content-type": "application/json; charset=utf-8",

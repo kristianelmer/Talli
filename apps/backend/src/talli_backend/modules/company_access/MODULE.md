@@ -139,9 +139,13 @@ application rollback is bounded to a generated-client revision; restoring direct
 persistence requires a new forward migration.
 
 Ownership is authoritative here. Remaining compatibility adapters are registered
-by exact path/rule/resource/operation: onboarding exits in #138. Audit and
-notification rows remain owned by their exact
-legacy/technical scopes while the transaction preserves their observable events.
+by exact path/rule/resource/operation. Until #157 owns published archive
+projections, `company_access` consumes the bounded legacy generation/receipt
+projection produced only by the existing server-side archive route; it does not
+own archive composition or those three projection tables. Until #155 owns the
+audit capability, lifecycle RPCs retain the exact append-only audit seam for
+observable events, never as deletion authorization. Notification rows remain
+owned by their exact technical scopes.
 
 ## Collaboration and tests
 
@@ -154,6 +158,8 @@ is in `tests/company_access_database_runtime.test.mjs`.
 
 ## Compatibility and change rule
 
-There are no company-access invitation, membership-administration, or cancellation
-compatibility exceptions. Change this document and `module.json` together when
-its interface, ownership, policy, or dependencies change.
+There are no direct-web company-access invitation, membership-administration, or
+cancellation persistence exceptions. The manifest truthfully declares the
+bounded #155 audit and #157 archive-projection dependencies described above.
+Change this document and `module.json` together when its interface, ownership,
+policy, or dependencies change.
