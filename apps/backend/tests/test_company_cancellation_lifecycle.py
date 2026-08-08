@@ -486,3 +486,32 @@ def test_adapter_retries_only_after_explicit_receipt_absence() -> None:
     }))
     assert result == LifecycleGatewayStub._cancellation()
     assert responses == []
+
+
+@pytest.mark.parametrize("responses", [
+    [[], [{"found": True, "result": LifecycleGatewayStub._cancellation()}]],
+    [[], [{"found": False, "result": None}], [], [{"found": False, "result": None}]],
+])
+def test_adapter_reconciles_malformed_success_without_false_not_found(responses: list[object]) -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    queue = list(responses)
+
+    async def request(*_args: object, **_kwargs: object) -> object:
+        return queue.pop(0)
+
+    adapter._request = request  # type: ignore[method-assign]
+    body = {
+        "p_operation_id": OPERATION_ID,
+        "p_company_id": COMPANY_ID,
+        "p_income_year": 2025,
+        "p_reason": "Customer requested cancellation",
+    }
+    if len(responses) == 2:
+        assert asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", body)) == LifecycleGatewayStub._cancellation()
+    else:
+        with pytest.raises(CompanyAccessError) as caught:
+            asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", body))
+        assert caught.value.code == "COMPANY_ACCESS_UNAVAILABLE"
+    assert queue == []

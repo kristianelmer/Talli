@@ -429,34 +429,54 @@ class SupabaseCompanyAccessAdapter:
             "company_access_review_deletion",
             "company_access_finalize_deletion",
         }
+        if cancellation_command:
+            return await self._cancellation_rpc_row(
+                access_token, function_name, body
+            )
         try:
             response = await self._request(path, access_token, method="POST", body=body)
         except CompanyAccessError as error:
             if error.code != "COMPANY_ACCESS_UNAVAILABLE" or "p_operation_id" not in body:
                 raise
-            if cancellation_command:
-                state, reconciled = await self._reconcile_cancellation(
-                    access_token, function_name, body
-                )
-                if state == "found":
-                    assert reconciled is not None
-                    return reconciled
             # A receipt is definitively absent only after reconciliation has
             # linearized behind the original actor+operation transaction.
             try:
                 response = await self._request(path, access_token, method="POST", body=body)
             except CompanyAccessError as retry_error:
-                if retry_error.code == "COMPANY_ACCESS_UNAVAILABLE" and cancellation_command:
-                    state, reconciled = await self._reconcile_cancellation(
-                        access_token, function_name, body
-                    )
-                    if state == "found":
-                        assert reconciled is not None
-                        return reconciled
                 raise
         if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
             return None
         return response[0]
+
+    async def _cancellation_rpc_row(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+    ) -> Mapping[str, object]:
+        path = f"/rest/v1/rpc/{function_name}"
+        for attempt in range(2):
+            try:
+                response = await self._request(path, access_token, method="POST", body=body)
+            except CompanyAccessError as error:
+                if error.code != "COMPANY_ACCESS_UNAVAILABLE":
+                    raise
+                response = None
+            if (
+                isinstance(response, list)
+                and len(response) == 1
+                and isinstance(response[0], Mapping)
+            ):
+                return response[0]
+            state, reconciled = await self._reconcile_cancellation(
+                access_token, function_name, body
+            )
+            if state == "found":
+                assert reconciled is not None
+                return reconciled
+            if attempt == 1:
+                raise self._indeterminate_cancellation_reconciliation()
+        raise self._indeterminate_cancellation_reconciliation()
 
     async def _reconcile_cancellation(
         self,
