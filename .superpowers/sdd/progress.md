@@ -469,8 +469,10 @@ Round-7 TDD and verification evidence:
 
 - RED: workflow and static contracts failed before actor-scoped side-effect
   derivation/persistence existed.
-- GREEN: four workflow tests cover actor/purpose determinism, two actors sharing
-  one UUID across create/resend, exact replay, no oracle, and audit failure/retry.
+- GREEN at the helper boundary: four workflow tests cover actor/purpose
+  determinism, two actors sharing one UUID across create/resend, exact replay,
+  no oracle, and audit failure/retry. These tests did not prove that a fresh UI
+  render could recover the original operation; Round 8 supersedes that claim.
 - The real PostgreSQL rehearsal created/resend for two owners with the same
   operation IDs, persisted four distinct delivery and four distinct audit rows,
   and verified per-actor RLS visibility.
@@ -480,5 +482,46 @@ Round-7 TDD and verification evidence:
 - `npm run test:architecture` passed 34/34; `npm run test:supabase-grants`
   passed 3/3; `npm run check:architecture`, `npm run typecheck`,
   `npm run build:web`, and `npm run build:backend` passed.
+- No hosted provider, deployment, GitHub mutation, push, external action, or
+  chargeable operation was performed.
+
+## Issue #160 review-fix round 8
+
+- Review input: `/tmp/talli-issue-160-architecture-review-8.md` and
+  `/tmp/talli-issue-160-standards-review-8.md`.
+- Clean starting head: `6ba651945822701ebcb73793f48f8fea324af8c6`.
+- Review-fix implementation commit: `aa635f98`.
+- Acceptance state: the unreachable-retry Important finding and stale module
+  documentation finding are implemented; fresh-context acceptance review remains required.
+
+Resolved review findings:
+
+- Invitation command receipts now own a durable pending side-effect
+  continuation. The shipped recovery forms accept no browser operation ID or
+  token; the backend derives the actor from Auth, lists only that actor's pending
+  receipts, and resumes the original operation without invoking the business
+  command again.
+- Completion is idempotent and fail-closed. PostgreSQL verifies the exact
+  actor+operation+purpose UUIDv8 outbox/audit evidence before marking the receipt
+  complete and clearing its delivery token. Expired continuations retain audit
+  recovery, clear their token when examined, and do not enqueue obsolete mail.
+- Company-access module documentation now describes the actor-scoped IDs,
+  receipt-owned recovery, proof-completion boundary, and clock-free expiry
+  limitation instead of the obsolete raw-operation retry design.
+
+Round-8 TDD and verification evidence:
+
+- RED: the action-level recovery suite initially failed because the workflow
+  module did not exist. GREEN: seven injected-failure cases cover create,
+  accept, revoke, and resend at every outbox/audit boundary and prove one command
+  mutation, one original operation ID, and completion through the shipped recovery path.
+- The real PostgreSQL rehearsal rejects completion without exact evidence,
+  completes idempotently after evidence exists, clears tokens, hides a foreign
+  receipt completion as not found, and preserves same-operation isolation for two actors.
+- `npm run test:boundary` passed: backend 31, web 30, contract 28.
+- `npm run test:supabase` passed 17 with 4 unchanged optional environment skips;
+  `npm run test:supabase-grants` passed 3/3.
+- `npm run test:architecture` passed 34/34; `npm run check:architecture`,
+  `npm run typecheck`, `npm run build:web`, and `npm run build:backend` passed.
 - No hosted provider, deployment, GitHub mutation, push, external action, or
   chargeable operation was performed.
