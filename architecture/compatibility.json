@@ -1335,12 +1335,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "acceptWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "acknowledgeFilingReviewComment"
         },
         {
@@ -1414,12 +1408,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "importBankCsv"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "inviteWorkspaceReviewer"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1506,16 +1494,10 @@
           "operation": "requestFilingPackagePayment"
         },
         {
-          "path": "apps/web/app/actions.ts",
+          "path": "apps/web/app/lib/invitation-side-effects.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "resendWorkspaceInvitation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "revokeWorkspaceInvitation"
+          "operation": "createInvitationSideEffectStore"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1555,22 +1537,16 @@
       "removalCondition": "Remove notification outbox persistence in #156.",
       "scopes": [
         {
-          "path": "apps/web/app/actions.ts",
+          "path": "apps/web/app/lib/invitation-side-effects.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",
-          "operation": "inviteWorkspaceReviewer"
+          "operation": "createInvitationSideEffectStore"
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",
           "operation": "queueDeadlineReminders"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:notification_outbox",
-          "operation": "resendWorkspaceInvitation"
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",

@@ -543,7 +543,16 @@ test("compatibility operations map to their serialized future tickets", () => {
   assert.equal(ownerOf("table:authority_test_runs", "recordAnnualAccountsTt02Evidence"), "#153");
   assert.equal(ownerOf("table:investment_lots", "recordShareSale"), "#142");
   assert.equal(ownerOf("table:audit_events", "uploadDocument"), "#155");
-  assert.equal(ownerOf("table:notification_outbox", "inviteWorkspaceReviewer"), "#156");
+  assert.equal(ownerOf(
+    "table:audit_events",
+    "createInvitationSideEffectStore",
+    "apps/web/app/lib/invitation-side-effects.ts",
+  ), "#155");
+  assert.equal(ownerOf(
+    "table:notification_outbox",
+    "createInvitationSideEffectStore",
+    "apps/web/app/lib/invitation-side-effects.ts",
+  ), "#156");
   assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
   assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
   assert.deepEqual(

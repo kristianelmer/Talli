@@ -61,14 +61,19 @@ test("login preserves a sanitized invitation continuation for password and OAuth
   assert.match(google, /name="next"/u);
 });
 
-test("legacy outbox writes reconcile by the durable command operation id", async () => {
+test("invitation side effects reconcile in the trusted actor and command namespace", async () => {
   const actions = await source("apps/web/app/actions.ts");
+  const sideEffects = await source("apps/web/app/lib/invitation-side-effects.ts");
 
-  assert.match(actions, /id: operationId/u);
-  assert.match(actions, /\.eq\("id", operationId\)/u);
-  assert.match(actions, /invitationId/u);
-  assert.match(actions, /payload\?\.body !== created\.deliveryBody/u);
-  assert.match(actions, /payload\?\.acceptUrl !== deliveryPayload\.acceptUrl/u);
+  assert.doesNotMatch(actions, /id: operationId/u);
+  assert.match(actions, /persistInvitationOutbox/u);
+  assert.match(actions, /persistInvitationAudit/u);
+  assert.match(sideEffects, /deriveInvitationSideEffectId/u);
+  assert.match(sideEffects, /actorId/u);
+  assert.match(sideEffects, /operationId/u);
+  assert.match(sideEffects, /purpose/u);
+  assert.match(sideEffects, /existing\.payload/u);
+  assert.match(sideEffects, /existing\.message/u);
 });
 
 test("membership role selector has a target-specific accessible name", async () => {

@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { deriveInvitationSideEffectId } from "../apps/web/app/lib/invitation-side-effects.ts";
+
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const bootstrapSql = String.raw`
@@ -703,6 +705,119 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         ) then raise exception 'test actors unexpectedly share an advisory namespace'; end if;
       end $$;
     `);
+
+    const sharedCreateOperationId = "60000000-0000-4000-8000-000000000001";
+    const sharedResendOperationId = "60000000-0000-4000-8000-000000000002";
+    const actorWorkflows = [
+      {
+        actorId: "00000000-0000-0000-0000-000000000011",
+        actorEmail: "member@example.test",
+        companyId: "10000000-0000-0000-0000-000000000001",
+        recipientEmail: "actor-a-side-effect@example.test",
+        token: "actor-a-side-effect-token",
+      },
+      {
+        actorId: "00000000-0000-0000-0000-000000000022",
+        actorEmail: "other@example.test",
+        companyId: "20000000-0000-0000-0000-000000000002",
+        recipientEmail: "actor-b-side-effect@example.test",
+        token: "actor-b-side-effect-token",
+      },
+    ];
+    for (const workflow of actorWorkflows) {
+      const createOutboxId = deriveInvitationSideEffectId({
+        actorId: workflow.actorId,
+        operationId: sharedCreateOperationId,
+        purpose: "create_invitation:delivery",
+      });
+      const createAuditId = deriveInvitationSideEffectId({
+        actorId: workflow.actorId,
+        operationId: sharedCreateOperationId,
+        purpose: "create_invitation:audit",
+      });
+      const resendOutboxId = deriveInvitationSideEffectId({
+        actorId: workflow.actorId,
+        operationId: sharedResendOperationId,
+        purpose: "resend_invitation:delivery",
+      });
+      const resendAuditId = deriveInvitationSideEffectId({
+        actorId: workflow.actorId,
+        operationId: sharedResendOperationId,
+        purpose: "resend_invitation:audit",
+      });
+      const workflowOutput = psql(containerName, [], String.raw`
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '${workflow.actorId}', false);
+        select set_config('request.jwt.claims', '{"email":"${workflow.actorEmail}","aal":"aal2"}', false);
+        select * from public.company_access_create_invitation(
+          '${sharedCreateOperationId}', '${workflow.companyId}', '${workflow.recipientEmail}', 'reviewer',
+          encode(extensions.digest(convert_to('${workflow.token}', 'UTF8'), 'sha256'), 'hex'), '${workflow.token}'
+        );
+        insert into public.notification_outbox (
+          id, company_id, recipient_email, template, payload, status, created_by
+        ) select
+          '${createOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
+          jsonb_build_object('operationId', '${sharedCreateOperationId}', 'invitationId', id),
+          'queued', '${workflow.actorId}'
+        from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
+        insert into public.audit_events (id, company_id, actor_id, category, action, message)
+        values (
+          '${createAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
+          'reviewer_invitation_created', 'Created. Forespørsels-ID: ${sharedCreateOperationId}.'
+        );
+        select * from public.company_access_resend_invitation(
+          '${sharedResendOperationId}', '${workflow.companyId}',
+          (select id from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
+          (select updated_at from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
+          encode(extensions.digest(convert_to('${workflow.token}-resent', 'UTF8'), 'sha256'), 'hex'),
+          '${workflow.token}-resent'
+        );
+        insert into public.notification_outbox (
+          id, company_id, recipient_email, template, payload, status, created_by
+        ) select
+          '${resendOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
+          jsonb_build_object('operationId', '${sharedResendOperationId}', 'invitationId', id),
+          'queued', '${workflow.actorId}'
+        from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
+        insert into public.audit_events (id, company_id, actor_id, category, action, message)
+        values (
+          '${resendAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
+          'reviewer_invitation_resent', 'Resent. Forespørsels-ID: ${sharedResendOperationId}.'
+        );
+        do $$ begin
+          if (select count(*) from public.notification_outbox where created_by = '${workflow.actorId}') <> 2 then
+            raise exception 'actor could not see both own delivery continuations';
+          end if;
+          if (select count(*) from public.audit_events where actor_id = '${workflow.actorId}') <> 2 then
+            raise exception 'actor could not see both own audit continuations';
+          end if;
+          if exists (select 1 from public.notification_outbox where created_by <> '${workflow.actorId}') then
+            raise exception 'actor could see a foreign delivery continuation';
+          end if;
+          if exists (select 1 from public.audit_events where actor_id <> '${workflow.actorId}') then
+            raise exception 'actor could see foreign audit evidence';
+          end if;
+        end $$;
+        reset role;
+        select 'actor_scoped_invitation_side_effects_ok';
+      `);
+      assert.match(workflowOutput, /actor_scoped_invitation_side_effects_ok/u);
+    }
+    const persistedSideEffects = psql(containerName, ["-Atc", String.raw`
+      select
+        (select count(*) from public.notification_outbox
+          where payload ->> 'operationId' in ('${sharedCreateOperationId}', '${sharedResendOperationId}'))::text
+        || ':' ||
+        (select count(*) from public.audit_events
+          where message like '%${sharedCreateOperationId}%' or message like '%${sharedResendOperationId}%')::text
+        || ':' ||
+        (select count(distinct created_by) from public.notification_outbox
+          where payload ->> 'operationId' in ('${sharedCreateOperationId}', '${sharedResendOperationId}'))::text
+        || ':' ||
+        (select count(distinct actor_id) from public.audit_events
+          where message like '%${sharedCreateOperationId}%' or message like '%${sharedResendOperationId}%')::text
+    `]).trim();
+    assert.equal(persistedSideEffects, "4:4:2:2", "shared operation ids lost or merged side effects");
 
     const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
       select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)

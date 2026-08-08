@@ -97,6 +97,11 @@ import {
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
 import { getCurrentSessionAccessToken } from "./lib/supabase/auth-session";
+import {
+  createInvitationSideEffectStore,
+  persistInvitationAudit,
+  persistInvitationOutbox,
+} from "./lib/invitation-side-effects";
 import { validateManualJournal } from "./lib/manual-journal";
 import {
   OpeningShareholderInput,
@@ -1316,46 +1321,39 @@ export async function inviteWorkspaceReviewer(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const sideEffects = createInvitationSideEffectStore(supabase);
   const deliveryPayload = {
     operationId,
     invitationId: created.invitation.id,
     subject: created.deliverySubject,
     body: created.deliveryBody,
   };
-  const { error: outboxError } = await supabase.from("notification_outbox").insert({
-    id: operationId,
-    company_id: companyId,
-    recipient_email: created.invitation.invitedEmail,
-    template: "workspace_invitation",
-    payload: deliveryPayload,
-    status: "queued",
-    created_by: user.id,
-  });
-  if (outboxError) {
-    const { data: existing, error: lookupError } = await supabase
-      .from("notification_outbox")
-      .select("id, company_id, recipient_email, template, payload, created_by")
-      .eq("id", operationId)
-      .maybeSingle();
-    const payload = existing?.payload as Record<string, unknown> | undefined;
-    if (
-      lookupError || !existing || existing.company_id !== companyId ||
-      existing.recipient_email !== created.invitation.invitedEmail ||
-      existing.template !== "workspace_invitation" || existing.created_by !== user.id ||
-      payload?.operationId !== operationId || payload?.invitationId !== created.invitation.id ||
-      payload?.subject !== created.deliverySubject || payload?.body !== created.deliveryBody
-    ) {
-      redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
-    }
+  try {
+    await persistInvitationOutbox(sideEffects, {
+      actorId: user.id,
+      operationId,
+      purpose: "create_invitation:delivery",
+      companyId,
+      recipientEmail: created.invitation.invitedEmail,
+      template: "workspace_invitation",
+      payload: deliveryPayload,
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
   }
-  await supabase.from("audit_events").insert({
-    id: operationId,
-    company_id: companyId,
-    actor_id: user.id,
-    category: "review",
-    action: "reviewer_invitation_created",
-    message: `Reviewer/read-only invitasjon køet for ${created.invitation.role}.`,
-  });
+  try {
+    await persistInvitationAudit(sideEffects, {
+      actorId: user.id,
+      operationId,
+      purpose: "create_invitation:audit",
+      companyId,
+      category: "review",
+      action: "reviewer_invitation_created",
+      message: `Reviewer/read-only invitasjon køet for ${created.invitation.role}.`,
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20registrere%20revisjonssporet");
+  }
 
   revalidatePath("/");
   redirect("/workspace");
@@ -1380,14 +1378,19 @@ export async function acceptWorkspaceInvitation(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  await supabase.from("audit_events").insert({
-    id: operationId,
-    company_id: accepted.membership.companyId,
-    actor_id: user.id,
-    category: "review",
-    action: "reviewer_invitation_accepted",
-    message: `Invitasjon akseptert som ${accepted.membership.role}.`,
-  });
+  try {
+    await persistInvitationAudit(createInvitationSideEffectStore(supabase), {
+      actorId: user.id,
+      operationId,
+      purpose: "accept_invitation:audit",
+      companyId: accepted.membership.companyId,
+      category: "review",
+      action: "reviewer_invitation_accepted",
+      message: `Invitasjon akseptert som ${accepted.membership.role}.`,
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20registrere%20revisjonssporet");
+  }
 
   revalidatePath("/");
   redirect("/workspace");
@@ -1412,14 +1415,19 @@ export async function revokeWorkspaceInvitation(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  await supabase.from("audit_events").insert({
-    id: operationId,
-    company_id: companyId,
-    actor_id: user.id,
-    category: "review",
-    action: "reviewer_invitation_revoked",
-    message: "Reviewer/read-only invitasjon tilbakekalt.",
-  });
+  try {
+    await persistInvitationAudit(createInvitationSideEffectStore(supabase), {
+      actorId: user.id,
+      operationId,
+      purpose: "revoke_invitation:audit",
+      companyId,
+      category: "review",
+      action: "reviewer_invitation_revoked",
+      message: "Reviewer/read-only invitasjon tilbakekalt.",
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20registrere%20revisjonssporet");
+  }
   revalidatePath("/");
   redirect("/workspace");
 }
@@ -1447,46 +1455,39 @@ export async function resendWorkspaceInvitation(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const sideEffects = createInvitationSideEffectStore(supabase);
   const deliveryPayload = {
     operationId,
     invitationId: resent.invitation.id,
     role: resent.invitation.role,
     acceptUrl: `/invite/accept?token=${resent.deliveryToken}`,
   };
-  const { error: outboxError } = await supabase.from("notification_outbox").insert({
-    id: operationId,
-    company_id: companyId,
-    recipient_email: resent.invitation.invitedEmail,
-    template: "workspace_invitation",
-    payload: deliveryPayload,
-    status: "queued",
-    created_by: user.id,
-  });
-  if (outboxError) {
-    const { data: existing, error: lookupError } = await supabase
-      .from("notification_outbox")
-      .select("id, company_id, recipient_email, template, payload, created_by")
-      .eq("id", operationId)
-      .maybeSingle();
-    const payload = existing?.payload as Record<string, unknown> | undefined;
-    if (
-      lookupError || !existing || existing.company_id !== companyId ||
-      existing.recipient_email !== resent.invitation.invitedEmail ||
-      existing.template !== "workspace_invitation" || existing.created_by !== user.id ||
-      payload?.operationId !== operationId || payload?.invitationId !== resent.invitation.id ||
-      payload?.role !== resent.invitation.role || payload?.acceptUrl !== deliveryPayload.acceptUrl
-    ) {
-      redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
-    }
+  try {
+    await persistInvitationOutbox(sideEffects, {
+      actorId: user.id,
+      operationId,
+      purpose: "resend_invitation:delivery",
+      companyId,
+      recipientEmail: resent.invitation.invitedEmail,
+      template: "workspace_invitation",
+      payload: deliveryPayload,
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20k%C3%B8e%20invitasjonsvarselet");
   }
-  await supabase.from("audit_events").insert({
-    id: operationId,
-    company_id: companyId,
-    actor_id: user.id,
-    category: "review",
-    action: "reviewer_invitation_resent",
-    message: "Reviewer/read-only invitasjon sendt på nytt.",
-  });
+  try {
+    await persistInvitationAudit(sideEffects, {
+      actorId: user.id,
+      operationId,
+      purpose: "resend_invitation:audit",
+      companyId,
+      category: "review",
+      action: "reviewer_invitation_resent",
+      message: "Reviewer/read-only invitasjon sendt på nytt.",
+    });
+  } catch {
+    redirect("/workspace?error=Kunne%20ikke%20registrere%20revisjonssporet");
+  }
   revalidatePath("/");
   redirect("/workspace");
 }
