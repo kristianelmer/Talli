@@ -113,6 +113,32 @@ test("consequential commands have durable replay receipts and concurrency precon
   assert.match(sql, /for update/iu);
 });
 
+test("invitation side-effect recovery is receipt-owned, actor-derived, and proof-completed", async () => {
+  const sql = await readFile(migrationUrl, "utf8");
+  const pending = sql.match(
+    /create or replace function public\.company_access_pending_invitation_side_effects[\s\S]+?\$function\$;/iu,
+  )?.[0] ?? "";
+  const complete = sql.match(
+    /create or replace function public\.company_access_complete_invitation_side_effect[\s\S]+?\$function\$;/iu,
+  )?.[0] ?? "";
+
+  assert.match(sql, /side_effects_completed_at timestamptz/iu);
+  assert.match(pending, /v_actor_id uuid := auth\.uid\(\)/iu);
+  assert.match(pending, /r\.actor_id = v_actor_id/iu);
+  assert.match(pending, /side_effects_completed_at is null/iu);
+  assert.match(pending, /limit 20/iu);
+  assert.doesNotMatch(pending, /p_actor_id/iu);
+  assert.match(complete, /v_actor_id uuid := auth\.uid\(\)/iu);
+  assert.match(complete, /r\.actor_id = v_actor_id/iu);
+  assert.match(complete, /notification_outbox/iu);
+  assert.match(complete, /audit_events/iu);
+  assert.match(complete, /side_effects_completed_at = statement_timestamp\(\)/iu);
+  assert.match(complete, /delivery_token = null/iu);
+  assert.doesNotMatch(complete, /p_actor_id/iu);
+  assert.match(sql, /grant execute on function public\.company_access_pending_invitation_side_effects/iu);
+  assert.match(sql, /grant execute on function public\.company_access_complete_invitation_side_effect/iu);
+});
+
 test("pgcrypto hashing resolves the extension schema under an empty search path", async () => {
   const sql = await readFile(migrationUrl, "utf8");
 

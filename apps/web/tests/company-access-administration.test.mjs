@@ -5,9 +5,11 @@ import { TalliApiError } from "@talli/talli-api-client";
 import {
   acceptCompanyInvitation,
   administerCompanyMembership,
+  completeInvitationSideEffect,
   createCompanyInvitation,
   listCompanyInvitations,
   listCompanyMemberships,
+  listPendingInvitationSideEffects,
   lookupCompanyInvitation,
   resendCompanyInvitation,
   revokeCompanyInvitation,
@@ -31,6 +33,12 @@ test("company-access administration transport uses only generated client operati
   const calls = [];
   globalThis.fetch = async (url, init) => {
     calls.push({ url: String(url), init });
+    if (String(url).endsWith("/invitation-side-effects/pending")) {
+      return Response.json({ continuations: [] });
+    }
+    if (String(url).includes("/invitation-side-effects/") && String(url).endsWith("/complete")) {
+      return Response.json({ operationId: "operation-6", completed: true });
+    }
     if (String(url).includes("/memberships")) {
       return Response.json(
         init.method === "GET"
@@ -59,6 +67,8 @@ test("company-access administration transport uses only generated client operati
     await acceptCompanyInvitation("session-token", "raw-token", "operation-2");
     await revokeCompanyInvitation("session-token", "company-1", "invitation-1", invitation.updatedAt, "operation-3");
     await resendCompanyInvitation("session-token", "company-1", "invitation-1", invitation.updatedAt, "operation-4");
+    await listPendingInvitationSideEffects("session-token");
+    await completeInvitationSideEffect("session-token", "operation-6");
     await listCompanyMemberships("session-token", "company-1");
     await administerCompanyMembership("session-token", "reviewer-1", { operationId: "operation-5", companyId: "company-1", expectedRole: "reviewer", state: "removed" });
   } finally {
@@ -67,10 +77,10 @@ test("company-access administration transport uses only generated client operati
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
 
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 10);
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
-  assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST", "POST", "POST", "GET", "PATCH"]);
+  assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST", "POST", "POST", "GET", "POST", "GET", "PATCH"]);
   assert.ok(calls.every(({ url }) => url.startsWith("https://backend.example/api/v1/company-access/")));
 });
 

@@ -123,8 +123,8 @@ test("owner receipt visibility is atomic while acceptance keeps actor replay sem
   }
   assert.equal(
     sql.match(/where r\.actor_id = v_actor_id and r\.operation_id = p_operation_id/gu)?.length,
-    5,
-    "every owner and acceptance receipt lookup must use the actor namespace",
+    7,
+    "every command and side-effect receipt lookup must use the actor namespace",
   );
   assert.equal(
     sql.match(

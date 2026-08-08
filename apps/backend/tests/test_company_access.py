@@ -183,6 +183,28 @@ class CompanyAccessGatewayStub:
             state=str(command.state or "active"),
         )
 
+    async def pending_invitation_side_effects(
+        self, _access_token: str
+    ) -> list[Mapping[str, object]]:
+        self.calls.append(("pending_invitation_side_effects", None))
+        return [{
+            "operation_id": "40000000-0000-0000-0000-000000000009",
+            "command_name": "create_invitation",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "result": {
+                **self._invitation(),
+                "delivery_subject": "Invitasjon til Talli: Talli Holding AS",
+                "delivery_body": "Delivery body",
+            },
+            "delivery_token": "delivery-token",
+        }]
+
+    async def complete_invitation_side_effect(
+        self, _access_token: str, operation_id: str
+    ) -> bool:
+        self.calls.append(("complete_invitation_side_effect", operation_id))
+        return True
+
     def _invitation(
         self,
         *,
@@ -687,6 +709,32 @@ def test_invitee_lookup_and_acceptance_are_concealed_and_never_return_token_hash
     )
     assert concealed.status_code == 404
     assert concealed.json()["code"] == "INVITATION_NOT_FOUND"
+
+
+def test_pending_side_effect_recovery_uses_receipt_continuation_without_reissuing_command() -> None:
+    gateway = CompanyAccessGatewayStub()
+    client = TestClient(create_app(gateway))
+    pending = client.get(
+        "/api/v1/company-access/invitation-side-effects/pending",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+    completed = client.post(
+        "/api/v1/company-access/invitation-side-effects/40000000-0000-0000-0000-000000000009/complete",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+
+    assert pending.status_code == 200
+    assert pending.json()["continuations"][0]["operationId"] == "40000000-0000-0000-0000-000000000009"
+    assert pending.json()["continuations"][0]["deliveryToken"] == "delivery-token"
+    assert completed.status_code == 200
+    assert completed.json() == {
+        "operationId": "40000000-0000-0000-0000-000000000009",
+        "completed": True,
+    }
+    assert [name for name, _ in gateway.calls] == [
+        "pending_invitation_side_effects",
+        "complete_invitation_side_effect",
+    ]
 
 
 def test_owner_can_atomically_change_or_remove_only_non_owner_memberships() -> None:

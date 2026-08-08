@@ -105,6 +105,26 @@ export interface AdministerCompanyMembershipRequest {
   state?: "active" | "removed" | null;
 }
 
+export interface InvitationSideEffectContinuation {
+  commandName: "create_invitation" | "accept_invitation" | "revoke_invitation" | "resend_invitation";
+  companyId: string;
+  deliveryBody: string | null;
+  deliverySubject: string | null;
+  deliveryToken: string | null;
+  invitation: CompanyInvitation | null;
+  membership: CompanyMembership | null;
+  operationId: string;
+}
+
+export interface InvitationSideEffectContinuationList {
+  continuations: InvitationSideEffectContinuation[];
+}
+
+export interface InvitationSideEffectCompletion {
+  completed: boolean;
+  operationId: string;
+}
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -237,6 +257,38 @@ function isInvitationLookup(value: unknown): value is InvitationLookup {
     typeof value.companyName === "string" &&
     (value.role === "reviewer" || value.role === "read_only") &&
     typeof value.expiresAt === "string"
+  );
+}
+
+function isInvitationSideEffectContinuation(value: unknown): value is InvitationSideEffectContinuation {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["commandName","companyId","deliveryBody","deliverySubject","deliveryToken","invitation","membership","operationId"]) &&
+    typeof value.operationId === "string" &&
+    (value.commandName === "create_invitation" || value.commandName === "accept_invitation" || value.commandName === "revoke_invitation" || value.commandName === "resend_invitation") &&
+    typeof value.companyId === "string" &&
+    (value.invitation === null || isCompanyInvitation(value.invitation)) &&
+    (value.membership === null || isCompanyMembership(value.membership)) &&
+    (value.deliveryToken === null || typeof value.deliveryToken === "string") &&
+    (value.deliverySubject === null || typeof value.deliverySubject === "string") &&
+    (value.deliveryBody === null || typeof value.deliveryBody === "string")
+  );
+}
+
+function isInvitationSideEffectContinuationList(value: unknown): value is InvitationSideEffectContinuationList {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["continuations"]) &&
+    Array.isArray(value.continuations) && value.continuations.every((item) => isInvitationSideEffectContinuation(item))
+  );
+}
+
+function isInvitationSideEffectCompletion(value: unknown): value is InvitationSideEffectCompletion {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["completed","operationId"]) &&
+    typeof value.operationId === "string" &&
+    value.completed === true
   );
 }
 
@@ -474,6 +526,31 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyInvitationResponse,
+      );
+    },
+
+    async companyAccessListPendingInvitationSideEffects(
+      request: TalliRequestOptions = {},
+    ): Promise<InvitationSideEffectContinuationList> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/invitation-side-effects/pending`,
+        "GET",
+        request,
+        undefined,
+        isInvitationSideEffectContinuationList,
+      );
+    },
+
+    async companyAccessCompleteInvitationSideEffect(
+      operationId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<InvitationSideEffectCompletion> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/invitation-side-effects/${encodeURIComponent(operationId)}/complete`,
+        "POST",
+        request,
+        undefined,
+        isInvitationSideEffectCompletion,
       );
     },
 

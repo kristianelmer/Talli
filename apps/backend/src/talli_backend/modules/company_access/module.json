@@ -9,10 +9,10 @@
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
     "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyInvitationCommandRequest", "CreateCompanyInvitationRequest"],
-    "queries": ["CompanyAccessService", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "InvitationLookup"],
+    "queries": ["CompanyAccessService", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyAccessGateway", "CompanyContext", "CompanyInvitation", "CompanyMembership", "InvitationRole", "MembershipState", "company_access_adapter"]
+    "identifiers": ["CompanyAccessGateway", "CompanyContext", "CompanyInvitation", "CompanyMembership", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "company_access_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],

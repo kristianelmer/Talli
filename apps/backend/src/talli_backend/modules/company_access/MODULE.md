@@ -24,7 +24,8 @@ It must not use service-role access or bypass RLS for ordinary business calls.
 
 Import only `talli_backend.modules.company_access.public`.
 
-- Queries: company context, invitation lookup/listing, and membership listing
+- Queries: company context, invitation lookup/listing, membership listing, and
+  actor-derived pending side-effect continuations
 - Commands: invite, accept, revoke, resend, and reviewer/read-only membership transitions
 - Error: `CompanyAccessError`
 - Port: `CompanyAccessGateway`
@@ -37,7 +38,9 @@ this public entry point rather than the composition root. The public names inclu
 `CompanyContextResponse`, `CompanyInvitation`, `CompanyInvitationResponse`,
 `CompanyInvitationListResponse`, `InvitationLookup`, `CompanyMembership`,
 `CompanyMembershipResponse`, `CompanyMembershipListResponse`, `InvitationRole`,
-`MembershipState`, and `company_access_adapter`.
+`MembershipState`, `InvitationSideEffectContinuation`,
+`InvitationSideEffectContinuationList`, `InvitationSideEffectCompletion`, and
+`company_access_adapter`.
 
 The system boundary injects `SupabaseCompanyAccessAdapter`; capability policy
 never constructs Supabase or HTTP infrastructure. Owner context and administration
@@ -54,17 +57,26 @@ Durable operation receipts replay consequential commands and optimistic expected
 revisions reject competing resend, revoke, and membership changes. If a command's
 transport outcome is unknown, the adapter retries the identical operation once;
 the receipt returns the committed result instead of repeating the mutation.
+Invitation commands atomically leave their receipt continuation pending until the
+web's exact actor+operation+purpose UUIDv8 audit/outbox evidence exists. The
+recovery endpoint derives the actor from Auth, returns at most twenty of that
+actor's continuations, never invokes a business command, and completion verifies
+the exact evidence before clearing the delivery token. Expired continuations
+remain recoverable for audit evidence, but their token is cleared and obsolete
+delivery is not queued; a new invite/resend is required if delivery is still
+wanted.
 Owner creation, demotion, and removal are not exposed. Public responses never
 contain token hashes.
 
 Create/resend delivery tokens are deliberately persisted in two places: the
-private command receipt until it is cleared by acceptance, revocation, or a newer
+private command receipt until it is cleared by side-effect completion, acceptance, revocation, or a newer
 resend, and the existing `notification_outbox` payload written by the exact #156
 compatibility action. Authenticated Data API roles have no receipt-table grant;
 outbox readability remains the existing accepted-owner policy. #160 adds no
-automatic purge: an uncleared token can remain stored after its 14-day invitation
-expiry, although it is no longer accepted. Retention/delivery migration remains
-#156. This is delivery-secret persistence, never token-hash disclosure.
+clock-driven purge. An expired token is never returned, and a pending-side-effect
+recovery read clears it. Until recovery or another clearing command touches the
+receipt, the expired token can remain stored at rest. Retention/delivery migration
+remains #156. This is delivery-secret persistence, never token-hash disclosure.
 
 The rollout is staged. Release A's automatic runner applies `20260801090000` only: it expands the
 RPC/RLS boundary while the prior web policies still work. Release B deploys the

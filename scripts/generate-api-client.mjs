@@ -16,6 +16,8 @@ const companyAccessOperations = {
   acceptInvitation: ["/api/v1/company-access/invitations/accept", "post", "companyAccessAcceptInvitation"],
   revokeInvitation: ["/api/v1/company-access/invitations/{invitation_id}/revoke", "post", "companyAccessRevokeInvitation"],
   resendInvitation: ["/api/v1/company-access/invitations/{invitation_id}/resend", "post", "companyAccessResendInvitation"],
+  listPendingInvitationSideEffects: ["/api/v1/company-access/invitation-side-effects/pending", "get", "companyAccessListPendingInvitationSideEffects"],
+  completeInvitationSideEffect: ["/api/v1/company-access/invitation-side-effects/{operation_id}/complete", "post", "companyAccessCompleteInvitationSideEffect"],
   listMemberships: ["/api/v1/company-access/memberships", "get", "companyAccessListMemberships"],
   administerMembership: ["/api/v1/company-access/memberships/{user_id}", "patch", "companyAccessAdministerMembership"],
 };
@@ -104,6 +106,9 @@ function renderGuard(name, schema) {
     }
     if (schema.properties[property]?.anyOf) {
       const nonNull = schema.properties[property].anyOf.find((candidate) => candidate.type !== "null");
+      if (nonNull?.$ref) {
+        return `    (value.${property} === null || is${schemaType(nonNull)}(value.${property}))`;
+      }
       return `    (value.${property} === null || typeof value.${property} === "${schemaType(nonNull)}")`;
     }
     if (schema.properties[property]?.const !== undefined) {
@@ -147,6 +152,9 @@ const additionalSchemas = Object.fromEntries([
   "InvitationTokenRequest",
   "CompanyInvitationCommandRequest",
   "AdministerCompanyMembershipRequest",
+  "InvitationSideEffectContinuation",
+  "InvitationSideEffectContinuationList",
+  "InvitationSideEffectCompletion",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
@@ -190,6 +198,9 @@ ${[
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
   "InvitationLookup",
+  "InvitationSideEffectContinuation",
+  "InvitationSideEffectContinuationList",
+  "InvitationSideEffectCompletion",
 ].map((name) => renderGuard(name, additionalSchemas[name])).join("\n\n")}
 
 ${renderGuard("ProblemDetails", problemSchema)}
@@ -414,6 +425,31 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyInvitationResponse,
+      );
+    },
+
+    async companyAccessListPendingInvitationSideEffects(
+      request: TalliRequestOptions = {},
+    ): Promise<InvitationSideEffectContinuationList> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitation-side-effects/pending\`,
+        "GET",
+        request,
+        undefined,
+        isInvitationSideEffectContinuationList,
+      );
+    },
+
+    async companyAccessCompleteInvitationSideEffect(
+      operationId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<InvitationSideEffectCompletion> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/invitation-side-effects/\${encodeURIComponent(operationId)}/complete\`,
+        "POST",
+        request,
+        undefined,
+        isInvitationSideEffectCompletion,
       );
     },
 

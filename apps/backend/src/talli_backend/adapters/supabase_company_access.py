@@ -246,6 +246,8 @@ class SupabaseCompanyAccessAdapter:
             "p_role": command.role,
             "p_token_hash": command.token_hash,
             "p_acceptance_token": command.acceptance_token,
+            "p_delivery_subject": command.delivery_subject,
+            "p_delivery_body": command.delivery_body,
         }) or {}
 
     async def lookup_invitation(
@@ -291,6 +293,8 @@ class SupabaseCompanyAccessAdapter:
             "p_expected_updated_at": command.expected_updated_at,
             "p_token_hash": command.token_hash,
             "p_acceptance_token": command.acceptance_token,
+            "p_delivery_subject": command.delivery_subject,
+            "p_delivery_body": command.delivery_body,
         })
 
     async def company_memberships(
@@ -319,6 +323,28 @@ class SupabaseCompanyAccessAdapter:
             "p_role": command.role,
             "p_state": command.state,
         })
+
+    async def pending_invitation_side_effects(
+        self, access_token: str
+    ) -> list[Mapping[str, object]]:
+        response = await self._request(
+            "/rest/v1/rpc/company_access_pending_invitation_side_effects",
+            access_token,
+            method="POST",
+            body={},
+        )
+        return response if isinstance(response, list) else []
+
+    async def complete_invitation_side_effect(
+        self, access_token: str, operation_id: str
+    ) -> bool:
+        response = await self._request(
+            "/rest/v1/rpc/company_access_complete_invitation_side_effect",
+            access_token,
+            method="POST",
+            body={"p_operation_id": operation_id},
+        )
+        return response is True
 
     async def _rpc_row(
         self,

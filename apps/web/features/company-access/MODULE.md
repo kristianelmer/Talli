@@ -1,7 +1,7 @@
 # Company access web feature
 
 <!-- architecture-inventory
-{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCreateInvitation","companyAccessGetSelectedContext","companyAccessListInvitations","companyAccessListMemberships","companyAccessLookupInvitation","companyAccessResendInvitation","companyAccessRevokeInvitation"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/workspace"]}
+{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessGetSelectedContext","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessResendInvitation","companyAccessRevokeInvitation"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/workspace"]}
 -->
 
 ## Purpose
@@ -29,9 +29,17 @@ with ten-second deadlines and the root `@talli/talli-api-client` package.
 Calls default to `no-store`; generated decoders reject every undeclared response
 field, including all token/hash spellings at invitation boundaries. Consequential
 forms carry durable operation IDs and expected revisions. The retained #156
-outbox write uses the same UUID as its row ID and reconciles an existing matching
-delivery after a timeout instead of duplicating it. Feature coverage is in the
-company-access web tests and architecture coverage is in
+outbox write uses a deterministic UUIDv8 derived from the authenticated actor,
+original operation ID, and command/purpose; the original operation ID remains
+correlation data in the payload. Every insert error performs exact immutable-row
+reconciliation instead of duplicating delivery. The backend receipt atomically
+owns a pending side-effect continuation, so the no-input recovery form can finish
+the original outbox/audit identities without issuing another business command.
+Completion is accepted only when the database verifies the exact deterministic
+evidence rows. Recovery remains available after invitation expiry for audit
+evidence, but an expired delivery token is cleared and no obsolete email is
+queued; the owner must issue a new invite/resend if delivery is still wanted.
+Feature coverage is in the company-access web tests and architecture coverage is in
 `tests/architecture_foundation.test.mjs`.
 
 ## Compatibility and change rule

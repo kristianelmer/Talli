@@ -28,6 +28,8 @@ from talli_backend.modules.company_access.public import (
     CompanyContextResponse,
     CreateCompanyInvitationRequest,
     InvitationLookup,
+    InvitationSideEffectCompletion,
+    InvitationSideEffectContinuationList,
     InvitationTokenRequest,
 )
 from talli_backend.modules.system_boundary.public import (
@@ -422,6 +424,41 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
                 bearer_token(credentials),
                 invitation_id=invitation_id,
                 command=command,
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/invitation-side-effects/pending",
+        operation_id="companyAccessListPendingInvitationSideEffects",
+        response_model=InvitationSideEffectContinuationList,
+        responses={200: {"description": "Pending invitation side effects."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_pending_invitation_side_effects(
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> InvitationSideEffectContinuationList:
+        return await company_access_call(
+            company_access_service.pending_invitation_side_effects(
+                bearer_token(credentials)
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/invitation-side-effects/{operation_id}/complete",
+        operation_id="companyAccessCompleteInvitationSideEffect",
+        response_model=InvitationSideEffectCompletion,
+        responses={200: {"description": "Invitation side effects completed."} | company_access_success} | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def complete_invitation_side_effect(
+        operation_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+    ) -> InvitationSideEffectCompletion:
+        return await company_access_call(
+            company_access_service.complete_invitation_side_effect(
+                bearer_token(credentials), operation_id
             )
         )
 

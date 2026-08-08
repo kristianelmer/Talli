@@ -696,6 +696,23 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
             and operation_id = '50000000-0000-0000-0000-000000000001')::text
     `]).trim();
     assert.equal(validProbeState, "0:0:1", "valid probes leaked mutation across rollback or tenant");
+    const foreignCompletionOutput = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', '{"email":"member@example.test","aal":"aal2"}', false);
+      do $$ begin
+        begin
+          perform public.company_access_complete_invitation_side_effect(
+            '50000000-0000-0000-0000-000000000001'
+          );
+          raise exception 'foreign receipt completion unexpectedly succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+      end $$;
+      select 'foreign_completion_concealed';
+    `);
+    assert.match(foreignCompletionOutput, /foreign_completion_concealed/u);
     psql(containerName, [], String.raw`
       do $$ begin
         if pg_catalog.hashtextextended(
@@ -751,39 +768,71 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
         select set_config('request.jwt.claims', '{"email":"${workflow.actorEmail}","aal":"aal2"}', false);
         select * from public.company_access_create_invitation(
           '${sharedCreateOperationId}', '${workflow.companyId}', '${workflow.recipientEmail}', 'reviewer',
-          encode(extensions.digest(convert_to('${workflow.token}', 'UTF8'), 'sha256'), 'hex'), '${workflow.token}'
+          encode(extensions.digest(convert_to('${workflow.token}', 'UTF8'), 'sha256'), 'hex'), '${workflow.token}',
+          'Invite subject', 'Create body'
         );
+        do $$ begin
+          begin
+            perform public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}');
+            raise exception 'completion accepted missing side-effect proof';
+          exception when sqlstate 'P0001' then
+            if sqlerrm <> 'company_access_side_effect_pending' then raise; end if;
+          end;
+        end $$;
         insert into public.notification_outbox (
           id, company_id, recipient_email, template, payload, status, created_by
         ) select
           '${createOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
-          jsonb_build_object('operationId', '${sharedCreateOperationId}', 'invitationId', id),
+          jsonb_build_object(
+            'operationId', '${sharedCreateOperationId}', 'invitationId', id,
+            'subject', 'Invite subject', 'body', 'Create body'
+          ),
           'queued', '${workflow.actorId}'
         from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
         insert into public.audit_events (id, company_id, actor_id, category, action, message)
         values (
           '${createAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
-          'reviewer_invitation_created', 'Created. Forespørsels-ID: ${sharedCreateOperationId}.'
+          'reviewer_invitation_created',
+          'Reviewer/read-only invitasjon køet for reviewer. Forespørsels-ID: ${sharedCreateOperationId}.'
         );
         select * from public.company_access_resend_invitation(
           '${sharedResendOperationId}', '${workflow.companyId}',
           (select id from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
           (select updated_at from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}'),
           encode(extensions.digest(convert_to('${workflow.token}-resent', 'UTF8'), 'sha256'), 'hex'),
-          '${workflow.token}-resent'
+          '${workflow.token}-resent', 'Invite again subject', 'Resend body'
         );
         insert into public.notification_outbox (
           id, company_id, recipient_email, template, payload, status, created_by
         ) select
           '${resendOutboxId}', '${workflow.companyId}', invited_email, 'workspace_invitation',
-          jsonb_build_object('operationId', '${sharedResendOperationId}', 'invitationId', id),
+          jsonb_build_object(
+            'operationId', '${sharedResendOperationId}', 'invitationId', id, 'role', role,
+            'acceptUrl', '/invite/accept?token=${workflow.token}-resent'
+          ),
           'queued', '${workflow.actorId}'
         from public.company_invitations where company_id = '${workflow.companyId}' and invited_email = '${workflow.recipientEmail}';
         insert into public.audit_events (id, company_id, actor_id, category, action, message)
         values (
           '${resendAuditId}', '${workflow.companyId}', '${workflow.actorId}', 'review',
-          'reviewer_invitation_resent', 'Resent. Forespørsels-ID: ${sharedResendOperationId}.'
+          'reviewer_invitation_resent',
+          'Reviewer/read-only invitasjon sendt på nytt. Forespørsels-ID: ${sharedResendOperationId}.'
         );
+        do $$ begin
+          if (select count(*) from public.company_access_pending_invitation_side_effects()
+              where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')) <> 2 then
+            raise exception 'actor could not list both pending continuations';
+          end if;
+          if not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}')
+             or not public.company_access_complete_invitation_side_effect('${sharedCreateOperationId}')
+             or not public.company_access_complete_invitation_side_effect('${sharedResendOperationId}') then
+            raise exception 'side-effect completion was not idempotent';
+          end if;
+          if exists (select 1 from public.company_access_pending_invitation_side_effects()
+              where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')) then
+            raise exception 'completed continuation remained pending';
+          end if;
+        end $$;
         do $$ begin
           if (select count(*) from public.notification_outbox where created_by = '${workflow.actorId}') <> 2 then
             raise exception 'actor could not see both own delivery continuations';
@@ -818,6 +867,13 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
           where message like '%${sharedCreateOperationId}%' or message like '%${sharedResendOperationId}%')::text
     `]).trim();
     assert.equal(persistedSideEffects, "4:4:2:2", "shared operation ids lost or merged side effects");
+    const completedContinuations = psql(containerName, ["-Atc", String.raw`
+      select count(*)::text || ':' || count(*) filter (where delivery_token is null)::text
+      from public.company_access_command_receipts
+      where operation_id in ('${sharedCreateOperationId}', '${sharedResendOperationId}')
+        and side_effects_completed_at is not null
+    `]).trim();
+    assert.equal(completedContinuations, "4:4", "completion did not clear all token-bearing continuations");
 
     const [raceInvitationId, raceExpectedRevision] = psql(containerName, ["-Atc", String.raw`
       select invitation_id::text || E'\t' || split_part(request_fingerprint, '|', 3)

@@ -9,7 +9,7 @@
   "publicEntryPoint": "@/features/company-access",
   "publicImportPaths": ["@/features/company-access", "apps/web/features/company-access", "apps/web/features/company-access/index.ts"],
   "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/invite/accept", "/companies/[companyId]/annual-reporting/[incomeYear]"],
-  "apiOperations": ["companyAccessGetSelectedContext", "companyAccessListInvitations", "companyAccessCreateInvitation", "companyAccessLookupInvitation", "companyAccessAcceptInvitation", "companyAccessRevokeInvitation", "companyAccessResendInvitation", "companyAccessListMemberships", "companyAccessAdministerMembership"],
+  "apiOperations": ["companyAccessGetSelectedContext", "companyAccessListInvitations", "companyAccessCreateInvitation", "companyAccessLookupInvitation", "companyAccessAcceptInvitation", "companyAccessRevokeInvitation", "companyAccessResendInvitation", "companyAccessListPendingInvitationSideEffects", "companyAccessCompleteInvitationSideEffect", "companyAccessListMemberships", "companyAccessAdministerMembership"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },

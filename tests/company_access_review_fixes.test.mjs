@@ -76,6 +76,22 @@ test("invitation side effects reconcile in the trusted actor and command namespa
   assert.match(sideEffects, /existing\.message/u);
 });
 
+test("shipped server actions expose receipt-owned recovery without browser command inputs", async () => {
+  const actions = await source("apps/web/app/actions.ts");
+  const workspace = await source("apps/web/app/(owner)/workspace/page.tsx");
+  const accept = await source("apps/web/app/invite/accept/page.tsx");
+
+  assert.match(actions, /recoverWorkspaceInvitationSideEffects\(\)/u);
+  assert.match(actions, /listPendingInvitationSideEffects/u);
+  assert.match(actions, /completeInvitationSideEffect/u);
+  assert.match(actions, /\.recover\(user\.id\)/u);
+  assert.doesNotMatch(actions, /recoverWorkspaceInvitationSideEffects\(formData/u);
+  assert.match(workspace, /action=\{recoverWorkspaceInvitationSideEffects\}/u);
+  assert.match(accept, /action=\{recoverWorkspaceInvitationSideEffects\}/u);
+  assert.match(accept, /params\?\.recovery \? "\/invite\/accept\?recovery=1" : `\/invite\/accept\?token=\$\{token\}`/u);
+  assert.doesNotMatch(accept, /recovery=1[^"`\n]*token=/u);
+});
+
 test("membership role selector has a target-specific accessible name", async () => {
   const workspace = await source("apps/web/app/(owner)/workspace/page.tsx");
   assert.match(workspace, /aria-label=\{`Medlemsrolle for \$\{membership\.userId\}`\}/u);

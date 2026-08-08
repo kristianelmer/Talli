@@ -79,6 +79,21 @@ export function resendCompanyInvitation(
   );
 }
 
+export function listPendingInvitationSideEffects(
+  accessToken: string,
+  requestId?: string,
+) {
+  return client(accessToken).companyAccessListPendingInvitationSideEffects(request(requestId));
+}
+
+export function completeInvitationSideEffect(
+  accessToken: string,
+  operationId: string,
+  requestId?: string,
+) {
+  return client(accessToken).companyAccessCompleteInvitationSideEffect(operationId, request(requestId));
+}
+
 export function listCompanyMemberships(
   accessToken: string,
   companyId: string,

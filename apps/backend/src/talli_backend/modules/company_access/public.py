@@ -109,6 +109,8 @@ class CreateInvitationGatewayCommand(CompanyAccessCommandModel):
     role: InvitationRole
     token_hash: str
     acceptance_token: str
+    delivery_subject: str
+    delivery_body: str
 
 
 class InvitationIdentityGatewayCommand(CompanyAccessCommandModel):
@@ -131,6 +133,8 @@ class InvitationMutationGatewayCommand(CompanyAccessCommandModel):
 class ResendInvitationGatewayCommand(InvitationMutationGatewayCommand):
     token_hash: str
     acceptance_token: str
+    delivery_subject: str
+    delivery_body: str
 
 
 class AdministerMembershipGatewayCommand(CompanyAccessCommandModel):
@@ -186,6 +190,31 @@ class CompanyMembershipListResponse(CompanyAccessModel):
     memberships: list[CompanyMembership]
 
 
+InvitationSideEffectCommand = Literal[
+    "create_invitation", "accept_invitation", "revoke_invitation", "resend_invitation"
+]
+
+
+class InvitationSideEffectContinuation(CompanyAccessModel):
+    operation_id: str
+    command_name: InvitationSideEffectCommand
+    company_id: str
+    invitation: CompanyInvitation | None
+    membership: CompanyMembership | None
+    delivery_token: str | None
+    delivery_subject: str | None
+    delivery_body: str | None
+
+
+class InvitationSideEffectContinuationList(CompanyAccessModel):
+    continuations: list[InvitationSideEffectContinuation]
+
+
+class InvitationSideEffectCompletion(CompanyAccessModel):
+    operation_id: str
+    completed: Literal[True]
+
+
 class CompanyAccessError(Exception):
     def __init__(self, *, status: int, code: str, title: str, detail: str) -> None:
         self.status = status
@@ -234,6 +263,14 @@ class CompanyAccessGateway(Protocol):
     async def administer_membership(
         self, access_token: str, command: AdministerMembershipGatewayCommand
     ) -> Mapping[str, object] | None: ...
+
+    async def pending_invitation_side_effects(
+        self, access_token: str
+    ) -> list[Mapping[str, object]]: ...
+
+    async def complete_invitation_side_effect(
+        self, access_token: str, operation_id: str
+    ) -> bool: ...
 
 
 Adapter = TypeVar("Adapter", bound=type)
@@ -366,6 +403,12 @@ class CompanyAccessService:
         company = await self._company(access_token, company_id)
         normalized_email = _normalize_email(command.invited_email)
         acceptance_token = secrets.token_urlsafe(32)
+        delivery_subject = f"Invitasjon til Talli: {company['name']}"
+        delivery_body = _invitation_body(
+            company_name=str(company["name"]),
+            role=command.role,
+            acceptance_token=acceptance_token,
+        )
         row = await self._gateway.create_invitation(
             access_token,
             CreateInvitationGatewayCommand(
@@ -375,6 +418,8 @@ class CompanyAccessService:
                 role=command.role,
                 token_hash=_token_hash(acceptance_token),
                 acceptance_token=acceptance_token,
+                delivery_subject=delivery_subject,
+                delivery_body=delivery_body,
             ),
         )
         delivery_token = str(row.get("delivery_token", ""))
@@ -383,12 +428,59 @@ class CompanyAccessService:
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
             delivery_token=delivery_token,
-            delivery_subject=f"Invitasjon til Talli: {company['name']}",
-            delivery_body=_invitation_body(
-                company_name=str(company["name"]),
-                role=command.role,
-                acceptance_token=delivery_token,
-            ),
+            delivery_subject=delivery_subject,
+            delivery_body=delivery_body,
+        )
+
+    async def pending_invitation_side_effects(
+        self, access_token: str
+    ) -> InvitationSideEffectContinuationList:
+        rows = await self._gateway.pending_invitation_side_effects(access_token)
+        continuations: list[InvitationSideEffectContinuation] = []
+        for row in rows:
+            result = row.get("result")
+            command_name = row.get("command_name")
+            if not isinstance(result, Mapping) or command_name not in {
+                "create_invitation", "accept_invitation", "revoke_invitation", "resend_invitation"
+            }:
+                raise _company_access_unavailable()
+            invitation = None
+            membership = None
+            if command_name == "accept_invitation":
+                membership = self._membership(result)
+            else:
+                invitation = self._invitation(result)
+            continuations.append(InvitationSideEffectContinuation(
+                operation_id=str(row.get("operation_id", "")),
+                command_name=command_name,
+                company_id=str(row.get("company_id", "")),
+                invitation=invitation,
+                membership=membership,
+                delivery_token=(
+                    str(row["delivery_token"])
+                    if row.get("delivery_token") is not None else None
+                ),
+                delivery_subject=(
+                    str(result["delivery_subject"])
+                    if result.get("delivery_subject") is not None else None
+                ),
+                delivery_body=(
+                    str(result["delivery_body"])
+                    if result.get("delivery_body") is not None else None
+                ),
+            ))
+        return InvitationSideEffectContinuationList(continuations=continuations)
+
+    async def complete_invitation_side_effect(
+        self, access_token: str, operation_id: UUID
+    ) -> InvitationSideEffectCompletion:
+        completed = await self._gateway.complete_invitation_side_effect(
+            access_token, str(operation_id)
+        )
+        if not completed:
+            raise _company_access_unavailable()
+        return InvitationSideEffectCompletion(
+            operation_id=str(operation_id), completed=True
         )
 
     async def lookup_invitation(
@@ -461,7 +553,20 @@ class CompanyAccessService:
         company_id = str(command.company_id)
         await self._authorize_owner(access_token, company_id)
         company = await self._company(access_token, company_id)
+        existing_invitations = await self._gateway.invitations(access_token, company_id)
+        existing = next(
+            (item for item in existing_invitations if str(item.get("id")) == str(invitation_id)),
+            None,
+        )
+        if existing is None:
+            raise _company_access_not_found()
         acceptance_token = secrets.token_urlsafe(32)
+        delivery_subject = f"Invitasjon til Talli: {company['name']}"
+        delivery_body = _invitation_body(
+            company_name=str(company["name"]),
+            role=str(existing.get("role", "read_only")),
+            acceptance_token=acceptance_token,
+        )
         row = await self._gateway.resend_invitation(
             access_token,
             ResendInvitationGatewayCommand(
@@ -471,6 +576,8 @@ class CompanyAccessService:
                 expected_updated_at=command.expected_updated_at.isoformat(),
                 token_hash=_token_hash(acceptance_token),
                 acceptance_token=acceptance_token,
+                delivery_subject=delivery_subject,
+                delivery_body=delivery_body,
             ),
         )
         if row is None:
@@ -481,12 +588,8 @@ class CompanyAccessService:
         return CompanyInvitationResponse(
             invitation=self._invitation(row),
             delivery_token=delivery_token,
-            delivery_subject=f"Invitasjon til Talli: {company['name']}",
-            delivery_body=_invitation_body(
-                company_name=str(company["name"]),
-                role=str(row["role"]),
-                acceptance_token=delivery_token,
-            ),
+            delivery_subject=delivery_subject,
+            delivery_body=delivery_body,
         )
 
     async def list_memberships(
@@ -664,6 +767,9 @@ __all__ = [
     "CompanyContextResponse",
     "CreateCompanyInvitationRequest",
     "InvitationLookup",
+    "InvitationSideEffectCompletion",
+    "InvitationSideEffectContinuation",
+    "InvitationSideEffectContinuationList",
     "InvitationTokenRequest",
     "InvitationRole",
     "MembershipState",

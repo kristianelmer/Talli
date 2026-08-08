@@ -34,6 +34,7 @@ import {
   recordShareholderLoan,
   recordTaxSettlement,
   refreshAnnualReadinessSnapshots,
+  recoverWorkspaceInvitationSideEffects,
   resendWorkspaceInvitation,
   administerWorkspaceMembership,
   requestCompanyCancellation,
@@ -99,7 +100,7 @@ import { ownerCopy } from "../../lib/copy";
 import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation";
 
 type WorkspaceProps = {
-  searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string }>;
+  searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string; recovery?: string }>;
 };
 
 function supportBoundary(entityType: string) {
@@ -526,6 +527,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <p className="eyebrow">RF-1086</p>
                   <h2>Forhåndsvisning av RF-1086.</h2>
                 </div>
+                <form className="dataPanel formPanel widePanel" action={recoverWorkspaceInvitationSideEffects}>
+                  <span className="panelLabel">Gjenopprett invitasjonshandling</span>
+                  <p>
+                    {params?.recovery === "invitation"
+                      ? "Handlingen ble lagret, men varsling eller revisjonsspor må fullføres."
+                      : "Fullfør eventuelle lagrede invitasjonsvarsler eller revisjonsspor uten å utføre handlingen på nytt."}
+                  </p>
+                  <button className="secondaryButton" type="submit">Fullfør lagret handling</button>
+                </form>
                 <form className="dataPanel formPanel widePanel" action={inviteWorkspaceReviewer}>
                   <input name="operationId" type="hidden" value={randomUUID()} />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />

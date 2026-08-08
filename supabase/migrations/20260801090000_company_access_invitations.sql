@@ -27,6 +27,7 @@ create table if not exists public.company_access_command_receipts (
   request_fingerprint text not null,
   result jsonb not null,
   delivery_token text,
+  side_effects_completed_at timestamptz,
   expires_at timestamptz not null,
   created_at timestamptz not null default now(),
   primary key (actor_id, operation_id)
@@ -299,7 +300,9 @@ create or replace function public.company_access_create_invitation(
   p_invited_email text,
   p_role text,
   p_token_hash text,
-  p_acceptance_token text
+  p_acceptance_token text,
+  p_delivery_subject text default null,
+  p_delivery_body text default null
 )
 returns table (
   id uuid, company_id uuid, invited_email text, role text, status text,
@@ -394,7 +397,17 @@ begin
       'id', v_invitation.id, 'company_id', v_invitation.company_id,
       'invited_email', v_invitation.invited_email, 'role', v_invitation.role,
       'status', v_invitation.status, 'expires_at', v_invitation.expires_at,
-      'created_at', v_invitation.created_at, 'updated_at', v_invitation.updated_at
+      'created_at', v_invitation.created_at, 'updated_at', v_invitation.updated_at,
+      'delivery_subject', coalesce(
+        p_delivery_subject,
+        'Invitasjon til Talli: ' || (select c.name from public.companies c where c.id = p_company_id)
+      ),
+      'delivery_body', coalesce(
+        p_delivery_body,
+        'Du er invitert som ' || case when p_role = 'reviewer' then 'reviewer' else 'read-only' end ||
+        ' i Talli for ' || (select c.name from public.companies c where c.id = p_company_id) ||
+        '. Godta invitasjonen: /invite/accept?token=' || p_acceptance_token
+      )
     ),
     p_acceptance_token, v_invitation.expires_at
   );
@@ -618,7 +631,9 @@ create or replace function public.company_access_resend_invitation(
   p_invitation_id uuid,
   p_expected_updated_at timestamptz,
   p_token_hash text,
-  p_acceptance_token text
+  p_acceptance_token text,
+  p_delivery_subject text default null,
+  p_delivery_body text default null
 )
 returns table (
   id uuid, company_id uuid, invited_email text, role text, status text,
@@ -696,7 +711,17 @@ begin
       'id', v_invitation.id, 'company_id', v_invitation.company_id,
       'invited_email', v_invitation.invited_email, 'role', v_invitation.role,
       'status', v_invitation.status, 'expires_at', v_invitation.expires_at,
-      'created_at', v_invitation.created_at, 'updated_at', v_invitation.updated_at
+      'created_at', v_invitation.created_at, 'updated_at', v_invitation.updated_at,
+      'delivery_subject', coalesce(
+        p_delivery_subject,
+        'Invitasjon til Talli: ' || (select c.name from public.companies c where c.id = p_company_id)
+      ),
+      'delivery_body', coalesce(
+        p_delivery_body,
+        'Du er invitert som ' || case when v_invitation.role = 'reviewer' then 'reviewer' else 'read-only' end ||
+        ' i Talli for ' || (select c.name from public.companies c where c.id = p_company_id) ||
+        '. Godta invitasjonen: /invite/accept?token=' || p_acceptance_token
+      )
     ),
     p_acceptance_token, v_invitation.expires_at
   );
@@ -775,14 +800,15 @@ begin
     where m.company_id = p_company_id and m.user_id = p_user_id;
   end if;
   insert into public.company_access_command_receipts (
-    operation_id, command_name, actor_id, company_id, request_fingerprint, result, expires_at
+    operation_id, command_name, actor_id, company_id, request_fingerprint, result,
+    side_effects_completed_at, expires_at
   ) values (
     p_operation_id, 'administer_membership', v_actor_id, p_company_id, v_fingerprint,
     pg_catalog.jsonb_build_object(
       'company_id', p_company_id, 'user_id', p_user_id, 'role', v_result_role,
       'state', case when p_state = 'removed' then 'removed' else 'active' end,
       'accepted_at', v_membership.accepted_at
-    ),
+    ), statement_timestamp(),
     statement_timestamp() + interval '14 days'
   );
   return query select p_company_id, p_user_id, v_result_role,
@@ -791,18 +817,200 @@ begin
 end;
 $function$;
 
+create or replace function public.company_access_side_effect_id_v1(
+  p_actor_id uuid,
+  p_operation_id uuid,
+  p_purpose text
+)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_extension_schema text;
+  v_digest bytea;
+  v_hex text;
+  v_framed text := '["talli:company-access-side-effect:v1","'
+    || p_actor_id::text || '","' || p_operation_id::text || '","' || p_purpose || '"]';
+begin
+  select n.nspname into v_extension_schema
+  from pg_catalog.pg_extension e
+  join pg_catalog.pg_namespace n on n.oid = e.extnamespace
+  where e.extname = 'pgcrypto';
+  if v_extension_schema is null then
+    raise exception 'company_access_unavailable' using errcode = 'P0001';
+  end if;
+  execute pg_catalog.format(
+    'select %I.digest(pg_catalog.convert_to($1, ''UTF8''), ''sha256'')',
+    v_extension_schema
+  ) into v_digest using v_framed;
+  v_digest := pg_catalog.set_byte(v_digest, 6, (pg_catalog.get_byte(v_digest, 6) & 15) | 128);
+  v_digest := pg_catalog.set_byte(v_digest, 8, (pg_catalog.get_byte(v_digest, 8) & 63) | 128);
+  v_hex := pg_catalog.encode(pg_catalog.substr(v_digest, 1, 16), 'hex');
+  return (pg_catalog.substr(v_hex, 1, 8) || '-' ||
+    pg_catalog.substr(v_hex, 9, 4) || '-' ||
+    pg_catalog.substr(v_hex, 13, 4) || '-' ||
+    pg_catalog.substr(v_hex, 17, 4) || '-' ||
+    pg_catalog.substr(v_hex, 21, 12))::uuid;
+end;
+$function$;
+
+create or replace function public.company_access_pending_invitation_side_effects()
+returns table (
+  operation_id uuid,
+  command_name text,
+  company_id uuid,
+  result jsonb,
+  delivery_token text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := auth.uid();
+begin
+  if v_actor_id is null then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  update public.company_access_command_receipts r
+  set delivery_token = null
+  where r.actor_id = v_actor_id and r.side_effects_completed_at is null
+    and r.expires_at <= statement_timestamp() and r.delivery_token is not null;
+  return query
+  select r.operation_id, r.command_name, r.company_id, r.result,
+    case when r.expires_at > statement_timestamp() then r.delivery_token else null end
+  from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id
+    and r.command_name in ('create_invitation', 'accept_invitation', 'revoke_invitation', 'resend_invitation')
+    and r.side_effects_completed_at is null
+    and (
+      (r.command_name = 'accept_invitation' and exists (
+        select 1 from public.company_memberships m
+        where m.company_id = r.company_id and m.user_id = v_actor_id and m.accepted_at is not null
+      ))
+      or (
+        r.command_name <> 'accept_invitation'
+        and coalesce(auth.jwt() ->> 'aal', '') = 'aal2'
+        and public.company_access_is_accepted_owner_v1(r.company_id)
+      )
+    )
+  order by r.created_at, r.operation_id
+  limit 20;
+end;
+$function$;
+
+create or replace function public.company_access_complete_invitation_side_effect(
+  p_operation_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := auth.uid();
+  v_receipt public.company_access_command_receipts%rowtype;
+  v_audit_id uuid;
+  v_outbox_id uuid;
+  v_audit_action text;
+  v_audit_message text;
+  v_role text;
+begin
+  if v_actor_id is null then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  select r.* into v_receipt
+  from public.company_access_command_receipts r
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id
+  for update;
+  if not found then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+  if v_receipt.side_effects_completed_at is not null then return true; end if;
+  if v_receipt.command_name = 'accept_invitation' then
+    if not exists (
+      select 1 from public.company_memberships m
+      where m.company_id = v_receipt.company_id and m.user_id = v_actor_id and m.accepted_at is not null
+    ) then raise exception 'company_access_not_found' using errcode = 'P0001'; end if;
+  elsif coalesce(auth.jwt() ->> 'aal', '') <> 'aal2'
+      or not public.company_access_is_accepted_owner_v1(v_receipt.company_id) then
+    raise exception 'company_access_not_found' using errcode = 'P0001';
+  end if;
+
+  v_role := coalesce(v_receipt.result ->> 'role', v_receipt.result ->> 'membership_role');
+  v_audit_action := case v_receipt.command_name
+    when 'create_invitation' then 'reviewer_invitation_created'
+    when 'accept_invitation' then 'reviewer_invitation_accepted'
+    when 'revoke_invitation' then 'reviewer_invitation_revoked'
+    when 'resend_invitation' then 'reviewer_invitation_resent'
+    else null end;
+  v_audit_message := case v_receipt.command_name
+    when 'create_invitation' then 'Reviewer/read-only invitasjon køet for ' || v_role || '.'
+    when 'accept_invitation' then 'Invitasjon akseptert som ' || v_role || '.'
+    when 'revoke_invitation' then 'Reviewer/read-only invitasjon tilbakekalt.'
+    when 'resend_invitation' then 'Reviewer/read-only invitasjon sendt på nytt.'
+    else null end || ' Forespørsels-ID: ' || p_operation_id::text || '.';
+  if v_audit_action is null then
+    raise exception 'company_access_invalid_request' using errcode = 'P0001';
+  end if;
+  v_audit_id := public.company_access_side_effect_id_v1(
+    v_actor_id, p_operation_id, v_receipt.command_name || ':audit'
+  );
+  if not exists (
+    select 1 from public.audit_events a
+    where a.id = v_audit_id and a.company_id = v_receipt.company_id
+      and a.actor_id = v_actor_id and a.category = 'review'
+      and a.action = v_audit_action and a.message = v_audit_message
+  ) then raise exception 'company_access_side_effect_pending' using errcode = 'P0001'; end if;
+
+  if v_receipt.command_name in ('create_invitation', 'resend_invitation')
+     and v_receipt.expires_at > statement_timestamp() then
+    v_outbox_id := public.company_access_side_effect_id_v1(
+      v_actor_id, p_operation_id, v_receipt.command_name || ':delivery'
+    );
+    if not exists (
+      select 1 from public.notification_outbox o
+      where o.id = v_outbox_id and o.company_id = v_receipt.company_id
+        and o.created_by = v_actor_id and o.template = 'workspace_invitation'
+        and o.recipient_email = v_receipt.result ->> 'invited_email'
+        and o.payload ->> 'operationId' = p_operation_id::text
+        and o.payload ->> 'invitationId' = v_receipt.result ->> 'id'
+        and (
+          (v_receipt.command_name = 'create_invitation'
+            and o.payload ->> 'subject' = v_receipt.result ->> 'delivery_subject'
+            and o.payload ->> 'body' = v_receipt.result ->> 'delivery_body')
+          or (v_receipt.command_name = 'resend_invitation'
+            and o.payload ->> 'role' = v_role
+            and o.payload ->> 'acceptUrl' = '/invite/accept?token=' || v_receipt.delivery_token)
+        )
+    ) then raise exception 'company_access_side_effect_pending' using errcode = 'P0001'; end if;
+  end if;
+
+  update public.company_access_command_receipts r
+  set side_effects_completed_at = statement_timestamp(), delivery_token = null
+  where r.actor_id = v_actor_id and r.operation_id = p_operation_id
+    and r.side_effects_completed_at is null;
+  return true;
+end;
+$function$;
+
 grant usage on schema public, auth to company_access_executor;
 grant select on public.companies to company_access_executor;
 grant select, insert, update on public.company_invitations to company_access_executor;
 grant select, insert, update, delete on public.company_memberships to company_access_executor;
 grant select, insert, update on public.company_access_command_receipts to company_access_executor;
+grant select on public.notification_outbox, public.audit_events to company_access_executor;
 grant execute on function auth.uid(), auth.jwt() to company_access_executor;
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to company_access_executor;
 grant execute on function public.company_access_current_identity_v1() to company_access_executor;
 grant execute on function public.company_access_token_hash_v1(text) to company_access_executor;
 grant execute on function public.company_access_receipt_exists_v1(uuid, uuid, text, text) to company_access_executor;
+grant execute on function public.company_access_side_effect_id_v1(uuid, uuid, text) to company_access_executor;
 
-alter function public.company_access_create_invitation(uuid, uuid, text, text, text, text)
+alter function public.company_access_create_invitation(uuid, uuid, text, text, text, text, text, text)
   owner to company_access_executor;
 alter function public.company_access_lookup_invitation(text, uuid, text)
   owner to company_access_executor;
@@ -810,7 +1018,7 @@ alter function public.company_access_accept_invitation(uuid, text, uuid, text)
   owner to company_access_executor;
 alter function public.company_access_revoke_invitation(uuid, uuid, uuid, timestamptz)
   owner to company_access_executor;
-alter function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text)
+alter function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text, text, text)
   owner to company_access_executor;
 alter function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text)
   owner to company_access_executor;
@@ -820,17 +1028,22 @@ revoke all on function public.company_access_is_accepted_owner_v1(uuid) from pub
 revoke all on function public.company_access_current_identity_v1() from public, anon, authenticated;
 revoke all on function public.company_access_token_hash_v1(text) from public, anon, authenticated;
 revoke all on function public.company_access_receipt_exists_v1(uuid, uuid, text, text) from public, anon, authenticated;
-revoke all on function public.company_access_create_invitation(uuid, uuid, text, text, text, text) from public, anon;
+revoke all on function public.company_access_side_effect_id_v1(uuid, uuid, text) from public, anon, authenticated;
+revoke all on function public.company_access_create_invitation(uuid, uuid, text, text, text, text, text, text) from public, anon;
 revoke all on function public.company_access_lookup_invitation(text, uuid, text) from public, anon;
 revoke all on function public.company_access_accept_invitation(uuid, text, uuid, text) from public, anon;
 revoke all on function public.company_access_revoke_invitation(uuid, uuid, uuid, timestamptz) from public, anon;
-revoke all on function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text) from public, anon;
+revoke all on function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text, text, text) from public, anon;
 revoke all on function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text) from public, anon;
 
 grant execute on function public.company_access_is_accepted_owner_v1(uuid) to authenticated;
-grant execute on function public.company_access_create_invitation(uuid, uuid, text, text, text, text) to authenticated;
+revoke all on function public.company_access_pending_invitation_side_effects() from public, anon;
+revoke all on function public.company_access_complete_invitation_side_effect(uuid) from public, anon;
+grant execute on function public.company_access_create_invitation(uuid, uuid, text, text, text, text, text, text) to authenticated;
 grant execute on function public.company_access_lookup_invitation(text, uuid, text) to authenticated;
 grant execute on function public.company_access_accept_invitation(uuid, text, uuid, text) to authenticated;
 grant execute on function public.company_access_revoke_invitation(uuid, uuid, uuid, timestamptz) to authenticated;
-grant execute on function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text) to authenticated;
+grant execute on function public.company_access_resend_invitation(uuid, uuid, uuid, timestamptz, text, text, text, text) to authenticated;
 grant execute on function public.company_access_administer_membership(uuid, uuid, uuid, text, text, text) to authenticated;
+grant execute on function public.company_access_pending_invitation_side_effects() to authenticated;
+grant execute on function public.company_access_complete_invitation_side_effect(uuid) to authenticated;
