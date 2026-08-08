@@ -47,9 +47,12 @@ never constructs Supabase or HTTP infrastructure. Owner context and administrati
 require accepted owner membership and AAL2. Invitation lookup and acceptance bind
 the validated subject and normalized Auth email to a pending, unexpired token hash.
 Acceptance and every role/removal transition execute in one database transaction
-as the restricted `company_access_executor` NOLOGIN/NOBYPASSRLS role. Explicit RLS
-policies remain the authorization boundary even though the RPCs are security
-definers; the executor neither owns the tables nor bypasses RLS.
+as the restricted `company_access_executor` NOLOGIN/NOINHERIT/NOBYPASSRLS role.
+Pending recovery and completion use the separate restricted
+`company_access_recovery_executor` role with only actor-owned receipt, exact audit
+evidence, and workspace-invitation outbox policies. Explicit RLS policies remain
+the authorization boundary even though the RPCs are security definers; neither
+executor owns a table, inherits another role, or bypasses RLS.
 Forced RLS applies only to the technical command-receipt table; invitation and
 membership RLS is genuine because the command executor is a non-owner with
 NOBYPASSRLS.
@@ -58,21 +61,24 @@ revisions reject competing resend, revoke, and membership changes. If a command'
 transport outcome is unknown, the adapter retries the identical operation once;
 the receipt returns the committed result instead of repeating the mutation.
 Invitation commands atomically leave their receipt continuation pending until the
-web's exact actor+operation+purpose UUIDv8 audit/outbox evidence exists. The
+web's exact actor+operation+purpose UUIDv8 audit evidence exists. The
 recovery endpoint derives the actor from Auth, returns at most twenty of that
-actor's continuations, never invokes a business command, and completion verifies
-the exact evidence before clearing the delivery token. Expired continuations
+actor's continuations, never invokes a business command, and completion locks the
+receipt, verifies audit evidence, then atomically inserts/reconciles outbox
+evidence only while the receipt remains unexpired. It clears the sole receipt
+token and scrubs legacy delivery fields. Expired continuations
 remain recoverable for audit evidence, but their token is cleared and obsolete
 delivery is not queued; a new invite/resend is required if delivery is still
 wanted.
 Owner creation, demotion, and removal are not exposed. Public responses never
 contain token hashes.
 
-Create/resend delivery tokens are deliberately persisted in two places: the
-private command receipt until it is cleared by side-effect completion, acceptance, revocation, or a newer
-resend, and the existing `notification_outbox` payload written by the exact #156
-compatibility action. Authenticated Data API roles have no receipt-table grant;
-outbox readability remains the existing accepted-owner policy. #160 adds no
+Before completion, a create/resend delivery token is stored in exactly one receipt
+column; receipt JSON contains only token-independent delivery metadata. Atomic
+completion builds delivery from that committed metadata and token, inserts the
+outbox row, and clears/scrubs the receipt in one transaction. Acceptance,
+revocation, newer resend, and expiry recovery apply the same receipt scrub.
+Authenticated Data API roles have no receipt-table grant. #160 adds no
 clock-driven purge. An expired token is never returned, and a pending-side-effect
 recovery read clears it. Until recovery or another clearing command touches the
 receipt, the expired token can remain stored at rest. Retention/delivery migration

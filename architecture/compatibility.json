@@ -1537,12 +1537,6 @@
       "removalCondition": "Remove notification outbox persistence in #156.",
       "scopes": [
         {
-          "path": "apps/web/app/lib/invitation-side-effects.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:notification_outbox",
-          "operation": "createInvitationSideEffectStore"
-        },
-        {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",

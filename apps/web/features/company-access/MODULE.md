@@ -28,15 +28,14 @@ with ten-second deadlines and the root `@talli/talli-api-client` package.
 
 Calls default to `no-store`; generated decoders reject every undeclared response
 field, including all token/hash spellings at invitation boundaries. Consequential
-forms carry durable operation IDs and expected revisions. The retained #156
-outbox write uses a deterministic UUIDv8 derived from the authenticated actor,
-original operation ID, and command/purpose; the original operation ID remains
-correlation data in the payload. Every insert error performs exact immutable-row
-reconciliation instead of duplicating delivery. The backend receipt atomically
-owns a pending side-effect continuation, so the no-input recovery form can finish
-the original outbox/audit identities without issuing another business command.
-Completion is accepted only when the database verifies the exact deterministic
-evidence rows. Recovery remains available after invitation expiry for audit
+forms carry durable operation IDs and expected revisions. The retained #155 audit
+write uses a deterministic UUIDv8 derived from the authenticated actor, original
+operation ID, and command/purpose. The backend receipt atomically owns a pending
+side-effect continuation, so the no-input recovery form can finish the original
+operation without issuing another business command. The restricted completion
+RPC verifies exact audit evidence and, while holding an unexpired receipt lock,
+atomically inserts or reconciles the deterministic invitation outbox row before
+completing and scrubbing the receipt. Recovery remains available after invitation expiry for audit
 evidence, but an expired delivery token is cleared and no obsolete email is
 queued; the owner must issue a new invite/resend if delivery is still wanted.
 Feature coverage is in the company-access web tests and architecture coverage is in
@@ -45,6 +44,7 @@ Feature coverage is in the company-access web tests and architecture coverage is
 ## Compatibility and change rule
 
 The backend owns `public.companies`, `public.company_invitations`, and
-`public.company_memberships`. No invitation or membership-administration direct-web
-persistence exception remains. Cancellation/deletion and onboarding compatibility
+`public.company_memberships`. Invitation delivery no longer uses the #156
+direct-web exception; the temporary #155 invitation-audit exception remains exact
+and bounded. Cancellation/deletion and onboarding compatibility
 adapters remain scoped to their later serialized tickets.

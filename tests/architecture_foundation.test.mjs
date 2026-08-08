@@ -552,7 +552,8 @@ test("compatibility operations map to their serialized future tickets", () => {
     "table:notification_outbox",
     "createInvitationSideEffectStore",
     "apps/web/app/lib/invitation-side-effects.ts",
-  ), "#156");
+  ), undefined);
+  assert.equal(ownerOf("table:notification_outbox", "queueDeadlineReminders"), "#156");
   assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
   assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
   assert.deepEqual(
@@ -1167,7 +1168,7 @@ from ..other import internal as other_internal
   writeFileSync(
     backendDocumentationPath,
     readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/company-access/context","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
+      '"routes":["/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
       '"routes":["/invented-system-route"]',
     ),
   );

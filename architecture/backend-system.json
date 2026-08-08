@@ -26,6 +26,8 @@
         "/api/v1/company-access/invitations/accept",
         "/api/v1/company-access/invitations/{invitation_id}/revoke",
         "/api/v1/company-access/invitations/{invitation_id}/resend",
+        "/api/v1/company-access/invitation-side-effects/pending",
+        "/api/v1/company-access/invitation-side-effects/{operation_id}/complete",
         "/api/v1/company-access/memberships",
         "/api/v1/company-access/memberships/{user_id}"
       ]
