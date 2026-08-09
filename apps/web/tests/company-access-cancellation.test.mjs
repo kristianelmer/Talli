@@ -4,6 +4,8 @@ import test from "node:test";
 
 import {
   finalizeCompanyDeletion,
+  COMPANY_ACCESS_CANCELLATION_TIMEOUT_MS,
+  COMPANY_ACCESS_BACKEND_WORST_CASE_MS,
   listCompanyCancellations,
   requestCompanyCancellation,
   resumeCompanyCancellation,
@@ -96,7 +98,10 @@ test("cancellation lifecycle transport uses generated operations with bearer and
     new URL("../features/company-access/transport/company-access-cancellation.ts", import.meta.url),
     "utf8",
   );
-  assert.match(transport, /AbortSignal\.timeout\(25_000\)/u);
+  assert.equal(COMPANY_ACCESS_BACKEND_WORST_CASE_MS, 35_000);
+  assert.equal(COMPANY_ACCESS_CANCELLATION_TIMEOUT_MS, 45_000);
+  assert.ok(COMPANY_ACCESS_CANCELLATION_TIMEOUT_MS > COMPANY_ACCESS_BACKEND_WORST_CASE_MS);
+  assert.match(transport, /AbortSignal\.timeout\(COMPANY_ACCESS_CANCELLATION_TIMEOUT_MS\)/u);
   assert.deepEqual(calls.map(({ url }) => new URL(url).pathname), [
     "/api/v1/company-access/cancellations",
     "/api/v1/company-access/cancellations",
@@ -119,6 +124,10 @@ test("generated cancellation decoders reject malformed optional fields, UUIDs, a
     { ...cancellation, evidence: { ...cancellation.evidence, legalReviewRequired: "yes" } },
     { ...cancellation, evidence: { ...cancellation.evidence, missingDocumentIds: ["not-a-uuid"] } },
     { ...cancellation, evidence: { ...cancellation.evidence, archiveExportedAt: "not-a-date" } },
+    { ...cancellation, reason: "" },
+    { ...cancellation, reason: "x".repeat(1001) },
+    { ...cancellation, evidence: { ...cancellation.evidence, archiveIncomeYear: 1999 } },
+    { ...cancellation, evidence: { ...cancellation.evidence, archiveIncomeYear: 2101 } },
   ];
 
   try {
@@ -129,6 +138,73 @@ test("generated cancellation decoders reject malformed optional fields, UUIDs, a
         (error) => error?.status === 502,
       );
     }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("generated review decoder enforces evidence-reference length bounds", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  const baseReview = {
+    id: "60000000-0000-0000-0000-000000000001",
+    cancellationId: cancellation.id,
+    companyId: cancellation.companyId,
+    decision: "approved",
+    evidenceReference: "legal/case-161",
+    reviewedBy: "00000000-0000-0000-0000-000000000044",
+    reviewedAt: "2026-08-08T11:00:00Z",
+    operationId: "40000000-0000-0000-0000-000000000002",
+    cancellationRevision: "2026-08-08T11:00:00Z",
+  };
+  try {
+    for (const evidenceReference of ["", "x".repeat(501)]) {
+      globalThis.fetch = async () => Response.json({
+        cancellation: { ...cancellation, status: "deletion_approved" },
+        review: { ...baseReview, evidenceReference },
+      });
+      await assert.rejects(
+        reviewCompanyDeletion("session-token", cancellation.id, {
+          operationId: baseReview.operationId,
+          companyId: cancellation.companyId,
+          expectedUpdatedAt: cancellation.updatedAt,
+          decision: "approved",
+          evidenceReference: "legal/case-161",
+        }),
+        (error) => error?.status === 502,
+      );
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("truncated successful command JSON becomes a typed 502 and preserves the operation", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  const operation = {
+    command: "request",
+    operationId: "40000000-0000-0000-0000-000000000099",
+    companyId: cancellation.companyId,
+    incomeYear: 2025,
+    reason: "Kanseller selskapet",
+  };
+  globalThis.fetch = async () => new Response('{"cancellation":', {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+  try {
+    await assert.rejects(
+      requestCompanyCancellation("session-token", operation),
+      (error) => error?.status === 502
+        && pendingCancellationOperationForError(error, operation) === operation,
+    );
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;

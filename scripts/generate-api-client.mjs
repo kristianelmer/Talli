@@ -111,12 +111,22 @@ function renderGuard(name, schema) {
     if (propertySchema?.enum?.length) {
       return `(${propertySchema.enum.map((candidate) => `${value} === ${JSON.stringify(candidate)}`).join(" || ")})`;
     }
-    if (propertySchema?.type === "object") return `isRecord(${value})`;
-    if (propertySchema?.type === "string" && propertySchema.format === "uuid") return `isUuid(${value})`;
-    if (propertySchema?.type === "string" && propertySchema.format === "date-time") return `isDateTime(${value})`;
-    if (propertySchema?.type === "integer") return `typeof ${value} === "number" && Number.isInteger(${value})`;
-    if (propertySchema?.type === "number") return `typeof ${value} === "number" && Number.isFinite(${value})`;
-    return `typeof ${value} === "${schemaType(propertySchema)}"`;
+    let base;
+    if (propertySchema?.type === "object") base = `isRecord(${value})`;
+    else if (propertySchema?.type === "string" && propertySchema.format === "uuid") base = `isUuid(${value})`;
+    else if (propertySchema?.type === "string" && propertySchema.format === "date-time") base = `isDateTime(${value})`;
+    else if (propertySchema?.type === "integer") base = `typeof ${value} === "number" && Number.isInteger(${value})`;
+    else if (propertySchema?.type === "number") base = `typeof ${value} === "number" && Number.isFinite(${value})`;
+    else base = `typeof ${value} === "${schemaType(propertySchema)}"`;
+    const constraints = [];
+    if (propertySchema?.minLength !== undefined) constraints.push(`${value}.length >= ${propertySchema.minLength}`);
+    if (propertySchema?.maxLength !== undefined) constraints.push(`${value}.length <= ${propertySchema.maxLength}`);
+    if (propertySchema?.pattern !== undefined) constraints.push(`new RegExp(${JSON.stringify(propertySchema.pattern)}, "u").test(${value})`);
+    if (propertySchema?.minimum !== undefined) constraints.push(`${value} >= ${propertySchema.minimum}`);
+    if (propertySchema?.maximum !== undefined) constraints.push(`${value} <= ${propertySchema.maximum}`);
+    if (propertySchema?.exclusiveMinimum !== undefined) constraints.push(`${value} > ${propertySchema.exclusiveMinimum}`);
+    if (propertySchema?.exclusiveMaximum !== undefined) constraints.push(`${value} < ${propertySchema.exclusiveMaximum}`);
+    return constraints.length ? `(${[base, ...constraints].join(" && ")})` : base;
   };
   const checks = [
     `    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`,
@@ -314,7 +324,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isProblemDetails(candidate) ? candidate : undefined,
       );
     }
-    const candidate: unknown = await response.json();
+    const candidate: unknown = await response.json().catch(() => {
+      throw new TalliApiError(502, undefined);
+    });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
   }

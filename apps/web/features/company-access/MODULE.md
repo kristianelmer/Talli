@@ -30,6 +30,9 @@ and server-issued revisions. The workspace exposes resume only for an active
 legacy `export_required` row and preserves the exact command after an indeterminate
 transport outcome. The operator review form records an approval or rejection with
 an evidence reference; the workspace exposes finalization only after approval.
+The cancellation transport documents a 35-second backend worst-case path and uses
+a 45-second outer deadline, leaving ten seconds for framework and network margin;
+unknown outcomes still preserve the exact operation for reconciliation.
 
 ## Cache, browser, and tests
 

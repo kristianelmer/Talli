@@ -401,7 +401,7 @@ function isCompanyCancellationEvidence(value: unknown): value is CompanyCancella
     hasOnlyProperties(value, ["archiveDownloadPath","archiveExportedAt","archiveIncomeYear","corporateEvidenceComplete","corporateObjectKeys","legalReviewRequired","missingCorporateObjectKeys","missingDocumentIds","retentionClasses"]) &&
     (value.archiveDownloadPath === undefined || (typeof value.archiveDownloadPath === "string" || value.archiveDownloadPath === null)) &&
     (value.archiveExportedAt === undefined || (isDateTime(value.archiveExportedAt) || value.archiveExportedAt === null)) &&
-    (value.archiveIncomeYear === undefined || (typeof value.archiveIncomeYear === "number" && Number.isInteger(value.archiveIncomeYear) || value.archiveIncomeYear === null)) &&
+    (value.archiveIncomeYear === undefined || ((typeof value.archiveIncomeYear === "number" && Number.isInteger(value.archiveIncomeYear) && value.archiveIncomeYear >= 2000 && value.archiveIncomeYear <= 2100) || value.archiveIncomeYear === null)) &&
     (value.corporateEvidenceComplete === undefined || (typeof value.corporateEvidenceComplete === "boolean" || value.corporateEvidenceComplete === null)) &&
     (value.corporateObjectKeys === undefined || Array.isArray(value.corporateObjectKeys) && value.corporateObjectKeys.every((item) => typeof item === "string")) &&
     (value.legalReviewRequired === undefined || typeof value.legalReviewRequired === "boolean") &&
@@ -420,7 +420,7 @@ function isCompanyCancellation(value: unknown): value is CompanyCancellation {
     (isUuid(value.deletedBy) || value.deletedBy === null) &&
     isCompanyCancellationEvidence(value.evidence) &&
     isUuid(value.id) &&
-    typeof value.reason === "string" &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 1000) &&
     isDateTime(value.requestedAt) &&
     isUuid(value.requestedBy) &&
     (isDateTime(value.reviewedAt) || value.reviewedAt === null) &&
@@ -454,7 +454,7 @@ function isCompanyDeletionReview(value: unknown): value is CompanyDeletionReview
     isDateTime(value.cancellationRevision) &&
     isUuid(value.companyId) &&
     (value.decision === "approved" || value.decision === "rejected") &&
-    typeof value.evidenceReference === "string" &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
     isUuid(value.id) &&
     isUuid(value.operationId) &&
     isDateTime(value.reviewedAt) &&
@@ -552,7 +552,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isProblemDetails(candidate) ? candidate : undefined,
       );
     }
-    const candidate: unknown = await response.json();
+    const candidate: unknown = await response.json().catch(() => {
+      throw new TalliApiError(502, undefined);
+    });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
   }
