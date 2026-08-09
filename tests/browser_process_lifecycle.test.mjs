@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { EventEmitter, once } from "node:events";
 import test from "node:test";
+
+import { createClient } from "@supabase/supabase-js";
+import pg from "pg";
 
 import {
   cleanupBrowserOwnerResources,
@@ -12,6 +16,10 @@ import {
   stopOwnedProcess,
   waitForOwnedReadiness,
 } from "./support/owned-process-lifecycle.mjs";
+import {
+  isLoopbackPostgresUrl,
+  isLoopbackSupabaseUrl,
+} from "./support/supabase_fixture_safety.mjs";
 
 const root = new URL("..", import.meta.url);
 
@@ -209,14 +217,16 @@ test("browser owner cleanup removes tracked sources before company and user", as
     .map((call) => call.match(/^delete from public\.([a-z_]+)/u)?.[1]);
   assert.deepEqual(deletedTables, [
     "customer_agreement_acceptances",
-    "production_feedback_artifacts",
-    "filing_approval_snapshots",
-    "company_deletion_reviews",
     "corporate_document_events",
     "corporate_decision_finalizations",
     "corporate_document_artifacts",
     "corporate_document_sets",
     "corporate_decisions",
+    "production_feedback_artifacts",
+    "production_filing_submissions",
+    "filing_approval_snapshots",
+    "production_pilot_entitlements",
+    "company_deletion_reviews",
     "bank_suggestion_acceptances",
     "investment_lot_allocations",
     "investment_lots",
@@ -237,6 +247,15 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "company_archive_export_attempts",
     "company_archive_source_generations",
   ]);
+  const restoreTriggerMode = calls.indexOf("set local session_replication_role = origin");
+  assert.ok(
+    calls.indexOf("delete from public.corporate_decisions where company_id = $1")
+      < restoreTriggerMode,
+  );
+  assert.ok(
+    restoreTriggerMode
+      < calls.indexOf("delete from public.production_feedback_artifacts where company_id = $1"),
+  );
   assert.ok(calls.indexOf("commit") < calls.indexOf("delete_company:company-created"));
   assert.deepEqual(calls.slice(-3), [
     "delete_company:company-created",
@@ -276,6 +295,188 @@ test("browser owner cleanup preserves source failure and continues independent c
     "delete_user:owner-created",
     "database_end",
   ]);
+});
+
+test("browser owner cleanup removes immutable corporate and production filing graphs", async (t) => {
+  const databaseUrl = process.env.DATABASE_URL;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (
+    !databaseUrl ||
+    !supabaseUrl ||
+    !serviceRoleKey ||
+    !isLoopbackPostgresUrl(databaseUrl) ||
+    !isLoopbackSupabaseUrl(supabaseUrl)
+  ) {
+    t.skip("local Supabase runtime is required");
+    return;
+  }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const database = new pg.Client({ connectionString: databaseUrl });
+  await database.connect();
+  const companyId = randomUUID();
+  const previewId = randomUUID();
+  const entitlementId = randomUUID();
+  const approvalId = randomUUID();
+  const submissionId = randomUUID();
+  const decisionId = randomUUID();
+  const setId = randomUUID();
+  const resources = {
+    admin,
+    companyId: undefined,
+    database,
+    databaseStarted: true,
+    ownerId: undefined,
+  };
+  let cleanupAttempted = false;
+
+  try {
+    const { data: createdUser, error: createUserError } = await admin.auth.admin.createUser({
+      email: `browser-cleanup-${randomUUID()}@example.test`,
+      password: `Talli-${randomUUID()}!`,
+      email_confirm: true,
+    });
+    assert.ifError(createUserError);
+    const ownerId = createdUser.user.id;
+    resources.ownerId = ownerId;
+    await database.query(
+      `insert into public.companies (id, org_number, name, entity_type, created_by)
+       values ($1, $2, 'Browser cleanup graph', 'AS', $3)`,
+      [companyId, String(100_000_000 + Math.floor(Math.random() * 899_999_999)), ownerId],
+    );
+    resources.companyId = companyId;
+    await database.query(
+      `insert into public.filing_previews (
+         id, company_id, income_year, filing, status, issues, preview,
+         hovedskjema_xml, underskjema_xml, created_by
+       ) values ($1, $2, 2025, 'RF-1086', 'ready', '[]', 'preview', '<xml/>', '{}', $3)`,
+      [previewId, companyId, ownerId],
+    );
+    await database.query(
+      `insert into public.production_pilot_entitlements (
+         id, company_id, user_id, income_year, obligation, case_profile, status,
+         billing_exempt, system_user_external_reference, starts_at, expires_at,
+         evidence_reference, approved_by
+       ) values (
+         $1, $2, $3, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1', 'revoked',
+         true, 'browser-cleanup', now() - interval '2 hours', now() - interval '1 hour',
+         'browser cleanup graph', $3
+       )`,
+      [entitlementId, companyId, ownerId],
+    );
+    await database.query(
+      `insert into public.filing_approval_snapshots (
+         id, entitlement_id, preview_id, company_id, user_id, income_year,
+         obligation, case_profile, adapter_version, payload_hash, manifest_hash,
+         manifest, approved_by, invalidated_at, invalidation_reason
+      ) values (
+         $1, $2, $3, $4, $5, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1',
+         'test-v1', $6, $7, '{}', $5, now(), 'cleanup test'
+       )`,
+      [
+        approvalId,
+        entitlementId,
+        previewId,
+        companyId,
+        ownerId,
+        "a".repeat(64),
+        "b".repeat(64),
+      ],
+    );
+    await database.query(
+      `insert into public.production_filing_submissions (
+         id, approval_id, entitlement_id, company_id, user_id, income_year,
+         obligation, case_profile, payload_hash, adapter_version, environment,
+         status, submitted_by
+       ) values (
+         $1, $2, $3, $4, $5, 2025, 'aksjonaerregisteroppgaven', 'rf1086_no_activity_v1',
+         $6, 'test-v1', 'production', 'received', $5
+      )`,
+      [submissionId, approvalId, entitlementId, companyId, ownerId, "a".repeat(64)],
+    );
+    await database.query(
+      `insert into public.production_filing_events (
+         submission_id, operation_name, operation_state, attempt, body_hash,
+         idempotency_key, resulting_status
+       ) values ($1, 'confirm', 'succeeded', 1, $2, $3, 'received')`,
+      [submissionId, "e".repeat(64), randomUUID()],
+    );
+    const sourceHash = "c".repeat(64);
+    const decisionHash = "d".repeat(64);
+    await database.query(
+      `insert into public.corporate_decisions (
+         id, company_id, income_year, decision_kind, source_hash,
+         canonical_input, decision_hash, created_by
+       ) values ($1, $2, 2025, 'owner_dividend', $3, $4, $5, $6)`,
+      [
+        decisionId,
+        companyId,
+        sourceHash,
+        {
+          company_id: companyId,
+          income_year: 2025,
+          decision_kind: "owner_dividend",
+          source_hash: sourceHash,
+        },
+        decisionHash,
+        ownerId,
+      ],
+    );
+    await database.query(
+      `insert into public.corporate_document_sets (
+         id, company_id, income_year, decision_id, template_family,
+         template_version, decision_hash, created_by
+       ) values ($1, $2, 2025, $3, 'norwegian_simple_as', 'cleanup-v1', $4, $5)`,
+      [setId, companyId, decisionId, decisionHash, ownerId],
+    );
+    await database.query(
+      `insert into public.corporate_document_events (
+         company_id, income_year, decision_id, set_id, event_kind, actor_id,
+         decision_hash, metadata, idempotency_key
+       ) values ($1, 2025, $2, $3, 'generated', $4, $5, '{}', $6)`,
+      [companyId, decisionId, setId, ownerId, decisionHash, randomUUID()],
+    );
+
+    const cleanupErrors = await cleanupBrowserOwnerResources(resources);
+    cleanupAttempted = true;
+    assert.deepEqual(cleanupErrors, []);
+
+    const verifier = new pg.Client({ connectionString: databaseUrl });
+    await verifier.connect();
+    try {
+      const { rows: [remaining] } = await verifier.query(
+        `select
+           (select count(*) from public.companies where id = $1)::integer as companies,
+           (select count(*) from public.corporate_decisions where company_id = $1)::integer as decisions,
+           (select count(*) from public.corporate_document_sets where company_id = $1)::integer as document_sets,
+           (select count(*) from public.corporate_document_events where company_id = $1)::integer as document_events,
+           (select count(*) from public.filing_approval_snapshots where company_id = $1)::integer as approvals,
+           (select count(*) from public.production_filing_submissions where company_id = $1)::integer as submissions,
+           (select count(*) from public.production_filing_events where submission_id = $3)::integer as submission_events,
+           (select count(*) from auth.users where id = $2)::integer as users`,
+        [companyId, ownerId, submissionId],
+      );
+      assert.deepEqual(remaining, {
+        companies: 0,
+        decisions: 0,
+        document_sets: 0,
+        document_events: 0,
+        approvals: 0,
+        submissions: 0,
+        submission_events: 0,
+        users: 0,
+      });
+    } finally {
+      await verifier.end();
+    }
+  } finally {
+    if (!cleanupAttempted) {
+      await cleanupBrowserOwnerResources(resources);
+    }
+  }
 });
 
 function cleanupAdmin(calls) {

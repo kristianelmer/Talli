@@ -55,21 +55,31 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
   try {
     await database.query("begin");
     transactionStarted = true;
+    // Bypass only immutable fixture guards; transaction scope restores this on
+    // every commit or rollback, and regular source cleanup runs with triggers.
     await database.query("set local session_replication_role = replica");
     await database.query(
       "delete from public.customer_agreement_acceptances where company_id = $1",
       [companyId],
     );
-    await database.query("set local session_replication_role = origin");
     for (const table of [
-      "production_feedback_artifacts",
-      "filing_approval_snapshots",
-      "company_deletion_reviews",
       "corporate_document_events",
       "corporate_decision_finalizations",
       "corporate_document_artifacts",
       "corporate_document_sets",
       "corporate_decisions",
+    ]) {
+      await database.query(`delete from public.${table} where company_id = $1`, [
+        companyId,
+      ]);
+    }
+    await database.query("set local session_replication_role = origin");
+    for (const table of [
+      "production_feedback_artifacts",
+      "production_filing_submissions",
+      "filing_approval_snapshots",
+      "production_pilot_entitlements",
+      "company_deletion_reviews",
       "bank_suggestion_acceptances",
       "investment_lot_allocations",
       "investment_lots",
