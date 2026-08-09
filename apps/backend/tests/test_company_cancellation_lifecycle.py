@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 from collections.abc import Mapping
 
@@ -10,12 +11,16 @@ from fastapi.testclient import TestClient
 from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
     CompanyCancellation,
+    CompanyInvitationCommandRequest,
     CompanyDeletionReview,
     CompanyAccessError,
     FinalizeCompanyDeletionGatewayCommand,
+    FinalizeCompanyDeletionRequest,
     RequestCompanyCancellationGatewayCommand,
     ResumeCompanyCancellationGatewayCommand,
+    ResumeCompanyCancellationRequest,
     ReviewCompanyDeletionGatewayCommand,
+    ReviewCompanyDeletionRequest,
 )
 from talli_backend.adapters.supabase_company_access import (
     SupabaseCompanyAccessAdapter,
@@ -210,6 +215,24 @@ def test_lifecycle_response_models_use_typed_ids_dates_and_forbid_extra_fields()
     assert cancellation_schema["properties"]["requestedAt"]["format"] == "date-time"
     assert review_schema["properties"]["operationId"]["format"] == "uuid"
     assert review_schema["properties"]["cancellationRevision"]["format"] == "date-time"
+
+
+def test_revision_commands_share_one_strict_rfc3339_aware_datetime_contract() -> None:
+    source = Path(__file__).parents[1] / "src/talli_backend/modules/company_access/public.py"
+    text = source.read_text()
+    assert text.count("def _require_rfc3339_timestamp") == 1
+    assert "require_rfc3339_string" not in text
+
+    commands = [
+        (CompanyInvitationCommandRequest, {"operationId": OPERATION_ID, "companyId": COMPANY_ID}),
+        (FinalizeCompanyDeletionRequest, {"operationId": OPERATION_ID, "companyId": COMPANY_ID}),
+        (ResumeCompanyCancellationRequest, {"operationId": OPERATION_ID, "companyId": COMPANY_ID, "incomeYear": 2025}),
+        (ReviewCompanyDeletionRequest, {"operationId": OPERATION_ID, "companyId": COMPANY_ID, "decision": "approved", "evidenceReference": "legal/case-161"}),
+    ]
+    for model, body in commands:
+        assert model.model_validate({**body, "expectedUpdatedAt": "2026-08-08t10:30:00z"}).expected_updated_at.tzinfo is not None
+        with pytest.raises(ValueError):
+            model.model_validate({**body, "expectedUpdatedAt": "2026-08-08"})
 
 
 def test_owner_requests_cancellation_with_a_strict_idempotent_command() -> None:

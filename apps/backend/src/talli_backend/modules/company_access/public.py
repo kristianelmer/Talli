@@ -9,10 +9,10 @@ import re
 import secrets
 from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Callable, Literal, Protocol, TypeVar
+from typing import Annotated, Callable, Literal, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 
 
 def _to_camel(value: str) -> str:
@@ -69,6 +69,15 @@ _RFC3339_TIMESTAMP = re.compile(
 )
 
 
+def _require_rfc3339_timestamp(value: object) -> object:
+    if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
+        raise ValueError("timestamp must be an RFC3339 string")
+    return value
+
+
+StrictAwareDatetime = Annotated[AwareDatetime, BeforeValidator(_require_rfc3339_timestamp)]
+
+
 class CreateCompanyInvitationRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
@@ -88,14 +97,7 @@ class AcceptCompanyInvitationRequest(CompanyAccessCommandModel):
 class CompanyInvitationCommandRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
-    expected_updated_at: AwareDatetime
-
-    @field_validator("expected_updated_at", mode="before")
-    @classmethod
-    def require_rfc3339_string(cls, value: object) -> object:
-        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
-            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
-        return value
+    expected_updated_at: StrictAwareDatetime
 
 
 class AdministerCompanyMembershipRequest(CompanyAccessCommandModel):
@@ -128,16 +130,9 @@ class RequestCompanyCancellationRequest(CompanyAccessCommandModel):
 class ReviewCompanyDeletionRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
-    expected_updated_at: AwareDatetime
+    expected_updated_at: StrictAwareDatetime
     decision: DeletionReviewDecision
     evidence_reference: str = Field(min_length=1, max_length=500)
-
-    @field_validator("expected_updated_at", mode="before")
-    @classmethod
-    def require_rfc3339_string(cls, value: object) -> object:
-        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
-            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
-        return value
 
     @field_validator("evidence_reference")
     @classmethod
@@ -151,28 +146,14 @@ class ReviewCompanyDeletionRequest(CompanyAccessCommandModel):
 class FinalizeCompanyDeletionRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
-    expected_updated_at: AwareDatetime
-
-    @field_validator("expected_updated_at", mode="before")
-    @classmethod
-    def require_rfc3339_string(cls, value: object) -> object:
-        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
-            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
-        return value
+    expected_updated_at: StrictAwareDatetime
 
 
 class ResumeCompanyCancellationRequest(CompanyAccessCommandModel):
     operation_id: UUID
     company_id: UUID
     income_year: int = Field(ge=2000, le=2100)
-    expected_updated_at: AwareDatetime
-
-    @field_validator("expected_updated_at", mode="before")
-    @classmethod
-    def require_rfc3339_string(cls, value: object) -> object:
-        if not isinstance(value, str) or _RFC3339_TIMESTAMP.fullmatch(value) is None:
-            raise ValueError("expectedUpdatedAt must be an RFC3339 string")
-        return value
+    expected_updated_at: StrictAwareDatetime
 
 
 class CreateInvitationGatewayCommand(CompanyAccessCommandModel):
