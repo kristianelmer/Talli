@@ -183,6 +183,128 @@ test("partial setup cleanup closes the database and removes only known resources
   );
 });
 
+test("browser owner cleanup removes tracked sources before company and user", async () => {
+  const calls = [];
+  const database = {
+    async query(statement) {
+      calls.push(statement.replace(/\s+/gu, " ").trim());
+    },
+    async end() {
+      calls.push("database_end");
+    },
+  };
+  const admin = cleanupAdmin(calls);
+
+  const errors = await cleanupBrowserOwnerResources({
+    admin,
+    companyId: "company-created",
+    database,
+    databaseStarted: true,
+    ownerId: "owner-created",
+  });
+
+  assert.deepEqual(errors, []);
+  const deletedTables = calls
+    .filter((call) => call.startsWith("delete from public."))
+    .map((call) => call.match(/^delete from public\.([a-z_]+)/u)?.[1]);
+  assert.deepEqual(deletedTables, [
+    "customer_agreement_acceptances",
+    "production_feedback_artifacts",
+    "filing_approval_snapshots",
+    "company_deletion_reviews",
+    "corporate_document_events",
+    "corporate_decision_finalizations",
+    "corporate_document_artifacts",
+    "corporate_document_sets",
+    "corporate_decisions",
+    "bank_suggestion_acceptances",
+    "investment_lot_allocations",
+    "investment_lots",
+    "investment_positions",
+    "filing_review_comments",
+    "filing_submissions",
+    "holding_actions",
+    "documents",
+    "authority_test_runs",
+    "authority_permissions",
+    "filing_previews",
+    "ledger_entries",
+    "opening_shareholders",
+    "opening_balance_setups",
+    "billing_accounts",
+    "audit_events",
+    "company_archive_export_receipts",
+    "company_archive_export_attempts",
+    "company_archive_source_generations",
+  ]);
+  assert.ok(calls.indexOf("commit") < calls.indexOf("delete_company:company-created"));
+  assert.deepEqual(calls.slice(-3), [
+    "delete_company:company-created",
+    "delete_user:owner-created",
+    "database_end",
+  ]);
+});
+
+test("browser owner cleanup preserves source failure and continues independent cleanup", async () => {
+  const calls = [];
+  const sourceFailure = new Error("source cleanup failed");
+  const database = {
+    async query(statement) {
+      const normalized = statement.replace(/\s+/gu, " ").trim();
+      calls.push(normalized);
+      if (normalized.startsWith("delete from public.documents")) {
+        throw sourceFailure;
+      }
+    },
+    async end() {
+      calls.push("database_end");
+    },
+  };
+
+  const errors = await cleanupBrowserOwnerResources({
+    admin: cleanupAdmin(calls),
+    companyId: "company-created",
+    database,
+    databaseStarted: true,
+    ownerId: "owner-created",
+  });
+
+  assert.deepEqual(errors, [sourceFailure]);
+  assert.ok(calls.includes("rollback"));
+  assert.deepEqual(calls.slice(-3), [
+    "delete_company:company-created",
+    "delete_user:owner-created",
+    "database_end",
+  ]);
+});
+
+function cleanupAdmin(calls) {
+  return {
+    auth: {
+      admin: {
+        async deleteUser(id) {
+          calls.push(`delete_user:${id}`);
+          return { error: null };
+        },
+      },
+    },
+    from(table) {
+      assert.equal(table, "companies");
+      return {
+        delete() {
+          return {
+            async eq(column, id) {
+              assert.equal(column, "id");
+              calls.push(`delete_company:${id}`);
+              return { error: null };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
 function startSleepingProcess() {
   return startOwnedProcess({
     command: process.execPath,
