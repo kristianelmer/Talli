@@ -71,6 +71,59 @@ async function signIn(user) {
   return client;
 }
 
+async function assertNoCleanupError(resultPromise) {
+  const { error } = await resultPromise;
+  assert.ifError(error);
+}
+
+async function collectCleanupError(step, errors) {
+  try {
+    await step();
+  } catch (error) {
+    errors.push(error);
+  }
+}
+
+function throwWithCleanupErrors(primaryError, cleanupErrors) {
+  if (primaryError && cleanupErrors.length) {
+    throw new AggregateError(
+      [primaryError, ...cleanupErrors],
+      "RF-1086 feedback test and fixture cleanup both failed",
+    );
+  }
+  if (primaryError) throw primaryError;
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, "RF-1086 feedback fixture cleanup failed");
+  }
+}
+
+test("feedback fixture cleanup preserves primary and returned Supabase errors", async () => {
+  const primaryError = new Error("primary failure");
+  const returnedError = new Error("returned cleanup failure");
+  const rejectedError = new Error("rejected cleanup failure");
+  const cleanupErrors = [];
+  let finalStepRan = false;
+
+  await collectCleanupError(
+    () => assertNoCleanupError(Promise.resolve({ error: returnedError })),
+    cleanupErrors,
+  );
+  await collectCleanupError(() => Promise.reject(rejectedError), cleanupErrors);
+  await collectCleanupError(async () => {
+    finalStepRan = true;
+  }, cleanupErrors);
+
+  assert.equal(finalStepRan, true);
+  assert.throws(
+    () => throwWithCleanupErrors(primaryError, cleanupErrors),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [primaryError, cleanupErrors[0], rejectedError]);
+      return true;
+    },
+  );
+});
+
 test("creates private, constrained feedback metadata and durable reconciliation state", () => {
   assert.match(sql, /create table(?: if not exists)? public\.production_feedback_artifacts/iu);
   assert.match(sql, /byte_length bigint not null check \(byte_length between 1 and 10485760\)/iu);
@@ -298,19 +351,27 @@ test(
     const feedbackHash = "a".repeat(64);
     const feedbackKey = `authority-feedback/${companyId}/${submissionId}/${feedbackHash}`;
     const normalKey = `${companyId}/2025/${normalDocumentId}/ordinary.pdf`;
+    let primaryError;
+    const cleanupErrors = [];
 
     try {
       const ownerUser = await createConfirmedUser(admin, "owner");
+      users.push(ownerUser);
       const reviewerUser = await createConfirmedUser(admin, "reviewer");
+      users.push(reviewerUser);
       const readOnlyUser = await createConfirmedUser(admin, "read-only");
+      users.push(readOnlyUser);
       const operatorUser = await createConfirmedUser(admin, "operator");
-      users.push(ownerUser, reviewerUser, readOnlyUser, operatorUser);
+      users.push(operatorUser);
 
       const owner = await signIn(ownerUser);
+      clients.push(owner);
       const reviewer = await signIn(reviewerUser);
+      clients.push(reviewer);
       const readOnly = await signIn(readOnlyUser);
+      clients.push(readOnly);
       const operator = await signIn(operatorUser);
-      clients.push(owner, reviewer, readOnly, operator);
+      clients.push(operator);
 
       await database.query(
         `insert into public.companies (id, org_number, name, entity_type, created_by)
@@ -599,26 +660,37 @@ test(
         assert.ifError(normalDownload.error);
         assert.equal(await normalDownload.data.text(), "ordinary");
       }
+    } catch (error) {
+      primaryError = error;
     } finally {
-      try {
-        await admin.storage.from("company-documents").remove([feedbackKey, normalKey]);
-        await database.query("delete from public.production_feedback_artifacts where company_id = $1", [companyId]);
-        await database.query("delete from public.production_filing_submissions where company_id = $1", [companyId]);
-        await database.query("delete from public.filing_approval_snapshots where company_id = $1", [companyId]);
-        await database.query("delete from public.production_pilot_entitlements where company_id = $1", [companyId]);
-        await database.query("delete from public.documents where company_id = $1", [companyId]);
-        await database.query("delete from public.filing_previews where company_id = $1", [companyId]);
-        await database.query("delete from public.company_archive_export_receipts where company_id = $1", [companyId]);
-        await database.query("delete from public.company_archive_export_attempts where company_id = $1", [companyId]);
-        await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
-        await database.query("delete from public.support_operators where user_id = any($1::uuid[])", [users.map((user) => user.id)]);
-        await database.query("delete from public.company_memberships where company_id = $1", [companyId]);
-        await database.query("delete from public.companies where id = $1", [companyId]);
-        for (const client of clients) await client.auth.signOut();
-        for (const user of users) await admin.auth.admin.deleteUser(user.id);
-      } finally {
-        await database.end();
+      await collectCleanupError(
+        () => assertNoCleanupError(admin.storage.from("company-documents").remove([feedbackKey, normalKey])),
+        cleanupErrors,
+      );
+      for (const [statement, parameters] of [
+        ["delete from public.production_feedback_artifacts where company_id = $1", [companyId]],
+        ["delete from public.production_filing_submissions where company_id = $1", [companyId]],
+        ["delete from public.filing_approval_snapshots where company_id = $1", [companyId]],
+        ["delete from public.production_pilot_entitlements where company_id = $1", [companyId]],
+        ["delete from public.documents where company_id = $1", [companyId]],
+        ["delete from public.filing_previews where company_id = $1", [companyId]],
+        ["delete from public.company_archive_export_receipts where company_id = $1", [companyId]],
+        ["delete from public.company_archive_export_attempts where company_id = $1", [companyId]],
+        ["delete from public.company_archive_source_generations where company_id = $1", [companyId]],
+        ["delete from public.support_operators where user_id = any($1::uuid[])", [users.map((user) => user.id)]],
+        ["delete from public.company_memberships where company_id = $1", [companyId]],
+        ["delete from public.companies where id = $1", [companyId]],
+      ]) {
+        await collectCleanupError(() => database.query(statement, parameters), cleanupErrors);
       }
+      for (const client of clients) {
+        await collectCleanupError(() => assertNoCleanupError(client.auth.signOut()), cleanupErrors);
+      }
+      for (const user of users) {
+        await collectCleanupError(() => assertNoCleanupError(admin.auth.admin.deleteUser(user.id)), cleanupErrors);
+      }
+      await collectCleanupError(() => database.end(), cleanupErrors);
     }
+    throwWithCleanupErrors(primaryError, cleanupErrors);
   },
 );

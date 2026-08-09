@@ -232,8 +232,12 @@ function throwWithCleanupErrors(primaryError, cleanupErrors) {
 
 async function deleteWorkspaceCompanyFixture(companyId) {
   const database = new pg.Client({ ...getDatabaseConfig() });
-  await database.connect();
+  let connected = false;
+  let operationError;
+  const cleanupErrors = [];
   try {
+    await database.connect();
+    connected = true;
     await database.query("begin");
     for (const table of [
       "production_feedback_artifacts",
@@ -270,11 +274,16 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     await database.query("delete from public.companies where id = $1", [companyId]);
     await database.query("commit");
   } catch (error) {
-    await database.query("rollback");
-    throw error;
+    operationError = error;
+    if (connected) {
+      await collectCleanupError(() => database.query("rollback"), cleanupErrors);
+    }
   } finally {
-    await database.end();
+    if (connected) {
+      await collectCleanupError(() => database.end(), cleanupErrors);
+    }
   }
+  throwWithCleanupErrors(operationError, cleanupErrors);
 }
 
 async function createConfirmedUser(label) {
