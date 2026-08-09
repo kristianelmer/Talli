@@ -31,6 +31,7 @@
         "/api/v1/company-access/memberships",
         "/api/v1/company-access/memberships/{user_id}",
         "/api/v1/company-access/cancellations",
+        "/api/v1/company-access/cancellations/{cancellation_id}/resume",
         "/api/v1/company-access/cancellations/{cancellation_id}/reviews",
         "/api/v1/company-access/cancellations/{cancellation_id}/finalize"
       ]

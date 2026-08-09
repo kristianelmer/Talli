@@ -411,6 +411,30 @@ test("schema constraints and declared public exports are enforced", () => {
   }
 });
 
+test("backend workflow routes and public request exports reconcile in both directions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-public-reconciliation-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const systemPath = join(temporaryRoot, "architecture/backend-system.json");
+  const system = JSON.parse(readFileSync(systemPath, "utf8"));
+  const workflow = system.workflows.find((candidate) => candidate.name === "company-access-administration");
+  workflow.routes = workflow.routes.filter((route) => !route.endsWith("/finalize"));
+  writeFileSync(systemPath, JSON.stringify(system));
+  const modulePath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/company_access/module.json");
+  const module = JSON.parse(readFileSync(modulePath, "utf8"));
+  module.exports.commands = module.exports.commands.filter((name) => name !== "FinalizeCompanyDeletionRequest");
+  writeFileSync(modulePath, JSON.stringify(module));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /composition route .*finalize.*missing from backend-system\.json/u);
+    assert.match(errors, /public request export FinalizeCompanyDeletionRequest missing from module manifest/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("database catalog and declared public import paths are authoritative", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-catalog-"));
   for (const directory of ["architecture", "apps", "supabase"]) {

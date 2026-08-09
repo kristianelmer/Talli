@@ -36,7 +36,7 @@ Import only `talli_backend.modules.company_access.public`.
 
 Business request contracts are immutable, reject undeclared fields, and live in
 this public entry point rather than the composition root. The public names include
-`CreateCompanyInvitationRequest`, `AcceptCompanyInvitationRequest`,
+`CreateCompanyInvitationRequest`, `InvitationTokenRequest`, `AcceptCompanyInvitationRequest`,
 `CompanyInvitationCommandRequest`, `AdministerCompanyMembershipRequest`,
 `CompanyAccessService`, `CompanyContext`,
 `CompanyContextResponse`, `CompanyInvitation`, `CompanyInvitationResponse`,
