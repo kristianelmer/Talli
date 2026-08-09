@@ -1327,6 +1327,61 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       "-U", "talli_migration_owner",
       "--file", "/repo/supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
     ]);
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select count(*) from public.company_archive_source_generations
+      where company_id = '40000000-0000-0000-0000-000000000004';
+    `]).trim(), "0", "fixture must start before its first archive generation");
+    const firstGenerationWriter = interactivePsql(containerName);
+    firstGenerationWriter.child.stdin.write(String.raw`
+      begin;
+      update public.companies set name = 'Legacy Duplicate AS post-write'
+      where id = '40000000-0000-0000-0000-000000000004';
+      select 'first_generation_writer_ready';
+    `);
+    await waitForOutput(firstGenerationWriter, /first_generation_writer_ready/u);
+    const firstGenerationBegin = interactivePsql(containerName);
+    firstGenerationBegin.child.stdin.end(String.raw`
+      set application_name = 'company_archive_first_generation_begin';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('40000000-0000-0000-0000-000000000004', 2025);
+    `);
+    let firstBeginBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      firstBeginBlocked = psql(containerName, ["-Atc", String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'company_archive_first_generation_begin'
+          and wait_event_type = 'Lock' and wait_event = 'advisory';
+      `]).trim() === "1";
+      if (firstBeginBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(firstBeginBlocked, true, "first archive begin did not block behind a pre-generation writer");
+    firstGenerationWriter.child.stdin.end("commit;\n\\q\n");
+    assert.equal((await waitForExit(firstGenerationWriter)).code, 0);
+    assert.equal((await waitForExit(firstGenerationBegin)).code, 0);
+    const firstGenerationAttemptId = psql(containerName, ["-Atc", String.raw`
+      select id from public.company_archive_export_attempts
+      where company_id = '40000000-0000-0000-0000-000000000004'
+      order by started_at desc limit 1;
+    `]).trim();
+    const firstGenerationReceipt = psql(containerName, [], String.raw`
+      set role service_role;
+      select public.company_archive_complete_export('${firstGenerationAttemptId}', repeat('5', 64));
+      reset role;
+      do $$ begin
+        if (select generation from public.company_archive_source_generations
+            where company_id = '40000000-0000-0000-0000-000000000004' and income_year = 2025) <> 0 then
+          raise exception 'first generation did not snapshot post-write baseline';
+        end if;
+        if (select name from public.companies where id = '40000000-0000-0000-0000-000000000004') <> 'Legacy Duplicate AS post-write' then
+          raise exception 'first archive missed committed company write';
+        end if;
+      end $$;
+      select 'first_generation_race_ok';
+    `);
+    assert.match(firstGenerationReceipt, /first_generation_race_ok/u);
     psql(containerName, [], String.raw`
       set role authenticated;
       select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
@@ -1871,6 +1926,121 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
       select 'company_access_legacy_rollout_ok';
     `);
     assert.match(legacyRollout, /company_access_legacy_rollout_ok/u);
+
+    psql(containerName, [], String.raw`
+      insert into auth.users(id, email) values
+        ('00000000-0000-0000-0000-000000000077', 'lock-order-owner@example.test');
+      insert into public.companies(id, org_number, name, entity_type, status_text, created_by)
+      values ('41000000-0000-0000-0000-000000000005', '173205080', 'Lock Order AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000077');
+      insert into public.company_memberships(company_id, user_id, role, accepted_at)
+      values ('41000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000077', 'owner', now());
+      insert into public.company_cancellations(id, company_id, status, reason, requested_by, requested_at, updated_at)
+      values ('52000000-0000-0000-0000-000000000005', '41000000-0000-0000-0000-000000000005', 'export_required', 'lock order fixture', '00000000-0000-0000-0000-000000000077', '2026-08-08T10:00:00Z', '2026-08-08T10:00:00Z');
+    `);
+    const exportLockOrderCompany = (sha) => psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('41000000-0000-0000-0000-000000000005', 2025) as lock_order_attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'lock_order_attempt_id', '${sha}');
+    `);
+    exportLockOrderCompany("8".repeat(64));
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select * from public.company_access_resume_cancellation(
+        '40000000-0000-0000-0000-000000000051', '52000000-0000-0000-0000-000000000005',
+        '41000000-0000-0000-0000-000000000005', 2025, '2026-08-08T10:00:00Z'
+      );
+    `);
+
+    const runResumeCompetitorRace = async ({ competingSql, applicationName, expectedRevision }) => {
+      const companyLocker = interactivePsql(containerName);
+      companyLocker.child.stdin.write(String.raw`
+        begin;
+        select public.company_archive_lock_company_v1('41000000-0000-0000-0000-000000000005');
+        select 'company_lock_order_locker_ready';
+      `);
+      await waitForOutput(companyLocker, /company_lock_order_locker_ready/u);
+      const staleResume = interactivePsql(containerName);
+      staleResume.child.stdin.end(String.raw`
+        set application_name = '${applicationName}_resume';
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_resume_cancellation(
+          '${applicationName === "review_race" ? "40000000-0000-0000-0000-000000000052" : "40000000-0000-0000-0000-000000000054"}',
+          '52000000-0000-0000-0000-000000000005', '41000000-0000-0000-0000-000000000005', 2025,
+          '${expectedRevision}'::timestamptz
+        );
+      `);
+      let resumeQueued = false;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        resumeQueued = psql(containerName, ["-Atc", String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = '${applicationName}_resume'
+            and wait_event_type = 'Lock' and wait_event = 'advisory';
+        `]).trim() === "1";
+        if (resumeQueued) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(resumeQueued, true, `${applicationName} resume did not queue first`);
+      const competitor = interactivePsql(containerName);
+      competitor.child.stdin.end(`set application_name = '${applicationName}_competitor';\n${competingSql}`);
+      let queued = false;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        queued = psql(containerName, ["-Atc", String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name in ('${applicationName}_resume', '${applicationName}_competitor')
+            and wait_event_type = 'Lock' and wait_event = 'advisory';
+        `]).trim() === "2";
+        if (queued) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(queued, true, `${applicationName} did not queue both lifecycle operations behind the company lock`);
+      companyLocker.child.stdin.end("commit;\n\\q\n");
+      assert.equal((await waitForExit(companyLocker)).code, 0);
+      const staleResult = await waitForExit(staleResume);
+      const competitorResult = await waitForExit(competitor);
+      assert.notEqual(staleResult.code, 0);
+      assert.match(staleResult.stderr, /company_access_conflict/u);
+      assert.doesNotMatch(`${staleResult.stderr}\n${competitorResult.stderr}`, /deadlock detected/iu);
+      assert.equal(competitorResult.code, 0, competitorResult.stderr);
+    };
+    const retentionRevision = psql(containerName, ["-Atc", "select updated_at from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim();
+    await runResumeCompetitorRace({
+      applicationName: "review_race",
+      expectedRevision: retentionRevision,
+      competingSql: String.raw`
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000053', '52000000-0000-0000-0000-000000000005',
+          '41000000-0000-0000-0000-000000000005', '${retentionRevision}'::timestamptz,
+          'approved', 'legal/lock-order-review'
+        );
+      `,
+    });
+    exportLockOrderCompany("9".repeat(64));
+    const approvedRevision = psql(containerName, ["-Atc", "select updated_at from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim();
+    await runResumeCompetitorRace({
+      applicationName: "finalize_race",
+      expectedRevision: approvedRevision,
+      competingSql: String.raw`
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000055', '52000000-0000-0000-0000-000000000005',
+          '41000000-0000-0000-0000-000000000005', '${approvedRevision}'::timestamptz
+        );
+      `,
+    });
+    assert.equal(psql(containerName, ["-Atc", "select status from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim(), "deleted");
   } finally {
     docker(["rm", "--force", containerName]);
   }

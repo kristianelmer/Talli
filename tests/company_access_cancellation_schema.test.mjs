@@ -61,7 +61,7 @@ test("request derives archive and source completeness inside one atomic RPC", ()
   assert.match(request, /from public\.documents/iu);
   assert.match(request, /status like 'missing%'/iu);
   assert.match(request, /raise exception 'cancellation_prerequisite_failed'/iu);
-  assert.match(request, /pg_advisory_xact_lock/iu);
+  assert.match(request, /company_archive_lock_company_v1/iu);
   assert.match(request, /status not in \('deleted', 'superseded'\)/iu);
   assert.match(request, /insert into public\.audit_events/iu);
   assert.match(request, /company_cancellation_requested/iu);
@@ -80,7 +80,13 @@ test("archive route and generation triggers share one complete source inventory"
   );
   assert.deepEqual([...triggerInventory.entries()].sort(), [...declared.entries()].sort());
   assert.match(source, /\('companies', 'company', 'id'\)/u);
-  assert.match(functionBody(source, "company_archive_track_source_write_v1"), /order by scope_company_id, scope_income_year/iu);
+  const tracker = functionBody(source, "company_archive_track_source_write_v1");
+  assert.match(tracker, /company_archive_lock_company_v1\(v_company_id\)/iu);
+  assert.ok(
+    tracker.indexOf("company_archive_lock_company_v1(v_company_id)")
+      < tracker.indexOf("public.company_archive_source_generations"),
+    "source writes must lock every changed company before generation lookup",
+  );
   assert.equal(declared.has("company_archive_export_attempts"), false);
   assert.equal(declared.has("company_archive_export_receipts"), false);
   assert.match(functionBody(source, "company_archive_lock_scope_v1"), /company_archive_lock_company_v1\(p_company_id\)/iu);
@@ -172,7 +178,7 @@ test("archive receipt completion is server-only, one-time, expiring, and generat
   assert.match(complete, /expires_at <=/iu);
   assert.match(complete, /source_generation <>/iu);
   assert.match(complete, /insert into public\.company_archive_export_receipts/iu);
-  assert.match(tracker, /company_archive_lock_scope_v1/iu);
+  assert.match(tracker, /company_archive_lock_company_v1/iu);
   assert.match(lock, /pg_advisory_xact_lock/iu);
   assert.match(tracker, /insert into public\.company_archive_source_generations[\s\S]+on conflict[\s\S]+generation =/iu);
   assert.match(source, /revoke all on function public\.company_archive_complete_export\(uuid, text\) from public, anon, authenticated/iu);
@@ -226,6 +232,28 @@ test("lifecycle commands use durable receipts and least-privilege RLS", () => {
   assert.match(source, /alter function public\.company_access_finalize_deletion[\s\S]+owner to company_access_executor/iu);
   assert.match(source, /alter function public\.company_access_list_cancellations[\s\S]+owner to company_access_executor/iu);
   assert.doesNotMatch(source, /alter role company_access_executor[\s\S]+bypassrls/iu);
+});
+
+test("lifecycle mutations share operation-company-cancellation lock order", () => {
+  const source = sql(expandPath);
+  for (const name of [
+    "company_access_request_cancellation",
+    "company_access_resume_cancellation",
+    "company_access_review_deletion",
+    "company_access_finalize_deletion",
+  ]) {
+    const body = functionBody(source, name);
+    const operationLock = body.indexOf("company_access_lock_operation_v1(v_actor_id, p_operation_id)");
+    const companyLock = body.indexOf("company_archive_lock_company_v1(p_company_id)");
+    const cancellationLock = body.indexOf("hashtextextended(p_cancellation_id::text, 161)");
+    assert.ok(operationLock >= 0 && companyLock > operationLock, `${name} must lock operation then company`);
+    if (name !== "company_access_request_cancellation") {
+      assert.ok(cancellationLock > companyLock, `${name} must lock cancellation after company`);
+    }
+  }
+  const reconcile = functionBody(source, "company_access_reconcile_cancellation_operation");
+  assert.match(reconcile, /company_access_lock_operation_v1/u);
+  assert.doesNotMatch(reconcile, /company_archive_lock_company_v1|hashtextextended\(p_cancellation_id/iu);
 });
 
 test("unknown command outcomes reconcile behind the exact operation lock", () => {

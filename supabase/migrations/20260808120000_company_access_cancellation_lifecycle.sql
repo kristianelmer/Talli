@@ -148,39 +148,63 @@ security definer
 set search_path = ''
 as $function$
 declare
+  v_company_id uuid;
   v_scope record;
 begin
-  for v_scope in
+  -- Lock every changed company before consulting generation state. This also
+  -- serializes the first export when no generation row exists yet.
+  for v_company_id in
     with changed_rows(row_data) as (
       select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
       union all
       select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
-    ), direct_scopes as (
-      select (row_data ->> tg_argv[1])::uuid as scope_company_id,
-             (row_data ->> 'income_year')::integer as scope_income_year
-      from changed_rows where tg_argv[0] = 'year'
-    ), company_scopes as (
-      select g.company_id as scope_company_id, g.income_year as scope_income_year
-      from changed_rows r
-      join public.company_archive_source_generations g
-        on g.company_id = (r.row_data ->> tg_argv[1])::uuid
-      where tg_argv[0] = 'company'
     )
-    select distinct scope_company_id, scope_income_year from (
-      select * from direct_scopes
-      union all
-      select * from company_scopes
-    ) affected
-    where scope_company_id is not null and scope_income_year is not null
-    order by scope_company_id, scope_income_year
+    select distinct (row_data ->> tg_argv[1])::uuid
+    from changed_rows
+    where (row_data ->> tg_argv[1]) is not null
+    order by 1
   loop
-    perform public.company_archive_lock_scope_v1(v_scope.scope_company_id, v_scope.scope_income_year);
-    insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
-    values (v_scope.scope_company_id, v_scope.scope_income_year, 1, pg_catalog.statement_timestamp())
-    on conflict (company_id, income_year) do update
-      set generation = company_archive_source_generations.generation + 1,
-          updated_at = excluded.updated_at;
+    perform public.company_archive_lock_company_v1(v_company_id);
   end loop;
+
+  if tg_argv[0] = 'year' then
+    for v_scope in
+      with changed_rows(row_data) as (
+        select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
+        union all
+        select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
+      )
+      select distinct (row_data ->> tg_argv[1])::uuid as scope_company_id,
+             (row_data ->> 'income_year')::integer as scope_income_year
+      from changed_rows
+      where (row_data ->> tg_argv[1]) is not null
+        and (row_data ->> 'income_year') is not null
+      order by 1, 2
+    loop
+      insert into public.company_archive_source_generations(company_id, income_year, generation, updated_at)
+      values (v_scope.scope_company_id, v_scope.scope_income_year, 1, pg_catalog.statement_timestamp())
+      on conflict (company_id, income_year) do update
+        set generation = company_archive_source_generations.generation + 1,
+            updated_at = excluded.updated_at;
+    end loop;
+  else
+    for v_company_id in
+      with changed_rows(row_data) as (
+        select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
+        union all
+        select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
+      )
+      select distinct (row_data ->> tg_argv[1])::uuid
+      from changed_rows
+      where (row_data ->> tg_argv[1]) is not null
+      order by 1
+    loop
+      update public.company_archive_source_generations
+      set generation = generation + 1,
+          updated_at = pg_catalog.statement_timestamp()
+      where company_id = v_company_id;
+    end loop;
+  end if;
   return coalesce(new, old);
 end;
 $function$;
@@ -645,8 +669,7 @@ begin
   v_fingerprint := pg_catalog.concat_ws('|', p_company_id::text, p_income_year::text, pg_catalog.btrim(p_reason));
 
   perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
-
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_company_id::text, 161));
+  perform public.company_archive_lock_company_v1(p_company_id);
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
   if found then
@@ -666,7 +689,6 @@ begin
     raise exception 'company_access_conflict' using errcode = 'P0001';
   end if;
 
-  perform public.company_archive_lock_scope_v1(p_company_id, p_income_year);
   select generation into v_source_generation
   from public.company_archive_source_generations
   where company_id = p_company_id and income_year = p_income_year;
@@ -745,6 +767,7 @@ begin
   v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_income_year::text, p_expected_updated_at::text);
   perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
   perform public.company_archive_lock_company_v1(p_company_id);
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
 
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
@@ -852,7 +875,7 @@ begin
   v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text, p_decision, pg_catalog.btrim(p_evidence_reference));
 
   perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
-
+  perform public.company_archive_lock_company_v1(p_company_id);
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
@@ -965,7 +988,7 @@ begin
   v_fingerprint := pg_catalog.concat_ws('|', p_cancellation_id::text, p_company_id::text, p_expected_updated_at::text);
 
   perform public.company_access_lock_operation_v1(v_actor_id, p_operation_id);
-
+  perform public.company_archive_lock_company_v1(p_company_id);
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cancellation_id::text, 161));
   select r.* into v_receipt from public.company_access_command_receipts r
   where r.actor_id = v_actor_id and r.operation_id = p_operation_id;
@@ -1003,7 +1026,6 @@ begin
   exception when others then
     raise exception 'cancellation_prerequisite_failed' using errcode = 'P0001';
   end;
-  perform public.company_archive_lock_scope_v1(p_company_id, v_income_year);
   select generation into v_source_generation
   from public.company_archive_source_generations
   where company_id = p_company_id and income_year = v_income_year;
