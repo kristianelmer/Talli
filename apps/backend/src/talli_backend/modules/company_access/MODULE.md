@@ -29,7 +29,8 @@ Import only `talli_backend.modules.company_access.public`.
 - Queries: company context, invitation/cancellation listing, membership listing,
   and actor-derived pending side-effect continuations
 - Commands: invite, accept, revoke, resend, reviewer/read-only membership
-  transitions, owner cancellation, independent deletion review, and owner finalization
+  transitions, owner cancellation request/resume, independent deletion review,
+  and owner finalization
 - Error: `CompanyAccessError`
 - Port: `CompanyAccessGateway`
 
@@ -47,9 +48,11 @@ this public entry point rather than the composition root. The public names inclu
 
 Cancellation contracts add `CompanyCancellation`, `CompanyCancellationListResponse`,
 `CompanyDeletionReview`, `RequestCompanyCancellationRequest`,
-`ReviewCompanyDeletionRequest`, and `FinalizeCompanyDeletionRequest`. During the
-expand/deploy overlap, query responses continue to decode legacy
-`export_required` rows; new commands never create that state.
+`ResumeCompanyCancellationRequest`, `ReviewCompanyDeletionRequest`, and
+`FinalizeCompanyDeletionRequest`. During the expand/deploy overlap, query
+responses continue to decode legacy `export_required` rows; new requests never
+create that state. Resume advances the exact revision-bound legacy row only after
+a current authoritative archive receipt exists.
 
 The system boundary injects `SupabaseCompanyAccessAdapter`; capability policy
 never constructs Supabase or HTTP infrastructure. Owner context and administration
@@ -108,7 +111,7 @@ recovery read clears it. Until recovery or another clearing command touches the
 receipt, the expired token can remain stored at rest. Retention/delivery migration
 remains #156. This is delivery-secret persistence, never token-hash disclosure.
 
-Cancellation requests and finalization require an accepted owner with an AAL2
+Cancellation requests, legacy resume, and finalization require an accepted owner with an AAL2
 authentication method no older than fifteen minutes. Independent approval or
 rejection requires an active admin support operator with the same fresh MFA; an
 owner cannot review their own request. The append-only deletion-review row is the
@@ -118,6 +121,11 @@ transaction is locked, and durable receipts replay an identical outcome after an
 unknown transport result. Finalization records the lifecycle marker but never
 physically deletes company business data. RLS conceals outsiders and permits only
 accepted members or active support operators to list lifecycle evidence.
+Legacy duplicate active rows are deterministically ranked by updated time,
+request time, and ID. The survivor remains active; each loser becomes the terminal
+`superseded` status with structured evidence and deterministic audit evidence.
+Legacy authenticated table policies conceal superseded rows, while the generated
+query RPC retains complete history.
 
 The rollout is staged. Release A's automatic runner applies `20260801090000` only: it expands the
 RPC/RLS boundary while the prior web policies still work. Release B deploys the
@@ -148,7 +156,11 @@ projections, `company_access` consumes the bounded legacy generation/receipt
 projection produced only by the existing server-side archive route; it does not
 own archive composition or those three projection tables. Every source in
 `architecture/company-archive-sources.json` participates in the same locked
-generation protocol, and the route fails closed if any declared read fails. It
+generation protocol. A single company advisory-lock namespace serializes all
+years and every company-wide source mutation, avoiding cross-year lock inversion.
+The route begins the archive attempt before reading the company row and fails
+closed if any declared read fails. Completion rejects the attempt if any source,
+including company metadata, changed after begin. It
 performs no write after receipt completion. Audit events remain archive inputs:
 request and review audit writes intentionally stale the preceding receipt, so an
 owner must export a new archive after independent approval before finalization.
