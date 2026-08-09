@@ -43,6 +43,12 @@ export type AuditEventArchiveRow = {
   created_at: string;
 };
 
+export function firstArchiveSourceError(
+  results: readonly { error: unknown | null }[],
+): unknown | null {
+  return results.find(({ error }) => error !== null)?.error ?? null;
+}
+
 export function buildPersistedCompanyArchive(input: {
   company: CompanyWorkspaceRow;
   incomeYear: number;

@@ -230,6 +230,62 @@ function throwWithCleanupErrors(primaryError, cleanupErrors) {
   }
 }
 
+async function deleteWorkspaceCompanyFixture(companyId) {
+  const database = new pg.Client({ ...getDatabaseConfig() });
+  let connected = false;
+  let operationError;
+  const cleanupErrors = [];
+  try {
+    await database.connect();
+    connected = true;
+    await database.query("begin");
+    for (const table of [
+      "production_feedback_artifacts",
+      "filing_approval_snapshots",
+      "company_archive_export_receipts",
+      "company_archive_export_attempts",
+      "company_deletion_reviews",
+      "customer_agreement_acceptances",
+      "corporate_document_events",
+      "corporate_decision_finalizations",
+      "corporate_document_artifacts",
+      "corporate_document_sets",
+      "corporate_decisions",
+      "bank_suggestion_acceptances",
+      "investment_lot_allocations",
+      "investment_lots",
+      "investment_positions",
+      "filing_review_comments",
+      "filing_submissions",
+      "holding_actions",
+      "documents",
+      "authority_test_runs",
+      "authority_permissions",
+      "filing_previews",
+      "ledger_entries",
+      "opening_shareholders",
+      "opening_balance_setups",
+      "billing_accounts",
+      "audit_events",
+    ]) {
+      await database.query(`delete from public.${table} where company_id = $1`, [companyId]);
+    }
+    await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
+    await database.query("delete from public.companies where id = $1", [companyId]);
+    await database.query("commit");
+  } catch (error) {
+    operationError = error;
+    if (connected) {
+      await collectCleanupError(() => database.query("rollback"), cleanupErrors);
+    }
+  } finally {
+    if (connected) {
+      await collectCleanupError(() => database.end(), cleanupErrors);
+    }
+  }
+  throwWithCleanupErrors(operationError, cleanupErrors);
+}
+
 async function createConfirmedUser(label) {
   const admin = serviceClient();
   const email = `talli-${label}-${randomUUID()}@example.test`;
@@ -3170,13 +3226,13 @@ test(
   } finally {
     if (foreignCompanyId) {
       await collectCleanupError(
-        () => assertNoError(admin.from("companies").delete().eq("id", foreignCompanyId)),
+        () => deleteWorkspaceCompanyFixture(foreignCompanyId),
         cleanupErrors,
       );
     }
     if (companyId) {
       await collectCleanupError(
-        () => assertNoError(admin.from("companies").delete().eq("id", companyId)),
+        () => deleteWorkspaceCompanyFixture(companyId),
         cleanupErrors,
       );
     }

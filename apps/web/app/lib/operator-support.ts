@@ -2,11 +2,11 @@ import type {
   AuthorityPermissionRow,
   BillingAccountRow,
   BillingPaymentEventRow,
-  CompanyCancellationRow,
   CompanyWorkspaceRow,
   FilingReadinessSnapshotRow,
   FilingSubmissionRow,
 } from "./supabase/server";
+import type { CompanyCancellationRow } from "./cancellation";
 
 export type SupportAuditRow = {
   id: string;
@@ -29,6 +29,9 @@ export type OperatorSupportSummary = {
   refundStatus: string;
   restoreStatus: string;
   recentAuditActions: string[];
+  cancellationId: string | null;
+  cancellationStatus: string | null;
+  cancellationUpdatedAt: string | null;
 };
 
 export function assertOperatorSearchAllowed(input: { isOperator: boolean; query: string }) {
@@ -89,6 +92,9 @@ export function buildOperatorSupportSummaries(input: {
           : "none",
       restoreStatus: missingRestoreEvidence || cancellation?.evidence?.missingDocumentIds?.length ? "missing_evidence" : "ok",
       recentAuditActions: auditEvents.slice(0, 5).map((event) => event.action),
+      cancellationId: cancellation?.id ?? null,
+      cancellationStatus: cancellation?.status ?? null,
+      cancellationUpdatedAt: cancellation?.updated_at ?? null,
     };
   });
 }

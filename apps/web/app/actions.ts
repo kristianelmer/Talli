@@ -19,11 +19,15 @@ import {
   productionBillingGate,
   simulateBillingProviderEvent,
 } from "./lib/billing";
-import { buildCancellationEvidence, buildDeletionCompletionUpdate, nextCancellationStatus } from "./lib/cancellation";
 import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
 import { onboardCustomer } from "./lib/customer-onboarding";
 import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
 import { getSiteUrl } from "./lib/site-url";
+import {
+  clearPendingCancellationOperation,
+  preservePendingCancellationOperation,
+} from "./lib/cancellation-operation-state";
+import { pendingCancellationOperationForError } from "./lib/cancellation-operation-policy";
 import { sanitizeInternalRedirect } from "./lib/internal-redirect";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -90,10 +94,14 @@ import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/f
 import {
   acceptCompanyInvitation,
   administerCompanyMembership,
+  finalizeCompanyDeletion as finalizeCompanyDeletionThroughApi,
   completeInvitationSideEffect,
   createCompanyInvitation,
   listPendingInvitationSideEffects,
   resendCompanyInvitation,
+  requestCompanyCancellation as requestCompanyCancellationThroughApi,
+  resumeCompanyCancellation as resumeCompanyCancellationThroughApi,
+  reviewCompanyDeletion as reviewCompanyDeletionThroughApi,
   revokeCompanyInvitation,
 } from "../features/company-access";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
@@ -3191,119 +3199,25 @@ export async function requestCompanyCancellation(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
-
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const reason = formString(formData, "reason") || "Kunde ønsker kansellering og arkiv før eventuell sletting.";
-
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "company_cancel");
-
-  const { data: membership } = await supabase
-    .from("company_memberships")
-    .select("role")
-    .eq("company_id", companyId)
-    .eq("user_id", user.id)
-    .eq("role", "owner")
-    .maybeSingle();
-  if (!membership) {
-    redirect("/workspace?error=Kun%20eier%20kan%20be%20om%20kansellering");
+  const command = { command: "request" as const, operationId, companyId, incomeYear, reason };
+  try {
+    await requestCompanyCancellationThroughApi(accessToken, command);
+  } catch (error) {
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
+    }
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_cancellation_failed")}`);
   }
-
-  const [documentResult, artifactResult, archiveAuditResult] = await Promise.all([
-    supabase
-      .from("documents")
-      .select("id, status")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear),
-    supabase
-      .from("corporate_document_artifacts")
-      .select("storage_key, created_at")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear),
-    supabase
-      .from("audit_events")
-      .select("created_at")
-      .eq("company_id", companyId)
-      .eq("action", `company_year_archive_exported:${incomeYear}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-  const evidenceError = documentResult.error ?? artifactResult.error ?? archiveAuditResult.error;
-  if (evidenceError) redirect(`/workspace?error=${encodeURIComponent(evidenceError.message)}`);
-
-  const archiveExportedAt = archiveAuditResult.data?.created_at ?? null;
-  const archiveExportedTime = archiveExportedAt ? new Date(archiveExportedAt).getTime() : Number.NaN;
-  const corporateArtifacts = artifactResult.data ?? [];
-  const missingCorporateObjectKeys = corporateArtifacts
-    .filter((artifact) => !Number.isFinite(archiveExportedTime)
-      || new Date(artifact.created_at).getTime() > archiveExportedTime)
-    .map((artifact) => artifact.storage_key);
-  const evidence = buildCancellationEvidence({
-    companyId,
-    incomeYear,
-    archiveExportedAt,
-    missingDocumentIds: (documentResult.data ?? [])
-      .filter((document) => String(document.status ?? "").startsWith("missing"))
-      .map((document) => document.id),
-    corporateObjectKeys: corporateArtifacts.map((artifact) => artifact.storage_key),
-    missingCorporateObjectKeys,
-  });
-  const status = nextCancellationStatus({
-    archiveExportedAt,
-    corporateLifecyclePresent: corporateArtifacts.length > 0,
-    corporateEvidenceComplete: evidence.corporateEvidenceComplete,
-  });
-
-  const { data: existing } = await supabase
-    .from("company_cancellations")
-    .select("id")
-    .eq("company_id", companyId)
-    .neq("status", "deleted")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const requestedAt = new Date().toISOString();
-  const payload = {
-    company_id: companyId,
-    status,
-    reason,
-    evidence,
-    requested_by: user.id,
-    requested_at: requestedAt,
-    updated_at: requestedAt,
-  };
-  const { error } = existing?.id
-    ? await supabase.from("company_cancellations").update(payload).eq("id", existing.id)
-    : await supabase.from("company_cancellations").insert(payload);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
-  }
-
-  await supabase.from("audit_events").insert([
-    {
-      company_id: companyId,
-      actor_id: user.id,
-      category: "archive",
-      action: "cancellation_archive_required",
-      message: `Kansellering krever arkiv for ${incomeYear}: ${evidence.archiveDownloadPath}.`,
-    },
-    {
-      company_id: companyId,
-      actor_id: user.id,
-      category: "retention",
-      action: "company_cancellation_requested",
-      message: `Kansellering satt i retention hold. Juridisk vurdering kreves før endelig sletting.`,
-    },
-  ]);
+  await clearPendingCancellationOperation();
 
   revalidatePath("/");
   redirect("/workspace");
@@ -3313,78 +3227,97 @@ export async function completeCompanyDeletionRecord(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
-
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const cancellationId = formString(formData, "cancellationId");
-  const legalRetentionConfirmed = formData.get("legalRetentionConfirmed") === "on";
-  if (!legalRetentionConfirmed) {
-    redirect("/workspace?error=Retention%20og%20legal%20review%20m%C3%A5%20bekreftes");
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const command = { command: "finalize" as const, operationId, companyId, cancellationId, expectedUpdatedAt };
+  try {
+    await finalizeCompanyDeletionThroughApi(accessToken, cancellationId, {
+      operationId,
+      companyId,
+      expectedUpdatedAt,
+    });
+  } catch (error) {
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
+    }
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_failed")}`);
   }
-
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "company_delete");
-
-  const { data: cancellation, error: cancellationError } = await supabase
-    .from("company_cancellations")
-    .select("id, company_id, status, evidence")
-    .eq("id", cancellationId)
-    .eq("company_id", companyId)
-    .single();
-  if (cancellationError || !cancellation) {
-    redirect(`/workspace?error=${encodeURIComponent(cancellationError?.message ?? "Kanselleringssak mangler")}`);
-  }
-  if (!cancellation.evidence?.archiveExportedAt) {
-    redirect("/workspace?error=Arkiv%20m%C3%A5%20registreres%20f%C3%B8r%20sletting");
-  }
-  if (cancellation.status === "deleted") {
-    redirect("/workspace?error=Selskapet%20er%20allerede%20markert%20slettet");
-  }
-
-  const now = new Date().toISOString();
-  const deletionUpdate = buildDeletionCompletionUpdate({
-    actorId: user.id,
-    reviewedAt: now,
-    deletedAt: now,
-  });
-  const { error } = await supabase
-    .from("company_cancellations")
-    .update(deletionUpdate)
-    .eq("id", cancellationId)
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
-  }
-
-  await supabase
-    .from("companies")
-    .update({ status_text: "deleted_retention_record" })
-    .eq("id", companyId);
-
-  await supabase.from("audit_events").insert([
-    {
-      company_id: companyId,
-      actor_id: user.id,
-      category: "retention",
-      action: "retention_decision_approved",
-      message: "Retention/legal review bekreftet før endelig slettestatus.",
-    },
-    {
-      company_id: companyId,
-      actor_id: user.id,
-      category: "retention",
-      action: "company_deletion_completed",
-      message: "Selskapet er markert slettet med beholdte retention-records.",
-    },
-  ]);
+  await clearPendingCancellationOperation();
 
   revalidatePath("/");
   redirect("/workspace");
+}
+
+export async function resumeCompanyCancellation(formData: FormData) {
+  if (!hasSupabaseEnv()) {
+    redirect("/workspace?error=Supabase%20env%20mangler");
+  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = formString(formData, "companyId");
+  const cancellationId = formString(formData, "cancellationId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const command = { command: "resume" as const, operationId, companyId, cancellationId, incomeYear, expectedUpdatedAt };
+  try {
+    await resumeCompanyCancellationThroughApi(accessToken, cancellationId, {
+      operationId,
+      companyId,
+      incomeYear,
+      expectedUpdatedAt,
+    });
+  } catch (error) {
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
+    }
+    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "company_cancellation_resume_failed")}`);
+  }
+  await clearPendingCancellationOperation();
+
+  revalidatePath("/");
+  redirect("/workspace");
+}
+
+export async function reviewCompanyDeletion(formData: FormData) {
+  if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const cancellationId = formString(formData, "cancellationId");
+  const companyId = formString(formData, "companyId");
+  const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
+  const decision = formString(formData, "decision") as "approved" | "rejected";
+  const evidenceReference = formString(formData, "evidenceReference");
+  const command = { command: "review" as const, operationId, cancellationId, companyId, expectedUpdatedAt, decision, evidenceReference };
+  try {
+    await reviewCompanyDeletionThroughApi(accessToken, cancellationId, {
+      operationId,
+      companyId,
+      expectedUpdatedAt,
+      decision,
+      evidenceReference,
+    });
+  } catch (error) {
+    const pending = pendingCancellationOperationForError(error, command);
+    if (pending) {
+      await preservePendingCancellationOperation(pending);
+    }
+    redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "company_deletion_review_failed")}`);
+  }
+  await clearPendingCancellationOperation();
+  revalidatePath("/operator");
+  redirect("/operator");
 }
 
 export async function activateBillingSubscription(formData: FormData) {

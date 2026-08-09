@@ -1,6 +1,11 @@
-import { buildPersistedCompanyArchive } from "../../../../lib/archive";
+import { createHash } from "node:crypto";
+
+import { buildPersistedCompanyArchive, firstArchiveSourceError } from "../../../../lib/archive";
 import { requireStepUpForAction } from "../../../../lib/security";
-import { createSupabaseServerClient } from "../../../../lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+} from "../../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
   const { companyId, incomeYear: incomeYearParam } = await params;
@@ -17,14 +22,6 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Innlogging kreves", { status: 401 });
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    return new Response("Archive not found", { status: 404 });
-  }
   try {
     await requireStepUpForAction({
       supabase,
@@ -38,6 +35,22 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       { status: 403 },
     );
   }
+  const { data: archiveAttemptId, error: archiveAttemptError } = await supabase.rpc(
+    "company_archive_begin_export",
+    { p_company_id: companyId, p_income_year: incomeYear },
+  );
+  if (archiveAttemptError || typeof archiveAttemptId !== "string") {
+    return new Response("Kunne ikke starte autoritativ arkiveksport", { status: 500 });
+  }
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
+    .eq("id", companyId)
+    .single();
+  if (companyError || !company) {
+    return new Response("Fant ikke arkivet", { status: 404 });
+  }
 
   const { data: submissions, error: submissionError } = await supabase
     .from("filing_submissions")
@@ -45,10 +58,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     .eq("company_id", companyId)
     .eq("income_year", incomeYear);
   if (submissionError) {
-    return new Response("Could not read filing submissions", { status: 500 });
+    return new Response("Kunne ikke lese innsendingsgrunnlaget", { status: 500 });
   }
   if (!submissions?.length) {
-    return new Response("Archive requires RF-1086 submission state first", { status: 409 });
+    return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
   const authorityTestRunIds = [...new Set(
     submissions
@@ -63,30 +76,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .in("id", authorityTestRunIds)
     : { data: [], error: null };
   if (authorityTestRunsError) {
-    return new Response("Could not read authority evidence", { status: 500 });
+    return new Response("Kunne ikke lese myndighetsdokumentasjonen", { status: 500 });
   }
 
-  const [
-    { data: setups },
-    { data: ledgerEntries },
-    { data: documents },
-    { data: previews },
-    { data: holdingActions },
-    { data: billingAccounts },
-    { data: authorityPermissions },
-    { data: reviewComments },
-    { data: auditEvents },
-    { data: investmentPositions },
-    { data: investmentLots },
-    { data: investmentLotAllocations },
-    { data: bankSuggestionAcceptances },
-    { data: corporateDecisions, error: corporateDecisionsError },
-    { data: corporateDocumentSets, error: corporateDocumentSetsError },
-    { data: corporateDocumentArtifacts, error: corporateDocumentArtifactsError },
-    { data: corporateDocumentEvents, error: corporateDocumentEventsError },
-    { data: corporateDecisionFinalizations, error: corporateDecisionFinalizationsError },
-  ] =
-    await Promise.all([
+  const sourceResults = await Promise.all([
       supabase
         .from("opening_balance_setups")
         .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
@@ -170,23 +163,28 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
     ]);
-
-  const corporateError = corporateDecisionsError
-    ?? corporateDocumentSetsError
-    ?? corporateDocumentArtifactsError
-    ?? corporateDocumentEventsError
-    ?? corporateDecisionFinalizationsError;
-  if (corporateError) {
-    return new Response("Could not read corporate decision evidence", { status: 500 });
+  if (firstArchiveSourceError(sourceResults)) {
+    return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   }
+  const [
+    { data: setups }, { data: ledgerEntries }, { data: documents }, { data: previews },
+    { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
+    { data: reviewComments }, { data: auditEvents }, { data: investmentPositions },
+    { data: investmentLots }, { data: investmentLotAllocations }, { data: bankSuggestionAcceptances },
+    { data: corporateDecisions }, { data: corporateDocumentSets }, { data: corporateDocumentArtifacts },
+    { data: corporateDocumentEvents }, { data: corporateDecisionFinalizations },
+  ] = sourceResults;
 
   const setupIds = (setups ?? []).map((setup) => setup.id);
-  const { data: shareholders } = setupIds.length
+  const { data: shareholders, error: shareholdersError } = setupIds.length
     ? await supabase
         .from("opening_shareholders")
         .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
         .in("setup_id", setupIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (shareholdersError) {
+    return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
+  }
 
   const archive = buildPersistedCompanyArchive({
     company,
@@ -214,18 +212,23 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     corporateDecisionFinalizations: corporateDecisionFinalizations ?? [],
   });
 
-  const { error: auditError } = await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "archive",
-    action: `company_year_archive_exported:${incomeYear}`,
-    message: `Company-year archive exported with ${(corporateDocumentArtifacts ?? []).length} corporate object references.`,
-  });
-  if (auditError) {
-    return new Response("Could not record archive export evidence", { status: 500 });
+  const archiveBody = JSON.stringify(archive, null, 2);
+  const archiveSha256 = createHash("sha256").update(archiveBody, "utf8").digest("hex");
+  let archiveProjection;
+  try {
+    archiveProjection = createSupabaseServiceRoleClient();
+  } catch {
+    return new Response("Arkivkvitteringstjenesten er utilgjengelig", { status: 503 });
+  }
+  const { error: archiveReceiptError } = await archiveProjection.rpc(
+    "company_archive_complete_export",
+    { p_attempt_id: archiveAttemptId, p_archive_sha256: archiveSha256 },
+  );
+  if (archiveReceiptError) {
+    return new Response("Kunne ikke registrere autoritativ arkivkvittering", { status: 409 });
   }
 
-  return new Response(JSON.stringify(archive, null, 2), {
+  return new Response(archiveBody, {
     headers: {
       "content-disposition": `attachment; filename="talli-${company.org_number}-${incomeYear}-archive.json"`,
       "content-type": "application/json; charset=utf-8",

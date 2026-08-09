@@ -312,6 +312,8 @@ test("the generated client is committed and carries its provenance marker", () =
 
   assert.match(generatedClient, /Generated from contracts\/openapi\/talli-v1\.json/);
   assert.match(generatedClient, /systemBoundaryGetTracerStatus/);
+  assert.match(generatedClient, /companyAccessResumeCancellation/);
+  assert.match(generatedClient, /ResumeCompanyCancellationRequest/);
   assert.match(generatedClient, /requestId\?: string/);
   assert.doesNotMatch(generatedClient, /ECONNREFUSED|Forbindelsen virker/);
 });

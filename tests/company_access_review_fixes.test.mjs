@@ -97,10 +97,10 @@ test("membership role selector has a target-specific accessible name", async () 
   assert.match(workspace, /aria-label=\{`Medlemsrolle for \$\{membership\.userId\}`\}/u);
 });
 
-test("capability manifest attributes the invitation migration", async () => {
+test("capability manifest attributes the latest company-access ownership migration", async () => {
   const manifest = JSON.parse(await source("apps/backend/src/talli_backend/modules/company_access/module.json"));
   assert.equal(
     manifest.owns.migrations,
-    "supabase/migrations/20260801090000_company_access_invitations.sql",
+    "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
   );
 });

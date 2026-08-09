@@ -18,9 +18,13 @@ from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     CompanyAccessGateway,
     CreateInvitationGatewayCommand,
+    FinalizeCompanyDeletionGatewayCommand,
     InvitationIdentityGatewayCommand,
     InvitationMutationGatewayCommand,
     ResendInvitationGatewayCommand,
+    RequestCompanyCancellationGatewayCommand,
+    ResumeCompanyCancellationGatewayCommand,
+    ReviewCompanyDeletionGatewayCommand,
     company_access_adapter,
 )
 
@@ -155,6 +159,23 @@ class SupabaseCompanyAccessAdapter:
                         code="COMPANY_ACCESS_CONFLICT",
                         title="Company access conflict",
                         detail="The company access change conflicts with existing state.",
+                    ) from None
+                lifecycle_errors = {
+                    "cancellation_prerequisite_failed": (
+                        "CANCELLATION_PREREQUISITE_FAILED",
+                        "Cancellation prerequisite failed",
+                        "A current complete company archive export is required.",
+                    ),
+                    "deletion_review_required": (
+                        "DELETION_REVIEW_REQUIRED",
+                        "Deletion review required",
+                        "An approved deletion review is required.",
+                    ),
+                }
+                if message in lifecycle_errors:
+                    code, title, detail = lifecycle_errors[message]
+                    raise CompanyAccessError(
+                        status=409, code=code, title=title, detail=detail
                     ) from None
                 if error.code == 409:
                     raise CompanyAccessError(
@@ -342,6 +363,76 @@ class SupabaseCompanyAccessAdapter:
         )
         return response is True
 
+    async def cancellations(
+        self, access_token: str, company_id: str
+    ) -> list[Mapping[str, object]]:
+        response = await self._request(
+            "/rest/v1/rpc/company_access_list_cancellations",
+            access_token,
+            method="POST",
+            body={"p_company_id": company_id},
+        )
+        return response if isinstance(response, list) else []
+
+    async def request_cancellation(
+        self, access_token: str, command: RequestCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_request_cancellation",
+            {
+                "p_operation_id": command.operation_id,
+                "p_company_id": command.company_id,
+                "p_income_year": command.income_year,
+                "p_reason": command.reason,
+            },
+        )
+
+    async def review_deletion(
+        self, access_token: str, command: ReviewCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_review_deletion",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_expected_updated_at": command.expected_updated_at,
+                "p_decision": command.decision,
+                "p_evidence_reference": command.evidence_reference,
+            },
+        )
+
+    async def resume_cancellation(
+        self, access_token: str, command: ResumeCompanyCancellationGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_resume_cancellation",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_income_year": command.income_year,
+                "p_expected_updated_at": command.expected_updated_at,
+            },
+        )
+
+    async def finalize_deletion(
+        self, access_token: str, command: FinalizeCompanyDeletionGatewayCommand
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_finalize_deletion",
+            {
+                "p_operation_id": command.operation_id,
+                "p_cancellation_id": command.cancellation_id,
+                "p_company_id": command.company_id,
+                "p_expected_updated_at": command.expected_updated_at,
+            },
+        )
+
     async def _rpc_row(
         self,
         access_token: str,
@@ -349,22 +440,110 @@ class SupabaseCompanyAccessAdapter:
         body: Mapping[str, object],
     ) -> Mapping[str, object] | None:
         path = f"/rest/v1/rpc/{function_name}"
-        try:
-            response = await self._request(
-                path, access_token, method="POST", body=body
+        cancellation_command = function_name in {
+            "company_access_request_cancellation",
+            "company_access_resume_cancellation",
+            "company_access_review_deletion",
+            "company_access_finalize_deletion",
+        }
+        if cancellation_command:
+            return await self._cancellation_rpc_row(
+                access_token, function_name, body
             )
+        try:
+            response = await self._request(path, access_token, method="POST", body=body)
         except CompanyAccessError as error:
             if error.code != "COMPANY_ACCESS_UNAVAILABLE" or "p_operation_id" not in body:
                 raise
-            # The first request may have committed before the transport outcome
-            # became unknown. Replay the identical durable operation once; the
-            # database receipt reconciles it without repeating the mutation.
-            response = await self._request(
-                path, access_token, method="POST", body=body
-            )
+            # A receipt is definitively absent only after reconciliation has
+            # linearized behind the original actor+operation transaction.
+            try:
+                response = await self._request(path, access_token, method="POST", body=body)
+            except CompanyAccessError as retry_error:
+                raise
         if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
             return None
         return response[0]
+
+    async def _cancellation_rpc_row(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+    ) -> Mapping[str, object]:
+        path = f"/rest/v1/rpc/{function_name}"
+        for attempt in range(2):
+            try:
+                response = await self._request(path, access_token, method="POST", body=body)
+            except CompanyAccessError as error:
+                if error.code != "COMPANY_ACCESS_UNAVAILABLE":
+                    raise
+                response = None
+            if (
+                isinstance(response, list)
+                and len(response) == 1
+                and isinstance(response[0], Mapping)
+            ):
+                return response[0]
+            state, reconciled = await self._reconcile_cancellation(
+                access_token, function_name, body
+            )
+            if state == "found":
+                assert reconciled is not None
+                return reconciled
+            if attempt == 1:
+                raise self._indeterminate_cancellation_reconciliation()
+        raise self._indeterminate_cancellation_reconciliation()
+
+    async def _reconcile_cancellation(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+    ) -> tuple[str, Mapping[str, object] | None]:
+        command_names = {
+            "company_access_request_cancellation": "request_cancellation",
+            "company_access_resume_cancellation": "resume_cancellation",
+            "company_access_review_deletion": "review_deletion",
+            "company_access_finalize_deletion": "finalize_deletion",
+        }
+        reconcile_body = dict(body)
+        reconcile_body["p_command_name"] = command_names[function_name]
+        response = await self._request(
+            "/rest/v1/rpc/company_access_reconcile_cancellation_operation",
+            access_token,
+            method="POST",
+            body=reconcile_body,
+        )
+        if (
+            not isinstance(response, list)
+            or len(response) != 1
+            or not isinstance(response[0], Mapping)
+            or set(response[0]) != {"found", "result"}
+        ):
+            raise self._indeterminate_cancellation_reconciliation()
+        row = response[0]
+        if row["found"] is False and row["result"] is None:
+            return "absent", None
+        if row["found"] is not True or not isinstance(row["result"], Mapping):
+            raise self._indeterminate_cancellation_reconciliation()
+        result = row["result"]
+        if function_name == "company_access_review_deletion":
+            cancellation = result.get("cancellation")
+            review = result.get("review")
+            if not isinstance(cancellation, Mapping) or not isinstance(review, Mapping):
+                raise self._indeterminate_cancellation_reconciliation()
+            return "found", {**cancellation, "review": review}
+        return "found", result
+
+    @staticmethod
+    def _indeterminate_cancellation_reconciliation() -> CompanyAccessError:
+        return CompanyAccessError(
+            status=503,
+            code="COMPANY_ACCESS_UNAVAILABLE",
+            title="Company access unavailable",
+            detail="The cancellation operation outcome is still unknown; retry with the same operation ID.",
+        )
 
 
 __all__ = ["SupabaseCompanyAccessAdapter", "SupabaseConfiguration"]

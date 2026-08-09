@@ -411,6 +411,30 @@ test("schema constraints and declared public exports are enforced", () => {
   }
 });
 
+test("backend workflow routes and public request exports reconcile in both directions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-public-reconciliation-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const systemPath = join(temporaryRoot, "architecture/backend-system.json");
+  const system = JSON.parse(readFileSync(systemPath, "utf8"));
+  const workflow = system.workflows.find((candidate) => candidate.name === "company-access-administration");
+  workflow.routes = workflow.routes.filter((route) => !route.endsWith("/finalize"));
+  writeFileSync(systemPath, JSON.stringify(system));
+  const modulePath = join(temporaryRoot, "apps/backend/src/talli_backend/modules/company_access/module.json");
+  const module = JSON.parse(readFileSync(modulePath, "utf8"));
+  module.exports.commands = module.exports.commands.filter((name) => name !== "FinalizeCompanyDeletionRequest");
+  writeFileSync(modulePath, JSON.stringify(module));
+
+  try {
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /composition route .*finalize.*missing from backend-system\.json/u);
+    assert.match(errors, /public request export FinalizeCompanyDeletionRequest missing from module manifest/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("database catalog and declared public import paths are authoritative", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-catalog-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -513,7 +537,6 @@ test("compatibility operations map to their serialized future tickets", () => {
     compatibility.exceptions.map((entry) => [entry.removalIssue, entry]),
   );
   const onboarding = byRemovalIssue.get("#138");
-  const cancellation = byRemovalIssue.get("#161");
   const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.exceptions.find((entry) => (
     entry.scopes.some((scope) => scope.path === path
       && scope.resource === resource
@@ -536,8 +559,13 @@ test("compatibility operations map to their serialized future tickets", () => {
   assert.equal(byRemovalIssue.has("#160"), false);
   assert.equal(ownerOf("table:companies", "inviteWorkspaceReviewer"), undefined);
   assert.equal(ownerOf("table:company_memberships", "acceptWorkspaceInvitation"), undefined);
-  assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), "#161");
-  assert.equal(ownerOf("table:companies", "completeCompanyDeletionRecord"), "#161");
+  assert.equal(byRemovalIssue.has("#161"), false);
+  assert.equal(ownerOf("table:company_memberships", "requestCompanyCancellation"), undefined);
+  assert.equal(ownerOf("table:companies", "completeCompanyDeletionRecord"), undefined);
+  assert.equal(ownerOf("table:documents", "requestCompanyCancellation"), undefined);
+  assert.equal(ownerOf("table:corporate_document_artifacts", "requestCompanyCancellation"), undefined);
+  assert.equal(ownerOf("table:audit_events", "requestCompanyCancellation"), undefined);
+  assert.equal(ownerOf("table:audit_events", "completeCompanyDeletionRecord"), undefined);
   assert.equal(ownerOf("table:holding_actions", "recordShareholderLoan"), "#145");
   assert.equal(ownerOf("table:holding_actions", "recordTaxSettlement"), "#146");
   assert.equal(ownerOf("table:authority_test_runs", "recordAnnualAccountsTt02Evidence"), "#153");
@@ -555,7 +583,6 @@ test("compatibility operations map to their serialized future tickets", () => {
   ), undefined);
   assert.equal(ownerOf("table:notification_outbox", "queueDeadlineReminders"), "#156");
   assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
-  assert.match(cancellation.removalCondition, /cancellation and deletion lifecycle.*#161/u);
   assert.deepEqual(
     onboarding.scopes.map(({ resource, operation }) => `${resource}:${operation}`).sort(),
     [
@@ -564,6 +591,40 @@ test("compatibility operations map to their serialized future tickets", () => {
       "table:customer_agreement_acceptances:listCustomerAgreementAcceptances",
     ],
   );
+});
+
+test("company cancellation lifecycle is capability-owned with no direct-web compatibility", () => {
+  const catalog = JSON.parse(readFileSync(
+    new URL("../architecture/database-catalog.json", import.meta.url),
+    "utf8",
+  ));
+  const backendModule = JSON.parse(readFileSync(new URL(
+    "../apps/backend/src/talli_backend/modules/company_access/module.json",
+    import.meta.url,
+  ), "utf8"));
+  const webModule = JSON.parse(readFileSync(new URL(
+    "../apps/web/features/company-access/module.json",
+    import.meta.url,
+  ), "utf8"));
+  const byTable = new Map(catalog.tables.map((table) => [table.name, table]));
+
+  for (const table of ["public.company_cancellations", "public.company_deletion_reviews"]) {
+    assert.deepEqual(byTable.get(table), {
+      name: table,
+      kind: "capability-business",
+      owner: "backend:company_access",
+    });
+    assert.ok(backendModule.owns.tables.includes(table));
+  }
+  for (const operation of [
+    "companyAccessListCancellations",
+    "companyAccessRequestCancellation",
+    "companyAccessResumeCancellation",
+    "companyAccessReviewDeletion",
+    "companyAccessFinalizeDeletion",
+  ]) {
+    assert.ok(webModule.apiOperations.includes(operation));
+  }
 });
 
 test("anonymous object methods fail closed without merging separate call sites", () => {
@@ -619,14 +680,14 @@ Promise.resolve().then(() => client.from("documents"));
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
-  const cancellation = compatibility.exceptions.find((entry) => entry.removalIssue === "#161");
+  const secondary = compatibility.exceptions.find((entry) => entry.removalIssue === "#139");
   onboarding.scopes.push({
     path: fixture,
     rule: "direct-web-business-persistence",
     resource: "table:companies",
     operation: "onboardCompany",
   });
-  cancellation.scopes.push({
+  secondary.scopes.push({
     path: fixture,
     rule: "direct-web-business-persistence",
     resource: "table:companies",
@@ -653,7 +714,7 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
-  const cancellation = compatibility.exceptions.find((entry) => entry.removalIssue === "#161");
+  const secondary = compatibility.exceptions.find((entry) => entry.removalIssue === "#139");
   const duplicateScope = {
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
@@ -661,13 +722,13 @@ test("compatibility scopes cannot overlap across future tickets", () => {
     operation: "inviteWorkspaceMemberAction",
   };
   onboarding.scopes.push(duplicateScope);
-  cancellation.scopes.push(duplicateScope);
+  secondary.scopes.push(duplicateScope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     assert.match(
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
-      /duplicate compatibility scope.*#138.*#161/u,
+      /duplicate compatibility scope.*#138.*#139/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -1168,7 +1229,7 @@ from ..other import internal as other_internal
   writeFileSync(
     backendDocumentationPath,
     readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
+      '"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
       '"routes":["/invented-system-route"]',
     ),
   );

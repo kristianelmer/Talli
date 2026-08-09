@@ -653,3 +653,86 @@ Round-9 TDD and verification evidence:
   `npm run build:web`, and `npm run build:backend` passed.
 - No deployment, GitHub mutation, push, hosted write, or chargeable operation was
   performed.
+
+## 2026-08-08 — Issue #161 round 3 remediation complete locally
+
+- Exact implementation base: `13270f5ab0be90cb6025ec1fa059260496bf919a`
+  (accepted and merged issue #160 / PR #163).
+- Implementation head before this progress record: `a665481073e4d2c0923b64be7c030d7279879c37`.
+- Round-3 review input: `/tmp/talli-issue-161-architecture-review-3.md` and
+  `/tmp/talli-issue-161-standards-review-3.md`.
+- Acceptance state: every round-3 architecture and standards finding is
+  implemented and locally verified. A final fresh-context architecture and
+  standards review remains required before #161 is accepted or the serialized
+  queue advances to #138.
+- The archive protocol now starts before every source read, versions every
+  declared source, and uses one company advisory-lock namespace across all years.
+  Deterministic two-session tests prove post-begin company writes stale completion
+  and cross-year/company-wide writers serialize without lock inversion.
+- Legacy active duplicates are ranked deterministically; one survivor remains and
+  each loser becomes terminal `superseded` history with structured reconciliation
+  evidence and deterministic audit evidence. The legacy direct policy conceals
+  losers while the generated query RPC retains history.
+- A revision-bound, owner+AAL2 resume command advances the exact legacy
+  `export_required` survivor only after a current authoritative archive. The real
+  PostgreSQL rollout executes expand, duplicate reconciliation, contract, resume,
+  independent review, re-export, and finalization.
+- Unknown cancellation command outcomes preserve exact inputs in the web for
+  network/abort, every 5xx, and decoder 502 failures. Backend malformed 2xx and
+  retry responses reconcile behind the exact operation lock instead of becoming
+  false not-found responses. Shared lifecycle copy is Norwegian.
+- Round-3 commits: `0ba0dbb8`, `2934c9ad`, `cf9773f9`, `246321a3`, `39dc39a2`,
+  and `a6654810` (with earlier round-1/2 remediation retained in the same branch).
+
+Fresh verification:
+
+- `npm run test:boundary` — backend 53, web 36, contract 28 passed.
+- `npm run test:supabase` — 33 passed, 4 unchanged optional environment skips.
+  One combined-suite run observed a transient invitation-runtime timer timeout;
+  the mandatory real-PG test passed immediately standalone and the full gate then
+  passed on a fresh rerun.
+- Real PostgreSQL company-access rehearsal — 2/2 passed, including cancellation
+  expand-to-contract rollout and both deterministic archive races.
+- `npm run test:supabase-grants` — 3/3 passed.
+- `npm run test:architecture` — 35/35 passed; `npm run check:architecture` passed.
+- `npm run typecheck`, `npm run build:backend`, and `npm run build:web` passed.
+- `npm run test:boundary-smoke`, `npm run test:ci-gate`, and
+  `npm run test:cancellation` passed.
+- OpenAPI and generated-client regeneration/checks passed; `git diff --check`
+  passed.
+- No deployment, GitHub mutation, push, hosted write, or chargeable operation was
+  performed.
+
+## 2026-08-09 — Issue #161 round 4 remediation complete locally
+
+- Reviewed head: `0c8d00d736b76f70635bbdfaac55d8e14dfe18d0`.
+- Round-4 review input: `/tmp/talli-issue-161-architecture-review-4.md` and
+  `/tmp/talli-issue-161-standards-review-4.md`.
+- First-ever archive generation now serializes with every source writer before
+  generation lookup, and the cancellation lifecycle uses one operation → company
+  → cancellation lock order. Deterministic real-PostgreSQL races cover the
+  writer-first case and stale resume competing with valid review/finalization.
+- Successful HTTP responses with malformed JSON become typed decoder failures and
+  preserve the exact pending operation. Generated scalar checks now retain string
+  and numeric schema constraints, and the 45-second outer deadline exceeds the
+  declared 35-second backend worst case by ten seconds.
+- All cancellation request models share one strict RFC3339 parser. Backend
+  architecture truth now includes the resume route and every public request
+  export; the checker reconciles both directions and has adversarial fixtures.
+- Round-4 commits: `3b03fee2`, `60186a98`, `ff9b63d8`, `feb24865`, and
+  `dfc989b2`.
+
+Fresh verification:
+
+- `npm run test:boundary` — backend 54, web 38, contract 28 passed.
+- `npm run test:supabase` — 34 passed, 4 unchanged optional environment skips;
+  real PostgreSQL company-access tests passed 2/2.
+- `npm run test:supabase-grants` — 3/3 passed.
+- `npm run test:architecture` — 36/36 passed; `npm run check:architecture` passed.
+- `npm run typecheck`, `npm run build:backend`, and `npm run build:web` passed.
+- `npm run test:boundary-smoke`, `npm run test:ci-gate`, and
+  `npm run test:cancellation` passed.
+- `npm run generate:api-client -- --check` and `git diff --check` passed.
+- A fresh round-five architecture and standards review remains required before
+  acceptance. No deployment, GitHub mutation, push, hosted write, or chargeable
+  operation was performed.

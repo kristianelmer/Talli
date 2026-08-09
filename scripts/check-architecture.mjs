@@ -945,6 +945,12 @@ function validateModule(root, manifestPath, errors, schema) {
       for (const name of Object.values(manifest.exports ?? {}).flat()) {
         if (!exported.has(name)) errors.push(`${label}: declared public export ${name} missing from public package`);
       }
+      const declaredExports = new Set(Object.values(manifest.exports ?? {}).flat());
+      for (const name of exported) {
+        if (name.endsWith("Request") && !declaredExports.has(name)) {
+          errors.push(`${label}: public request export ${name} missing from module manifest`);
+        }
+      }
     }
     for (const field of ["exports", "owns", "ports"]) {
       if (!(field in manifest)) errors.push(`${label}: backend manifest missing ${field}`);
@@ -1053,6 +1059,19 @@ function validateSystemManifest(root, errors, schema) {
   }
   if (!existsSync(join(root, manifest.compositionRoot ?? ""))) {
     errors.push("architecture/backend-system.json: missing composition root");
+  } else {
+    const compositionSource = readFileSync(join(root, manifest.compositionRoot), "utf8");
+    const declaredRoutes = new Set(
+      (manifest.workflows ?? []).flatMap((workflow) => workflow.routes ?? []),
+    );
+    for (const match of compositionSource.matchAll(
+      /@application\.(?:get|post|patch|delete)\(\s*["']([^"']+)["']/gu,
+    )) {
+      const route = match[1];
+      if (route.startsWith("/api/v1/") && route !== "/api/v1/openapi.json" && !declaredRoutes.has(route)) {
+        errors.push(`architecture/backend-system.json: composition route ${route} missing from backend-system.json`);
+      }
+    }
   }
   const technical = manifest.technicalOwnership ?? {};
   const requiredInfrastructure = ["transactions", "idempotency", "eventDelivery", "migrationRunner", "durableWorker"];

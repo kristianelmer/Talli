@@ -125,6 +125,86 @@ export interface InvitationSideEffectCompletion {
   operationId: string;
 }
 
+export interface CompanyCancellationEvidence {
+  archiveDownloadPath?: string | null;
+  archiveExportedAt?: string | null;
+  archiveIncomeYear?: number | null;
+  corporateEvidenceComplete?: boolean | null;
+  corporateObjectKeys?: string[];
+  legalReviewRequired?: boolean;
+  missingCorporateObjectKeys?: string[];
+  missingDocumentIds?: string[];
+  retentionClasses?: string[];
+}
+
+export interface CompanyCancellation {
+  companyId: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  evidence: CompanyCancellationEvidence;
+  id: string;
+  reason: string;
+  requestedAt: string;
+  requestedBy: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  status: "export_required" | "retention_hold" | "deletion_approved" | "deleted" | "superseded";
+  updatedAt: string;
+}
+
+export interface CompanyCancellationListResponse {
+  cancellations: CompanyCancellation[];
+}
+
+export interface CompanyCancellationResponse {
+  cancellation: CompanyCancellation;
+}
+
+export interface CompanyDeletionReview {
+  cancellationId: string;
+  cancellationRevision: string;
+  companyId: string;
+  decision: "approved" | "rejected";
+  evidenceReference: string;
+  id: string;
+  operationId: string;
+  reviewedAt: string;
+  reviewedBy: string;
+}
+
+export interface CompanyDeletionReviewResponse {
+  cancellation: CompanyCancellation;
+  review: CompanyDeletionReview;
+}
+
+export interface RequestCompanyCancellationRequest {
+  companyId: string;
+  incomeYear: number;
+  operationId: string;
+  reason: string;
+}
+
+export interface ResumeCompanyCancellationRequest {
+  companyId: string;
+  expectedUpdatedAt: string;
+  incomeYear: number;
+  operationId: string;
+}
+
+export interface ReviewCompanyDeletionRequest {
+  companyId: string;
+  decision: "approved" | "rejected";
+  evidenceReference: string;
+  expectedUpdatedAt: string;
+  operationId: string;
+}
+
+export interface FinalizeCompanyDeletionRequest {
+  companyId: string;
+  expectedUpdatedAt: string;
+  operationId: string;
+}
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -146,6 +226,29 @@ function hasOnlyProperties(
   return Object.keys(value).every((property) => allowedProperties.includes(property));
 }
 
+function isUuid(value: unknown): value is string {
+  return typeof value === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value);
+}
+
+function isDateTime(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/u.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , offsetHourText, offsetMinuteText] = match;
+  const [year, month, day, hour, minute, second] = [yearText, monthText, dayText, hourText, minuteText, secondText].map(Number);
+  if (hour > 23 || minute > 59 || second > 59) return false;
+  if (offsetHourText !== undefined && (Number(offsetHourText) > 23 || Number(offsetMinuteText) > 59)) return false;
+  const calendar = new Date(0);
+  calendar.setUTCHours(0, 0, 0, 0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  calendar.setUTCHours(hour, minute, second, 0);
+  return calendar.getUTCFullYear() === year
+    && calendar.getUTCMonth() === month - 1
+    && calendar.getUTCDate() === day
+    && !Number.isNaN(Date.parse(value));
+}
+
 function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
   return (
     isRecord(value) &&
@@ -160,22 +263,22 @@ function isCompanyContext(value: unknown): value is CompanyContext {
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["aal","address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
-    typeof value.id === "string" &&
-    typeof value.orgNumber === "string" &&
-    typeof value.name === "string" &&
-    typeof value.entityType === "string" &&
+    value.aal === "aal2" &&
     typeof value.address === "string" &&
-    typeof value.postalCode === "string" &&
     typeof value.city === "string" &&
-    typeof value.statusText === "string" &&
-    typeof value.source === "string" &&
-    typeof value.createdBy === "string" &&
-    (value.identityConfirmedAt === null || typeof value.identityConfirmedAt === "string") &&
-    (value.identityLockedAt === null || typeof value.identityLockedAt === "string") &&
     typeof value.createdAt === "string" &&
-    value.role === "owner" &&
+    typeof value.createdBy === "string" &&
+    typeof value.entityType === "string" &&
+    typeof value.id === "string" &&
+    (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
+    (typeof value.identityLockedAt === "string" || value.identityLockedAt === null) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string" &&
     value.resourceScope === "owner_sensitive" &&
-    value.aal === "aal2"
+    value.role === "owner" &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
   );
 }
 
@@ -183,8 +286,8 @@ function isCompanyContextResponse(value: unknown): value is CompanyContextRespon
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["companies","selectedCompany"]) &&
-    isCompanyContext(value.selectedCompany) &&
-    Array.isArray(value.companies) && value.companies.every((item) => isCompanyContext(item))
+    Array.isArray(value.companies) && value.companies.every((item) => isCompanyContext(item)) &&
+    isCompanyContext(value.selectedCompany)
   );
 }
 
@@ -192,13 +295,13 @@ function isCompanyInvitation(value: unknown): value is CompanyInvitation {
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["companyId","createdAt","expiresAt","id","invitedEmail","role","status","updatedAt"]) &&
-    typeof value.id === "string" &&
     typeof value.companyId === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.expiresAt === "string" &&
+    typeof value.id === "string" &&
     typeof value.invitedEmail === "string" &&
     (value.role === "reviewer" || value.role === "read_only") &&
     (value.status === "pending" || value.status === "accepted" || value.status === "revoked" || value.status === "expired") &&
-    typeof value.expiresAt === "string" &&
-    typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
 }
@@ -215,10 +318,10 @@ function isCompanyInvitationResponse(value: unknown): value is CompanyInvitation
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["deliveryBody","deliverySubject","deliveryToken","invitation"]) &&
-    isCompanyInvitation(value.invitation) &&
-    (value.deliveryToken === null || typeof value.deliveryToken === "string") &&
-    (value.deliverySubject === null || typeof value.deliverySubject === "string") &&
-    (value.deliveryBody === null || typeof value.deliveryBody === "string")
+    (typeof value.deliveryBody === "string" || value.deliveryBody === null) &&
+    (typeof value.deliverySubject === "string" || value.deliverySubject === null) &&
+    (typeof value.deliveryToken === "string" || value.deliveryToken === null) &&
+    isCompanyInvitation(value.invitation)
   );
 }
 
@@ -226,11 +329,11 @@ function isCompanyMembership(value: unknown): value is CompanyMembership {
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["acceptedAt","companyId","role","state","userId"]) &&
+    typeof value.acceptedAt === "string" &&
     typeof value.companyId === "string" &&
-    typeof value.userId === "string" &&
     (value.role === "reviewer" || value.role === "read_only") &&
     (value.state === "active" || value.state === "removed") &&
-    typeof value.acceptedAt === "string"
+    typeof value.userId === "string"
   );
 }
 
@@ -255,8 +358,8 @@ function isInvitationLookup(value: unknown): value is InvitationLookup {
     isRecord(value) &&
     hasOnlyProperties(value, ["companyName","expiresAt","role"]) &&
     typeof value.companyName === "string" &&
-    (value.role === "reviewer" || value.role === "read_only") &&
-    typeof value.expiresAt === "string"
+    typeof value.expiresAt === "string" &&
+    (value.role === "reviewer" || value.role === "read_only")
   );
 }
 
@@ -264,14 +367,14 @@ function isInvitationSideEffectContinuation(value: unknown): value is Invitation
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["commandName","companyId","deliveryBody","deliverySubject","deliveryToken","invitation","membership","operationId"]) &&
-    typeof value.operationId === "string" &&
     (value.commandName === "create_invitation" || value.commandName === "accept_invitation" || value.commandName === "revoke_invitation" || value.commandName === "resend_invitation") &&
     typeof value.companyId === "string" &&
-    (value.invitation === null || isCompanyInvitation(value.invitation)) &&
-    (value.membership === null || isCompanyMembership(value.membership)) &&
-    (value.deliveryToken === null || typeof value.deliveryToken === "string") &&
-    (value.deliverySubject === null || typeof value.deliverySubject === "string") &&
-    (value.deliveryBody === null || typeof value.deliveryBody === "string")
+    (typeof value.deliveryBody === "string" || value.deliveryBody === null) &&
+    (typeof value.deliverySubject === "string" || value.deliverySubject === null) &&
+    (typeof value.deliveryToken === "string" || value.deliveryToken === null) &&
+    (isCompanyInvitation(value.invitation) || value.invitation === null) &&
+    (isCompanyMembership(value.membership) || value.membership === null) &&
+    typeof value.operationId === "string"
   );
 }
 
@@ -287,8 +390,84 @@ function isInvitationSideEffectCompletion(value: unknown): value is InvitationSi
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["completed","operationId"]) &&
-    typeof value.operationId === "string" &&
-    value.completed === true
+    value.completed === true &&
+    typeof value.operationId === "string"
+  );
+}
+
+function isCompanyCancellationEvidence(value: unknown): value is CompanyCancellationEvidence {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveDownloadPath","archiveExportedAt","archiveIncomeYear","corporateEvidenceComplete","corporateObjectKeys","legalReviewRequired","missingCorporateObjectKeys","missingDocumentIds","retentionClasses"]) &&
+    (value.archiveDownloadPath === undefined || (typeof value.archiveDownloadPath === "string" || value.archiveDownloadPath === null)) &&
+    (value.archiveExportedAt === undefined || (isDateTime(value.archiveExportedAt) || value.archiveExportedAt === null)) &&
+    (value.archiveIncomeYear === undefined || ((typeof value.archiveIncomeYear === "number" && Number.isInteger(value.archiveIncomeYear) && value.archiveIncomeYear >= 2000 && value.archiveIncomeYear <= 2100) || value.archiveIncomeYear === null)) &&
+    (value.corporateEvidenceComplete === undefined || (typeof value.corporateEvidenceComplete === "boolean" || value.corporateEvidenceComplete === null)) &&
+    (value.corporateObjectKeys === undefined || Array.isArray(value.corporateObjectKeys) && value.corporateObjectKeys.every((item) => typeof item === "string")) &&
+    (value.legalReviewRequired === undefined || typeof value.legalReviewRequired === "boolean") &&
+    (value.missingCorporateObjectKeys === undefined || Array.isArray(value.missingCorporateObjectKeys) && value.missingCorporateObjectKeys.every((item) => typeof item === "string")) &&
+    (value.missingDocumentIds === undefined || Array.isArray(value.missingDocumentIds) && value.missingDocumentIds.every((item) => isUuid(item))) &&
+    (value.retentionClasses === undefined || Array.isArray(value.retentionClasses) && value.retentionClasses.every((item) => typeof item === "string"))
+  );
+}
+
+function isCompanyCancellation(value: unknown): value is CompanyCancellation {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","deletedAt","deletedBy","evidence","id","reason","requestedAt","requestedBy","reviewedAt","reviewedBy","status","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    (isDateTime(value.deletedAt) || value.deletedAt === null) &&
+    (isUuid(value.deletedBy) || value.deletedBy === null) &&
+    isCompanyCancellationEvidence(value.evidence) &&
+    isUuid(value.id) &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 1000) &&
+    isDateTime(value.requestedAt) &&
+    isUuid(value.requestedBy) &&
+    (isDateTime(value.reviewedAt) || value.reviewedAt === null) &&
+    (isUuid(value.reviewedBy) || value.reviewedBy === null) &&
+    (value.status === "export_required" || value.status === "retention_hold" || value.status === "deletion_approved" || value.status === "deleted" || value.status === "superseded") &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isCompanyCancellationListResponse(value: unknown): value is CompanyCancellationListResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellations"]) &&
+    Array.isArray(value.cancellations) && value.cancellations.every((item) => isCompanyCancellation(item))
+  );
+}
+
+function isCompanyCancellationResponse(value: unknown): value is CompanyCancellationResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellation"]) &&
+    isCompanyCancellation(value.cancellation)
+  );
+}
+
+function isCompanyDeletionReview(value: unknown): value is CompanyDeletionReview {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellationId","cancellationRevision","companyId","decision","evidenceReference","id","operationId","reviewedAt","reviewedBy"]) &&
+    isUuid(value.cancellationId) &&
+    isDateTime(value.cancellationRevision) &&
+    isUuid(value.companyId) &&
+    (value.decision === "approved" || value.decision === "rejected") &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    isUuid(value.id) &&
+    isUuid(value.operationId) &&
+    isDateTime(value.reviewedAt) &&
+    isUuid(value.reviewedBy)
+  );
+}
+
+function isCompanyDeletionReviewResponse(value: unknown): value is CompanyDeletionReviewResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellation","review"]) &&
+    isCompanyCancellation(value.cancellation) &&
+    isCompanyDeletionReview(value.review)
   );
 }
 
@@ -296,13 +475,13 @@ function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["code","detail","instance","requestId","status","title","type"]) &&
-    typeof value.type === "string" &&
-    typeof value.title === "string" &&
-    typeof value.status === "number" &&
+    typeof value.code === "string" &&
     typeof value.detail === "string" &&
     typeof value.instance === "string" &&
-    typeof value.code === "string" &&
-    typeof value.requestId === "string"
+    typeof value.requestId === "string" &&
+    typeof value.status === "number" && Number.isInteger(value.status) &&
+    typeof value.title === "string" &&
+    typeof value.type === "string"
   );
 }
 
@@ -373,7 +552,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isProblemDetails(candidate) ? candidate : undefined,
       );
     }
-    const candidate: unknown = await response.json();
+    const candidate: unknown = await response.json().catch(() => {
+      throw new TalliApiError(502, undefined);
+    });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
   }
@@ -579,6 +760,75 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyMembershipResponse,
+      );
+    },
+
+    async companyAccessListCancellations(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationListResponse> {
+      const query = new URLSearchParams({ company_id: companyId });
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations?${query}`,
+        "GET",
+        request,
+        undefined,
+        isCompanyCancellationListResponse,
+      );
+    },
+
+    async companyAccessRequestCancellation(
+      body: RequestCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
+      );
+    },
+
+    async companyAccessReviewDeletion(
+      cancellationId: string,
+      body: ReviewCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyDeletionReviewResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/reviews`,
+        "POST",
+        request,
+        body,
+        isCompanyDeletionReviewResponse,
+      );
+    },
+
+    async companyAccessResumeCancellation(
+      cancellationId: string,
+      body: ResumeCompanyCancellationRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/resume`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
+      );
+    },
+
+    async companyAccessFinalizeDeletion(
+      cancellationId: string,
+      body: FinalizeCompanyDeletionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyCancellationResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/finalize`,
+        "POST",
+        request,
+        body,
+        isCompanyCancellationResponse,
       );
     },
   };

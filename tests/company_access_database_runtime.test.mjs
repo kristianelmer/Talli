@@ -1241,3 +1241,807 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
     docker(["rm", "--force", containerName]);
   }
 });
+
+test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant concealed", { timeout: 120_000 }, async () => {
+  assert.equal(
+    docker(["info", "--format", "{{.ServerVersion}}"]).status,
+    0,
+    "Docker is required for the mandatory cancellation PostgreSQL rehearsal",
+  );
+  const containerName = `talli-cancellation-${process.pid}-${randomUUID().slice(0, 8)}`;
+  try {
+    const started = docker([
+      "run", "--rm", "--detach", "--name", containerName,
+      "--env", "POSTGRES_PASSWORD=postgres", "--env", "POSTGRES_DB=talli_test",
+      "--volume", `${repositoryRoot}:/repo:ro`, "postgres:17",
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+    let readyChecks = 0;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (docker(["exec", containerName, "pg_isready", "-U", "postgres", "-d", "talli_test"]).status === 0) {
+        readyChecks += 1;
+        if (readyChecks === 2) break;
+      } else {
+        readyChecks = 0;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+    assert.equal(readyChecks, 2, "PostgreSQL container did not become ready");
+    psql(containerName, [], bootstrapSql);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0001_authenticated_workspace.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0002_fifo_investment_lots.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0003_bank_rule_suggestions.sql"]);
+    psql(containerName, ["--file", "/repo/supabase/migrations/0004_corporate_document_artifacts.sql"]);
+    psql(containerName, [], String.raw`
+      create role talli_migration_owner login noinherit createrole bypassrls;
+      alter schema public owner to talli_migration_owner;
+      grant usage on schema auth to talli_migration_owner with grant option;
+      grant usage on schema extensions to talli_migration_owner;
+      grant select, references on auth.users to talli_migration_owner;
+      grant execute on function auth.uid(), auth.jwt() to talli_migration_owner with grant option;
+      alter table public.companies owner to talli_migration_owner;
+      alter table public.company_memberships owner to talli_migration_owner;
+      alter table public.company_invitations owner to talli_migration_owner;
+      alter table public.notification_outbox owner to talli_migration_owner;
+      alter table public.audit_events owner to talli_migration_owner;
+      alter table public.company_cancellations owner to talli_migration_owner;
+      alter table public.documents owner to talli_migration_owner;
+      alter table public.opening_balance_setups owner to talli_migration_owner;
+      alter table public.opening_shareholders owner to talli_migration_owner;
+      alter table public.ledger_entries owner to talli_migration_owner;
+      alter table public.filing_previews owner to talli_migration_owner;
+      alter table public.filing_submissions owner to talli_migration_owner;
+      alter table public.holding_actions owner to talli_migration_owner;
+      alter table public.billing_accounts owner to talli_migration_owner;
+      alter table public.authority_permissions owner to talli_migration_owner;
+      alter table public.authority_test_runs owner to talli_migration_owner;
+      alter table public.filing_review_comments owner to talli_migration_owner;
+      alter table public.investment_positions owner to talli_migration_owner;
+      alter table public.investment_lots owner to talli_migration_owner;
+      alter table public.investment_lot_allocations owner to talli_migration_owner;
+      alter table public.bank_suggestion_acceptances owner to talli_migration_owner;
+      alter table public.support_operators owner to talli_migration_owner;
+      alter table public.corporate_decisions owner to talli_migration_owner;
+      alter table public.corporate_document_sets owner to talli_migration_owner;
+      alter table public.corporate_document_artifacts owner to talli_migration_owner;
+      alter table public.corporate_document_events owner to talli_migration_owner;
+      alter table public.corporate_decision_finalizations owner to talli_migration_owner;
+    `);
+    psql(containerName, [
+      "-U", "talli_migration_owner",
+      "--file", "/repo/supabase/migrations/20260801090000_company_access_invitations.sql",
+    ]);
+    psql(containerName, [], String.raw`
+      insert into auth.users(id, email) values
+        ('00000000-0000-0000-0000-000000000066', 'legacy-duplicate@example.test');
+      insert into public.companies(id, org_number, name, entity_type, status_text, created_by)
+      values ('40000000-0000-0000-0000-000000000004', '141421356', 'Legacy Duplicate AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000066');
+      insert into public.company_memberships(company_id, user_id, role, accepted_at)
+      values ('40000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000066', 'owner', now());
+      insert into public.company_cancellations(id, company_id, status, reason, requested_by, requested_at, updated_at)
+      values
+        ('51000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000004', 'export_required', 'older duplicate', '00000000-0000-0000-0000-000000000066', '2026-08-01T10:00:00Z', '2026-08-01T10:00:00Z'),
+        ('51000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000004', 'export_required', 'survivor duplicate', '00000000-0000-0000-0000-000000000066', '2026-08-02T10:00:00Z', '2026-08-02T10:00:00Z');
+    `);
+    psql(containerName, [
+      "-U", "talli_migration_owner",
+      "--file", "/repo/supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
+    ]);
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select count(*) from public.company_archive_source_generations
+      where company_id = '40000000-0000-0000-0000-000000000004';
+    `]).trim(), "0", "fixture must start before its first archive generation");
+    const firstGenerationWriter = interactivePsql(containerName);
+    firstGenerationWriter.child.stdin.write(String.raw`
+      begin;
+      update public.companies set name = 'Legacy Duplicate AS post-write'
+      where id = '40000000-0000-0000-0000-000000000004';
+      select 'first_generation_writer_ready';
+    `);
+    await waitForOutput(firstGenerationWriter, /first_generation_writer_ready/u);
+    const firstGenerationBegin = interactivePsql(containerName);
+    firstGenerationBegin.child.stdin.end(String.raw`
+      set application_name = 'company_archive_first_generation_begin';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('40000000-0000-0000-0000-000000000004', 2025);
+    `);
+    let firstBeginBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      firstBeginBlocked = psql(containerName, ["-Atc", String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'company_archive_first_generation_begin'
+          and wait_event_type = 'Lock' and wait_event = 'advisory';
+      `]).trim() === "1";
+      if (firstBeginBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(firstBeginBlocked, true, "first archive begin did not block behind a pre-generation writer");
+    firstGenerationWriter.child.stdin.end("commit;\n\\q\n");
+    assert.equal((await waitForExit(firstGenerationWriter)).code, 0);
+    assert.equal((await waitForExit(firstGenerationBegin)).code, 0);
+    const firstGenerationAttemptId = psql(containerName, ["-Atc", String.raw`
+      select id from public.company_archive_export_attempts
+      where company_id = '40000000-0000-0000-0000-000000000004'
+      order by started_at desc limit 1;
+    `]).trim();
+    const firstGenerationReceipt = psql(containerName, [], String.raw`
+      set role service_role;
+      select public.company_archive_complete_export('${firstGenerationAttemptId}', repeat('5', 64));
+      reset role;
+      do $$ begin
+        if (select generation from public.company_archive_source_generations
+            where company_id = '40000000-0000-0000-0000-000000000004' and income_year = 2025) <> 0 then
+          raise exception 'first generation did not snapshot post-write baseline';
+        end if;
+        if (select name from public.companies where id = '40000000-0000-0000-0000-000000000004') <> 'Legacy Duplicate AS post-write' then
+          raise exception 'first archive missed committed company write';
+        end if;
+      end $$;
+      select 'first_generation_race_ok';
+    `);
+    assert.match(firstGenerationReceipt, /first_generation_race_ok/u);
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      do $$ declare changed integer; begin
+        if (select count(*) from public.company_cancellations where company_id = '40000000-0000-0000-0000-000000000004') <> 1 then
+          raise exception 'legacy app did not see exactly one survivor';
+        end if;
+        update public.company_cancellations set status = 'export_required'
+        where id = '51000000-0000-0000-0000-000000000001';
+        get diagnostics changed = row_count;
+        if changed <> 0 then raise exception 'legacy app reactivated superseded row'; end if;
+        if (select count(*) from public.company_access_list_cancellations('40000000-0000-0000-0000-000000000004')) <> 2 then
+          raise exception 'new query lost superseded history';
+        end if;
+      end $$;
+      reset role;
+      do $$ begin
+        if (select status from public.company_cancellations where id = '51000000-0000-0000-0000-000000000001') <> 'superseded' then
+          raise exception 'deterministic loser was not superseded';
+        end if;
+        if (select count(*) from public.audit_events where action = 'company_cancellation_legacy_duplicate_superseded') <> 1 then
+          raise exception 'duplicate reconciliation audit mismatch';
+        end if;
+      end $$;
+    `);
+    psql(containerName, [], String.raw`
+      insert into auth.users (id, email) values
+        ('00000000-0000-0000-0000-000000000011', 'owner@example.test'),
+        ('00000000-0000-0000-0000-000000000022', 'reviewer@example.test'),
+        ('00000000-0000-0000-0000-000000000033', 'outsider@example.test'),
+        ('00000000-0000-0000-0000-000000000044', 'admin@example.test'),
+        ('00000000-0000-0000-0000-000000000055', 'support@example.test');
+      insert into public.companies (id, org_number, name, entity_type, status_text, created_by) values
+        ('10000000-0000-0000-0000-000000000001', '314159265', 'Lifecycle AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000011'),
+        ('20000000-0000-0000-0000-000000000002', '271828182', 'Incomplete AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000011'),
+        ('30000000-0000-0000-0000-000000000003', '161803398', 'Race AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000011');
+      insert into public.company_memberships (company_id, user_id, role, accepted_at) values
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'owner', now()),
+        ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000022', 'reviewer', now()),
+        ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000011', 'owner', now()),
+        ('30000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000011', 'owner', now());
+      insert into public.support_operators (user_id, role, active) values
+        ('00000000-0000-0000-0000-000000000044', 'admin', true),
+        ('00000000-0000-0000-0000-000000000055', 'support', true);
+      insert into public.audit_events (company_id, actor_id, category, action, message, created_at)
+      values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'archive', 'company_year_archive_exported:2025', 'archive ready', now() - interval '1 minute');
+      insert into public.documents (id, company_id, income_year, document_type, name, linked_to, status, storage_key, created_by)
+      values
+        ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'bank', 'bank.pdf', 'year', 'attached', '10000000-0000-0000-0000-000000000001/2025/bank.pdf', '00000000-0000-0000-0000-000000000011'),
+        ('70000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', 2025, 'bank', 'race.pdf', 'year', 'attached', '30000000-0000-0000-0000-000000000003/2025/race.pdf', '00000000-0000-0000-0000-000000000011');
+    `);
+
+    const prepareRaceArchive = (sha) => psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2024) as prior_year_attempt_id \gset
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2025) as attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'prior_year_attempt_id', repeat('b', 64));
+      select public.company_archive_complete_export(:'attempt_id', '${sha}');
+    `);
+
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2025) as stale_attempt_id \gset
+      reset role;
+      update public.documents set name = 'generation-mismatch.pdf' where id = '70000000-0000-0000-0000-000000000003';
+      set role service_role;
+      select set_config('test.stale_attempt_id', :'stale_attempt_id', false);
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export(current_setting('test.stale_attempt_id')::uuid, repeat('e', 64));
+          raise exception 'generation-mismatched attempt completed';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'archive_export_stale' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2025) as company_stale_attempt_id \gset
+      reset role;
+      update public.companies set name = 'Race AS updated'
+      where id = '30000000-0000-0000-0000-000000000003';
+      set role service_role;
+      select set_config('test.company_stale_attempt_id', :'company_stale_attempt_id', false);
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export(current_setting('test.company_stale_attempt_id')::uuid, repeat('d', 64));
+          raise exception 'company-wide generation-mismatched attempt completed';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'archive_export_stale' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      insert into public.company_archive_export_attempts(
+        id, company_id, income_year, actor_id, source_generation, started_at, expires_at
+      ) select
+        '90000000-0000-0000-0000-000000000099', '30000000-0000-0000-0000-000000000003', 2025,
+        '00000000-0000-0000-0000-000000000011', generation,
+        statement_timestamp() - interval '20 minutes', statement_timestamp() - interval '10 minutes'
+      from public.company_archive_source_generations
+      where company_id = '30000000-0000-0000-0000-000000000003' and income_year = 2025;
+      set role service_role;
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export('90000000-0000-0000-0000-000000000099', repeat('f', 64));
+          raise exception 'expired attempt completed';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'archive_export_invalid' then raise; end if;
+        end;
+      end $$;
+    `);
+
+    const companyReadAttemptId = psql(containerName, ["-Atc", String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('30000000-0000-0000-0000-000000000003', 2025);
+    `]).trim().split("\n").at(-1);
+    const companyWriterAfterBegin = interactivePsql(containerName);
+    companyWriterAfterBegin.child.stdin.write(String.raw`
+      begin;
+      update public.companies set name = 'Race AS changed after begin'
+      where id = '30000000-0000-0000-0000-000000000003';
+      select 'company_write_after_begin_ready';
+    `);
+    await waitForOutput(companyWriterAfterBegin, /company_write_after_begin_ready/u);
+    const completionAfterCompanyRead = interactivePsql(containerName);
+    completionAfterCompanyRead.child.stdin.end(String.raw`
+      set application_name = 'company_archive_company_read_race';
+      set role service_role;
+      select public.company_archive_complete_export('${companyReadAttemptId}', repeat('9', 64));
+    `);
+    let completionBlockedByCompanyWrite = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const waiting = psql(containerName, ["-Atc", String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'company_archive_company_read_race'
+          and wait_event_type = 'Lock'
+          and wait_event = 'advisory';
+      `]).trim();
+      if (waiting === "1") { completionBlockedByCompanyWrite = true; break; }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(completionBlockedByCompanyWrite, true, "archive completion did not serialize with a post-begin company write");
+    companyWriterAfterBegin.child.stdin.end("commit;\n\\q\n");
+    assert.equal((await waitForExit(companyWriterAfterBegin)).code, 0);
+    const staleCompanyReadCompletion = await waitForExit(completionAfterCompanyRead);
+    assert.notEqual(staleCompanyReadCompletion.code, 0);
+    assert.match(staleCompanyReadCompletion.stderr, /archive_export_stale/u);
+
+    prepareRaceArchive("c".repeat(64));
+    const lifecycleFirst = interactivePsql(containerName);
+    lifecycleFirst.child.stdin.write(String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      begin;
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000020', '30000000-0000-0000-0000-000000000003', 2025, 'Race lifecycle first'
+      );
+      select 'lifecycle_holds_scope_lock';
+    `);
+    await waitForOutput(lifecycleFirst, /lifecycle_holds_scope_lock/u);
+    const writerSecond = interactivePsql(containerName);
+    writerSecond.child.stdin.write(String.raw`
+      begin;
+      update public.companies set name = 'Race AS after lifecycle'
+      where id = '30000000-0000-0000-0000-000000000003';
+      select 'writer_after_lifecycle_completed';
+      commit;
+      \q
+    `);
+    const blockedWriter = psql(containerName, [], String.raw`
+      select count(*) as blocked_writer_count from pg_catalog.pg_stat_activity
+      where wait_event_type = 'Lock' and query like 'update public.companies%';
+    `);
+    assert.match(blockedWriter, /blocked_writer_count[\s\S]*1/u);
+    lifecycleFirst.child.stdin.write("commit;\n\\q\n");
+    assert.equal((await waitForExit(lifecycleFirst)).code, 0);
+    assert.equal((await waitForExit(writerSecond)).code, 0);
+
+    psql(containerName, [], String.raw`
+      delete from public.company_cancellations where company_id = '30000000-0000-0000-0000-000000000003';
+    `);
+    prepareRaceArchive("d".repeat(64));
+    const writerFirst = interactivePsql(containerName);
+    writerFirst.child.stdin.write(String.raw`
+      begin;
+      update public.documents set name = 'race-before-lifecycle.pdf'
+      where id = '70000000-0000-0000-0000-000000000003';
+      select 'writer_holds_scope_lock';
+    `);
+    await waitForOutput(writerFirst, /writer_holds_scope_lock/u);
+    const lifecycleSecond = interactivePsql(containerName);
+    lifecycleSecond.child.stdin.write(String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000021', '30000000-0000-0000-0000-000000000003', 2025, 'Writer race first'
+      );
+      \q
+    `);
+    const blockedLifecycle = psql(containerName, [], String.raw`
+      select count(*) as blocked_lifecycle_count from pg_catalog.pg_stat_activity
+      where wait_event_type = 'Lock' and query like 'select * from public.company_access_request_cancellation%';
+    `);
+    assert.match(blockedLifecycle, /blocked_lifecycle_count[\s\S]*1/u);
+    writerFirst.child.stdin.write("commit;\n\\q\n");
+    assert.equal((await waitForExit(writerFirst)).code, 0);
+    const staleLifecycle = await waitForExit(lifecycleSecond);
+    assert.notEqual(staleLifecycle.code, 0);
+    assert.match(staleLifecycle.stderr, /cancellation_prerequisite_failed/u);
+
+    const output = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+
+      insert into public.company_cancellations (company_id, status, reason, requested_by)
+      values ('10000000-0000-0000-0000-000000000001', 'retention_hold', 'legacy overlap', '00000000-0000-0000-0000-000000000011');
+      reset role;
+      delete from public.company_cancellations where reason = 'legacy overlap';
+      set role authenticated;
+
+      do $$ begin
+        begin
+          perform public.company_archive_begin_export('10000000-0000-0000-0000-000000000001', null);
+          raise exception 'null archive year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000031', '10000000-0000-0000-0000-000000000001', null, 'Null year'
+          );
+          raise exception 'null cancellation year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_reconcile_cancellation_operation(
+            '40000000-0000-0000-0000-000000000032', 'request_cancellation',
+            '10000000-0000-0000-0000-000000000001', p_income_year => null, p_reason => 'Null year'
+          );
+          raise exception 'null reconciliation year succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+      end $$;
+
+      select public.company_archive_begin_export('10000000-0000-0000-0000-000000000001', 2025) as archive_attempt_id \gset
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export('90000000-0000-0000-0000-000000000001', repeat('a', 64));
+          raise exception 'authenticated completed archive receipt';
+        exception when insufficient_privilege then null;
+        end;
+      end $$;
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'archive_attempt_id', repeat('a', 64));
+      select set_config('test.archive_attempt_id', :'archive_attempt_id', false);
+      do $$ begin
+        begin
+          perform public.company_archive_complete_export(current_setting('test.archive_attempt_id')::uuid, repeat('a', 64));
+          raise exception 'archive attempt replay succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'archive_export_invalid' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'Customer requested cancellation'
+      );
+      select * from public.company_access_request_cancellation(
+        '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 2025, 'Customer requested cancellation'
+      );
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'request replay duplicated cancellation'; end if;
+        if (select count(*) from public.audit_events where company_id = '10000000-0000-0000-0000-000000000001' and action in ('cancellation_archive_verified','company_cancellation_requested')) <> 2 then raise exception 'request replay duplicated audit'; end if;
+        begin
+          insert into public.company_cancellations (company_id, status, reason, requested_by)
+          values ('10000000-0000-0000-0000-000000000001', 'retention_hold', 'second active', '00000000-0000-0000-0000-000000000011');
+          raise exception 'second active cancellation succeeded';
+        exception when unique_violation then null;
+        end;
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 2025, 'Incomplete archive'
+          );
+          raise exception 'missing archive request succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'cancellation_prerequisite_failed' then raise; end if;
+        end;
+        if exists (select 1 from public.company_cancellations where company_id = '20000000-0000-0000-0000-000000000002') then raise exception 'failed request left partial cancellation'; end if;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000033', false);
+      do $$ begin
+        if exists (select 1 from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) then raise exception 'outsider saw cancellation'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000022', false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'accepted reviewer lost read'; end if;
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000055', false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'support operator lost narrow read'; end if;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      reset role;
+      insert into public.support_operators (user_id, role, active)
+      values ('00000000-0000-0000-0000-000000000011', 'admin', true);
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000003', c.id, c.company_id, c.updated_at, 'approved', 'owner-self-review'
+          );
+          raise exception 'owner self-review succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_not_found' then raise; end if;
+        end;
+      end $$;
+
+      do $$ begin
+        begin
+          perform * from public.company_access_request_cancellation(
+            '40000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000001', 2025, repeat('x', 1001)
+          );
+          raise exception 'oversized reason succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+      end $$;
+      reset role;
+      do $$ begin
+        if exists (select 1 from public.company_access_command_receipts where operation_id = '40000000-0000-0000-0000-000000000008') then
+          raise exception 'invalid request wrote receipt';
+        end if;
+      end $$;
+      set role authenticated;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000009', c.id, c.company_id, null, 'approved', 'null revision'
+          );
+          raise exception 'null review revision succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_review_deletion(
+            '40000000-0000-0000-0000-000000000010', c.id, c.company_id, c.updated_at, 'approved', repeat('x', 501)
+          );
+          raise exception 'oversized evidence reference succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        perform * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000004', c.id, c.company_id, c.updated_at, 'rejected', 'legal/case-161-rejected'
+        );
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000011', c.id, c.company_id, null
+          );
+          raise exception 'null finalize revision succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_invalid_request' then raise; end if;
+        end;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000005', c.id, c.company_id, c.updated_at
+          );
+          raise exception 'rejected review authorized finalize';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'company_access_conflict' then raise; end if;
+        end;
+      end $$;
+
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare c record; review_json jsonb; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        select review into review_json from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000006', c.id, c.company_id, c.updated_at, 'approved', 'legal/case-161-approved'
+        );
+        if review_json ? 'requester_id' or not review_json ?& array[
+          'id','cancellation_id','company_id','decision','evidence_reference',
+          'reviewed_by','reviewed_at','operation_id','cancellation_revision'
+        ] then raise exception 'review response projection mismatch: %', review_json; end if;
+      end $$;
+
+      reset role;
+      update public.documents set status = 'missing_object' where id = '70000000-0000-0000-0000-000000000001';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        begin
+          perform * from public.company_access_finalize_deletion(
+            '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+          );
+          raise exception 'stale archive finalize succeeded';
+        exception when sqlstate 'P0001' then
+          if sqlerrm <> 'cancellation_prerequisite_failed' then raise; end if;
+        end;
+        if c.status <> 'deletion_approved' then raise exception 'failed finalize changed cancellation'; end if;
+      end $$;
+      reset role;
+      update public.documents set status = 'attached' where id = '70000000-0000-0000-0000-000000000001';
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('10000000-0000-0000-0000-000000000001', 2025) as replacement_archive_attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'replacement_archive_attempt_id', repeat('b', 64));
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001') limit 1;
+        perform * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+        );
+        perform * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000007', c.id, c.company_id, c.updated_at
+        );
+      end $$;
+      reset role;
+      do $$ begin
+        if (select status from public.company_cancellations where company_id = '10000000-0000-0000-0000-000000000001') <> 'deleted' then raise exception 'final status missing'; end if;
+        if (select status_text from public.companies where id = '10000000-0000-0000-0000-000000000001') <> 'deleted_retention_record' then raise exception 'company marker missing'; end if;
+        if (select count(*) from public.audit_events where action = 'company_deletion_completed') <> 1 then raise exception 'finalize replay duplicated audit'; end if;
+        if not exists (select 1 from public.documents where id = '70000000-0000-0000-0000-000000000001') then raise exception 'physical business data was deleted'; end if;
+        if (select count(*) from public.company_deletion_reviews) <> 2 then raise exception 'append-only reviews missing'; end if;
+      end $$;
+      select 'company_access_cancellation_runtime_ok';
+    `);
+    assert.match(output, /company_access_cancellation_runtime_ok/);
+
+    psql(containerName, ["--file", "/repo/supabase/contract-migrations/20260808121000_company_access_cancellation_contract.sql"]);
+    const contracted = psql(containerName, [], String.raw`
+      do $$ begin
+        if has_table_privilege('authenticated', 'public.company_cancellations', 'SELECT') then raise exception 'direct cancellation select remains'; end if;
+        if has_table_privilege('authenticated', 'public.company_cancellations', 'UPDATE') then raise exception 'direct cancellation update remains'; end if;
+      end $$;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000011', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ begin
+        if (select count(*) from public.company_access_list_cancellations('10000000-0000-0000-0000-000000000001')) <> 1 then raise exception 'generated query RPC failed after contract'; end if;
+      end $$;
+      select 'company_access_cancellation_contract_ok';
+    `);
+    assert.match(contracted, /company_access_cancellation_contract_ok/);
+
+    const legacyRollout = psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('40000000-0000-0000-0000-000000000004', 2025) as legacy_archive_attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'legacy_archive_attempt_id', repeat('6', 64));
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('40000000-0000-0000-0000-000000000004')
+        where id = '51000000-0000-0000-0000-000000000002';
+        perform * from public.company_access_resume_cancellation(
+          '40000000-0000-0000-0000-000000000041', c.id, c.company_id, 2025, c.updated_at
+        );
+        perform * from public.company_access_resume_cancellation(
+          '40000000-0000-0000-0000-000000000041', c.id, c.company_id, 2025, c.updated_at
+        );
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('40000000-0000-0000-0000-000000000004')
+        where id = '51000000-0000-0000-0000-000000000002';
+        perform * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000042', c.id, c.company_id, c.updated_at,
+          'approved', 'legal/legacy-rollout-161'
+        );
+      end $$;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select public.company_archive_begin_export('40000000-0000-0000-0000-000000000004', 2025) as legacy_final_archive_attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'legacy_final_archive_attempt_id', repeat('7', 64));
+      reset role;
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000066', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      do $$ declare c record; begin
+        select * into c from public.company_access_list_cancellations('40000000-0000-0000-0000-000000000004')
+        where id = '51000000-0000-0000-0000-000000000002';
+        perform * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000043', c.id, c.company_id, c.updated_at
+        );
+      end $$;
+      reset role;
+      do $$ begin
+        if (select status from public.company_cancellations where id = '51000000-0000-0000-0000-000000000002') <> 'deleted' then
+          raise exception 'legacy survivor did not finalize after contract';
+        end if;
+        if (select count(*) from public.company_access_command_receipts where operation_id = '40000000-0000-0000-0000-000000000041') <> 1 then
+          raise exception 'legacy resume replay duplicated receipt';
+        end if;
+        if (select count(*) from public.audit_events where company_id = '40000000-0000-0000-0000-000000000004' and action = 'company_cancellation_resumed') <> 1 then
+          raise exception 'legacy resume audit mismatch';
+        end if;
+      end $$;
+      select 'company_access_legacy_rollout_ok';
+    `);
+    assert.match(legacyRollout, /company_access_legacy_rollout_ok/u);
+
+    psql(containerName, [], String.raw`
+      insert into auth.users(id, email) values
+        ('00000000-0000-0000-0000-000000000077', 'lock-order-owner@example.test');
+      insert into public.companies(id, org_number, name, entity_type, status_text, created_by)
+      values ('41000000-0000-0000-0000-000000000005', '173205080', 'Lock Order AS', 'AS', 'Active', '00000000-0000-0000-0000-000000000077');
+      insert into public.company_memberships(company_id, user_id, role, accepted_at)
+      values ('41000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000077', 'owner', now());
+      insert into public.company_cancellations(id, company_id, status, reason, requested_by, requested_at, updated_at)
+      values ('52000000-0000-0000-0000-000000000005', '41000000-0000-0000-0000-000000000005', 'export_required', 'lock order fixture', '00000000-0000-0000-0000-000000000077', '2026-08-08T10:00:00Z', '2026-08-08T10:00:00Z');
+    `);
+    const exportLockOrderCompany = (sha) => psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select public.company_archive_begin_export('41000000-0000-0000-0000-000000000005', 2025) as lock_order_attempt_id \gset
+      reset role;
+      set role service_role;
+      select public.company_archive_complete_export(:'lock_order_attempt_id', '${sha}');
+    `);
+    exportLockOrderCompany("8".repeat(64));
+    psql(containerName, [], String.raw`
+      set role authenticated;
+      select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+      select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+      select * from public.company_access_resume_cancellation(
+        '40000000-0000-0000-0000-000000000051', '52000000-0000-0000-0000-000000000005',
+        '41000000-0000-0000-0000-000000000005', 2025, '2026-08-08T10:00:00Z'
+      );
+    `);
+
+    const runResumeCompetitorRace = async ({ competingSql, applicationName, expectedRevision }) => {
+      const companyLocker = interactivePsql(containerName);
+      companyLocker.child.stdin.write(String.raw`
+        begin;
+        select public.company_archive_lock_company_v1('41000000-0000-0000-0000-000000000005');
+        select 'company_lock_order_locker_ready';
+      `);
+      await waitForOutput(companyLocker, /company_lock_order_locker_ready/u);
+      const staleResume = interactivePsql(containerName);
+      staleResume.child.stdin.end(String.raw`
+        set application_name = '${applicationName}_resume';
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_resume_cancellation(
+          '${applicationName === "review_race" ? "40000000-0000-0000-0000-000000000052" : "40000000-0000-0000-0000-000000000054"}',
+          '52000000-0000-0000-0000-000000000005', '41000000-0000-0000-0000-000000000005', 2025,
+          '${expectedRevision}'::timestamptz
+        );
+      `);
+      let resumeQueued = false;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        resumeQueued = psql(containerName, ["-Atc", String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = '${applicationName}_resume'
+            and wait_event_type = 'Lock' and wait_event = 'advisory';
+        `]).trim() === "1";
+        if (resumeQueued) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(resumeQueued, true, `${applicationName} resume did not queue first`);
+      const competitor = interactivePsql(containerName);
+      competitor.child.stdin.end(`set application_name = '${applicationName}_competitor';\n${competingSql}`);
+      let queued = false;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        queued = psql(containerName, ["-Atc", String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name in ('${applicationName}_resume', '${applicationName}_competitor')
+            and wait_event_type = 'Lock' and wait_event = 'advisory';
+        `]).trim() === "2";
+        if (queued) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(queued, true, `${applicationName} did not queue both lifecycle operations behind the company lock`);
+      companyLocker.child.stdin.end("commit;\n\\q\n");
+      assert.equal((await waitForExit(companyLocker)).code, 0);
+      const staleResult = await waitForExit(staleResume);
+      const competitorResult = await waitForExit(competitor);
+      assert.notEqual(staleResult.code, 0);
+      assert.match(staleResult.stderr, /company_access_conflict/u);
+      assert.doesNotMatch(`${staleResult.stderr}\n${competitorResult.stderr}`, /deadlock detected/iu);
+      assert.equal(competitorResult.code, 0, competitorResult.stderr);
+    };
+    const retentionRevision = psql(containerName, ["-Atc", "select updated_at from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim();
+    await runResumeCompetitorRace({
+      applicationName: "review_race",
+      expectedRevision: retentionRevision,
+      competingSql: String.raw`
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000044', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_review_deletion(
+          '40000000-0000-0000-0000-000000000053', '52000000-0000-0000-0000-000000000005',
+          '41000000-0000-0000-0000-000000000005', '${retentionRevision}'::timestamptz,
+          'approved', 'legal/lock-order-review'
+        );
+      `,
+    });
+    exportLockOrderCompany("9".repeat(64));
+    const approvedRevision = psql(containerName, ["-Atc", "select updated_at from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim();
+    await runResumeCompetitorRace({
+      applicationName: "finalize_race",
+      expectedRevision: approvedRevision,
+      competingSql: String.raw`
+        set role authenticated;
+        select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000077', false);
+        select set_config('request.jwt.claims', jsonb_build_object('aal','aal2','amr',jsonb_build_array(jsonb_build_object('method','totp','timestamp',extract(epoch from now()))))::text, false);
+        select * from public.company_access_finalize_deletion(
+          '40000000-0000-0000-0000-000000000055', '52000000-0000-0000-0000-000000000005',
+          '41000000-0000-0000-0000-000000000005', '${approvedRevision}'::timestamptz
+        );
+      `,
+    });
+    assert.equal(psql(containerName, ["-Atc", "select status from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim(), "deleted");
+  } finally {
+    docker(["rm", "--force", containerName]);
+  }
+});

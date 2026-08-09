@@ -17,7 +17,6 @@ import {
   listBankTransactions,
   listBillingAccounts,
   listBillingPaymentEvents,
-  listCompanyCancellations,
   listCorporateDocumentLifecycle,
   listDocumentsForCompanies,
   listFilingPreviews,
@@ -35,6 +34,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./supabase/server";
+import { listCompanyCancellationLifecycle } from "./company-access-cancellation";
 import { listCompanyAccessContexts } from "./company-access-context";
 import { listCompanyAccessAdministration } from "./company-access-administration";
 
@@ -83,7 +83,9 @@ export async function loadWorkspaceData() {
     ? await listCompanyAccessAdministration(primaryCompanyId)
     : { invitations: [], memberships: [], error: null };
   const { notifications } = user ? await listNotificationOutbox(companies.map((company) => company.id)) : { notifications: [] };
-  const { cancellations } = user ? await listCompanyCancellations(companies.map((company) => company.id)) : { cancellations: [] };
+  const { cancellations, error: cancellationLifecycleError } = user
+    ? await listCompanyCancellationLifecycle(companies.map((company) => company.id))
+    : { cancellations: [], error: null };
   const { billingAccounts } = user ? await listBillingAccounts(companies.map((company) => company.id)) : { billingAccounts: [] };
   const { billingPaymentEvents } = user ? await listBillingPaymentEvents(companies.map((company) => company.id)) : { billingPaymentEvents: [] };
   const { transactions } = user ? await listBankTransactions(companies.map((company) => company.id)) : { transactions: [] };
@@ -143,7 +145,11 @@ export async function loadWorkspaceData() {
   const primaryAuthorityTestRuns = authorityTestRuns.filter((run) => run.company_id === primaryCompanyId);
   const primaryInvitations = invitations.filter((invitation) => invitation.companyId === primaryCompanyId);
   const primaryNotifications = notifications.filter((notification) => notification.company_id === primaryCompanyId);
-  const primaryCancellation = cancellations.find((cancellation) => cancellation.company_id === primaryCompanyId);
+  const primaryCancellation = cancellations.find(
+    (cancellation) => cancellation.company_id === primaryCompanyId
+      && cancellation.status !== "deleted"
+      && cancellation.status !== "superseded",
+  );
   const cancellationLifecycle = buildCancellationLifecycle(primaryCancellation);
   const reviewChecklist = reviewChecklistStatus(
     comments
@@ -163,7 +169,8 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError,
+    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    cancellationLifecycleError,
     companies,
     documents,
     annualData,
