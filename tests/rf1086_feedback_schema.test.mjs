@@ -600,19 +600,25 @@ test(
         assert.equal(await normalDownload.data.text(), "ordinary");
       }
     } finally {
-      await admin.storage.from("company-documents").remove([feedbackKey, normalKey]);
-      await database.query("delete from public.production_feedback_artifacts where company_id = $1", [companyId]);
-      await database.query("delete from public.production_filing_submissions where company_id = $1", [companyId]);
-      await database.query("delete from public.filing_approval_snapshots where company_id = $1", [companyId]);
-      await database.query("delete from public.production_pilot_entitlements where company_id = $1", [companyId]);
-      await database.query("delete from public.documents where company_id = $1", [companyId]);
-      await database.query("delete from public.filing_previews where company_id = $1", [companyId]);
-      await database.query("delete from public.support_operators where user_id = any($1::uuid[])", [users.map((user) => user.id)]);
-      await database.query("delete from public.company_memberships where company_id = $1", [companyId]);
-      await database.query("delete from public.companies where id = $1", [companyId]);
-      for (const client of clients) await client.auth.signOut();
-      for (const user of users) await admin.auth.admin.deleteUser(user.id);
-      await database.end();
+      try {
+        await admin.storage.from("company-documents").remove([feedbackKey, normalKey]);
+        await database.query("delete from public.production_feedback_artifacts where company_id = $1", [companyId]);
+        await database.query("delete from public.production_filing_submissions where company_id = $1", [companyId]);
+        await database.query("delete from public.filing_approval_snapshots where company_id = $1", [companyId]);
+        await database.query("delete from public.production_pilot_entitlements where company_id = $1", [companyId]);
+        await database.query("delete from public.documents where company_id = $1", [companyId]);
+        await database.query("delete from public.filing_previews where company_id = $1", [companyId]);
+        await database.query("delete from public.company_archive_export_receipts where company_id = $1", [companyId]);
+        await database.query("delete from public.company_archive_export_attempts where company_id = $1", [companyId]);
+        await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
+        await database.query("delete from public.support_operators where user_id = any($1::uuid[])", [users.map((user) => user.id)]);
+        await database.query("delete from public.company_memberships where company_id = $1", [companyId]);
+        await database.query("delete from public.companies where id = $1", [companyId]);
+        for (const client of clients) await client.auth.signOut();
+        for (const user of users) await admin.auth.admin.deleteUser(user.id);
+      } finally {
+        await database.end();
+      }
     }
   },
 );
