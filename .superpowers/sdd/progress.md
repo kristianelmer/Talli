@@ -705,7 +705,7 @@ Fresh verification:
 
 ## 2026-08-09 — Issue #161 round 4 remediation complete locally
 
-- Reviewed head: `0c8d00d736c477d30de62d37f14c2ec30f67db56`.
+- Reviewed head: `0c8d00d736b76f70635bbdfaac55d8e14dfe18d0`.
 - Round-4 review input: `/tmp/talli-issue-161-architecture-review-4.md` and
   `/tmp/talli-issue-161-standards-review-4.md`.
 - First-ever archive generation now serializes with every source writer before
