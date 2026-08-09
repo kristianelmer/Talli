@@ -702,3 +702,37 @@ Fresh verification:
   passed.
 - No deployment, GitHub mutation, push, hosted write, or chargeable operation was
   performed.
+
+## 2026-08-09 — Issue #161 round 4 remediation complete locally
+
+- Reviewed head: `0c8d00d736c477d30de62d37f14c2ec30f67db56`.
+- Round-4 review input: `/tmp/talli-issue-161-architecture-review-4.md` and
+  `/tmp/talli-issue-161-standards-review-4.md`.
+- First-ever archive generation now serializes with every source writer before
+  generation lookup, and the cancellation lifecycle uses one operation → company
+  → cancellation lock order. Deterministic real-PostgreSQL races cover the
+  writer-first case and stale resume competing with valid review/finalization.
+- Successful HTTP responses with malformed JSON become typed decoder failures and
+  preserve the exact pending operation. Generated scalar checks now retain string
+  and numeric schema constraints, and the 45-second outer deadline exceeds the
+  declared 35-second backend worst case by ten seconds.
+- All cancellation request models share one strict RFC3339 parser. Backend
+  architecture truth now includes the resume route and every public request
+  export; the checker reconciles both directions and has adversarial fixtures.
+- Round-4 commits: `3b03fee2`, `60186a98`, `ff9b63d8`, `feb24865`, and
+  `dfc989b2`.
+
+Fresh verification:
+
+- `npm run test:boundary` — backend 54, web 38, contract 28 passed.
+- `npm run test:supabase` — 34 passed, 4 unchanged optional environment skips;
+  real PostgreSQL company-access tests passed 2/2.
+- `npm run test:supabase-grants` — 3/3 passed.
+- `npm run test:architecture` — 36/36 passed; `npm run check:architecture` passed.
+- `npm run typecheck`, `npm run build:backend`, and `npm run build:web` passed.
+- `npm run test:boundary-smoke`, `npm run test:ci-gate`, and
+  `npm run test:cancellation` passed.
+- `npm run generate:api-client -- --check` and `git diff --check` passed.
+- A fresh round-five architecture and standards review remains required before
+  acceptance. No deployment, GitHub mutation, push, hosted write, or chargeable
+  operation was performed.
