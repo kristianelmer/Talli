@@ -206,6 +206,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:company_access",
     },
     {
+      from: "backend-system:company-access-onboarding-and-support",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
+    {
       from: "backend-system:system-boundary-tracer",
       imports: ["talli_backend.modules.system_boundary.public"],
       kind: "workflow",
@@ -226,7 +232,7 @@ test("architecture evidence is deterministic and committed output is current", (
   assert.deepEqual(committed, generated.evidence);
 });
 
-test("legacy facades are frozen by an immutable baseline instead of calendar expiry", () => {
+test("legacy facades cannot shrink without current-source deletion proof", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-facade-"));
   const currentBaselineScopes = [
     compatibilityScope,
@@ -236,7 +242,7 @@ test("legacy facades are frozen by an immutable baseline instead of calendar exp
     { ...compatibilityScope, resource: "table:ledger_entries", operation: "postEntry" },
     { ...compatibilityScope, resource: "table:period_locks", operation: "lockPeriod" },
   ];
-  const currentFacade = legacyFacade({ scopes: [currentBaselineScopes[0]] });
+  const currentFacade = legacyFacade({ scopes: currentBaselineScopes });
   const futureFacade = legacyFacade({
     id: "compat-ledger",
     capability: "ledger",
@@ -285,7 +291,168 @@ test("legacy facades are frozen by an immutable baseline instead of calendar exp
         baselinePath,
         expectedBaselineDigest: "TEST_BASELINE_DIGEST",
       }).join("\n"),
-      /compat-ledger.*future legacy-facade must remain static/u,
+      /compat-ledger.*removed frozen scope lacks current-source deletion proof/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("resource-owner deletion-only shrink may change only the affected operation", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-deletion-proof-"));
+  const retiredSource = 'export function retiredOperation() { client.from("companies"); }\n';
+  const sharedPath = "apps/web/app/ledger.ts";
+  const sharedBaselineSource = [
+    "export function postEntry() {",
+    '  client.from("companies");',
+    '  client.from("ledger_entries");',
+    "}",
+    "",
+  ].join("\n");
+  const unrelatedPath = "apps/web/app/banking.ts";
+  const unrelatedBaselineSource = 'export function importTransactions() { client.from("bank_transactions"); }\n';
+  const retiredScope = {
+    ...compatibilityScope,
+    operation: "retiredOperation",
+  };
+  Object.assign(
+    retiredScope,
+    legacyOperationProof(retiredSource, retiredScope.path, retiredScope),
+  );
+  const removedSharedScope = {
+    ...compatibilityScope,
+    path: sharedPath,
+    resource: "table:companies",
+    operation: "postEntry",
+  };
+  const retainedSharedScope = {
+    ...removedSharedScope,
+    resource: "table:ledger_entries",
+  };
+  Object.assign(
+    removedSharedScope,
+    legacyOperationProof(sharedBaselineSource, sharedPath, removedSharedScope),
+  );
+  Object.assign(
+    retainedSharedScope,
+    legacyOperationProof(sharedBaselineSource, sharedPath, retainedSharedScope),
+  );
+  const unrelatedScope = {
+    ...compatibilityScope,
+    path: unrelatedPath,
+    resource: "table:bank_transactions",
+    operation: "importTransactions",
+  };
+  Object.assign(
+    unrelatedScope,
+    legacyOperationProof(unrelatedBaselineSource, unrelatedPath, unrelatedScope),
+  );
+  const retiredFacade = legacyFacade({ scopes: [retiredScope] });
+  const futureFacade = legacyFacade({
+    id: "compat-ledger",
+    capability: "ledger",
+    removalIssue: "#139",
+    scopes: [removedSharedScope, retainedSharedScope],
+  });
+  const unrelatedFacade = legacyFacade({
+    id: "compat-banking",
+    capability: "banking",
+    removalIssue: "#140",
+    scopes: [unrelatedScope],
+  });
+  const baseline = compatibilityBaseline([retiredFacade, futureFacade, unrelatedFacade]);
+  const registry = compatibilityFixture({
+    records: [
+      legacyFacade({
+        id: futureFacade.id,
+        capability: futureFacade.capability,
+        removalIssue: futureFacade.removalIssue,
+        scopes: [retainedSharedScope],
+      }),
+      unrelatedFacade,
+    ],
+  });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+  const workingSources = new Map([
+    [compatibilityScope.path, "export const retiredOperation = undefined;\n"],
+    [sharedPath, [
+      "export function postEntry() {",
+      "  callCompanyAccessBackend();",
+      '  client.from("ledger_entries");',
+      "}",
+      "",
+    ].join("\n")],
+    [unrelatedPath, unrelatedBaselineSource],
+  ]);
+  const resourceOwners = new Map([
+    ["table:companies", "backend:company_access"],
+    ["table:ledger_entries", "backend:ledger"],
+    ["table:bank_transactions", "backend:banking"],
+  ]);
+  const options = {
+    baselinePath,
+    expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    currentSource: (path) => workingSources.get(path),
+    resourceOwner: (resource) => resourceOwners.get(resource),
+  };
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    resourceOwners.set("table:companies", "backend:documents");
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-ledger.*future frozen scope resource table:companies is not owned by active capability backend:company_access/u,
+    );
+    resourceOwners.set("table:companies", "backend:company_access");
+
+    const originalRecords = registry.records;
+    const originalOrder = registry.migration.order;
+    registry.records = registry.records.filter((record) => record.id !== futureFacade.id);
+    registry.migration.order = registry.migration.order.filter(
+      (stage) => stage.capability !== futureFacade.capability,
+    );
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-ledger.*capability ledger is absent from migration order/u,
+    );
+    registry.records = originalRecords;
+    registry.migration.order = originalOrder;
+    writeFileSync(registryPath, JSON.stringify(registry));
+
+    workingSources.set(compatibilityScope.path, retiredSource);
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-company-access.*removed frozen scope still exists/u,
+    );
+
+    workingSources.set(compatibilityScope.path, "export const retiredOperation = undefined;\n");
+    workingSources.set(
+      unrelatedPath,
+      'export function importTransactions() { const changed = true; client.from("bank_transactions"); }\n',
+    );
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-banking.*legacy operation changed/u,
+    );
+
+    workingSources.set(unrelatedPath, unrelatedBaselineSource);
+    workingSources.set(sharedPath, [
+      "export function postEntry() {",
+      "  callCompanyAccessBackend();",
+      '  client.from("ledger_entries");',
+      '  client.from("ledger_entries");',
+      "}",
+      "",
+    ].join("\n"));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-ledger.*scope has an added writer/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -609,6 +776,7 @@ test("completed stages require two consecutive complete-gate attestations", () =
     loadGateEvidence: (path) => byPath.get(path),
     loadGateTranscript: (path) => transcripts.get(path),
     sourceAtGateRevision: () => producer,
+    currentSource: () => "export const retiredFacade = true;\n",
   };
 
   try {
@@ -953,10 +1121,16 @@ test("a real stable customer-ready release after approval revokes active-stage d
   }));
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
-  compatibility.records = compatibility.records.filter((entry) => entry !== onboarding);
+  const debtPath = "apps/web/app/stable-release-debt.ts";
+  writeFileSync(join(temporaryRoot, debtPath), `
+import { createClient } from "@supabase/supabase-js";
+const client = createClient("https://fixture.supabase.co", "fixture-key");
+export async function legacyOperation() {
+  await client.from("companies").insert({ name: "Fixture" });
+}
+`);
   compatibility.records.push(activeStageDebt({
-    scopes: onboarding.scopes,
+    scopes: [{ ...compatibilityScope, path: debtPath }],
     approvedAt: "2026-07-30T00:00:00Z",
     expiresAt: "2026-08-10T00:00:00Z",
   }));
@@ -969,7 +1143,7 @@ test("a real stable customer-ready release after approval revokes active-stage d
       now: new Date("2026-07-31T12:00:00Z"),
     }).errors.join("\n");
     assert.match(errors, /compat-company-access-active-stage-debt.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
-    assert.match(errors, /apps\/web\/app\/actions\.ts: direct web business persistence is forbidden/u);
+    assert.match(errors, /apps\/web\/app\/stable-release-debt\.ts: direct web business persistence is forbidden/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -1065,6 +1239,65 @@ test("database catalog and declared public import paths are authoritative", () =
   }
 });
 
+test("staged contract table retirement requires an empty-table preflight and rollback", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-contract-table-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const contractPath = join(
+    temporaryRoot,
+    "supabase/contract-migrations/20260826101000_company_access_onboarding_contract.sql",
+  );
+  const rollbackPath = join(
+    temporaryRoot,
+    "supabase/rollback/20260826101000_company_access_onboarding_contract.sql",
+  );
+  const contract = readFileSync(contractPath, "utf8");
+
+  try {
+    const completeErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false })
+      .errors.join("\n");
+    assert.doesNotMatch(completeErrors, /migration table missing from catalog public\.step_up_events/u);
+    assert.doesNotMatch(completeErrors, /staged table drop public\.step_up_events/u);
+
+    writeFileSync(
+      contractPath,
+      contract.replace(
+        "and exists (select 1 from public.step_up_events)",
+        "and true",
+      ),
+    );
+    const unguardedErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false })
+      .errors.join("\n");
+    assert.match(
+      unguardedErrors,
+      /staged table drop public\.step_up_events is missing a fail-closed empty-table preflight/u,
+    );
+    assert.match(unguardedErrors, /migration table missing from catalog public\.step_up_events/u);
+
+    writeFileSync(
+      contractPath,
+      contract.replace(
+        "CONTRACT RELEASE ARTIFACT: #138",
+        "CONTRACT RELEASE ARTIFACT: #139",
+      ),
+    );
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /migration table missing from catalog public\.step_up_events/u,
+    );
+
+    writeFileSync(contractPath, contract);
+    rmSync(rollbackPath);
+    assert.match(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /staged table drop public\.step_up_events has no matching rollback table restoration/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("multiline web persistence requires an explicit rule-scoped exception", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-persistence-format-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -1137,7 +1370,7 @@ export function readDocument() { client.from("documents"); }
 
 test("compatibility operations map to their serialized future tickets", () => {
   const compatibility = JSON.parse(readFileSync(
-    new URL("../architecture/compatibility.json", import.meta.url),
+    new URL("../architecture/compatibility-baseline.json", import.meta.url),
     "utf8",
   ));
   const byRemovalIssue = new Map(
@@ -1189,7 +1422,6 @@ test("compatibility operations map to their serialized future tickets", () => {
     "apps/web/app/lib/invitation-side-effects.ts",
   ), undefined);
   assert.equal(ownerOf("table:notification_outbox", "queueDeadlineReminders"), "#156");
-  assert.match(onboarding.removalCondition, /workspace creation.*#138/u);
   assert.deepEqual(
     onboarding.scopes.map(({ resource, operation }) => `${resource}:${operation}`).sort(),
     [
@@ -1200,7 +1432,7 @@ test("compatibility operations map to their serialized future tickets", () => {
   );
 });
 
-test("the repository legacy-facade audit exactly matches the frozen source inventory", () => {
+test("the immutable frozen inventory remains exact while the active registry is a proven subset", () => {
   const registry = JSON.parse(readFileSync(
     new URL("../architecture/compatibility.json", import.meta.url),
     "utf8",
@@ -1232,15 +1464,9 @@ test("the repository legacy-facade audit exactly matches the frozen source inven
     ["compat-company-archive-persistence", ["company_archive", "#157", 24]],
   ]);
 
-  assert.equal(registry.records.length, 20);
   assert.equal(baseline.records.length, 20);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 237);
   assert.equal(baseline.records.flatMap((record) => record.scopes).length, 237);
-  assert.deepEqual(
-    new Set(registry.records.map((record) => record.id)),
-    new Set(baseline.records.map((record) => record.id)),
-  );
-  for (const record of registry.records) {
+  for (const record of baseline.records) {
     const [capability, removalIssue, scopes] = expected.get(record.id) ?? [];
     assert.equal(record.kind, "legacy-facade", record.id);
     assert.equal(record.capability, capability, record.id);
@@ -1250,7 +1476,33 @@ test("the repository legacy-facade audit exactly matches the frozen source inven
     assert.equal("expiresAt" in record, false, record.id);
     assert.equal("releaseLimit" in record, false, record.id);
   }
-  assert.equal(expected.size, registry.records.length);
+  assert.equal(expected.size, baseline.records.length);
+
+  assert.equal(registry.records.length, 18);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 210);
+  const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
+  const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
+  for (const record of registry.records) {
+    const frozen = baselineById.get(record.id);
+    assert.ok(frozen, `${record.id} exists in the immutable baseline`);
+    assert.equal(record.kind, "legacy-facade", record.id);
+    assert.equal(record.capability, frozen.capability, record.id);
+    assert.equal(record.removalIssue, frozen.removalIssue, record.id);
+    assert.equal(record.canonicalImplementation, frozen.canonicalImplementation, record.id);
+    const frozenScopes = new Set(frozen.scopes.map(scopeKey));
+    assert.ok(record.scopes.every((scope) => frozenScopes.has(scopeKey(scope))), record.id);
+    assert.equal("expiresAt" in record, false, record.id);
+    assert.equal("releaseLimit" in record, false, record.id);
+  }
+  assert.deepEqual(
+    new Set(baseline.records
+      .map((record) => record.id)
+      .filter((id) => !registry.records.some((record) => record.id === id))),
+    new Set([
+      "compat-company-onboarding-persistence",
+      "compat-owner-dividend-persistence",
+    ]),
+  );
 });
 
 test("company cancellation lifecycle is capability-owned with no direct-web compatibility", () => {
@@ -1373,22 +1625,22 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
-  const secondary = compatibility.records.find((entry) => entry.removalIssue === "#139");
+  const primary = compatibility.records.find((entry) => entry.removalIssue === "#139");
+  const secondary = compatibility.records.find((entry) => entry.removalIssue === "#140");
   const duplicateScope = {
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
     resource: "table:company_memberships",
     operation: "inviteWorkspaceMemberAction",
   };
-  onboarding.scopes.push(duplicateScope);
+  primary.scopes.push(duplicateScope);
   secondary.scopes.push(duplicateScope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     assert.match(
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
-      /duplicate compatibility scope.*#138.*#139/u,
+      /duplicate compatibility scope.*#139.*#140/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -1402,15 +1654,11 @@ test("compatibility registry is complete in both directions", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
-  const missingScope = onboarding.scopes.find((scope) => (
-    scope.path === "apps/web/app/actions.ts"
-    && scope.resource === "rpc:create_company_workspace_with_acceptance"
-    && scope.operation === "createWorkspace"
-  ));
+  const ledger = compatibility.records.find((entry) => entry.removalIssue === "#139");
+  const missingScope = ledger.scopes[0];
   assert.ok(missingScope);
-  onboarding.scopes = onboarding.scopes.filter((scope) => scope !== missingScope);
-  onboarding.scopes.push({
+  ledger.scopes = ledger.scopes.filter((scope) => scope !== missingScope);
+  ledger.scopes.push({
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
     resource: "table:companies",
@@ -1422,7 +1670,10 @@ test("compatibility registry is complete in both directions", () => {
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
     assert.match(
       errors,
-      /actions\.ts: direct web business persistence is forbidden for rpc:create_company_workspace_with_acceptance in operation:createWorkspace/u,
+      new RegExp(
+        `${missingScope.path.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}: direct web business persistence is forbidden for ${missingScope.resource.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")} in operation:${missingScope.operation}`,
+        "u",
+      ),
     );
     assert.match(
       errors,
@@ -1735,7 +1986,7 @@ test("adapter bindings require source registration against the declared port", (
   }
 });
 
-test("company access declares and injects its Supabase port adapter", () => {
+test("company access declares and injects its persistence and company-registry adapters", () => {
   const module = JSON.parse(readFileSync(new URL(
     "../apps/backend/src/talli_backend/modules/company_access/module.json",
     import.meta.url,
@@ -1751,26 +2002,42 @@ test("company access declares and injects its Supabase port adapter", () => {
   );
   assert.equal(existsSync(adapterUrl), true, "company-access adapter module must exist");
   const adapter = readFileSync(adapterUrl, "utf8");
+  const registryAdapterUrl = new URL(
+    "../apps/backend/src/talli_backend/adapters/brreg_company_registry.py",
+    import.meta.url,
+  );
+  assert.equal(existsSync(registryAdapterUrl), true, "company-registry adapter module must exist");
+  const registryAdapter = readFileSync(registryAdapterUrl, "utf8");
   const composition = readFileSync(new URL(
     "../apps/backend/src/talli_backend/main.py",
     import.meta.url,
   ), "utf8");
 
-  assert.deepEqual(module.ports, [{
-    name: "CompanyAccessGateway",
-    direction: "outbound",
-    contract: "talli_backend.modules.company_access.public.CompanyAccessGateway",
-    registrationDecorator: "talli_backend.modules.company_access.public.company_access_adapter",
-    adapters: ["talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"],
-  }]);
+  assert.deepEqual(module.ports, [
+    {
+      name: "CompanyAccessGateway",
+      direction: "outbound",
+      contract: "talli_backend.modules.company_access.public.CompanyAccessGateway",
+      registrationDecorator: "talli_backend.modules.company_access.public.company_access_adapter",
+      adapters: ["talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"],
+    },
+    {
+      name: "CompanyRegistryGateway",
+      direction: "outbound",
+      contract: "talli_backend.modules.company_access.public.CompanyRegistryGateway",
+      registrationDecorator: "talli_backend.modules.company_access.public.company_registry_adapter",
+      adapters: ["talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter"],
+    },
+  ]);
   assert.ok(system.adapterBindings.some((binding) => (
     binding.port === "CompanyAccessGateway"
     && binding.adapter === "talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"
   )));
   assert.doesNotMatch(capability, /urllib|SupabaseCompanyAccessAdapter|os\.environ/u);
   assert.match(adapter, /@company_access_adapter\(CompanyAccessGateway\)/u);
+  assert.match(registryAdapter, /@company_registry_adapter\(CompanyRegistryGateway\)/u);
   assert.match(composition, /else SupabaseCompanyAccessAdapter\.from_environment\(\)/u);
-  assert.match(composition, /CompanyAccessService\(gateway\)/u);
+  assert.match(composition, /company_registry_gateway or BrregCompanyRegistryAdapter\.from_environment\(\)/u);
 });
 
 test("adapter registration resolves decorator and port bindings to their declared public symbols", () => {

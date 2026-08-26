@@ -13,12 +13,25 @@ legacy runtime are fixed in `compatibility-baseline.json`, whose canonical JSON
 digest is pinned by `compatibility.json`. Each frozen scope also records the
 source operation's SHA-256 and persistence-call count at that revision.
 
-The current capability may only shrink its legacy scopes. A future capability
-must match its frozen record exactly. A migrated capability may have no facade.
-The checker rejects baseline additions, changed ownership, changed removal
-mapping, scopes absent from the source revision, a second legacy runtime, and an
-exit review while a current facade remains. Current-stage calls may not exceed
-their source count; future-stage operation digests and counts must remain exact.
+The active registry is a deletion-proven subset of the immutable baseline. The
+current capability may remove its frozen scopes. A future record may shrink or
+disappear only when every removed scope names a resource that the database
+catalog assigns to the active capability. In both cases the checker requires
+current source to prove that the exact path/rule/resource/operation finding no
+longer exists. A lingering call, ambiguous operation, unavailable source,
+unowned or differently-owned future resource, added scope, or new writer fails
+closed. The checker also rejects changed ownership or removal mapping, a second
+legacy runtime, and an exit review while a current facade remains. While the
+one-time foundation recovery is pending, no shrink is allowed at all.
+
+A proven deletion may change the frozen source digest only for its exact
+enclosing path and operation. In that operation every retained frozen resource
+must keep its exact occurrence count and no new persistence resource may appear;
+every unrelated retained operation must keep both its exact frozen digest and
+occurrence count. This is the strongest language-independent structural proof:
+the checker cannot infer that changed control flow or helper calls are
+semantically behavior-preserving. Characterization, contract, runtime, and
+browser evidence owned by the active migration ticket prove that separately.
 
 Legacy facades have no date-based expiry. Their hard expiry is the capability
 stage named by their removal issue.
@@ -52,8 +65,10 @@ remain unconditional failures.
 1. Claim and activate only the next issue in `migration.order`.
 2. Characterize the current legacy behavior, establish the canonical capability
    writer, migrate and reconcile, then delete obsolete scopes and code.
-3. Keep every future legacy record byte-for-byte equivalent in meaning to its
-   frozen baseline. Do not migrate another capability concurrently.
+3. Keep every retained future operation byte-for-byte frozen unless the same
+   operation has a source-proven deletion of a resource catalog-owned by the
+   active capability. Preserve every future-owned persistence call and count;
+   never add a scope or writer. Do not migrate another capability concurrently.
 4. Set `status` to `exit-review`. The architecture check must reject the exit if
    a current facade or blocking predecessor debt remains.
 5. Run the complete customer-ready gate on two distinct committed revisions.

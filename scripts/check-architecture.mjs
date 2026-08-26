@@ -272,7 +272,7 @@ function functionLikeName(node) {
   return undefined;
 }
 
-export function legacyOperationProof(source, path, scope) {
+function legacyOperationAnalysis(source, path, operationName) {
   if (typeof source !== "string") return undefined;
   const sourceFile = ts.createSourceFile(
     path,
@@ -284,7 +284,7 @@ export function legacyOperationProof(source, path, scope) {
   const matches = [];
   const stringConstants = new Map();
   function findOperation(node) {
-    if (ts.isFunctionLike(node) && functionLikeName(node) === scope.operation) matches.push(node);
+    if (ts.isFunctionLike(node) && functionLikeName(node) === operationName) matches.push(node);
     if (ts.isVariableDeclaration(node)
       && ts.isIdentifier(node.name)
       && node.initializer
@@ -294,9 +294,15 @@ export function legacyOperationProof(source, path, scope) {
     ts.forEachChild(node, findOperation);
   }
   findOperation(sourceFile);
-  if (matches.length !== 1) return undefined;
+  if (matches.length === 0) {
+    return { state: "missing", resourceOccurrences: new Map(), persistenceOccurrences: new Map() };
+  }
+  if (matches.length !== 1) {
+    return { state: "ambiguous", resourceOccurrences: new Map(), persistenceOccurrences: new Map() };
+  }
   const operation = matches[0];
-  let occurrences = 0;
+  const resourceOccurrences = new Map();
+  const persistenceOccurrences = new Map();
   function countResource(node) {
     if (ts.isCallExpression(node)
       && (ts.isPropertyAccessExpression(node.expression)
@@ -319,10 +325,18 @@ export function legacyOperationProof(source, path, scope) {
           && ts.isPropertyAccessExpression(receiver)
           && receiver.name.text === "storage";
         const resourceKind = storage ? "storage" : name === "rpc" ? "rpc" : "table";
-        if (resourceName === undefined) {
-          if (scope.resource.startsWith(`${resourceKind}:`)) occurrences += 1;
-        } else if (`${resourceKind}:${resourceName}` === scope.resource) {
-          occurrences += 1;
+        const resource = resourceName === undefined
+          ? `${resourceKind}:*`
+          : `${resourceKind}:${resourceName}`;
+        resourceOccurrences.set(resource, (resourceOccurrences.get(resource) ?? 0) + 1);
+        const standardLibraryFrom = name === "from"
+          && ts.isIdentifier(receiver)
+          && ["Array", "Buffer"].includes(receiver.text);
+        if (!standardLibraryFrom) {
+          persistenceOccurrences.set(
+            resource,
+            (persistenceOccurrences.get(resource) ?? 0) + 1,
+          );
         }
       }
     }
@@ -330,9 +344,25 @@ export function legacyOperationProof(source, path, scope) {
   }
   countResource(operation);
   return {
+    state: "found",
     sourceDigest: `sha256:${createHash("sha256").update(operation.getText(sourceFile)).digest("hex")}`,
-    occurrences,
+    resourceOccurrences,
+    persistenceOccurrences,
   };
+}
+
+function legacyScopeProof(analysis, scope) {
+  if (analysis?.state !== "found") return undefined;
+  const resourceKind = scope.resource.split(":", 1)[0];
+  return {
+    sourceDigest: analysis.sourceDigest,
+    occurrences: (analysis.resourceOccurrences.get(scope.resource) ?? 0)
+      + (analysis.resourceOccurrences.get(`${resourceKind}:*`) ?? 0),
+  };
+}
+
+export function legacyOperationProof(source, path, scope) {
+  return legacyScopeProof(legacyOperationAnalysis(source, path, scope.operation), scope);
 }
 
 function createWebBoundaryAnalysis(root) {
@@ -1212,10 +1242,56 @@ function discoverMigrationTables(root) {
   return [...tables].sort();
 }
 
-function validateDatabaseCatalog(root, backendSystem, manifests, errors, schema) {
+function stagedContractTableDrops(root, currentIssue, errors) {
+  const contractDirectory = join(root, "supabase/contract-migrations");
+  if (!existsSync(contractDirectory)) return new Set();
+  const retiredTables = new Set();
+  for (const path of walk(contractDirectory, (candidate) => candidate.endsWith(".sql"))) {
+    const source = readFileSync(path, "utf8");
+    const artifactHeader = /^-- CONTRACT RELEASE ARTIFACT:[^\n]*#[0-9]+/mu.exec(source)?.[0];
+    const currentStageArtifact = artifactHeader?.match(/#[0-9]+/u)?.[0] === currentIssue;
+    if (!currentStageArtifact) continue;
+    for (const match of source.matchAll(
+      /drop\s+table\s+if\s+exists\s+(public\.[a-z_]+)\s*;/giu,
+    )) {
+      const table = match[1].toLowerCase();
+      const tableName = table.slice("public.".length);
+      const beforeDrop = source.slice(0, match.index);
+      const escapedTable = table.replace(".", "\\.");
+      const hasFailClosedPreflight = new RegExp(
+        `if\\s+pg_catalog\\.to_regclass\\('${escapedTable}'\\)\\s+is\\s+not\\s+null`
+          + `\\s+and\\s+exists\\s*\\(\\s*select\\s+1\\s+from\\s+${escapedTable}\\s*\\)`
+          + "\\s+then\\s+raise\\s+exception\\s+'[^']+'\\s*;\\s*end\\s+if\\s*;",
+        "isu",
+      ).test(beforeDrop);
+      const rollbackPath = join(root, "supabase/rollback", relative(contractDirectory, path));
+      const rollback = existsSync(rollbackPath) ? readFileSync(rollbackPath, "utf8") : "";
+      const hasRollback = new RegExp(
+        `create\\s+table\\s+if\\s+not\\s+exists\\s+public\\.${tableName}\\b`,
+        "iu",
+      ).test(rollback);
+      const label = relative(root, path);
+      if (!hasFailClosedPreflight) {
+        errors.push(`${label}: staged table drop ${table} is missing a fail-closed empty-table preflight`);
+      } else if (!hasRollback) {
+        errors.push(`${label}: staged table drop ${table} has no matching rollback table restoration`);
+      } else {
+        retiredTables.add(table);
+      }
+    }
+  }
+  return retiredTables;
+}
+
+function validateDatabaseCatalog(root, backendSystem, manifests, compatibility, errors, schema) {
   const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
   validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
   const discovered = new Set(discoverMigrationTables(root));
+  for (const retiredTable of stagedContractTableDrops(
+    root,
+    compatibility.migration?.currentIssue,
+    errors,
+  )) discovered.delete(retiredTable);
   const catalogEntries = catalog.tables ?? [];
   const catalogNames = new Set(catalogEntries.map((entry) => entry.name));
   if (catalogNames.size !== catalogEntries.length) errors.push("architecture/database-catalog.json: duplicate table name");
@@ -1414,6 +1490,7 @@ export function validateCompatibilityRegistry(path, {
   isRevisionAncestor,
   sourceAtRevision,
   currentSource,
+  resourceOwner,
   gateEvidenceSchema,
   loadGateEvidence,
   isImmutableEvidence,
@@ -1589,6 +1666,99 @@ export function validateCompatibilityRegistry(path, {
   }
 
   const baselineById = new Map((baseline.records ?? []).map((record) => [record.id, record]));
+  const frozenScopeOwners = new Map();
+  const frozenScopesByOperation = new Map();
+  for (const baselineRecord of baseline.records ?? []) {
+    for (const scope of baselineRecord.scopes ?? []) {
+      const scopeKey = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+      frozenScopeOwners.set(scopeKey, { record: baselineRecord, scope });
+      const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+      const operationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+      operationScopes.push(scope);
+      frozenScopesByOperation.set(operationKey, operationScopes);
+    }
+  }
+  const activeLegacyScopeKeys = new Set(
+    registry.records
+      .filter((entry) => entry.kind === "legacy-facade")
+      .flatMap((entry) => (entry.scopes ?? []).map((scope) => (
+        compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
+      ))),
+  );
+  const removedFrozenScopes = [...frozenScopeOwners]
+    .filter(([scopeKey]) => !activeLegacyScopeKeys.has(scopeKey))
+    .map(([, ownedScope]) => ownedScope);
+  const removedScopesByOperation = new Map();
+  for (const removed of removedFrozenScopes) {
+    const operationKey = compatibilityOperationKey(removed.scope.path, removed.scope.operation);
+    const operationScopes = removedScopesByOperation.get(operationKey) ?? [];
+    operationScopes.push(removed);
+    removedScopesByOperation.set(operationKey, operationScopes);
+  }
+  const currentOperationAnalyses = new Map();
+  const currentOperationAnalysis = (scope) => {
+    const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+    if (currentOperationAnalyses.has(operationKey)) return currentOperationAnalyses.get(operationKey);
+    let source;
+    try {
+      source = currentSource?.(scope.path);
+    } catch {
+      source = undefined;
+    }
+    const analysis = legacyOperationAnalysis(source, scope.path, scope.operation);
+    currentOperationAnalyses.set(operationKey, analysis);
+    return analysis;
+  };
+  const deletionAuthorizedOperations = new Set();
+  for (const [operationKey, removedScopes] of removedScopesByOperation) {
+    let operationDeletionProven = true;
+    for (const { record, scope } of removedScopes) {
+      const prefix = `${record.id ?? "legacy facade"}:`;
+      const recordStageIndex = stageIndexes.get(record.capability);
+      if (recordStageIndex === undefined) {
+        errors.push(`${prefix} capability ${record.capability ?? "(missing)"} is absent from migration order`);
+        operationDeletionProven = false;
+      } else if (currentStageIndex !== undefined && recordStageIndex > currentStageIndex) {
+        const expectedOwner = `backend:${currentCapability}`;
+        if (resourceOwner?.(scope.resource) !== expectedOwner) {
+          errors.push(
+            `${prefix} future frozen scope resource ${scope.resource} is not owned by active capability ${expectedOwner}`,
+          );
+          operationDeletionProven = false;
+        }
+      }
+      const analysis = currentOperationAnalysis(scope);
+      if (!analysis || analysis.state === "ambiguous") {
+        errors.push(`${prefix} removed frozen scope lacks current-source deletion proof: ${compatibilityScopeLabel(scope)}`);
+        operationDeletionProven = false;
+        continue;
+      }
+      const resourceKind = scope.resource.split(":", 1)[0];
+      const occurrences = analysis.state === "found"
+        ? (analysis.persistenceOccurrences.get(scope.resource) ?? 0)
+          + (analysis.persistenceOccurrences.get(`${resourceKind}:*`) ?? 0)
+        : 0;
+      if (occurrences !== 0) {
+        errors.push(`${prefix} removed frozen scope still exists: ${compatibilityScopeLabel(scope)}`);
+        operationDeletionProven = false;
+      }
+    }
+    if (operationDeletionProven) deletionAuthorizedOperations.add(operationKey);
+  }
+  for (const operationKey of deletionAuthorizedOperations) {
+    const frozenOperationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const analysis = currentOperationAnalysis(frozenOperationScopes[0]);
+    if (analysis?.state !== "found") continue;
+    const frozenResources = new Set(frozenOperationScopes.map((scope) => scope.resource));
+    for (const [resource, occurrences] of analysis.persistenceOccurrences) {
+      const knownDynamicKind = resource.endsWith(":*")
+        && [...frozenResources].some((frozen) => frozen.startsWith(resource.slice(0, -1)));
+      if (occurrences > 0 && !frozenResources.has(resource) && !knownDynamicKind) {
+        const { record } = removedScopesByOperation.get(operationKey)[0];
+        errors.push(`${record.id}: deletion-affected operation has an added writer outside the frozen baseline: ${resource} in ${operationLabel(operationKey)}`);
+      }
+    }
+  }
   const recordsById = new Map();
   const canonicalImplementations = new Map();
   for (const entry of registry.records) {
@@ -1661,7 +1831,6 @@ export function validateCompatibilityRegistry(path, {
         canonicalImplementations.set(entry.capability, entry.canonicalImplementation);
       }
       const frozenScopes = scopeSet(baselineRecord.scopes);
-      const currentScopes = scopeSet(entry.scopes);
       for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
         const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
         if (!frozenScopes.has(key)) {
@@ -1677,11 +1846,12 @@ export function validateCompatibilityRegistry(path, {
               candidate.operation,
             ) === key
           ));
-          const proof = legacyOperationProof(currentSource(scope.path), scope.path, scope);
+          const proof = legacyScopeProof(currentOperationAnalysis(scope), scope);
           if (!proof || proof.occurrences > frozenScope.occurrences) {
             errors.push(`${prefix} scope has an added writer: ${compatibilityScopeLabel(scope)}`);
-          } else if (proof.sourceDigest !== frozenScope.sourceDigest
-            || proof.occurrences !== frozenScope.occurrences) {
+          } else if (proof.occurrences !== frozenScope.occurrences
+            || (proof.sourceDigest !== frozenScope.sourceDigest
+              && !deletionAuthorizedOperations.has(compatibilityOperationKey(scope.path, scope.operation)))) {
             errors.push(`${prefix} legacy operation changed: ${scope.path} operation:${scope.operation}`);
           }
         }
@@ -1689,8 +1859,6 @@ export function validateCompatibilityRegistry(path, {
       if (stageIndex !== undefined && currentStageIndex !== undefined) {
         if (stageIndex < currentStageIndex || exitedCapabilities.has(entry.capability)) {
           errors.push(`${prefix} capability ${entry.capability} has already exited`);
-        } else if (stageIndex > currentStageIndex && !sameSet(currentScopes, frozenScopes)) {
-          errors.push(`${prefix} future legacy-facade must remain static`);
         } else if (stageIndex === currentStageIndex && registry.migration.status === "exit-review") {
           errors.push(`${entry.capability} cannot exit while legacy-facade ${entry.id} remains`);
         }
@@ -1740,15 +1908,6 @@ export function validateCompatibilityRegistry(path, {
     }
   }
 
-  for (const baselineRecord of baseline.records ?? []) {
-    const stageIndex = stageIndexes.get(baselineRecord.capability);
-    if (stageIndex !== undefined
-      && currentStageIndex !== undefined
-      && stageIndex > currentStageIndex
-      && !recordsById.has(baselineRecord.id)) {
-      errors.push(`${baselineRecord.id}: future legacy-facade record is missing`);
-    }
-  }
   const scopeOwners = new Map();
   for (const entry of registry.records) {
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
@@ -1834,6 +1993,15 @@ function checkRouteImports(root, manifests, errors) {
 
 function compatibilityScopeKey(path, rule, resource, operation) {
   return [path, rule, resource, operation].join("\u0000");
+}
+
+function compatibilityOperationKey(path, operation) {
+  return [path, operation].join("\u0000");
+}
+
+function operationLabel(operationKey) {
+  const [path, operation] = operationKey.split("\u0000");
+  return `${path} operation:${operation}`;
 }
 
 function compatibilityScopeLabel(scope) {
@@ -2063,6 +2231,10 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
   const compatibilityBaselinePath = join(resolvedRoot, "architecture/compatibility-baseline.json");
   const compatibility = readJson(compatibilityPath, []);
+  const databaseCatalog = readJson(
+    join(resolvedRoot, "architecture/database-catalog.json"),
+    errors,
+  );
   const compatibilityBaseline = readJson(compatibilityBaselinePath, errors);
   const compatibilitySourceRegistry = readGitJson(
     resolvedRoot,
@@ -2133,6 +2305,13 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
       ),
       sourceAtRevision,
       currentSource: (path) => readFileSync(join(resolvedRoot, path), "utf8"),
+      resourceOwner: (resource) => {
+        const match = /^table:([a-z_]+)$/u.exec(resource);
+        if (!match) return undefined;
+        return databaseCatalog.tables?.find(
+          (entry) => entry.name === `public.${match[1]}`,
+        )?.owner;
+      },
       gateEvidenceSchema: schemas.customerReadyGateEvidence,
       loadGateEvidence: (path) => (
         existsSync(join(resolvedRoot, path))
@@ -2155,7 +2334,14 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
   checkSharedKernel(resolvedRoot, sharedKernel, errors);
-  validateDatabaseCatalog(resolvedRoot, backendSystem, manifests, errors, schemas.databaseCatalog);
+  validateDatabaseCatalog(
+    resolvedRoot,
+    backendSystem,
+    manifests,
+    compatibility,
+    errors,
+    schemas.databaseCatalog,
+  );
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",
