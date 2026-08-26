@@ -79,6 +79,7 @@ function compatibilityFixture({
   currentIssue = "#138",
   status = "active",
   exitedCapabilities,
+  foundationStatus = "complete",
 } = {}) {
   const order = [
     { capability: "company_access", removalIssues: ["#138"] },
@@ -96,8 +97,14 @@ function compatibilityFixture({
     migration: {
       foundationRecovery: {
         issue: "#186",
-        status: "pending",
-        gates: [],
+        status: foundationStatus,
+        gates: foundationStatus === "complete"
+          ? ["a".repeat(40), "b".repeat(40)].map((revision) => ({
+            revision,
+            evidencePath: `architecture/evidence/customer-ready-gates/${revision}.json`,
+            evidenceDigest: `sha256:${revision}${revision.slice(0, 24)}`,
+          }))
+          : [],
       },
       order,
       currentCapability,
@@ -285,6 +292,63 @@ test("legacy facades are frozen by an immutable baseline instead of calendar exp
   }
 });
 
+test("pending foundation recovery blocks facade and migration changes", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-foundation-recovery-"));
+  const current = legacyFacade();
+  const future = legacyFacade({
+    id: "compat-ledger",
+    capability: "ledger",
+    removalIssue: "#139",
+    scopes: [{ ...compatibilityScope, resource: "table:ledger_entries", operation: "postEntry" }],
+  });
+  const registry = compatibilityFixture({
+    records: [current, future],
+    foundationStatus: "pending",
+  });
+  const baseline = compatibilityBaseline([current, future]);
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+  const options = { baselinePath, expectedBaselineDigest: "TEST_BASELINE_DIGEST" };
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    current.scopes = [];
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /pending foundation recovery requires the untouched frozen facade inventory/u,
+    );
+
+    registry.records = [future, activeStageDebt()];
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /pending foundation recovery blocks active-stage debt/u,
+    );
+
+    registry.records = [current, future];
+    current.scopes = [compatibilityScope];
+    registry.migration.currentCapability = "ledger";
+    registry.migration.currentIssue = "#139";
+    registry.migration.exitedCapabilities = ["company_access"];
+    registry.migration.completedStages = compatibilityFixture({
+      currentCapability: "ledger",
+      currentIssue: "#139",
+    }).migration.completedStages;
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /pending foundation recovery blocks migration-state changes/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("the frozen baseline is traceable to the pre-existing compatibility registry", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-source-proof-"));
   const facade = legacyFacade();
@@ -413,7 +477,7 @@ test("legacy source proofs reject added writers and changed future operations", 
     );
     assert.match(
       validateCompatibilityRegistry(registryPath, options).join("\n"),
-      /compat-ledger.*future legacy operation changed/u,
+      /compat-ledger.*legacy operation changed/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -477,7 +541,7 @@ test("completed stages require two consecutive complete-gate attestations", () =
     currentCapability: "ledger",
     currentIssue: "#139",
   });
-  const checks = [
+  const checkNames = [
     "credential-scan",
     "typecheck",
     "architecture",
@@ -490,22 +554,44 @@ test("completed stages require two consecutive complete-gate attestations", () =
     "database-isolation",
     "whitespace",
   ];
+  const producer = "export const gate = true;\n";
   const revisions = ["1".repeat(40), "2".repeat(40)];
-  const evidence = revisions.map((revision, index) => ({
-    schemaVersion: "1.0",
-    revision,
-    previousPassingRevision: index === 0 ? null : revisions[0],
-    workflow: "customer-ready-release-gate",
-    executor: "local",
-    executedAt: `2026-08-2${index + 6}T12:00:00Z`,
-    verdict: "pass",
-    checks,
-  }));
+  const transcripts = new Map();
+  const evidence = revisions.map((revision, index) => {
+    const transcriptPath = `architecture/evidence/customer-ready-gates/${revision}.log`;
+    const transcript = `${checkNames.map((name) => `[${name}] exit=0`).join("\n")}\n`;
+    transcripts.set(transcriptPath, transcript);
+    return {
+      schemaVersion: "1.0",
+      revision,
+      previousPassingRevision: index === 0 ? null : revisions[0],
+      workflow: "customer-ready-release-gate",
+      executor: "local-script",
+      producer: "scripts/run-customer-ready-gate.mjs",
+      producerDigest: `sha256:${createHash("sha256").update(producer).digest("hex")}`,
+      transcriptPath,
+      transcriptDigest: `sha256:${createHash("sha256").update(transcript).digest("hex")}`,
+      startedAt: `2026-08-2${index + 6}T11:00:00Z`,
+      executedAt: `2026-08-2${index + 6}T12:00:00Z`,
+      verdict: "pass",
+      checks: checkNames.map((name) => ({
+        name,
+        command: `run ${name}`,
+        exitCode: 0,
+        durationMs: 1,
+      })),
+    };
+  });
   registry.migration.completedStages[0].gates = evidence.map((attestation) => ({
     revision: attestation.revision,
     evidencePath: `architecture/evidence/customer-ready-gates/${attestation.revision}.json`,
     evidenceDigest: canonicalDigest(attestation),
   }));
+  registry.migration.foundationRecovery = {
+    issue: "#186",
+    status: "complete",
+    gates: structuredClone(registry.migration.completedStages[0].gates),
+  };
   const byPath = new Map(registry.migration.completedStages[0].gates.map((gate, index) => (
     [gate.evidencePath, evidence[index]]
   )));
@@ -521,17 +607,11 @@ test("completed stages require two consecutive complete-gate attestations", () =
     isRevisionAncestor: () => true,
     isImmutableEvidence: () => true,
     loadGateEvidence: (path) => byPath.get(path),
+    loadGateTranscript: (path) => transcripts.get(path),
+    sourceAtGateRevision: () => producer,
   };
 
   try {
-    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
-
-    registry.migration.foundationRecovery = {
-      issue: "#186",
-      status: "complete",
-      gates: structuredClone(registry.migration.completedStages[0].gates),
-    };
-    writeFileSync(registryPath, JSON.stringify(registry));
     assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
 
     evidence[1].previousPassingRevision = null;

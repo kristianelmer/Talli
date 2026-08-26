@@ -16,6 +16,7 @@
     "generate:api-client": "node scripts/generate-api-client.mjs",
     "check:architecture": "node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json",
     "test:architecture": "node --test tests/architecture_foundation.test.mjs",
+    "gate:customer-ready": "node scripts/run-customer-ready-gate.mjs",
     "test:boundary-backend": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests",
     "test:boundary-web": "node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs",
     "test:boundary-contract": "node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs",

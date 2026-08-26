@@ -1312,6 +1312,10 @@ function compatibilityBaselineDigest(baseline) {
   return `sha256:${createHash("sha256").update(JSON.stringify(stable(baseline))).digest("hex")}`;
 }
 
+function textDigest(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
 function scopeSet(scopes) {
   return new Set((Array.isArray(scopes) ? scopes : []).map((scope) => (
     compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
@@ -1330,6 +1334,8 @@ function validateGateAttestations(label, gates, policy, errors) {
     gateEvidenceSchema,
     loadGateEvidence,
     isImmutableEvidence,
+    loadGateTranscript,
+    sourceAtGateRevision,
   } = policy;
   const revisions = gates.map((gate) => gate.revision);
   const loadedEvidence = [];
@@ -1366,9 +1372,28 @@ function validateGateAttestations(label, gates, policy, errors) {
     if (evidence.revision !== gate.revision) {
       errors.push(`${registryPath}: gate evidence revision does not match ${gate.revision}`);
     }
+    const evidenceChecks = Array.isArray(evidence.checks) ? evidence.checks : [];
     if (evidence.verdict !== "pass"
-      || !sameSet(new Set(evidence.checks ?? []), COMPLETE_GATE_CHECKS)) {
+      || !sameSet(new Set(evidenceChecks.map((check) => check.name)), COMPLETE_GATE_CHECKS)
+      || evidenceChecks.some((check) => check.exitCode !== 0)) {
       errors.push(`${registryPath}: gate ${gate.revision} does not attest the complete customer-ready gate`);
+    }
+    const expectedTranscriptPath = `architecture/evidence/customer-ready-gates/${gate.revision}.log`;
+    if (evidence.transcriptPath !== expectedTranscriptPath) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript path must be ${expectedTranscriptPath}`);
+    }
+    if (isImmutableEvidence && !isImmutableEvidence(evidence.transcriptPath)) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript must be committed and unmodified`);
+    }
+    const transcript = loadGateTranscript?.(evidence.transcriptPath);
+    if (typeof transcript !== "string" || evidence.transcriptDigest !== textDigest(transcript)) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript digest does not match`);
+    } else if (evidenceChecks.some((check) => !transcript.includes(`[${check.name}] exit=0`))) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript is missing a passing check result`);
+    }
+    const producer = sourceAtGateRevision?.(gate.revision, evidence.producer);
+    if (typeof producer !== "string" || evidence.producerDigest !== textDigest(producer)) {
+      errors.push(`${registryPath}: gate ${gate.revision} producer digest does not match its revision`);
     }
   }
   if (loadedEvidence.length === 2
@@ -1392,6 +1417,8 @@ export function validateCompatibilityRegistry(path, {
   gateEvidenceSchema,
   loadGateEvidence,
   isImmutableEvidence,
+  loadGateTranscript,
+  sourceAtGateRevision,
 } = {}) {
   const errors = [];
   const registry = readJson(path, errors);
@@ -1489,6 +1516,8 @@ export function validateCompatibilityRegistry(path, {
         gateEvidenceSchema,
         loadGateEvidence,
         isImmutableEvidence,
+        loadGateTranscript,
+        sourceAtGateRevision,
       },
       errors,
     );
@@ -1552,6 +1581,8 @@ export function validateCompatibilityRegistry(path, {
         gateEvidenceSchema,
         loadGateEvidence,
         isImmutableEvidence,
+        loadGateTranscript,
+        sourceAtGateRevision,
       },
       errors,
     );
@@ -1649,12 +1680,9 @@ export function validateCompatibilityRegistry(path, {
           const proof = legacyOperationProof(currentSource(scope.path), scope.path, scope);
           if (!proof || proof.occurrences > frozenScope.occurrences) {
             errors.push(`${prefix} scope has an added writer: ${compatibilityScopeLabel(scope)}`);
-          } else if (stageIndex !== undefined
-            && currentStageIndex !== undefined
-            && stageIndex > currentStageIndex
-            && (proof.sourceDigest !== frozenScope.sourceDigest
-              || proof.occurrences !== frozenScope.occurrences)) {
-            errors.push(`${prefix} future legacy operation changed: ${scope.path} operation:${scope.operation}`);
+          } else if (proof.sourceDigest !== frozenScope.sourceDigest
+            || proof.occurrences !== frozenScope.occurrences) {
+            errors.push(`${prefix} legacy operation changed: ${scope.path} operation:${scope.operation}`);
           }
         }
       }
@@ -1733,6 +1761,25 @@ export function validateCompatibilityRegistry(path, {
       } else if (!previous) {
         scopeOwners.set(key, entry);
       }
+    }
+  }
+  if (foundationRecovery?.status === "pending") {
+    if (currentCapability !== "company_access"
+      || registry.migration?.currentIssue !== "#138"
+      || registry.migration?.status !== "active"
+      || exitedCapabilities.size !== 0
+      || completedStages.length !== 0) {
+      errors.push(`${path}: pending foundation recovery blocks migration-state changes`);
+    }
+    if (registry.records.some((entry) => entry.kind !== "legacy-facade")) {
+      errors.push(`${path}: pending foundation recovery blocks active-stage debt`);
+    }
+    if (recordsById.size !== baselineById.size
+      || [...baselineById].some(([id, baselineRecord]) => {
+        const record = recordsById.get(id);
+        return !record || !sameSet(scopeSet(record.scopes), scopeSet(baselineRecord.scopes));
+      })) {
+      errors.push(`${path}: pending foundation recovery requires the untouched frozen facade inventory`);
     }
   }
   return errors;
@@ -2024,6 +2071,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors,
   );
   const frozenSourceCache = new Map();
+  const gateSourceCache = new Map();
   const sourceAtRevision = (path) => {
     if (frozenSourceCache.has(path)) return frozenSourceCache.get(path);
     const result = spawnSync(
@@ -2033,6 +2081,16 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     );
     const source = result.status === 0 ? result.stdout : undefined;
     frozenSourceCache.set(path, source);
+    return source;
+  };
+  const sourceAtGateRevision = (revision, path) => {
+    const key = `${revision}\0${path}`;
+    if (gateSourceCache.has(key)) return gateSourceCache.get(key);
+    const result = spawnSync("git", ["-C", resolvedRoot, "show", `${revision}:${path}`], {
+      encoding: "utf8",
+    });
+    const source = result.status === 0 ? result.stdout : undefined;
+    gateSourceCache.set(key, source);
     return source;
   };
   const releaseState = readJson(join(resolvedRoot, "architecture/release-state.json"), errors);
@@ -2082,6 +2140,12 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
           : undefined
       ),
       isImmutableEvidence: (path) => isCommittedUnmodified(resolvedRoot, path),
+      loadGateTranscript: (path) => (
+        existsSync(join(resolvedRoot, path))
+          ? readFileSync(join(resolvedRoot, path), "utf8")
+          : undefined
+      ),
+      sourceAtGateRevision,
     },
   ));
   checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);

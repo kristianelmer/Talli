@@ -63,6 +63,14 @@ remain unconditional failures.
    to its revision and the complete application/database check set. The second
    pass names the first as its previous passing revision.
 
+Run the gate with `npm run gate:customer-ready`; pass the first passing commit to
+the second run as `-- --previous <revision>`. The runner refuses a dirty tree and
+writes a committed JSON attestation plus the complete command transcript. Each
+attestation is bound to the runner source at the tested revision and pins both
+the runner and transcript SHA-256 digests. The architecture checker independently
+verifies those files, digests, successful check results, revision ancestry, and
+the consecutive-pass link before accepting a recovery or stage exit.
+
 `completedStages` must exactly equal the capabilities before the current stage;
 this keeps the evidence requirement inseparable from every later architecture
 check. The one-time `foundationRecovery` control applies the same attestation
