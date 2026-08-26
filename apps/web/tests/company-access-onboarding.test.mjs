@@ -4,7 +4,6 @@ import test from "node:test";
 
 import {
   companyAccessActionErrorMessage,
-  onboardCompanyThroughApi,
   reacceptCompanyAgreementThroughApi,
 } from "../features/company-access/index.ts";
 import { TalliApiError } from "@talli/talli-api-client";
@@ -32,7 +31,7 @@ test("an unknown organization keeps the specific Enhetsregisteret guidance", () 
   );
 });
 
-test("onboarding and agreement transports use authenticated generated-client requests", async () => {
+test("agreement reacceptance uses an authenticated generated-client request", async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = "https://backend.example";
@@ -55,18 +54,13 @@ test("onboarding and agreement transports use authenticated generated-client req
 
   try {
     const results = await Promise.allSettled([
-      onboardCompanyThroughApi(
-        "session-token",
-        { orgNumber: "314159265", ...agreementEvidence },
-        "request-onboard",
-      ),
       reacceptCompanyAgreementThroughApi(
         "session-token",
         { companyId: "company-1", ...agreementEvidence },
         "request-reaccept",
       ),
     ]);
-    assert.deepEqual(results.map(({ status }) => status), ["rejected", "rejected"]);
+    assert.deepEqual(results.map(({ status }) => status), ["rejected"]);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
@@ -74,18 +68,15 @@ test("onboarding and agreement transports use authenticated generated-client req
   }
 
   assert.deepEqual(calls.map(({ url }) => url), [
-    "https://backend.example/api/v1/company-access/onboarding",
     "https://backend.example/api/v1/company-access/agreements/reaccept",
   ]);
   assert.ok(calls.every(({ init }) => init.method === "POST"));
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
   assert.deepEqual(calls.map(({ init }) => new Headers(init.headers).get("X-Request-ID")), [
-    "request-onboard",
     "request-reaccept",
   ]);
   assert.deepEqual(calls.map(({ init }) => JSON.parse(init.body)), [
-    { orgNumber: "314159265", ...agreementEvidence },
     { companyId: "company-1", ...agreementEvidence },
   ]);
 });
@@ -99,22 +90,18 @@ test("actions and agreement gates have no direct business-persistence facade", a
     readFile(new URL("../features/company-access/module.json", import.meta.url), "utf8"),
     readFile(new URL("../features/company-access/MODULE.md", import.meta.url), "utf8"),
   ]);
-  const createWorkspace = actions.match(
-    /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/gu,
-  )?.[0] ?? "";
   const reacceptAgreement = actions.match(
     /export async function reacceptCompanyAgreement[\s\S]+?\n\}\n\nexport async function/gu,
   )?.[0] ?? "";
 
-  assert.match(createWorkspace, /onboardCompanyThroughApi/u);
   assert.match(reacceptAgreement, /reacceptCompanyAgreementThroughApi/u);
-  assert.match(createWorkspace, /currentAgreementCommand/u);
   assert.match(reacceptAgreement, /currentAgreementCommand/u);
+  assert.doesNotMatch(actions, /createWorkspace|onboardCompanyThroughApi/u);
   assert.match(ownerLayout, /companies\.filter\(\(\{ currentAgreementAccepted \}\) => !currentAgreementAccepted\)/u);
   assert.match(annualWorkspace, /if \(!company\.currentAgreementAccepted\)/u);
   assert.doesNotMatch(actions, /\.\/lib\/(?:brreg|customer-onboarding|customer-agreement-reacceptance)/u);
   assert.doesNotMatch(
-    `${createWorkspace}\n${reacceptAgreement}`,
+    reacceptAgreement,
     /createSupabaseServiceRoleClient|\.rpc\(/u,
   );
   assert.doesNotMatch(
@@ -130,7 +117,13 @@ test("actions and agreement gates have no direct business-persistence facade", a
     await assert.rejects(access(new URL(legacyFile, import.meta.url)), { code: "ENOENT" });
   }
 
-  const operationIds = ["companyAccessOnboardCompany", "companyAccessReacceptAgreement"];
+  const operationIds = [
+    "companyAccessEligibilityPrecheck",
+    "companyAccessEligibilityDefinitive",
+    "companyAccessAdmitCompanyYear",
+    "companyAccessRecheckCompanyYearEligibility",
+    "companyAccessReacceptAgreement",
+  ];
   const feature = JSON.parse(manifest);
   for (const operationId of operationIds) {
     assert.ok(feature.apiOperations.includes(operationId));

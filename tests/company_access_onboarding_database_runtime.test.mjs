@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -10,11 +11,173 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expandPath = "/repo/supabase/migrations/20260826100000_company_access_onboarding.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260826101000_company_access_onboarding_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260826101000_company_access_onboarding_contract.sql";
+const admissionPath = "/repo/supabase/migrations/20260826110000_company_year_admission.sql";
 const actorOne = "00000000-0000-0000-0000-000000000011";
 const actorTwo = "00000000-0000-0000-0000-000000000022";
 const actorThree = "00000000-0000-0000-0000-000000000033";
 const actorFour = "00000000-0000-0000-0000-000000000044";
 const onboardSignature = "public.company_access_onboard_company(uuid,uuid,text,text,text,text,text,text,text,text,text,boolean,text,date,text,text,text,date,text,text,text,text)";
+const admissionSignature = "public.company_access_admit_company_year(uuid,uuid,text,text,text,text,text,text,text,text,text,integer,date,text,text,text,text,text,text,text,text,text,text,date,text,text,text,date,text,text,text,date,text,text,text,text)";
+const eligibilityRecheckSignature = "public.company_access_recheck_company_year_eligibility(uuid,uuid,uuid,uuid,integer,uuid,text,text,text,text,text,text,text,text,text,text[],text[],text,text,boolean,boolean)";
+const capabilityManifest = JSON.parse(readFileSync(
+  new URL("../apps/backend/src/talli_backend/modules/company_access/capability_manifest.json", import.meta.url),
+  "utf8",
+));
+const companyYearPromise = {
+  accountingYear: 2026,
+  startsOn: "2026-01-01",
+  endsOn: "2026-12-31",
+  reconstructionRequiredFrom: "2026-01-01",
+  onlyAccountingAndFilingProduct: true,
+  customerClaims: capabilityManifest.promise.customerClaims,
+};
+
+const supportedEligibilityAnswers = {
+  all_bank_movements_available: "yes",
+  bank_accounts_reconciliable: "yes",
+  conducts_regulated_finance: "no",
+  documents_available: "yes",
+  has_auditor_or_audit_requirement: "no",
+  has_normal_holding_volume_character: "yes",
+  has_only_holding_or_no_activity: "yes",
+  has_only_norwegian_shareholders: "yes",
+  has_only_supported_income_and_costs: "yes",
+  has_supported_capital_events: "yes",
+  has_no_complex_corporate_events: "yes",
+  has_no_complex_investment_activity: "yes",
+  has_supported_dividends: "yes",
+  dividend_basis_and_evidence_are_clear: "yes",
+  has_supported_group_contributions: "yes",
+  group_contribution_facts_are_clear: "yes",
+  has_supported_investments: "yes",
+  has_supported_loans: "yes",
+  investment_tax_treatment_is_clear: "yes",
+  loan_terms_are_ordinary_and_clear: "yes",
+  has_supported_share_structure: "yes",
+  is_deterministic_self_service: "yes",
+  is_owner_managed: "yes",
+  is_small_enterprise: "yes",
+  material_company_facts_confirmable: "yes",
+  no_unsupported_current_year_activity: "yes",
+  prior_closing_matches_opening: "yes",
+  requires_consolidated_accounts: "no",
+  requires_no_earlier_year_rebuild: "yes",
+  uses_calendar_year: "yes",
+  uses_only_nok_bank_and_bookkeeping: "yes",
+};
+
+function sha256(value) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function admissionSql({
+  actorId = actorOne,
+  email = "owner@example.test",
+  verifiedSubject = actorId,
+  verifiedEmail = email,
+  operationId = "70000000-0000-4000-8000-000000000010",
+  orgNumber = "987654311",
+  name = "Admitted Holding AS",
+  answers = supportedEligibilityAnswers,
+} = {}) {
+  const publicFacts = JSON.stringify({
+    entityType: "AS",
+    name,
+    orgNumber,
+    source: "brreg",
+    statusText: "aktiv",
+  });
+  const answersJson = JSON.stringify(answers);
+  const capabilityManifestJson = canonicalJson(capabilityManifest);
+  const promiseJson = canonicalJson(companyYearPromise);
+  return String.raw`
+    begin;
+    set local role company_access_executor;
+    ${actorContext(actorId, email)}
+    select concat_ws(':', company_id, company_year_admission_id, accounting_year,
+      reconstruct_from, current_agreement_accepted, replayed)
+    from public.company_access_admit_company_year(
+      '${operationId}', '${verifiedSubject}', '${verifiedEmail}', '${orgNumber}', '${name}',
+      'AS', 'Testveien 1', '0150', 'OSLO', 'aktiv', 'brreg', 2026, date '2026-01-01',
+      '${publicFacts}', '${sha256(publicFacts)}', '${answersJson}', '${sha256(answersJson)}',
+      '${capabilityManifestJson}', '2026.1', '${sha256(capabilityManifestJson)}',
+      '${promiseJson}', '${sha256(promiseJson)}',
+      '2026-07-17', date '2026-07-17', '/vilkar',
+      'f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543',
+      '2026-07-17', date '2026-07-17', '/databehandleravtale',
+      '083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c',
+      '2026-07-15', date '2026-07-15', '/personvern',
+      '4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c',
+      'authority-v1', 'in_app_clickwrap'
+    );
+    commit;
+  `;
+}
+
+function eligibilityRecheckSql({
+  companyId,
+  admissionId,
+  previousAssessmentId,
+  actorId = actorOne,
+  verifiedSubject = actorId,
+  operationId = "71000000-0000-4000-8000-000000000010",
+  trigger = "before_filing",
+  decision = "supported",
+  answers = supportedEligibilityAnswers,
+} = {}) {
+  const publicFacts = canonicalJson({
+    orgNumber: "987654311",
+    name: "Admitted Holding AS",
+    entityType: "AS",
+    statusText: "aktiv",
+    source: "brreg",
+  });
+  const answersJson = canonicalJson(answers);
+  const capabilityManifestJson = canonicalJson(capabilityManifest);
+  const reasonCodes = decision === "supported"
+    ? "array[]::text[]"
+    : decision === "clarify"
+      ? "array['MATERIAL_FACT_UNKNOWN']::text[]"
+      : "array['LOAN_TERMS_NOT_SUPPORTED']::text[]";
+  const reasonExplanations = decision === "supported"
+    ? "array[]::text[]"
+    : decision === "clarify"
+      ? "array['Dette må avklares.']::text[]"
+      : "array['Lånevilkårene er utenfor grensen.']::text[]";
+  const nextStepCode = decision === "supported"
+    ? "CONTINUE_COMPANY_YEAR"
+    : decision === "clarify"
+      ? "PAUSE_AND_CLARIFY"
+      : "STOP_EXPORT_AND_CONTACT";
+  const nextStep = decision === "supported"
+    ? "Fortsett selskapsåret i Talli."
+    : decision === "clarify"
+      ? "Stopp berørt arbeid, avklar opplysningen og prøv igjen."
+      : "Stopp berørt arbeid og innsending. Behold eksporttilgang.";
+  const consequential = decision === "supported" ? "true" : "false";
+  return String.raw`
+    begin;
+    set local role company_access_executor;
+    ${actorContext(actorId, actorId === actorOne ? "owner@example.test" : "outsider@example.test")}
+    select concat_ws(':', company_year_eligibility_assessment_id, replayed)
+    from public.company_access_recheck_company_year_eligibility(
+      '${operationId}', '${verifiedSubject}', '${admissionId}', '${companyId}', 2026,
+      '${previousAssessmentId}', '${trigger}', '${decision}',
+      '${capabilityManifestJson}', '2026.1', '${sha256(capabilityManifestJson)}',
+      '${publicFacts}', '${sha256(publicFacts)}', '${answersJson}', '${sha256(answersJson)}',
+      ${reasonCodes}, ${reasonExplanations}, '${nextStepCode}', '${nextStep}', ${consequential}, true
+    );
+    commit;
+  `;
+}
 
 function docker(args, options = {}) {
   return spawnSync("docker", args, {
@@ -1835,6 +1998,323 @@ test("company-access onboarding is atomic, replay-safe, tenant-isolated, and pha
       $final_recutover_recovery$;
       rollback;
     `);
+
+    // #187 adds one backend-only admission graph after the #138 contraction.
+    // It must preserve the same executor/RLS boundary and exact receipt replay.
+    psql(containerName, [
+      "-U", "talli_migration_owner", "--file", admissionPath,
+    ]);
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select concat_ws(':',
+        has_function_privilege('anon', '${admissionSignature}', 'execute'),
+        has_function_privilege('authenticated', '${admissionSignature}', 'execute'),
+        has_function_privilege('service_role', '${admissionSignature}', 'execute'),
+        has_function_privilege('company_access_executor', '${admissionSignature}', 'execute'),
+        has_function_privilege('authenticated', '${eligibilityRecheckSignature}', 'execute'),
+        has_function_privilege('service_role', '${eligibilityRecheckSignature}', 'execute'),
+        has_function_privilege('company_access_executor', '${eligibilityRecheckSignature}', 'execute'),
+        has_table_privilege('authenticated', 'public.company_eligibility_assessments', 'select,insert'),
+        has_table_privilege('service_role', 'public.company_year_admissions', 'select'),
+        has_table_privilege('company_access_executor', 'public.company_year_acceptances', 'select,insert'));
+    `]).trim(), "f:f:f:t:f:f:t:f:f:t");
+    assert.equal(
+      psql(containerName, ["-Atc", `select to_regprocedure('${onboardSignature}') is null;`]).trim(),
+      "t",
+      "the deprecated HTTP response must not retain the AS-only database writer",
+    );
+
+    const firstAdmission = psql(containerName, ["-At"], admissionSql()).trim().split("\n").at(-2);
+    assert.match(
+      firstAdmission,
+      /^[0-9a-f-]{36}:[0-9a-f-]{36}:2026:2026-01-01:t:f$/u,
+    );
+    const replayedAdmission = psql(containerName, ["-At"], admissionSql()).trim().split("\n").at(-2);
+    assert.equal(
+      replayedAdmission,
+      firstAdmission.replace(/:f$/u, ":t"),
+      "exact admission retry did not replay the same company and admission IDs",
+    );
+    const admittedCompanyId = firstAdmission.slice(0, 36);
+    const admissionId = firstAdmission.slice(37, 73);
+    const initialAssessmentId = psql(containerName, ["-Atc", String.raw`
+      select eligibility_assessment_id
+      from public.company_year_admissions
+      where id = '${admissionId}';
+    `]).trim();
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select concat_ws(':',
+        (select count(*) from public.companies where id = '${admittedCompanyId}'),
+        (select count(*) from public.company_memberships where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.customer_agreement_acceptances where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_eligibility_assessments where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_year_admissions where id = '${admissionId}'),
+        (select count(*) from public.company_year_acceptances where company_year_admission_id = '${admissionId}'),
+        (select count(*) from public.company_access_command_receipts where company_id = '${admittedCompanyId}' and command_name = 'admit_company_year'));
+    `]).trim(), "1:1:1:1:1:1:1");
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select concat_ws(':',
+        capability_manifest = '${canonicalJson(capabilityManifest)}'::jsonb,
+        capability_manifest_sha256,
+        company_year_promise = '${canonicalJson(companyYearPromise)}'::jsonb,
+        company_year_promise_sha256,
+        company_year_promise ->> 'reconstructionRequiredFrom',
+        company_year_promise ->> 'onlyAccountingAndFilingProduct')
+      from public.company_year_admissions
+      where id = '${admissionId}';
+    `]).trim(), [
+      "t",
+      sha256(canonicalJson(capabilityManifest)),
+      "t",
+      sha256(canonicalJson(companyYearPromise)),
+      "2026-01-01",
+      "true",
+    ].join(":"));
+
+    const blockedAnswers = {
+      ...supportedEligibilityAnswers,
+      loan_terms_are_ordinary_and_clear: "no",
+    };
+    const blockedRecheck = psql(containerName, ["-At"], eligibilityRecheckSql({
+      companyId: admittedCompanyId,
+      admissionId,
+      previousAssessmentId: initialAssessmentId,
+      decision: "blocked",
+      trigger: "material_answer_changed",
+      answers: blockedAnswers,
+    })).trim().split("\n").at(-2);
+    assert.match(blockedRecheck, /^[0-9a-f-]{36}:f$/u);
+    const blockedAssessmentId = blockedRecheck.slice(0, 36);
+    assert.equal(psql(containerName, ["-Atc", String.raw`
+      select concat_ws(':', previous_assessment_id, decision,
+        consequential_operations_allowed, archive_export_available,
+        next_step_code, capability_manifest_sha256)
+      from public.company_eligibility_assessments
+      where id = '${blockedAssessmentId}';
+    `]).trim(), [
+      initialAssessmentId,
+      "blocked",
+      "f",
+      "t",
+      "STOP_EXPORT_AND_CONTACT",
+      sha256(canonicalJson(capabilityManifest)),
+    ].join(":"));
+    const replayedRecheck = psql(containerName, ["-At"], eligibilityRecheckSql({
+      companyId: admittedCompanyId,
+      admissionId,
+      previousAssessmentId: initialAssessmentId,
+      decision: "blocked",
+      trigger: "material_answer_changed",
+      answers: blockedAnswers,
+    })).trim().split("\n").at(-2);
+    assert.equal(replayedRecheck, `${blockedAssessmentId}:t`);
+
+    const graphConstraintEvidence = psql(containerName, ["-At"], String.raw`
+      begin;
+      insert into public.companies (
+        id, org_number, name, entity_type, address, postal_code, city,
+        status_text, source, created_by, identity_confirmed_at, identity_locked_at
+      ) values (
+        '12000000-0000-4000-8000-000000000009', '987654399',
+        'Temporary Graph Guard AS', 'AS', 'Testveien 9', '0150', 'OSLO',
+        'aktiv', 'brreg', '${actorOne}', statement_timestamp(), statement_timestamp()
+      );
+      insert into public.company_memberships (
+        company_id, user_id, role, invited_by, accepted_at
+      ) values (
+        '12000000-0000-4000-8000-000000000009', '${actorOne}',
+        'owner', '${actorOne}', statement_timestamp()
+      );
+      set local role company_access_executor;
+      ${actorContext(actorOne, "owner@example.test")}
+      do $graph_constraints$
+      declare
+        constraint_name text;
+      begin
+        begin
+          insert into public.company_year_admissions (
+            id, company_id, accounting_year, eligibility_assessment_id,
+            capability_manifest, capability_manifest_version, capability_manifest_sha256,
+            company_year_promise, company_year_promise_sha256,
+            reconstruct_from, admitted_by, admitted_at
+          )
+          select
+            '22000000-0000-4000-8000-000000000001', '${firstCompanyId}',
+            accounting_year, '${blockedAssessmentId}', capability_manifest,
+            capability_manifest_version, capability_manifest_sha256,
+            company_year_promise, company_year_promise_sha256,
+            reconstruct_from, admitted_by, admitted_at
+          from public.company_year_admissions where id = '${admissionId}';
+          raise exception 'cross_company_assessment_was_accepted';
+        exception when foreign_key_violation then
+          get stacked diagnostics constraint_name = constraint_name;
+          if constraint_name <> 'company_year_admissions_assessment_same_company_year_fk' then
+            raise;
+          end if;
+          perform pg_catalog.set_config('test.admission_graph_constraint', constraint_name, true);
+        end;
+
+        insert into public.company_eligibility_assessments (
+          id, company_id, accounting_year, operation_id, previous_assessment_id,
+          trigger, decision, capability_manifest, capability_manifest_version,
+          capability_manifest_sha256, public_facts, public_facts_sha256,
+          answers, answers_sha256, reason_codes, reason_explanations,
+          next_step_code, next_step, consequential_operations_allowed,
+          archive_export_available, evaluator_version, assessed_by, assessed_at
+        )
+        select
+          '32000000-0000-4000-8000-000000000003', '${firstCompanyId}',
+          accounting_year, '72000000-0000-4000-8000-000000000003', null,
+          'initial_admission', decision, capability_manifest, capability_manifest_version,
+          capability_manifest_sha256, public_facts, public_facts_sha256,
+          answers, answers_sha256, reason_codes, reason_explanations,
+          next_step_code, next_step, consequential_operations_allowed,
+          archive_export_available, evaluator_version, assessed_by, assessed_at
+        from public.company_eligibility_assessments where id = '${initialAssessmentId}';
+
+        insert into public.company_year_admissions (
+          id, company_id, accounting_year, eligibility_assessment_id,
+          capability_manifest, capability_manifest_version, capability_manifest_sha256,
+          company_year_promise, company_year_promise_sha256,
+          reconstruct_from, admitted_by, admitted_at
+        )
+        select
+          '22000000-0000-4000-8000-000000000002', '${firstCompanyId}',
+          accounting_year, '32000000-0000-4000-8000-000000000003',
+          capability_manifest, capability_manifest_version, capability_manifest_sha256,
+          company_year_promise, company_year_promise_sha256,
+          reconstruct_from, admitted_by, admitted_at
+        from public.company_year_admissions where id = '${admissionId}';
+
+        begin
+          insert into public.company_year_acceptances (
+            company_year_admission_id, company_id, accounting_year, accepted_by,
+            customer_legal_name, customer_org_number,
+            business_terms_version, business_terms_effective_date,
+            business_terms_path, business_terms_sha256,
+            dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+            privacy_notice_version, privacy_notice_effective_date,
+            privacy_notice_path, privacy_notice_sha256,
+            capability_manifest_version, capability_manifest_sha256,
+            authority_statement_version, acceptance_method, accepted_at
+          )
+          select
+            '22000000-0000-4000-8000-000000000002',
+            '12000000-0000-4000-8000-000000000009',
+            accounting_year, accepted_by, customer_legal_name, customer_org_number,
+            business_terms_version, business_terms_effective_date,
+            business_terms_path, business_terms_sha256,
+            dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+            privacy_notice_version, privacy_notice_effective_date,
+            privacy_notice_path, privacy_notice_sha256,
+            capability_manifest_version, capability_manifest_sha256,
+            authority_statement_version, acceptance_method, accepted_at
+          from public.company_year_acceptances
+          where company_year_admission_id = '${admissionId}';
+          raise exception 'cross_company_acceptance_was_accepted';
+        exception when foreign_key_violation then
+          get stacked diagnostics constraint_name = constraint_name;
+          if constraint_name <> 'company_year_acceptances_admission_same_company_year_fk' then
+            raise;
+          end if;
+          perform pg_catalog.set_config('test.acceptance_graph_constraint', constraint_name, true);
+        end;
+      end
+      $graph_constraints$;
+      select concat_ws(':',
+        current_setting('test.admission_graph_constraint'),
+        current_setting('test.acceptance_graph_constraint'));
+      rollback;
+    `).trim().split("\n").at(-2);
+    assert.equal(graphConstraintEvidence, [
+      "company_year_admissions_assessment_same_company_year_fk",
+      "company_year_acceptances_admission_same_company_year_fk",
+    ].join(":"));
+
+    assert.match(psqlFailure(containerName, eligibilityRecheckSql({
+      companyId: admittedCompanyId,
+      admissionId,
+      previousAssessmentId: initialAssessmentId,
+      operationId: "71000000-0000-4000-8000-000000000011",
+    })), /company_access_conflict/u);
+    assert.match(psqlFailure(containerName, eligibilityRecheckSql({
+      companyId: admittedCompanyId,
+      admissionId,
+      previousAssessmentId: blockedAssessmentId,
+      actorId: actorThree,
+      verifiedSubject: actorThree,
+      operationId: "71000000-0000-4000-8000-000000000012",
+    })), /company_access_not_found/u);
+
+    const changedAnswers = { ...supportedEligibilityAnswers, uses_calendar_year: "unknown" };
+    assert.match(psqlFailure(containerName, admissionSql({ answers: changedAnswers })), /company_access_conflict/u);
+    assert.match(psqlFailure(containerName, admissionSql({
+      operationId: "70000000-0000-4000-8000-000000000011",
+      verifiedSubject: actorTwo,
+    })), /company_access_not_found/u);
+
+    assert.equal(psql(containerName, ["-At"], String.raw`
+      begin;
+      set local role company_access_executor;
+      ${actorContext(actorOne, "owner@example.test")}
+      select concat_ws(':',
+        (select count(*) from public.company_eligibility_assessments where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_year_admissions where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_year_acceptances where company_id = '${admittedCompanyId}'));
+      rollback;
+    `).trim().split("\n").at(-2), "2:1:1");
+    assert.equal(psql(containerName, ["-At"], String.raw`
+      begin;
+      set local role company_access_executor;
+      ${actorContext(actorThree, "outsider@example.test")}
+      select concat_ws(':',
+        (select count(*) from public.company_eligibility_assessments where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_year_admissions where company_id = '${admittedCompanyId}'),
+        (select count(*) from public.company_year_acceptances where company_id = '${admittedCompanyId}'));
+      rollback;
+    `).trim().split("\n").at(-2), "0:0:0");
+
+    assert.match(psqlFailure(containerName, String.raw`
+      update public.company_year_admissions
+      set reconstruct_from = date '2026-01-02'
+      where id = '${admissionId}';
+    `, ["-U", "talli_migration_owner"]), /company_access_admission_evidence_is_immutable/u);
+    assert.match(psqlFailure(containerName, String.raw`
+      delete from public.company_year_acceptances
+      where company_year_admission_id = '${admissionId}';
+    `, ["-U", "talli_migration_owner"]), /company_access_admission_evidence_is_immutable/u);
+
+    psql(containerName, [], String.raw`
+      create or replace function public.reject_one_company_year_acceptance()
+      returns trigger language plpgsql set search_path = '' as $$
+      begin
+        if new.customer_org_number = '987654312' then
+          raise exception 'forced_admission_acceptance_failure';
+        end if;
+        return new;
+      end $$;
+      create trigger reject_one_company_year_acceptance
+      before insert on public.company_year_acceptances
+      for each row execute function public.reject_one_company_year_acceptance();
+    `);
+    try {
+      assert.match(psqlFailure(containerName, admissionSql({
+        operationId: "70000000-0000-4000-8000-000000000012",
+        orgNumber: "987654312",
+        name: "Atomic Admission Holding AS",
+      })), /forced_admission_acceptance_failure/u);
+      assert.equal(psql(containerName, ["-Atc", String.raw`
+        select concat_ws(':',
+          (select count(*) from public.companies where org_number = '987654312'),
+          (select count(*) from public.company_access_command_receipts r
+            join public.companies c on c.id = r.company_id
+            where c.org_number = '987654312'));
+      `]).trim(), "0:0");
+    } finally {
+      psql(containerName, [], String.raw`
+        drop trigger reject_one_company_year_acceptance on public.company_year_acceptances;
+        drop function public.reject_one_company_year_acceptance();
+      `);
+    }
   } finally {
     docker(["rm", "--force", containerName]);
   }

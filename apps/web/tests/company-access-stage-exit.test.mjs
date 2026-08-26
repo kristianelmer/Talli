@@ -252,5 +252,6 @@ test("every Stage 1 web consumer authorizes through company-access contracts", a
   assert.match(archiveRoute, /loadAcceptedMembershipCompany/u);
   assert.match(archiveRoute, /requireStepUpForAction/u);
   assert.match(ownerLayout, /pendingCompany \?/u);
-  assert.match(ownerLayout, /: children/u);
+  assert.match(ownerLayout, /stoppedCompanies\.map/u);
+  assert.match(ownerLayout, /\{children\}/u);
 });

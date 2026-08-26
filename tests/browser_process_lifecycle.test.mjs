@@ -216,6 +216,9 @@ test("browser owner cleanup removes tracked sources before company and user", as
     .filter((call) => call.startsWith("delete from public."))
     .map((call) => call.match(/^delete from public\.([a-z_]+)/u)?.[1]);
   assert.deepEqual(deletedTables, [
+    "company_year_acceptances",
+    "company_year_admissions",
+    "company_eligibility_assessments",
     "customer_agreement_acceptances",
     "corporate_document_events",
     "corporate_decision_finalizations",
@@ -249,6 +252,10 @@ test("browser owner cleanup removes tracked sources before company and user", as
   ]);
   const restoreTriggerMode = calls.indexOf("set local session_replication_role = origin");
   assert.ok(
+    calls.indexOf("delete from public.company_eligibility_assessments where company_id = $1")
+      < restoreTriggerMode,
+  );
+  assert.ok(
     calls.indexOf("delete from public.corporate_decisions where company_id = $1")
       < restoreTriggerMode,
   );
@@ -262,6 +269,34 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "delete_user:owner-created",
     "database_end",
   ]);
+});
+
+test("browser owner cleanup removes every tracked company before the shared owner", async () => {
+  const calls = [];
+  const database = {
+    async query(statement) {
+      calls.push(statement.replace(/\s+/gu, " ").trim());
+    },
+    async end() {
+      calls.push("database_end");
+    },
+  };
+
+  const errors = await cleanupBrowserOwnerResources({
+    admin: cleanupAdmin(calls),
+    companyId: "company-one",
+    companyIds: ["company-one", "company-two"],
+    database,
+    databaseStarted: true,
+    ownerId: "owner-created",
+  });
+
+  assert.deepEqual(errors, []);
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("delete_company:")),
+    ["delete_company:company-one", "delete_company:company-two"],
+  );
+  assert.deepEqual(calls.slice(-2), ["delete_user:owner-created", "database_end"]);
 });
 
 test("browser owner cleanup preserves source failure and continues independent cleanup", async () => {

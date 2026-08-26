@@ -6,14 +6,15 @@ const root = new URL("..", import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), "utf8");
 const json = (path) => JSON.parse(read(path));
 
-test("company onboarding and agreement operations are generated-client boundaries", () => {
+test("eligibility, admission, and agreement operations are generated-client boundaries", () => {
   const contract = json("contracts/openapi/talli-v1.json");
-  const operations = [
-    [
-      "/api/v1/company-access/onboarding",
-      "post",
-      "companyAccessOnboardCompany",
-    ],
+  const publicOperations = [
+    ["/api/v1/company-access/eligibility/precheck", "post", "companyAccessEligibilityPrecheck"],
+    ["/api/v1/company-access/eligibility/definitive", "post", "companyAccessEligibilityDefinitive"],
+  ];
+  const authenticatedOperations = [
+    ["/api/v1/company-access/company-year-admissions", "post", "companyAccessAdmitCompanyYear"],
+    ["/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks", "post", "companyAccessRecheckCompanyYearEligibility"],
     [
       "/api/v1/company-access/agreements/reaccept",
       "post",
@@ -36,7 +37,12 @@ test("company onboarding and agreement operations are generated-client boundarie
     ],
   ];
 
-  for (const [path, method, operationId] of operations) {
+  for (const [path, method, operationId] of publicOperations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.equal(operation?.security, undefined);
+  }
+  for (const [path, method, operationId] of authenticatedOperations) {
     const operation = contract.paths[path]?.[method];
     assert.equal(operation?.operationId, operationId);
     assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
@@ -53,6 +59,7 @@ test("company onboarding and agreement operations are generated-client boundarie
   const generatedClient = read(
     "packages/talli-api-client/src/generated/client.ts",
   );
+  const operations = [...publicOperations, ...authenticatedOperations];
   for (const operationId of operations.map(([, , operation]) => operation)) {
     assert.match(generatedClient, new RegExp(`async ${operationId}\\(`, "u"));
   }
@@ -61,29 +68,31 @@ test("company onboarding and agreement operations are generated-client boundarie
   for (const operationId of operations.map(([, , operation]) => operation)) {
     assert.ok(featureManifest.apiOperations.includes(operationId));
   }
+  const legacy = contract.paths["/api/v1/company-access/onboarding"].post;
+  assert.equal(legacy.operationId, "companyAccessOnboardCompany");
+  assert.equal(legacy.deprecated, true);
+  assert.ok(!featureManifest.apiOperations.includes("companyAccessOnboardCompany"));
 });
 
 test("the web onboarding slice has no legacy business-policy or persistence path", () => {
   const actions = read("apps/web/app/actions.ts");
+  const admissionActions = read("apps/web/app/(owner)/onboarding/actions.ts");
   const supabaseServer = read("apps/web/app/lib/supabase/server.ts");
-  const onboardingAction =
-    actions.match(
-      /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/iu,
-    )?.[0] ?? "";
   const reacceptanceAction =
     actions.match(
       /export async function reacceptCompanyAgreement[\s\S]+?\n\}\n\nexport async function/iu,
     )?.[0] ?? "";
 
   assert.match(actions, /from "\.\.\/features\/company-access"/u);
-  assert.match(onboardingAction, /onboardCompanyThroughApi/u);
+  assert.doesNotMatch(actions, /createWorkspace|onboardCompanyThroughApi/u);
+  assert.match(admissionActions, /admitCompanyYearThroughApi/u);
   assert.match(reacceptanceAction, /reacceptCompanyAgreementThroughApi/u);
   assert.doesNotMatch(
     actions,
     /\.\/lib\/(?:brreg|customer-onboarding|customer-agreement-reacceptance)/u,
   );
   assert.doesNotMatch(
-    `${onboardingAction}\n${reacceptanceAction}`,
+    `${admissionActions}\n${reacceptanceAction}`,
     /createSupabaseServiceRoleClient|\.rpc\(/u,
   );
   assert.doesNotMatch(

@@ -113,6 +113,7 @@ export const ownerCopy = {
     yearEnd: "Årsavslutning",
     filing: "Innsending",
     connections: "Selskap",
+    eligibility: "Selskapsgrense",
     documents: "Dokumenter",
     billing: "Innstillinger",
     workspace: "Arbeidsflate",

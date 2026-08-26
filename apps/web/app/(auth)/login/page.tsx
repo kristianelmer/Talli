@@ -53,7 +53,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
       <GoogleSignInButton next={next} />
       <p className="authAlt">
         {ownerCopy.auth.noAccount}{" "}
-        <Link href="/signup">{ownerCopy.auth.toSignUp}</Link>
+        <Link href={`/signup?next=${encodeURIComponent(next)}`}>{ownerCopy.auth.toSignUp}</Link>
       </p>
       <p className="authLegal">
         <Link href="/vilkar">{ownerCopy.auth.termsLink}</Link>

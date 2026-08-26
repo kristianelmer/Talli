@@ -64,6 +64,38 @@ test("public homepage is a truthful invite-only free beta invitation", () => {
   assert.doesNotMatch(ownerCopySource, /trygg innsending/i);
 });
 
+test("public company check is free, provisional, and distinguishes provider failure", () => {
+  const eligibilityPage = readFileSync(
+    new URL("../apps/web/app/sjekk-selskapet/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const checker = readFileSync(
+    new URL("../apps/web/app/sjekk-selskapet/EligibilityChecker.tsx", import.meta.url),
+    "utf8",
+  );
+  const presentation = readFileSync(
+    new URL("../apps/web/features/company-access/presentation.ts", import.meta.url),
+    "utf8",
+  );
+  const manifest = JSON.parse(readFileSync(
+    new URL(
+      "../apps/backend/src/talli_backend/modules/company_access/capability_manifest.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ));
+
+  assert.match(eligibilityPage, /Gratis · ingen konto · ingen betaling/u);
+  assert.match(eligibilityPage, /Foreløpig svar er alltid merket tydelig/u);
+  assert.match(checker, /Foreløpig svar · Utenfor grensen/u);
+  assert.match(checker, /komplett fra 1\. januar/u);
+  assert.equal(
+    manifest.outcomes.clarifyNextStep,
+    "Avklar det ukjente med en regnskapsfører før du går videre.",
+  );
+  assert.match(presentation, /Dette betyr ikke at selskapet er utenfor Talli/u);
+});
+
 test("public legal copy identifies the real beta operator and contains no placeholders", () => {
   assert.match(ownerCopySource, /ELMER WELFIS/);
   assert.match(ownerCopySource, /930 835 978/);

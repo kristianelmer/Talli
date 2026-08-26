@@ -9,6 +9,7 @@ import {
 } from "../features/company-access/transport/load-company-access-context.ts";
 import {
   presentCompanyAccessRecord,
+  presentCompanyAccessContext,
   presentOperatorCompanyRecord,
 } from "../features/company-access/presentation.ts";
 import {
@@ -54,6 +55,14 @@ function ownerContext(overrides = {}) {
     resourceScope: "owner_sensitive",
     aal: "aal2",
     currentAgreementAccepted: true,
+    companyYearAdmissionId: "20000000-0000-4000-8000-000000000002",
+    admittedAccountingYear: 2026,
+    currentEligibilityDecision: "supported",
+    eligibilityReasonExplanations: [],
+    eligibilityNextStepCode: "CONTINUE_COMPANY_YEAR",
+    eligibilityNextStep: "Fortsett selskapsåret i Talli.",
+    consequentialOperationsAllowed: true,
+    archiveExportAvailable: true,
     ...overrides,
   };
   return { selectedCompany: company, companies: [{ ...company }] };
@@ -161,7 +170,40 @@ test("the company-access app boundary owns its presentation model instead of a S
   assert.match(presentation, /OperatorCompanyRecord/);
   assert.match(presentation, /role: "owner";/);
   assert.match(presentation, /currentAgreementAccepted: boolean;/);
+  assert.match(presentation, /admittedAccountingYear: number \| null;/);
+  assert.match(presentation, /consequentialOperationsAllowed: boolean;/);
   assert.doesNotMatch(presentation, /supabase\/server|CompanyWorkspaceRow/);
+});
+
+test("owner context preserves the admitted company-year and current safety gate", () => {
+  assert.deepEqual(
+    presentCompanyAccessContext(ownerContext().selectedCompany),
+    {
+      id: "company-1",
+      org_number: "314159265",
+      name: "Talli Holding AS",
+      entity_type: "AS",
+      address: "Testveien 1",
+      postal_code: "0150",
+      city: "Oslo",
+      status_text: "Registrert",
+      source: "Brønnøysundregistrene",
+      created_by: "owner-1",
+      identity_confirmed_at: null,
+      identity_locked_at: null,
+      created_at: "2026-07-30T00:00:00Z",
+      role: "owner",
+      currentAgreementAccepted: true,
+      companyYearAdmissionId: "20000000-0000-4000-8000-000000000002",
+      admittedAccountingYear: 2026,
+      currentEligibilityDecision: "supported",
+      eligibilityReasonExplanations: [],
+      eligibilityNextStepCode: "CONTINUE_COMPANY_YEAR",
+      eligibilityNextStep: "Fortsett selskapsåret i Talli.",
+      consequentialOperationsAllowed: true,
+      archiveExportAvailable: true,
+    },
+  );
 });
 
 test("company record presentations map generated camel-case contracts to existing web registry facts", () => {

@@ -9,6 +9,8 @@ export {
 } from "./transport/load-company-access-context.ts";
 export {
   companyAccessActionErrorMessage,
+  eligibilityActionErrorMessage,
+  eligibilityAdmissionRestartRequired,
   presentCompanyAccessRecord,
   presentCompanyAccessContext,
   presentOperatorCompanyRecord,
@@ -29,7 +31,10 @@ export {
   revokeCompanyInvitation,
 } from "./transport/company-access-administration.ts";
 export {
-  onboardCompanyThroughApi,
+  admitCompanyYearThroughApi,
+  assessCompanyEligibility,
+  precheckCompanyEligibility,
+  recheckCompanyYearEligibilityThroughApi,
   reacceptCompanyAgreementThroughApi,
 } from "./transport/company-access-onboarding.ts";
 export {
@@ -39,3 +44,5 @@ export {
   resumeCompanyCancellation,
   reviewCompanyDeletion,
 } from "./transport/company-access-cancellation.ts";
+export type { EligibilityDecisionResponse } from "@talli/talli-api-client";
+export type EligibilityAnswer = import("@talli/talli-api-client").EligibilityDecisionResponse["answers"][string];

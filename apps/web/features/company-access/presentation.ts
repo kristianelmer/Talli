@@ -21,6 +21,40 @@ export function companyAccessActionErrorMessage(error: unknown) {
   return "Tjenesten er midlertidig utilgjengelig.";
 }
 
+export function eligibilityActionErrorMessage(error: unknown) {
+  if (!(error instanceof TalliApiError)) {
+    return "Talli fikk ikke fullført sjekken. Prøv igjen om litt.";
+  }
+  if (error.problem?.code === "COMPANY_REGISTRY_NOT_FOUND") {
+    return "Fant ikke organisasjonsnummeret i Enhetsregisteret. Kontroller nummeret.";
+  }
+  if (error.problem?.code === "COMPANY_REGISTRY_UNAVAILABLE") {
+    return "Brønnøysundregistrene svarer ikke nå. Dette betyr ikke at selskapet er utenfor Talli.";
+  }
+  if (error.problem?.code === "ELIGIBILITY_MANIFEST_CHANGED") {
+    return "Talli har oppdatert grensene. Start den gratis sjekken på nytt.";
+  }
+  if (error.problem?.code === "ELIGIBILITY_FACTS_CHANGED") {
+    return "Offentlige selskapsopplysninger er endret. Start sjekken på nytt.";
+  }
+  if (error.problem?.code === "COMPANY_YEAR_NOT_ELIGIBLE") {
+    return "Selskapet er ikke lenger innenfor Talli-grensen. Start sjekken på nytt.";
+  }
+  if (error.problem?.code === "ADMISSION_EVIDENCE_CHANGED") {
+    return "Vilkårene eller Talli-grensen er oppdatert. Start sjekken på nytt.";
+  }
+  return "Talli fikk ikke fullført sjekken. Prøv igjen om litt.";
+}
+
+export function eligibilityAdmissionRestartRequired(error: unknown) {
+  return error instanceof TalliApiError && [
+    "ELIGIBILITY_MANIFEST_CHANGED",
+    "ELIGIBILITY_FACTS_CHANGED",
+    "COMPANY_YEAR_NOT_ELIGIBLE",
+    "ADMISSION_EVIDENCE_CHANGED",
+  ].includes(error.problem?.code ?? "");
+}
+
 export type CompanyRegistryPresentation = {
   id: string;
   org_number: string;
@@ -44,6 +78,14 @@ export type CompanyRegistryPresentation = {
 export type CompanyAccessPresentation = CompanyRegistryPresentation & {
   role: "owner";
   currentAgreementAccepted: boolean;
+  companyYearAdmissionId: string | null;
+  admittedAccountingYear: number | null;
+  currentEligibilityDecision: "supported" | "clarify" | "blocked" | null;
+  eligibilityReasonExplanations: string[];
+  eligibilityNextStepCode: string | null;
+  eligibilityNextStep: string | null;
+  consequentialOperationsAllowed: boolean;
+  archiveExportAvailable: boolean;
 };
 
 export type AcceptedMembershipCompanyPresentation = CompanyRegistryPresentation & {
@@ -75,6 +117,14 @@ export function presentCompanyAccessContext(context: CompanyContext): CompanyAcc
     ...presentCompanyRegistry(context),
     role: context.role,
     currentAgreementAccepted: context.currentAgreementAccepted,
+    companyYearAdmissionId: context.companyYearAdmissionId,
+    admittedAccountingYear: context.admittedAccountingYear,
+    currentEligibilityDecision: context.currentEligibilityDecision,
+    eligibilityReasonExplanations: context.eligibilityReasonExplanations,
+    eligibilityNextStepCode: context.eligibilityNextStepCode,
+    eligibilityNextStep: context.eligibilityNextStep,
+    consequentialOperationsAllowed: context.consequentialOperationsAllowed,
+    archiveExportAvailable: context.archiveExportAvailable,
   };
 }
 

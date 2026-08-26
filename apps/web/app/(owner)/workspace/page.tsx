@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
-import { CustomerAgreementAcceptanceFields } from "../../components/CustomerAgreementAcceptanceFields";
 import {
   acknowledgeFilingReviewComment,
   activateBillingSubscription,
@@ -13,7 +12,6 @@ import {
   confirmAuthorityPermission,
   confirmSimulatedRf1086Submission,
   createOpeningBalanceSetup,
-  createWorkspace,
   generateRf1086Preview,
   importBankCsv,
   inviteWorkspaceReviewer,
@@ -103,21 +101,6 @@ import { loadPendingCancellationOperation } from "../../lib/cancellation-operati
 type WorkspaceProps = {
   searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string; recovery?: string }>;
 };
-
-function supportBoundary(entityType: string) {
-  if (entityType !== "AS") {
-    return {
-      status: "blocked",
-      label: "Blokkert",
-      message: "Talli støtter kun AS i første versjon.",
-    };
-  }
-  return {
-    status: "ready",
-    label: "Klar",
-    message: "Selskapet passer enkel holding AS-løypen.",
-  };
-}
 
 export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
   const params = await searchParams;
@@ -286,17 +269,12 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <p className="eyebrow">{ownerCopy.workspace.createEyebrow}</p>
               <h2>{ownerCopy.workspace.createTitle}</h2>
             </div>
-            <form className="dataPanel formPanel widePanel" action={createWorkspace}>
-              <label>
-                Organisasjonsnummer
-                <input name="orgNumber" inputMode="numeric" pattern="[0-9]{9}" required />
-              </label>
-              <CustomerAgreementAcceptanceFields />
-              <button className="primaryButton" type="submit">
-                {ownerCopy.workspace.createCta}
-              </button>
-              <p>{ownerCopy.workspace.onlyAs}</p>
-            </form>
+            <div className="dataPanel formPanel widePanel">
+              <p>Sjekk hele selskapsåret gratis før du oppretter selskapet i Talli.</p>
+              <Link className="primaryButton" href="/sjekk-selskapet">
+                Sjekk selskapet gratis
+              </Link>
+            </div>
           </section>
 
           <section className="band mutedBand">
@@ -306,12 +284,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
             </div>
             <div className="readinessGrid">
               {companies.map((company) => {
-                const boundary = supportBoundary(company.entity_type);
                 return (
                   <div className="readinessItem" key={company.id}>
                     <span>{company.org_number}</span>
-                    <strong data-status={boundary.status}>{company.name}</strong>
-                    <p>{boundary.message}</p>
+                    <strong>{company.name}</strong>
+                    <p>Selskapet er opprettet gjennom den endelige selskapsårsjekken.</p>
                     <p>
                       {company.address ? `${company.address}, ` : ""}
                       {company.postal_code} {company.city}

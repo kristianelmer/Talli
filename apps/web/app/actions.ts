@@ -97,7 +97,6 @@ import {
   completeInvitationSideEffect,
   createCompanyInvitation,
   listPendingInvitationSideEffects,
-  onboardCompanyThroughApi,
   reacceptCompanyAgreementThroughApi,
   resendCompanyInvitation,
   requestCompanyCancellation as requestCompanyCancellationThroughApi,
@@ -107,6 +106,11 @@ import {
 } from "../features/company-access";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
+import {
+  CompanyYearEligibilityGateError,
+  companyYearEligibilityGateMessage,
+  requireCompanyYearEligibilityGate,
+} from "./lib/company-year-eligibility-gate";
 import { getCurrentSessionAccessToken } from "./lib/supabase/auth-session";
 import {
   loadAcceptedMembershipCompany,
@@ -635,7 +639,7 @@ export async function signIn(formData: FormData) {
     // Unconfirmed accounts are parked at the verification gate rather than
     // shown a dead-end error — they keep going without re-entering anything.
     if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
-      redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+      redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
     }
     redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
   }
@@ -644,8 +648,9 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
+  const next = sanitizeInternalRedirect(formString(formData, "next"));
   if (!hasSupabaseEnv()) {
-    redirect("/signup?error=Supabase%20env%20mangler");
+    redirect(`/signup?error=Supabase%20env%20mangler&next=${encodeURIComponent(next)}`);
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
@@ -654,36 +659,37 @@ export async function signUp(formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}` },
   });
   if (error) {
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+    redirect(`/signup?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
   }
   // With email confirmation off, Supabase returns an active, confirmed session
   // immediately — go straight in. Otherwise send them to the verification gate.
   if (data.session && data.user?.email_confirmed_at) {
     revalidatePath("/dashboard");
-    redirect("/dashboard");
+    redirect(next);
   }
-  redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+  redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
 }
 
 export async function resendConfirmation(formData: FormData) {
   const email = formString(formData, "email");
+  const next = sanitizeInternalRedirect(formString(formData, "next"));
   if (!hasSupabaseEnv()) {
-    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=Tjenesten%20er%20midlertidig%20utilgjengelig.`);
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=Tjenesten%20er%20midlertidig%20utilgjengelig.`);
   }
   const supabase = await createSupabaseServerClient();
   const siteUrl = await getSiteUrl();
   const { error } = await supabase.auth.resend({
     type: "signup",
     email,
-    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=/email-confirmed` },
+    options: { emailRedirectTo: `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}` },
   });
   if (error) {
-    redirect(`/verify-email?email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`);
+    redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent(error.message)}`);
   }
-  redirect(`/verify-email?email=${encodeURIComponent(email)}&resent=1`);
+  redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&resent=1`);
 }
 
 export async function signInWithGoogle(formData: FormData) {
@@ -712,31 +718,22 @@ export async function signOut() {
   redirect("/login");
 }
 
-export async function createWorkspace(formData: FormData) {
-  const returnTo = returnTarget(formData);
-  if (!hasSupabaseEnv()) {
-    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) {
-    failTo(returnTo, "Innlogging kreves.");
-  }
-  const agreement = currentAgreementCommand(formData, returnTo);
-  const orgNumber = formString(formData, "orgNumber");
-  if (!/^\d{9}$/.test(orgNumber)) {
-    failTo(returnTo, "Organisasjonsnummer må ha 9 sifre.");
-  }
+export async function refreshCompanyYearEligibilityGate(formData: FormData) {
+  const companyId = requiredFormUuid(formData, "companyId");
+  const trigger = formString(formData, "trigger") === "manifest_changed"
+    ? "manifest_changed"
+    : "public_fact_changed";
   try {
-    await onboardCompanyThroughApi(accessToken, {
-      orgNumber,
-      ...agreement,
-    });
+    await requireCompanyYearEligibilityGate(companyId, trigger);
   } catch (error) {
-    failTo(returnTo, companyAccessActionErrorMessage(error));
+    if (error instanceof CompanyYearEligibilityGateError) {
+      revalidatePath("/");
+      redirect(`/selskapsgrense?companyId=${companyId}&result=${error.state?.decision ?? "stopped"}`);
+    }
+    redirect(`/selskapsgrense?companyId=${companyId}&error=${encodeURIComponent(companyYearEligibilityGateMessage(error))}`);
   }
-
   revalidatePath("/");
-  redirect("/mfa?next=%2Fonboarding");
+  redirect(`/selskapsgrense?companyId=${companyId}&result=supported`);
 }
 
 export async function reacceptCompanyAgreement(formData: FormData) {

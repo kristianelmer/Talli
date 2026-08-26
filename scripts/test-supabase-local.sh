@@ -54,6 +54,11 @@ fi
 
 eval "$(npm exec -- supabase status --output env)"
 
+# `supabase start` can reuse an existing local volume without applying migration
+# files added since that volume was created. Apply only pending automatic-runner
+# migrations so browser evidence always exercises the repository's current schema.
+npm exec -- supabase migration up --local --include-all >/dev/null
+
 npm run test:supabase-advisors
 
 SUPABASE_URL="$API_URL" \

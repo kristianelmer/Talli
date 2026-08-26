@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-import { reacceptCompanyAgreement, signOut } from "../actions";
+import {
+  reacceptCompanyAgreement,
+  refreshCompanyYearEligibilityGate,
+  signOut,
+} from "../actions";
 import { currentCustomerAgreements } from "../lib/customer-agreements";
 import {
   getOperatorContext,
@@ -28,6 +32,13 @@ export default async function OwnerLayout({
   } = await listCompanyAccessContexts();
   const pendingCompanies = companies.filter(({ currentAgreementAccepted }) => !currentAgreementAccepted);
   const pendingCompany = pendingCompanies[0];
+  const stoppedCompanies = companies.filter((company) => (
+    company.companyYearAdmissionId !== null
+    && (
+      company.currentEligibilityDecision !== "supported"
+      || !company.consequentialOperationsAllowed
+    )
+  ));
   return (
     <div className="appShell">
       <header className="appTopbar">
@@ -104,7 +115,53 @@ export default async function OwnerLayout({
               <p>Deretter gjenstår: {pendingCompanies.slice(1).map(({ name }) => name).join(", ")}.</p>
             ) : null}
           </section>
-        ) : children}
+        ) : (
+          <>
+            {stoppedCompanies.map((stoppedCompany) => {
+              const titleId = `companyYearEligibilityStoppedTitle-${stoppedCompany.id}`;
+              return (
+                <section
+                  className="band"
+                  aria-labelledby={titleId}
+                  key={stoppedCompany.id}
+                >
+                  <div className="sectionHeader">
+                    <p className="eyebrow">Selskapsgrensen må avklares</p>
+                    <h2 id={titleId}>
+                      Nye selskapsårsløfter er satt på vent for {stoppedCompany.name}
+                    </h2>
+                    {stoppedCompany.eligibilityReasonExplanations.length > 0 ? (
+                      <ul>
+                        {stoppedCompany.eligibilityReasonExplanations.map((explanation) => (
+                          <li key={explanation}>{explanation}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <p>{stoppedCompany.eligibilityNextStep}</p>
+                    <p>Leseadgangen er fortsatt åpen. Ferdige arkiver kan eksporteres fra arbeidsflaten.</p>
+                  </div>
+                  <div className="buttonRow">
+                    <form action={refreshCompanyYearEligibilityGate}>
+                      <input type="hidden" name="companyId" value={stoppedCompany.id} />
+                      <input
+                        type="hidden"
+                        name="trigger"
+                        value={stoppedCompany.eligibilityNextStepCode === "RECHECK_REQUIRED"
+                          ? "manifest_changed"
+                          : "public_fact_changed"}
+                      />
+                      <button className="btn btn--primary" type="submit">
+                        Kontroller grensen på nytt
+                      </button>
+                    </form>
+                    <a className="btn btn--ghost" href="mailto:post@talli.no">Kontakt Talli</a>
+                  </div>
+                </section>
+              );
+            })}
+            {children}
+          </>
+        )}
       </main>
     </div>
   );

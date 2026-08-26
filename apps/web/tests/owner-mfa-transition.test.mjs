@@ -176,18 +176,15 @@ test("enrollment and verification expose no provider errors and only resume afte
   );
 });
 
-test("owner transition is reachable after onboarding and exposes an accessible, Norwegian MFA gate", async () => {
-  const [actions, ownerLayout, page, component] = await Promise.all([
-    readFile(new URL("../app/actions.ts", import.meta.url), "utf8"),
+test("owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate", async () => {
+  const [admissionActions, ownerLayout, page, component] = await Promise.all([
+    readFile(new URL("../app/(owner)/onboarding/actions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/(owner)/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/mfa/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/mfa/OwnerMfa.tsx", import.meta.url), "utf8"),
   ]);
-  const createWorkspace = actions.match(
-    /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/gu,
-  )?.[0] ?? "";
-
-  assert.match(createWorkspace, /redirect\("\/mfa\?next=%2Fonboarding"\)/u);
+  assert.match(admissionActions, /export async function admitCompanyYear/u);
+  assert.match(admissionActions, /redirect\("\/mfa\?next=%2Fonboarding"\)/u);
   assert.match(ownerLayout, /requiresAal2/u);
   assert.match(ownerLayout, /href="\/mfa\?next=%2Fonboarding"/u);
   assert.match(page, /sanitizeInternalRedirect\(params\?\.next, "\/onboarding"\)/u);

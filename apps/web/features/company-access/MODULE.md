@@ -1,13 +1,14 @@
 # Company access web feature
 
 <!-- architecture-inventory
-{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessFinalizeDeletion","companyAccessGetCompanyRecord","companyAccessGetOperatorContext","companyAccessGetSelectedContext","companyAccessListCancellations","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessOnboardCompany","companyAccessReacceptAgreement","companyAccessRequestCancellation","companyAccessResendInvitation","companyAccessResumeCancellation","companyAccessReviewDeletion","companyAccessRevokeInvitation","companyAccessSearchOperatorCompanies"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/onboarding","/operator","/workspace"]}
+{"apiOperations":["companyAccessAcceptInvitation","companyAccessAdministerMembership","companyAccessAdmitCompanyYear","companyAccessCompleteInvitationSideEffect","companyAccessCreateInvitation","companyAccessEligibilityDefinitive","companyAccessEligibilityPrecheck","companyAccessFinalizeDeletion","companyAccessGetCompanyRecord","companyAccessGetOperatorContext","companyAccessGetSelectedContext","companyAccessListCancellations","companyAccessListInvitations","companyAccessListMemberships","companyAccessListPendingInvitationSideEffects","companyAccessLookupInvitation","companyAccessReacceptAgreement","companyAccessRecheckCompanyYearEligibility","companyAccessRequestCancellation","companyAccessResendInvitation","companyAccessResumeCancellation","companyAccessReviewDeletion","companyAccessRevokeInvitation","companyAccessSearchOperatorCompanies"],"dependencies":[],"publicEntryPoints":["@/features/company-access","apps/web/features/company-access","apps/web/features/company-access/index.ts"],"routes":["/companies/[companyId]/annual-reporting/[incomeYear]","/connections","/dashboard","/invite/accept","/onboarding","/operator","/selskapsgrense","/sjekk-selskapet","/workspace"]}
 -->
 
 ## Purpose
 
-This feature loads authenticated company and operator context, performs bounded
-operator company search, and carries onboarding,
+This feature carries the public provisional and definitive eligibility check,
+authenticated immutable company-year admission and safety rechecks, company and
+operator context, and bounded operator company search. It also carries
 agreement reacceptance, invitation and reviewer/read-only membership administration,
 owner cancellation request/resume/finalization, and independent support deletion
 review through the committed generated client.
@@ -15,7 +16,7 @@ review through the committed generated client.
 ## Owns and must not own
 
 It owns the listed route integration, no-store transport mapping, and presentation
-derived from generated contracts. It must not decide onboarding eligibility,
+derived from generated contracts. It must not decide eligibility,
 agreement evidence, invitation, membership, cancellation evidence, role,
 fresh-AAL2, or tenant-concealment policy; those belong
 to the backend capability. It must
@@ -26,9 +27,18 @@ DTOs, or deep-import the client.
 
 Other web code imports `@/features/company-access`. The web establishes the
 Supabase session, then passes its access token only as generated-client headers.
-Company creation and agreement reacceptance send the displayed agreement evidence
-through the generated onboarding operations; the backend owns identity lookup,
-eligibility, authorization, current-version validation, and atomic persistence.
+The free `/sjekk-selskapet` journey uses `companyAccessEligibilityPrecheck` and
+`companyAccessEligibilityDefinitive` without an account. It retains only a
+short-lived HTTP-only continuation after definitive support. Authenticated
+`companyAccessAdmitCompanyYear` sends the displayed authority, legal, privacy,
+capability, public-fact, and material-answer evidence. The backend owns identity
+lookup, authorization, current-version validation, and atomic persistence.
+`companyAccessRecheckCompanyYearEligibility` appends the current safety state
+after a material fact changes through `/selskapsgrense`, or when the owner
+refreshes public/manifest evidence, while preserving the accepted promise and
+read access. The `before_payment` and `before_filing` triggers are generated
+contracts for their serialized capability migrations; this stage does not alter
+those future capability writers.
 Company facts and the caller's accepted membership role come from the
 tenant-concealed company-record operation. Operator authorization and bounded
 company discovery come from their generated operator operations.
@@ -72,4 +82,5 @@ Invitation delivery no longer uses the #156
 direct-web exception; the temporary #155 invitation-audit exception remains exact
 and bounded. Cancellation/deletion no longer has a direct-web compatibility
 adapter. The #138 onboarding, agreement-acceptance, and BRREG web facades have
-exited; no direct-web compatibility adapter remains for those scopes.
+exited. The deprecated HTTP shape fails closed, and its internal AS-only writer
+and web caller are absent; no direct-web compatibility adapter remains.

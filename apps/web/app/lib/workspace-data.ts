@@ -119,6 +119,9 @@ export async function loadWorkspaceData() {
   const taxEstimate = estimateAnnualTax({ ledgerEntries: entries, holdingActions: actions });
   const incomeYears = Array.from(
     new Set([
+      ...companies
+        .map((company) => company.admittedAccountingYear)
+        .filter((incomeYear): incomeYear is number => incomeYear !== null),
       ...setups.map((setup) => setup.income_year),
       ...previews.map((preview) => preview.income_year),
       ...overrides.map((override) => override.income_year),
@@ -128,7 +131,8 @@ export async function loadWorkspaceData() {
       ...locks.map((lock) => lock.income_year),
     ]),
   ).sort((a, b) => b - a);
-  const primaryIncomeYear = incomeYears[0] ?? 2025;
+  const primaryIncomeYear = companies.find((company) => company.id === primaryCompanyId)
+    ?.admittedAccountingYear ?? incomeYears[0] ?? 2025;
   const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
   const primaryBillingEvents = billingPaymentEvents.filter((event) => event.company_id === primaryCompanyId);
   const primaryReadinessSnapshots = readinessSnapshots.filter(

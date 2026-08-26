@@ -28,7 +28,7 @@ const currentAgreementMetadata = {
 } as const;
 
 export function assertCanonicalAgreementContent(
-  kind: "business_terms" | "dpa",
+  kind: "business_terms" | "dpa" | "privacy_notice",
   content: ContractContent,
   expectedSha256: string,
 ) {
@@ -79,3 +79,17 @@ export const currentCustomerAgreements = {
     currentAgreementMetadata.dpa,
   ),
 } as const;
+
+export const currentPrivacyNotice = {
+  kind: "privacy_notice",
+  version: "2026-07-15",
+  effectiveDate: "2026-07-15",
+  path: "/personvern",
+  contentSha256: "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c",
+} as const;
+
+assertCanonicalAgreementContent(
+  currentPrivacyNotice.kind,
+  ownerCopy.legal.privacy,
+  currentPrivacyNotice.contentSha256,
+);

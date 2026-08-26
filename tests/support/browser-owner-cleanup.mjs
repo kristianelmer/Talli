@@ -15,17 +15,23 @@ export async function cleanupBrowserOwnerResources(resources) {
   await attempt(() => stopOwnedProcess(resources.backend));
   await attempt(() => resources.cleanupBackendDatabaseRole?.());
 
-  if (resources.companyId && resources.databaseStarted) {
-    await attempt(() =>
-      deleteBrowserOwnerCompanySources(resources.database, resources.companyId),
-    );
+  const companyIds = [...new Set([
+    resources.companyId,
+    ...(resources.companyIds ?? []),
+  ].filter((companyId) => typeof companyId === "string" && companyId.length > 0))];
+  for (const companyId of companyIds) {
+    if (resources.databaseStarted) {
+      await attempt(() =>
+        deleteBrowserOwnerCompanySources(resources.database, companyId),
+      );
+    }
   }
-  if (resources.companyId) {
+  for (const companyId of companyIds) {
     await attempt(async () => {
       const { error } = await resources.admin
         .from("companies")
         .delete()
-        .eq("id", resources.companyId);
+        .eq("id", companyId);
       if (error) throw error;
     });
   }
@@ -59,6 +65,18 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     // Bypass only immutable fixture guards; transaction scope restores this on
     // every commit or rollback, and regular source cleanup runs with triggers.
     await database.query("set local session_replication_role = replica");
+    await database.query(
+      "delete from public.company_year_acceptances where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from public.company_year_admissions where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from public.company_eligibility_assessments where company_id = $1",
+      [companyId],
+    );
     await database.query(
       "delete from public.customer_agreement_acceptances where company_id = $1",
       [companyId],

@@ -23,6 +23,7 @@ export function AppNav({ isOperator, children }: AppNavProps) {
     { href: "/transactions", label: ownerCopy.nav.transactions },
     { href: "/documents", label: ownerCopy.nav.documents },
     { href: "/connections", label: ownerCopy.nav.connections },
+    { href: "/selskapsgrense", label: ownerCopy.nav.eligibility },
     { href: "/billing", label: ownerCopy.nav.billing },
   ];
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);

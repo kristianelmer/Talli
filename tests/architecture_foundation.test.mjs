@@ -212,6 +212,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:company_access",
     },
     {
+      from: "backend-system:company-year-eligibility-and-admission",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
+    {
       from: "backend-system:system-boundary-tracer",
       imports: ["talli_backend.modules.system_boundary.public"],
       kind: "workflow",

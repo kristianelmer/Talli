@@ -31,7 +31,7 @@ const anonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 const databaseUrl = process.env.DATABASE_URL;
 
-test("a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI", { timeout: 120_000 }, async (t) => {
+test("a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI", { timeout: 240_000 }, async (t) => {
   if (!supabaseUrl || !serviceRoleKey || !anonKey || !databaseUrl) {
     t.skip("Supabase env missing");
     return;
@@ -44,7 +44,10 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
   const webPort = await allocateLoopbackPort();
   const backendPort = await allocateLoopbackPort();
   const brregPort = await allocateLoopbackPort();
-  const baseUrl = `http://127.0.0.1:${webPort}`;
+  // Next server-action redirects canonicalize the development host to
+  // `localhost`; keep one hostname so confirmation-session cookies never cross
+  // the localhost/127.0.0.1 boundary.
+  const baseUrl = `http://localhost:${webPort}`;
   const backendBaseUrl = `http://127.0.0.1:${backendPort}`;
   const brregBaseUrl = `http://127.0.0.1:${brregPort}`;
   const orgNumbers = {
@@ -52,8 +55,10 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     missing: "987654323",
     malformed: "987654324",
     supported: "987654322",
+    secondSupported: "987654325",
   };
   const brregRequests = [];
+  const brregControl = { failedOrgNumber: null };
   const browserRequests = [];
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -65,22 +70,26 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     browser: undefined,
     cleanupBackendDatabaseRole: undefined,
     companyId: undefined,
+    companyIds: [],
     database,
     databaseStarted: false,
     ownerId: undefined,
     primaryFailure: undefined,
     server: undefined,
   };
-  const brreg = createBrregServer({ orgNumbers, requests: brregRequests });
+  const brreg = createBrregServer({ control: brregControl, orgNumbers, requests: brregRequests });
   t.after(async () => {
     await new Promise((resolve) => brreg.close(() => resolve()));
-    if (!resources.companyId && resources.ownerId && resources.databaseStarted) {
+    if (resources.ownerId && resources.databaseStarted) {
       try {
         const created = await database.query(
-          "select id from public.companies where created_by = $1 order by created_at desc limit 1",
+          "select id from public.companies where created_by = $1 order by created_at desc",
           [resources.ownerId],
         );
-        resources.companyId = created.rows[0]?.id;
+        resources.companyIds = [...new Set([
+          ...(resources.companyIds ?? []),
+          ...created.rows.map(({ id }) => id),
+        ])];
       } catch {
         // The shared cleanup helper reports any substantive teardown failure.
       }
@@ -126,29 +135,18 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     );
     const ownerEmail = `onboarding-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
-    const { data: createdUser, error: createUserError } =
-      await admin.auth.admin.createUser({
+    const { data: confirmation, error: confirmationError } =
+      await admin.auth.admin.generateLink({
+        type: "signup",
         email: ownerEmail,
         password,
-        email_confirm: true,
       });
-    assert.ifError(createUserError);
-    assert.ok(createdUser.user.email_confirmed_at, "fixture user is not verified");
-    resources.ownerId = createdUser.user.id;
-    assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0");
-
-    // Password sign-in establishes the same verified AAL1 authentication class
-    // used by the browser flow; onboarding intentionally must not require AAL2.
-    const sessionProbe = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: probe, error: probeError } = await sessionProbe.auth.signInWithPassword({
-      email: ownerEmail,
-      password,
-    });
-    assert.ifError(probeError);
-    const aal1AccessToken = probe.session.access_token;
-    assert.equal(jwtPayload(aal1AccessToken).aal, "aal1");
+    assert.ifError(confirmationError);
+    assert.ok(confirmation.properties.hashed_token, "fixture confirmation token is absent");
+    assert.ok(!confirmation.user.email_confirmed_at, "fixture user started confirmed");
+    const confirmationToken = confirmation.properties.hashed_token;
+    resources.ownerId = confirmation.user.id;
+    assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0:0:0");
 
     resources.backend = startBackendServer({
       anonKey,
@@ -161,9 +159,120 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       process: resources.backend,
       url: `${backendBaseUrl}/health/ready`,
     });
+    resources.server = startNextServer({ backendBaseUrl, port: webPort });
+    await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
+
+    resources.browser = await chromium.launch({ headless: true });
+    const page = await resources.browser.newPage({ viewport: { width: 390, height: 844 } });
+    const browserProblems = [];
+    page.on("request", (request) => browserRequests.push(request.url()));
+    page.on("console", (message) => {
+      if (["error", "warning"].includes(message.type())) {
+        browserProblems.push(`console:${message.type()}:${message.text()}`);
+      }
+    });
+    page.on("pageerror", (error) => browserProblems.push(`pageerror:${error.message}`));
+
+    await page.goto(`${baseUrl}/sjekk-selskapet`);
+    await assertAccessibleEligibilityLookup(page);
+    assert.equal(await hasHorizontalOverflow(page), false, "390px eligibility lookup overflows");
+
+    // Public legal-form rejection is a business result, while registry 404 and
+    // malformed provider data are distinct operational failures. None may write.
+    await beginEligibility(page, orgNumbers.unsupported);
+    const publicBlockHeading = page.getByRole("heading", { name: "Talli passer ikke for dette året" });
+    await publicBlockHeading.waitFor();
+    assert.equal(await publicBlockHeading.evaluate((element) => element === document.activeElement), true);
+    assert.match(await page.locator("main").innerText(), /Foreløpig svar/u);
+    assert.match(await page.locator("main").innerText(), /Bruk regnskapsfører/u);
+    assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0:0:0");
+
+    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await beginEligibility(page, orgNumbers.missing);
+    await assertEligibilityFailureAndZeroState({ database, ownerId: resources.ownerId, page });
+    assert.match(await errorAlert(page).innerText(), /Enhetsregisteret/u);
+
+    await page.goto(`${baseUrl}/sjekk-selskapet`);
+    await beginEligibility(page, orgNumbers.malformed, { keyboardSubmit: true });
+    await assertEligibilityFailureAndZeroState({ database, ownerId: resources.ownerId, page });
+    assert.match(await errorAlert(page).innerText(), /betyr ikke at selskapet er utenfor Talli/u);
+
+    // Unknown private facts produce clarification with an exact next step and
+    // no continuation or persistence.
+    await page.goto(`${baseUrl}/sjekk-selskapet`);
+    await beginEligibility(page, orgNumbers.supported, { keyboardSubmit: true });
+    await answerEligibilityInterview(page, { unknownCode: "is_small_enterprise" });
+    const clarifyHeading = page.getByRole("heading", { name: "Dette må avklares først" });
+    await clarifyHeading.waitFor();
+    assert.equal(await clarifyHeading.evaluate((element) => element === document.activeElement), true);
+    assert.match(await page.locator("main").innerText(), /Avklar det ukjente med en regnskapsfører/u);
+    assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0:0:0");
+    assert.equal(
+      (await page.context().cookies()).some(({ name }) => name === "talli_company_year_eligibility"),
+      false,
+      "clarification unexpectedly created an admission continuation",
+    );
+
+    // A known unsupported private fact is a definitive block, not a provisional
+    // registry result and not a provider failure.
+    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await beginEligibility(page, orgNumbers.supported);
+    await answerEligibilityInterview(page, { blockedCode: "has_auditor_or_audit_requirement" });
+    const definitiveBlockHeading = page.getByRole("heading", { name: "Talli passer ikke for dette året" });
+    await definitiveBlockHeading.waitFor();
+    assert.equal(await definitiveBlockHeading.evaluate((element) => element === document.activeElement), true);
+    assert.doesNotMatch(await page.locator("main").innerText(), /Foreløpig svar · Utenfor grensen/u);
+    assert.match(await page.locator("main").innerText(), /Bruk regnskapsfører/u);
+    assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0:0:0");
+
+    // The supported golden path answers the complete manifest, keeps the
+    // continuation HTTP-only, and preserves it through login to admission.
+    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await beginEligibility(page, orgNumbers.supported);
+    await answerEligibilityInterview(page);
+    const supportedHeading = page.getByRole("heading", { name: /kan bruke Talli/u });
+    await supportedHeading.waitFor();
+    assert.equal(await supportedHeading.evaluate((element) => element === document.activeElement), true);
+    assert.match(await page.locator("main").innerText(), /komplett fra 1\. januar/u);
+    assert.equal(await hasHorizontalOverflow(page), false, "390px supported result overflows");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    assert.equal(await hasHorizontalOverflow(page), false, "desktop supported result overflows");
+    await page.setViewportSize({ width: 390, height: 844 });
+    const eligibilityCookie = (await page.context().cookies()).find(
+      ({ name }) => name === "talli_company_year_eligibility",
+    );
+    assert.equal(eligibilityCookie?.httpOnly, true);
+    assert.equal(eligibilityCookie?.sameSite, "Lax");
+
+    await page.getByRole("link", { name: "Opprett konto og godta" }).click();
+    await page.waitForURL((url) => url.pathname === "/signup" && url.searchParams.get("next") === "/onboarding");
+    assert.equal(await page.locator('input[name="next"]').first().inputValue(), "/onboarding");
+    assert.equal(await hasHorizontalOverflow(page), false, "390px signup form overflows");
+    await page.getByRole("link", { name: "Logg inn" }).click();
+    await page.waitForURL((url) => url.pathname === "/login" && url.searchParams.get("next") === "/onboarding");
+    const loginForm = page.locator("form").filter({ hasText: "Logg inn" }).first();
+    await loginForm.getByLabel("E-post").fill(ownerEmail);
+    await loginForm.getByLabel("Passord").fill(password);
+    await loginForm.getByRole("button", { name: "Logg inn" }).click();
+    await page.waitForURL(
+      (url) => url.pathname === "/verify-email" && url.searchParams.get("next") === "/onboarding",
+      { timeout: 20_000 },
+    );
+    assert.equal(await page.locator('input[name="next"]').first().inputValue(), "/onboarding");
+    assert.equal(
+      await page.getByRole("link", { name: /tilbake til innlogging/iu }).getAttribute("href"),
+      "/login?next=%2Fonboarding",
+    );
+    await page.goto(
+      `${baseUrl}/auth/confirm?token_hash=${encodeURIComponent(confirmationToken)}&type=signup&next=%2Fonboarding`,
+    );
+    await page.waitForURL((url) => url.pathname === "/onboarding", { timeout: 20_000 });
+    assert.equal(new URL(page.url()).pathname, "/onboarding");
+    const confirmedSession = await browserSupabaseSession(page);
+    assert.equal(jwtPayload(confirmedSession.access_token).aal, "aal1");
     const emptyContextResponse = await fetch(
       `${backendBaseUrl}/api/v1/company-access/context`,
-      { headers: { Authorization: `Bearer ${aal1AccessToken}` } },
+      { headers: { Authorization: `Bearer ${confirmedSession.access_token}` } },
     );
     const emptyContext = await emptyContextResponse.json();
     assert.deepEqual(
@@ -171,72 +280,18 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       { status: 404, code: "COMPANY_CONTEXT_NOT_FOUND" },
       `verified no-company context failed closed incorrectly: ${JSON.stringify(emptyContext)}`,
     );
-    resources.server = startNextServer({ backendBaseUrl, port: webPort });
-    await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
-
-    resources.browser = await chromium.launch({ headless: true });
-    const page = await resources.browser.newPage();
-    page.on("request", (request) => browserRequests.push(request.url()));
-    await page.goto(`${baseUrl}/login`);
-    const loginForm = page.locator("form").filter({ hasText: "Logg inn" }).first();
-    await loginForm.getByLabel("E-post").fill(ownerEmail);
-    await loginForm.getByLabel("Passord").fill(password);
-    await loginForm.getByRole("button", { name: "Logg inn" }).click();
-    await page.waitForURL((url) => ["/dashboard", "/onboarding"].includes(url.pathname), {
-      timeout: 20_000,
-    });
-    if (new URL(page.url()).pathname !== "/onboarding") {
-      await page.goto(`${baseUrl}/onboarding`);
-    }
-    assert.equal(new URL(page.url()).pathname, "/onboarding");
 
     const authority = page.getByLabel("Jeg bekrefter at jeg har fullmakt", { exact: false });
-    const orgNumber = page.getByLabel("Organisasjonsnummer");
-    const submit = page.getByRole("button", { name: "Hent fra Brønnøysund" });
-    await assertAccessibleInitialForm({ authority, orgNumber, page, submit });
-
-    // Unsupported company type is a business rejection, while registry 404 and
-    // malformed payloads are provider failures. Every path must remain zero-state.
-    await submitCompany({ authority, orgNumber, orgNumberValue: orgNumbers.unsupported, page, submit });
-    await assertAlertAndZeroState({ database, ownerId: resources.ownerId, page });
-    assert.match(await errorAlert(page).innerText(), /kun AS/u);
-
-    await page.goto(`${baseUrl}/onboarding`);
-    await submitCompany({
-      authority: page.getByLabel("Jeg bekrefter at jeg har fullmakt", { exact: false }),
-      orgNumber: page.getByLabel("Organisasjonsnummer"),
-      orgNumberValue: orgNumbers.missing,
-      page,
-      submit: page.getByRole("button", { name: "Hent fra Brønnøysund" }),
-    });
-    await assertAlertAndZeroState({ database, ownerId: resources.ownerId, page });
-
-    await page.goto(`${baseUrl}/onboarding`);
-    await submitCompany({
-      authority: page.getByLabel("Jeg bekrefter at jeg har fullmakt", { exact: false }),
-      keyboardSubmit: true,
-      orgNumber: page.getByLabel("Organisasjonsnummer"),
-      orgNumberValue: orgNumbers.malformed,
-      page,
-      submit: page.getByRole("button", { name: "Hent fra Brønnøysund" }),
-    });
-    await assertAlertAndZeroState({ database, ownerId: resources.ownerId, page });
-    assert.match(await errorAlert(page).innerText(), /Brønnøysundregistrene/u);
-
-    await page.goto(`${baseUrl}/onboarding`);
-    await submitCompany({
-      authority: page.getByLabel("Jeg bekrefter at jeg har fullmakt", { exact: false }),
-      keyboardSubmit: true,
-      orgNumber: page.getByLabel("Organisasjonsnummer"),
-      orgNumberValue: orgNumbers.supported,
-      page,
-      submit: page.getByRole("button", { name: "Hent fra Brønnøysund" }),
-    });
+    await assertAccessibleAdmission({ authority, page });
+    await authority.focus();
+    await page.keyboard.press("Space");
+    assert.equal(await authority.isChecked(), true, "Space did not accept the company-year promise");
+    await page.getByRole("button", { name: "Godta og opprett selskapsåret" }).click();
     await page.waitForURL((url) => url.pathname === "/mfa", { timeout: 20_000 });
     await page.getByRole("heading", {
       name: "Beskytt kontoen før du fortsetter",
     }).waitFor({ state: "visible" });
-    assert.equal(await actorState(database, resources.ownerId), "1:1:1:1:1");
+    assert.equal(await actorState(database, resources.ownerId), "1:1:1:1:1:1:1");
     const startMfa = page.getByRole("button", {
       name: "Sett opp autentiseringsapp",
     });
@@ -275,9 +330,12 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       })}`,
     );
     assert.deepEqual(
-      selectedContext.companies?.map((company) => company.companyId),
-      [selectedContext.selectedCompanyId],
+      selectedContext.companies?.map((company) => company.id),
+      [selectedContext.selectedCompany.id],
     );
+    assert.equal(selectedContext.selectedCompany.admittedAccountingYear, 2026);
+    assert.equal(selectedContext.selectedCompany.currentEligibilityDecision, "supported");
+    assert.equal(selectedContext.selectedCompany.consequentialOperationsAllowed, true);
     try {
       await page.getByRole("heading", { name: "Åpningsbalanse" }).waitFor({
         state: "visible",
@@ -288,6 +346,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       const body = (await page.locator("body").innerText()).replace(/\s+/gu, " ").trim();
       throw new Error(`supported_company_did_not_advance:state=${state}:body=${body.slice(0, 800)}`);
     }
+    assert.equal(await page.getByLabel("Regnskapsår").inputValue(), "2026");
 
     const created = await database.query(
       "select id, name, entity_type from public.companies where org_number = $1",
@@ -297,59 +356,245 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       { name: "Talli Browser Holding AS", entityType: "AS" },
     ]);
     resources.companyId = created.rows[0].id;
-    assert.equal(await companyAtomicState(database, resources.companyId, resources.ownerId), "1:1:1:1:1");
+    resources.companyIds.push(resources.companyId);
+    assert.equal(await companyAtomicState(database, resources.companyId, resources.ownerId), "1:1:1:1:1:1:1");
 
-    assert.deepEqual(
-      brregRequests,
-      Object.values(orgNumbers).map((org) => `/enhetsregisteret/api/enheter/${org}`),
+    // A supported owner can report a material change through company_access.
+    // The persisted block remains company-scoped, keeps the read surface open,
+    // and distinguishes a later provider failure from customer ineligibility.
+    await page.getByRole("button", { name: "Meny" }).click();
+    await page.getByRole("link", { name: "Selskapsgrense" }).click();
+    await page.getByRole("heading", { name: /Har opplysningene for Talli Browser Holding AS endret seg/u }).waitFor();
+    await answerEligibilityInterview(page, {
+      blockedCode: "has_auditor_or_audit_requirement",
+      submitLabel: "Oppdater selskapsgrensen",
+    });
+    await page.waitForURL((url) => (
+      url.pathname === "/selskapsgrense" && url.searchParams.get("result") === "blocked"
+    ));
+    assert.match(await page.locator("main").innerText(), /Selskapsgrensen må avklares/u);
+    assert.equal(
+      await companyEligibilityState(database, resources.companyId, resources.ownerId),
+      "2:blocked:f:t",
     );
+    assert.equal(await hasHorizontalOverflow(page), false, "390px material block overflows");
+
+    brregControl.failedOrgNumber = orgNumbers.supported;
+    await page.getByRole("button", { name: "Kontroller grensen på nytt" }).click();
+    await page.waitForURL((url) => (
+      url.pathname === "/selskapsgrense" && url.searchParams.has("error")
+    ));
+    const recheckFailure = page.getByRole("alert").filter({
+      hasText: "Talli kunne ikke kontrollere selskapsgrensen",
+    });
+    await recheckFailure.waitFor();
+    assert.match(await recheckFailure.innerText(), /Ingen opplysninger eller status ble endret/u);
+    assert.equal(
+      await companyEligibilityState(database, resources.companyId, resources.ownerId),
+      "2:blocked:f:t",
+      "provider failure unexpectedly changed the eligibility gate",
+    );
+    brregControl.failedOrgNumber = null;
+
+    // The same owner can then check and admit a second company. The existing
+    // blocked company notice must not replace or redirect the pending form.
+    await page.getByRole("button", { name: "Meny" }).click();
+    await page.getByRole("button", { name: "Logg ut" }).click();
+    await page.waitForURL((url) => url.pathname === "/login");
+    await page.goto(`${baseUrl}/sjekk-selskapet`);
+    await beginEligibility(page, orgNumbers.secondSupported);
+    await answerEligibilityInterview(page);
+    await page.getByRole("heading", { name: "Talli Browser Invest AS kan bruke Talli" }).waitFor();
+    await page.getByRole("link", { name: "Logg inn" }).click();
+    await page.waitForURL((url) => url.pathname === "/login" && url.searchParams.get("next") === "/onboarding");
+    const returningLogin = page.locator("form").filter({ hasText: "Logg inn" }).first();
+    await returningLogin.getByLabel("E-post").fill(ownerEmail);
+    await returningLogin.getByLabel("Passord").fill(password);
+    await returningLogin.getByRole("button", { name: "Logg inn" }).click();
+    await page.waitForURL((url) => url.pathname === "/onboarding", { timeout: 20_000 });
+    await page.getByRole("heading", { name: "Bekreft innloggingen før du fortsetter" }).waitFor();
+    await page.getByRole("link", { name: "Sett opp eller bekreft autentiseringsapp" }).click();
+    await page.waitForURL((url) => url.pathname === "/mfa");
+    await page.getByLabel("Sekssifret kode").fill(currentTotp(secret));
+    await page.getByRole("button", { name: "Bekreft og fortsett" }).click();
+    await page.waitForURL((url) => url.pathname === "/onboarding", { timeout: 20_000 });
+    await page.getByText("Talli Browser Invest AS · 987654325", { exact: true }).waitFor();
+    const secondAuthority = page.getByLabel("Jeg bekrefter at jeg har fullmakt", { exact: false });
+    await secondAuthority.check();
+    const reachedMfa = page.waitForURL((url) => url.pathname === "/mfa", { timeout: 20_000 });
+    await page.getByRole("button", { name: "Godta og opprett selskapsåret" }).click();
+    await reachedMfa;
+    await page.waitForURL((url) => url.pathname === "/onboarding", { timeout: 20_000 });
+    assert.equal(
+      (await page.context().cookies()).some(({ name }) => name === "talli_company_year_eligibility"),
+      false,
+      "second admission did not clear its continuation",
+    );
+    const secondCreated = await database.query(
+      "select id from public.companies where org_number = $1",
+      [orgNumbers.secondSupported],
+    );
+    const secondCompanyId = secondCreated.rows[0]?.id;
+    assert.ok(secondCompanyId, "second admitted company is absent");
+    resources.companyIds.push(secondCompanyId);
+    assert.equal(await companyAtomicState(database, resources.companyId, resources.ownerId), "1:1:1:1:1:1:1");
+    assert.equal(await companyAtomicState(database, secondCompanyId, resources.ownerId), "1:1:1:1:1:1:1");
+    assert.equal(await actorState(database, resources.ownerId), "2:2:2:3:2:2:3");
+
+    const secondSession = await browserSupabaseSession(page);
+    assert.equal(jwtPayload(secondSession.access_token).aal, "aal2");
+    const bothContextResponse = await fetch(
+      `${backendBaseUrl}/api/v1/company-access/context`,
+      { headers: { Authorization: `Bearer ${secondSession.access_token}` } },
+    );
+    const bothContext = await bothContextResponse.json();
+    assert.equal(bothContextResponse.status, 200, JSON.stringify(bothContext));
+    assert.deepEqual(
+      bothContext.companies.map((company) => ({
+        allowed: company.consequentialOperationsAllowed,
+        decision: company.currentEligibilityDecision,
+        orgNumber: company.orgNumber,
+        year: company.admittedAccountingYear,
+      })).sort((left, right) => left.orgNumber.localeCompare(right.orgNumber)),
+      [
+        { allowed: false, decision: "blocked", orgNumber: orgNumbers.supported, year: 2026 },
+        { allowed: true, decision: "supported", orgNumber: orgNumbers.secondSupported, year: 2026 },
+      ],
+    );
+    assert.deepEqual(
+      (await membershipsAsBackendActor({
+        accessToken: secondSession.access_token,
+        databaseUrl: backendDatabaseUrl,
+      })).sort((left, right) => left.userId.localeCompare(right.userId)),
+      [
+        { accepted: true, userId: resources.ownerId },
+        { accepted: true, userId: resources.ownerId },
+      ],
+    );
+
+    const brregRequestCounts = Object.fromEntries(Object.values(orgNumbers).map((orgNumber) => [
+      orgNumber,
+      brregRequests.filter((path) => path.endsWith(`/${orgNumber}`)).length,
+    ]));
+    assert.deepEqual(brregRequestCounts, {
+      [orgNumbers.unsupported]: 1,
+      [orgNumbers.missing]: 1,
+      [orgNumbers.malformed]: 1,
+      [orgNumbers.supported]: 12,
+      [orgNumbers.secondSupported]: 3,
+    });
     for (const url of browserRequests) {
       assert.ok(isLoopbackUrl(url), `browser contacted a non-loopback service: ${url}`);
     }
+    assert.deepEqual(browserProblems, []);
   } catch (error) {
     resources.primaryFailure = error;
     throw error;
   }
 });
 
-async function assertAccessibleInitialForm({ authority, orgNumber, page, submit }) {
+async function assertAccessibleEligibilityLookup(page) {
+  await page.getByRole("heading", { name: "Sjekk selskapet gratis" }).waitFor();
+  const orgNumber = page.getByLabel("Organisasjonsnummer");
+  const submit = page.getByRole("button", { name: "Sjekk selskapet gratis" });
+  await orgNumber.waitFor({ state: "visible" });
+  await submit.waitFor({ state: "visible" });
+  assert.equal(await orgNumber.getAttribute("required"), "");
+  assert.equal(await orgNumber.getAttribute("inputmode"), "numeric");
+  const describedBy = await orgNumber.getAttribute("aria-describedby");
+  assert.ok(describedBy, "organization number has no accessible description");
+  assert.match(await page.locator(`#${describedBy}`).innerText(), /offentlige opplysninger/u);
+  await orgNumber.focus();
+  assert.equal(await orgNumber.evaluate((element) => element === document.activeElement), true);
+}
+
+async function beginEligibility(page, orgNumberValue, { keyboardSubmit = false } = {}) {
+  const orgNumber = page.getByLabel("Organisasjonsnummer");
+  await orgNumber.fill(orgNumberValue);
+  if (keyboardSubmit) {
+    await orgNumber.press("Enter");
+  } else {
+    await page.getByRole("button", { name: "Sjekk selskapet gratis" }).click();
+  }
+}
+
+async function answerEligibilityInterview(page, {
+  blockedCode,
+  submitLabel = "Se endelig svar",
+  unknownCode,
+} = {}) {
+  const noIsSupported = new Set([
+    "has_auditor_or_audit_requirement",
+    "requires_consolidated_accounts",
+    "conducts_regulated_finance",
+  ]);
+  for (let index = 0; index < 31; index += 1) {
+    const ordinal = index + 1;
+    await page.getByText(`Spørsmål ${ordinal} av 31`, { exact: true }).waitFor();
+    const fieldset = page.locator("fieldset");
+    if (index > 0) {
+      const legend = fieldset.locator("legend");
+      assert.equal(
+        await legend.evaluate((element) => element === document.activeElement),
+        true,
+        `question ${ordinal} did not receive focus`,
+      );
+    }
+    const firstRadio = fieldset.locator('input[type="radio"]').first();
+    const inputName = await firstRadio.getAttribute("name");
+    assert.match(inputName ?? "", /^visible:[a-z0-9_]+$/u);
+    const code = inputName.slice("visible:".length);
+    const label = code === unknownCode
+      ? "Vet ikke"
+      : code === blockedCode
+        ? "Ja"
+        : noIsSupported.has(code)
+          ? "Nei"
+          : "Ja";
+    const radio = fieldset.getByLabel(label, { exact: true });
+    if (index === 0) {
+      await radio.focus();
+      await page.keyboard.press("Space");
+      assert.equal(await radio.isChecked(), true, "keyboard did not select an eligibility answer");
+    } else {
+      await radio.check();
+    }
+    if (index === 30) {
+      await page.getByRole("button", { name: submitLabel }).click();
+    } else {
+      await page.getByRole("button", { name: "Neste" }).click();
+    }
+  }
+}
+
+async function assertAccessibleAdmission({ authority, page }) {
   try {
     await authority.waitFor({ state: "visible", timeout: 10_000 });
   } catch {
     const body = (await page.locator("body").innerText()).replace(/\s+/gu, " ").trim();
-    throw new Error(`onboarding_form_unavailable:${body.slice(0, 800)}`);
+    throw new Error(`company_year_admission_form_unavailable:${body.slice(0, 800)}`);
   }
   assert.equal(await authority.isChecked(), false, "authority checkbox started checked");
   assert.equal(await authority.getAttribute("required"), "");
   const describedBy = await authority.getAttribute("aria-describedby");
   assert.ok(describedBy, "authority checkbox has no accessible description");
-  assert.match(await page.locator(`#${describedBy}`).innerText(), /vilkår|avtale/iu);
-  await orgNumber.waitFor({ state: "visible" });
-  await submit.waitFor({ state: "visible" });
-  await authority.focus();
-  assert.equal(await authority.evaluate((element) => element === document.activeElement), true);
-  await page.keyboard.press("Space");
-  assert.equal(await authority.isChecked(), true, "Space did not check authority confirmation");
-  await page.keyboard.press("Space");
-  assert.equal(await authority.isChecked(), false, "Space did not restore unchecked state");
+  assert.match(await page.locator(`#${describedBy}`).innerText(), /fullmakt.+brukervilkårene.+databehandleravtalen.+personvernerklæringen/isu);
+  assert.match(
+    await page.locator("main").innerText(),
+    /Komplett gjenoppbygging.+Bokføring.+selskapsdokumenter.+aksjonærregisteroppgaven.+skattemeldingen.+årsregnskapet.+Banktilkobling.+SAF-T.+Komplett selskapsårsarkiv.+eneste regnskaps-/isu,
+  );
+  assert.equal(await hasHorizontalOverflow(page), false, "390px admission form overflows");
 }
 
-async function submitCompany({ authority, keyboardSubmit = false, orgNumber, orgNumberValue, page, submit }) {
-  assert.equal(await authority.isChecked(), false, "fresh onboarding form retained consent");
-  await authority.check();
-  await orgNumber.fill(orgNumberValue);
-  if (keyboardSubmit) {
-    await orgNumber.press("Enter");
-  } else {
-    await submit.click();
-  }
-}
-
-async function assertAlertAndZeroState({ database, ownerId, page }) {
+async function assertEligibilityFailureAndZeroState({ database, ownerId, page }) {
   const alert = errorAlert(page);
   await alert.waitFor({ state: "visible", timeout: 20_000 });
   assert.ok((await alert.innerText()).trim().length > 0, "failure alert has no accessible text");
-  assert.equal(await actorState(database, ownerId), "0:0:0:0:0");
+  assert.equal(await actorState(database, ownerId), "0:0:0:0:0:0:0");
+}
+
+async function hasHorizontalOverflow(page) {
+  return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
 }
 
 function errorAlert(page) {
@@ -362,7 +607,9 @@ async function actorState(database, ownerId) {
       (select count(*) from public.companies where created_by = $1),
       (select count(*) from public.company_memberships where user_id = $1),
       (select count(*) from public.customer_agreement_acceptances where accepted_by = $1),
-      (select count(*) from public.audit_events where actor_id = $1),
+      (select count(*) from public.company_eligibility_assessments where assessed_by = $1),
+      (select count(*) from public.company_year_admissions where admitted_by = $1),
+      (select count(*) from public.company_year_acceptances where accepted_by = $1),
       (select count(*) from public.company_access_command_receipts where actor_id = $1)) as state`,
     [ownerId],
   );
@@ -375,8 +622,24 @@ async function companyAtomicState(database, companyId, ownerId) {
       (select count(*) from public.companies where id = $1 and created_by = $2),
       (select count(*) from public.company_memberships where company_id = $1 and user_id = $2 and role = 'owner' and accepted_at is not null),
       (select count(*) from public.customer_agreement_acceptances where company_id = $1 and accepted_by = $2),
-      (select count(*) from public.audit_events where company_id = $1 and actor_id = $2 and action = 'workspace_created'),
-      (select count(*) from public.company_access_command_receipts where company_id = $1 and actor_id = $2 and command_name = 'onboard_company')) as state`,
+      (select count(*) from public.company_eligibility_assessments where company_id = $1 and assessed_by = $2 and trigger = 'initial_admission' and decision = 'supported'),
+      (select count(*) from public.company_year_admissions where company_id = $1 and admitted_by = $2 and reconstruct_from = date '2026-01-01'),
+      (select count(*) from public.company_year_acceptances where company_id = $1 and accepted_by = $2),
+      (select count(*) from public.company_access_command_receipts where company_id = $1 and actor_id = $2 and command_name = 'admit_company_year')) as state`,
+    [companyId, ownerId],
+  );
+  return result.rows[0].state;
+}
+
+async function companyEligibilityState(database, companyId, ownerId) {
+  const result = await database.query(
+    `select concat_ws(':',
+      count(*),
+      (array_agg(decision order by assessed_at desc, id desc))[1],
+      (array_agg(consequential_operations_allowed order by assessed_at desc, id desc))[1],
+      (array_agg(archive_export_available order by assessed_at desc, id desc))[1]) as state
+     from public.company_eligibility_assessments
+     where company_id = $1 and assessed_by = $2`,
     [companyId, ownerId],
   );
   return result.rows[0].state;
@@ -473,10 +736,15 @@ function isLoopbackUrl(value) {
   return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "[::1]";
 }
 
-function createBrregServer({ orgNumbers, requests }) {
+function createBrregServer({ control, orgNumbers, requests }) {
   return createServer((request, response) => {
     requests.push(request.url ?? "");
     const orgNumber = request.url?.split("/").at(-1);
+    if (orgNumber === control.failedOrgNumber) {
+      response.writeHead(503, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ message: "fixture provider unavailable" }));
+      return;
+    }
     if (orgNumber === orgNumbers.missing) {
       response.writeHead(404, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ message: "not found" }));
@@ -487,7 +755,7 @@ function createBrregServer({ orgNumbers, requests }) {
       response.end(JSON.stringify({ organisasjonsnummer: orgNumber, navn: "" }));
       return;
     }
-    if (![orgNumbers.supported, orgNumbers.unsupported].includes(orgNumber)) {
+    if (![orgNumbers.supported, orgNumbers.secondSupported, orgNumbers.unsupported].includes(orgNumber)) {
       response.writeHead(404, { "Content-Type": "application/json" }).end();
       return;
     }
@@ -496,10 +764,17 @@ function createBrregServer({ orgNumbers, requests }) {
       organisasjonsnummer: orgNumber,
       navn: orgNumber === orgNumbers.supported
         ? "Talli Browser Holding AS"
+        : orgNumber === orgNumbers.secondSupported
+          ? "Talli Browser Invest AS"
         : "Talli Browser Enkeltpersonforetak",
       organisasjonsform: {
-        kode: orgNumber === orgNumbers.supported ? "AS" : "ENK",
+        kode: [orgNumbers.supported, orgNumbers.secondSupported].includes(orgNumber)
+          ? "AS"
+          : "ENK",
       },
+      konkurs: false,
+      underAvvikling: false,
+      underTvangsavviklingEllerTvangsopplosning: false,
       forretningsadresse: {
         adresse: ["Storgata 1"],
         postnummer: "0155",

@@ -3087,7 +3087,11 @@ test(
     assert.equal(archive.taxSettlements[0].documentId, taxDocumentId);
     assert.equal(archive.taxSettlements[0].document.id, taxDocumentId);
     assert.equal(archive.billingAccounts[0].refund_eligible, true);
-    assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
+    assert.ok(
+      archive.authorityPermissions.some(
+        (permission) => permission.obligation === "aksjonaerregisteroppgaven",
+      ),
+    );
     assert.equal(archive.bankSuggestionAcceptances[0].rule_id, "bank_fee");
 
     const { data: outsiderArchiveCompany, error: outsiderArchiveCompanyError } = await outsider
