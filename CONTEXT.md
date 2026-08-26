@@ -137,8 +137,8 @@ Active, privately owner-managed Norwegian holding AS companies with annual filin
 _Avoid_: All registered holding companies, all Norwegian AS companies
 
 **Mass-market coverage gate**:
-Evidence that Talli's supported-case boundary covers at least 80 percent of the addressable holding-company segment.
-_Avoid_: Majority of all Norwegian AS companies, broad-market assumption
+Clear, practical evidence that Talli's supported-case boundary works for a majority of the addressable holding-company segment.
+_Avoid_: Formal market-share certification, majority of all Norwegian AS companies, broad-market assumption
 
 **Mass-market launch**:
 Unrestricted self-service availability to every company that passes Talli's eligibility checks, rather than a capped cohort, invite-only beta, or manually approved rollout.
