@@ -12,6 +12,125 @@ import {
 
 const repositoryRoot = new URL("..", import.meta.url);
 
+const compatibilityScope = Object.freeze({
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  resource: "table:companies",
+  operation: "legacyOperation",
+});
+
+function legacyFacade({
+  id = "compat-company-access",
+  capability = "company_access",
+  removalIssue = "#138",
+  scopes = [compatibilityScope],
+} = {}) {
+  return {
+    id,
+    kind: "legacy-facade",
+    capability,
+    owner: "web:legacy-runtime",
+    creationIssue: "#135",
+    decisionIssue: "#185",
+    removalIssue,
+    baselineRevision: "1111111111111111111111111111111111111111",
+    canonicalImplementation: `web:legacy-runtime:${capability}`,
+    approvedBy: "Kristian Elmer",
+    approvedAt: "2026-08-26T10:56:36Z",
+    removalCondition: `Remove the ${capability} facade before ${removalIssue} exits.`,
+    scopes,
+  };
+}
+
+function activeStageDebt({
+  id = "compat-company-access-active-stage-debt",
+  capability = "company_access",
+  creationIssue = "#138",
+  removalIssue = "#138",
+  successorCapability = "ledger",
+  scopes = [compatibilityScope],
+  approvedAt = "2026-08-26T10:56:36Z",
+  expiresAt = "2026-09-09T10:56:36Z",
+} = {}) {
+  return {
+    id,
+    kind: "active-stage-debt",
+    capability,
+    owner: "backend:company_access",
+    creationIssue,
+    removalIssue,
+    successorCapability,
+    scopes,
+    approvedBy: "Kristian Elmer",
+    approvedAt,
+    releaseLimit: "next-stable-customer-ready-release",
+    expiresAt,
+    residualRisk: "The active migration stage still has one bounded direct persistence seam.",
+    rollback: "Remove the record and revert to the last green active-stage implementation.",
+    removalCondition: `Remove the ${capability} debt before ${successorCapability} exits.`,
+  };
+}
+
+function compatibilityFixture({
+  records = [legacyFacade()],
+  currentCapability = "company_access",
+  currentIssue = "#138",
+  status = "active",
+  exitedCapabilities,
+} = {}) {
+  const order = [
+    { capability: "company_access", removalIssues: ["#138"] },
+    { capability: "ledger", removalIssues: ["#139"] },
+    { capability: "banking", removalIssues: ["#140"] },
+  ];
+  const currentIndex = order.findIndex((stage) => stage.capability === currentCapability);
+  const exited = exitedCapabilities ?? order.slice(0, currentIndex).map((stage) => stage.capability);
+  return {
+    schemaVersion: "2.0",
+    baseline: {
+      path: "architecture/compatibility-baseline.json",
+      digest: "TEST_BASELINE_DIGEST",
+    },
+    migration: {
+      order,
+      currentCapability,
+      currentIssue,
+      status,
+      exitedCapabilities: exited,
+      completedStages: exited.map((capability, index) => ({
+        capability,
+        removalIssues: order.find((stage) => stage.capability === capability).removalIssues,
+        gateRevisions: [String(index + 1).repeat(40), String(index + 2).repeat(40)],
+      })),
+    },
+    records,
+  };
+}
+
+function compatibilityBaseline(records) {
+  return {
+    schemaVersion: "1.0",
+    decisionIssue: "#185",
+    sourceRevision: "1111111111111111111111111111111111111111",
+    records: records.map((record) => ({
+      id: record.id,
+      kind: "legacy-facade",
+      capability: record.capability,
+      removalIssue: record.removalIssue,
+      canonicalImplementation: record.canonicalImplementation,
+      scopes: record.scopes,
+    })),
+  };
+}
+
+function writeCompatibilityFixture(root, registry, baseline) {
+  const registryPath = join(root, "compatibility.json");
+  const baselinePath = join(root, "compatibility-baseline.json");
+  writeFileSync(registryPath, JSON.stringify(registry));
+  writeFileSync(baselinePath, JSON.stringify(baseline));
+  return { registryPath, baselinePath };
+}
+
 function git(root, args, date) {
   return execFileSync("git", ["-C", root, ...args], {
     encoding: "utf8",
@@ -76,6 +195,257 @@ test("architecture evidence is deterministic and committed output is current", (
   );
 
   assert.deepEqual(committed, generated.evidence);
+});
+
+test("legacy facades are frozen by an immutable baseline instead of calendar expiry", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-facade-"));
+  const currentBaselineScopes = [
+    compatibilityScope,
+    { ...compatibilityScope, resource: "table:company_memberships" },
+  ];
+  const futureBaselineScopes = [
+    { ...compatibilityScope, resource: "table:ledger_entries", operation: "postEntry" },
+    { ...compatibilityScope, resource: "table:period_locks", operation: "lockPeriod" },
+  ];
+  const currentFacade = legacyFacade({ scopes: [currentBaselineScopes[0]] });
+  const futureFacade = legacyFacade({
+    id: "compat-ledger",
+    capability: "ledger",
+    removalIssue: "#139",
+    scopes: futureBaselineScopes,
+  });
+  const baselineRecords = [
+    legacyFacade({ scopes: currentBaselineScopes }),
+    futureFacade,
+  ];
+  const registry = compatibilityFixture({ records: [currentFacade, futureFacade] });
+  const baseline = compatibilityBaseline(baselineRecords);
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, {
+      now: new Date("2026-08-26T12:00:00Z"),
+      baselinePath,
+      expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    }), []);
+
+    futureFacade.scopes.push({
+      ...compatibilityScope,
+      resource: "table:new_business_state",
+      operation: "newBehavior",
+    });
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-08-26T12:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /compat-ledger.*scope is outside the frozen baseline/u,
+    );
+
+    futureFacade.scopes = [futureBaselineScopes[0]];
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-08-26T12:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /compat-ledger.*future legacy-facade must remain static/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("the frozen baseline is traceable to the pre-existing compatibility registry", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-source-proof-"));
+  const facade = legacyFacade();
+  const baseline = compatibilityBaseline([facade]);
+  const registry = compatibilityFixture({ records: [facade] });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+  const sourceRegistry = {
+    schemaVersion: "1.0",
+    exceptions: [{
+      id: facade.id,
+      removalIssue: facade.removalIssue,
+      scopes: structuredClone(facade.scopes),
+    }],
+  };
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, {
+      baselinePath,
+      expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      sourceRegistry,
+    }), []);
+
+    baseline.records[0].scopes.push({
+      ...compatibilityScope,
+      resource: "table:not_pre_existing",
+      operation: "inventedAfterFreeze",
+    });
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+        sourceRegistry,
+      }).join("\n"),
+      /compat-company-access.*frozen scopes do not match source revision/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("legacy facades block stage exit and fail after their capability has exited", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-stage-exit-"));
+  const facade = legacyFacade();
+  const baseline = compatibilityBaseline([facade]);
+  const exitReview = compatibilityFixture({ records: [facade], status: "exit-review" });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    exitReview,
+    baseline,
+  );
+
+  try {
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /company_access cannot exit while legacy-facade compat-company-access remains/u,
+    );
+
+    const advanced = compatibilityFixture({
+      records: [facade],
+      currentCapability: "ledger",
+      currentIssue: "#139",
+      exitedCapabilities: ["company_access"],
+    });
+    writeFileSync(registryPath, JSON.stringify(advanced));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /compat-company-access.*capability company_access has already exited/u,
+    );
+
+    advanced.migration.completedStages = [];
+    writeFileSync(registryPath, JSON.stringify(advanced));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /completedStages must exactly evidence every exited capability/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("active-stage debt keeps the fourteen-day, stable-release, and one-successor limits", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-active-stage-debt-"));
+  const debt = {
+    id: "compat-company-access-cleanup",
+    kind: "active-stage-debt",
+    capability: "company_access",
+    owner: "backend:company_access",
+    creationIssue: "#138",
+    removalIssue: "#199",
+    successorCapability: "ledger",
+    scopes: [compatibilityScope],
+    approvedBy: "Kristian Elmer",
+    approvedAt: "2026-08-26T10:00:00Z",
+    releaseLimit: "next-stable-customer-ready-release",
+    expiresAt: "2026-09-09T10:00:00Z",
+    residualRisk: "One bounded legacy call remains after canonical cutover.",
+    rollback: "Disable the canonical route and restore the prior release.",
+    removalCondition: "Remove the residual call in #199.",
+  };
+  const registry = compatibilityFixture({
+    records: [debt],
+    currentCapability: "ledger",
+    currentIssue: "#139",
+  });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    compatibilityBaseline([]),
+  );
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, {
+      now: new Date("2026-08-26T12:00:00Z"),
+      baselinePath,
+      expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      releaseState: { latestStableCustomerReadyRelease: null },
+    }), []);
+
+    registry.migration.status = "exit-review";
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-08-26T12:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /ledger cannot exit while predecessor active-stage-debt compat-company-access-cleanup remains/u,
+    );
+
+    registry.migration.status = "active";
+    registry.migration.currentCapability = "banking";
+    registry.migration.currentIssue = "#140";
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-08-26T12:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /compat-company-access-cleanup.*may not survive beyond successor capability ledger/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("compatibility records cannot suppress authorization or other non-suppressible failures", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-non-suppressible-"));
+  const facade = legacyFacade({
+    scopes: [{ ...compatibilityScope, rule: "authorization-rls" }],
+  });
+  const registry = compatibilityFixture({ records: [facade] });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    compatibilityBaseline([facade]),
+  );
+
+  try {
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
+      /authorization-rls.*is not suppressible/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("compatibility exceptions require bounded expiry and a removal condition", () => {
@@ -334,7 +704,7 @@ test("a stale release selection is rejected after a later reachable tag", () => 
   }
 });
 
-test("a real stable customer-ready release after approval revokes the compatibility exception", () => {
+test("a real stable customer-ready release after approval revokes active-stage debt", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-stable-release-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
@@ -354,6 +724,16 @@ test("a real stable customer-ready release after approval revokes the compatibil
       gitRevision: git(temporaryRoot, ["rev-parse", "customer-ready-2026-07-31^{commit}"]),
     },
   }));
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
+  compatibility.records = compatibility.records.filter((entry) => entry !== onboarding);
+  compatibility.records.push(activeStageDebt({
+    scopes: onboarding.scopes,
+    approvedAt: "2026-07-30T00:00:00Z",
+    expiresAt: "2026-08-10T00:00:00Z",
+  }));
+  writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     const errors = checkArchitecture({
@@ -361,7 +741,7 @@ test("a real stable customer-ready release after approval revokes the compatibil
       writeEvidence: false,
       now: new Date("2026-07-31T12:00:00Z"),
     }).errors.join("\n");
-    assert.match(errors, /compat-company-onboarding-persistence.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
+    assert.match(errors, /compat-company-access-active-stage-debt.*superseded by stable customer-ready release customer-ready-2026-07-31/u);
     assert.match(errors, /apps\/web\/app\/actions\.ts: direct web business persistence is forbidden/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -466,7 +846,7 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   const route = "apps/web/app/documents/[documentId]/download/route.ts";
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  for (const exception of compatibility.exceptions) {
+  for (const exception of compatibility.records) {
     exception.scopes = exception.scopes.filter((scope) => scope.path !== route);
   }
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
@@ -510,7 +890,7 @@ export function readDocument() { client.from("documents"); }
     resource: "table:companies",
     operation: "readCompany",
   };
-  compatibility.exceptions[0].scopes.push(exactScope);
+  compatibility.records[0].scopes.push(exactScope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
@@ -534,10 +914,10 @@ test("compatibility operations map to their serialized future tickets", () => {
     "utf8",
   ));
   const byRemovalIssue = new Map(
-    compatibility.exceptions.map((entry) => [entry.removalIssue, entry]),
+    compatibility.records.map((entry) => [entry.removalIssue, entry]),
   );
   const onboarding = byRemovalIssue.get("#138");
-  const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.exceptions.find((entry) => (
+  const ownerOf = (resource, operation, path = "apps/web/app/actions.ts") => compatibility.records.find((entry) => (
     entry.scopes.some((scope) => scope.path === path
       && scope.resource === resource
       && scope.operation === operation)
@@ -593,6 +973,59 @@ test("compatibility operations map to their serialized future tickets", () => {
   );
 });
 
+test("the repository legacy-facade audit exactly matches the frozen source inventory", () => {
+  const registry = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility.json", import.meta.url),
+    "utf8",
+  ));
+  const baseline = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility-baseline.json", import.meta.url),
+    "utf8",
+  ));
+  const expected = new Map([
+    ["compat-company-onboarding-persistence", ["company_access", "#138", 3]],
+    ["compat-ledger-persistence", ["ledger", "#139", 25]],
+    ["compat-banking-persistence", ["banking", "#140", 10]],
+    ["compat-investment-purchase-persistence", ["investments", "#141", 3]],
+    ["compat-investment-sale-persistence", ["investments", "#142", 4]],
+    ["compat-investment-stage-exit-persistence", ["investments", "#143", 2]],
+    ["compat-documents-persistence", ["documents", "#147", 15]],
+    ["compat-owner-dividend-persistence", ["corporate_governance", "#144", 2]],
+    ["compat-shareholder-loan-persistence", ["corporate_governance", "#145", 1]],
+    ["compat-corporate-governance-persistence", ["corporate_governance", "#148", 19]],
+    ["compat-billing-persistence", ["billing", "#137", 19]],
+    ["compat-authority-connections-persistence", ["authority_connections", "#150", 16]],
+    ["compat-rf1086-persistence", ["shareholder_register_filing", "#151", 35]],
+    ["compat-tax-settlement-persistence", ["company_tax_filing", "#146", 1]],
+    ["compat-company-tax-persistence", ["company_tax_filing", "#152", 2]],
+    ["compat-annual-accounts-persistence", ["annual_accounts_filing", "#153", 2]],
+    ["compat-annual-compliance-persistence", ["annual_compliance", "#149", 22]],
+    ["compat-audit-persistence", ["audit", "#155", 30]],
+    ["compat-notification-persistence", ["notifications", "#156", 2]],
+    ["compat-company-archive-persistence", ["company_archive", "#157", 24]],
+  ]);
+
+  assert.equal(registry.records.length, 20);
+  assert.equal(baseline.records.length, 20);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 237);
+  assert.equal(baseline.records.flatMap((record) => record.scopes).length, 237);
+  assert.deepEqual(
+    new Set(registry.records.map((record) => record.id)),
+    new Set(baseline.records.map((record) => record.id)),
+  );
+  for (const record of registry.records) {
+    const [capability, removalIssue, scopes] = expected.get(record.id) ?? [];
+    assert.equal(record.kind, "legacy-facade", record.id);
+    assert.equal(record.capability, capability, record.id);
+    assert.equal(record.removalIssue, removalIssue, record.id);
+    assert.equal(record.scopes.length, scopes, record.id);
+    assert.equal(record.canonicalImplementation, `web:legacy-runtime:${capability}`, record.id);
+    assert.equal("expiresAt" in record, false, record.id);
+    assert.equal("releaseLimit" in record, false, record.id);
+  }
+  assert.equal(expected.size, registry.records.length);
+});
+
 test("company cancellation lifecycle is capability-owned with no direct-web compatibility", () => {
   const catalog = JSON.parse(readFileSync(
     new URL("../architecture/database-catalog.json", import.meta.url),
@@ -642,7 +1075,7 @@ consume({ handler() { client.from("companies"); } });
 `);
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  compatibility.exceptions[0].scopes.push({
+  compatibility.records[0].scopes.push({
     path: fixture,
     rule: "direct-web-business-persistence",
     resource: "table:companies",
@@ -679,20 +1112,20 @@ Promise.resolve().then(() => client.from("documents"));
 `);
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
-  const secondary = compatibility.exceptions.find((entry) => entry.removalIssue === "#139");
-  onboarding.scopes.push({
-    path: fixture,
-    rule: "direct-web-business-persistence",
-    resource: "table:companies",
-    operation: "onboardCompany",
-  });
-  secondary.scopes.push({
-    path: fixture,
-    rule: "direct-web-business-persistence",
-    resource: "table:companies",
-    operation: "cancelCompany",
-  });
+  compatibility.records.push(activeStageDebt({ scopes: [
+    {
+      path: fixture,
+      rule: "direct-web-business-persistence",
+      resource: "table:companies",
+      operation: "onboardCompany",
+    },
+    {
+      path: fixture,
+      rule: "direct-web-business-persistence",
+      resource: "table:companies",
+      operation: "cancelCompany",
+    },
+  ] }));
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
@@ -713,8 +1146,8 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
-  const secondary = compatibility.exceptions.find((entry) => entry.removalIssue === "#139");
+  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
+  const secondary = compatibility.records.find((entry) => entry.removalIssue === "#139");
   const duplicateScope = {
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
@@ -742,7 +1175,7 @@ test("compatibility registry is complete in both directions", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const onboarding = compatibility.exceptions.find((entry) => entry.removalIssue === "#138");
+  const onboarding = compatibility.records.find((entry) => entry.removalIssue === "#138");
   const missingScope = onboarding.scopes.find((scope) => (
     scope.path === "apps/web/app/actions.ts"
     && scope.resource === "rpc:create_company_workspace_with_acceptance"
@@ -1032,12 +1465,12 @@ test("generated-client deep imports reject ambiguous same-ticket exceptions", ()
     resource: "module:@talli/talli-api-client/*",
     operation: "module",
   };
-  compatibility.exceptions.push({
-    ...compatibility.exceptions[0],
+  compatibility.records.push({
+    ...compatibility.records[0],
     id: "compat-billing-persistence-duplicate",
     scopes: [scope],
   });
-  compatibility.exceptions[0].scopes.push(scope);
+  compatibility.records[0].scopes.push(scope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {

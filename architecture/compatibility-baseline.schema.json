@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/compatibility-baseline.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "decisionIssue", "sourceRevision", "records"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "decisionIssue": { "const": "#185" },
+    "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "capability", "removalIssue", "canonicalImplementation", "scopes"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^compat-" },
+          "kind": { "const": "legacy-facade" },
+          "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "removalIssue": { "type": "string", "pattern": "^#[0-9]+$" },
+          "canonicalImplementation": { "type": "string", "pattern": "^web:legacy-runtime:[a-z][a-z0-9_]*$" },
+          "scopes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/scope" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "required": ["path", "rule", "resource", "operation"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^apps/web/[^\\s]+$" },
+        "rule": {
+          "enum": [
+            "direct-web-business-persistence",
+            "direct-business-fetch",
+            "generated-client-deep-import"
+          ]
+        },
+        "resource": { "type": "string", "pattern": "^(table|rpc|storage|url|module):[^\\s]+$" },
+        "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

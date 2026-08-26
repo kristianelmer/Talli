@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -35,6 +36,11 @@ const BACKEND_SYSTEM_REQUIRED = [
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
 const CHECKER_REPOSITORY_ROOT = resolve(dirname(PYTHON_IMPORTS_SCRIPT), "..");
+const SUPPRESSIBLE_COMPATIBILITY_RULES = new Set([
+  "direct-web-business-persistence",
+  "direct-business-fetch",
+  "generated-client-deep-import",
+]);
 
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
@@ -81,6 +87,30 @@ function readJson(path, errors) {
     errors.push(`${path}: ${error.message}`);
     return {};
   }
+}
+
+function readGitJson(root, revision, path, errors) {
+  if (!/^[a-f0-9]{40}$/u.test(revision ?? "")) {
+    errors.push(`${path}: frozen source revision is invalid`);
+    return undefined;
+  }
+  const result = spawnSync("git", ["-C", root, "show", `${revision}:${path}`], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    errors.push(`${path}: frozen source revision ${revision} is not readable`);
+    return undefined;
+  }
+  try {
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    errors.push(`${path}: frozen source registry is invalid JSON (${error.message})`);
+    return undefined;
+  }
+}
+
+function isReachableGitRevision(root, revision) {
+  return spawnSync("git", ["-C", root, "merge-base", "--is-ancestor", revision, "HEAD"]).status === 0;
 }
 
 function validateAgainstSchema(schema, value, label, errors) {
@@ -1198,14 +1228,7 @@ function validateSystemBindings(root, system, manifests, errors) {
   }
 }
 
-export function validateCompatibilityRegistry(path, { now = new Date(), schema, releaseState } = {}) {
-  const errors = [];
-  const registry = readJson(path, errors);
-  validateAgainstSchema(schema, registry, path, errors);
-  if (registry.schemaVersion !== "1.0" || !Array.isArray(registry.exceptions)) {
-    errors.push(`${path}: invalid compatibility registry`);
-    return errors;
-  }
+function validateCompatibilityRegistryV1(path, registry, { now, releaseState }, errors) {
   for (const entry of registry.exceptions) {
     const prefix = `${entry.id ?? "compatibility exception"}:`;
     for (const field of [
@@ -1240,11 +1263,8 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     if (expiry === undefined) errors.push(`${prefix} expiresAt must be a valid RFC 3339 timestamp`);
     else {
       if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
-      if (approvedAt !== undefined) {
-        const fourteenDaysAfterApproval = approvedAt + 14 * 24 * 60 * 60 * 1000;
-        if (expiry > fourteenDaysAfterApproval) {
-          errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
-        }
+      if (approvedAt !== undefined && expiry > approvedAt + 14 * 24 * 60 * 60 * 1000) {
+        errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
       }
     }
     const stableRelease = releaseState?.latestStableCustomerReadyRelease;
@@ -1257,8 +1277,299 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     }
     if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
   }
+}
+
+function compatibilityBaselineDigest(baseline) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(stable(baseline))).digest("hex")}`;
+}
+
+function scopeSet(scopes) {
+  return new Set((Array.isArray(scopes) ? scopes : []).map((scope) => (
+    compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
+  )));
+}
+
+function sameSet(left, right) {
+  return left.size === right.size && [...left].every((value) => right.has(value));
+}
+
+export function validateCompatibilityRegistry(path, {
+  now = new Date(),
+  schema,
+  releaseState,
+  baselinePath,
+  baselineSchema,
+  expectedBaselineDigest,
+  sourceRegistry,
+  reachableRevision,
+} = {}) {
+  const errors = [];
+  const registry = readJson(path, errors);
+  validateAgainstSchema(schema, registry, path, errors);
+  if (registry.schemaVersion === "1.0" && Array.isArray(registry.exceptions)) {
+    validateCompatibilityRegistryV1(path, registry, { now, releaseState }, errors);
+    return errors;
+  }
+  if (registry.schemaVersion !== "2.0" || !Array.isArray(registry.records)) {
+    errors.push(`${path}: invalid compatibility registry`);
+    return errors;
+  }
+
+  const resolvedBaselinePath = baselinePath ?? join(dirname(path), "compatibility-baseline.json");
+  const baseline = readJson(resolvedBaselinePath, errors);
+  validateAgainstSchema(
+    baselineSchema,
+    baseline,
+    "architecture/compatibility-baseline.json",
+    errors,
+  );
+  const actualBaselineDigest = expectedBaselineDigest ?? compatibilityBaselineDigest(baseline);
+  if (registry.baseline?.digest !== actualBaselineDigest) {
+    errors.push(`${path}: baseline digest does not match ${actualBaselineDigest}`);
+  }
+  if (registry.baseline?.path !== "architecture/compatibility-baseline.json") {
+    errors.push(`${path}: baseline path must be architecture/compatibility-baseline.json`);
+  }
+
+  if (sourceRegistry !== undefined) {
+    const sourceRecords = Array.isArray(sourceRegistry?.exceptions)
+      ? sourceRegistry.exceptions
+      : [];
+    if (sourceRegistry?.schemaVersion !== "1.0" || !sourceRecords.length) {
+      errors.push(`${path}: source revision does not contain the pre-existing compatibility registry`);
+    } else {
+      const sourceById = new Map(sourceRecords.map((record) => [record.id, record]));
+      for (const baselineRecord of baseline.records ?? []) {
+        const sourceRecord = sourceById.get(baselineRecord.id);
+        const prefix = `${baselineRecord.id ?? "legacy facade"}:`;
+        if (!sourceRecord) {
+          errors.push(`${prefix} has no pre-existing source-revision record`);
+          continue;
+        }
+        if (baselineRecord.removalIssue !== sourceRecord.removalIssue) {
+          errors.push(`${prefix} removal issue does not match source revision`);
+        }
+        if (!sameSet(scopeSet(baselineRecord.scopes), scopeSet(sourceRecord.scopes))) {
+          errors.push(`${prefix} frozen scopes do not match source revision`);
+        }
+      }
+      for (const sourceRecord of sourceRecords) {
+        if (!(baseline.records ?? []).some((record) => record.id === sourceRecord.id)) {
+          errors.push(`${sourceRecord.id ?? "legacy facade"}: source-revision record is missing from the frozen baseline`);
+        }
+      }
+    }
+  }
+  const baselineIds = new Set();
+  for (const baselineRecord of baseline.records ?? []) {
+    if (baselineIds.has(baselineRecord.id)) {
+      errors.push(`${baselineRecord.id ?? "legacy facade"}: duplicate frozen baseline record`);
+    }
+    baselineIds.add(baselineRecord.id);
+  }
+
+  const order = Array.isArray(registry.migration?.order) ? registry.migration.order : [];
+  const stageIndexes = new Map();
+  const issueOwners = new Map();
+  for (const [index, stage] of order.entries()) {
+    if (stageIndexes.has(stage.capability)) {
+      errors.push(`${path}: duplicate migration capability ${stage.capability}`);
+    } else {
+      stageIndexes.set(stage.capability, index);
+    }
+    for (const issue of Array.isArray(stage.removalIssues) ? stage.removalIssues : []) {
+      if (issueOwners.has(issue)) errors.push(`${path}: duplicate migration removal issue ${issue}`);
+      else issueOwners.set(issue, stage.capability);
+    }
+  }
+  const currentCapability = registry.migration?.currentCapability;
+  const currentStageIndex = stageIndexes.get(currentCapability);
+  if (currentStageIndex === undefined) {
+    errors.push(`${path}: current capability ${currentCapability ?? "(missing)"} is not in migration order`);
+  }
+  if (issueOwners.get(registry.migration?.currentIssue) !== currentCapability) {
+    errors.push(`${path}: current issue ${registry.migration?.currentIssue ?? "(missing)"} does not belong to ${currentCapability ?? "(missing)"}`);
+  }
+  const exitedCapabilities = new Set(registry.migration?.exitedCapabilities ?? []);
+  const completedStages = Array.isArray(registry.migration?.completedStages)
+    ? registry.migration.completedStages
+    : [];
+  if (currentStageIndex !== undefined) {
+    const expectedExited = new Set(order.slice(0, currentStageIndex).map((stage) => stage.capability));
+    if (!sameSet(exitedCapabilities, expectedExited)) {
+      errors.push(`${path}: exitedCapabilities must exactly match stages before ${currentCapability}`);
+    }
+    const completedCapabilities = new Set(completedStages.map((stage) => stage.capability));
+    if (!sameSet(completedCapabilities, expectedExited)
+      || completedStages.length !== expectedExited.size) {
+      errors.push(`${path}: completedStages must exactly evidence every exited capability`);
+    }
+  }
+  for (const completed of completedStages) {
+    const declared = order.find((stage) => stage.capability === completed.capability);
+    if (!declared) {
+      errors.push(`${path}: completed stage ${completed.capability ?? "(missing)"} is not in migration order`);
+      continue;
+    }
+    if (!sameSet(new Set(completed.removalIssues ?? []), new Set(declared.removalIssues ?? []))) {
+      errors.push(`${path}: completed stage ${completed.capability} must record its exact removal issues`);
+    }
+    if (!Array.isArray(completed.gateRevisions)
+      || completed.gateRevisions.length !== 2
+      || new Set(completed.gateRevisions).size !== 2
+      || completed.gateRevisions.some((revision) => !/^[a-f0-9]{40}$/u.test(revision))) {
+      errors.push(`${path}: completed stage ${completed.capability} requires two distinct immutable gate revisions`);
+    } else if (reachableRevision
+      && completed.gateRevisions.some((revision) => !reachableRevision(revision))) {
+      errors.push(`${path}: completed stage ${completed.capability} gate revisions must be reachable commits`);
+    }
+  }
+
+  const baselineById = new Map((baseline.records ?? []).map((record) => [record.id, record]));
+  const recordsById = new Map();
+  const canonicalImplementations = new Map();
+  for (const entry of registry.records) {
+    const prefix = `${entry.id ?? "compatibility exception"}:`;
+    for (const field of [
+      "id",
+      "kind",
+      "capability",
+      "owner",
+      "creationIssue",
+      "removalIssue",
+      "scopes",
+      "approvedBy",
+      "approvedAt",
+      "removalCondition",
+    ]) {
+      if (!(field in entry)) errors.push(`${prefix} missing ${field}`);
+    }
+    if (!String(entry.id).startsWith("compat-")) errors.push(`${prefix} id must start compat-`);
+    if (!/^#[0-9]+$/u.test(entry.creationIssue ?? "")) errors.push(`${prefix} creationIssue must be an issue`);
+    if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
+    if (!Array.isArray(entry.scopes) || !entry.scopes.length) errors.push(`${prefix} scopes must be non-empty`);
+    for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+      if (!SUPPRESSIBLE_COMPATIBILITY_RULES.has(scope.rule)) {
+        errors.push(`${prefix} ${scope.rule} is not suppressible`);
+      }
+    }
+    if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
+    const approvedAt = rfc3339Timestamp(entry.approvedAt);
+    if (approvedAt === undefined) {
+      errors.push(`${prefix} approvedAt must be a valid RFC 3339 timestamp`);
+    } else if (approvedAt > now.getTime()) {
+      errors.push(`${prefix} approvedAt cannot be in the future`);
+    }
+    if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
+
+    if (recordsById.has(entry.id)) errors.push(`${prefix} duplicate record id`);
+    else recordsById.set(entry.id, entry);
+    const stageIndex = stageIndexes.get(entry.capability);
+    if (stageIndex === undefined) {
+      errors.push(`${prefix} capability ${entry.capability} is not in migration order`);
+    }
+    if (entry.kind === "legacy-facade") {
+      if (issueOwners.get(entry.removalIssue) !== entry.capability) {
+        errors.push(`${prefix} removalIssue ${entry.removalIssue} does not belong to capability ${entry.capability}`);
+      }
+      const baselineRecord = baselineById.get(entry.id);
+      if (!baselineRecord) {
+        errors.push(`${prefix} has no frozen baseline record`);
+        continue;
+      }
+      if (entry.decisionIssue !== baseline.decisionIssue) {
+        errors.push(`${prefix} decisionIssue must match frozen baseline decision ${baseline.decisionIssue}`);
+      }
+      if (entry.baselineRevision !== baseline.sourceRevision) {
+        errors.push(`${prefix} baselineRevision must match frozen source ${baseline.sourceRevision}`);
+      }
+      if (entry.canonicalImplementation !== `web:legacy-runtime:${entry.capability}`) {
+        errors.push(`${prefix} canonicalImplementation must name the capability's single legacy runtime`);
+      }
+      for (const field of ["capability", "removalIssue", "canonicalImplementation"]) {
+        if (entry[field] !== baselineRecord[field]) {
+          errors.push(`${prefix} ${field} differs from the frozen baseline`);
+        }
+      }
+      const priorImplementation = canonicalImplementations.get(entry.capability);
+      if (priorImplementation && priorImplementation !== entry.canonicalImplementation) {
+        errors.push(`${prefix} capability ${entry.capability} declares a second legacy implementation`);
+      } else {
+        canonicalImplementations.set(entry.capability, entry.canonicalImplementation);
+      }
+      const frozenScopes = scopeSet(baselineRecord.scopes);
+      const currentScopes = scopeSet(entry.scopes);
+      for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+        const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+        if (!frozenScopes.has(key)) {
+          errors.push(`${prefix} scope is outside the frozen baseline: ${compatibilityScopeLabel(scope)}`);
+        }
+      }
+      if (stageIndex !== undefined && currentStageIndex !== undefined) {
+        if (stageIndex < currentStageIndex || exitedCapabilities.has(entry.capability)) {
+          errors.push(`${prefix} capability ${entry.capability} has already exited`);
+        } else if (stageIndex > currentStageIndex && !sameSet(currentScopes, frozenScopes)) {
+          errors.push(`${prefix} future legacy-facade must remain static`);
+        } else if (stageIndex === currentStageIndex && registry.migration.status === "exit-review") {
+          errors.push(`${entry.capability} cannot exit while legacy-facade ${entry.id} remains`);
+        }
+      }
+    } else if (entry.kind === "active-stage-debt") {
+      if (issueOwners.get(entry.creationIssue) !== entry.capability) {
+        errors.push(`${prefix} creationIssue ${entry.creationIssue} does not belong to capability ${entry.capability}`);
+      }
+      if (entry.releaseLimit !== "next-stable-customer-ready-release") {
+        errors.push(`${prefix} releaseLimit must be the next stable customer-ready release`);
+      }
+      const expiry = rfc3339Timestamp(entry.expiresAt);
+      if (expiry === undefined) errors.push(`${prefix} expiresAt must be a valid RFC 3339 timestamp`);
+      else {
+        if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
+        if (approvedAt !== undefined && expiry > approvedAt + 14 * 24 * 60 * 60 * 1000) {
+          errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
+        }
+      }
+      const stableRelease = releaseState?.latestStableCustomerReadyRelease;
+      const stableReleasedAt = rfc3339Timestamp(stableRelease?.releasedAt);
+      if (approvedAt !== undefined
+        && stableReleasedAt !== undefined
+        && stableReleasedAt > approvedAt
+        && stableReleasedAt <= now.getTime()) {
+        errors.push(`${prefix} superseded by stable customer-ready release ${stableRelease.id}`);
+      }
+      const successorIndex = stageIndex === undefined ? undefined : stageIndex + 1;
+      const expectedSuccessor = successorIndex === undefined ? undefined : order[successorIndex]?.capability;
+      if (entry.successorCapability !== expectedSuccessor) {
+        errors.push(`${prefix} successorCapability must be ${expectedSuccessor ?? "absent"}`);
+      }
+      if (stageIndex !== undefined && currentStageIndex !== undefined) {
+        if (currentStageIndex < stageIndex) {
+          errors.push(`${prefix} cannot exist before capability ${entry.capability} is active`);
+        } else if (currentStageIndex > successorIndex) {
+          errors.push(`${prefix} may not survive beyond successor capability ${entry.successorCapability}`);
+        } else if (currentStageIndex === successorIndex && registry.migration.status === "exit-review") {
+          errors.push(`${entry.successorCapability} cannot exit while predecessor active-stage-debt ${entry.id} remains`);
+        }
+      }
+      for (const field of ["residualRisk", "rollback"]) {
+        if (!String(entry[field] ?? "").trim()) errors.push(`${prefix} ${field} must be non-empty`);
+      }
+    } else {
+      errors.push(`${prefix} kind must be legacy-facade or active-stage-debt`);
+    }
+  }
+
+  for (const baselineRecord of baseline.records ?? []) {
+    const stageIndex = stageIndexes.get(baselineRecord.capability);
+    if (stageIndex !== undefined
+      && currentStageIndex !== undefined
+      && stageIndex > currentStageIndex
+      && !recordsById.has(baselineRecord.id)) {
+      errors.push(`${baselineRecord.id}: future legacy-facade record is missing`);
+    }
+  }
   const scopeOwners = new Map();
-  for (const entry of registry.exceptions) {
+  for (const entry of registry.records) {
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
       const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
       const previous = scopeOwners.get(key);
@@ -1333,20 +1644,31 @@ function activeCompatibilityMatches(registry, releaseState, path, rule, resource
   const stableReleasedAt = rfc3339Timestamp(
     releaseState.latestStableCustomerReadyRelease?.releasedAt,
   );
-  return (registry.exceptions ?? []).filter((entry) => (
-    Array.isArray(entry.scopes) && entry.scopes.some((scope) => (
+  const order = registry.migration?.order ?? [];
+  const stageIndexes = new Map(order.map((stage, index) => [stage.capability, index]));
+  const currentStageIndex = stageIndexes.get(registry.migration?.currentCapability);
+  return (registry.records ?? []).filter((entry) => {
+    const scoped = Array.isArray(entry.scopes) && entry.scopes.some((scope) => (
       scope.path === path
       && scope.rule === rule
       && scope.resource === resource
       && scope.operation === operation
-    ))
-    && rfc3339Timestamp(entry.expiresAt) > now.getTime()
-    && (
+    ));
+    if (!scoped) return false;
+    const stageIndex = stageIndexes.get(entry.capability);
+    if (entry.kind === "legacy-facade") {
+      return stageIndex !== undefined
+        && currentStageIndex !== undefined
+        && stageIndex >= currentStageIndex;
+    }
+    return entry.kind === "active-stage-debt"
+      && rfc3339Timestamp(entry.expiresAt) > now.getTime()
+      && (
       stableReleasedAt === undefined
       || stableReleasedAt <= rfc3339Timestamp(entry.approvedAt)
       || stableReleasedAt > now.getTime()
-    )
-  ));
+      );
+  });
 }
 
 function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
@@ -1400,7 +1722,7 @@ function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAn
       }
     }
   }
-  for (const entry of registry.exceptions ?? []) {
+  for (const entry of registry.records ?? []) {
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
       const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
       if (!actualScopes.has(key)) {
@@ -1523,6 +1845,7 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     ["module", "module.schema.json"],
     ["backendSystem", "backend-system.schema.json"],
     ["compatibility", "compatibility.schema.json"],
+    ["compatibilityBaseline", "compatibility-baseline.schema.json"],
     ["releaseState", "release-state.schema.json"],
     ["sharedKernel", "shared-kernel.schema.json"],
     ["databaseCatalog", "database-catalog.schema.json"],
@@ -1537,7 +1860,15 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   validateSystemBindings(resolvedRoot, backendSystem, manifests, errors);
   checkCompositionRoot(resolvedRoot, backendSystem, errors);
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
+  const compatibilityBaselinePath = join(resolvedRoot, "architecture/compatibility-baseline.json");
   const compatibility = readJson(compatibilityPath, []);
+  const compatibilityBaseline = readJson(compatibilityBaselinePath, errors);
+  const compatibilitySourceRegistry = readGitJson(
+    resolvedRoot,
+    compatibilityBaseline.sourceRevision,
+    "architecture/compatibility.json",
+    errors,
+  );
   const releaseState = readJson(join(resolvedRoot, "architecture/release-state.json"), errors);
   validateAgainstSchema(
     schemas.releaseState,
@@ -1562,7 +1893,15 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   };
   errors.push(...validateCompatibilityRegistry(
     compatibilityPath,
-    { now, schema: schemas.compatibility, releaseState: verifiedReleaseState },
+    {
+      now,
+      schema: schemas.compatibility,
+      releaseState: verifiedReleaseState,
+      baselinePath: compatibilityBaselinePath,
+      baselineSchema: schemas.compatibilityBaseline,
+      sourceRegistry: compatibilitySourceRegistry,
+      reachableRevision: (revision) => isReachableGitRevision(resolvedRoot, revision),
+    },
   ));
   checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);

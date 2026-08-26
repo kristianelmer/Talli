@@ -1,127 +1,14 @@
 {
-  "schemaVersion": "2.0",
-  "baseline": {
-    "path": "architecture/compatibility-baseline.json",
-    "digest": "sha256:cbcf06de635da8e2715cb6f0832a9d525be9aed58ec8f32b5e59bda8dfa7cbbe"
-  },
-  "migration": {
-    "order": [
-      {
-        "capability": "company_access",
-        "removalIssues": [
-          "#138"
-        ]
-      },
-      {
-        "capability": "ledger",
-        "removalIssues": [
-          "#139"
-        ]
-      },
-      {
-        "capability": "banking",
-        "removalIssues": [
-          "#140"
-        ]
-      },
-      {
-        "capability": "investments",
-        "removalIssues": [
-          "#141",
-          "#142",
-          "#143"
-        ]
-      },
-      {
-        "capability": "documents",
-        "removalIssues": [
-          "#147"
-        ]
-      },
-      {
-        "capability": "corporate_governance",
-        "removalIssues": [
-          "#144",
-          "#145",
-          "#148"
-        ]
-      },
-      {
-        "capability": "billing",
-        "removalIssues": [
-          "#137"
-        ]
-      },
-      {
-        "capability": "authority_connections",
-        "removalIssues": [
-          "#150"
-        ]
-      },
-      {
-        "capability": "shareholder_register_filing",
-        "removalIssues": [
-          "#151"
-        ]
-      },
-      {
-        "capability": "company_tax_filing",
-        "removalIssues": [
-          "#146",
-          "#152"
-        ]
-      },
-      {
-        "capability": "annual_accounts_filing",
-        "removalIssues": [
-          "#153"
-        ]
-      },
-      {
-        "capability": "annual_compliance",
-        "removalIssues": [
-          "#149"
-        ]
-      },
-      {
-        "capability": "audit",
-        "removalIssues": [
-          "#155"
-        ]
-      },
-      {
-        "capability": "notifications",
-        "removalIssues": [
-          "#156"
-        ]
-      },
-      {
-        "capability": "company_archive",
-        "removalIssues": [
-          "#157"
-        ]
-      }
-    ],
-    "currentCapability": "company_access",
-    "currentIssue": "#138",
-    "status": "active",
-    "exitedCapabilities": [],
-    "completedStages": []
-  },
+  "schemaVersion": "1.0",
+  "decisionIssue": "#185",
+  "sourceRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
   "records": [
     {
       "id": "compat-billing-persistence",
       "kind": "legacy-facade",
       "capability": "billing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#137",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:billing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove billing and filing-entitlement persistence in #137.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -243,15 +130,8 @@
       "id": "compat-company-onboarding-persistence",
       "kind": "legacy-facade",
       "capability": "company_access",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#138",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:company_access",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove workspace creation and customer-agreement onboarding persistence in #138; authenticated company-context reads have no exception.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -277,15 +157,8 @@
       "id": "compat-ledger-persistence",
       "kind": "legacy-facade",
       "capability": "ledger",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#139",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:ledger",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove narrow-ledger and opening-balance persistence in #139.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -443,15 +316,8 @@
       "id": "compat-banking-persistence",
       "kind": "legacy-facade",
       "capability": "banking",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#140",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:banking",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove bank import and reconciliation persistence in #140.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -519,15 +385,8 @@
       "id": "compat-investment-purchase-persistence",
       "kind": "legacy-facade",
       "capability": "investments",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#141",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:investments",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove share-purchase and acquisition-lot persistence in #141.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -553,15 +412,8 @@
       "id": "compat-investment-sale-persistence",
       "kind": "legacy-facade",
       "capability": "investments",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#142",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:investments",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -593,15 +445,8 @@
       "id": "compat-investment-stage-exit-persistence",
       "kind": "legacy-facade",
       "capability": "investments",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#143",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:investments",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove received-dividend and shared holding-action reads in #143.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -621,15 +466,8 @@
       "id": "compat-owner-dividend-persistence",
       "kind": "legacy-facade",
       "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#144",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove owner-dividend company and membership persistence in #144.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -649,15 +487,8 @@
       "id": "compat-shareholder-loan-persistence",
       "kind": "legacy-facade",
       "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#145",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove shareholder-loan holding-action persistence in #145.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -671,15 +502,8 @@
       "id": "compat-tax-settlement-persistence",
       "kind": "legacy-facade",
       "capability": "company_tax_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#146",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:company_tax_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove tax-settlement holding-action persistence in #146.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -693,15 +517,8 @@
       "id": "compat-documents-persistence",
       "kind": "legacy-facade",
       "capability": "documents",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#147",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:documents",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
       "scopes": [
         {
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
@@ -799,15 +616,8 @@
       "id": "compat-corporate-governance-persistence",
       "kind": "legacy-facade",
       "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#148",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148.",
       "scopes": [
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
@@ -929,15 +739,8 @@
       "id": "compat-annual-compliance-persistence",
       "kind": "legacy-facade",
       "capability": "annual_compliance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#149",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:annual_compliance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove annual compliance workspace persistence in #149.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1077,15 +880,8 @@
       "id": "compat-authority-connections-persistence",
       "kind": "legacy-facade",
       "capability": "authority_connections",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#150",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:authority_connections",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150.",
       "scopes": [
         {
           "path": "apps/web/app/lib/supabase/server.ts",
@@ -1189,15 +985,8 @@
       "id": "compat-rf1086-persistence",
       "kind": "legacy-facade",
       "capability": "shareholder_register_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#151",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:shareholder_register_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove RF-1086 filing and feedback persistence in #151.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1415,15 +1204,8 @@
       "id": "compat-company-tax-persistence",
       "kind": "legacy-facade",
       "capability": "company_tax_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#152",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:company_tax_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove company-tax evidence persistence in #152.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1443,15 +1225,8 @@
       "id": "compat-annual-accounts-persistence",
       "kind": "legacy-facade",
       "capability": "annual_accounts_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#153",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:annual_accounts_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove annual-accounts authority-evidence persistence in #153.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1471,15 +1246,8 @@
       "id": "compat-audit-persistence",
       "kind": "legacy-facade",
       "capability": "audit",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#155",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:audit",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove append-only audit persistence in #155.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1667,15 +1435,8 @@
       "id": "compat-notification-persistence",
       "kind": "legacy-facade",
       "capability": "notifications",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#156",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:notifications",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove notification outbox persistence in #156.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -1695,15 +1456,8 @@
       "id": "compat-company-archive-persistence",
       "kind": "legacy-facade",
       "capability": "company_archive",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
       "removalIssue": "#157",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
       "canonicalImplementation": "web:legacy-runtime:company_archive",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove cross-capability direct archive reads and the temporary receipt handoff when #157 composes and owns published export projections.",
       "scopes": [
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
