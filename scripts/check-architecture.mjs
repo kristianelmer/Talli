@@ -1242,15 +1242,15 @@ function discoverMigrationTables(root) {
   return [...tables].sort();
 }
 
-function stagedContractTableDrops(root, currentIssue, errors) {
+function stagedContractTableDrops(root, retirementIssues, errors) {
   const contractDirectory = join(root, "supabase/contract-migrations");
   if (!existsSync(contractDirectory)) return new Set();
   const retiredTables = new Set();
   for (const path of walk(contractDirectory, (candidate) => candidate.endsWith(".sql"))) {
     const source = readFileSync(path, "utf8");
     const artifactHeader = /^-- CONTRACT RELEASE ARTIFACT:[^\n]*#[0-9]+/mu.exec(source)?.[0];
-    const currentStageArtifact = artifactHeader?.match(/#[0-9]+/u)?.[0] === currentIssue;
-    if (!currentStageArtifact) continue;
+    const artifactIssue = artifactHeader?.match(/#[0-9]+/u)?.[0];
+    if (!retirementIssues.has(artifactIssue)) continue;
     for (const match of source.matchAll(
       /drop\s+table\s+if\s+exists\s+(public\.[a-z_]+)\s*;/giu,
     )) {
@@ -1286,10 +1286,16 @@ function stagedContractTableDrops(root, currentIssue, errors) {
 function validateDatabaseCatalog(root, backendSystem, manifests, compatibility, errors, schema) {
   const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
   validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
+  const retirementIssues = new Set([
+    compatibility.migration?.currentIssue,
+    ...(compatibility.migration?.completedStages ?? []).flatMap(
+      (stage) => stage.removalIssues ?? [],
+    ),
+  ].filter(Boolean));
   const discovered = new Set(discoverMigrationTables(root));
   for (const retiredTable of stagedContractTableDrops(
     root,
-    compatibility.migration?.currentIssue,
+    retirementIssues,
     errors,
   )) discovered.delete(retiredTable);
   const catalogEntries = catalog.tables ?? [];
@@ -1709,23 +1715,86 @@ export function validateCompatibilityRegistry(path, {
     currentOperationAnalyses.set(operationKey, analysis);
     return analysis;
   };
+  const completedStagesByCapability = new Map(
+    completedStages.map((stage) => [stage.capability, stage]),
+  );
+  const completedGateOperationAnalyses = new Map();
+  const completedGateDeletionProven = (capability, scope, prefix) => {
+    const completed = completedStagesByCapability.get(capability);
+    const gates = completed?.gates ?? [];
+    const revision = gates[gates.length - 1]?.revision;
+    if (!revision || !sourceAtGateRevision) {
+      errors.push(`${prefix} has no completed ${capability} gate source for deletion proof`);
+      return false;
+    }
+    const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+    const cacheKey = `${revision}\0${operationKey}`;
+    let analysis = completedGateOperationAnalyses.get(cacheKey);
+    if (!analysis) {
+      let gateSource;
+      try {
+        gateSource = sourceAtGateRevision(revision, scope.path);
+      } catch {
+        gateSource = undefined;
+      }
+      analysis = typeof gateSource === "string"
+        ? legacyOperationAnalysis(gateSource, scope.path, scope.operation)
+        : { state: "missing", persistenceOccurrences: new Map() };
+      completedGateOperationAnalyses.set(cacheKey, analysis);
+    }
+    if (!analysis || analysis.state === "ambiguous") {
+      errors.push(`${prefix} completed ${capability} gate has ambiguous deletion proof`);
+      return false;
+    }
+    const resourceKind = scope.resource.split(":", 1)[0];
+    const occurrences = analysis.state === "found"
+      ? (analysis.persistenceOccurrences.get(scope.resource) ?? 0)
+        + (analysis.persistenceOccurrences.get(`${resourceKind}:*`) ?? 0)
+      : 0;
+    if (occurrences !== 0) {
+      errors.push(
+        `${prefix} ${compatibilityScopeLabel(scope)} was not deleted at completed ${capability} gate`,
+      );
+      return false;
+    }
+    return true;
+  };
   const deletionAuthorizedOperations = new Set();
   for (const [operationKey, removedScopes] of removedScopesByOperation) {
     let operationDeletionProven = true;
     for (const { record, scope } of removedScopes) {
       const prefix = `${record.id ?? "legacy facade"}:`;
       const recordStageIndex = stageIndexes.get(record.capability);
+      const scopeResourceOwner = resourceOwner?.(scope.resource);
+      const scopeOwnerCapability = scopeResourceOwner?.startsWith("backend:")
+        ? scopeResourceOwner.slice("backend:".length)
+        : undefined;
+      let completedDeletionOwner;
       if (recordStageIndex === undefined) {
         errors.push(`${prefix} capability ${record.capability ?? "(missing)"} is absent from migration order`);
         operationDeletionProven = false;
+      } else if (currentStageIndex !== undefined && recordStageIndex < currentStageIndex) {
+        if (exitedCapabilities.has(record.capability)) {
+          completedDeletionOwner = record.capability;
+        }
       } else if (currentStageIndex !== undefined && recordStageIndex > currentStageIndex) {
-        const expectedOwner = `backend:${currentCapability}`;
-        if (resourceOwner?.(scope.resource) !== expectedOwner) {
+        const authorizedResourceOwners = new Set([
+          currentCapability,
+          ...exitedCapabilities,
+        ].map((capability) => `backend:${capability}`));
+        if (!authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
-            `${prefix} future frozen scope resource ${scope.resource} is not owned by active capability ${expectedOwner}`,
+            `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
           );
           operationDeletionProven = false;
         }
+      }
+      if (!completedDeletionOwner && exitedCapabilities.has(scopeOwnerCapability)) {
+        completedDeletionOwner = scopeOwnerCapability;
+      }
+      if (completedDeletionOwner
+        && !completedGateDeletionProven(completedDeletionOwner, scope, prefix)) {
+        operationDeletionProven = false;
       }
       const analysis = currentOperationAnalysis(scope);
       if (!analysis || analysis.state === "ambiguous") {

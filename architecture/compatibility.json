@@ -118,11 +118,32 @@
         ]
       }
     ],
-    "currentCapability": "company_access",
-    "currentIssue": "#138",
-    "status": "exit-review",
-    "exitedCapabilities": [],
-    "completedStages": []
+    "currentCapability": "ledger",
+    "currentIssue": "#139",
+    "status": "active",
+    "exitedCapabilities": [
+      "company_access"
+    ],
+    "completedStages": [
+      {
+        "capability": "company_access",
+        "removalIssues": [
+          "#138"
+        ],
+        "gates": [
+          {
+            "revision": "65ea378dd74225a56f15ace603e1343b00dbac31",
+            "evidencePath": "architecture/evidence/customer-ready-gates/65ea378dd74225a56f15ace603e1343b00dbac31.json",
+            "evidenceDigest": "sha256:75f9001fa6596bf164340bcf2e43d4516417295b020905bfc1be9945bc4da668"
+          },
+          {
+            "revision": "de35d1ead93ea28e9f9878b3cb57d460c7583c33",
+            "evidencePath": "architecture/evidence/customer-ready-gates/de35d1ead93ea28e9f9878b3cb57d460c7583c33.json",
+            "evidenceDigest": "sha256:8f6408807a94f9f207bfbba582fcd96bc4e6a4794ddbff9ee396e8dbc2ea2c88"
+          }
+        ]
+      }
+    ]
   },
   "records": [
     {

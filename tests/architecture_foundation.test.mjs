@@ -311,6 +311,14 @@ test("resource-owner deletion-only shrink may change only the affected operation
   ].join("\n");
   const unrelatedPath = "apps/web/app/banking.ts";
   const unrelatedBaselineSource = 'export function importTransactions() { client.from("bank_transactions"); }\n';
+  const laterPath = "apps/web/app/banking-context.ts";
+  const laterBaselineSource = [
+    "export function importWithCompanyContext() {",
+    '  client.from("companies");',
+    '  client.from("bank_transactions");',
+    "}",
+    "",
+  ].join("\n");
   const retiredScope = {
     ...compatibilityScope,
     operation: "retiredOperation",
@@ -347,6 +355,24 @@ test("resource-owner deletion-only shrink may change only the affected operation
     unrelatedScope,
     legacyOperationProof(unrelatedBaselineSource, unrelatedPath, unrelatedScope),
   );
+  const removedLaterScope = {
+    ...compatibilityScope,
+    path: laterPath,
+    resource: "table:companies",
+    operation: "importWithCompanyContext",
+  };
+  const retainedLaterScope = {
+    ...removedLaterScope,
+    resource: "table:bank_transactions",
+  };
+  Object.assign(
+    removedLaterScope,
+    legacyOperationProof(laterBaselineSource, laterPath, removedLaterScope),
+  );
+  Object.assign(
+    retainedLaterScope,
+    legacyOperationProof(laterBaselineSource, laterPath, retainedLaterScope),
+  );
   const retiredFacade = legacyFacade({ scopes: [retiredScope] });
   const futureFacade = legacyFacade({
     id: "compat-ledger",
@@ -360,7 +386,18 @@ test("resource-owner deletion-only shrink may change only the affected operation
     removalIssue: "#140",
     scopes: [unrelatedScope],
   });
-  const baseline = compatibilityBaseline([retiredFacade, futureFacade, unrelatedFacade]);
+  const laterFacade = legacyFacade({
+    id: "compat-banking-resource-owner-shrink",
+    capability: "banking",
+    removalIssue: "#140",
+    scopes: [removedLaterScope, retainedLaterScope],
+  });
+  const baseline = compatibilityBaseline([
+    retiredFacade,
+    futureFacade,
+    unrelatedFacade,
+    laterFacade,
+  ]);
   const registry = compatibilityFixture({
     records: [
       legacyFacade({
@@ -370,6 +407,12 @@ test("resource-owner deletion-only shrink may change only the affected operation
         scopes: [retainedSharedScope],
       }),
       unrelatedFacade,
+      legacyFacade({
+        id: laterFacade.id,
+        capability: laterFacade.capability,
+        removalIssue: laterFacade.removalIssue,
+        scopes: [retainedLaterScope],
+      }),
     ],
   });
   const { registryPath, baselinePath } = writeCompatibilityFixture(
@@ -387,26 +430,56 @@ test("resource-owner deletion-only shrink may change only the affected operation
       "",
     ].join("\n")],
     [unrelatedPath, unrelatedBaselineSource],
+    [laterPath, [
+      "export function importWithCompanyContext() {",
+      '  callCompanyAccessBackend();',
+      '  client.from("bank_transactions");',
+      "}",
+      "",
+    ].join("\n")],
   ]);
   const resourceOwners = new Map([
     ["table:companies", "backend:company_access"],
     ["table:ledger_entries", "backend:ledger"],
     ["table:bank_transactions", "backend:banking"],
   ]);
+  const completedGateSources = new Map(workingSources);
   const options = {
     baselinePath,
     expectedBaselineDigest: "TEST_BASELINE_DIGEST",
     currentSource: (path) => workingSources.get(path),
     resourceOwner: (resource) => resourceOwners.get(resource),
+    sourceAtGateRevision: (_revision, path) => completedGateSources.get(path),
   };
 
   try {
     assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
 
+    const companyAccessMigration = registry.migration;
+    registry.migration = compatibilityFixture({
+      records: registry.records,
+      currentCapability: "ledger",
+      currentIssue: "#139",
+    }).migration;
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.deepEqual(
+      validateCompatibilityRegistry(registryPath, options),
+      [],
+      "an evidenced company-access deletion must remain authorized after ledger becomes current",
+    );
+    completedGateSources.set(laterPath, laterBaselineSource);
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-banking-resource-owner-shrink.*was not deleted at completed company_access gate/u,
+    );
+    completedGateSources.set(laterPath, workingSources.get(laterPath));
+    registry.migration = companyAccessMigration;
+    writeFileSync(registryPath, JSON.stringify(registry));
+
     resourceOwners.set("table:companies", "backend:documents");
     assert.match(
       validateCompatibilityRegistry(registryPath, options).join("\n"),
-      /compat-ledger.*future frozen scope resource table:companies is not owned by active capability backend:company_access/u,
+      /compat-ledger.*future frozen scope resource table:companies is not owned by active or exited capability/u,
     );
     resourceOwners.set("table:companies", "backend:company_access");
 
@@ -1252,6 +1325,17 @@ test("staged contract table retirement requires an empty-table preflight and rol
     temporaryRoot,
     "supabase/rollback/20260826101000_company_access_onboarding_contract.sql",
   );
+  const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+  const advancedCompatibility = JSON.parse(
+    readFileSync(compatibilityPath, "utf8"),
+  );
+  const companyAccessCompatibility = structuredClone(advancedCompatibility);
+  companyAccessCompatibility.migration.currentCapability = "company_access";
+  companyAccessCompatibility.migration.currentIssue = "#138";
+  companyAccessCompatibility.migration.status = "exit-review";
+  companyAccessCompatibility.migration.exitedCapabilities = [];
+  companyAccessCompatibility.migration.completedStages = [];
+  writeFileSync(compatibilityPath, JSON.stringify(companyAccessCompatibility));
   const contract = readFileSync(contractPath, "utf8");
 
   try {
@@ -1288,6 +1372,13 @@ test("staged contract table retirement requires an empty-table preflight and rol
     );
 
     writeFileSync(contractPath, contract);
+    writeFileSync(compatibilityPath, JSON.stringify(advancedCompatibility));
+    assert.doesNotMatch(
+      checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
+      /migration table missing from catalog public\.step_up_events/u,
+      "a completed stage's validated contract retirement must remain retired",
+    );
+
     rmSync(rollbackPath);
     assert.match(
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
