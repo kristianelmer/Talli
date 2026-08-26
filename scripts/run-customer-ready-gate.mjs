@@ -112,7 +112,12 @@ try {
       ["run", "test:supabase:local"],
       { TALLI_PYTHON_BIN: ".venv/bin/python" },
     ),
-    execute("whitespace", "git diff --check", "git", ["diff", "--check"]),
+    execute(
+      "whitespace",
+      "bash scripts/check-clean-worktree.sh",
+      "bash",
+      ["scripts/check-clean-worktree.sh"],
+    ),
   ];
   const executedAt = new Date().toISOString();
   transcript.push("", `executedAt=${executedAt}`, "verdict=pass");

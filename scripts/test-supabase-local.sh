@@ -3,14 +3,35 @@
 set -euo pipefail
 
 started_here=0
+next_env_path="apps/web/next-env.d.ts"
+next_env_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-next-env.XXXXXX")"
+cp -- "$next_env_path" "$next_env_snapshot"
 
 cleanup() {
-  if [[ "$started_here" == "1" ]]; then
-    npm exec -- supabase stop --no-backup >/dev/null
+  local command_status="$1"
+  local cleanup_status=0
+
+  trap - EXIT
+
+  if cp -- "$next_env_snapshot" "$next_env_path"; then
+    unlink "$next_env_snapshot" || cleanup_status=1
+  else
+    printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
+      "$next_env_path" "$next_env_snapshot" >&2
+    cleanup_status=1
   fi
+  if [[ "$started_here" == "1" ]]; then
+    npm exec -- supabase stop --no-backup >/dev/null || cleanup_status=1
+  fi
+
+  if [[ "$command_status" != "0" ]]; then
+    exit "$command_status"
+  fi
+
+  exit "$cleanup_status"
 }
 
-trap cleanup EXIT
+trap 'cleanup "$?"' EXIT
 
 if ! npm exec -- supabase status --output env >/dev/null 2>&1; then
   # Supabase prints its shared local development keys on stdout. They are not
