@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 from collections.abc import Mapping
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from urllib.parse import urlsplit
@@ -74,7 +75,9 @@ class CompanyAccessGatewayStub:
         self.role = role
         self.invitation_status = "pending"
         self.invitation_email = "reviewer@example.no"
-        self.invitation_expires_at = "2026-08-15T00:00:00Z"
+        self.invitation_expires_at = (
+            datetime.now(timezone.utc) + timedelta(days=1)
+        ).isoformat().replace("+00:00", "Z")
         self.calls: list[tuple[str, object]] = []
 
     async def session_subject(self, _access_token: str) -> str:
@@ -773,7 +776,7 @@ def test_invitee_lookup_and_acceptance_are_concealed_and_never_return_token_hash
     assert lookup.json() == {
         "companyName": "Talli Holding AS",
         "role": "reviewer",
-        "expiresAt": "2026-08-15T00:00:00Z",
+        "expiresAt": gateway.invitation_expires_at,
     }
     assert accepted.status_code == 200
     assert accepted.json()["membership"]["state"] == "active"
