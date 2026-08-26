@@ -131,3 +131,27 @@ _Avoid_: Holdingklar
 **Single-company UX**:
 A user experience optimized for an owner working on one company at a time, even though the underlying account can own or access multiple companies.
 _Avoid_: Accountant practice UI
+
+**Addressable holding-company segment**:
+Active, privately owner-managed Norwegian holding AS companies with annual filing obligations and a plausible self-service buyer. Dormant entities, regulated financial groups, and subsidiaries administered centrally are excluded.
+_Avoid_: All registered holding companies, all Norwegian AS companies
+
+**Mass-market coverage gate**:
+Evidence that Talli's supported-case boundary covers at least 80 percent of the addressable holding-company segment.
+_Avoid_: Majority of all Norwegian AS companies, broad-market assumption
+
+**Mass-market launch**:
+Unrestricted self-service availability to every company that passes Talli's eligibility checks, rather than a capped cohort, invite-only beta, or manually approved rollout.
+_Avoid_: Public beta, founder cohort
+
+**Pre-launch validation group**:
+A private, representative group of holding companies that uses Talli free of charge before mass-market launch to validate real workflows, parallel-run results, and production authority paths.
+_Avoid_: Paid beta, capped commercial launch
+
+**Annual company subscription**:
+One yearly payment per company that includes the complete annual holding compliance loop without separate filing charges.
+_Avoid_: Monthly subscription, per-filing package
+
+**Operational agent**:
+An agent outside the customer-facing Talli application that helps Kristian build or run the business within approved limits and escalates consequential decisions to a human.
+_Avoid_: Embedded product agent, autonomous filing agent
