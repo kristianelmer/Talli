@@ -28,6 +28,13 @@ from talli_backend.modules.company_access.public import (
     CompanyCancellationResponse,
     CompanyContextResponse,
     CompanyDeletionReviewResponse,
+    CompanyYearAdmissionRequest,
+    CompanyYearAdmissionResponse,
+    CompanyYearEligibilityRecheckRequest,
+    CompanyYearEligibilityStateResponse,
+    EligibilityDecisionResponse,
+    EligibilityDefinitiveRequest,
+    EligibilityPrecheckRequest,
     CompanyInvitationCommandRequest,
     CompanyInvitationListResponse,
     CompanyInvitationResponse,
@@ -346,10 +353,107 @@ def create_app(
     }
 
     @application.post(
+        "/api/v1/company-access/eligibility/precheck",
+        operation_id="companyAccessEligibilityPrecheck",
+        response_model=EligibilityDecisionResponse,
+        responses={
+            200: {
+                "description": "Provisional public-company eligibility result",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: company_access_errors[status] for status in (404, 422, 503)},
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def eligibility_precheck(
+        command: EligibilityPrecheckRequest,
+    ) -> EligibilityDecisionResponse:
+        return await company_access_call(
+            company_access_service.eligibility_precheck(command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/eligibility/definitive",
+        operation_id="companyAccessEligibilityDefinitive",
+        response_model=EligibilityDecisionResponse,
+        responses={
+            200: {
+                "description": "Definitive company-year eligibility result",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: company_access_errors[status] for status in (409, 422, 503)},
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def eligibility_definitive(
+        command: EligibilityDefinitiveRequest,
+    ) -> EligibilityDecisionResponse:
+        return await company_access_call(
+            company_access_service.eligibility_definitive(command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/company-year-admissions",
+        operation_id="companyAccessAdmitCompanyYear",
+        response_model=CompanyYearAdmissionResponse,
+        status_code=201,
+        responses={
+            201: {
+                "description": "Company year admitted",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: company_access_errors[status] for status in (401, 409, 422, 503)},
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def admit_company_year(
+        command: CompanyYearAdmissionRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyYearAdmissionResponse:
+        return await company_access_call(
+            company_access_service.admit_company_year(
+                bearer_token(credentials), command
+            )
+        )
+
+    @application.post(
+        (
+            "/api/v1/company-access/company-year-admissions/"
+            "{company_year_admission_id}/eligibility-rechecks"
+        ),
+        operation_id="companyAccessRecheckCompanyYearEligibility",
+        response_model=CompanyYearEligibilityStateResponse,
+        status_code=201,
+        responses={
+            201: {
+                "description": "Current eligibility gate appended",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: company_access_errors[status] for status in (401, 404, 409, 422, 503)},
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recheck_company_year_eligibility(
+        company_year_admission_id: UUID,
+        command: CompanyYearEligibilityRecheckRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyYearEligibilityStateResponse:
+        return await company_access_call(
+            company_access_service.recheck_company_year_eligibility(
+                bearer_token(credentials), company_year_admission_id, command
+            )
+        )
+
+    @application.post(
         "/api/v1/company-access/onboarding",
         operation_id="companyAccessOnboardCompany",
         response_model=CompanyOnboardingResponse,
         status_code=201,
+        deprecated=True,
         responses={
             201: {"description": "Company and current agreement evidence created atomically."}
             | company_access_success

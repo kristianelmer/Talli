@@ -10,6 +10,10 @@ const operation = contract.paths?.[path]?.get;
 const companyAccessPath = "/api/v1/company-access/context";
 const companyAccessOperation = contract.paths?.[companyAccessPath]?.get;
 const companyAccessOperations = {
+  eligibilityPrecheck: ["/api/v1/company-access/eligibility/precheck", "post", "companyAccessEligibilityPrecheck"],
+  eligibilityDefinitive: ["/api/v1/company-access/eligibility/definitive", "post", "companyAccessEligibilityDefinitive"],
+  admitCompanyYear: ["/api/v1/company-access/company-year-admissions", "post", "companyAccessAdmitCompanyYear"],
+  recheckCompanyYearEligibility: ["/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks", "post", "companyAccessRecheckCompanyYearEligibility"],
   onboardCompany: ["/api/v1/company-access/onboarding", "post", "companyAccessOnboardCompany"],
   reacceptAgreement: ["/api/v1/company-access/agreements/reaccept", "post", "companyAccessReacceptAgreement"],
   getCompanyRecord: ["/api/v1/company-access/companies/{company_id}", "get", "companyAccessGetCompanyRecord"],
@@ -85,6 +89,9 @@ function schemaType(schema) {
   if (schema?.type === "string") return "string";
   if (schema?.type === "integer" || schema?.type === "number") return "number";
   if (schema?.type === "boolean") return "boolean";
+  if (schema?.type === "object" && schema.additionalProperties && schema.additionalProperties !== true) {
+    return `Record<string, ${schemaType(schema.additionalProperties)}>`;
+  }
   if (schema?.type === "object") return "Record<string, unknown>";
   throw new Error(`Unsupported generated-client schema type: ${schema?.type}`);
 }
@@ -117,7 +124,10 @@ function renderGuard(name, schema) {
       return `(${propertySchema.enum.map((candidate) => `${value} === ${JSON.stringify(candidate)}`).join(" || ")})`;
     }
     let base;
-    if (propertySchema?.type === "object") base = `isRecord(${value})`;
+    if (propertySchema?.type === "object" && propertySchema.additionalProperties && propertySchema.additionalProperties !== true) {
+      base = `isRecord(${value}) && Object.values(${value}).every((item) => ${propertyCheck(propertySchema.additionalProperties, "item")})`;
+    }
+    else if (propertySchema?.type === "object") base = `isRecord(${value})`;
     else if (propertySchema?.type === "string" && propertySchema.format === "uuid") base = `isUuid(${value})`;
     else if (propertySchema?.type === "string" && propertySchema.format === "date-time") base = `isDateTime(${value})`;
     else if (propertySchema?.type === "integer") base = `typeof ${value} === "number" && Number.isInteger(${value})`;
@@ -168,6 +178,16 @@ const additionalSchemas = Object.fromEntries([
   "CompanyOnboardingResponse",
   "CompanyAgreementAcceptanceRequest",
   "CompanyAgreementAcceptanceResponse",
+  "EligibilityPrecheckRequest",
+  "EligibilityDefinitiveRequest",
+  "EligibilityPublicFacts",
+  "EligibilityQuestion",
+  "CompanyYearPromise",
+  "EligibilityDecisionResponse",
+  "CompanyYearAdmissionRequest",
+  "CompanyYearAdmissionResponse",
+  "CompanyYearEligibilityRecheckRequest",
+  "CompanyYearEligibilityStateResponse",
   "CompanyAccessRecord",
   "CompanyAccessRecordResponse",
   "OperatorContextResponse",
@@ -259,6 +279,12 @@ ${[
   "CompanyMembershipResponse",
   "CompanyOnboardingResponse",
   "CompanyAgreementAcceptanceResponse",
+  "EligibilityPublicFacts",
+  "EligibilityQuestion",
+  "CompanyYearPromise",
+  "EligibilityDecisionResponse",
+  "CompanyYearAdmissionResponse",
+  "CompanyYearEligibilityStateResponse",
   "CompanyAccessRecord",
   "CompanyAccessRecordResponse",
   "OperatorContextResponse",
@@ -432,6 +458,59 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyOnboardingResponse,
+      );
+    },
+
+    async companyAccessEligibilityPrecheck(
+      body: EligibilityPrecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/eligibility/precheck\`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessEligibilityDefinitive(
+      body: EligibilityDefinitiveRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/eligibility/definitive\`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessAdmitCompanyYear(
+      body: CompanyYearAdmissionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearAdmissionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/company-year-admissions\`,
+        "POST",
+        request,
+        body,
+        isCompanyYearAdmissionResponse,
+      );
+    },
+
+    async companyAccessRecheckCompanyYearEligibility(
+      companyYearAdmissionId: string,
+      body: CompanyYearEligibilityRecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearEligibilityStateResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/company-year-admissions/\${encodeURIComponent(companyYearAdmissionId)}/eligibility-rechecks\`,
+        "POST",
+        request,
+        body,
+        isCompanyYearEligibilityStateResponse,
       );
     },
 

@@ -1,13 +1,15 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_invitations","public.company_memberships","public.customer_agreement_acceptances","public.support_operators"],"ports":["CompanyAccessGateway","CompanyRegistryGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_eligibility_assessments","public.company_invitations","public.company_memberships","public.company_year_acceptances","public.company_year_admissions","public.customer_agreement_acceptances","public.support_operators"],"ports":["CompanyAccessGateway","CompanyRegistryGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
 
-`company_access` owns authenticated company onboarding, frozen agreement
-acceptance and freshness, accepted-member company records, active operator
+`company_access` owns the versioned eligibility manifest, public provisional
+check, definitive material-fact interview, immutable company-year admission and
+acceptance evidence, authenticated company access, frozen agreement acceptance
+and freshness, accepted-member company records, active operator
 context and bounded operator search, company invitations, reviewer/read-only
 membership administration, and the cancellation-to-deletion lifecycle. It
 independently validates the Supabase session and matching bearer subject before
@@ -17,12 +19,14 @@ installing a transaction-local actor context for restricted RLS execution.
 
 It owns `public.companies`, `public.company_cancellations`,
 `public.company_deletion_reviews`, `public.company_invitations`,
-`public.company_memberships`, `public.customer_agreement_acceptances`, and
-`public.support_operators`, with the latest ownership migration declared as
-`20260826100000_company_access_onboarding.sql`. The backend system owns
+`public.company_memberships`, `public.company_eligibility_assessments`,
+`public.company_year_admissions`, `public.company_year_acceptances`,
+`public.customer_agreement_acceptances`, and `public.support_operators`, with
+the latest ownership migration declared as
+`20260826110000_company_year_admission.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
-not own expanded eligibility beyond the behavior-preserving Norwegian-AS rule,
-physical business-data deletion, or unrestricted general operator workflows.
+not claim eligibility outside the immutable active manifest, own physical
+business-data deletion, or own unrestricted general operator workflows.
 It must not use service-role access or bypass RLS for ordinary business calls.
 
 ## Public interface
@@ -30,9 +34,11 @@ It must not use service-role access or bypass RLS for ordinary business calls.
 Import only `talli_backend.modules.company_access.public`.
 
 - Queries: owner-sensitive context, accepted-member company records, active
-  operator context and bounded search, invitation/cancellation listing,
+  operator context and bounded search, provisional and definitive eligibility,
+  invitation/cancellation listing,
   membership listing, and actor-derived pending side-effect continuations
-- Commands: atomic onboarding with current agreement evidence, owner agreement
+- Commands: atomic company-year admission with eligibility plus current legal
+  evidence, append-only company-year eligibility recheck, fail-closed legacy onboarding, owner agreement
   reacceptance, invite, accept, revoke, resend, reviewer/read-only membership
   transitions, owner cancellation request/resume, independent deletion review,
   and owner finalization
@@ -58,6 +64,23 @@ Onboarding and the backend-only company read boundary add
 `OperatorContextResponse`, `OperatorCompanyRecord`,
 `OperatorCompanySearchResponse`, `CompanyRegistryGateway`, and
 `company_registry_adapter`.
+
+Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
+`EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,
+`EligibilityDefinitiveRequest`, `EligibilityDecisionResponse`,
+`CompanyYearPromise`, `CompanyYearAdmissionRequest`,
+`CompanyYearAdmissionResponse`, `CompanyYearAdmissionGatewayCommand`,
+`EligibilityRecheckTrigger`, `CompanyYearEligibilityRecheckRequest`,
+`CompanyYearEligibilityStateResponse`, and
+`CompanyYearEligibilityRecheckGatewayCommand`. `capability_manifest.json` is the single
+versioned support/clarify/block source. Its canonical JSON digest is returned by
+both public operations and persisted with the accepted company year. Public
+precheck uses registry facts only and is always visibly provisional. Definitive
+evaluation asks exactly the manifest questions, treats unknown as clarification,
+and lets a known hard block outrank clarification. Admission re-fetches registry
+facts and repeats the evaluation before any write. The legacy AS-only onboarding
+operation remains in v1 solely as a deprecated, fail-closed response and can no
+longer create a company.
 
 Cancellation contracts add `CompanyCancellation`, `CompanyCancellationListResponse`,
 `CompanyDeletionReview`, `RequestCompanyCancellationRequest`,
@@ -116,6 +139,32 @@ delivery is not queued; a new invite/resend is required if delivery is still
 wanted.
 Owner creation, demotion, and removal are not exposed. Public responses never
 contain token hashes.
+
+The admission RPC is backend-only and executor-owned. One short transaction
+creates or reuses the company and owner membership, appends the current customer
+agreement when needed, and appends the supported assessment, company-year
+admission, privacy/terms/DPA/capability acceptance, and durable receipt. Exact
+retries return the same company and admission IDs; a changed payload conflicts.
+The admission row stores the exact canonical capability-manifest and complete
+company-year-promise snapshots plus their digests. A later manifest version can
+therefore never rewrite what the owner accepted. The three admission tables have RLS, no browser/service-role grants, and mutation
+triggers that reject update or delete even for the migration owner. Failure at
+any insert leaves no company, membership, evidence, admission, or receipt.
+
+The eligibility-recheck RPC is also backend-only and executor-owned. It first
+authorizes the accepted owner and locks the admitted company year, then appends
+one assessment against the latest assessment ID with durable idempotency and
+compare-and-swap protection. It accepts only the manifest's declared triggers,
+re-fetches public registry facts, asks the complete current manifest, and records
+one of `CONTINUE_COMPANY_YEAR`, `PAUSE_AND_CLARIFY`, or
+`STOP_EXPORT_AND_CONTACT` with the exact Norwegian next step. Payment, filing,
+and other consequential operations can consume the recorded fail-closed state as
+their capabilities migrate; #187 does not change those future capability writers
+under ADR-0013. Read access remains available, and the readiness of any existing
+archive/export is not narrowed by the outcome.
+Provider or Talli failure records no assessment and is never presented as an
+eligibility rejection. The admission's accepted manifest and promise snapshots
+remain unchanged across every recheck.
 
 Before completion, a create/resend delivery token is stored in exactly one receipt
 column; receipt JSON contains only token-independent delivery metadata. Atomic

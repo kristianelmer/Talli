@@ -10,10 +10,18 @@ export interface SystemBoundaryStatus {
 export interface CompanyContext {
   aal: "aal2";
   address: string;
+  admittedAccountingYear: number | null;
+  archiveExportAvailable: boolean;
   city: string;
+  companyYearAdmissionId: string | null;
+  consequentialOperationsAllowed: boolean;
   createdAt: string;
   createdBy: string;
   currentAgreementAccepted: boolean;
+  currentEligibilityDecision: "supported" | "clarify" | "blocked" | null;
+  eligibilityNextStep: string | null;
+  eligibilityNextStepCode: string | null;
+  eligibilityReasonExplanations: string[];
   entityType: string;
   id: string;
   identityConfirmedAt: string | null;
@@ -98,6 +106,119 @@ export interface CompanyAgreementAcceptanceResponse {
   companyId: string;
   currentAgreementAccepted: true;
   replayed: boolean;
+}
+
+export interface EligibilityPrecheckRequest {
+  accountingYear: number;
+  orgNumber: string;
+}
+
+export interface EligibilityDefinitiveRequest {
+  accountingYear: number;
+  answers: Record<string, "yes" | "no" | "unknown">;
+  capabilityManifestSha256: string;
+  capabilityManifestVersion: string;
+  expectedPublicFactsSha256: string;
+  orgNumber: string;
+}
+
+export interface EligibilityPublicFacts {
+  entityType: string;
+  name: string;
+  orgNumber: string;
+  source: string;
+  statusText: string;
+}
+
+export interface EligibilityQuestion {
+  answerOptions?: "yes" | "no" | "unknown"[];
+  code: string;
+  prompt: string;
+}
+
+export interface CompanyYearPromise {
+  accountingYear: number;
+  customerClaims: string[];
+  endsOn: string;
+  onlyAccountingAndFilingProduct: true;
+  reconstructionRequiredFrom: string;
+  startsOn: string;
+}
+
+export interface EligibilityDecisionResponse {
+  accountingYear: number;
+  answers: Record<string, "yes" | "no" | "unknown">;
+  answersSha256: string | null;
+  capabilityManifestSha256: string;
+  capabilityManifestVersion: string;
+  companyYearPromise: CompanyYearPromise | null;
+  decision: "supported" | "clarify" | "blocked";
+  nextStep: string;
+  nextStepCode: string;
+  provisional: boolean;
+  publicFacts: EligibilityPublicFacts;
+  publicFactsSha256: string;
+  questionCodes: string[];
+  questions: EligibilityQuestion[];
+  reasonCodes: string[];
+  reasonExplanations: string[];
+}
+
+export interface CompanyYearAdmissionRequest {
+  accountingYear: number;
+  agreementAccepted: true;
+  answers: Record<string, "yes" | "no" | "unknown">;
+  authorityAccepted: true;
+  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
+  businessTermsVersion: "2026-07-17";
+  capabilityManifestSha256: string;
+  capabilityManifestVersion: string;
+  companyYearPromiseAccepted: true;
+  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
+  dpaVersion: "2026-07-17";
+  expectedPublicFactsSha256: string;
+  operationId: string;
+  orgNumber: string;
+  privacyNoticeSha256: string;
+  privacyNoticeVersion: string;
+}
+
+export interface CompanyYearAdmissionResponse {
+  accountingYear: number;
+  capabilityManifestSha256: string;
+  capabilityManifestVersion: string;
+  companyId: string;
+  companyYearAdmissionId: string;
+  currentAgreementAccepted: true;
+  reconstructFrom: string;
+  replayed: boolean;
+}
+
+export interface CompanyYearEligibilityRecheckRequest {
+  answers?: Record<string, "yes" | "no" | "unknown"> | null;
+  operationId: string;
+  trigger: "public_fact_changed" | "material_answer_changed" | "manifest_changed" | "before_payment" | "before_filing";
+}
+
+export interface CompanyYearEligibilityStateResponse {
+  acceptedCapabilityManifestSha256: string;
+  acceptedCapabilityManifestVersion: string;
+  acceptedCompanyYearPromise: CompanyYearPromise;
+  accountingYear: number;
+  archiveExportAvailable: true;
+  companyId: string;
+  companyYearAdmissionId: string;
+  companyYearEligibilityAssessmentId: string;
+  consequentialOperationsAllowed: boolean;
+  currentCapabilityManifestSha256: string;
+  currentCapabilityManifestVersion: string;
+  decision: "supported" | "clarify" | "blocked";
+  nextStep: string;
+  nextStepCode: string;
+  reasonCodes: string[];
+  reasonExplanations: string[];
+  replayed: boolean;
+  trigger: "public_fact_changed" | "material_answer_changed" | "manifest_changed" | "before_payment" | "before_filing";
 }
 
 export interface CompanyAccessRecord {
@@ -339,13 +460,21 @@ function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
 function isCompanyContext(value: unknown): value is CompanyContext {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["aal","address","city","createdAt","createdBy","currentAgreementAccepted","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
+    hasOnlyProperties(value, ["aal","address","admittedAccountingYear","archiveExportAvailable","city","companyYearAdmissionId","consequentialOperationsAllowed","createdAt","createdBy","currentAgreementAccepted","currentEligibilityDecision","eligibilityNextStep","eligibilityNextStepCode","eligibilityReasonExplanations","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
     value.aal === "aal2" &&
     typeof value.address === "string" &&
+    (typeof value.admittedAccountingYear === "number" && Number.isInteger(value.admittedAccountingYear) || value.admittedAccountingYear === null) &&
+    typeof value.archiveExportAvailable === "boolean" &&
     typeof value.city === "string" &&
+    (isUuid(value.companyYearAdmissionId) || value.companyYearAdmissionId === null) &&
+    typeof value.consequentialOperationsAllowed === "boolean" &&
     typeof value.createdAt === "string" &&
     typeof value.createdBy === "string" &&
     typeof value.currentAgreementAccepted === "boolean" &&
+    ((value.currentEligibilityDecision === "supported" || value.currentEligibilityDecision === "clarify" || value.currentEligibilityDecision === "blocked") || value.currentEligibilityDecision === null) &&
+    (typeof value.eligibilityNextStep === "string" || value.eligibilityNextStep === null) &&
+    (typeof value.eligibilityNextStepCode === "string" || value.eligibilityNextStepCode === null) &&
+    Array.isArray(value.eligibilityReasonExplanations) && value.eligibilityReasonExplanations.every((item) => typeof item === "string") &&
     typeof value.entityType === "string" &&
     typeof value.id === "string" &&
     (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
@@ -448,6 +577,104 @@ function isCompanyAgreementAcceptanceResponse(value: unknown): value is CompanyA
     isUuid(value.companyId) &&
     value.currentAgreementAccepted === true &&
     typeof value.replayed === "boolean"
+  );
+}
+
+function isEligibilityPublicFacts(value: unknown): value is EligibilityPublicFacts {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["entityType","name","orgNumber","source","statusText"]) &&
+    typeof value.entityType === "string" &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
+  );
+}
+
+function isEligibilityQuestion(value: unknown): value is EligibilityQuestion {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["answerOptions","code","prompt"]) &&
+    (value.answerOptions === undefined || Array.isArray(value.answerOptions) && value.answerOptions.every((item) => (item === "yes" || item === "no" || item === "unknown"))) &&
+    typeof value.code === "string" &&
+    typeof value.prompt === "string"
+  );
+}
+
+function isCompanyYearPromise(value: unknown): value is CompanyYearPromise {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingYear","customerClaims","endsOn","onlyAccountingAndFilingProduct","reconstructionRequiredFrom","startsOn"]) &&
+    typeof value.accountingYear === "number" && Number.isInteger(value.accountingYear) &&
+    Array.isArray(value.customerClaims) && value.customerClaims.every((item) => typeof item === "string") &&
+    typeof value.endsOn === "string" &&
+    value.onlyAccountingAndFilingProduct === true &&
+    typeof value.reconstructionRequiredFrom === "string" &&
+    typeof value.startsOn === "string"
+  );
+}
+
+function isEligibilityDecisionResponse(value: unknown): value is EligibilityDecisionResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingYear","answers","answersSha256","capabilityManifestSha256","capabilityManifestVersion","companyYearPromise","decision","nextStep","nextStepCode","provisional","publicFacts","publicFactsSha256","questionCodes","questions","reasonCodes","reasonExplanations"]) &&
+    typeof value.accountingYear === "number" && Number.isInteger(value.accountingYear) &&
+    isRecord(value.answers) && Object.values(value.answers).every((item) => (item === "yes" || item === "no" || item === "unknown")) &&
+    (typeof value.answersSha256 === "string" || value.answersSha256 === null) &&
+    typeof value.capabilityManifestSha256 === "string" &&
+    typeof value.capabilityManifestVersion === "string" &&
+    (isCompanyYearPromise(value.companyYearPromise) || value.companyYearPromise === null) &&
+    (value.decision === "supported" || value.decision === "clarify" || value.decision === "blocked") &&
+    typeof value.nextStep === "string" &&
+    typeof value.nextStepCode === "string" &&
+    typeof value.provisional === "boolean" &&
+    isEligibilityPublicFacts(value.publicFacts) &&
+    typeof value.publicFactsSha256 === "string" &&
+    Array.isArray(value.questionCodes) && value.questionCodes.every((item) => typeof item === "string") &&
+    Array.isArray(value.questions) && value.questions.every((item) => isEligibilityQuestion(item)) &&
+    Array.isArray(value.reasonCodes) && value.reasonCodes.every((item) => typeof item === "string") &&
+    Array.isArray(value.reasonExplanations) && value.reasonExplanations.every((item) => typeof item === "string")
+  );
+}
+
+function isCompanyYearAdmissionResponse(value: unknown): value is CompanyYearAdmissionResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingYear","capabilityManifestSha256","capabilityManifestVersion","companyId","companyYearAdmissionId","currentAgreementAccepted","reconstructFrom","replayed"]) &&
+    typeof value.accountingYear === "number" && Number.isInteger(value.accountingYear) &&
+    typeof value.capabilityManifestSha256 === "string" &&
+    typeof value.capabilityManifestVersion === "string" &&
+    isUuid(value.companyId) &&
+    isUuid(value.companyYearAdmissionId) &&
+    value.currentAgreementAccepted === true &&
+    typeof value.reconstructFrom === "string" &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isCompanyYearEligibilityStateResponse(value: unknown): value is CompanyYearEligibilityStateResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedCapabilityManifestSha256","acceptedCapabilityManifestVersion","acceptedCompanyYearPromise","accountingYear","archiveExportAvailable","companyId","companyYearAdmissionId","companyYearEligibilityAssessmentId","consequentialOperationsAllowed","currentCapabilityManifestSha256","currentCapabilityManifestVersion","decision","nextStep","nextStepCode","reasonCodes","reasonExplanations","replayed","trigger"]) &&
+    typeof value.acceptedCapabilityManifestSha256 === "string" &&
+    typeof value.acceptedCapabilityManifestVersion === "string" &&
+    isCompanyYearPromise(value.acceptedCompanyYearPromise) &&
+    typeof value.accountingYear === "number" && Number.isInteger(value.accountingYear) &&
+    value.archiveExportAvailable === true &&
+    isUuid(value.companyId) &&
+    isUuid(value.companyYearAdmissionId) &&
+    isUuid(value.companyYearEligibilityAssessmentId) &&
+    typeof value.consequentialOperationsAllowed === "boolean" &&
+    typeof value.currentCapabilityManifestSha256 === "string" &&
+    typeof value.currentCapabilityManifestVersion === "string" &&
+    (value.decision === "supported" || value.decision === "clarify" || value.decision === "blocked") &&
+    typeof value.nextStep === "string" &&
+    typeof value.nextStepCode === "string" &&
+    Array.isArray(value.reasonCodes) && value.reasonCodes.every((item) => typeof item === "string") &&
+    Array.isArray(value.reasonExplanations) && value.reasonExplanations.every((item) => typeof item === "string") &&
+    typeof value.replayed === "boolean" &&
+    (value.trigger === "public_fact_changed" || value.trigger === "material_answer_changed" || value.trigger === "manifest_changed" || value.trigger === "before_payment" || value.trigger === "before_filing")
   );
 }
 
@@ -803,6 +1030,59 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyOnboardingResponse,
+      );
+    },
+
+    async companyAccessEligibilityPrecheck(
+      body: EligibilityPrecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/eligibility/precheck`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessEligibilityDefinitive(
+      body: EligibilityDefinitiveRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/eligibility/definitive`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessAdmitCompanyYear(
+      body: CompanyYearAdmissionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearAdmissionResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/company-year-admissions`,
+        "POST",
+        request,
+        body,
+        isCompanyYearAdmissionResponse,
+      );
+    },
+
+    async companyAccessRecheckCompanyYearEligibility(
+      companyYearAdmissionId: string,
+      body: CompanyYearEligibilityRecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearEligibilityStateResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/company-year-admissions/${encodeURIComponent(companyYearAdmissionId)}/eligibility-rechecks`,
+        "POST",
+        request,
+        body,
+        isCompanyYearEligibilityStateResponse,
       );
     },
 

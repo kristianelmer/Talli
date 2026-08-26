@@ -9,6 +9,7 @@ import re
 import secrets
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from importlib.resources import files
 from typing import Annotated, Literal, Protocol, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -55,6 +56,14 @@ class CompanyContext(CompanyAccessModel):
     resource_scope: Literal["owner_sensitive"]
     aal: Literal["aal2"]
     current_agreement_accepted: bool
+    company_year_admission_id: UUID | None
+    admitted_accounting_year: int | None
+    current_eligibility_decision: Literal["supported", "clarify", "blocked"] | None
+    eligibility_reason_explanations: list[str]
+    eligibility_next_step_code: str | None
+    eligibility_next_step: str | None
+    consequential_operations_allowed: bool
+    archive_export_available: bool
 
 
 class CompanyContextResponse(CompanyAccessModel):
@@ -125,6 +134,253 @@ CURRENT_DPA_SHA256: Literal[
 ] = "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
 CURRENT_AUTHORITY_STATEMENT_VERSION: Literal["authority-v1"] = "authority-v1"
 CURRENT_ACCEPTANCE_METHOD: Literal["in_app_clickwrap"] = "in_app_clickwrap"
+CURRENT_PRIVACY_NOTICE_VERSION: Literal["2026-07-15"] = "2026-07-15"
+CURRENT_PRIVACY_NOTICE_EFFECTIVE_DATE: Literal["2026-07-15"] = "2026-07-15"
+CURRENT_PRIVACY_NOTICE_PATH: Literal["/personvern"] = "/personvern"
+CURRENT_PRIVACY_NOTICE_SHA256: Literal[
+    "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+] = "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+
+
+def _canonical_sha256(value: object) -> str:
+    return hashlib.sha256(
+        json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+
+
+def _load_capability_manifest() -> tuple[Mapping[str, object], str]:
+    try:
+        raw = json.loads(
+            files(__package__).joinpath("capability_manifest.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        raise RuntimeError("company_access_capability_manifest_unavailable") from None
+    if not isinstance(raw, Mapping):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    if (
+        raw.get("schemaVersion") != "1.0"
+        or raw.get("manifestId") != "company-year-admission"
+        or raw.get("accountingYear") != 2026
+        or raw.get("boundaryVersion") != "2026.1"
+        or raw.get("changeKind") != "baseline"
+    ):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    public_rules = raw.get("publicRules")
+    public_reason_explanations = (
+        public_rules.get("reasonExplanations")
+        if isinstance(public_rules, Mapping)
+        else None
+    )
+    if (
+        not isinstance(public_reason_explanations, Mapping)
+        or set(public_reason_explanations)
+        != {
+            "ACCOUNTING_YEAR_NOT_AVAILABLE",
+            "LEGAL_FORM_NOT_SUPPORTED",
+            "COMPANY_STATUS_NOT_SUPPORTED",
+        }
+        or not all(
+            isinstance(explanation, str) and 1 <= len(explanation) <= 240
+            for explanation in public_reason_explanations.values()
+        )
+    ):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    questions = raw.get("questions")
+    if not isinstance(questions, list) or not questions:
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    seen: set[str] = set()
+    for question in questions:
+        if not isinstance(question, Mapping):
+            raise RuntimeError("company_access_capability_manifest_invalid")
+        code = question.get("code")
+        prompt = question.get("prompt")
+        supported_answer = question.get("supportedAnswer")
+        blocked_reason = question.get("blockedReasonCode")
+        if (
+            not isinstance(code, str)
+            or not code
+            or code in seen
+            or not isinstance(prompt, str)
+            or not prompt
+            or supported_answer not in {"yes", "no"}
+            or not isinstance(blocked_reason, str)
+            or not blocked_reason
+        ):
+            raise RuntimeError("company_access_capability_manifest_invalid")
+        seen.add(code)
+    promise = raw.get("promise")
+    if not isinstance(promise, Mapping):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    required_capabilities = {
+        "current_year_reconstruction",
+        "year_round_bookkeeping",
+        "required_corporate_documents",
+        "rf1086_direct_filing",
+        "company_tax_direct_filing",
+        "annual_accounts_direct_filing",
+        "bank_connection_with_hardened_file_fallback",
+        "saft_1_40",
+        "company_year_archive",
+        "corrections",
+        "official_outcomes",
+        "receipts",
+    }
+    capabilities = promise.get("capabilities")
+    customer_claims = promise.get("customerClaims")
+    if (
+        promise.get("mode") != "atomic_company_year"
+        or promise.get("startsOn") != "2026-01-01"
+        or promise.get("endsOn") != "2026-12-31"
+        or promise.get("reconstructFrom") != "2026-01-01"
+        or promise.get("earlierYearsIncluded") is not False
+        or promise.get("onlyAccountingAndFilingProduct") is not True
+        or not isinstance(capabilities, list)
+        or set(capabilities) != required_capabilities
+        or not isinstance(customer_claims, list)
+        or len(customer_claims) != len(required_capabilities)
+        or len(set(customer_claims)) != len(customer_claims)
+        or not all(
+            isinstance(claim, str) and 1 <= len(claim) <= 160
+            for claim in customer_claims
+        )
+    ):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    required_rechecks = {
+        "public_fact_changed",
+        "material_answer_changed",
+        "manifest_changed",
+        "before_payment",
+        "before_filing",
+    }
+    recheck_triggers = raw.get("recheckTriggers")
+    if not isinstance(recheck_triggers, list) or set(recheck_triggers) != required_rechecks:
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    change_control = raw.get("changeControl")
+    if (
+        not isinstance(change_control, Mapping)
+        or change_control.get("acceptedPromiseIsImmutable") is not True
+        or change_control.get("newSafetyOrLegalBlocksApplyImmediately") is not True
+        or change_control.get("boundaryRemovalRequires")
+        != [
+            "reopened_172",
+            "refreshed_practical_majority_evidence",
+            "approval_180",
+        ]
+    ):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    return raw, _canonical_sha256(raw)
+
+
+CAPABILITY_MANIFEST, CURRENT_CAPABILITY_MANIFEST_SHA256 = _load_capability_manifest()
+CURRENT_CAPABILITY_MANIFEST_VERSION: Literal["2026.1"] = "2026.1"
+CURRENT_CAPABILITY_ACCOUNTING_YEAR: Literal[2026] = 2026
+
+
+EligibilityAnswer = Literal["yes", "no", "unknown"]
+EligibilityDecision = Literal["supported", "clarify", "blocked"]
+EligibilityRecheckTrigger = Literal[
+    "public_fact_changed",
+    "material_answer_changed",
+    "manifest_changed",
+    "before_payment",
+    "before_filing",
+]
+
+
+class EligibilityPrecheckRequest(CompanyAccessCommandModel):
+    org_number: str = Field(pattern=r"^[0-9]{9}$")
+    accounting_year: int = Field(ge=2000, le=2100)
+
+
+class EligibilityDefinitiveRequest(EligibilityPrecheckRequest):
+    expected_public_facts_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    capability_manifest_version: str = Field(min_length=1, max_length=100)
+    capability_manifest_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    answers: dict[str, EligibilityAnswer]
+
+
+class EligibilityPublicFacts(CompanyAccessResponseModel):
+    org_number: str
+    name: str
+    entity_type: str
+    status_text: str
+    source: str
+
+
+class EligibilityQuestion(CompanyAccessResponseModel):
+    code: str
+    prompt: str
+    answer_options: tuple[Literal["yes", "no", "unknown"], ...] = (
+        "yes",
+        "no",
+        "unknown",
+    )
+
+
+class CompanyYearPromise(CompanyAccessResponseModel):
+    accounting_year: int
+    starts_on: str
+    ends_on: str
+    reconstruction_required_from: str
+    only_accounting_and_filing_product: Literal[True]
+    customer_claims: list[str]
+
+
+class EligibilityDecisionResponse(CompanyAccessResponseModel):
+    decision: EligibilityDecision
+    provisional: bool
+    capability_manifest_version: str
+    capability_manifest_sha256: str
+    accounting_year: int
+    public_facts: EligibilityPublicFacts
+    public_facts_sha256: str
+    questions: list[EligibilityQuestion]
+    question_codes: list[str]
+    answers: dict[str, EligibilityAnswer]
+    answers_sha256: str | None
+    reason_codes: list[str]
+    reason_explanations: list[str]
+    next_step_code: str
+    next_step: str
+    company_year_promise: CompanyYearPromise | None
+
+
+class CompanyYearAdmissionResponse(CompanyAccessResponseModel):
+    company_id: UUID
+    company_year_admission_id: UUID
+    accounting_year: int
+    reconstruct_from: str
+    capability_manifest_version: str
+    capability_manifest_sha256: str
+    current_agreement_accepted: Literal[True]
+    replayed: bool
+
+
+class CompanyYearEligibilityRecheckRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    trigger: EligibilityRecheckTrigger
+    answers: dict[str, EligibilityAnswer] | None = None
+
+
+class CompanyYearEligibilityStateResponse(CompanyAccessResponseModel):
+    company_year_eligibility_assessment_id: UUID
+    company_year_admission_id: UUID
+    company_id: UUID
+    accounting_year: int
+    trigger: EligibilityRecheckTrigger
+    decision: EligibilityDecision
+    accepted_capability_manifest_version: str
+    accepted_capability_manifest_sha256: str
+    current_capability_manifest_version: str
+    current_capability_manifest_sha256: str
+    accepted_company_year_promise: CompanyYearPromise
+    reason_codes: list[str]
+    reason_explanations: list[str]
+    next_step_code: str
+    next_step: str
+    consequential_operations_allowed: bool
+    archive_export_available: Literal[True]
+    replayed: bool
 
 
 class CurrentAgreementRequest(CompanyAccessCommandModel):
@@ -137,6 +393,20 @@ class CurrentAgreementRequest(CompanyAccessCommandModel):
     dpa_sha256: Literal[
         "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
     ]
+
+
+class CompanyYearAdmissionRequest(CurrentAgreementRequest):
+    operation_id: UUID
+    org_number: str = Field(pattern=r"^[0-9]{9}$")
+    accounting_year: int = Field(ge=2000, le=2100)
+    expected_public_facts_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    capability_manifest_version: str = Field(min_length=1, max_length=100)
+    capability_manifest_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    answers: dict[str, EligibilityAnswer]
+    authority_accepted: Literal[True]
+    company_year_promise_accepted: Literal[True]
+    privacy_notice_version: str = Field(min_length=1, max_length=100)
+    privacy_notice_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class CompanyOnboardingRequest(CurrentAgreementRequest):
@@ -170,11 +440,22 @@ class CompanyRegistryIdentity(CompanyAccessCommandModel):
     source: Literal["brreg"]
 
 
-class CompanyOnboardingGatewayCommand(CompanyAccessCommandModel):
+class CompanyYearAdmissionGatewayCommand(CompanyAccessCommandModel):
     operation_id: UUID
     verified_actor: UUID
     verified_email: str
     company: CompanyRegistryIdentity
+    accounting_year: int
+    reconstruct_from: str
+    public_facts_json: str
+    public_facts_sha256: str
+    answers_json: str
+    answers_sha256: str
+    capability_manifest_json: str
+    company_year_promise_json: str
+    company_year_promise_sha256: str
+    capability_manifest_version: Literal["2026.1"] = CURRENT_CAPABILITY_MANIFEST_VERSION
+    capability_manifest_sha256: str = CURRENT_CAPABILITY_MANIFEST_SHA256
     business_terms_version: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_VERSION
     business_terms_effective_date: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
     business_terms_path: Literal["/vilkar"] = CURRENT_BUSINESS_TERMS_PATH
@@ -187,8 +468,40 @@ class CompanyOnboardingGatewayCommand(CompanyAccessCommandModel):
     dpa_sha256: Literal[
         "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
     ] = CURRENT_DPA_SHA256
+    privacy_notice_version: Literal["2026-07-15"] = CURRENT_PRIVACY_NOTICE_VERSION
+    privacy_notice_effective_date: Literal[
+        "2026-07-15"
+    ] = CURRENT_PRIVACY_NOTICE_EFFECTIVE_DATE
+    privacy_notice_path: Literal["/personvern"] = CURRENT_PRIVACY_NOTICE_PATH
+    privacy_notice_sha256: Literal[
+        "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+    ] = CURRENT_PRIVACY_NOTICE_SHA256
     authority_statement_version: Literal["authority-v1"] = CURRENT_AUTHORITY_STATEMENT_VERSION
     acceptance_method: Literal["in_app_clickwrap"] = CURRENT_ACCEPTANCE_METHOD
+
+
+class CompanyYearEligibilityRecheckGatewayCommand(CompanyAccessCommandModel):
+    operation_id: UUID
+    verified_actor: UUID
+    company_year_admission_id: UUID
+    company_id: UUID
+    accounting_year: int
+    previous_assessment_id: UUID
+    trigger: EligibilityRecheckTrigger
+    decision: EligibilityDecision
+    capability_manifest_json: str
+    public_facts_json: str
+    public_facts_sha256: str
+    answers_json: str
+    answers_sha256: str
+    reason_codes: tuple[str, ...]
+    reason_explanations: tuple[str, ...]
+    next_step_code: str
+    next_step: str
+    consequential_operations_allowed: bool
+    capability_manifest_version: Literal["2026.1"] = CURRENT_CAPABILITY_MANIFEST_VERSION
+    capability_manifest_sha256: str = CURRENT_CAPABILITY_MANIFEST_SHA256
+    archive_export_available: Literal[True] = True
 
 
 class CompanyAgreementAcceptanceGatewayCommand(CompanyAccessCommandModel):
@@ -524,6 +837,10 @@ class CompanyAccessGateway(Protocol):
         self, access_token: str, company_ids: list[str]
     ) -> list[Mapping[str, object]]: ...
 
+    async def company_year_access_states(
+        self, access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]: ...
+
     async def support_operator(
         self, access_token: str, subject: str
     ) -> Mapping[str, object] | None: ...
@@ -532,8 +849,20 @@ class CompanyAccessGateway(Protocol):
         self, access_token: str, query: str
     ) -> list[Mapping[str, object]]: ...
 
-    async def onboard_company(
-        self, access_token: str, command: CompanyOnboardingGatewayCommand
+    async def admit_company_year(
+        self, access_token: str, command: CompanyYearAdmissionGatewayCommand
+    ) -> Mapping[str, object]: ...
+
+    async def company_year_admission_replay(
+        self, access_token: str, operation_id: str
+    ) -> Mapping[str, object] | None: ...
+
+    async def company_year_admission_context(
+        self, access_token: str, company_year_admission_id: str, operation_id: str
+    ) -> Mapping[str, object] | None: ...
+
+    async def record_company_year_eligibility_recheck(
+        self, access_token: str, command: CompanyYearEligibilityRecheckGatewayCommand
     ) -> Mapping[str, object]: ...
 
     async def reaccept_agreement(
@@ -643,6 +972,168 @@ def _token_aal(access_token: str) -> Literal["aal1", "aal2"]:
     return "aal2" if claims.get("aal") == "aal2" else "aal1"
 
 
+def _manifest_mapping(key: str) -> Mapping[str, object]:
+    value = CAPABILITY_MANIFEST.get(key)
+    if not isinstance(value, Mapping):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    return value
+
+
+def _manifest_question_definitions() -> list[Mapping[str, object]]:
+    value = CAPABILITY_MANIFEST.get("questions")
+    if not isinstance(value, list) or not all(isinstance(item, Mapping) for item in value):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    return cast(list[Mapping[str, object]], value)
+
+
+def _eligibility_questions(
+    definitions: list[Mapping[str, object]],
+) -> list[EligibilityQuestion]:
+    return [
+        EligibilityQuestion(code=str(item["code"]), prompt=str(item["prompt"]))
+        for item in definitions
+    ]
+
+
+def _registry_identity(raw: Mapping[str, object], *, expected_org_number: str) -> CompanyRegistryIdentity:
+    try:
+        company = CompanyRegistryIdentity.model_validate(raw)
+    except ValueError:
+        raise _company_registry_unavailable() from None
+    if company.org_number != expected_org_number:
+        raise _company_registry_unavailable()
+    return company
+
+
+def _eligibility_public_facts(company: CompanyRegistryIdentity) -> EligibilityPublicFacts:
+    return EligibilityPublicFacts(
+        org_number=company.org_number,
+        name=company.name,
+        entity_type=company.entity_type,
+        status_text=company.status_text,
+        source=company.source,
+    )
+
+
+def _public_fact_block_reasons(
+    company: CompanyRegistryIdentity, *, accounting_year: int
+) -> list[str]:
+    if accounting_year != CURRENT_CAPABILITY_ACCOUNTING_YEAR:
+        return ["ACCOUNTING_YEAR_NOT_AVAILABLE"]
+    rules = _manifest_mapping("publicRules")
+    entity_types = rules.get("supportedEntityTypes")
+    statuses = rules.get("supportedStatusTexts")
+    if not isinstance(entity_types, list) or company.entity_type not in entity_types:
+        return [str(rules["legalFormBlockReasonCode"])]
+    if not isinstance(statuses, list) or company.status_text not in statuses:
+        return [str(rules["statusBlockReasonCode"])]
+    return []
+
+
+def _company_year_promise(accounting_year: int) -> CompanyYearPromise:
+    promise = _manifest_mapping("promise")
+    return CompanyYearPromise(
+        accounting_year=accounting_year,
+        starts_on=str(promise["startsOn"]),
+        ends_on=str(promise["endsOn"]),
+        reconstruction_required_from=str(promise["reconstructFrom"]),
+        only_accounting_and_filing_product=True,
+        customer_claims=cast(list[str], promise["customerClaims"]),
+    )
+
+
+def _eligibility_decision_response(
+    *,
+    company: CompanyRegistryIdentity,
+    accounting_year: int,
+    decision: EligibilityDecision,
+    provisional: bool,
+    question_definitions: list[Mapping[str, object]],
+    answers: Mapping[str, EligibilityAnswer],
+    reason_codes: list[str],
+) -> EligibilityDecisionResponse:
+    outcomes = _manifest_mapping("outcomes")
+    if decision == "supported":
+        next_step_code = str(outcomes["supportedNextStepCode"])
+        next_step = str(outcomes["supportedNextStep"])
+    elif decision == "clarify" and provisional:
+        next_step_code = str(outcomes["precheckNextStepCode"])
+        next_step = str(outcomes["precheckNextStep"])
+    elif decision == "clarify":
+        next_step_code = str(outcomes["clarifyNextStepCode"])
+        next_step = str(outcomes["clarifyNextStep"])
+    else:
+        next_step_code = str(outcomes["blockedNextStepCode"])
+        next_step = str(outcomes["blockedNextStep"])
+    public_facts = _eligibility_public_facts(company)
+    public_facts_payload = public_facts.model_dump(mode="json", by_alias=True)
+    normalized_answers = dict(sorted(answers.items()))
+    public_reason_explanations = _manifest_mapping("publicRules").get(
+        "reasonExplanations"
+    )
+    if not isinstance(public_reason_explanations, Mapping):
+        raise RuntimeError("company_access_capability_manifest_invalid")
+    reason_explanations = [
+        str(public_reason_explanations[code])
+        for code in reason_codes
+        if code in public_reason_explanations
+    ]
+    if decision in ("blocked", "clarify"):
+        prefix = (
+            "Dette svaret er utenfor grensen:"
+            if decision == "blocked"
+            else "Dette må avklares:"
+        )
+        reason_explanations.extend(
+            f"{prefix} {definition['prompt']}" for definition in question_definitions
+        )
+    return EligibilityDecisionResponse(
+        decision=decision,
+        provisional=provisional,
+        capability_manifest_version=CURRENT_CAPABILITY_MANIFEST_VERSION,
+        capability_manifest_sha256=CURRENT_CAPABILITY_MANIFEST_SHA256,
+        accounting_year=accounting_year,
+        public_facts=public_facts,
+        public_facts_sha256=_canonical_sha256(public_facts_payload),
+        questions=_eligibility_questions(question_definitions),
+        question_codes=[str(item["code"]) for item in question_definitions],
+        answers=normalized_answers,
+        answers_sha256=(
+            _canonical_sha256(normalized_answers) if normalized_answers else None
+        ),
+        reason_codes=reason_codes,
+        reason_explanations=reason_explanations,
+        next_step_code=next_step_code,
+        next_step=next_step,
+        company_year_promise=(
+            _company_year_promise(accounting_year) if decision == "supported" else None
+        ),
+    )
+
+
+def _assert_current_capability_manifest(*, version: str, sha256: str) -> None:
+    if (
+        version != CURRENT_CAPABILITY_MANIFEST_VERSION
+        or sha256 != CURRENT_CAPABILITY_MANIFEST_SHA256
+    ):
+        raise CompanyAccessError(
+            status=409,
+            code="ELIGIBILITY_MANIFEST_CHANGED",
+            title="Eligibility rules changed",
+            detail="The eligibility rules changed. Start a new free company check.",
+        )
+
+
+def _assert_current_privacy_notice(*, version: str, sha256: str) -> None:
+    if version != CURRENT_PRIVACY_NOTICE_VERSION or sha256 != CURRENT_PRIVACY_NOTICE_SHA256:
+        raise CompanyAccessError(
+            status=409,
+            code="ADMISSION_EVIDENCE_CHANGED",
+            title="Admission evidence changed",
+            detail="The privacy notice changed. Read it and accept the company year again.",
+        )
+
+
 class CompanyAccessService:
     def __init__(
         self,
@@ -720,10 +1211,75 @@ class CompanyAccessService:
             for row in agreement_rows
             if _is_current_agreement(row)
         }
+        company_year_rows = await self._gateway.company_year_access_states(
+            access_token, [str(company["id"]) for company in permitted_companies]
+        )
+        company_year_states: dict[str, Mapping[str, object]] = {}
+        for row in company_year_rows:
+            state_company_id = str(row.get("company_id"))
+            if state_company_id not in roles or state_company_id in company_year_states:
+                raise _company_access_unavailable()
+            try:
+                UUID(str(row["company_year_admission_id"]))
+                admitted_year = int(str(row["admitted_accounting_year"]))
+            except (KeyError, TypeError, ValueError):
+                raise _company_access_unavailable() from None
+            decision = row.get("current_eligibility_decision")
+            latest_manifest_version = row.get("latest_capability_manifest_version")
+            latest_manifest_sha256 = row.get("latest_capability_manifest_sha256")
+            reason_explanations = row.get("eligibility_reason_explanations")
+            next_step_code = row.get("eligibility_next_step_code")
+            next_step = row.get("eligibility_next_step")
+            allowed = row.get("consequential_operations_allowed")
+            archive_available = row.get("archive_export_available")
+            if (
+                admitted_year != CURRENT_CAPABILITY_ACCOUNTING_YEAR
+                or decision not in ("supported", "clarify", "blocked")
+                or not isinstance(latest_manifest_version, str)
+                or not latest_manifest_version
+                or not isinstance(latest_manifest_sha256, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", latest_manifest_sha256)
+                or not isinstance(reason_explanations, list)
+                or not all(
+                    isinstance(explanation, str) and explanation
+                    for explanation in reason_explanations
+                )
+                or not isinstance(next_step_code, str)
+                or not next_step_code
+                or not isinstance(next_step, str)
+                or not next_step
+                or not isinstance(allowed, bool)
+                or archive_available is not True
+                or (decision == "supported" and not allowed)
+                or (decision != "supported" and allowed)
+            ):
+                raise _company_access_unavailable()
+            normalized_state = dict(row)
+            if (
+                latest_manifest_version != CURRENT_CAPABILITY_MANIFEST_VERSION
+                or latest_manifest_sha256 != CURRENT_CAPABILITY_MANIFEST_SHA256
+            ):
+                normalized_state.update(
+                    {
+                        "current_eligibility_decision": "clarify",
+                        "eligibility_reason_explanations": [
+                            "Talli-grensen er oppdatert og må kontrolleres på nytt."
+                        ],
+                        "eligibility_next_step_code": "RECHECK_REQUIRED",
+                        "eligibility_next_step": (
+                            "Kontroller selskapsgrensen på nytt før betaling eller innsending. "
+                            "Lese- og eksporttilgang er fortsatt åpen."
+                        ),
+                        "consequential_operations_allowed": False,
+                    }
+                )
+            company_year_states[state_company_id] = normalized_state
 
         def context(company: Mapping[str, object]) -> CompanyContext:
+            company_id_value = str(company["id"])
+            company_year_state = company_year_states.get(company_id_value)
             return CompanyContext(
-                id=str(company["id"]),
+                id=company_id_value,
                 org_number=str(company["org_number"]),
                 name=str(company["name"]),
                 entity_type=str(company["entity_type"]),
@@ -747,7 +1303,47 @@ class CompanyAccessService:
                 role="owner",
                 resource_scope="owner_sensitive",
                 aal="aal2",
-                current_agreement_accepted=str(company["id"]) in current_agreement_company_ids,
+                current_agreement_accepted=company_id_value
+                in current_agreement_company_ids,
+                company_year_admission_id=(
+                    UUID(str(company_year_state["company_year_admission_id"]))
+                    if company_year_state is not None
+                    else None
+                ),
+                admitted_accounting_year=(
+                    int(str(company_year_state["admitted_accounting_year"]))
+                    if company_year_state is not None
+                    else None
+                ),
+                current_eligibility_decision=(
+                    cast(
+                        Literal["supported", "clarify", "blocked"],
+                        company_year_state["current_eligibility_decision"],
+                    )
+                    if company_year_state is not None
+                    else None
+                ),
+                eligibility_reason_explanations=(
+                    cast(list[str], company_year_state["eligibility_reason_explanations"])
+                    if company_year_state is not None
+                    else []
+                ),
+                eligibility_next_step_code=(
+                    str(company_year_state["eligibility_next_step_code"])
+                    if company_year_state is not None
+                    else None
+                ),
+                eligibility_next_step=(
+                    str(company_year_state["eligibility_next_step"])
+                    if company_year_state is not None
+                    else None
+                ),
+                consequential_operations_allowed=(
+                    bool(company_year_state["consequential_operations_allowed"])
+                    if company_year_state is not None
+                    else False
+                ),
+                archive_export_available=(company_year_state is not None),
             )
 
         contexts = [context(company) for company in permitted_companies]
@@ -819,43 +1415,482 @@ class CompanyAccessService:
             companies=[_operator_company_record(row) for row in rows]
         )
 
+    async def eligibility_precheck(
+        self, command: EligibilityPrecheckRequest
+    ) -> EligibilityDecisionResponse:
+        if self._company_registry is None:
+            raise _company_access_unavailable()
+        raw_company = await self._company_registry.lookup_company(command.org_number)
+        company = _registry_identity(raw_company, expected_org_number=command.org_number)
+        public_blocks = _public_fact_block_reasons(
+            company, accounting_year=command.accounting_year
+        )
+        if public_blocks:
+            return _eligibility_decision_response(
+                company=company,
+                accounting_year=command.accounting_year,
+                decision="blocked",
+                provisional=True,
+                question_definitions=[],
+                answers={},
+                reason_codes=public_blocks,
+            )
+        return _eligibility_decision_response(
+            company=company,
+            accounting_year=command.accounting_year,
+            decision="clarify",
+            provisional=True,
+            question_definitions=_manifest_question_definitions(),
+            answers={},
+            reason_codes=[str(_manifest_mapping("outcomes")["precheckReasonCode"])],
+        )
+
+    async def eligibility_definitive(
+        self, command: EligibilityDefinitiveRequest
+    ) -> EligibilityDecisionResponse:
+        _assert_current_capability_manifest(
+            version=command.capability_manifest_version,
+            sha256=command.capability_manifest_sha256,
+        )
+        return await self._definitive_eligibility(command)
+
+    async def _definitive_eligibility(
+        self, command: EligibilityDefinitiveRequest
+    ) -> EligibilityDecisionResponse:
+        if self._company_registry is None:
+            raise _company_access_unavailable()
+        raw_company = await self._company_registry.lookup_company(command.org_number)
+        company = _registry_identity(raw_company, expected_org_number=command.org_number)
+        return self._evaluate_definitive(company, command)
+
+    def _evaluate_definitive(
+        self,
+        company: CompanyRegistryIdentity,
+        command: EligibilityDefinitiveRequest,
+    ) -> EligibilityDecisionResponse:
+        public_facts = _eligibility_public_facts(company)
+        current_public_facts_sha256 = _canonical_sha256(
+            public_facts.model_dump(mode="json", by_alias=True)
+        )
+        if current_public_facts_sha256 != command.expected_public_facts_sha256:
+            raise CompanyAccessError(
+                status=409,
+                code="ELIGIBILITY_FACTS_CHANGED",
+                title="Company facts changed",
+                detail="The public company facts changed. Start a new free company check.",
+            )
+        definitions = _manifest_question_definitions()
+        expected_codes = {str(item["code"]) for item in definitions}
+        if set(command.answers) != expected_codes:
+            raise CompanyAccessError(
+                status=422,
+                code="ELIGIBILITY_ANSWERS_INVALID",
+                title="Eligibility answers invalid",
+                detail="Answer exactly the material questions returned by the free company check.",
+            )
+        public_blocks = _public_fact_block_reasons(
+            company, accounting_year=command.accounting_year
+        )
+        blocked_reasons = list(public_blocks)
+        blocked_definitions: list[Mapping[str, object]] = []
+        unknown_definitions: list[Mapping[str, object]] = []
+        for definition in definitions:
+            code = str(definition["code"])
+            answer = command.answers[code]
+            if answer == "unknown":
+                unknown_definitions.append(definition)
+            elif answer != definition["supportedAnswer"]:
+                blocked_reasons.append(str(definition["blockedReasonCode"]))
+                blocked_definitions.append(definition)
+        if blocked_reasons:
+            return _eligibility_decision_response(
+                company=company,
+                accounting_year=command.accounting_year,
+                decision="blocked",
+                provisional=False,
+                question_definitions=blocked_definitions,
+                answers=command.answers,
+                reason_codes=list(dict.fromkeys(blocked_reasons)),
+            )
+        if unknown_definitions:
+            return _eligibility_decision_response(
+                company=company,
+                accounting_year=command.accounting_year,
+                decision="clarify",
+                provisional=False,
+                question_definitions=unknown_definitions,
+                answers=command.answers,
+                reason_codes=[str(_manifest_mapping("outcomes")["clarifyReasonCode"])],
+            )
+        return _eligibility_decision_response(
+            company=company,
+            accounting_year=command.accounting_year,
+            decision="supported",
+            provisional=False,
+            question_definitions=[],
+            answers=command.answers,
+            reason_codes=[],
+        )
+
+    async def admit_company_year(
+        self,
+        access_token: str,
+        command: CompanyYearAdmissionRequest,
+    ) -> CompanyYearAdmissionResponse:
+        identity = await self._gateway.session_identity(access_token)
+        actor, email = _verified_identity(identity)
+        replay = await self._gateway.company_year_admission_replay(
+            access_token, str(command.operation_id)
+        )
+        if replay is not None:
+            replay_answers = replay.get("answers")
+            if (
+                replay.get("org_number") != command.org_number
+                or replay.get("accounting_year") != command.accounting_year
+                or replay.get("public_facts_sha256")
+                != command.expected_public_facts_sha256
+                or replay.get("capability_manifest_version")
+                != command.capability_manifest_version
+                or replay.get("capability_manifest_sha256")
+                != command.capability_manifest_sha256
+                or not isinstance(replay_answers, Mapping)
+                or dict(replay_answers) != dict(command.answers)
+                or replay.get("business_terms_version")
+                != command.business_terms_version
+                or replay.get("business_terms_sha256")
+                != command.business_terms_sha256
+                or replay.get("dpa_version") != command.dpa_version
+                or replay.get("dpa_sha256") != command.dpa_sha256
+                or replay.get("privacy_notice_version")
+                != command.privacy_notice_version
+                or replay.get("privacy_notice_sha256")
+                != command.privacy_notice_sha256
+            ):
+                raise _company_access_conflict()
+            return _company_year_admission_response(
+                {
+                    "company_id": replay.get("company_id"),
+                    "company_year_admission_id": replay.get(
+                        "company_year_admission_id"
+                    ),
+                    "accounting_year": replay.get("accounting_year"),
+                    "reconstruct_from": replay.get("reconstruct_from"),
+                    "capability_manifest_version": replay.get(
+                        "capability_manifest_version"
+                    ),
+                    "capability_manifest_sha256": replay.get(
+                        "capability_manifest_sha256"
+                    ),
+                    "current_agreement_accepted": True,
+                    "replayed": True,
+                }
+            )
+        _assert_current_capability_manifest(
+            version=command.capability_manifest_version,
+            sha256=command.capability_manifest_sha256,
+        )
+        _assert_current_privacy_notice(
+            version=command.privacy_notice_version,
+            sha256=command.privacy_notice_sha256,
+        )
+        definitive_command = EligibilityDefinitiveRequest(
+            org_number=command.org_number,
+            accounting_year=command.accounting_year,
+            expected_public_facts_sha256=command.expected_public_facts_sha256,
+            capability_manifest_version=command.capability_manifest_version,
+            capability_manifest_sha256=command.capability_manifest_sha256,
+            answers=command.answers,
+        )
+        if self._company_registry is None:
+            raise _company_access_unavailable()
+        raw_company = await self._company_registry.lookup_company(command.org_number)
+        company = _registry_identity(raw_company, expected_org_number=command.org_number)
+        eligibility = self._evaluate_definitive(company, definitive_command)
+        if eligibility.decision != "supported" or eligibility.company_year_promise is None:
+            raise CompanyAccessError(
+                status=422,
+                code="COMPANY_YEAR_NOT_ELIGIBLE",
+                title="Company year not eligible",
+                detail="The company year cannot be admitted. Follow the eligibility next step.",
+            )
+        answers_payload = dict(sorted(command.answers.items()))
+        public_facts_payload = eligibility.public_facts.model_dump(mode="json", by_alias=True)
+        promise_payload = eligibility.company_year_promise.model_dump(mode="json", by_alias=True)
+        row = await self._gateway.admit_company_year(
+            access_token,
+            CompanyYearAdmissionGatewayCommand(
+                operation_id=command.operation_id,
+                verified_actor=UUID(actor),
+                verified_email=email,
+                company=company,
+                accounting_year=command.accounting_year,
+                reconstruct_from=eligibility.company_year_promise.reconstruction_required_from,
+                public_facts_json=json.dumps(
+                    public_facts_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                public_facts_sha256=eligibility.public_facts_sha256,
+                answers_json=json.dumps(
+                    answers_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                answers_sha256=cast(str, eligibility.answers_sha256),
+                capability_manifest_json=json.dumps(
+                    CAPABILITY_MANIFEST,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                company_year_promise_json=json.dumps(
+                    promise_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                company_year_promise_sha256=_canonical_sha256(promise_payload),
+            ),
+        )
+        return _company_year_admission_response(row)
+
+    async def recheck_company_year_eligibility(
+        self,
+        access_token: str,
+        company_year_admission_id: UUID,
+        command: CompanyYearEligibilityRecheckRequest,
+    ) -> CompanyYearEligibilityStateResponse:
+        raw_context = await self._gateway.company_year_admission_context(
+            access_token, str(company_year_admission_id), str(command.operation_id)
+        )
+        if raw_context is None:
+            raise _company_access_not_found()
+        try:
+            context_admission_id = UUID(str(raw_context["company_year_admission_id"]))
+            company_id = UUID(str(raw_context["company_id"]))
+            accounting_year = int(str(raw_context["accounting_year"]))
+            org_number = str(raw_context["org_number"])
+            accepted_manifest_version = str(
+                raw_context["accepted_capability_manifest_version"]
+            )
+            accepted_manifest_sha256 = str(
+                raw_context["accepted_capability_manifest_sha256"]
+            )
+            previous_assessment_id = UUID(str(raw_context["latest_assessment_id"]))
+            latest_answers = raw_context["latest_answers"]
+            accepted_promise = CompanyYearPromise.model_validate(
+                raw_context["accepted_company_year_promise"]
+            )
+        except (KeyError, TypeError, ValueError):
+            raise _company_access_unavailable() from None
+        if not isinstance(latest_answers, Mapping):
+            raise _company_access_unavailable()
+        if command.trigger == "material_answer_changed" and command.answers is None:
+            raise CompanyAccessError(
+                status=422,
+                code="ELIGIBILITY_ANSWERS_INVALID",
+                title="Eligibility answers invalid",
+                detail="Updated material answers are required for this recheck.",
+            )
+        effective_answers = (
+            dict(command.answers) if command.answers is not None else dict(latest_answers)
+        )
+        if (
+            context_admission_id != company_year_admission_id
+            or accounting_year != CURRENT_CAPABILITY_ACCOUNTING_YEAR
+            or not re.fullmatch(r"[0-9]{9}", org_number)
+            or not re.fullmatch(r"[a-f0-9]{64}", accepted_manifest_sha256)
+            or accepted_promise.accounting_year != accounting_year
+        ):
+            raise _company_access_unavailable()
+        if raw_context.get("replay_assessment_id") is not None:
+            try:
+                replay_assessment_id = UUID(str(raw_context["replay_assessment_id"]))
+                replay_trigger = str(raw_context["replay_trigger"])
+                replay_decision = str(raw_context["replay_decision"])
+                replay_manifest_version = str(
+                    raw_context["replay_capability_manifest_version"]
+                )
+                replay_manifest_sha256 = str(
+                    raw_context["replay_capability_manifest_sha256"]
+                )
+                replay_answers = raw_context["replay_answers"]
+                replay_reason_codes = raw_context["replay_reason_codes"]
+                replay_reason_explanations = raw_context[
+                    "replay_reason_explanations"
+                ]
+                replay_next_step_code = raw_context["replay_next_step_code"]
+                replay_next_step = raw_context["replay_next_step"]
+                replay_allowed = raw_context[
+                    "replay_consequential_operations_allowed"
+                ]
+                replay_archive_available = raw_context[
+                    "replay_archive_export_available"
+                ]
+            except (KeyError, TypeError, ValueError):
+                raise _company_access_unavailable() from None
+            if (
+                replay_trigger != command.trigger
+                or not isinstance(replay_answers, Mapping)
+                or (
+                    command.answers is not None
+                    and dict(replay_answers) != dict(command.answers)
+                )
+            ):
+                raise _company_access_conflict()
+            if (
+                replay_decision not in ("supported", "clarify", "blocked")
+                or not replay_manifest_version
+                or not re.fullmatch(r"[a-f0-9]{64}", replay_manifest_sha256)
+                or not isinstance(replay_reason_codes, list)
+                or not all(isinstance(code, str) for code in replay_reason_codes)
+                or not isinstance(replay_reason_explanations, list)
+                or not all(
+                    isinstance(explanation, str) and explanation
+                    for explanation in replay_reason_explanations
+                )
+                or not isinstance(replay_next_step_code, str)
+                or not replay_next_step_code
+                or not isinstance(replay_next_step, str)
+                or not replay_next_step
+                or not isinstance(replay_allowed, bool)
+                or replay_archive_available is not True
+                or (replay_decision == "supported" and not replay_allowed)
+                or (replay_decision != "supported" and replay_allowed)
+            ):
+                raise _company_access_unavailable()
+            return CompanyYearEligibilityStateResponse(
+                company_year_eligibility_assessment_id=replay_assessment_id,
+                company_year_admission_id=company_year_admission_id,
+                company_id=company_id,
+                accounting_year=accounting_year,
+                trigger=cast(EligibilityRecheckTrigger, replay_trigger),
+                decision=cast(EligibilityDecision, replay_decision),
+                accepted_capability_manifest_version=accepted_manifest_version,
+                accepted_capability_manifest_sha256=accepted_manifest_sha256,
+                current_capability_manifest_version=replay_manifest_version,
+                current_capability_manifest_sha256=replay_manifest_sha256,
+                accepted_company_year_promise=accepted_promise,
+                reason_codes=cast(list[str], replay_reason_codes),
+                reason_explanations=cast(
+                    list[str], replay_reason_explanations
+                ),
+                next_step_code=replay_next_step_code,
+                next_step=replay_next_step,
+                consequential_operations_allowed=replay_allowed,
+                archive_export_available=True,
+                replayed=True,
+            )
+        if self._company_registry is None:
+            raise _company_access_unavailable()
+        raw_company = await self._company_registry.lookup_company(org_number)
+        company = _registry_identity(raw_company, expected_org_number=org_number)
+        public_facts = _eligibility_public_facts(company)
+        public_facts_payload = public_facts.model_dump(mode="json", by_alias=True)
+        definitive_command = EligibilityDefinitiveRequest(
+            org_number=org_number,
+            accounting_year=accounting_year,
+            expected_public_facts_sha256=_canonical_sha256(public_facts_payload),
+            capability_manifest_version=CURRENT_CAPABILITY_MANIFEST_VERSION,
+            capability_manifest_sha256=CURRENT_CAPABILITY_MANIFEST_SHA256,
+            answers=cast(dict[str, EligibilityAnswer], effective_answers),
+        )
+        eligibility = self._evaluate_definitive(company, definitive_command)
+        outcomes = _manifest_mapping("outcomes")
+        if eligibility.decision == "supported":
+            next_step_code = str(outcomes["recheckSupportedNextStepCode"])
+            next_step = str(outcomes["recheckSupportedNextStep"])
+            consequential_operations_allowed = True
+        elif eligibility.decision == "clarify":
+            next_step_code = str(outcomes["recheckClarifyNextStepCode"])
+            next_step = str(outcomes["recheckClarifyNextStep"])
+            consequential_operations_allowed = False
+        else:
+            next_step_code = str(outcomes["recheckBlockedNextStepCode"])
+            next_step = str(outcomes["recheckBlockedNextStep"])
+            consequential_operations_allowed = False
+        identity = await self._gateway.session_identity(access_token)
+        actor, _email = _verified_identity(identity)
+        answers_payload = dict(sorted(effective_answers.items()))
+        row = await self._gateway.record_company_year_eligibility_recheck(
+            access_token,
+            CompanyYearEligibilityRecheckGatewayCommand(
+                operation_id=command.operation_id,
+                verified_actor=UUID(actor),
+                company_year_admission_id=company_year_admission_id,
+                company_id=company_id,
+                accounting_year=accounting_year,
+                previous_assessment_id=previous_assessment_id,
+                trigger=command.trigger,
+                decision=eligibility.decision,
+                capability_manifest_json=json.dumps(
+                    CAPABILITY_MANIFEST,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                public_facts_json=json.dumps(
+                    public_facts_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                public_facts_sha256=eligibility.public_facts_sha256,
+                answers_json=json.dumps(
+                    answers_payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                answers_sha256=cast(str, eligibility.answers_sha256),
+                reason_codes=tuple(eligibility.reason_codes),
+                reason_explanations=tuple(eligibility.reason_explanations),
+                next_step_code=next_step_code,
+                next_step=next_step,
+                consequential_operations_allowed=consequential_operations_allowed,
+            ),
+        )
+        try:
+            assessment_id = UUID(str(row["company_year_eligibility_assessment_id"]))
+        except (KeyError, ValueError):
+            raise _company_access_unavailable() from None
+        if not isinstance(row.get("replayed"), bool):
+            raise _company_access_unavailable()
+        return CompanyYearEligibilityStateResponse(
+            company_year_eligibility_assessment_id=assessment_id,
+            company_year_admission_id=company_year_admission_id,
+            company_id=company_id,
+            accounting_year=accounting_year,
+            trigger=command.trigger,
+            decision=eligibility.decision,
+            accepted_capability_manifest_version=accepted_manifest_version,
+            accepted_capability_manifest_sha256=accepted_manifest_sha256,
+            current_capability_manifest_version=CURRENT_CAPABILITY_MANIFEST_VERSION,
+            current_capability_manifest_sha256=CURRENT_CAPABILITY_MANIFEST_SHA256,
+            accepted_company_year_promise=accepted_promise,
+            reason_codes=eligibility.reason_codes,
+            reason_explanations=eligibility.reason_explanations,
+            next_step_code=next_step_code,
+            next_step=next_step,
+            consequential_operations_allowed=consequential_operations_allowed,
+            archive_export_available=True,
+            replayed=bool(row["replayed"]),
+        )
+
     async def onboard_company(
         self,
         access_token: str,
         command: CompanyOnboardingRequest,
     ) -> CompanyOnboardingResponse:
-        if self._company_registry is None:
-            raise _company_access_unavailable()
-        identity = await self._gateway.session_identity(access_token)
-        actor, email = _verified_identity(identity)
-        raw_company = await self._company_registry.lookup_company(command.org_number)
-        try:
-            company = CompanyRegistryIdentity.model_validate(raw_company)
-        except ValueError:
-            raise _company_registry_unavailable() from None
-        if company.org_number != command.org_number:
-            raise _company_registry_unavailable()
-        if company.entity_type != "AS":
-            raise CompanyAccessError(
-                status=422,
-                code="UNSUPPORTED_COMPANY",
-                title="Unsupported company",
-                detail="Talli supports Norwegian limited companies (AS) in this onboarding flow.",
-            )
-        operation_id = uuid5(
-            NAMESPACE_URL,
-            f"talli:company-access:onboard:{actor}:{company.org_number}",
+        del access_token, command
+        raise CompanyAccessError(
+            status=409,
+            code="DEFINITIVE_ELIGIBILITY_REQUIRED",
+            title="Definitive eligibility required",
+            detail="Complete the free eligibility interview before admitting a company year.",
         )
-        row = await self._gateway.onboard_company(
-            access_token,
-            CompanyOnboardingGatewayCommand(
-                operation_id=operation_id,
-                verified_actor=UUID(actor),
-                verified_email=email,
-                company=company,
-            ),
-        )
-        return _onboarding_response(row)
 
     async def reaccept_agreement(
         self,
@@ -889,7 +1924,7 @@ class CompanyAccessService:
                 verified_email=email,
             ),
         )
-        response = _onboarding_response(row)
+        response = _company_agreement_response(row)
         return CompanyAgreementAcceptanceResponse(**response.model_dump())
 
     async def list_invitations(
@@ -1322,7 +2357,7 @@ def _verified_identity(identity: Mapping[str, object]) -> tuple[str, str]:
     return subject, _identity_email(identity)
 
 
-def _onboarding_response(row: Mapping[str, object]) -> CompanyOnboardingResponse:
+def _company_agreement_response(row: Mapping[str, object]) -> CompanyOnboardingResponse:
     try:
         company_id = UUID(str(row["company_id"]))
     except (KeyError, ValueError):
@@ -1336,6 +2371,27 @@ def _onboarding_response(row: Mapping[str, object]) -> CompanyOnboardingResponse
         current_agreement_accepted=True,
         replayed=bool(row["replayed"]),
     )
+
+
+def _company_year_admission_response(
+    row: Mapping[str, object],
+) -> CompanyYearAdmissionResponse:
+    required = (
+        "company_id",
+        "company_year_admission_id",
+        "accounting_year",
+        "reconstruct_from",
+        "capability_manifest_version",
+        "capability_manifest_sha256",
+        "current_agreement_accepted",
+        "replayed",
+    )
+    if any(key not in row for key in required) or row.get("current_agreement_accepted") is not True:
+        raise _company_access_unavailable()
+    try:
+        return CompanyYearAdmissionResponse.model_validate(row)
+    except ValueError:
+        raise _company_access_unavailable() from None
 
 
 def _company_record_values(row: Mapping[str, object]) -> dict[str, object]:
@@ -1464,6 +2520,15 @@ def _company_access_not_found() -> CompanyAccessError:
     )
 
 
+def _company_access_conflict() -> CompanyAccessError:
+    return CompanyAccessError(
+        status=409,
+        code="COMPANY_ACCESS_CONFLICT",
+        title="Company access conflict",
+        detail="The operation identifier was already used for different company access evidence.",
+    )
+
+
 def _company_access_unavailable() -> CompanyAccessError:
     return CompanyAccessError(
         status=503,
@@ -1517,6 +2582,13 @@ __all__ = [
     "CompanyCancellationResponse",
     "CompanyContext",
     "CompanyContextResponse",
+    "CompanyYearAdmissionGatewayCommand",
+    "CompanyYearAdmissionRequest",
+    "CompanyYearAdmissionResponse",
+    "CompanyYearEligibilityRecheckGatewayCommand",
+    "CompanyYearEligibilityRecheckRequest",
+    "CompanyYearEligibilityStateResponse",
+    "CompanyYearPromise",
     "CompanyDeletionReview",
     "CompanyDeletionReviewResponse",
     "CompanyInvitation",
@@ -1526,12 +2598,19 @@ __all__ = [
     "CompanyMembership",
     "CompanyMembershipListResponse",
     "CompanyMembershipResponse",
-    "CompanyOnboardingGatewayCommand",
     "CompanyOnboardingRequest",
     "CompanyOnboardingResponse",
     "CompanyRegistryGateway",
     "CompanyRegistryIdentity",
     "CreateCompanyInvitationRequest",
+    "EligibilityAnswer",
+    "EligibilityDecisionResponse",
+    "EligibilityDecision",
+    "EligibilityDefinitiveRequest",
+    "EligibilityPrecheckRequest",
+    "EligibilityPublicFacts",
+    "EligibilityQuestion",
+    "EligibilityRecheckTrigger",
     "FinalizeCompanyDeletionGatewayCommand",
     "FinalizeCompanyDeletionRequest",
     "InvitationLookup",

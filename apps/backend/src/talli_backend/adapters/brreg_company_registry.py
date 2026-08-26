@@ -87,9 +87,7 @@ def _optional_string(
     return _required_string(value, maximum=maximum, pattern=pattern)
 
 
-def _optional_boolean(value: object) -> bool:
-    if value is None:
-        return False
+def _required_boolean(value: object) -> bool:
     if not isinstance(value, bool):
         raise _unavailable()
     return value
@@ -198,17 +196,42 @@ class BrregCompanyRegistryAdapter:
             entity_type = _required_string(entity.get("kode"), maximum=32)
             address, postal_code, city = _address(raw)
             deleted_at = _optional_string(raw.get("slettedato"), maximum=32)
-            under_bankruptcy = _optional_boolean(raw.get("underKonkursbehandling"))
-            under_liquidation = _optional_boolean(raw.get("underAvvikling"))
-            status_text = (
-                "slettet"
-                if deleted_at
-                else "under konkursbehandling"
-                if under_bankruptcy
-                else "under avvikling"
-                if under_liquidation
-                else "aktiv"
-            )
+            if deleted_at:
+                status_text = "slettet"
+            else:
+                # V2 publishes these three booleans for a live entity. Missing
+                # flags are a provider/schema failure, never evidence that the
+                # entity is active. ``underKonkursbehandling`` is not present
+                # for ordinary V2 entities and therefore cannot be used as the
+                # negative bankruptcy signal.
+                bankrupt = _required_boolean(raw.get("konkurs"))
+                under_liquidation = _required_boolean(raw.get("underAvvikling"))
+                under_compulsory_dissolution = _required_boolean(
+                    raw.get("underTvangsavviklingEllerTvangsopplosning")
+                )
+                under_reconstruction = bool(
+                    _optional_string(
+                        raw.get("underRekonstruksjonsforhandlingDato"), maximum=32
+                    )
+                )
+                under_foreign_insolvency = bool(
+                    _optional_string(
+                        raw.get("underUtenlandskInsolvensbehandlingDato"), maximum=32
+                    )
+                )
+                status_text = (
+                    "under konkursbehandling"
+                    if bankrupt
+                    else "under avvikling"
+                    if under_liquidation
+                    else "under tvangsavvikling eller tvangsoppløsning"
+                    if under_compulsory_dissolution
+                    else "under rekonstruksjonsforhandling"
+                    if under_reconstruction
+                    else "under utenlandsk insolvensbehandling"
+                    if under_foreign_insolvency
+                    else "aktiv"
+                )
             return {
                 "org_number": returned_org_number,
                 "name": name,

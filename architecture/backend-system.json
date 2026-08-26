@@ -17,8 +17,19 @@
       "routes": ["/api/v1/company-access/context"]
     },
     {
+      "name": "company-year-eligibility-and-admission",
+      "purpose": "Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": [
+        "/api/v1/company-access/eligibility/precheck",
+        "/api/v1/company-access/eligibility/definitive",
+        "/api/v1/company-access/company-year-admissions",
+        "/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks"
+      ]
+    },
+    {
       "name": "company-access-onboarding-and-support",
-      "purpose": "Runs atomic company onboarding and agreement acceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package.",
+      "purpose": "Retains the fail-closed legacy onboarding response, runs agreement reacceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
       "routes": [
         "/api/v1/company-access/onboarding",
@@ -58,7 +69,7 @@
   "technicalOwnership": {
     "schemas": ["public"],
     "tables": ["public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql"],
     "statement": "These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {

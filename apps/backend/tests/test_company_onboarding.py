@@ -16,7 +16,6 @@ from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     CompanyAgreementAcceptanceGatewayCommand,
-    CompanyOnboardingGatewayCommand,
 )
 
 BUSINESS_TERMS_SHA256 = "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
@@ -109,16 +108,6 @@ class OnboardingGatewayStub:
         self.calls.append(("search_operator_companies", query))
         return await self.companies(access_token, ["10000000-0000-0000-0000-000000000001"])
 
-    async def onboard_company(
-        self, _access_token: str, command: CompanyOnboardingGatewayCommand
-    ) -> Mapping[str, object]:
-        self.calls.append(("onboard_company", command))
-        return {
-            "company_id": "10000000-0000-0000-0000-000000000001",
-            "current_agreement_accepted": True,
-            "replayed": False,
-        }
-
     async def reaccept_agreement(
         self, _access_token: str, command: CompanyAgreementAcceptanceGatewayCommand
     ) -> Mapping[str, object]:
@@ -130,7 +119,7 @@ class OnboardingGatewayStub:
         }
 
 
-def test_owner_onboards_supported_as_through_the_backend_boundary() -> None:
+def test_legacy_onboarding_requires_definitive_eligibility_without_lookup_or_write() -> None:
     gateway = OnboardingGatewayStub()
     registry = CompanyRegistryStub()
     response = TestClient(create_app(gateway, registry)).post(
@@ -139,18 +128,10 @@ def test_owner_onboards_supported_as_through_the_backend_boundary() -> None:
         json={"orgNumber": "314159265", **agreement_evidence()},
     )
 
-    assert response.status_code == 201
-    assert response.json() == {
-        "companyId": "10000000-0000-0000-0000-000000000001",
-        "currentAgreementAccepted": True,
-        "replayed": False,
-    }
-    assert registry.calls == ["314159265"]
-    command = gateway.calls[0][1]
-    assert isinstance(command, CompanyOnboardingGatewayCommand)
-    assert str(command.verified_actor) == "00000000-0000-0000-0000-000000000044"
-    assert command.verified_email == "owner@example.no"
-    assert command.company.entity_type == "AS"
+    assert response.status_code == 409
+    assert response.json()["code"] == "DEFINITIVE_ELIGIBILITY_REQUIRED"
+    assert registry.calls == []
+    assert gateway.calls == []
 
 
 @pytest.mark.parametrize(
@@ -178,7 +159,7 @@ def test_onboarding_rejects_malformed_or_stale_evidence_before_lookup_or_write(
     assert gateway.calls == []
 
 
-def test_non_as_is_unsupported_without_calling_the_atomic_writer() -> None:
+def test_legacy_onboarding_does_not_classify_even_an_obviously_unsupported_company() -> None:
     gateway = OnboardingGatewayStub()
     registry = CompanyRegistryStub(entity_type="ENK")
     response = TestClient(create_app(gateway, registry)).post(
@@ -187,8 +168,9 @@ def test_non_as_is_unsupported_without_calling_the_atomic_writer() -> None:
         json={"orgNumber": "314159265", **agreement_evidence()},
     )
 
-    assert response.status_code == 422
-    assert response.json()["code"] == "UNSUPPORTED_COMPANY"
+    assert response.status_code == 409
+    assert response.json()["code"] == "DEFINITIVE_ELIGIBILITY_REQUIRED"
+    assert registry.calls == []
     assert gateway.calls == []
 
 
@@ -281,7 +263,7 @@ def test_operator_context_and_bounded_company_search_require_active_operator() -
     assert too_short.status_code == 422
 
 
-def test_atomic_rpc_retry_reuses_the_identical_onboarding_command() -> None:
+def test_atomic_rpc_retry_reuses_the_identical_admission_command() -> None:
     from talli_backend.adapters.supabase_company_access import (
         SupabaseCompanyAccessAdapter,
         SupabaseConfiguration,
@@ -314,12 +296,14 @@ def test_atomic_rpc_retry_reuses_the_identical_onboarding_command() -> None:
 
     adapter._database_rpc_rows = request  # type: ignore[method-assign]
     payload = {"p_operation_id": "40000000-0000-0000-0000-000000000001"}
-    result = asyncio.run(adapter._rpc_row("bearer", "company_access_onboard_company", payload))
+    result = asyncio.run(
+        adapter._rpc_row("bearer", "company_access_admit_company_year", payload)
+    )
 
     assert result["replayed"] is True
     assert calls == [
-        ("company_access_onboard_company", payload),
-        ("company_access_onboard_company", payload),
+        ("company_access_admit_company_year", payload),
+        ("company_access_admit_company_year", payload),
     ]
 
 
@@ -376,8 +360,9 @@ def test_brreg_adapter_maps_the_existing_company_identity_behavior() -> None:
             "postnummer": "0150",
             "poststed": "OSLO",
         },
+        "konkurs": False,
         "underAvvikling": False,
-        "underKonkursbehandling": False,
+        "underTvangsavviklingEllerTvangsopplosning": False,
     }) as server:
         adapter = BrregCompanyRegistryAdapter(
             BrregCompanyRegistryConfiguration(origin=server.url, timeout_seconds=1.0)
@@ -395,6 +380,50 @@ def test_brreg_adapter_maps_the_existing_company_identity_behavior() -> None:
         "source": "brreg",
     }
     assert server.paths == ["/enhetsregisteret/api/enheter/314159265"]
+
+
+@pytest.mark.parametrize(
+    ("status_fields", "expected_status"),
+    [
+        ({"konkurs": True, "underAvvikling": False, "underTvangsavviklingEllerTvangsopplosning": False}, "under konkursbehandling"),
+        ({"konkurs": False, "underAvvikling": True, "underTvangsavviklingEllerTvangsopplosning": False}, "under avvikling"),
+        ({"konkurs": False, "underAvvikling": False, "underTvangsavviklingEllerTvangsopplosning": True}, "under tvangsavvikling eller tvangsoppløsning"),
+        ({"konkurs": False, "underAvvikling": False, "underTvangsavviklingEllerTvangsopplosning": False, "underRekonstruksjonsforhandlingDato": "2026-08-26"}, "under rekonstruksjonsforhandling"),
+    ],
+)
+def test_brreg_adapter_maps_every_publicly_reported_unsafe_status(
+    status_fields: dict[str, object], expected_status: str
+) -> None:
+    payload = {
+        "organisasjonsnummer": "314159265",
+        "navn": "Rolig Holding AS",
+        "organisasjonsform": {"kode": "AS"},
+        "forretningsadresse": {},
+        **status_fields,
+    }
+    with LocalCompanyRegistry(payload) as server:
+        adapter = BrregCompanyRegistryAdapter(
+            BrregCompanyRegistryConfiguration(origin=server.url, timeout_seconds=1.0)
+        )
+        identity = asyncio.run(adapter.lookup_company("314159265"))
+
+    assert identity["status_text"] == expected_status
+
+
+def test_brreg_adapter_never_manufactures_active_status_from_missing_flags() -> None:
+    with LocalCompanyRegistry({
+        "organisasjonsnummer": "314159265",
+        "navn": "Rolig Holding AS",
+        "organisasjonsform": {"kode": "AS"},
+        "forretningsadresse": {},
+    }) as server:
+        adapter = BrregCompanyRegistryAdapter(
+            BrregCompanyRegistryConfiguration(origin=server.url, timeout_seconds=1.0)
+        )
+        with pytest.raises(CompanyAccessError) as raised:
+            asyncio.run(adapter.lookup_company("314159265"))
+
+    assert raised.value.code == "COMPANY_REGISTRY_UNAVAILABLE"
 
 
 @pytest.mark.parametrize(

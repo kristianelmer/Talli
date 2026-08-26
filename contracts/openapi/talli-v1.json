@@ -506,9 +506,40 @@
             "title": "Address",
             "type": "string"
           },
+          "admittedAccountingYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admittedaccountingyear"
+          },
+          "archiveExportAvailable": {
+            "title": "Archiveexportavailable",
+            "type": "boolean"
+          },
           "city": {
             "title": "City",
             "type": "string"
+          },
+          "companyYearAdmissionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companyyearadmissionid"
+          },
+          "consequentialOperationsAllowed": {
+            "title": "Consequentialoperationsallowed",
+            "type": "boolean"
           },
           "createdAt": {
             "title": "Createdat",
@@ -521,6 +552,51 @@
           "currentAgreementAccepted": {
             "title": "Currentagreementaccepted",
             "type": "boolean"
+          },
+          "currentEligibilityDecision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "supported",
+                  "clarify",
+                  "blocked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currenteligibilitydecision"
+          },
+          "eligibilityNextStep": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligibilitynextstep"
+          },
+          "eligibilityNextStepCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligibilitynextstepcode"
+          },
+          "eligibilityReasonExplanations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Eligibilityreasonexplanations",
+            "type": "array"
           },
           "entityType": {
             "title": "Entitytype",
@@ -600,7 +676,15 @@
           "role",
           "resourceScope",
           "aal",
-          "currentAgreementAccepted"
+          "currentAgreementAccepted",
+          "companyYearAdmissionId",
+          "admittedAccountingYear",
+          "currentEligibilityDecision",
+          "eligibilityReasonExplanations",
+          "eligibilityNextStepCode",
+          "eligibilityNextStep",
+          "consequentialOperationsAllowed",
+          "archiveExportAvailable"
         ],
         "title": "CompanyContext",
         "type": "object"
@@ -998,6 +1082,382 @@
         "title": "CompanyOnboardingResponse",
         "type": "object"
       },
+      "CompanyYearAdmissionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "agreementAccepted": {
+            "const": true,
+            "title": "Agreementaccepted",
+            "type": "boolean"
+          },
+          "answers": {
+            "additionalProperties": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "authorityAccepted": {
+            "const": true,
+            "title": "Authorityaccepted",
+            "type": "boolean"
+          },
+          "businessTermsSha256": {
+            "const": "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+            "title": "Businesstermssha256",
+            "type": "string"
+          },
+          "businessTermsVersion": {
+            "const": "2026-07-17",
+            "title": "Businesstermsversion",
+            "type": "string"
+          },
+          "capabilityManifestSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Capabilitymanifestsha256",
+            "type": "string"
+          },
+          "capabilityManifestVersion": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Capabilitymanifestversion",
+            "type": "string"
+          },
+          "companyYearPromiseAccepted": {
+            "const": true,
+            "title": "Companyyearpromiseaccepted",
+            "type": "boolean"
+          },
+          "dpaSha256": {
+            "const": "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+            "title": "Dpasha256",
+            "type": "string"
+          },
+          "dpaVersion": {
+            "const": "2026-07-17",
+            "title": "Dpaversion",
+            "type": "string"
+          },
+          "expectedPublicFactsSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Expectedpublicfactssha256",
+            "type": "string"
+          },
+          "operationId": {
+            "format": "uuid",
+            "title": "Operationid",
+            "type": "string"
+          },
+          "orgNumber": {
+            "pattern": "^[0-9]{9}$",
+            "title": "Orgnumber",
+            "type": "string"
+          },
+          "privacyNoticeSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Privacynoticesha256",
+            "type": "string"
+          },
+          "privacyNoticeVersion": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Privacynoticeversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agreementAccepted",
+          "businessTermsVersion",
+          "businessTermsSha256",
+          "dpaVersion",
+          "dpaSha256",
+          "operationId",
+          "orgNumber",
+          "accountingYear",
+          "expectedPublicFactsSha256",
+          "capabilityManifestVersion",
+          "capabilityManifestSha256",
+          "answers",
+          "authorityAccepted",
+          "companyYearPromiseAccepted",
+          "privacyNoticeVersion",
+          "privacyNoticeSha256"
+        ],
+        "title": "CompanyYearAdmissionRequest",
+        "type": "object"
+      },
+      "CompanyYearAdmissionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "capabilityManifestSha256": {
+            "title": "Capabilitymanifestsha256",
+            "type": "string"
+          },
+          "capabilityManifestVersion": {
+            "title": "Capabilitymanifestversion",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "companyYearAdmissionId": {
+            "format": "uuid",
+            "title": "Companyyearadmissionid",
+            "type": "string"
+          },
+          "currentAgreementAccepted": {
+            "const": true,
+            "title": "Currentagreementaccepted",
+            "type": "boolean"
+          },
+          "reconstructFrom": {
+            "title": "Reconstructfrom",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "companyId",
+          "companyYearAdmissionId",
+          "accountingYear",
+          "reconstructFrom",
+          "capabilityManifestVersion",
+          "capabilityManifestSha256",
+          "currentAgreementAccepted",
+          "replayed"
+        ],
+        "title": "CompanyYearAdmissionResponse",
+        "type": "object"
+      },
+      "CompanyYearEligibilityRecheckRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "enum": [
+                    "yes",
+                    "no",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers"
+          },
+          "operationId": {
+            "format": "uuid",
+            "title": "Operationid",
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "public_fact_changed",
+              "material_answer_changed",
+              "manifest_changed",
+              "before_payment",
+              "before_filing"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operationId",
+          "trigger"
+        ],
+        "title": "CompanyYearEligibilityRecheckRequest",
+        "type": "object"
+      },
+      "CompanyYearEligibilityStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptedCapabilityManifestSha256": {
+            "title": "Acceptedcapabilitymanifestsha256",
+            "type": "string"
+          },
+          "acceptedCapabilityManifestVersion": {
+            "title": "Acceptedcapabilitymanifestversion",
+            "type": "string"
+          },
+          "acceptedCompanyYearPromise": {
+            "$ref": "#/components/schemas/CompanyYearPromise"
+          },
+          "accountingYear": {
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "archiveExportAvailable": {
+            "const": true,
+            "title": "Archiveexportavailable",
+            "type": "boolean"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "companyYearAdmissionId": {
+            "format": "uuid",
+            "title": "Companyyearadmissionid",
+            "type": "string"
+          },
+          "companyYearEligibilityAssessmentId": {
+            "format": "uuid",
+            "title": "Companyyeareligibilityassessmentid",
+            "type": "string"
+          },
+          "consequentialOperationsAllowed": {
+            "title": "Consequentialoperationsallowed",
+            "type": "boolean"
+          },
+          "currentCapabilityManifestSha256": {
+            "title": "Currentcapabilitymanifestsha256",
+            "type": "string"
+          },
+          "currentCapabilityManifestVersion": {
+            "title": "Currentcapabilitymanifestversion",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "supported",
+              "clarify",
+              "blocked"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "nextStep": {
+            "title": "Nextstep",
+            "type": "string"
+          },
+          "nextStepCode": {
+            "title": "Nextstepcode",
+            "type": "string"
+          },
+          "reasonCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoncodes",
+            "type": "array"
+          },
+          "reasonExplanations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasonexplanations",
+            "type": "array"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "trigger": {
+            "enum": [
+              "public_fact_changed",
+              "material_answer_changed",
+              "manifest_changed",
+              "before_payment",
+              "before_filing"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyYearEligibilityAssessmentId",
+          "companyYearAdmissionId",
+          "companyId",
+          "accountingYear",
+          "trigger",
+          "decision",
+          "acceptedCapabilityManifestVersion",
+          "acceptedCapabilityManifestSha256",
+          "currentCapabilityManifestVersion",
+          "currentCapabilityManifestSha256",
+          "acceptedCompanyYearPromise",
+          "reasonCodes",
+          "reasonExplanations",
+          "nextStepCode",
+          "nextStep",
+          "consequentialOperationsAllowed",
+          "archiveExportAvailable",
+          "replayed"
+        ],
+        "title": "CompanyYearEligibilityStateResponse",
+        "type": "object"
+      },
+      "CompanyYearPromise": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "customerClaims": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Customerclaims",
+            "type": "array"
+          },
+          "endsOn": {
+            "title": "Endson",
+            "type": "string"
+          },
+          "onlyAccountingAndFilingProduct": {
+            "const": true,
+            "title": "Onlyaccountingandfilingproduct",
+            "type": "boolean"
+          },
+          "reconstructionRequiredFrom": {
+            "title": "Reconstructionrequiredfrom",
+            "type": "string"
+          },
+          "startsOn": {
+            "title": "Startson",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountingYear",
+          "startsOn",
+          "endsOn",
+          "reconstructionRequiredFrom",
+          "onlyAccountingAndFilingProduct",
+          "customerClaims"
+        ],
+        "title": "CompanyYearPromise",
+        "type": "object"
+      },
       "CreateCompanyInvitationRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1031,6 +1491,278 @@
           "role"
         ],
         "title": "CreateCompanyInvitationRequest",
+        "type": "object"
+      },
+      "EligibilityDecisionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "answers": {
+            "additionalProperties": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "answersSha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answerssha256"
+          },
+          "capabilityManifestSha256": {
+            "title": "Capabilitymanifestsha256",
+            "type": "string"
+          },
+          "capabilityManifestVersion": {
+            "title": "Capabilitymanifestversion",
+            "type": "string"
+          },
+          "companyYearPromise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanyYearPromise"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "enum": [
+              "supported",
+              "clarify",
+              "blocked"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "nextStep": {
+            "title": "Nextstep",
+            "type": "string"
+          },
+          "nextStepCode": {
+            "title": "Nextstepcode",
+            "type": "string"
+          },
+          "provisional": {
+            "title": "Provisional",
+            "type": "boolean"
+          },
+          "publicFacts": {
+            "$ref": "#/components/schemas/EligibilityPublicFacts"
+          },
+          "publicFactsSha256": {
+            "title": "Publicfactssha256",
+            "type": "string"
+          },
+          "questionCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questioncodes",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/EligibilityQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "reasonCodes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoncodes",
+            "type": "array"
+          },
+          "reasonExplanations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasonexplanations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decision",
+          "provisional",
+          "capabilityManifestVersion",
+          "capabilityManifestSha256",
+          "accountingYear",
+          "publicFacts",
+          "publicFactsSha256",
+          "questions",
+          "questionCodes",
+          "answers",
+          "answersSha256",
+          "reasonCodes",
+          "reasonExplanations",
+          "nextStepCode",
+          "nextStep",
+          "companyYearPromise"
+        ],
+        "title": "EligibilityDecisionResponse",
+        "type": "object"
+      },
+      "EligibilityDefinitiveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "answers": {
+            "additionalProperties": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "capabilityManifestSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Capabilitymanifestsha256",
+            "type": "string"
+          },
+          "capabilityManifestVersion": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Capabilitymanifestversion",
+            "type": "string"
+          },
+          "expectedPublicFactsSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Expectedpublicfactssha256",
+            "type": "string"
+          },
+          "orgNumber": {
+            "pattern": "^[0-9]{9}$",
+            "title": "Orgnumber",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orgNumber",
+          "accountingYear",
+          "expectedPublicFactsSha256",
+          "capabilityManifestVersion",
+          "capabilityManifestSha256",
+          "answers"
+        ],
+        "title": "EligibilityDefinitiveRequest",
+        "type": "object"
+      },
+      "EligibilityPrecheckRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Accountingyear",
+            "type": "integer"
+          },
+          "orgNumber": {
+            "pattern": "^[0-9]{9}$",
+            "title": "Orgnumber",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orgNumber",
+          "accountingYear"
+        ],
+        "title": "EligibilityPrecheckRequest",
+        "type": "object"
+      },
+      "EligibilityPublicFacts": {
+        "additionalProperties": false,
+        "properties": {
+          "entityType": {
+            "title": "Entitytype",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orgNumber": {
+            "title": "Orgnumber",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "statusText": {
+            "title": "Statustext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orgNumber",
+          "name",
+          "entityType",
+          "statusText",
+          "source"
+        ],
+        "title": "EligibilityPublicFacts",
+        "type": "object"
+      },
+      "EligibilityQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "answerOptions": {
+            "default": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "items": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Answeroptions",
+            "type": "array"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "prompt"
+        ],
+        "title": "EligibilityQuestion",
         "type": "object"
       },
       "FinalizeCompanyDeletionRequest": {
@@ -4351,6 +5083,648 @@
         ]
       }
     },
+    "/api/v1/company-access/company-year-admissions": {
+      "post": {
+        "operationId": "companyAccessAdmitCompanyYear",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyYearAdmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyYearAdmissionResponse"
+                }
+              }
+            },
+            "description": "Company year admitted",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Admit Company Year",
+        "tags": [
+          "company-access"
+        ]
+      }
+    },
+    "/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks": {
+      "post": {
+        "operationId": "companyAccessRecheckCompanyYearEligibility",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_year_admission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Year Admission Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyYearEligibilityRecheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyYearEligibilityStateResponse"
+                }
+              }
+            },
+            "description": "Current eligibility gate appended",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recheck Company Year Eligibility",
+        "tags": [
+          "company-access"
+        ]
+      }
+    },
     "/api/v1/company-access/context": {
       "get": {
         "operationId": "companyAccessGetSelectedContext",
@@ -4697,6 +6071,454 @@
           }
         ],
         "summary": "Get Selected Company Context",
+        "tags": [
+          "company-access"
+        ]
+      }
+    },
+    "/api/v1/company-access/eligibility/definitive": {
+      "post": {
+        "operationId": "companyAccessEligibilityDefinitive",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EligibilityDefinitiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityDecisionResponse"
+                }
+              }
+            },
+            "description": "Definitive company-year eligibility result",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eligibility Definitive",
+        "tags": [
+          "company-access"
+        ]
+      }
+    },
+    "/api/v1/company-access/eligibility/precheck": {
+      "post": {
+        "operationId": "companyAccessEligibilityPrecheck",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EligibilityPrecheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibilityDecisionResponse"
+                }
+              }
+            },
+            "description": "Provisional public-company eligibility result",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eligibility Precheck",
         "tags": [
           "company-access"
         ]
@@ -8750,6 +10572,7 @@
     },
     "/api/v1/company-access/onboarding": {
       "post": {
+        "deprecated": true,
         "operationId": "companyAccessOnboardCompany",
         "parameters": [
           {

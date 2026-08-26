@@ -9,7 +9,7 @@
 -->
 
 <!-- architecture-inventory
-{"routes":["/api/v1/company-access/agreements/reaccept","/api/v1/company-access/companies/{company_id}","/api/v1/company-access/onboarding","/api/v1/company-access/operator-companies","/api/v1/company-access/operator-context"],"technicalMigrations":["supabase/migrations/20260826100000_company_access_onboarding.sql"],"workflowPurposes":["company-access-onboarding-and-support=>Runs atomic company onboarding and agreement acceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package."],"workflows":["company-access-onboarding-and-support"]}
+{"routes":["/api/v1/company-access/agreements/reaccept","/api/v1/company-access/companies/{company_id}","/api/v1/company-access/company-year-admissions","/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks","/api/v1/company-access/eligibility/definitive","/api/v1/company-access/eligibility/precheck","/api/v1/company-access/onboarding","/api/v1/company-access/operator-companies","/api/v1/company-access/operator-context"],"technicalMigrations":["supabase/migrations/20260826100000_company_access_onboarding.sql","supabase/migrations/20260826110000_company_year_admission.sql"],"workflowPurposes":["company-access-onboarding-and-support=>Retains the fail-closed legacy onboarding response, runs agreement reacceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package.","company-year-eligibility-and-admission=>Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package."],"workflows":["company-access-onboarding-and-support","company-year-eligibility-and-admission"]}
 -->
 
 ## Purpose
@@ -32,6 +32,15 @@ not recreate membership, role, resource-scope, AAL2, or tenant-concealment rules
 The composition root injects the declared `CompanyAccessGateway` port through
 `talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter`.
 
+The `company-year-eligibility-and-admission` workflow serves the public
+`/api/v1/company-access/eligibility/precheck` and
+`/api/v1/company-access/eligibility/definitive` routes, the authenticated
+`/api/v1/company-access/company-year-admissions` command, and
+`/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks`.
+It delegates the versioned material-fact boundary, atomic admission, immutable
+promise evidence, and post-admission safety gate to the company-access public
+package. The composition root maps transport and authentication only.
+
 The `company-access-administration` workflow serves
 `/api/v1/company-access/invitations`, `/api/v1/company-access/invitations/lookup`,
 `/api/v1/company-access/invitations/accept`,
@@ -52,8 +61,9 @@ The `company-access-onboarding-and-support` workflow serves
 `/api/v1/company-access/agreements/reaccept`,
 `/api/v1/company-access/companies/{company_id}`,
 `/api/v1/company-access/operator-context`, and
-`/api/v1/company-access/operator-companies`. It keeps company creation and
-agreement evidence atomic, exposes accepted-member company records, and confines
+`/api/v1/company-access/operator-companies`. Its deprecated onboarding route
+fails closed and cannot create a company; the workflow otherwise exposes
+agreement reacceptance and accepted-member company records, and confines
 support lookup to the capability's verified operator policy. The composition
 root injects `CompanyRegistryGateway` through
 `talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter`.
@@ -68,6 +78,9 @@ Their migrations are `supabase/migrations/0001_authenticated_workspace.sql` and
 `supabase/migrations/20260801090000_company_access_invitations.sql`, extended by
 `supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql`
 and `supabase/migrations/20260826100000_company_access_onboarding.sql`.
+The atomic company-year admission, immutable promise snapshot, eligibility
+assessment, recheck receipt, and restricted executor functions are added by
+`supabase/migrations/20260826110000_company_year_admission.sql`.
 
 ## Infrastructure and adapters
 

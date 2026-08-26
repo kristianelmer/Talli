@@ -169,6 +169,28 @@ class CompanyAccessGatewayStub:
             for company_id in company_ids
         ]
 
+    async def company_year_access_states(
+        self, _access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]:
+        return [
+            {
+                "company_id": company_id,
+                "company_year_admission_id": "20000000-0000-0000-0000-000000000002",
+                "admitted_accounting_year": 2026,
+                "current_eligibility_decision": "supported",
+                "latest_capability_manifest_version": "2026.1",
+                "latest_capability_manifest_sha256": (
+                    "9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de"
+                ),
+                "eligibility_reason_explanations": [],
+                "eligibility_next_step_code": "CONTINUE_COMPANY_YEAR",
+                "eligibility_next_step": "Fortsett selskapsåret i Talli.",
+                "consequential_operations_allowed": True,
+                "archive_export_available": True,
+            }
+            for company_id in company_ids
+        ]
+
     async def session_identity(self, _access_token: str) -> Mapping[str, object]:
         return {"id": "owner-1", "email": self.invitation_email}
 
@@ -393,6 +415,14 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
             "resourceScope": "owner_sensitive",
             "aal": "aal2",
             "currentAgreementAccepted": True,
+            "companyYearAdmissionId": "20000000-0000-0000-0000-000000000002",
+            "admittedAccountingYear": 2026,
+            "currentEligibilityDecision": "supported",
+            "eligibilityReasonExplanations": [],
+            "eligibilityNextStepCode": "CONTINUE_COMPANY_YEAR",
+            "eligibilityNextStep": "Fortsett selskapsåret i Talli.",
+            "consequentialOperationsAllowed": True,
+            "archiveExportAvailable": True,
         },
         "companies": [{
             "id": "10000000-0000-0000-0000-000000000001",
@@ -412,6 +442,14 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
             "resourceScope": "owner_sensitive",
             "aal": "aal2",
             "currentAgreementAccepted": True,
+            "companyYearAdmissionId": "20000000-0000-0000-0000-000000000002",
+            "admittedAccountingYear": 2026,
+            "currentEligibilityDecision": "supported",
+            "eligibilityReasonExplanations": [],
+            "eligibilityNextStepCode": "CONTINUE_COMPANY_YEAR",
+            "eligibilityNextStep": "Fortsett selskapsåret i Talli.",
+            "consequentialOperationsAllowed": True,
+            "archiveExportAvailable": True,
         }],
     }
 
@@ -447,6 +485,30 @@ def test_company_context_accepts_uuid_values_returned_by_psycopg() -> None:
         "10000000-0000-0000-0000-000000000001"
     )
     assert response.json()["selectedCompany"]["currentAgreementAccepted"] is True
+
+
+def test_company_context_immediately_closes_a_stale_manifest_gate() -> None:
+    class StaleManifestGateway(CompanyAccessGatewayStub):
+        async def company_year_access_states(
+            self, access_token: str, company_ids: list[str]
+        ) -> list[Mapping[str, object]]:
+            rows = await super().company_year_access_states(access_token, company_ids)
+            return [
+                {**row, "latest_capability_manifest_sha256": "0" * 64}
+                for row in rows
+            ]
+
+    response = TestClient(create_app(StaleManifestGateway())).get(
+        "/api/v1/company-access/context",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+
+    assert response.status_code == 200
+    company = response.json()["selectedCompany"]
+    assert company["currentEligibilityDecision"] == "clarify"
+    assert company["consequentialOperationsAllowed"] is False
+    assert company["archiveExportAvailable"] is True
+    assert company["eligibilityNextStepCode"] == "RECHECK_REQUIRED"
 
 
 def test_cross_company_context_is_concealed() -> None:
@@ -504,6 +566,15 @@ def test_owner_context_contract_uses_fixed_role_scope_and_assurance_literals() -
         "type": "string",
     }
     assert context["properties"]["aal"] == {"const": "aal2", "title": "Aal", "type": "string"}
+    assert context["properties"]["admittedAccountingYear"] == {
+        "anyOf": [{"type": "integer"}, {"type": "null"}],
+        "title": "Admittedaccountingyear",
+    }
+    assert context["properties"]["currentEligibilityDecision"]["anyOf"][0]["enum"] == [
+        "supported",
+        "clarify",
+        "blocked",
+    ]
 
 
 def test_real_gateway_validates_session_then_routes_business_reads_to_backend_database() -> None:
@@ -535,6 +606,10 @@ def test_real_gateway_validates_session_then_routes_business_reads_to_backend_da
             return await stub.companies(
                 _token, ["10000000-0000-0000-0000-000000000001"]
             )
+        if "from public.company_year_admissions" in query:
+            return await stub.company_year_access_states(
+                _token, ["10000000-0000-0000-0000-000000000001"]
+            )
         return await stub.agreement_acceptances(
             _token, ["10000000-0000-0000-0000-000000000001"]
         )
@@ -547,7 +622,13 @@ def test_real_gateway_validates_session_then_routes_business_reads_to_backend_da
     )
 
     assert response.status_code == 200
-    assert calls == ["/auth/v1/user", "database", "database", "database"]
+    assert calls == [
+        "/auth/v1/user",
+        "database",
+        "database",
+        "database",
+        "database",
+    ]
 
 
 def test_real_gateway_rejects_bad_sessions_before_database_access_and_normalizes_provider_failures() -> None:
@@ -656,6 +737,9 @@ def test_all_company_access_business_reads_use_the_verified_backend_database() -
         await adapter.agreement_acceptances(
             "bearer", ["10000000-0000-0000-0000-000000000001"]
         )
+        await adapter.company_year_access_states(
+            "bearer", ["10000000-0000-0000-0000-000000000001"]
+        )
         await adapter.support_operator("bearer", "actor")
         await adapter.search_operator_companies("bearer", "Holding")
         await adapter.invitations("bearer", "10000000-0000-0000-0000-000000000001")
@@ -665,7 +749,7 @@ def test_all_company_access_business_reads_use_the_verified_backend_database() -
 
     asyncio.run(read_all())
 
-    assert len(calls) == 7
+    assert len(calls) == 8
     assert all("public." in query for query in calls)
     assert all("/rest/v1" not in query for query in calls)
 

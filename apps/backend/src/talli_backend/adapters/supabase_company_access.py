@@ -24,7 +24,8 @@ from talli_backend.modules.company_access.public import (
     CompanyAccessError,
     CompanyAccessGateway,
     CompanyAgreementAcceptanceGatewayCommand,
-    CompanyOnboardingGatewayCommand,
+    CompanyYearAdmissionGatewayCommand,
+    CompanyYearEligibilityRecheckGatewayCommand,
     CreateInvitationGatewayCommand,
     FinalizeCompanyDeletionGatewayCommand,
     InvitationIdentityGatewayCommand,
@@ -339,6 +340,42 @@ class SupabaseCompanyAccessAdapter:
             (company_ids,),
         )
 
+    async def company_year_access_states(
+        self, access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]:
+        if not company_ids:
+            return []
+        return await self._database_rows(
+            access_token,
+            """
+            select a.company_id, a.id as company_year_admission_id,
+              a.accounting_year as admitted_accounting_year,
+              latest.decision as current_eligibility_decision,
+              latest.capability_manifest_version as latest_capability_manifest_version,
+              latest.capability_manifest_sha256 as latest_capability_manifest_sha256,
+              latest.reason_explanations as eligibility_reason_explanations,
+              latest.next_step_code as eligibility_next_step_code,
+              latest.next_step as eligibility_next_step,
+              latest.consequential_operations_allowed,
+              latest.archive_export_available
+            from public.company_year_admissions a
+            join lateral (
+              select e.decision, e.capability_manifest_version,
+                e.capability_manifest_sha256, e.reason_explanations,
+                e.next_step_code, e.next_step, e.consequential_operations_allowed,
+                e.archive_export_available
+              from public.company_eligibility_assessments e
+              where e.company_id = a.company_id
+                and e.accounting_year = a.accounting_year
+              order by e.assessed_at desc, e.id desc
+              limit 1
+            ) latest on true
+            where a.company_id = any(%s::uuid[])
+            order by a.admitted_at desc
+            """,
+            (company_ids,),
+        )
+
     async def support_operator(
         self, access_token: str, _subject: str
     ) -> Mapping[str, object] | None:
@@ -373,13 +410,13 @@ class SupabaseCompanyAccessAdapter:
             (pattern, pattern),
         )
 
-    async def onboard_company(
-        self, access_token: str, command: CompanyOnboardingGatewayCommand
+    async def admit_company_year(
+        self, access_token: str, command: CompanyYearAdmissionGatewayCommand
     ) -> Mapping[str, object]:
         company = command.company
         return await self._rpc_row(
             access_token,
-            "company_access_onboard_company",
+            "company_access_admit_company_year",
             {
                 "p_operation_id": str(command.operation_id),
                 "p_verified_subject": str(command.verified_actor),
@@ -392,7 +429,17 @@ class SupabaseCompanyAccessAdapter:
                 "p_city": company.city,
                 "p_status_text": company.status_text,
                 "p_source": company.source,
-                "p_agreement_accepted": True,
+                "p_accounting_year": command.accounting_year,
+                "p_reconstruct_from": command.reconstruct_from,
+                "p_public_facts_json": command.public_facts_json,
+                "p_public_facts_sha256": command.public_facts_sha256,
+                "p_answers_json": command.answers_json,
+                "p_answers_sha256": command.answers_sha256,
+                "p_capability_manifest_json": command.capability_manifest_json,
+                "p_capability_manifest_version": command.capability_manifest_version,
+                "p_capability_manifest_sha256": command.capability_manifest_sha256,
+                "p_company_year_promise_json": command.company_year_promise_json,
+                "p_company_year_promise_sha256": command.company_year_promise_sha256,
                 "p_business_terms_version": command.business_terms_version,
                 "p_business_terms_effective_date": command.business_terms_effective_date,
                 "p_business_terms_path": command.business_terms_path,
@@ -401,8 +448,139 @@ class SupabaseCompanyAccessAdapter:
                 "p_dpa_effective_date": command.dpa_effective_date,
                 "p_dpa_path": command.dpa_path,
                 "p_dpa_sha256": command.dpa_sha256,
+                "p_privacy_notice_version": command.privacy_notice_version,
+                "p_privacy_notice_effective_date": command.privacy_notice_effective_date,
+                "p_privacy_notice_path": command.privacy_notice_path,
+                "p_privacy_notice_sha256": command.privacy_notice_sha256,
                 "p_authority_statement_version": command.authority_statement_version,
                 "p_acceptance_method": command.acceptance_method,
+            },
+        ) or {}
+
+    async def company_year_admission_replay(
+        self, access_token: str, operation_id: str
+    ) -> Mapping[str, object] | None:
+        rows = await self._database_rows(
+            access_token,
+            """
+            select r.company_id,
+              (r.result ->> 'company_year_admission_id')::uuid
+                as company_year_admission_id,
+              (r.result ->> 'accounting_year')::integer as accounting_year,
+              r.result ->> 'reconstruct_from' as reconstruct_from,
+              r.result ->> 'capability_manifest_version'
+                as capability_manifest_version,
+              r.result ->> 'capability_manifest_sha256'
+                as capability_manifest_sha256,
+              x.customer_org_number as org_number,
+              e.public_facts_sha256,
+              e.answers,
+              x.business_terms_version, x.business_terms_sha256,
+              x.dpa_version, x.dpa_sha256,
+              x.privacy_notice_version, x.privacy_notice_sha256,
+              true as current_agreement_accepted
+            from public.company_access_command_receipts r
+            join public.company_year_admissions a
+              on a.id = (r.result ->> 'company_year_admission_id')::uuid
+            join public.company_eligibility_assessments e
+              on e.id = a.eligibility_assessment_id
+            join public.company_year_acceptances x
+              on x.company_year_admission_id = a.id
+            where r.actor_id = public.company_access_auth_uid_v1()
+              and r.operation_id = %s::uuid
+              and r.command_name = 'admit_company_year'
+            """,
+            (operation_id,),
+        )
+        return rows[0] if len(rows) == 1 else None
+
+    async def company_year_admission_context(
+        self, access_token: str, company_year_admission_id: str, operation_id: str
+    ) -> Mapping[str, object] | None:
+        rows = await self._database_rows(
+            access_token,
+            """
+            select a.id as company_year_admission_id, a.company_id,
+              a.accounting_year, c.org_number,
+              a.capability_manifest_version as accepted_capability_manifest_version,
+              a.capability_manifest_sha256 as accepted_capability_manifest_sha256,
+              a.company_year_promise as accepted_company_year_promise,
+              latest.id as latest_assessment_id,
+              latest.answers as latest_answers,
+              replay.id as replay_assessment_id,
+              replay.trigger as replay_trigger,
+              replay.decision as replay_decision,
+              replay.capability_manifest_version as replay_capability_manifest_version,
+              replay.capability_manifest_sha256 as replay_capability_manifest_sha256,
+              replay.answers as replay_answers,
+              replay.reason_codes as replay_reason_codes,
+              replay.reason_explanations as replay_reason_explanations,
+              replay.next_step_code as replay_next_step_code,
+              replay.next_step as replay_next_step,
+              replay.consequential_operations_allowed
+                as replay_consequential_operations_allowed,
+              replay.archive_export_available as replay_archive_export_available
+            from public.company_year_admissions a
+            join public.companies c on c.id = a.company_id
+            join lateral (
+              select e.id, e.answers
+              from public.company_eligibility_assessments e
+              where e.company_id = a.company_id
+                and e.accounting_year = a.accounting_year
+              order by e.assessed_at desc, e.id desc
+              limit 1
+            ) latest on true
+            left join lateral (
+              select e.id, e.trigger, e.decision,
+                e.capability_manifest_version, e.capability_manifest_sha256,
+                e.answers, e.reason_codes, e.reason_explanations,
+                e.next_step_code, e.next_step,
+                e.consequential_operations_allowed, e.archive_export_available
+              from public.company_access_command_receipts r
+              join public.company_eligibility_assessments e
+                on e.id = (r.result ->> 'company_year_eligibility_assessment_id')::uuid
+              where r.actor_id = public.company_access_auth_uid_v1()
+                and r.operation_id = %s::uuid
+                and r.command_name = 'recheck_company_year_eligibility'
+                and r.company_id = a.company_id
+              limit 1
+            ) replay on true
+            where a.id = %s::uuid
+            """,
+            (operation_id, company_year_admission_id),
+        )
+        return rows[0] if len(rows) == 1 else None
+
+    async def record_company_year_eligibility_recheck(
+        self, access_token: str, command: CompanyYearEligibilityRecheckGatewayCommand
+    ) -> Mapping[str, object]:
+        return await self._rpc_row(
+            access_token,
+            "company_access_recheck_company_year_eligibility",
+            {
+                "p_operation_id": str(command.operation_id),
+                "p_verified_subject": str(command.verified_actor),
+                "p_company_year_admission_id": str(command.company_year_admission_id),
+                "p_company_id": str(command.company_id),
+                "p_accounting_year": command.accounting_year,
+                "p_previous_assessment_id": str(command.previous_assessment_id),
+                "p_trigger": command.trigger,
+                "p_decision": command.decision,
+                "p_capability_manifest_json": command.capability_manifest_json,
+                "p_capability_manifest_version": command.capability_manifest_version,
+                "p_capability_manifest_sha256": command.capability_manifest_sha256,
+                "p_public_facts_json": command.public_facts_json,
+                "p_public_facts_sha256": command.public_facts_sha256,
+                "p_answers_json": command.answers_json,
+                "p_answers_sha256": command.answers_sha256,
+                "p_reason_codes": list(command.reason_codes),
+                "p_reason_explanations": list(command.reason_explanations),
+                "p_next_step_code": command.next_step_code,
+                "p_next_step": command.next_step,
+                "p_consequential_operations_allowed": (
+                    command.consequential_operations_allowed
+                ),
+                "p_archive_export_available": command.archive_export_available,
             },
         ) or {}
 
@@ -657,7 +835,8 @@ class SupabaseCompanyAccessAdapter:
         role: str = "company_access_executor",
     ) -> list[Mapping[str, object]]:
         allowed = {
-            "company_access_onboard_company",
+            "company_access_admit_company_year",
+            "company_access_recheck_company_year_eligibility",
             "company_access_reaccept_agreement",
             "company_access_create_invitation",
             "company_access_lookup_invitation",
