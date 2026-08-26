@@ -254,7 +254,7 @@ test("browser owner rehearsal includes executable owned-process lifecycle covera
   assert.match(harness, /startBackendServer/);
   assert.match(harness, /allocateLoopbackPort/);
   assert.match(harness, /TALLI_BACKEND_URL:\s*backendBaseUrl/);
-  assert.match(harness, /await establishSyntheticAal2\(page, baseUrl\)/);
+  assert.match(harness, /await establishOwnerAal2\(page, baseUrl\)/);
   assert.match(harness, /cleanupBrowserOwnerResources\(resources\)/);
   assert.match(harness, /TALLI_BACKEND_BOUND:/);
   assert.match(harness, /readinessProof:\s*"Ready in"/);

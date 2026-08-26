@@ -63,7 +63,8 @@ test("reconciliation action rechecks the exact owner, submission, and verified r
   assert.ok(start >= 0 && end > start);
   const action = actions.slice(start, end);
   assert.match(action, /requiredFormUuid/u);
-  assert.match(action, /company_memberships/u);
+  assert.match(action, /loadAcceptedMembershipCompany\(submission\.company_id\)/u);
+  assert.doesNotMatch(action, /\.from\("company_memberships"\)/u);
   assert.match(action, /role.*owner/su);
   assert.match(action, /system_user_requests/u);
   assert.match(action, /preflight_verified_at/u);
