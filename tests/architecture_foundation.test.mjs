@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import test from "node:test";
 
 import {
   checkArchitecture,
+  legacyOperationProof,
   validateCompatibilityRegistry,
 } from "../scripts/check-architecture.mjs";
 
@@ -33,7 +35,7 @@ function legacyFacade({
     creationIssue: "#135",
     decisionIssue: "#185",
     removalIssue,
-    baselineRevision: "1111111111111111111111111111111111111111",
+    baselineRevision: "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
     canonicalImplementation: `web:legacy-runtime:${capability}`,
     approvedBy: "Kristian Elmer",
     approvedAt: "2026-08-26T10:56:36Z",
@@ -92,6 +94,11 @@ function compatibilityFixture({
       digest: "TEST_BASELINE_DIGEST",
     },
     migration: {
+      foundationRecovery: {
+        issue: "#186",
+        status: "pending",
+        gates: [],
+      },
       order,
       currentCapability,
       currentIssue,
@@ -100,7 +107,11 @@ function compatibilityFixture({
       completedStages: exited.map((capability, index) => ({
         capability,
         removalIssues: order.find((stage) => stage.capability === capability).removalIssues,
-        gateRevisions: [String(index + 1).repeat(40), String(index + 2).repeat(40)],
+        gates: [String(index + 1).repeat(40), String(index + 2).repeat(40)].map((revision) => ({
+          revision,
+          evidencePath: `architecture/evidence/customer-ready-gates/${revision}.json`,
+          evidenceDigest: `sha256:${revision}${revision.slice(0, 24)}`,
+        })),
       })),
     },
     records,
@@ -111,7 +122,7 @@ function compatibilityBaseline(records) {
   return {
     schemaVersion: "1.0",
     decisionIssue: "#185",
-    sourceRevision: "1111111111111111111111111111111111111111",
+    sourceRevision: "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
     records: records.map((record) => ({
       id: record.id,
       kind: "legacy-facade",
@@ -129,6 +140,17 @@ function writeCompatibilityFixture(root, registry, baseline) {
   writeFileSync(registryPath, JSON.stringify(registry));
   writeFileSync(baselinePath, JSON.stringify(baseline));
   return { registryPath, baselinePath };
+}
+
+function canonicalDigest(value) {
+  const stableValue = (candidate) => (
+    Array.isArray(candidate)
+      ? candidate.map(stableValue)
+      : candidate && typeof candidate === "object"
+        ? Object.fromEntries(Object.keys(candidate).sort().map((key) => [key, stableValue(candidate[key])]))
+        : candidate
+  );
+  return `sha256:${createHash("sha256").update(JSON.stringify(stableValue(value))).digest("hex")}`;
 }
 
 function git(root, args, date) {
@@ -303,6 +325,96 @@ test("the frozen baseline is traceable to the pre-existing compatibility registr
       }).join("\n"),
       /compat-company-access.*frozen scopes do not match source revision/u,
     );
+
+    baseline.sourceRevision = "2222222222222222222222222222222222222222";
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+        sourceRegistry,
+      }).join("\n"),
+      /frozen source revision must remain d331ee2717d1eeacef0d81db42b9d4fb5848b408/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("legacy source proofs reject added writers and changed future operations", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-legacy-operation-proof-"));
+  const currentSource = 'export function legacyOperation() { client.from("companies"); }\n';
+  const futureSource = 'export function postEntry() { client.from("ledger_entries"); }\n';
+  const currentScope = {
+    ...compatibilityScope,
+    ...legacyOperationProof(currentSource, compatibilityScope.path, compatibilityScope),
+  };
+  const futureScope = {
+    ...compatibilityScope,
+    path: "apps/web/app/ledger.ts",
+    resource: "table:ledger_entries",
+    operation: "postEntry",
+  };
+  Object.assign(
+    futureScope,
+    legacyOperationProof(futureSource, futureScope.path, futureScope),
+  );
+  const currentFacade = legacyFacade({ scopes: [currentScope] });
+  const futureFacade = legacyFacade({
+    id: "compat-ledger",
+    capability: "ledger",
+    removalIssue: "#139",
+    scopes: [futureScope],
+  });
+  const registry = compatibilityFixture({ records: [currentFacade, futureFacade] });
+  const baseline = compatibilityBaseline([currentFacade, futureFacade]);
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+  const frozenSources = new Map([
+    [compatibilityScope.path, currentSource],
+    [futureScope.path, futureSource],
+  ]);
+  const workingSources = new Map(frozenSources);
+  const sourceRegistry = {
+    schemaVersion: "1.0",
+    exceptions: baseline.records.map((record) => ({
+      id: record.id,
+      removalIssue: record.removalIssue,
+      scopes: structuredClone(record.scopes),
+    })),
+  };
+  const options = {
+    baselinePath,
+    expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    sourceRegistry,
+    sourceAtRevision: (path) => frozenSources.get(path),
+    currentSource: (path) => workingSources.get(path),
+  };
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    workingSources.set(
+      compatibilityScope.path,
+      'export function legacyOperation() { client.from("companies"); client.from("companies"); }\n',
+    );
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-company-access.*scope has an added writer/u,
+    );
+
+    workingSources.set(compatibilityScope.path, currentSource);
+    workingSources.set(
+      futureScope.path,
+      'export function postEntry() { const changed = true; client.from("ledger_entries"); }\n',
+    );
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /compat-ledger.*future legacy operation changed/u,
+    );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -351,6 +463,81 @@ test("legacy facades block stage exit and fail after their capability has exited
         expectedBaselineDigest: "TEST_BASELINE_DIGEST",
       }).join("\n"),
       /completedStages must exactly evidence every exited capability/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("completed stages require two consecutive complete-gate attestations", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-complete-gate-evidence-"));
+  const facade = legacyFacade();
+  const registry = compatibilityFixture({
+    records: [],
+    currentCapability: "ledger",
+    currentIssue: "#139",
+  });
+  const checks = [
+    "credential-scan",
+    "typecheck",
+    "architecture",
+    "boundary",
+    "build-web",
+    "build-backend",
+    "boundary-smoke",
+    "launch-rehearsal",
+    "production-dependency-audit",
+    "database-isolation",
+    "whitespace",
+  ];
+  const revisions = ["1".repeat(40), "2".repeat(40)];
+  const evidence = revisions.map((revision, index) => ({
+    schemaVersion: "1.0",
+    revision,
+    previousPassingRevision: index === 0 ? null : revisions[0],
+    workflow: "customer-ready-release-gate",
+    executor: "local",
+    executedAt: `2026-08-2${index + 6}T12:00:00Z`,
+    verdict: "pass",
+    checks,
+  }));
+  registry.migration.completedStages[0].gates = evidence.map((attestation) => ({
+    revision: attestation.revision,
+    evidencePath: `architecture/evidence/customer-ready-gates/${attestation.revision}.json`,
+    evidenceDigest: canonicalDigest(attestation),
+  }));
+  const byPath = new Map(registry.migration.completedStages[0].gates.map((gate, index) => (
+    [gate.evidencePath, evidence[index]]
+  )));
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    compatibilityBaseline([facade]),
+  );
+  const options = {
+    baselinePath,
+    expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    reachableRevision: () => true,
+    isRevisionAncestor: () => true,
+    isImmutableEvidence: () => true,
+    loadGateEvidence: (path) => byPath.get(path),
+  };
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    registry.migration.foundationRecovery = {
+      issue: "#186",
+      status: "complete",
+      gates: structuredClone(registry.migration.completedStages[0].gates),
+    };
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    evidence[1].previousPassingRevision = null;
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /gates are not consecutive passes/u,
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -448,35 +635,22 @@ test("compatibility records cannot suppress authorization or other non-suppressi
   }
 });
 
-test("compatibility exceptions require bounded expiry and a removal condition", () => {
+test("active-stage debt requires bounded expiry and a removal condition", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-"));
-  const registry = join(temporaryRoot, "compatibility.json");
-  writeFileSync(
-    registry,
-    JSON.stringify({
-      schemaVersion: "1.0",
-      exceptions: [
-        {
-          id: "compat-unbounded",
-          owner: "backend:system_boundary",
-          creationIssue: "#135",
-          removalIssue: "#136",
-          scopes: [{
-            path: "apps/web/app/legacy.ts",
-            rule: "direct-web-business-persistence",
-            resource: "table:companies",
-            operation: "legacyOperation",
-          }],
-          expiresAt: "never",
-          removalCondition: "",
-        },
-      ],
-    }),
+  const debt = activeStageDebt({ id: "compat-unbounded", expiresAt: "never" });
+  debt.removalCondition = "";
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    compatibilityFixture({ records: [debt] }),
+    compatibilityBaseline([]),
   );
 
   try {
     assert.match(
-      validateCompatibilityRegistry(registry).join("\n"),
+      validateCompatibilityRegistry(registryPath, {
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
       /compat-unbounded.*expiresAt.*RFC 3339/u,
     );
   } finally {
@@ -484,32 +658,25 @@ test("compatibility exceptions require bounded expiry and a removal condition", 
   }
 });
 
-test("compatibility exceptions must expire strictly after the controlled current time", () => {
+test("active-stage debt must expire strictly after the controlled current time", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-expiry-"));
-  const registry = join(temporaryRoot, "compatibility.json");
-  writeFileSync(
-    registry,
-    JSON.stringify({
-      schemaVersion: "1.0",
-      exceptions: [{
-        id: "compat-expired",
-        owner: "web:legacy-runtime",
-        creationIssue: "#135",
-        removalIssue: "#136",
-        scopes: [{
-          path: "apps/web/app/actions.ts",
-          rule: "direct-web-business-persistence",
-          resource: "table:companies",
-          operation: "legacyOperation",
-        }],
-        expiresAt: "2026-07-29T00:00:00Z",
-        removalCondition: "Remove when #136 owns the authenticated company context.",
-      }],
-    }),
+  const debt = activeStageDebt({
+    id: "compat-expired",
+    approvedAt: "2026-07-15T00:00:00Z",
+    expiresAt: "2026-07-29T00:00:00Z",
+  });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    compatibilityFixture({ records: [debt] }),
+    compatibilityBaseline([]),
   );
   try {
     assert.match(
-      validateCompatibilityRegistry(registry, { now: new Date("2026-07-30T00:00:00Z") }).join("\n"),
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-07-30T00:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
       /compat-expired.*strictly in the future/u,
     );
   } finally {
@@ -517,35 +684,25 @@ test("compatibility exceptions must expire strictly after the controlled current
   }
 });
 
-test("compatibility exceptions cannot outlive fourteen days or the next stable release", () => {
+test("active-stage debt cannot outlive fourteen days or the next stable release", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-expiry-bound-"));
-  const registry = join(temporaryRoot, "compatibility.json");
-  writeFileSync(
-    registry,
-    JSON.stringify({
-      schemaVersion: "1.0",
-      exceptions: [{
-        id: "compat-too-distant",
-        owner: "web:legacy-runtime",
-        creationIssue: "#135",
-        removalIssue: "#136",
-        scopes: [{
-          path: "apps/web/app/actions.ts",
-          rule: "direct-web-business-persistence",
-          resource: "table:companies",
-          operation: "legacyOperation",
-        }],
-        approvedBy: "Kristian Elmer",
-        approvedAt: "2026-07-30T00:00:00Z",
-        releaseLimit: "next-stable-customer-ready-release",
-        expiresAt: "2026-08-14T00:00:00Z",
-        removalCondition: "Remove when #136 owns the authenticated company context.",
-      }],
-    }),
+  const debt = activeStageDebt({
+    id: "compat-too-distant",
+    approvedAt: "2026-07-30T00:00:00Z",
+    expiresAt: "2026-08-14T00:00:00Z",
+  });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    compatibilityFixture({ records: [debt] }),
+    compatibilityBaseline([]),
   );
   try {
     assert.match(
-      validateCompatibilityRegistry(registry, { now: new Date("2026-07-30T00:00:00Z") }).join("\n"),
+      validateCompatibilityRegistry(registryPath, {
+        now: new Date("2026-07-30T00:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      }).join("\n"),
       /compat-too-distant.*fourteen days after approval/u,
     );
   } finally {
@@ -553,36 +710,26 @@ test("compatibility exceptions cannot outlive fourteen days or the next stable r
   }
 });
 
-test("compatibility exceptions reject semantically impossible timestamps", () => {
+test("active-stage debt rejects semantically impossible timestamps", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-invalid-timestamp-"));
-  const registry = join(temporaryRoot, "compatibility.json");
-  writeFileSync(
-    registry,
-    JSON.stringify({
-      schemaVersion: "1.0",
-      exceptions: [{
-        id: "compat-invalid-date",
-        owner: "web:legacy-runtime",
-        creationIssue: "#135",
-        removalIssue: "#136",
-        scopes: [{
-          path: "apps/web/app/actions.ts",
-          rule: "direct-web-business-persistence",
-          resource: "table:companies",
-          operation: "legacyOperation",
-        }],
-        approvedBy: "Kristian Elmer",
-        approvedAt: "2026-99-99T25:99:99Z",
-        releaseLimit: "next-stable-customer-ready-release",
-        expiresAt: "2026-99-99T25:99:99Z",
-        removalCondition: "Remove when #136 owns the authenticated company context.",
-      }],
-    }),
+  const debt = activeStageDebt({
+    id: "compat-invalid-date",
+    approvedAt: "2026-99-99T25:99:99Z",
+    expiresAt: "2026-99-99T25:99:99Z",
+  });
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    compatibilityFixture({ records: [debt] }),
+    compatibilityBaseline([]),
   );
   try {
     const errors = validateCompatibilityRegistry(
-      registry,
-      { now: new Date("2026-07-30T00:00:00Z") },
+      registryPath,
+      {
+        now: new Date("2026-07-30T00:00:00Z"),
+        baselinePath,
+        expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      },
     ).join("\n");
     assert.match(errors, /compat-invalid-date.*approvedAt must be a valid RFC 3339 timestamp/u);
     assert.match(errors, /compat-invalid-date.*expiresAt must be a valid RFC 3339 timestamp/u);

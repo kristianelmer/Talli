@@ -3,14 +3,16 @@
 Issue #186 audits the compatibility registry that existed at revision
 `d331ee2717d1eeacef0d81db42b9d4fb5848b408`. The source revision contains all
 20 records below. The frozen baseline contains the same 237 exact scopes and is
-pinned by `sha256:cbcf06de635da8e2715cb6f0832a9d525be9aed58ec8f32b5e59bda8dfa7cbbe`.
+pinned by `sha256:163d3e9d13cf2f15e7364d883d65909b58a81d9b8ca9d039ae126a873d1949e1`.
 
 The audit assigns every record to exactly one ADR-0013 migration capability and
-one removal issue. Each capability has one symbolic canonical implementation,
+one removal issue. Every scope also pins the SHA-256 of its enclosing operation
+and its source-revision persistence-call count. Each capability has one canonical implementation,
 `web:legacy-runtime:<capability>`. Multiple records for a capability partition
 the removal tickets; they do not authorize multiple writers. The architecture
-checker reconciles every active scope against the real source tree and rejects
-an unregistered or ambiguous persistence path.
+checker reconciles every active scope against the real source tree, rejects an
+added writer in the current stage, and requires future operations to retain both
+their source digest and call count.
 
 | Frozen record | Capability | Removal | Canonical implementation | Scopes |
 | --- | --- | --- | --- | ---: |

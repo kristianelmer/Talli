@@ -69,6 +69,8 @@ tickets. An exit attempt fails while any current legacy facade or blocking
 predecessor debt remains. Once a capability advances, the registry must preserve
 two distinct immutable revisions on which the complete customer-ready gate
 passed. Future stages stay static until they become current.
+The one-time #186 foundation recovery records its two passes separately before
+the first capability stage can rely on the restored baseline.
 
 ## Canonical decision inputs
 

@@ -14,115 +14,153 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "activateBillingSubscription"
+          "operation": "activateBillingSubscription",
+          "sourceDigest": "sha256:ebdf89a68109904f2a3a09eb31b203ad9bdcd6c28acf24e8296a016459bfc309",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "activateBillingSubscription"
+          "operation": "activateBillingSubscription",
+          "sourceDigest": "sha256:ebdf89a68109904f2a3a09eb31b203ad9bdcd6c28acf24e8296a016459bfc309",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "cancelBillingSubscription"
+          "operation": "cancelBillingSubscription",
+          "sourceDigest": "sha256:4e767fcba7108e2cc881e581dc029e94c77184b9aa8057e6d2704093b9fc0ea5",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "cancelBillingSubscription"
+          "operation": "cancelBillingSubscription",
+          "sourceDigest": "sha256:4e767fcba7108e2cc881e581dc029e94c77184b9aa8057e6d2704093b9fc0ea5",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "markBillingRefundEligible"
+          "operation": "markBillingRefundEligible",
+          "sourceDigest": "sha256:c04a1fcd2822be4ecfb4e6409e658392f8321081e69e822738c967f5385913f8",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "markBillingRefundEligible"
+          "operation": "markBillingRefundEligible",
+          "sourceDigest": "sha256:c04a1fcd2822be4ecfb4e6409e658392f8321081e69e822738c967f5385913f8",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "markBillingUnsupported"
+          "operation": "markBillingUnsupported",
+          "sourceDigest": "sha256:f016f34032b58e2e57fe31bdb8242135c5696a841d3d3b6b07c0ffeb5fa4ce7a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "requestFilingPackagePayment"
+          "operation": "requestFilingPackagePayment",
+          "sourceDigest": "sha256:4e6a466b569d095156d4e40fb9e140770763e25d56342766b45a44b0cc50f510",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "requestFilingPackagePayment"
+          "operation": "requestFilingPackagePayment",
+          "sourceDigest": "sha256:4e6a466b569d095156d4e40fb9e140770763e25d56342766b45a44b0cc50f510",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "saveBillingAccount"
+          "operation": "saveBillingAccount",
+          "sourceDigest": "sha256:02009bf88a061d8a46be89d6122f1c6f79b92ed1cff26b8f1166df8a09176fd7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:manage_production_pilot_entitlement",
-          "operation": "upsertProductionPilotEntitlement"
+          "operation": "upsertProductionPilotEntitlement",
+          "sourceDigest": "sha256:547b4b0ca0bac3c6baa5824f786f2baa9b512360ecd3fd8d288d5417fe606de3",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "listBillingAccounts"
+          "operation": "listBillingAccounts",
+          "sourceDigest": "sha256:7d4c39814511e2b9a964c6632102ea16e4e41f7a34b0a41b457a1c88323f6ba5",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "listBillingPaymentEvents"
+          "operation": "listBillingPaymentEvents",
+          "sourceDigest": "sha256:d7c289e15d78abf8b2fc7f856e3dee1f016a22bfe017296b0abbf0186cb942cf",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
-          "operation": "listProductionFilingState"
+          "operation": "listProductionFilingState",
+          "sourceDigest": "sha256:11bc8ac560f101c988a68a4d9c6be48bf9325b90c14abd79e44a4ea95398b068",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         }
       ]
     },
@@ -137,19 +175,25 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:create_company_workspace_with_acceptance",
-          "operation": "createWorkspace"
+          "operation": "createWorkspace",
+          "sourceDigest": "sha256:af748c4bce4c6a934a6f07c3569447d8c7c2ef1e2b4aa6770e8a07cf484b01cc",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:append_company_agreement_acceptance",
-          "operation": "reacceptCompanyAgreement"
+          "operation": "reacceptCompanyAgreement",
+          "sourceDigest": "sha256:05d52db96699833f48c57ffbf5650d57cd49bb3c263cd2cd6f18fd075106e768",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:customer_agreement_acceptances",
-          "operation": "listCustomerAgreementAcceptances"
+          "operation": "listCustomerAgreementAcceptances",
+          "sourceDigest": "sha256:79b5fb8114f439fc53ec09781bdbf7f045da5ff979fbebbb26702ad0e145a03c",
+          "occurrences": 1
         }
       ]
     },
@@ -164,151 +208,201 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "createOpeningBalanceSetup"
+          "operation": "createOpeningBalanceSetup",
+          "sourceDigest": "sha256:be343c9624d2a26bc32d0231c044a1b354e1148c8eef4a1914e9244ff3e0dcbf",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "createOpeningBalanceSetup"
+          "operation": "createOpeningBalanceSetup",
+          "sourceDigest": "sha256:be343c9624d2a26bc32d0231c044a1b354e1148c8eef4a1914e9244ff3e0dcbf",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "createOpeningBalanceSetup"
+          "operation": "createOpeningBalanceSetup",
+          "sourceDigest": "sha256:be343c9624d2a26bc32d0231c044a1b354e1148c8eef4a1914e9244ff3e0dcbf",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:period_locks",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "generateRf1086Preview"
+          "operation": "generateRf1086Preview",
+          "sourceDigest": "sha256:4d0208e4207b1fc081be1d68286aacc4cc41b4b7e9e61c27598d30fdce87d42c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "generateRf1086Preview"
+          "operation": "generateRf1086Preview",
+          "sourceDigest": "sha256:4d0208e4207b1fc081be1d68286aacc4cc41b4b7e9e61c27598d30fdce87d42c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:period_locks",
-          "operation": "lockCompanyYear"
+          "operation": "lockCompanyYear",
+          "sourceDigest": "sha256:fda77587c52306029f6e5e7ba43d1a71389f88475f8b6147b2e3c56d49b6750b",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "postManualJournal"
+          "operation": "postManualJournal",
+          "sourceDigest": "sha256:6b8a744ae27b6627b8d63efc9ccd48eb1350fb89ee24525a6f40a0192eea55e8",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "recordAdminCost"
+          "operation": "recordAdminCost",
+          "sourceDigest": "sha256:9be018a43031802d9af21d6fe5fbf97eefbc6b3e9e36de2e905120b9ac9c4fa9",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "recordDividendReceived"
+          "operation": "recordDividendReceived",
+          "sourceDigest": "sha256:4d1dbb20b3e4007f1944760302eef9b2b802c1305712004143dde93a8b5a3eb1",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "recordShareholderLoan"
+          "operation": "recordShareholderLoan",
+          "sourceDigest": "sha256:8c8ef219a1c4cd8d9b9ff0c1329bfb31505636e59492ab515b0d9fcecf7f2acc",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "recordTaxSettlement"
+          "operation": "recordTaxSettlement",
+          "sourceDigest": "sha256:71a118da55e35309829faefb80900e2b3301b62f44a6ae916bd1fa39d7dd42c6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:period_locks",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "listLedgerEntries"
+          "operation": "listLedgerEntries",
+          "sourceDigest": "sha256:dfce313a4b97b38d92211f41f5a02e5e1c63b36a7acff44731ef07f55534eb83",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "listOpeningSetups"
+          "operation": "listOpeningSetups",
+          "sourceDigest": "sha256:ac70c26df916c6d60e877db5e13bbaac9b9f1946b5fea631793e4d32808ac998",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "listOpeningSetups"
+          "operation": "listOpeningSetups",
+          "sourceDigest": "sha256:ac70c26df916c6d60e877db5e13bbaac9b9f1946b5fea631793e4d32808ac998",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:period_locks",
-          "operation": "listPeriodLocks"
+          "operation": "listPeriodLocks",
+          "sourceDigest": "sha256:bd37fb8ad5ace3208843a8ab804c1837b258b45980303c9da0b0deb65081524c",
+          "occurrences": 1
         }
       ]
     },
@@ -323,61 +417,81 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:accept_bank_transaction_suggestion",
-          "operation": "acceptBankTransactionSuggestion"
+          "operation": "acceptBankTransactionSuggestion",
+          "sourceDigest": "sha256:0a7460d484f83e4508ff5ea983c36c046fe61efde4e085ceb4a7017159a708ca",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "acceptBankTransactionSuggestion"
+          "operation": "acceptBankTransactionSuggestion",
+          "sourceDigest": "sha256:0a7460d484f83e4508ff5ea983c36c046fe61efde4e085ceb4a7017159a708ca",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "importBankCsv"
+          "operation": "importBankCsv",
+          "sourceDigest": "sha256:019083b83a6d588b8128358f0b0e4784bbfd196a1770dbc1ee183455f7b331a2",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "recordAdminCost"
+          "operation": "recordAdminCost",
+          "sourceDigest": "sha256:9be018a43031802d9af21d6fe5fbf97eefbc6b3e9e36de2e905120b9ac9c4fa9",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "recordDividendReceived"
+          "operation": "recordDividendReceived",
+          "sourceDigest": "sha256:4d1dbb20b3e4007f1944760302eef9b2b802c1305712004143dde93a8b5a3eb1",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "recordShareholderLoan"
+          "operation": "recordShareholderLoan",
+          "sourceDigest": "sha256:8c8ef219a1c4cd8d9b9ff0c1329bfb31505636e59492ab515b0d9fcecf7f2acc",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "recordTaxSettlement"
+          "operation": "recordTaxSettlement",
+          "sourceDigest": "sha256:71a118da55e35309829faefb80900e2b3301b62f44a6ae916bd1fa39d7dd42c6",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_suggestion_acceptances",
-          "operation": "listBankSuggestionAcceptances"
+          "operation": "listBankSuggestionAcceptances",
+          "sourceDigest": "sha256:35ad45b5b65f0d6a25f3ddef7e5234add365cc0817d7e7ab427e39dc445e446c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
-          "operation": "listBankTransactions"
+          "operation": "listBankTransactions",
+          "sourceDigest": "sha256:a6e58534aace1ae9b2a84a03bca2c20e8bf63160a406da947dc3b578b801a5ff",
+          "occurrences": 1
         }
       ]
     },
@@ -392,19 +506,25 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:record_share_purchase_fifo",
-          "operation": "recordSharePurchase"
+          "operation": "recordSharePurchase",
+          "sourceDigest": "sha256:7cd288a29dd0f88ee797529ab06ca1e342a4a51909c2425b138cecc5313e7a98",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lots",
-          "operation": "listInvestmentLots"
+          "operation": "listInvestmentLots",
+          "sourceDigest": "sha256:293a424ff718eb692b5c271a292a583823c616d97a299b769e142deed7d4bd02",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_positions",
-          "operation": "listInvestmentPositions"
+          "operation": "listInvestmentPositions",
+          "sourceDigest": "sha256:9160987e62370ebe25f689df2722e35cf7d1b9de773f9bab06a5e8f8f1be2d65",
+          "occurrences": 1
         }
       ]
     },
@@ -419,25 +539,33 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:record_share_sale_fifo",
-          "operation": "recordShareSale"
+          "operation": "recordShareSale",
+          "sourceDigest": "sha256:5ed471123d102767f272878cb92c9985c7e37335845544bac0569b08888343b7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lots",
-          "operation": "recordShareSale"
+          "operation": "recordShareSale",
+          "sourceDigest": "sha256:5ed471123d102767f272878cb92c9985c7e37335845544bac0569b08888343b7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_positions",
-          "operation": "recordShareSale"
+          "operation": "recordShareSale",
+          "sourceDigest": "sha256:5ed471123d102767f272878cb92c9985c7e37335845544bac0569b08888343b7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lot_allocations",
-          "operation": "listInvestmentLotAllocations"
+          "operation": "listInvestmentLotAllocations",
+          "sourceDigest": "sha256:f1827ff50de90e1c246a0d9775d4774efcdf2865b1f7ffd5340219458eb94111",
+          "occurrences": 1
         }
       ]
     },
@@ -452,13 +580,17 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "recordDividendReceived"
+          "operation": "recordDividendReceived",
+          "sourceDigest": "sha256:4d1dbb20b3e4007f1944760302eef9b2b802c1305712004143dde93a8b5a3eb1",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "listHoldingActions"
+          "operation": "listHoldingActions",
+          "sourceDigest": "sha256:e21f5c31f143d8e2c9aaf9ac300cb6e4de2aa41993ee07e8ca704f0117717e69",
+          "occurrences": 1
         }
       ]
     },
@@ -473,13 +605,17 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         }
       ]
     },
@@ -494,7 +630,9 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "recordShareholderLoan"
+          "operation": "recordShareholderLoan",
+          "sourceDigest": "sha256:8c8ef219a1c4cd8d9b9ff0c1329bfb31505636e59492ab515b0d9fcecf7f2acc",
+          "occurrences": 1
         }
       ]
     },
@@ -509,7 +647,9 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "recordTaxSettlement"
+          "operation": "recordTaxSettlement",
+          "sourceDigest": "sha256:71a118da55e35309829faefb80900e2b3301b62f44a6ae916bd1fa39d7dd42c6",
+          "occurrences": 1
         }
       ]
     },
@@ -524,91 +664,121 @@
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:0f92ecc863d67d4f1e74b0512fa2bf3ac17a294e765293bffc7d55f19890394e",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "recordDividendReceived"
+          "operation": "recordDividendReceived",
+          "sourceDigest": "sha256:4d1dbb20b3e4007f1944760302eef9b2b802c1305712004143dde93a8b5a3eb1",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "recordShareholderLoan"
+          "operation": "recordShareholderLoan",
+          "sourceDigest": "sha256:8c8ef219a1c4cd8d9b9ff0c1329bfb31505636e59492ab515b0d9fcecf7f2acc",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "recordTaxSettlement"
+          "operation": "recordTaxSettlement",
+          "sourceDigest": "sha256:71a118da55e35309829faefb80900e2b3301b62f44a6ae916bd1fa39d7dd42c6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:remove_unlinked_document",
-          "operation": "removeUnlinkedDocument"
+          "operation": "removeUnlinkedDocument",
+          "sourceDigest": "sha256:e337026d85d887ba9b7782e7f94b2c72b33084fa77ac1a5cde9b815f5120f957",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:restore_unlinked_document_after_storage_failure",
-          "operation": "removeUnlinkedDocument"
+          "operation": "removeUnlinkedDocument",
+          "sourceDigest": "sha256:e337026d85d887ba9b7782e7f94b2c72b33084fa77ac1a5cde9b815f5120f957",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "storage:company-documents",
-          "operation": "removeUnlinkedDocument"
+          "operation": "removeUnlinkedDocument",
+          "sourceDigest": "sha256:e337026d85d887ba9b7782e7f94b2c72b33084fa77ac1a5cde9b815f5120f957",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "storage:company-documents",
-          "operation": "uploadDocument"
+          "operation": "uploadDocument",
+          "sourceDigest": "sha256:ccf0aac8ba647db7810a7d25ec7d2e151ce713c045817c8e56cafd7722614161",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "uploadDocument"
+          "operation": "uploadDocument",
+          "sourceDigest": "sha256:ccf0aac8ba647db7810a7d25ec7d2e151ce713c045817c8e56cafd7722614161",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/documents/[documentId]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "storage:company-documents",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:1afb8b5d6fc2e28013dfcbe95962c24047e7db89d70d952c709489b11bfe5bd4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/documents/[documentId]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:1afb8b5d6fc2e28013dfcbe95962c24047e7db89d70d952c709489b11bfe5bd4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "storage:company-documents",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:0f92ecc863d67d4f1e74b0512fa2bf3ac17a294e765293bffc7d55f19890394e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:0f92ecc863d67d4f1e74b0512fa2bf3ac17a294e765293bffc7d55f19890394e",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "listDocumentsForCompanies"
+          "operation": "listDocumentsForCompanies",
+          "sourceDigest": "sha256:458f33b4dd69f1642a0a0dfad9980125658dc8fac3407709e6262adf2d62251b",
+          "occurrences": 1
         }
       ]
     },
@@ -623,115 +793,153 @@
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decision_finalizations",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decisions",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_artifacts",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_events",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
-          "operation": "CorporateDecisionPage"
+          "operation": "CorporateDecisionPage",
+          "sourceDigest": "sha256:c240c9cea140b6ea7868efd04b0c44a35c83c0083ffee1d10312d0c352b0f0a4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decision_finalizations",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decisions",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_artifacts",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_events",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/documents/[documentId]/preview/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_artifacts",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:0f92ecc863d67d4f1e74b0512fa2bf3ac17a294e765293bffc7d55f19890394e",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decision_finalizations",
-          "operation": "listCorporateDocumentLifecycle"
+          "operation": "listCorporateDocumentLifecycle",
+          "sourceDigest": "sha256:ab845629529115e56a0d8f8728915388de25472295ac029fca1b53ba4b765ab3",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decisions",
-          "operation": "listCorporateDocumentLifecycle"
+          "operation": "listCorporateDocumentLifecycle",
+          "sourceDigest": "sha256:ab845629529115e56a0d8f8728915388de25472295ac029fca1b53ba4b765ab3",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_artifacts",
-          "operation": "listCorporateDocumentLifecycle"
+          "operation": "listCorporateDocumentLifecycle",
+          "sourceDigest": "sha256:ab845629529115e56a0d8f8728915388de25472295ac029fca1b53ba4b765ab3",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_events",
-          "operation": "listCorporateDocumentLifecycle"
+          "operation": "listCorporateDocumentLifecycle",
+          "sourceDigest": "sha256:ab845629529115e56a0d8f8728915388de25472295ac029fca1b53ba4b765ab3",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
-          "operation": "listCorporateDocumentLifecycle"
+          "operation": "listCorporateDocumentLifecycle",
+          "sourceDigest": "sha256:ab845629529115e56a0d8f8728915388de25472295ac029fca1b53ba4b765ab3",
+          "occurrences": 1
         }
       ]
     },
@@ -746,133 +954,177 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "queueDeadlineReminders"
+          "operation": "queueDeadlineReminders",
+          "sourceDigest": "sha256:268c83ba3eb2a825454f77b2e30985a4583e1cdb43cad824cf80258f21ad941a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
-          "operation": "acknowledgeFilingReviewComment"
+          "operation": "acknowledgeFilingReviewComment",
+          "sourceDigest": "sha256:034e6774a7ed137a7c2f6cf1e41cc07e73cdbfdf6f4054b1ec785657d9603761",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_overrides",
-          "operation": "addFilingOverride"
+          "operation": "addFilingOverride",
+          "sourceDigest": "sha256:0ee12d23ae217376b1fbebb2715b1a24d78758aa5f0c7fa3dab784f8acfec77e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
-          "operation": "addFilingReviewComment"
+          "operation": "addFilingReviewComment",
+          "sourceDigest": "sha256:72ce8d6da67eab738d493ee9b036f21852cf28360b2b93b44985920239dcb43e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_overrides",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "queueDeadlineReminders"
+          "operation": "queueDeadlineReminders",
+          "sourceDigest": "sha256:268c83ba3eb2a825454f77b2e30985a4583e1cdb43cad824cf80258f21ad941a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_overrides",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "requestFilingPackagePayment"
+          "operation": "requestFilingPackagePayment",
+          "sourceDigest": "sha256:4e6a466b569d095156d4e40fb9e140770763e25d56342766b45a44b0cc50f510",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
-          "operation": "saveYearEndInterview"
+          "operation": "saveYearEndInterview",
+          "sourceDigest": "sha256:b0dffa6ac815cb45357523d623a104365eeadbc356ea8db3539e2acad4a16c3e",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
-          "operation": "listAnnualData"
+          "operation": "listAnnualData",
+          "sourceDigest": "sha256:2ba2a30512b9db66c520e6ddbbca21c6cedd0ebce71a809232232e80f205d304",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_overrides",
-          "operation": "listFilingOverrides"
+          "operation": "listFilingOverrides",
+          "sourceDigest": "sha256:2851cf1dadaa7e76d9386edee38018ae558544b250a95014a4a0b6742823b350",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "listFilingReadinessSnapshots"
+          "operation": "listFilingReadinessSnapshots",
+          "sourceDigest": "sha256:d6cb656b5bca0d01bd0e878867e912dc1273da2eb1143b33e451a6b4117368b2",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
-          "operation": "listFilingReviewComments"
+          "operation": "listFilingReviewComments",
+          "sourceDigest": "sha256:4da546889114c5269c591d134b0654990a85283c2988b4b300a5e1efa937f2fe",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         }
       ]
     },
@@ -887,97 +1139,129 @@
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:launch_signoffs",
-          "operation": "recordLaunchSignoff"
+          "operation": "recordLaunchSignoff",
+          "sourceDigest": "sha256:db41f1db2541815021f4ddd8feeea8ff96afb55139ca30a0644b1096e1351b65",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "recordLaunchSignoff"
+          "operation": "recordLaunchSignoff",
+          "sourceDigest": "sha256:db41f1db2541815021f4ddd8feeea8ff96afb55139ca30a0644b1096e1351b65",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "runProductionAuthorityOperation"
+          "operation": "runProductionAuthorityOperation",
+          "sourceDigest": "sha256:3dd424e8bb2ac23c64f81cc08006c3b0727e869885be3fdc59b68788c60b697f",
+          "occurrences": 3
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "runProductionAuthorityOperation"
+          "operation": "runProductionAuthorityOperation",
+          "sourceDigest": "sha256:3dd424e8bb2ac23c64f81cc08006c3b0727e869885be3fdc59b68788c60b697f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "runProductionSystembrukerCallbackOperation"
+          "operation": "runProductionSystembrukerCallbackOperation",
+          "sourceDigest": "sha256:ab7506c92a6ee4aba76e916ef0ce131a14c806a9a543e6e1f14de1356c88d114",
+          "occurrences": 3
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "runProductionSystembrukerCallbackOperation"
+          "operation": "runProductionSystembrukerCallbackOperation",
+          "sourceDigest": "sha256:ab7506c92a6ee4aba76e916ef0ce131a14c806a9a543e6e1f14de1356c88d114",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "getOperatorContext"
+          "operation": "getOperatorContext",
+          "sourceDigest": "sha256:4fcae81ddc1bbc5d69200ce080a34bdbc1b3cbad10f4631707b3da8c5842adb9",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "listAuthorityOperations"
+          "operation": "listAuthorityOperations",
+          "sourceDigest": "sha256:acc7a9ebebd0a6730cb98b681d0506d08de3d6accf7413b3c1bb3f7aee738c93",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "listAuthorityOperations"
+          "operation": "listAuthorityOperations",
+          "sourceDigest": "sha256:acc7a9ebebd0a6730cb98b681d0506d08de3d6accf7413b3c1bb3f7aee738c93",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:launch_signoffs",
-          "operation": "listLaunchSignoffs"
+          "operation": "listLaunchSignoffs",
+          "sourceDigest": "sha256:2f27c1748211c17b3d4c589fd3757eb09c41a0db9c709649d0248499c86e85e4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "listLaunchSignoffs"
+          "operation": "listLaunchSignoffs",
+          "sourceDigest": "sha256:2f27c1748211c17b3d4c589fd3757eb09c41a0db9c709649d0248499c86e85e4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
-          "operation": "listSystemUserRequests"
+          "operation": "listSystemUserRequests",
+          "sourceDigest": "sha256:2b5d9d58d93873a4e41ae2bdcc9bb8cd016b3ff43f657183ae55b72dc1ad4379",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:support_operators",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         }
       ]
     },
@@ -992,211 +1276,281 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "approveProductionFiling"
+          "operation": "approveProductionFiling",
+          "sourceDigest": "sha256:71055889e0c135d1ffe934b6b8f17776c1049475fd670643195c3ff4a943e02f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "generateRf1086Preview"
+          "operation": "generateRf1086Preview",
+          "sourceDigest": "sha256:4d0208e4207b1fc081be1d68286aacc4cc41b4b7e9e61c27598d30fdce87d42c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:company_memberships",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "addFilingOverride"
+          "operation": "addFilingOverride",
+          "sourceDigest": "sha256:0ee12d23ae217376b1fbebb2715b1a24d78758aa5f0c7fa3dab784f8acfec77e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "addFilingReviewComment"
+          "operation": "addFilingReviewComment",
+          "sourceDigest": "sha256:72ce8d6da67eab738d493ee9b036f21852cf28360b2b93b44985920239dcb43e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:approve_production_filing",
-          "operation": "approveProductionFiling"
+          "operation": "approveProductionFiling",
+          "sourceDigest": "sha256:71055889e0c135d1ffe934b6b8f17776c1049475fd670643195c3ff4a943e02f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "approveProductionFiling"
+          "operation": "approveProductionFiling",
+          "sourceDigest": "sha256:71055889e0c135d1ffe934b6b8f17776c1049475fd670643195c3ff4a943e02f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
-          "operation": "confirmAuthorityPermission"
+          "operation": "confirmAuthorityPermission",
+          "sourceDigest": "sha256:a618e6d66f75a8390169af87c05619b00f2e18097df4e18e6a9a36ca6238947f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "generateRf1086Preview"
+          "operation": "generateRf1086Preview",
+          "sourceDigest": "sha256:4d0208e4207b1fc081be1d68286aacc4cc41b4b7e9e61c27598d30fdce87d42c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "queueDeadlineReminders"
+          "operation": "queueDeadlineReminders",
+          "sourceDigest": "sha256:268c83ba3eb2a825454f77b2e30985a4583e1cdb43cad824cf80258f21ad941a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:claim_production_feedback_reconciliation",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:release_production_feedback_reconciliation",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_approval_snapshots",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_filing_submissions",
-          "operation": "reconcileRf1086ProductionAction"
+          "operation": "reconcileRf1086ProductionAction",
+          "sourceDigest": "sha256:39c32d49a2b7e8c85830fd72475e9b1cf93c56e62a67ce2934b037bd8721615f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_test_runs",
-          "operation": "recordAuthorityTestEvidence"
+          "operation": "recordAuthorityTestEvidence",
+          "sourceDigest": "sha256:cc1257593842c1242a1dfa56f22c48b9cb9dd0b9c06b9dec7c15f0e23e655211",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:begin_production_filing",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_approval_snapshots",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "sendApprovedRf1086ProductionFiling"
+          "operation": "sendApprovedRf1086ProductionFiling",
+          "sourceDigest": "sha256:e15cb4bfbacdd66c3efa1307cc5769cac2d3ee0de460e28f0f0fbbc44f868541",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
-          "operation": "listAuthorityPermissions"
+          "operation": "listAuthorityPermissions",
+          "sourceDigest": "sha256:91fcfd62327c1f6f523c9e0334bba882bdeed7189038f40bf1ace6af9a145af7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_test_runs",
-          "operation": "listAuthorityTestRuns"
+          "operation": "listAuthorityTestRuns",
+          "sourceDigest": "sha256:59c52ea38fc24958d79935117635cdcf64e878d91b7f46197ea7f71d2e471d74",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "listFilingPreviews"
+          "operation": "listFilingPreviews",
+          "sourceDigest": "sha256:06902d31e165253a8a6a353da723eafa5b21d3f870c3c33802a5e59feec406f2",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "listFilingSubmissions"
+          "operation": "listFilingSubmissions",
+          "sourceDigest": "sha256:7cc6e5c50269e644605b2e68e1a67f7ae3523b92b56560350d61d4e2de6d38c4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_approval_snapshots",
-          "operation": "listProductionFilingState"
+          "operation": "listProductionFilingState",
+          "sourceDigest": "sha256:11bc8ac560f101c988a68a4d9c6be48bf9325b90c14abd79e44a4ea95398b068",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_feedback_artifacts",
-          "operation": "listProductionFilingState"
+          "operation": "listProductionFilingState",
+          "sourceDigest": "sha256:11bc8ac560f101c988a68a4d9c6be48bf9325b90c14abd79e44a4ea95398b068",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:production_filing_submissions",
-          "operation": "listProductionFilingState"
+          "operation": "listProductionFilingState",
+          "sourceDigest": "sha256:11bc8ac560f101c988a68a4d9c6be48bf9325b90c14abd79e44a4ea95398b068",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 1
         }
       ]
     },
@@ -1211,13 +1565,17 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "recordCompanyTaxReturnTt02Evidence"
+          "operation": "recordCompanyTaxReturnTt02Evidence",
+          "sourceDigest": "sha256:647d3fead1f5d1f9ef1a37354d2d07ce445ca890d446c3b4df4aca70064b2394",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:import_company_tax_tt02_evidence",
-          "operation": "recordCompanyTaxReturnTt02Evidence"
+          "operation": "recordCompanyTaxReturnTt02Evidence",
+          "sourceDigest": "sha256:647d3fead1f5d1f9ef1a37354d2d07ce445ca890d446c3b4df4aca70064b2394",
+          "occurrences": 1
         }
       ]
     },
@@ -1232,13 +1590,17 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "recordAnnualAccountsTt02Evidence"
+          "operation": "recordAnnualAccountsTt02Evidence",
+          "sourceDigest": "sha256:473d203e8559a585d69bdee689684fd48689fe6374203204f2a42a18c00135ab",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_test_runs",
-          "operation": "recordAnnualAccountsTt02Evidence"
+          "operation": "recordAnnualAccountsTt02Evidence",
+          "sourceDigest": "sha256:473d203e8559a585d69bdee689684fd48689fe6374203204f2a42a18c00135ab",
+          "occurrences": 1
         }
       ]
     },
@@ -1253,181 +1615,241 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "acknowledgeFilingReviewComment"
+          "operation": "acknowledgeFilingReviewComment",
+          "sourceDigest": "sha256:034e6774a7ed137a7c2f6cf1e41cc07e73cdbfdf6f4054b1ec785657d9603761",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "activateBillingSubscription"
+          "operation": "activateBillingSubscription",
+          "sourceDigest": "sha256:ebdf89a68109904f2a3a09eb31b203ad9bdcd6c28acf24e8296a016459bfc309",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "addFilingOverride"
+          "operation": "addFilingOverride",
+          "sourceDigest": "sha256:0ee12d23ae217376b1fbebb2715b1a24d78758aa5f0c7fa3dab784f8acfec77e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "addFilingReviewComment"
+          "operation": "addFilingReviewComment",
+          "sourceDigest": "sha256:72ce8d6da67eab738d493ee9b036f21852cf28360b2b93b44985920239dcb43e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "cancelBillingSubscription"
+          "operation": "cancelBillingSubscription",
+          "sourceDigest": "sha256:4e767fcba7108e2cc881e581dc029e94c77184b9aa8057e6d2704093b9fc0ea5",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "confirmAuthorityPermission"
+          "operation": "confirmAuthorityPermission",
+          "sourceDigest": "sha256:a618e6d66f75a8390169af87c05619b00f2e18097df4e18e6a9a36ca6238947f",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "confirmSimulatedRf1086Submission"
+          "operation": "confirmSimulatedRf1086Submission",
+          "sourceDigest": "sha256:e8844a301ea5ff9f292e5c335188dd7d7b8ebb00398a9139dda4add1792d64ce",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "createAnnualCorporateDecisionDraft"
+          "operation": "createAnnualCorporateDecisionDraft",
+          "sourceDigest": "sha256:d74b12285d5a5cf9e6b1a63ca27c91f868296223620b9e960d274d658578d1f6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "createOpeningBalanceSetup"
+          "operation": "createOpeningBalanceSetup",
+          "sourceDigest": "sha256:be343c9624d2a26bc32d0231c044a1b354e1148c8eef4a1914e9244ff3e0dcbf",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "createOwnerDividendDecisionDraft"
+          "operation": "createOwnerDividendDecisionDraft",
+          "sourceDigest": "sha256:4c234ac16ea3684a209303bb0524d6906c273c57ee72e60bd618723cafc470f0",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "generateRf1086Preview"
+          "operation": "generateRf1086Preview",
+          "sourceDigest": "sha256:4d0208e4207b1fc081be1d68286aacc4cc41b4b7e9e61c27598d30fdce87d42c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "importBankCsv"
+          "operation": "importBankCsv",
+          "sourceDigest": "sha256:019083b83a6d588b8128358f0b0e4784bbfd196a1770dbc1ee183455f7b331a2",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "lockCompanyYear"
+          "operation": "lockCompanyYear",
+          "sourceDigest": "sha256:fda77587c52306029f6e5e7ba43d1a71389f88475f8b6147b2e3c56d49b6750b",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "markBillingRefundEligible"
+          "operation": "markBillingRefundEligible",
+          "sourceDigest": "sha256:c04a1fcd2822be4ecfb4e6409e658392f8321081e69e822738c967f5385913f8",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "markBillingUnsupported"
+          "operation": "markBillingUnsupported",
+          "sourceDigest": "sha256:f016f34032b58e2e57fe31bdb8242135c5696a841d3d3b6b07c0ffeb5fa4ce7a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "postManualJournal"
+          "operation": "postManualJournal",
+          "sourceDigest": "sha256:6b8a744ae27b6627b8d63efc9ccd48eb1350fb89ee24525a6f40a0192eea55e8",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "queueDeadlineReminders"
+          "operation": "queueDeadlineReminders",
+          "sourceDigest": "sha256:268c83ba3eb2a825454f77b2e30985a4583e1cdb43cad824cf80258f21ad941a",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordAdminCost"
+          "operation": "recordAdminCost",
+          "sourceDigest": "sha256:9be018a43031802d9af21d6fe5fbf97eefbc6b3e9e36de2e905120b9ac9c4fa9",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordAnnualAccountsTt02Evidence"
+          "operation": "recordAnnualAccountsTt02Evidence",
+          "sourceDigest": "sha256:473d203e8559a585d69bdee689684fd48689fe6374203204f2a42a18c00135ab",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordAuthorityTestEvidence"
+          "operation": "recordAuthorityTestEvidence",
+          "sourceDigest": "sha256:cc1257593842c1242a1dfa56f22c48b9cb9dd0b9c06b9dec7c15f0e23e655211",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordDividendReceived"
+          "operation": "recordDividendReceived",
+          "sourceDigest": "sha256:4d1dbb20b3e4007f1944760302eef9b2b802c1305712004143dde93a8b5a3eb1",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordShareholderLoan"
+          "operation": "recordShareholderLoan",
+          "sourceDigest": "sha256:8c8ef219a1c4cd8d9b9ff0c1329bfb31505636e59492ab515b0d9fcecf7f2acc",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordTaxSettlement"
+          "operation": "recordTaxSettlement",
+          "sourceDigest": "sha256:71a118da55e35309829faefb80900e2b3301b62f44a6ae916bd1fa39d7dd42c6",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "refreshAnnualReadinessSnapshots"
+          "operation": "refreshAnnualReadinessSnapshots",
+          "sourceDigest": "sha256:7ffb95f2dd573bc7dacd4fe5fdac02237a5c5d9a0aca5fe9a73a0f66a6cc2cef",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "requestFilingPackagePayment"
+          "operation": "requestFilingPackagePayment",
+          "sourceDigest": "sha256:4e6a466b569d095156d4e40fb9e140770763e25d56342766b45a44b0cc50f510",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/invitation-side-effects.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "createInvitationSideEffectStore"
+          "operation": "createInvitationSideEffectStore",
+          "sourceDigest": "sha256:f06a00f149f0c6013ec300da22ada505a7b77ed03c1e00dd60bd3cd550d800c0",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "saveBillingAccount"
+          "operation": "saveBillingAccount",
+          "sourceDigest": "sha256:02009bf88a061d8a46be89d6122f1c6f79b92ed1cff26b8f1166df8a09176fd7",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "saveYearEndInterview"
+          "operation": "saveYearEndInterview",
+          "sourceDigest": "sha256:b0dffa6ac815cb45357523d623a104365eeadbc356ea8db3539e2acad4a16c3e",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "uploadDocument"
+          "operation": "uploadDocument",
+          "sourceDigest": "sha256:ccf0aac8ba647db7810a7d25ec7d2e151ce713c045817c8e56cafd7722614161",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "searchOperatorSupportDashboard"
+          "operation": "searchOperatorSupportDashboard",
+          "sourceDigest": "sha256:dc98b768e64136987eee7f9f66efdacdc7dd973a4336248a42721c70260883d4",
+          "occurrences": 2
         }
       ]
     },
@@ -1442,13 +1864,17 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",
-          "operation": "queueDeadlineReminders"
+          "operation": "queueDeadlineReminders",
+          "sourceDigest": "sha256:268c83ba3eb2a825454f77b2e30985a4583e1cdb43cad824cf80258f21ad941a",
+          "occurrences": 2
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:notification_outbox",
-          "operation": "listNotificationOutbox"
+          "operation": "listNotificationOutbox",
+          "sourceDigest": "sha256:def3ce6e24c2717ad987d571733af81b2ad3bf289426f48bc8558ad96005fe21",
+          "occurrences": 1
         }
       ]
     },
@@ -1463,145 +1889,193 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:company_archive_begin_export",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "rpc:company_archive_complete_export",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_test_runs",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_suggestion_acceptances",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:companies",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decision_finalizations",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decisions",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_artifacts",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_events",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:documents",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lot_allocations",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lots",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_positions",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         },
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
-          "operation": "GET"
+          "operation": "GET",
+          "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+          "occurrences": 1
         }
       ]
     }

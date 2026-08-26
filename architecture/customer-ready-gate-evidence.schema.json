@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talli.no/schemas/architecture/customer-ready-gate-evidence.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "revision", "previousPassingRevision", "workflow", "executor", "executedAt", "verdict", "checks"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "previousPassingRevision": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+      ]
+    },
+    "workflow": { "const": "customer-ready-release-gate" },
+    "executor": { "enum": ["local", "github-actions"] },
+    "executedAt": { "type": "string", "format": "date-time" },
+    "verdict": { "const": "pass" },
+    "checks": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "credential-scan",
+          "typecheck",
+          "architecture",
+          "boundary",
+          "build-web",
+          "build-backend",
+          "boundary-smoke",
+          "launch-rehearsal",
+          "production-dependency-audit",
+          "database-isolation",
+          "whitespace"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

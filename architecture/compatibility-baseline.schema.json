@@ -6,7 +6,7 @@
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "decisionIssue": { "const": "#185" },
-    "sourceRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sourceRevision": { "const": "d331ee2717d1eeacef0d81db42b9d4fb5848b408" },
     "records": {
       "type": "array",
       "minItems": 1,
@@ -33,7 +33,7 @@
   "$defs": {
     "scope": {
       "type": "object",
-      "required": ["path", "rule", "resource", "operation"],
+      "required": ["path", "rule", "resource", "operation", "sourceDigest", "occurrences"],
       "properties": {
         "path": { "type": "string", "pattern": "^apps/web/[^\\s]+$" },
         "rule": {
@@ -44,7 +44,9 @@
           ]
         },
         "resource": { "type": "string", "pattern": "^(table|rpc|storage|url|module):[^\\s]+$" },
-        "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" }
+        "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" },
+        "sourceDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "occurrences": { "type": "integer", "minimum": 1 }
       },
       "additionalProperties": false
     }

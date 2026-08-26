@@ -10,13 +10,15 @@ A `legacy-facade` records a direct web business-access seam that already existed
 at frozen revision `d331ee2717d1eeacef0d81db42b9d4fb5848b408`. Its source record,
 exact suppressible scopes, migration capability, removal issue, and canonical
 legacy runtime are fixed in `compatibility-baseline.json`, whose canonical JSON
-digest is pinned by `compatibility.json`.
+digest is pinned by `compatibility.json`. Each frozen scope also records the
+source operation's SHA-256 and persistence-call count at that revision.
 
 The current capability may only shrink its legacy scopes. A future capability
 must match its frozen record exactly. A migrated capability may have no facade.
 The checker rejects baseline additions, changed ownership, changed removal
 mapping, scopes absent from the source revision, a second legacy runtime, and an
-exit review while a current facade remains.
+exit review while a current facade remains. Current-stage calls may not exceed
+their source count; future-stage operation digests and counts must remain exact.
 
 Legacy facades have no date-based expiry. Their hard expiry is the capability
 stage named by their removal issue.
@@ -57,8 +59,11 @@ remain unconditional failures.
 5. Run the complete customer-ready gate on two distinct committed revisions.
 6. Advance `currentCapability`, update `exitedCapabilities`, and add the exited
    capability to `completedStages` with its exact removal issues and both gate
-   revision SHAs.
+   attestations. Each attestation is a committed, digest-pinned JSON record bound
+   to its revision and the complete application/database check set. The second
+   pass names the first as its previous passing revision.
 
 `completedStages` must exactly equal the capabilities before the current stage;
 this keeps the evidence requirement inseparable from every later architecture
-check.
+check. The one-time `foundationRecovery` control applies the same attestation
+rules to issue #186 before the first capability migration starts.

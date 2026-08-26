@@ -2,9 +2,14 @@
   "schemaVersion": "2.0",
   "baseline": {
     "path": "architecture/compatibility-baseline.json",
-    "digest": "sha256:cbcf06de635da8e2715cb6f0832a9d525be9aed58ec8f32b5e59bda8dfa7cbbe"
+    "digest": "sha256:163d3e9d13cf2f15e7364d883d65909b58a81d9b8ca9d039ae126a873d1949e1"
   },
   "migration": {
+    "foundationRecovery": {
+      "issue": "#186",
+      "status": "pending",
+      "gates": []
+    },
     "order": [
       {
         "capability": "company_access",
