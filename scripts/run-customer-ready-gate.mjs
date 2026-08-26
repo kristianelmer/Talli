@@ -73,9 +73,9 @@ try {
   const checks = [
     execute(
       "credential-scan",
-      "scan tracked non-test source for committed credentials",
-      "bash",
-      ["-lc", "set -euo pipefail; pattern='(BEGIN (RSA |EC )?PRIVATE KEY|go-keyring-base64:|eyJhbGciOi[A-Za-z0-9_-]+\\.)'; if git grep -I -n -E \"$pattern\" -- . ':!docs/**' ':!tests/**'; then exit 1; fi"],
+      "npm run test:credential-scan",
+      "npm",
+      ["run", "test:credential-scan"],
     ),
     execute("typecheck", "npm run typecheck", "npm", ["run", "typecheck"]),
     execute("architecture", "npm run check:architecture", "npm", ["run", "check:architecture"]),
