@@ -1,35 +1,39 @@
 # Graph Report - .  (2026-08-26)
 
 ## Corpus Check
-- 1 files · ~463,867 words
+- 4 files · ~1,005,652 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5903 nodes · 12176 edges · 350 communities (307 shown, 43 thin omitted)
+- 5911 nodes · 12184 edges · 339 communities (296 shown, 43 thin omitted)
 - Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 1641 edges (avg confidence: 0.53)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
 - [[_COMMUNITY_Holding Accounting Core|Holding Accounting Core]]
-- [[_COMMUNITY_Repository Test Commands|Repository Test Commands]]
+- [[_COMMUNITY_Annual Workspace UI|Annual Workspace UI]]
 - [[_COMMUNITY_Supabase Data Access|Supabase Data Access]]
-- [[_COMMUNITY_Web Business Actions|Web Business Actions]]
 - [[_COMMUNITY_RF1086 Submission|RF1086 Submission]]
+- [[_COMMUNITY_Repository Test Commands|Repository Test Commands]]
+- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
 - [[_COMMUNITY_Corporate Document Engine|Corporate Document Engine]]
 - [[_COMMUNITY_Architecture Enforcement|Architecture Enforcement]]
-- [[_COMMUNITY_Web UI Components|Web UI Components]]
-- [[_COMMUNITY_Submission Review Data|Submission Review Data]]
+- [[_COMMUNITY_Web Business Actions|Web Business Actions]]
 - [[_COMMUNITY_Annual Accounts Authority|Annual Accounts Authority]]
-- [[_COMMUNITY_Annual Workspace UI|Annual Workspace UI]]
+- [[_COMMUNITY_Authority Operations|Authority Operations]]
+- [[_COMMUNITY_Customer Agreement Reacceptance|Customer Agreement Reacceptance]]
 - [[_COMMUNITY_Annual Filing Readiness|Annual Filing Readiness]]
 - [[_COMMUNITY_Generated API Client|Generated API Client]]
 - [[_COMMUNITY_Company Access Backend Tests|Company Access Backend Tests]]
+- [[_COMMUNITY_Customer Agreement Reacceptance|Customer Agreement Reacceptance]]
 - [[_COMMUNITY_Company Access API|Company Access API]]
+- [[_COMMUNITY_Web UI Components|Web UI Components]]
 - [[_COMMUNITY_Supabase Company Adapter|Supabase Company Adapter]]
 - [[_COMMUNITY_Annual Filing Readiness|Annual Filing Readiness]]
 - [[_COMMUNITY_System User Browser Tests|System User Browser Tests]]
-- [[_COMMUNITY_Customer Agreement Reacceptance|Customer Agreement Reacceptance]]
 - [[_COMMUNITY_Owner Dividend Fixture|Owner Dividend Fixture]]
+- [[_COMMUNITY_Filing Submission Core|Filing Submission Core]]
+- [[_COMMUNITY_Authority Test Evidence|Authority Test Evidence]]
 - [[_COMMUNITY_OpenAPI Baseline Contract|OpenAPI Baseline Contract]]
 - [[_COMMUNITY_Corporate Document Design|Corporate Document Design]]
 - [[_COMMUNITY_Annual Close Fixture|Annual Close Fixture]]
@@ -37,69 +41,57 @@
 - [[_COMMUNITY_Company Tax Authority|Company Tax Authority]]
 - [[_COMMUNITY_OpenAPI Contract Schema|OpenAPI Contract Schema]]
 - [[_COMMUNITY_Browser Process Lifecycle|Browser Process Lifecycle]]
-- [[_COMMUNITY_Authority Operations|Authority Operations]]
 - [[_COMMUNITY_Contract Boundary Checks|Contract Boundary Checks]]
+- [[_COMMUNITY_System User Authority|System User Authority]]
 - [[_COMMUNITY_Dependency Evidence Schema|Dependency Evidence Schema]]
 - [[_COMMUNITY_Action Form Components|Action Form Components]]
 - [[_COMMUNITY_OpenAPI Variant Types|OpenAPI Variant Types]]
 - [[_COMMUNITY_Shared Kernel Schema|Shared Kernel Schema]]
 - [[_COMMUNITY_Annual Workspace Plan|Annual Workspace Plan]]
+- [[_COMMUNITY_UI Icons and Banners|UI Icons and Banners]]
 - [[_COMMUNITY_RF1086 Authority Client|RF1086 Authority Client]]
-- [[_COMMUNITY_Filing Submission Core|Filing Submission Core]]
-- [[_COMMUNITY_Customer Agreement Reacceptance|Customer Agreement Reacceptance]]
-- [[_COMMUNITY_Bank Suggestion Rules|Bank Suggestion Rules]]
+- [[_COMMUNITY_System User Flow|System User Flow]]
 - [[_COMMUNITY_RF1086 TT02 Evidence|RF1086 TT02 Evidence]]
 - [[_COMMUNITY_Cancellation Backend Tests|Cancellation Backend Tests]]
 - [[_COMMUNITY_Supabase Adapter Contract|Supabase Adapter Contract]]
+- [[_COMMUNITY_Security Routes|Security Routes]]
 - [[_COMMUNITY_Database Catalog Schema|Database Catalog Schema]]
-- [[_COMMUNITY_System User Flow|System User Flow]]
-- [[_COMMUNITY_OpenAPI Union Fields|OpenAPI Union Fields]]
 - [[_COMMUNITY_RF1086 Domain Model|RF1086 Domain Model]]
+- [[_COMMUNITY_OpenAPI Union Fields|OpenAPI Union Fields]]
 - [[_COMMUNITY_RF1086 Production|RF1086 Production]]
 - [[_COMMUNITY_Annual Accounts Fixture|Annual Accounts Fixture]]
-- [[_COMMUNITY_System User Authority|System User Authority]]
 - [[_COMMUNITY_Company Access Manifest|Company Access Manifest]]
 - [[_COMMUNITY_System Boundary Manifest|System Boundary Manifest]]
 - [[_COMMUNITY_Company Tax Fixture|Company Tax Fixture]]
 - [[_COMMUNITY_Maskinporten Integration|Maskinporten Integration]]
-- [[_COMMUNITY_UI Icons and Banners|UI Icons and Banners]]
 - [[_COMMUNITY_Web Package Dependencies|Web Package Dependencies]]
 - [[_COMMUNITY_Module Definition Schema|Module Definition Schema]]
 - [[_COMMUNITY_Annual Accounts Evidence|Annual Accounts Evidence]]
 - [[_COMMUNITY_Corporate Document Readiness|Corporate Document Readiness]]
 - [[_COMMUNITY_OpenAPI Scalar Fields|OpenAPI Scalar Fields]]
+- [[_COMMUNITY_Selected Company API Contract|Selected Company API Contract]]
 - [[_COMMUNITY_Backend System Manifest|Backend System Manifest]]
 - [[_COMMUNITY_Bank Provider Port|Bank Provider Port]]
-- [[_COMMUNITY_RF1086 Codes|RF1086 Codes]]
-- [[_COMMUNITY_Authority Test Evidence|Authority Test Evidence]]
+- [[_COMMUNITY_Owner Action Navigation|Owner Action Navigation]]
 - [[_COMMUNITY_Company Access Recovery|Company Access Recovery]]
+- [[_COMMUNITY_Corporate Document Workflow|Corporate Document Workflow]]
 - [[_COMMUNITY_OpenAPI Response Types|OpenAPI Response Types]]
 - [[_COMMUNITY_Annual Validation Fixture|Annual Validation Fixture]]
-- [[_COMMUNITY_Filing Submission Core|Filing Submission Core]]
-- [[_COMMUNITY_Owner Action Navigation|Owner Action Navigation]]
 - [[_COMMUNITY_Company Tax Evidence|Company Tax Evidence]]
-- [[_COMMUNITY_Corporate Document Workflow|Corporate Document Workflow]]
-- [[_COMMUNITY_Share Lot Allocation|Share Lot Allocation]]
+- [[_COMMUNITY_RF1086 Production Tests|RF1086 Production Tests]]
 - [[_COMMUNITY_Company Access Module Docs|Company Access Module Docs]]
+- [[_COMMUNITY_Filing Command Line|Filing Command Line]]
 - [[_COMMUNITY_Corporate Decision Facts|Corporate Decision Facts]]
+- [[_COMMUNITY_Share Lot Allocation|Share Lot Allocation]]
 - [[_COMMUNITY_Company Access Module|Company Access Module]]
 - [[_COMMUNITY_System Boundary Module|System Boundary Module]]
-- [[_COMMUNITY_Opening Balance Form|Opening Balance Form]]
 - [[_COMMUNITY_Corporate Decision Facts|Corporate Decision Facts]]
 - [[_COMMUNITY_Company Tax Return|Company Tax Return]]
-- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
+- [[_COMMUNITY_RF1086 Runtime Bridge|RF1086 Runtime Bridge]]
 - [[_COMMUNITY_OpenAPI Contract Fields|OpenAPI Contract Fields]]
 - [[_COMMUNITY_Unsupported Share Class Tests|Unsupported Share Class Tests]]
-- [[_COMMUNITY_Authority Operations|Authority Operations]]
-- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
-- [[_COMMUNITY_Security Routes|Security Routes]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
-- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
-- [[_COMMUNITY_Filing Command Line|Filing Command Line]]
-- [[_COMMUNITY_RF1086 Production Tests|RF1086 Production Tests]]
-- [[_COMMUNITY_RF1086 Runtime Bridge|RF1086 Runtime Bridge]]
-- [[_COMMUNITY_System User Flow Tests|System User Flow Tests]]
-- [[_COMMUNITY_Selected Company API Contract|Selected Company API Contract]]
+- [[_COMMUNITY_Web Business Actions|Web Business Actions]]
 - [[_COMMUNITY_Dividend Tests|Dividend Tests]]
 - [[_COMMUNITY_Mismatched Share Count Tests|Mismatched Share Count Tests]]
 - [[_COMMUNITY_No Activity Tests|No Activity Tests]]
@@ -109,25 +101,25 @@
 - [[_COMMUNITY_Legacy Facade Baseline Audit|Legacy Facade Baseline Audit]]
 - [[_COMMUNITY_Simple Holding Mismatch Tests|Simple Holding Mismatch Tests]]
 - [[_COMMUNITY_Customer Ready Decision Map|Customer Ready Decision Map]]
-- [[_COMMUNITY_Validation Module|Validation Module]]
-- [[_COMMUNITY_Company Tax Return Authority Test|Company Tax Return Authority Test]]
-- [[_COMMUNITY_Unsupported Group Contribution Tests|Unsupported Group Contribution Tests]]
-- [[_COMMUNITY_Supabase Data Access|Supabase Data Access]]
-- [[_COMMUNITY_Year End Interview|Year End Interview]]
-- [[_COMMUNITY_Terms Of Service Draft|Terms Of Service Draft]]
 - [[_COMMUNITY_Cancellation Actions|Cancellation Actions]]
+- [[_COMMUNITY_Company Tax Return Authority Test|Company Tax Return Authority Test]]
+- [[_COMMUNITY_Opening Balance Form|Opening Balance Form]]
+- [[_COMMUNITY_Unsupported Group Contribution Tests|Unsupported Group Contribution Tests]]
+- [[_COMMUNITY_Terms Of Service Draft|Terms Of Service Draft]]
+- [[_COMMUNITY_Filing Release Controls|Filing Release Controls]]
+- [[_COMMUNITY_Bank Suggestion Rules|Bank Suggestion Rules]]
+- [[_COMMUNITY_System User Flow Tests|System User Flow Tests]]
 - [[_COMMUNITY_Company Context API Contract|Company Context API Contract]]
 - [[_COMMUNITY_Created At API Contract|Created At API Contract]]
 - [[_COMMUNITY_Simple Holding Blocked Tests|Simple Holding Blocked Tests]]
 - [[_COMMUNITY_Module Schema|Module Schema]]
 - [[_COMMUNITY_Controlled Production Beta RF1086|Controlled Production Beta RF1086]]
-- [[_COMMUNITY_Filing Release Controls|Filing Release Controls]]
+- [[_COMMUNITY_Year End Interview|Year End Interview]]
 - [[_COMMUNITY_Launch Signoff|Launch Signoff]]
 - [[_COMMUNITY_Tsconfig Module|Tsconfig Module]]
 - [[_COMMUNITY_Production Submission State|Production Submission State]]
 - [[_COMMUNITY_Production Filing Action Guide|Production Filing Action Guide]]
 - [[_COMMUNITY_Filing Release Controls|Filing Release Controls]]
-- [[_COMMUNITY_Deadlines Module|Deadlines Module]]
 - [[_COMMUNITY_Owner Dividend Payment|Owner Dividend Payment]]
 - [[_COMMUNITY_Production E2e Verification|Production E2e Verification]]
 - [[_COMMUNITY_Backend System Schema|Backend System Schema]]
@@ -144,7 +136,7 @@
 - [[_COMMUNITY_Compatibility Baseline Schema|Compatibility Baseline Schema]]
 - [[_COMMUNITY_Compatibility Baseline Schema|Compatibility Baseline Schema]]
 - [[_COMMUNITY_Module Schema|Module Schema]]
-- [[_COMMUNITY_Corporate Document Workflow|Corporate Document Workflow]]
+- [[_COMMUNITY_RF1086 Submission|RF1086 Submission]]
 - [[_COMMUNITY_Accept Company Invitation API Contract|Accept Company Invitation API Contract]]
 - [[_COMMUNITY_Expected Role API Contract|Expected Role API Contract]]
 - [[_COMMUNITY_Generate API Client|Generate API Client]]
@@ -152,6 +144,8 @@
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
+- [[_COMMUNITY_Year End Interview|Year End Interview]]
+- [[_COMMUNITY_Corporate Document Workflow|Corporate Document Workflow]]
 - [[_COMMUNITY_Talli Holding First Filing Assistant|Talli Holding First Filing Assistant]]
 - [[_COMMUNITY_PLAN Documentation|PLAN Documentation]]
 - [[_COMMUNITY_Use A Two Application Modular|Use A Two Application Modular]]
@@ -163,10 +157,12 @@
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Customer Ready Gate Evidence Schema|Customer Ready Gate Evidence Schema]]
+- [[_COMMUNITY_Supabase Data Access|Supabase Data Access]]
 - [[_COMMUNITY_Production E2e Verification Evidence|Production E2e Verification Evidence]]
 - [[_COMMUNITY_RF1086 Controlled Beta Deployment Evidence|RF1086 Controlled Beta Deployment Evidence]]
+- [[_COMMUNITY_Filing Submission Core|Filing Submission Core]]
+- [[_COMMUNITY_RF1086 Codes|RF1086 Codes]]
 - [[_COMMUNITY_Design Typography System|Design Typography System]]
-- [[_COMMUNITY_Authority Test Evidence|Authority Test Evidence]]
 - [[_COMMUNITY_RF1086 Feedback|RF1086 Feedback]]
 - [[_COMMUNITY_Enforce The Architecture And Migrate|Enforce The Architecture And Migrate]]
 - [[_COMMUNITY_Route Module|Route Module]]
@@ -176,6 +172,7 @@
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Module Schema|Module Schema]]
 - [[_COMMUNITY_Module Schema|Module Schema]]
+- [[_COMMUNITY_RF1086 Domain Model|RF1086 Domain Model]]
 - [[_COMMUNITY_Corporate Document Local Rehearsal Evidence|Corporate Document Local Rehearsal Evidence]]
 - [[_COMMUNITY_Python Imports|Python Imports]]
 - [[_COMMUNITY_Company Tax Return Authority Map|Company Tax Return Authority Map]]
@@ -183,6 +180,7 @@
 - [[_COMMUNITY_Production Systemregister Operations|Production Systemregister Operations]]
 - [[_COMMUNITY_Filing Release Controls|Filing Release Controls]]
 - [[_COMMUNITY_System User Requests Database Runtime|System User Requests Database Runtime]]
+- [[_COMMUNITY_RF1086 Codes|RF1086 Codes]]
 - [[_COMMUNITY_Compatibility Baseline Schema|Compatibility Baseline Schema]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Customer Ready Gate Evidence Schema|Customer Ready Gate Evidence Schema]]
@@ -190,25 +188,22 @@
 - [[_COMMUNITY_Annual Accounts TT02 Evidence|Annual Accounts TT02 Evidence]]
 - [[_COMMUNITY_Annual Accounts TT02 Evidence|Annual Accounts TT02 Evidence]]
 - [[_COMMUNITY_Annual Accounts Authority Map|Annual Accounts Authority Map]]
-- [[_COMMUNITY_Bank Module|Bank Module]]
-- [[_COMMUNITY_RF1086 Submission|RF1086 Submission]]
+- [[_COMMUNITY_Submission Review Data|Submission Review Data]]
 - [[_COMMUNITY_Production Approval|Production Approval]]
 - [[_COMMUNITY_Shareholder Loan|Shareholder Loan]]
 - [[_COMMUNITY_Accepted At API Contract|Accepted At API Contract]]
+- [[_COMMUNITY_Selected Company API Contract|Selected Company API Contract]]
 - [[_COMMUNITY_Run Customer Ready Gate|Run Customer Ready Gate]]
 - [[_COMMUNITY_Controlled Production Beta Actions Tests|Controlled Production Beta Actions Tests]]
 - [[_COMMUNITY_RF1086 Feedback Schema Tests|RF1086 Feedback Schema Tests]]
 - [[_COMMUNITY_Provider Neutral Integration Seams|Provider Neutral Integration Seams]]
-- [[_COMMUNITY_Web Business Actions|Web Business Actions]]
 - [[_COMMUNITY_Compatibility Schema|Compatibility Schema]]
 - [[_COMMUNITY_Annual Accounts TT02 Evidence|Annual Accounts TT02 Evidence]]
 - [[_COMMUNITY_Backup Restore|Backup Restore]]
 - [[_COMMUNITY_Production Submission|Production Submission]]
-- [[_COMMUNITY_System User Authority Client Tests|System User Authority Client Tests]]
 - [[_COMMUNITY_Company Cancellation List API Contract|Company Cancellation List API Contract]]
 - [[_COMMUNITY_Talli Plan Implementation Gap Closure|Talli Plan Implementation Gap Closure]]
 - [[_COMMUNITY_Corporate Decision Facts|Corporate Decision Facts]]
-- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
 - [[_COMMUNITY_CONTEXT Documentation|CONTEXT Documentation]]
 - [[_COMMUNITY_Enforce The Architecture And Migrate|Enforce The Architecture And Migrate]]
 - [[_COMMUNITY_Design README|Design README]]
@@ -217,18 +212,14 @@
 - [[_COMMUNITY_Company Tax TT02 Evidence|Company Tax TT02 Evidence]]
 - [[_COMMUNITY_RF1086 TT02 Evidence|RF1086 TT02 Evidence]]
 - [[_COMMUNITY_Design Direction Rules|Design Direction Rules]]
-- [[_COMMUNITY_OpenAPI Object Fields|OpenAPI Object Fields]]
 - [[_COMMUNITY_Invitation Side Effect API Contract|Invitation Side Effect API Contract]]
+- [[_COMMUNITY_CI Release Gate Tests|CI Release Gate Tests]]
 - [[_COMMUNITY_COMPATIBILITY Documentation|COMPATIBILITY Documentation]]
-- [[_COMMUNITY_Supabase Data Access|Supabase Data Access]]
 - [[_COMMUNITY_Customer Ready Gate Evidence Schema|Customer Ready Gate Evidence Schema]]
 - [[_COMMUNITY_Shared Kernel|Shared Kernel]]
 - [[_COMMUNITY_Annual Accounts TT02 Evidence|Annual Accounts TT02 Evidence]]
 - [[_COMMUNITY_Company Tax TT02 Evidence|Company Tax TT02 Evidence]]
-- [[_COMMUNITY_Year End Interview|Year End Interview]]
-- [[_COMMUNITY_RF1086 Submission|RF1086 Submission]]
-- [[_COMMUNITY_System User Requests|System User Requests]]
-- [[_COMMUNITY_OpenAPI Object Fields|OpenAPI Object Fields]]
+- [[_COMMUNITY_Web Business Actions|Web Business Actions]]
 - [[_COMMUNITY_Company Membership Response API Contract|Company Membership Response API Contract]]
 - [[_COMMUNITY_Repository Package|Repository Package]]
 - [[_COMMUNITY_Repository Package|Repository Package]]
@@ -258,7 +249,6 @@
 - [[_COMMUNITY_Annual Accounts TT02 Evidence|Annual Accounts TT02 Evidence]]
 - [[_COMMUNITY_Production Systemregister Evidence|Production Systemregister Evidence]]
 - [[_COMMUNITY_Canvas Color Tokens|Canvas Color Tokens]]
-- [[_COMMUNITY_RF1086 Production Tests|RF1086 Production Tests]]
 - [[_COMMUNITY_Company Tax Feedback Persistence|Company Tax Feedback Persistence]]
 - [[_COMMUNITY_Corporate Document Artifacts|Corporate Document Artifacts]]
 - [[_COMMUNITY_Assert Deployed Schema Contract|Assert Deployed Schema Contract]]
@@ -287,7 +277,6 @@
 - [[_COMMUNITY_Layout Module|Layout Module]]
 - [[_COMMUNITY_Module Schema|Module Schema]]
 - [[_COMMUNITY_RF1086 Code Evidence Register|RF1086 Code Evidence Register]]
-- [[_COMMUNITY_Company Access Administration|Company Access Administration]]
 - [[_COMMUNITY_Workspace Module|Workspace Module]]
 - [[_COMMUNITY_Run Next|Run Next]]
 - [[_COMMUNITY_Browser System User Flow Contract|Browser System User Flow Contract]]
@@ -311,7 +300,6 @@
 - [[_COMMUNITY_Company Tax TT02 Evidence|Company Tax TT02 Evidence]]
 - [[_COMMUNITY_Test Supabase Local|Test Supabase Local]]
 - [[_COMMUNITY_Bank Suggestion Integration Tests|Bank Suggestion Integration Tests]]
-- [[_COMMUNITY_CI Release Gate Tests|CI Release Gate Tests]]
 - [[_COMMUNITY_Company Access Invitations Schema Tests|Company Access Invitations Schema Tests]]
 - [[_COMMUNITY_Company Access Review Fixes Tests|Company Access Review Fixes Tests]]
 - [[_COMMUNITY_Company Access Review Round Tests|Company Access Review Round Tests]]
@@ -329,6 +317,7 @@
 - [[_COMMUNITY_Holding Cli Init|Holding Cli Init]]
 - [[_COMMUNITY_Modules Init|Modules Init]]
 - [[_COMMUNITY_Talli Brand Mark|Talli Brand Mark]]
+- [[_COMMUNITY_Clean Worktree Guard|Clean Worktree Guard]]
 - [[_COMMUNITY_System Boundary Init|System Boundary Init]]
 - [[_COMMUNITY_Talli Backend Init|Talli Backend Init]]
 - [[_COMMUNITY_Annual Accounts TT02 Evidence Tests|Annual Accounts TT02 Evidence Tests]]
@@ -368,8 +357,8 @@
   PRODUCT.md → DESIGN.md
 - `Deterministic Compliance Decision` --semantically_similar_to--> `Deterministic AI Boundary`  [INFERRED] [semantically similar]
   docs/adr/0003-deterministic-compliance-core-with-ai-assistance.md → PLAN.md
-- `client()` --calls--> `createTalliApiClient()`  [INFERRED]
-  apps/web/features/company-access/transport/company-access-administration.ts → packages/talli-api-client/src/generated/client.ts
+- `FilingCase` --uses--> `FilingCase`  [INFERRED]
+  holding_cli/main.py → holding_core/models.py
 
 ## Import Cycles
 - 1-file cycle: `apps/backend/src/talli_backend/main.py -> apps/backend/src/talli_backend/main.py`
@@ -399,307 +388,307 @@
 - **Immutable customer and authority evidence** — specs_2026_07_14_corporate_document_artifacts_design_append_only_document_lifecycle, specs_2026_07_15_controlled_production_beta_design_append_only_submission_journal, plans_2026_07_17_general_customer_agreement_dpa_immutable_acceptance_evidence, plans_2026_07_16_production_systemregister_operations_redacted_authority_audit [INFERRED 0.85]
 - **Calm truthful owner journey** — specs_2026_07_19_talli_design_direction_design_quiet_confidence_direction, specs_2026_07_19_talli_design_direction_design_visible_correctness, specs_2026_07_19_annual_reporting_workspace_design_obligation_led_information_architecture, specs_2026_07_19_annual_reporting_workspace_design_persisted_state_as_truth [INFERRED 0.95]
 
-## Communities (350 total, 43 thin omitted)
+## Communities (339 total, 43 thin omitted)
 
 ### Community 0 - "Holding Accounting Core"
 Cohesion: 0.05
-Nodes (169): AdminCostInput, BaseModel, CompanyArchive, CompanyIdentity, datetime, Decimal, DividendReceivedInput, DocumentRecord (+161 more)
+Nodes (176): AdminCostInput, BaseModel, CompanyArchive, CompanyIdentity, datetime, Decimal, DividendReceivedInput, DocumentRecord (+168 more)
 
-### Community 1 - "Repository Test Commands"
-Cohesion: 0.02
-Nodes (98): scripts, authority:annual-accounts-test, authority:company-tax-test, authority:rf1086-test, authority:token-smoke, build, build:backend, build:web (+90 more)
+### Community 1 - "Annual Workspace UI"
+Cohesion: 0.03
+Nodes (94): AnnualOverview(), AnnualWorkspaceShell(), roleLabel, ContextRail(), description, ObligationRow(), issueTitleByCode, obligationDescription (+86 more)
 
 ### Community 2 - "Supabase Data Access"
 Cohesion: 0.08
-Nodes (85): acceptBankTransactionSuggestion(), acknowledgeFilingReviewComment(), addFilingOverride(), addFilingReviewComment(), confirmAuthorityPermission(), createWorkspace(), formString(), generateRf1086Preview() (+77 more)
+Nodes (95): acceptBankTransactionSuggestion(), acknowledgeFilingReviewComment(), activateBillingSubscription(), addFilingOverride(), addFilingReviewComment(), cancelBillingSubscription(), confirmAuthorityPermission(), createAnnualCorporateDecisionDraft() (+87 more)
 
-### Community 3 - "Web Business Actions"
-Cohesion: 0.05
-Nodes (81): InvitationAcceptancePage(), InvitationAcceptancePageProps, acceptWorkspaceInvitation(), administerWorkspaceMembership(), approveCorporateDecisionFacts(), approveProductionFiling(), attestSignedCorporateArtifact(), bankSuggestionErrors (+73 more)
-
-### Community 4 - "RF1086 Submission"
+### Community 3 - "RF1086 Submission"
 Cohesion: 0.04
-Nodes (63): confirmSimulatedRf1086Submission(), assertNoBlockingFilingOverrides(), FilingOverrideGateInput, FilingOverrideInput, FilingOverrideRiskLevel, validateFilingOverride(), assertAdvisoryCanBeAcknowledged(), assertNoHardReviewBlocks() (+55 more)
+Nodes (77): confirmSimulatedRf1086Submission(), adminCostAccounts, AdminCostCategory, assertBankTransactionMatchesCost(), buildAdminCostLedgerLines(), parseBankCsv(), ParsedBankTransaction, roundMoney() (+69 more)
 
-### Community 5 - "Corporate Document Engine"
+### Community 4 - "Repository Test Commands"
+Cohesion: 0.02
+Nodes (98): scripts, authority:annual-accounts-test, authority:company-tax-test, authority:rf1086-test, authority:token-smoke, build, build:backend, build:web (+90 more)
+
+### Community 5 - "Company Access Administration"
+Cohesion: 0.06
+Nodes (52): companyAccessInvitationWorkflow(), CompanyAccessPresentation, presentCompanyAccessContext(), createTalliApiClient(), backendBaseUrl(), BackendConfigurationError, BackendConfigurationErrorCode, listCompanyAccessAdministration() (+44 more)
+
+### Community 6 - "Corporate Document Engine"
 Cohesion: 0.08
-Nodes (61): Canvas, FilingCase, _allocation_table(), _annual_board_story(), _annual_general_meeting_story(), _artifact_filename(), _artifact_story(), _artifact_title() (+53 more)
+Nodes (59): Canvas, FilingCase, _allocation_table(), _annual_board_story(), _annual_general_meeting_story(), _artifact_filename(), _artifact_story(), _artifact_title() (+51 more)
 
-### Community 6 - "Architecture Enforcement"
+### Community 7 - "Architecture Enforcement"
 Cohesion: 0.06
 Nodes (64): activeCompatibilityMatches(), assertAcyclic(), BACKEND_SYSTEM_REQUIRED, backendSystemDocumentationInventory(), checkArchitecture(), checkCompositionRoot(), CHECKER_REPOSITORY_ROOT, checkGlobalWebBoundary() (+56 more)
 
-### Community 7 - "Web UI Components"
-Cohesion: 0.07
-Nodes (52): ACTION_SLUGS, ActionsHubPage(), ActionsHubProps, BillingPage(), PLAN_ORDER, BillingPlan, Button(), buttonClass() (+44 more)
-
-### Community 8 - "Submission Review Data"
-Cohesion: 0.05
-Nodes (55): SubmissionRecords, GET(), AuditEventArchiveRow, buildPersistedCompanyArchive(), firstArchiveSourceError(), LedgerEntryRow, authorityTestRunStatusLabel(), buildCancellationEvidence() (+47 more)
+### Community 8 - "Web Business Actions"
+Cohesion: 0.06
+Nodes (62): InvitationAcceptancePage(), InvitationAcceptancePageProps, acceptWorkspaceInvitation(), administerWorkspaceMembership(), approveCorporateDecisionFacts(), approveProductionFiling(), attestSignedCorporateArtifact(), bankSuggestionErrors (+54 more)
 
 ### Community 9 - "Annual Accounts Authority"
 Cohesion: 0.05
 Nodes (57): AnnualAccountsAuthorityClient, AnnualAccountsAuthorityEnvironment, AnnualAccountsAuthorityError, AnnualAccountsValidationIssue, AnnualAccountsValidationSummary, AuthorityClientInput, authorityRequest(), createAnnualAccountsAuthorityClient() (+49 more)
 
-### Community 10 - "Annual Workspace UI"
-Cohesion: 0.05
-Nodes (47): AnnualOverview(), AnnualWorkspaceShell(), roleLabel, ContextRail(), description, ObligationRow(), issueTitleByCode, obligationDescription (+39 more)
-
-### Community 11 - "Annual Filing Readiness"
+### Community 10 - "Authority Operations"
 Cohesion: 0.06
-Nodes (51): loadCorporateLifecycleActionContext(), refreshAnnualReadinessSnapshots(), FilingHubPage(), FilingHubProps, buildReadinessInput(), FILING_OBLIGATIONS, accountBalance(), accountCreditBalance() (+43 more)
+Nodes (57): authorityOperationFailureCode(), formRawString(), runProductionAuthorityOperation(), runProductionSystembrukerCallbackOperation(), assertAuthorityOperationIntent(), assertSystembrukerCallbackOperationIntent(), AUTHORITY_CONFIRMATION, AUTHORITY_OPERATION (+49 more)
 
-### Community 12 - "Generated API Client"
+### Community 11 - "Customer Agreement Reacceptance"
+Cohesion: 0.06
+Nodes (40): ACTION_SLUGS, ActionsHubPage(), ActionsHubProps, Home(), metadata, GoogleSignInButton(), BillingPage(), PLAN_ORDER (+32 more)
+
+### Community 12 - "Annual Filing Readiness"
+Cohesion: 0.06
+Nodes (51): loadCorporateLifecycleActionContext(), refreshAnnualReadinessSnapshots(), FilingHubPage(), buildReadinessInput(), FILING_OBLIGATIONS, accountBalance(), accountCreditBalance(), annualAccountsPayloadFeedback (+43 more)
+
+### Community 13 - "Generated API Client"
 Cohesion: 0.06
 Nodes (57): AcceptCompanyInvitationRequest, AdministerCompanyMembershipRequest, CompanyAccessContextRequest, CompanyCancellation, CompanyCancellationEvidence, CompanyCancellationListResponse, CompanyCancellationResponse, CompanyContext (+49 more)
 
-### Community 13 - "Company Access Backend Tests"
+### Community 14 - "Company Access Backend Tests"
 Cohesion: 0.07
 Nodes (33): AcceptInvitationGatewayCommand, AdministerMembershipGatewayCommand, BaseHTTPRequestHandler, CreateInvitationGatewayCommand, InvitationIdentityGatewayCommand, InvitationMutationGatewayCommand, MonkeyPatch, ResendInvitationGatewayCommand (+25 more)
 
-### Community 14 - "Company Access API"
+### Community 15 - "Customer Agreement Reacceptance"
+Cohesion: 0.06
+Nodes (36): LegalDoc, LegalPage(), LegalSection, metadata, assertSupportedBrregIdentity(), BrregAddress, BrregCompanyIdentity, BrregEntityPayload (+28 more)
+
+### Community 16 - "Company Access API"
 Cohesion: 0.22
 Nodes (42): FastAPI, BaseHTTPMiddleware, AcceptCompanyInvitationRequest, AdministerCompanyMembershipRequest, CompanyAccessCommandModel, CompanyAccessModel, CompanyAccessResponseModel, CompanyCancellationEvidence (+34 more)
 
-### Community 15 - "Supabase Company Adapter"
+### Community 17 - "Web UI Components"
+Cohesion: 0.10
+Nodes (36): Button(), buttonClass(), ButtonProps, ButtonSize, ButtonVariant, LinkButtonProps, Card(), CardProps (+28 more)
+
+### Community 18 - "Supabase Company Adapter"
 Cohesion: 0.18
 Nodes (34): _RejectRedirects, SupabaseConfiguration, AcceptInvitationGatewayCommand, AdministerMembershipGatewayCommand, CreateInvitationGatewayCommand, FinalizeCompanyDeletionGatewayCommand, InvitationIdentityGatewayCommand, InvitationMutationGatewayCommand (+26 more)
 
-### Community 16 - "Annual Filing Readiness"
+### Community 19 - "Annual Filing Readiness"
 Cohesion: 0.06
-Nodes (38): loadSystemUserRequestPresentations(), systemUserFilingPresentation(), archiveReference(), buildOwnerFilingPresentation(), COMPANY_TAX_PENDING_FEEDBACK_COPY, obligationFilingString(), isFilingObligation(), Rf1086ReconciliationControl() (+30 more)
+Nodes (39): ConnectionsPage(), loadSystemUserRequestPresentations(), systemUserFilingPresentation(), archiveReference(), buildOwnerFilingPresentation(), COMPANY_TAX_PENDING_FEEDBACK_COPY, obligationFilingString(), isFilingObligation() (+31 more)
 
-### Community 17 - "System User Browser Tests"
+### Community 20 - "System User Browser Tests"
 Cohesion: 0.06
-Nodes (31): installBrowserEgressGuard(), LOOPBACK_HOSTS, startSystemUserAuthorityMock(), assertNoError(), base32Decode(), cleanupFixture(), companyRow(), ensureLocalSupabase() (+23 more)
+Nodes (32): installBrowserEgressGuard(), LOOPBACK_HOSTS, startSystemUserAuthorityMock(), SYSTEM_USER_SYSTEM_ID, assertNoError(), base32Decode(), cleanupFixture(), companyRow() (+24 more)
 
-### Community 18 - "Customer Agreement Reacceptance"
-Cohesion: 0.07
-Nodes (29): Home(), metadata, CustomerAgreementAcceptanceFields(), LegalDoc, LegalPage(), LegalSection, metadata, DocumentRemovalButton() (+21 more)
-
-### Community 19 - "Owner Dividend Fixture"
+### Community 21 - "Owner Dividend Fixture"
 Cohesion: 0.04
 Nodes (47): annual_basis_year, annual_close_source_id, annual_result_allocation_ore, board_meeting, meeting_date, meeting_time, place, treatment_method (+39 more)
 
-### Community 20 - "OpenAPI Baseline Contract"
+### Community 22 - "Filing Submission Core"
+Cohesion: 0.14
+Nodes (31): CompanyBillingAccount, FilingSubmission, _simulate_rf1086_submission(), assign_standard_pricing(), prepare_rf1086_api_calls(), prepare_rf1086_submission(), FilingCase, Rf1086SubmissionMode (+23 more)
+
+### Community 23 - "Authority Test Evidence"
+Cohesion: 0.07
+Nodes (36): AnnualAccountsAuthorityTestRunImportInput, authorityTestEvidenceGate, AuthorityTestEvidenceGateStatus, authorityTestEvidenceGateStatusLabel(), AuthorityTestRun, AuthorityTestRunEnvironment, AuthorityTestRunInput, AuthorityTestRunStatus (+28 more)
+
+### Community 24 - "OpenAPI Baseline Contract"
 Cohesion: 0.05
 Nodes (45): content, description, headers, content, description, headers, content, description (+37 more)
 
-### Community 21 - "Corporate Document Design"
+### Community 25 - "Corporate Document Design"
 Cohesion: 0.05
 Nodes (46): Font software license continuity, Font redistribution conditions, Noto font license, SIL Open Font License 1.1, Customer-readiness verification route, Customer-ready foundation implementation plan, Final founder production go-live signoff, Invite-only free beta posture (+38 more)
 
-### Community 22 - "Annual Close Fixture"
+### Community 26 - "Annual Close Fixture"
 Cohesion: 0.05
 Nodes (43): annual_basis_year, annual_close_source_id, annual_result_allocation_ore, board_meeting, meeting_date, meeting_time, place, treatment_method (+35 more)
 
-### Community 23 - "Company Access Policies"
+### Community 27 - "Company Access Policies"
 Cohesion: 0.12
 Nodes (14): _company_access_not_found(), _company_access_unavailable(), CompanyAccessService, _identity_email(), _invitation_body(), _invitation_not_found(), _is_expired(), _normalize_email() (+6 more)
 
-### Community 24 - "Company Tax Authority"
+### Community 28 - "Company Tax Authority"
 Cohesion: 0.08
 Nodes (32): AuthorityClientInput, authorityRequest(), CompanyTaxReturnAuthorityClient, CompanyTaxReturnAuthorityEnvironment, CompanyTaxReturnAuthorityError, CompanyTaxReturnFeedbackReceipt, CompanyTaxReturnInstanceSummary, CompanyTaxReturnValidationSummary (+24 more)
 
-### Community 25 - "OpenAPI Contract Schema"
+### Community 29 - "OpenAPI Contract Schema"
 Cohesion: 0.05
 Nodes (42): const, title, type, title, type, title, type, properties (+34 more)
 
-### Community 26 - "Browser Process Lifecycle"
+### Community 30 - "Browser Process Lifecycle"
 Cohesion: 0.09
 Nodes (24): cleanupBrowserOwnerResources(), cleanupFailure(), allocateLoopbackPort(), assertProcessAlive(), delay(), exitsBefore(), fetchBeforeDeadline(), hasExited() (+16 more)
 
-### Community 27 - "Authority Operations"
-Cohesion: 0.09
-Nodes (40): AUTHORITY_CONFIRMATION, AUTHORITY_OPERATION, authorityFetch(), AuthorityOperationEnvironment, authorityOperationRequestHash(), AuthorityOperationResult, buildRf1086SystembrukerCallbackDefinition(), buildSystembrukerCallbackDefinition() (+32 more)
-
-### Community 28 - "Contract Boundary Checks"
+### Community 31 - "Contract Boundary Checks"
 Cohesion: 0.08
 Nodes (28): baselinePath, contractPath, generatedClientPackagePath, generatedClientPath, transportPath, BaselineTalliApiError, createBaselineTalliApiClient(), isProblemDetails() (+20 more)
 
-### Community 29 - "Dependency Evidence Schema"
+### Community 32 - "System User Authority"
+Cohesion: 0.09
+Nodes (36): AUTHORITY_STATUSES, authorityHttpError(), AuthorityRequestStatus, BASE_URLS, cancelQuietly(), CONFIRMATION_HOSTS, createSystemUserAuthorityClient(), CreateSystemUserAuthorityClientInput (+28 more)
+
+### Community 33 - "Dependency Evidence Schema"
 Cohesion: 0.06
 Nodes (38): additionalProperties, items, type, type, const, $id, items, type (+30 more)
 
-### Community 30 - "Action Form Components"
+### Community 34 - "Action Form Components"
 Cohesion: 0.11
 Nodes (30): ActionPreview(), ActionPreviewProps, formatKr(), krFormatter, LedgerLine, DividendInvestment, DividendReceivedWizard(), Props (+22 more)
 
-### Community 31 - "OpenAPI Variant Types"
+### Community 35 - "OpenAPI Variant Types"
 Cohesion: 0.06
 Nodes (39): anyOf, title, anyOf, title, anyOf, title, additionalProperties, properties (+31 more)
 
-### Community 32 - "Shared Kernel Schema"
+### Community 36 - "Shared Kernel Schema"
 Cohesion: 0.06
 Nodes (37): additionalProperties, items, type, uniqueItems, items, type, uniqueItems, items (+29 more)
 
-### Community 33 - "Annual Workspace Plan"
+### Community 37 - "Annual Workspace Plan"
 Cohesion: 0.06
 Nodes (38): Atomic holding workflows, Customer lifecycle dead-end repair, Customer-ready evidence handoff, Deployed schema parity, Live customer-readiness repair plan, Persisted accounting fact reconciliation, Annual-reporting workspace implementation plan, Durable submission-state presentation (+30 more)
 
-### Community 34 - "RF1086 Authority Client"
+### Community 38 - "UI Icons and Banners"
+Cohesion: 0.08
+Nodes (27): BannerProps, BannerVariant, ICON, FileDropzoneProps, FieldOwnProps, FormFieldProps, AlertTriangle(), Check() (+19 more)
+
+### Community 39 - "RF1086 Authority Client"
 Cohesion: 0.07
 Nodes (27): AuthorityClientInput, BASE_URLS, boundedResponseBytes(), DOCUMENT_CONTENT_TYPES, executeRf1086AuthoritySubmission(), FetchLike, isJsonContentType(), parseAuthorityError() (+19 more)
 
-### Community 35 - "Filing Submission Core"
-Cohesion: 0.14
-Nodes (23): _simulate_rf1086_submission(), BillingGateResult, BillingStatus, mark_supported_filing_failure(), Pricing, PricingPlan, production_filing_gate(), _body_hash() (+15 more)
+### Community 40 - "System User Flow"
+Cohesion: 0.15
+Nodes (33): assertAuthorityRelationship(), assertQueriedSystemUser(), assertRequestRelationship(), assertStartInput(), authorityFailureCode(), flowResult(), isAmbiguousCreate(), isIndependentAbsence() (+25 more)
 
-### Community 36 - "Customer Agreement Reacceptance"
-Cohesion: 0.08
-Nodes (25): assertSupportedBrregIdentity(), BrregAddress, BrregCompanyIdentity, BrregEntityPayload, fetchBrregEntity(), mapBrregEntity(), CustomerAgreementEvidence, CustomerAgreementReacceptanceDependencies (+17 more)
-
-### Community 37 - "Bank Suggestion Rules"
-Cohesion: 0.08
-Nodes (23): GoogleSignInButton(), BoardParticipantDraft, DividendShareholder, OwnerDividendDraftIds, OwnerDividendWizard(), Props, BankRule, BankSuggestionLine (+15 more)
-
-### Community 38 - "RF1086 TT02 Evidence"
+### Community 41 - "RF1086 TT02 Evidence"
 Cohesion: 0.06
 Nodes (32): archive, documentCount, documentHashes, lookupReferenceType, reference, authorityReferences, dialogId, forsendelseId (+24 more)
 
-### Community 39 - "Cancellation Backend Tests"
+### Community 42 - "Cancellation Backend Tests"
 Cohesion: 0.14
 Nodes (19): create_app(), access_token(), headers(), LifecycleGatewayStub, test_adapter_lists_cancellations_through_the_query_rpc_not_direct_table_access(), test_adapter_never_retries_after_malformed_reconciliation(), test_adapter_reconciles_malformed_success_without_false_not_found(), test_adapter_reconciles_unknown_cancellation_outcome_before_retry() (+11 more)
 
-### Community 40 - "Supabase Adapter Contract"
+### Community 43 - "Supabase Adapter Contract"
 Cohesion: 0.12
 Nodes (4): Supabase Auth and PostgREST adapter for the company-access port., Validate Supabase sessions and preserve their bearer for RLS reads., SupabaseCompanyAccessAdapter, _validated_origin()
 
-### Community 41 - "Database Catalog Schema"
+### Community 44 - "Security Routes"
+Cohesion: 0.09
+Nodes (21): GET(), GET(), buildPersistedCompanyArchive(), firstArchiveSourceError(), documentStorageKey(), validateDocumentUpload(), assertStepUpAllowed(), isRecord() (+13 more)
+
+### Community 45 - "Database Catalog Schema"
 Cohesion: 0.06
 Nodes (31): additionalProperties, const, $id, additionalProperties, allOf, properties, required, type (+23 more)
 
-### Community 42 - "System User Flow"
-Cohesion: 0.16
-Nodes (31): assertAuthorityRelationship(), assertQueriedSystemUser(), assertRequestRelationship(), assertStartInput(), authorityFailureCode(), flowResult(), isAmbiguousCreate(), isIndependentAbsence() (+23 more)
+### Community 46 - "RF1086 Domain Model"
+Cohesion: 0.18
+Nodes (26): DividendEvent, FormationEvent, Company, DividendAllocation, DividendEvent, FilingCase, FormationAllocation, FormationEvent (+18 more)
 
-### Community 43 - "OpenAPI Union Fields"
+### Community 47 - "OpenAPI Union Fields"
 Cohesion: 0.06
 Nodes (32): additionalProperties, properties, required, title, type, anyOf, title, anyOf (+24 more)
 
-### Community 44 - "RF1086 Domain Model"
-Cohesion: 0.23
-Nodes (28): DividendEvent, Element, FormationEvent, DividendAllocation, DividendEvent, FormationAllocation, FormationEvent, Shareholder (+20 more)
-
-### Community 45 - "RF1086 Production"
+### Community 48 - "RF1086 Production"
 Cohesion: 0.09
 Nodes (27): classifyRf1086TransportOutcome(), classifyCombinedFeedback(), executeJournaledRf1086Production(), failureClassification(), JournaledRf1086ProductionInput, JournaledRf1086ProductionResult, mutation(), parseReference() (+19 more)
 
-### Community 46 - "Annual Accounts Fixture"
+### Community 49 - "Annual Accounts Fixture"
 Cohesion: 0.07
 Nodes (29): annualData, annual_full_time_equivalents, answers, company_id, completed_at, completed_by, confirmations, id (+21 more)
 
-### Community 47 - "System User Authority"
-Cohesion: 0.13
-Nodes (29): AUTHORITY_STATUSES, authorityHttpError(), AuthorityRequestStatus, BASE_URLS, cancelQuietly(), CONFIRMATION_HOSTS, CreateSystemUserAuthorityClientInput, fail() (+21 more)
-
-### Community 48 - "Company Access Manifest"
+### Community 50 - "Company Access Manifest"
 Cohesion: 0.07
 Nodes (28): allowedImports, compatibilityExceptions, dependencies, documentation, forbiddenResponsibilities, kind, name, owner (+20 more)
 
-### Community 49 - "System Boundary Manifest"
+### Community 51 - "System Boundary Manifest"
 Cohesion: 0.07
 Nodes (28): allowedImports, compatibilityExceptions, dependencies, documentation, forbiddenResponsibilities, kind, name, owner (+20 more)
 
-### Community 50 - "Company Tax Fixture"
+### Community 52 - "Company Tax Fixture"
 Cohesion: 0.07
 Nodes (28): annualData, annual_full_time_equivalents, answers, company_id, completed_at, completed_by, confirmations, id (+20 more)
 
-### Community 51 - "Maskinporten Integration"
+### Community 53 - "Maskinporten Integration"
 Cohesion: 0.12
 Nodes (24): base64UrlJson(), buildMaskinportenGrant(), BuildMaskinportenGrantInput, endpointFor(), ENDPOINTS, FetchLike, MaskinportenAccessToken, MaskinportenEnvironment (+16 more)
 
-### Community 52 - "UI Icons and Banners"
-Cohesion: 0.10
-Nodes (21): BannerProps, BannerVariant, ICON, FileDropzone(), FileDropzoneProps, AlertTriangle(), Check(), ChevronDown() (+13 more)
-
-### Community 53 - "Web Package Dependencies"
+### Community 54 - "Web Package Dependencies"
 Cohesion: 0.07
 Nodes (28): dependencies, next, pg, react, react-dom, saxes, @supabase/ssr, @supabase/supabase-js (+20 more)
 
-### Community 54 - "Module Definition Schema"
+### Community 55 - "Module Definition Schema"
 Cohesion: 0.07
 Nodes (28): $ref, $ref, pattern, type, $ref, $ref, minLength, type (+20 more)
 
-### Community 55 - "Annual Accounts Evidence"
+### Community 56 - "Annual Accounts Evidence"
 Cohesion: 0.07
 Nodes (27): authority, caseFixture, codeCommit, companyName, companyOrgNumber, downloadVerifiedAt, environment, error (+19 more)
 
-### Community 56 - "Corporate Document Readiness"
+### Community 57 - "Corporate Document Readiness"
 Cohesion: 0.10
 Nodes (24): blocker(), CorporateArtifactLifecycleRow, CorporateDecisionLifecycle, CorporateDecisionLifecycleRow, CorporateDecisionState, CorporateDocumentBlockerCode, CorporateDocumentReadiness, CorporateDocumentReadinessInput (+16 more)
 
-### Community 57 - "OpenAPI Scalar Fields"
+### Community 58 - "OpenAPI Scalar Fields"
 Cohesion: 0.07
 Nodes (28): format, title, type, format, title, type, additionalProperties, properties (+20 more)
 
-### Community 58 - "Backend System Manifest"
+### Community 59 - "Selected Company API Contract"
+Cohesion: 0.07
+Nodes (28): properties, required, title, type, properties, required, title, type (+20 more)
+
+### Community 60 - "Backend System Manifest"
 Cohesion: 0.07
 Nodes (26): adapterBindings, allowedDependencies, adapters, transport, workflows, compositionRoot, documentation, infrastructure (+18 more)
 
-### Community 59 - "Bank Provider Port"
+### Community 61 - "Bank Provider Port"
 Cohesion: 0.10
 Nodes (21): BankConsentRequest, BankConsentSession, BankProviderDisabledError, BankProviderMode, BankProviderPort, BankSyncRequest, BankSyncResult, BankSyncTransaction (+13 more)
 
-### Community 60 - "RF1086 Codes"
-Cohesion: 0.16
-Nodes (12): assert_rf1086_production_codes_verified(), CodeVerificationStatus, production_code_blockers(), production_code_blockers_for_case(), production_scope_exclusions(), production_scope_exclusions_for_case(), FilingCase, rf1086_code_decisions() (+4 more)
+### Community 62 - "Owner Action Navigation"
+Cohesion: 0.10
+Nodes (21): buildSystemUserRequestPresentation(), CALLBACK_NOTICES, FilingCopy, REQUEST_STATUSES, requiredLocalUuid(), selectReadableCompany(), StatusCopy, systemUserCallbackNotice (+13 more)
 
-### Community 61 - "Authority Test Evidence"
-Cohesion: 0.14
-Nodes (22): AnnualAccountsAuthorityTestRunImportInput, authorityTestEvidenceGate, AuthorityTestEvidenceGateStatus, authorityTestEvidenceGateStatusLabel(), AuthorityTestRunEnvironment, AuthorityTestRunInput, AuthorityTestRunStatus, buildAnnualAccountsAuthorityTestRunFromEvidence() (+14 more)
-
-### Community 62 - "Company Access Recovery"
+### Community 63 - "Company Access Recovery"
 Cohesion: 0.09
 Nodes (15): AcceptCommand, CompanyAccessActionWorkflowDependencies, CreateCommand, createCompanyAccessActionWorkflow(), Invitation, InvitationCommandByName, InvitationCommandName, InvitationContinuationPendingError (+7 more)
 
-### Community 63 - "OpenAPI Response Types"
+### Community 64 - "Corporate Document Workflow"
+Cohesion: 0.13
+Nodes (19): canonicalDecisionJson(), corporateDecisionHash(), CorporateRendererOptions, CorporateRenderIssue, CorporateRenderResult, isRecord(), parseBlockedResult(), parseCorporateRenderResult() (+11 more)
+
+### Community 65 - "OpenAPI Response Types"
 Cohesion: 0.09
 Nodes (26): enum, title, type, properties, required, title, type, anyOf (+18 more)
 
-### Community 64 - "Annual Validation Fixture"
+### Community 66 - "Annual Validation Fixture"
 Cohesion: 0.08
 Nodes (24): annual_data, company_id, confirmations, documents, income_year, interview, posted_entries, case_id (+16 more)
-
-### Community 65 - "Filing Submission Core"
-Cohesion: 0.23
-Nodes (15): CompanyBillingAccount, FilingSubmission, assign_standard_pricing(), prepare_rf1086_api_calls(), prepare_rf1086_submission(), FilingCase, Rf1086SubmissionMode, store_rf1086_feedback_and_receipt() (+7 more)
-
-### Community 66 - "Owner Action Navigation"
-Cohesion: 0.12
-Nodes (20): ConnectionsPageProps, buildSystemUserRequestPresentation(), CALLBACK_NOTICES, FilingCopy, REQUEST_STATUSES, requiredLocalUuid(), selectReadableCompany(), StatusCopy (+12 more)
 
 ### Community 67 - "Company Tax Evidence"
 Cohesion: 0.08
 Nodes (24): authority, caseFixture, codeCommit, companyName, companyOrgNumber, confirmationPreparedAt, confirmationUrl, currentDocumentReferenceHash (+16 more)
 
-### Community 68 - "Corporate Document Workflow"
-Cohesion: 0.13
-Nodes (18): canonicalDecisionJson(), corporateDecisionHash(), CorporateRendererOptions, CorporateRenderIssue, CorporateRenderResult, isRecord(), parseBlockedResult(), parseCorporateRenderResult() (+10 more)
+### Community 68 - "RF1086 Production Tests"
+Cohesion: 0.12
+Nodes (12): createRf1086FeedbackJournal(), rf1086FeedbackFileName(), rf1086FeedbackStorageKey(), createRf1086FeedbackArtifactRecorder(), FeedbackPersistenceInput, FeedbackPersistenceService, persistenceError(), verifyPrivateReceipt() (+4 more)
 
-### Community 69 - "Share Lot Allocation"
-Cohesion: 0.13
-Nodes (17): allocateFifoShareSale(), assertIsoDate(), assertSafeWholeNumber(), FifoLotValidationError, FifoShareSaleAllocation, fromCents(), serializeLot(), ShareAcquisitionLot (+9 more)
-
-### Community 70 - "Company Access Module Docs"
+### Community 69 - "Company Access Module Docs"
 Cohesion: 0.10
 Nodes (24): Durable Delivery Infrastructure, FastAPI Composition Root, Backend Technical Persistence, Talli FastAPI Application, Company Access Backend Capability, Cancellation-to-Deletion Lifecycle, CompanyAccessGateway Port, Durable Company Access Command Receipts (+16 more)
+
+### Community 70 - "Filing Command Line"
+Cohesion: 0.17
+Nodes (19): _load_case(), main(), _render_corporate_documents(), _render_rf1086_preview(), _simulate(), _validate(), _validate_annual_public_data(), _validate_case() (+11 more)
 
 ### Community 71 - "Corporate Decision Facts"
 Cohesion: 0.14
 Nodes (20): allocateDividendOreProportionally(), AnnualCloseDecisionSubmission, assertReviewedFacts(), assertSafeInteger(), buildCommonDecisionInput(), buildOwnerDividendDecisionInput(), CorporateDecisionFactsError, CorporateDecisionFactsInput (+12 more)
 
-### Community 72 - "Company Access Module"
+### Community 72 - "Share Lot Allocation"
+Cohesion: 0.12
+Nodes (16): allocateFifoShareSale(), assertIsoDate(), assertSafeWholeNumber(), FifoLotValidationError, FifoShareSaleAllocation, fromCents(), serializeLot(), ShareAcquisitionLot (+8 more)
+
+### Community 73 - "Company Access Module"
 Cohesion: 0.09
 Nodes (22): allowedImports, compatibilityExceptions, dependencies, documentation, forbiddenResponsibilities, kind, name, owner (+14 more)
 
-### Community 73 - "System Boundary Module"
+### Community 74 - "System Boundary Module"
 Cohesion: 0.09
 Nodes (22): allowedImports, compatibilityExceptions, dependencies, documentation, forbiddenResponsibilities, kind, name, owner (+14 more)
-
-### Community 74 - "Opening Balance Form"
-Cohesion: 0.13
-Nodes (15): OnboardingPhase, OnboardingPresentationInput, selectOnboardingPhase(), shouldRedirectReturningOwner(), BankImportForm(), BankImportFormProps, CompanyLookupForm(), newRow() (+7 more)
 
 ### Community 75 - "Corporate Decision Facts"
 Cohesion: 0.13
@@ -709,9 +698,9 @@ Nodes (19): AnnualAccountsPayloadForCorporateClose, AnnualDataForCorporateClose,
 Cohesion: 0.21
 Nodes (21): accountBalance(), accountCreditBalance(), accountDebitTotal(), adminCostResultFields(), balanceOccurrenceFields(), block(), buildCompanyTaxReturnPayload(), CompanyTaxReturnFeedback (+13 more)
 
-### Community 77 - "Company Access Administration"
-Cohesion: 0.11
-Nodes (15): createInvitationSideEffectStore(), deriveInvitationSideEffectId(), InvitationAuditInput, InvitationAuditRow, InvitationSideEffectStore, LookupResult, PersistenceResult, persistInvitationAudit() (+7 more)
+### Community 77 - "RF1086 Runtime Bridge"
+Cohesion: 0.16
+Nodes (21): amount(), buildNoActivityHovedskjema(), buildNoActivityUnderskjema(), invalidNoActivityCase(), noActivityPreview(), NoActivityRf1086Case, pairGroup(), renderRf1086Preview() (+13 more)
 
 ### Community 78 - "OpenAPI Contract Fields"
 Cohesion: 0.10
@@ -721,877 +710,833 @@ Nodes (23): format, title, type, properties, properties, format, title, type (+1
 Cohesion: 0.09
 Nodes (22): case_id, company, address, city, contact_email, income_year, name, org_number (+14 more)
 
-### Community 80 - "Authority Operations"
-Cohesion: 0.13
-Nodes (16): authorityOperationFailureCode(), formRawString(), runProductionAuthorityOperation(), runProductionSystembrukerCallbackOperation(), assertAuthorityOperationIntent(), assertSystembrukerCallbackOperationIntent(), authorityOperationEnvironmentFailureCode(), AuthorityOperationError (+8 more)
-
-### Community 81 - "Company Access Administration"
-Cohesion: 0.31
-Nodes (17): companyAccessInvitationWorkflow(), CompanyAccessPresentation, presentCompanyAccessContext(), listCompanyAccessAdministration(), invitation, acceptCompanyInvitation(), administerCompanyMembership(), client() (+9 more)
-
-### Community 82 - "Security Routes"
-Cohesion: 0.14
-Nodes (16): GET(), assertStepUpAllowed(), isRecord(), loadTrustedStepUpContext(), requirementForSensitiveAction(), requireStepUpForAction(), SensitiveAction, sensitiveActionRequirements (+8 more)
-
-### Community 83 - "Compatibility Schema"
+### Community 80 - "Compatibility Schema"
 Cohesion: 0.09
 Nodes (22): format, type, minLength, type, properties, $ref, pattern, type (+14 more)
 
-### Community 84 - "Company Access Administration"
-Cohesion: 0.18
-Nodes (10): createTalliApiClient(), backendBaseUrl(), GET(), GET(), SystemBoundaryPage(), loadCompanyAccessContext(), loadSystemBoundary(), BoundaryPresentation (+2 more)
+### Community 81 - "Web Business Actions"
+Cohesion: 0.11
+Nodes (17): CorporateDecisionPage(), KIND_LABELS, Props, Props, SignedArtifactUpload(), CorporateStorageClient, CorporateArtifactKind, CorporateDecisionInput (+9 more)
 
-### Community 85 - "Filing Command Line"
-Cohesion: 0.20
-Nodes (18): _load_case(), main(), _render_corporate_documents(), _render_rf1086_preview(), _simulate(), _validate(), _validate_annual_public_data(), _validate_case() (+10 more)
-
-### Community 86 - "RF1086 Production Tests"
-Cohesion: 0.12
-Nodes (10): rf1086FeedbackFileName(), rf1086FeedbackStorageKey(), createRf1086FeedbackArtifactRecorder(), FeedbackPersistenceInput, FeedbackPersistenceService, persistenceError(), verifyPrivateReceipt(), Rf1086FeedbackArtifactPersistenceError (+2 more)
-
-### Community 87 - "RF1086 Runtime Bridge"
-Cohesion: 0.17
-Nodes (20): amount(), buildNoActivityHovedskjema(), buildNoActivityUnderskjema(), invalidNoActivityCase(), noActivityPreview(), NoActivityRf1086Case, pairGroup(), renderRf1086Preview() (+12 more)
-
-### Community 88 - "System User Flow Tests"
-Cohesion: 0.10
-Nodes (12): isRecord(), isVerifiedSystemUserCallbackOperation(), SYSTEM_USER_CONTROL_READ_SCOPE, SYSTEM_USER_CONTROL_WRITE_SCOPE, SYSTEM_USER_TAX_SCOPE, SystemUserFlowError, authorityResponse(), createRequest() (+4 more)
-
-### Community 89 - "Selected Company API Contract"
-Cohesion: 0.09
-Nodes (22): items, title, type, properties, required, title, type, items (+14 more)
-
-### Community 90 - "Dividend Tests"
+### Community 82 - "Dividend Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 91 - "Mismatched Share Count Tests"
+### Community 83 - "Mismatched Share Count Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 92 - "No Activity Tests"
+### Community 84 - "No Activity Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 93 - "Share Sale Tests"
+### Community 85 - "Share Sale Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 94 - "Stiftelse Tests"
+### Community 86 - "Stiftelse Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 95 - "Stiftelse Two Founders Tests"
+### Community 87 - "Stiftelse Two Founders Tests"
 Cohesion: 0.09
 Nodes (21): case_id, company, address, city, contact_email, income_year, name, org_number (+13 more)
 
-### Community 96 - "Legacy Facade Baseline Audit"
+### Community 88 - "Legacy Facade Baseline Audit"
 Cohesion: 0.11
 Nodes (21): Frozen Baseline Change Governance, Frozen Legacy-Facade Classification, Canonical Legacy Runtime, Current-Stage Persistence Call Non-Growth, Current Capability Scope Shrink, Frozen Compatibility Baseline, Future Capability Static Baseline, Future-Stage Operation Immutability (+13 more)
 
-### Community 97 - "Simple Holding Mismatch Tests"
+### Community 89 - "Simple Holding Mismatch Tests"
 Cohesion: 0.10
 Nodes (20): annual_data, company_id, confirmations, documents, income_year, interview, posted_entries, case_id (+12 more)
 
-### Community 98 - "Customer Ready Decision Map"
+### Community 90 - "Customer Ready Decision Map"
 Cohesion: 0.10
 Nodes (21): Aggregate Release gate check, Main branch protection, Customer-ready release-gate evidence, Fail-closed CI promotion boundary, Atomic investment persistence, Hosted Supabase advisor reconciliation, Hosted schema parity, Retention-safe document removal (+13 more)
 
-### Community 99 - "Validation Module"
-Cohesion: 0.19
-Nodes (15): FilingCase, Path, _annual_mismatches(), AnnualValidationCaseResult, AnnualValidationReport, ExpectedAnnualTotals, AnnualData, Path (+7 more)
+### Community 91 - "Cancellation Actions"
+Cohesion: 0.15
+Nodes (15): isIndeterminateCancellationError(), PendingCancellationOperation, loadPendingCancellationOperation(), valid(), buildLaunchSignoffGate(), launchSignoffKeys, launchSignoffLabel(), MfaMode (+7 more)
 
-### Community 100 - "Company Tax Return Authority Test"
+### Community 92 - "Company Tax Return Authority Test"
 Cohesion: 0.18
 Nodes (20): waitForCompanyTaxReturnFeedback(), waitForCompanyTaxReturnValidation(), assertRequiredScopes(), assertResumableEvidence(), assertSamePreparedCase(), canRepairInvalidPartyNumber(), COMPANY_TAX_SCOPES, existingEvidence() (+12 more)
 
-### Community 101 - "Unsupported Group Contribution Tests"
+### Community 93 - "Opening Balance Form"
+Cohesion: 0.14
+Nodes (15): OnboardingPhase, OnboardingPresentationInput, selectOnboardingPhase(), shouldRedirectReturningOwner(), BankImportForm(), BankImportFormProps, CompanyLookupForm(), newRow() (+7 more)
+
+### Community 94 - "Unsupported Group Contribution Tests"
 Cohesion: 0.10
 Nodes (19): annual_data, company_id, confirmations, documents, income_year, interview, posted_entries, case_id (+11 more)
 
-### Community 102 - "Supabase Data Access"
-Cohesion: 0.19
-Nodes (17): activateBillingSubscription(), cancelBillingSubscription(), markBillingRefundEligible(), requestFilingPackagePayment(), applyBillingProviderEvent(), BillingGateResult, billingIdempotencyKey(), BillingPaymentKind (+9 more)
-
-### Community 103 - "Year End Interview"
-Cohesion: 0.17
-Nodes (16): saveYearEndInterview(), annualConfirmations(), buildYearEndInterviewAnswers(), buildYearEndInterviewInitialAnswers(), noActivityConfirmed(), RegisteredYearEndActivity, yearEndAnswerKeys, YearEndInterviewAnswers (+8 more)
-
-### Community 104 - "Terms Of Service Draft"
+### Community 95 - "Terms Of Service Draft"
 Cohesion: 0.14
 Nodes (20): Approved Public Copy Baseline, Talli Brand and Name Clearance, Talli Clearance Evidence Register, Controller and Processor Boundary, Talli Data Processing Agreement, Technical and Organizational Measures, Incident Response Policy, Personal Data Breach Response (+12 more)
 
-### Community 105 - "Cancellation Actions"
-Cohesion: 0.15
-Nodes (14): isIndeterminateCancellationError(), PendingCancellationOperation, loadPendingCancellationOperation(), valid(), buildLaunchSignoffGate(), launchSignoffKeys, launchSignoffLabel(), MfaMode (+6 more)
+### Community 96 - "Filing Release Controls"
+Cohesion: 0.14
+Nodes (16): AuthorityPermission, BillingAccount, authoritySignoffKeyByObligation, commonProductionSignoffKeys, FilingReleaseGate, FilingReleaseGateStatus, evaluateProductionPilotEntitlement(), isBillingExemptProductionPilot() (+8 more)
 
-### Community 106 - "Company Context API Contract"
+### Community 97 - "Bank Suggestion Rules"
+Cohesion: 0.13
+Nodes (14): BankRule, BankSuggestionLine, BankTransactionSuggestion, normalizeRuleText(), roundMoney(), RULES, suggestBankTransaction(), BankImport() (+6 more)
+
+### Community 98 - "System User Flow Tests"
+Cohesion: 0.12
+Nodes (10): SYSTEM_USER_CONTROL_READ_SCOPE, SYSTEM_USER_CONTROL_WRITE_SCOPE, SYSTEM_USER_TAX_SCOPE, SystemUserFlowError, authorityResponse(), createRequest(), externalRef, getRequestByExternalRef() (+2 more)
+
+### Community 99 - "Company Context API Contract"
 Cohesion: 0.10
 Nodes (19): required, title, type, additionalProperties, required, title, type, components (+11 more)
 
-### Community 107 - "Created At API Contract"
+### Community 100 - "Created At API Contract"
 Cohesion: 0.10
 Nodes (20): properties, required, title, type, title, type, format, title (+12 more)
 
-### Community 108 - "Simple Holding Blocked Tests"
+### Community 101 - "Simple Holding Blocked Tests"
 Cohesion: 0.11
 Nodes (18): annual_data, company_id, confirmations, documents, income_year, interview, posted_entries, case_id (+10 more)
 
-### Community 109 - "Module Schema"
+### Community 102 - "Module Schema"
 Cohesion: 0.11
 Nodes (19): $ref, pattern, type, const, properties, minLength, pattern, type (+11 more)
 
-### Community 110 - "Controlled Production Beta RF1086"
+### Community 103 - "Controlled Production Beta RF1086"
 Cohesion: 0.14
 Nodes (19): Controlled RF-1086 Production Pilot, Fail-Closed Release Sequence, First Production Filing Checklist, Customer-Ready Branch Verification, Launch Signoff Gate, Local Foundation Evidence, Production Disabled State, Production Launch Rehearsal (+11 more)
 
-### Community 111 - "Filing Release Controls"
-Cohesion: 0.15
-Nodes (15): BillingAccount, authoritySignoffKeyByObligation, commonProductionSignoffKeys, FilingReleaseGate, FilingReleaseGateStatus, evaluateProductionPilotEntitlement(), isBillingExemptProductionPilot(), ProductionPilotCaseProfile (+7 more)
+### Community 104 - "Year End Interview"
+Cohesion: 0.17
+Nodes (15): annualConfirmations(), buildYearEndInterviewAnswers(), buildYearEndInterviewInitialAnswers(), noActivityConfirmed(), RegisteredYearEndActivity, yearEndAnswerKeys, YearEndInterviewAnswers, ACTIVITY_KEYS (+7 more)
 
-### Community 112 - "Launch Signoff"
+### Community 105 - "Launch Signoff"
 Cohesion: 0.16
 Nodes (18): launchSignoffDisabledReason(), buildLaunchSignoffRecord(), daysBetween(), evaluateLaunchSignoff(), futureDate(), LaunchSignoff, LaunchSignoffGate, LaunchSignoffGateStatus (+10 more)
 
-### Community 113 - "Tsconfig Module"
+### Community 106 - "Tsconfig Module"
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowImportingTsExtensions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib (+10 more)
 
-### Community 114 - "Production Submission State"
+### Community 107 - "Production Submission State"
 Cohesion: 0.12
 Nodes (18): Company-tax feedback-ready boundary, Production submission hard gates, Submission idempotency policy, Production filing state machine, Production Submission State, Production filing receipt archive, RF-1086 production idempotency policy, Skatteetaten authenticated application route (+10 more)
 
-### Community 115 - "Production Filing Action Guide"
+### Community 108 - "Production Filing Action Guide"
 Cohesion: 0.12
 Nodes (18): Controlled pilot activation order, RF-1086 controlled production pilot, Correction through supersession, RF-1086 kill switch and rollback, Unknown outcome quarantine, Business Terms and DPA acceptance gate, Pilot entitlement and billing gate, Final result and evidence closeout (+10 more)
 
-### Community 116 - "Filing Release Controls"
+### Community 109 - "Filing Release Controls"
 Cohesion: 0.18
 Nodes (14): AuthorityAdapterCapabilities, AuthorityAdapterCapability, AuthorityProductionAdapter, AuthorityProductionAdapterDisabledError, AuthoritySubmissionPlan, authoritySubmissionPlans, AuthoritySubmissionStep, createDisabledAuthorityProductionAdapter() (+6 more)
 
-### Community 117 - "Deadlines Module"
-Cohesion: 0.15
-Nodes (12): buildDeadlineDashboard(), buildDeadlineReminderPlan(), DeadlineFiling, DeadlineReminderCandidate, DeadlineReminderPreference, deadlineStatusLabel(), FilingDeadline, filingDeadlines (+4 more)
-
-### Community 118 - "Owner Dividend Payment"
+### Community 110 - "Owner Dividend Payment"
 Cohesion: 0.16
 Nodes (15): CorporatePaymentEvent, deriveOpenDividendPayable(), OpenOwnerDividendPayable, OwnerDividendDecision, OwnerDividendDocumentSet, OwnerDividendFinalization, OwnerDividendPaymentError, PaymentBankTransaction (+7 more)
 
-### Community 119 - "Production E2e Verification"
+### Community 111 - "Production E2e Verification"
 Cohesion: 0.12
 Nodes (18): Graded production-readiness verdict, Immutable release target, Local release rehearsal, Named-company entry gate, Production E2E verification implementation plan, Read-only deployed smoke test, Fifteen-stage production filing control route, One-page production filing checklist (+10 more)
 
-### Community 120 - "Backend System Schema"
+### Community 112 - "Backend System Schema"
 Cohesion: 0.12
 Nodes (17): minLength, type, properties, minLength, type, minLength, type, adapter (+9 more)
 
-### Community 121 - "Compatibility Module"
+### Community 113 - "Compatibility Module"
 Cohesion: 0.12
 Nodes (16): digest, path, gates, issue, status, baseline, migration, completedStages (+8 more)
 
-### Community 122 - "Company Tax Return Xml"
+### Community 114 - "Company Tax Return Xml"
 Cohesion: 0.18
 Nodes (15): CompanyTaxReturnPayloadField, AuthorityDocument, documentConfig, escapeXml(), insertValue(), parsePath(), renderAuthorityDocument(), renderCompanyTaxReturnXml() (+7 more)
 
-### Community 123 - "Company Name API Contract"
+### Community 115 - "Company Name API Contract"
 Cohesion: 0.12
 Nodes (17): title, type, title, type, properties, required, title, type (+9 more)
 
-### Community 124 - "CONTEXT Documentation"
+### Community 116 - "CONTEXT Documentation"
 Cohesion: 0.14
 Nodes (16): Holding-First Positioning Decision, Deterministic Compliance Decision, Narrow Ledger Product Decision, Single-Context Domain Documentation, Annual Holding Compliance Loop, Filing Assistant With Narrow Ledger, Holding-First Accounting App, Narrow Ledger (+8 more)
 
-### Community 125 - "Module Schema"
+### Community 117 - "Module Schema"
 Cohesion: 0.12
 Nodes (15): additionalProperties, allOf, $defs, nonEmptyStringArray, stringArray, $id, minItems, type (+7 more)
 
-### Community 126 - "Module Schema"
+### Community 118 - "Module Schema"
 Cohesion: 0.12
 Nodes (16): minLength, type, additionalProperties, properties, required, type, $ref, $ref (+8 more)
 
-### Community 127 - "RF1086 Authority Test"
+### Community 119 - "RF1086 Authority Test"
 Cohesion: 0.23
 Nodes (13): PythonRuntimeOptions, resolveTalliPythonBinary(), createRf1086AuthorityClient(), requiredOpaqueToken(), acceptedSummary(), assertSamePreparedCase(), delay(), existingEvidence() (+5 more)
 
-### Community 128 - "Workspace Module"
+### Community 120 - "Workspace Module"
 Cohesion: 0.23
 Nodes (14): acknowledgeReviewComment(), addReviewComment(), assertCompanyAccess(), attachDocument(), createCompanyWorkspace(), demoWorkspace, inviteReviewer(), readinessSummary() (+6 more)
 
-### Community 129 - "Company Cancellation Response API Contract"
+### Community 121 - "Company Cancellation Response API Contract"
 Cohesion: 0.12
 Nodes (16): $ref, additionalProperties, properties, required, title, type, additionalProperties, properties (+8 more)
 
-### Community 130 - "General Customer Agreement DPA Design"
+### Community 122 - "General Customer Agreement DPA Design"
 Cohesion: 0.15
 Nodes (16): Current-agreement re-acceptance gate, Atomic company creation and agreement acceptance, Canonical contract digest registry, General customer agreement and DPA implementation plan, Immutable company-scoped acceptance evidence, Single beta-to-live business agreement, Article 28 data processing agreement, Atomic agreement acceptance persistence (+8 more)
 
-### Community 131 - "Compatibility Baseline Schema"
+### Community 123 - "Compatibility Baseline Schema"
 Cohesion: 0.13
 Nodes (15): pattern, type, pattern, type, pattern, type, properties, const (+7 more)
 
-### Community 132 - "Compatibility Baseline Schema"
+### Community 124 - "Compatibility Baseline Schema"
 Cohesion: 0.13
 Nodes (15): minimum, type, pattern, type, occurrences, operation, resource, rule (+7 more)
 
-### Community 133 - "Module Schema"
+### Community 125 - "Module Schema"
 Cohesion: 0.13
 Nodes (15): $ref, $ref, $ref, additionalProperties, properties, required, type, $ref (+7 more)
 
-### Community 134 - "Corporate Document Workflow"
+### Community 126 - "RF1086 Submission"
 Cohesion: 0.18
-Nodes (14): ARTIFACT_KINDS, cleanupNewObjects(), corporateArtifactStorageKey(), CorporateArtifactUploadInput, CorporateStorageBucket, CorporateUploadResult, isExistingObjectError(), StorageError (+6 more)
+Nodes (10): AnnualTaxEstimateInput, expectedBankAmountForTaxSettlement(), roundMoney(), TaxSettlementDocumentStatus, TaxSettlementInput, taxSettlementLedgerLines(), TaxSettlementPayload, TaxSettlementType (+2 more)
 
-### Community 135 - "Accept Company Invitation API Contract"
+### Community 127 - "Accept Company Invitation API Contract"
 Cohesion: 0.13
 Nodes (15): additionalProperties, properties, required, title, type, additionalProperties, properties, required (+7 more)
 
-### Community 136 - "Expected Role API Contract"
+### Community 128 - "Expected Role API Contract"
 Cohesion: 0.13
 Nodes (15): additionalProperties, properties, required, title, type, enum, title, type (+7 more)
 
-### Community 137 - "Generate API Client"
+### Community 129 - "Generate API Client"
 Cohesion: 0.13
 Nodes (10): additionalSchemas, check, companyAccessOperations, companyContextResponseSchema, contract, contractPath, correlationParameter, outputPath (+2 more)
 
-### Community 138 - "Production Filing Action Guide Tests"
+### Community 130 - "Production Filing Action Guide Tests"
 Cohesion: 0.19
 Nodes (12): assertStageIncludes(), assertStageIncludesExact(), checklist, checklistStage(), concreteOperatorVerbs, contradictoryGatePattern(), escapeRegExp(), guide (+4 more)
 
-### Community 139 - "Compatibility Schema"
+### Community 131 - "Compatibility Schema"
 Cohesion: 0.14
 Nodes (14): allOf, pattern, type, required, type, $defs, activeStageDebt, capability (+6 more)
 
-### Community 140 - "Compatibility Schema"
+### Community 132 - "Compatibility Schema"
 Cohesion: 0.14
 Nodes (14): gate, pattern, type, pattern, type, additionalProperties, properties, required (+6 more)
 
-### Community 141 - "Compatibility Schema"
+### Community 133 - "Compatibility Schema"
 Cohesion: 0.14
 Nodes (14): additionalProperties, properties, required, type, items, maxItems, type, uniqueItems (+6 more)
 
-### Community 142 - "Talli Holding First Filing Assistant"
+### Community 134 - "Year End Interview"
+Cohesion: 0.14
+Nodes (12): BoardParticipantDraft, DividendShareholder, OwnerDividendDraftIds, OwnerDividendWizard(), Props, ReviewedCorporateFacts, AnnualDecisionDraftIds, AnnualDecisionLifecycleSummary (+4 more)
+
+### Community 135 - "Corporate Document Workflow"
+Cohesion: 0.21
+Nodes (13): ARTIFACT_KINDS, cleanupNewObjects(), corporateArtifactStorageKey(), CorporateArtifactUploadInput, CorporateStorageBucket, CorporateUploadResult, createProductionStorageClient(), isExistingObjectError() (+5 more)
+
+### Community 136 - "Talli Holding First Filing Assistant"
 Cohesion: 0.20
 Nodes (14): Owner Confirmation Handoff, Immutable Production Approval, Authority-Specific Filing Contracts, Holding-First Product Direction, HoldingSwift Product Requirements Implementation Plan, Årsregnskap, Aksjonærregisteroppgaven, Annual Holding Compliance Loop (+6 more)
 
-### Community 143 - "PLAN Documentation"
+### Community 137 - "PLAN Documentation"
 Cohesion: 0.18
 Nodes (13): Owner-Managed Filing Decision, Direct Filing, Filing Simulation, Owner-Managed Direct Filing, Simple Holding AS, Aksjonærregisteroppgaven, Årsregnskap, Filing Simulation Stage (+5 more)
 
-### Community 144 - "Use A Two Application Modular"
+### Community 138 - "Use A Two Application Modular"
 Cohesion: 0.19
 Nodes (13): Domain and Filing Engine Before UI, Python Domain and Filing Engine First, FastAPI Canonical Business Backend, Next.js Web Application, Supabase Authentication and Persistence Boundary, Two-Application Modular Monorepo, Capability-Owned Contracts, Data, and Workflows, Database Authorization Seam (+5 more)
 
-### Community 145 - "Aksjonaerregisteroppgaven Phase Map"
+### Community 139 - "Aksjonaerregisteroppgaven Phase Map"
 Cohesion: 0.19
 Nodes (13): Durable Consequential Commands, RF-1086 Authentication and Access, RF-1086 Domain Model and CLI Milestone, RF-1086 Idempotency Policy, RF-1086 Launch Subset and Scenarios, RF-1086 Phase 0 Map, RF-1086 Submission API Flow, RF-1086 Transaction Code Live Gate (+5 more)
 
-### Community 146 - "Test System Boundary"
+### Community 140 - "Test System Boundary"
 Cohesion: 0.22
 Nodes (7): FastAPI, main(), serialize_openapi(), _assert_problem(), test_declared_and_unexpected_failures_are_safe_correlated_problem_details(), test_framework_failures_are_normalized_as_correlated_problem_details(), test_served_openapi_bytes_match_the_deterministic_generator()
 
-### Community 147 - "Backend System Schema"
+### Community 141 - "Backend System Schema"
 Cohesion: 0.15
 Nodes (13): $ref, additionalProperties, properties, required, type, adapters, allowedDependencies, transport (+5 more)
 
-### Community 148 - "Backend System Schema"
+### Community 142 - "Backend System Schema"
 Cohesion: 0.15
 Nodes (13): const, additionalProperties, properties, required, type, const, consequentialAdapterRecheck, operationalControlState (+5 more)
 
-### Community 149 - "Compatibility Schema"
+### Community 143 - "Compatibility Schema"
 Cohesion: 0.15
 Nodes (12): additionalProperties, $id, oneOf, properties, records, schemaVersion, items, type (+4 more)
 
-### Community 150 - "Compatibility Schema"
+### Community 144 - "Compatibility Schema"
 Cohesion: 0.15
 Nodes (13): $ref, $ref, additionalProperties, properties, required, type, minItems, type (+5 more)
 
-### Community 151 - "Compatibility Schema"
+### Community 145 - "Compatibility Schema"
 Cohesion: 0.15
 Nodes (13): scope, pattern, type, operation, resource, rule, pattern, type (+5 more)
 
-### Community 152 - "Customer Ready Gate Evidence Schema"
+### Community 146 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.15
 Nodes (13): const, oneOf, const, properties, executor, previousPassingRevision, producer, schemaVersion (+5 more)
 
-### Community 153 - "Production E2e Verification Evidence"
+### Community 147 - "Supabase Data Access"
+Cohesion: 0.26
+Nodes (9): AuthLayout(), CompanyAccessOptions, listCompanyAccessContexts(), companiesRequiringCurrentCustomerAgreement(), OperatorLayout(), OwnerLayout(), getOperatorContext(), listCustomerAgreementAcceptances() (+1 more)
+
+### Community 148 - "Production E2e Verification Evidence"
 Cohesion: 0.15
 Nodes (13): Desktop customer journey, Customer-ready private-beta browser rehearsal, Production capabilities remain disabled, Responsive customer journey, Conditional go for invited free beta, Deployed public-surface smoke test, Immutable release verification, Local Supabase database and browser evidence (+5 more)
 
-### Community 154 - "RF1086 Controlled Beta Deployment Evidence"
+### Community 149 - "RF1086 Controlled Beta Deployment Evidence"
 Cohesion: 0.17
 Nodes (13): Controlled-production beta schema, Fail-closed RF-1086 deployment, Production credentials boundary, Controlled-beta remaining gates, RF-1086 controlled-beta deployment, TypeScript RF-1086 preview parity, RF-1086 fail-closed rule, RF-1086 release evidence matrix (+5 more)
 
-### Community 155 - "Design Typography System"
+### Community 150 - "Filing Submission Core"
+Cohesion: 0.22
+Nodes (8): assign_founder_pricing(), BillingGateResult, BillingStatus, mark_supported_filing_failure(), Pricing, PricingPlan, production_filing_gate(), BillingGateTest
+
+### Community 151 - "RF1086 Codes"
+Cohesion: 0.38
+Nodes (9): assert_rf1086_production_codes_verified(), production_code_blockers(), production_code_blockers_for_case(), production_scope_exclusions(), production_scope_exclusions_for_case(), FilingCase, rf1086_code_decisions(), rf1086_code_decisions_for_case() (+1 more)
+
+### Community 152 - "Design Typography System"
 Cohesion: 0.15
 Nodes (13): displayName, purpose, typographyMeta, displayName, purpose, displayName, purpose, displayName (+5 more)
 
-### Community 156 - "Authority Test Evidence"
-Cohesion: 0.18
-Nodes (10): AuthorityTestRun, CompanyTaxReturnAuthorityTestRunImportInput, buildCompanyTaxReturnEvidencePersistence(), CompanyTaxReturnEvidencePersistence, CompanyTaxReturnPayloadReference, CompanyTaxReturnReceiptMetadata, FilingSubmissionCall, FilingSubmissionFeedbackItem (+2 more)
-
-### Community 157 - "RF1086 Feedback"
+### Community 153 - "RF1086 Feedback"
 Cohesion: 0.17
 Nodes (8): ACTION_REQUIRED, CapturedField, classifyRf1086Feedback(), RF1086_FEEDBACK_NAMESPACES, Rf1086FeedbackClassification, Rf1086FeedbackResult, Rf1086FeedbackSchema, context
 
-### Community 158 - "Enforce The Architecture And Migrate"
+### Community 154 - "Enforce The Architecture And Migrate"
 Cohesion: 0.20
 Nodes (12): Release Verdict, Runtime Gate, and Human Clearance, Active-Stage Compatibility Debt Rule, Capability Stage Acceptance Gate, Issues 185 and 186 Clarification, Expand-Migrate-Contract, Legacy Façade and Compatibility Debt, Seven-Day Production Observation Window, One Capability Migration at a Time (+4 more)
 
-### Community 159 - "Route Module"
+### Community 155 - "Route Module"
 Cohesion: 0.26
 Nodes (10): GET(), CallbackCookieStore, CallbackSupabaseClient, createSystemUserCallbackHandler(), manualRedirect(), SystemUserCallbackDependencies, systemUserSiteOrigin(), SYSTEM_USER_COOKIE (+2 more)
 
-### Community 160 - "Backend System Schema"
+### Community 156 - "Backend System Schema"
 Cohesion: 0.17
 Nodes (12): pattern, type, const, const, minLength, type, properties, compositionRoot (+4 more)
 
-### Community 161 - "Backend System Schema"
+### Community 157 - "Backend System Schema"
 Cohesion: 0.20
 Nodes (12): $defs, nonEmptyStringArray, stringArray, minLength, type, items, minItems, type (+4 more)
 
-### Community 162 - "Backend System Schema"
+### Community 158 - "Backend System Schema"
 Cohesion: 0.17
 Nodes (12): $ref, migrations, schemas, statement, technicalOwnership, $ref, minLength, type (+4 more)
 
-### Community 163 - "Compatibility Schema"
+### Community 159 - "Compatibility Schema"
 Cohesion: 0.17
 Nodes (12): additionalProperties, properties, required, type, pattern, type, const, pattern (+4 more)
 
-### Community 164 - "Module Schema"
+### Community 160 - "Module Schema"
 Cohesion: 0.17
 Nodes (12): dependency, additionalProperties, properties, required, type, $ref, enum, minLength (+4 more)
 
-### Community 165 - "Module Schema"
+### Community 161 - "Module Schema"
 Cohesion: 0.21
 Nodes (12): items, type, additionalProperties, minLength, required, type, items, items (+4 more)
 
-### Community 166 - "Corporate Document Local Rehearsal Evidence"
+### Community 162 - "RF1086 Domain Model"
+Cohesion: 0.45
+Nodes (11): Element, _build_hovedskjema(), _build_underskjema(), _data(), _dt(), generate_rf1086(), _group(), _pair_group() (+3 more)
+
+### Community 163 - "Corporate Document Local Rehearsal Evidence"
 Cohesion: 0.20
 Nodes (12): Corporate Document Local Rehearsal, Deterministic corporate PDF evidence, Corporate-document external gates pending, Local corporate-document automated evidence, Final public launch gate, Required non-affiliation language, Talli Launch Clearance Checklist, Truthful launch claims (+4 more)
 
-### Community 167 - "Python Imports"
+### Community 164 - "Python Imports"
 Cohesion: 0.29
 Nodes (11): expr, ImportFrom, decorator_fact(), imports_for(), main(), module_for(), package_for(), Any (+3 more)
 
-### Community 168 - "Company Tax Return Authority Map"
+### Community 165 - "Company Tax Return Authority Map"
 Cohesion: 0.24
 Nodes (12): Company Tax Return Authority Map, Company Tax Launch Subset and Schema Decisions, Company Tax Production Blockers, Company Tax Public Filing Surface, Company Tax Submission Flow and Scope, Company Tax TT02 Submission Evidence, Simple Holding Candidate Mapping and Tax Reconciliation, Company Tax Code and TT02 Gate Verification (+4 more)
 
-### Community 169 - "Share Purchase"
+### Community 166 - "Share Purchase"
 Cohesion: 0.23
 Nodes (9): roundMoney(), SharePurchaseActionPayload, SharePurchaseDocumentStatus, SharePurchaseInput, SharePurchaseInvestmentKind, sharePurchaseLedgerLines(), SharePurchaseTaxTreatment, SharePurchaseValidationError (+1 more)
 
-### Community 170 - "Production Systemregister Operations"
+### Community 167 - "Production Systemregister Operations"
 Cohesion: 0.20
 Nodes (12): Admin AAL2 and exact confirmation gate, Conflict detection without automatic overwrite, Disabled-by-default authority operations gate, Fixed RF-1086 Systemregister operation, Production Systemregister operations implementation plan, Redacted authority-operation audit, Conflict-safe idempotent registration, Fixed production RF-1086 system definition (+4 more)
 
-### Community 171 - "Filing Release Controls"
+### Community 168 - "Filing Release Controls"
 Cohesion: 0.17
 Nodes (10): commonProductionSignoffKeys, liveReleaseGate, readyAdapterCapabilities, readyAuthorityEvidence, readyBilling, readyLaunchSignoffs, readyPermissions, rfPilotContext (+2 more)
 
-### Community 172 - "System User Requests Database Runtime"
+### Community 169 - "System User Requests Database Runtime"
 Cohesion: 0.20
 Nodes (5): anonClient(), elevateToAal2(), requiredEnv, signIn(), totpCode()
 
-### Community 173 - "Compatibility Baseline Schema"
+### Community 171 - "Compatibility Baseline Schema"
 Cohesion: 0.18
 Nodes (10): additionalProperties, $defs, scope, $id, required, $schema, additionalProperties, required (+2 more)
 
-### Community 174 - "Compatibility Schema"
+### Community 172 - "Compatibility Schema"
 Cohesion: 0.24
 Nodes (11): $ref, items, type, additionalProperties, properties, required, type, items (+3 more)
 
-### Community 175 - "Customer Ready Gate Evidence Schema"
+### Community 173 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.18
 Nodes (11): minLength, type, minimum, type, const, properties, enum, command (+3 more)
 
-### Community 176 - "Release State Schema"
+### Community 174 - "Release State Schema"
 Cohesion: 0.18
 Nodes (10): additionalProperties, $id, oneOf, properties, latestStableCustomerReadyRelease, schemaVersion, required, $schema (+2 more)
 
-### Community 177 - "Annual Accounts TT02 Evidence"
+### Community 175 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.18
 Nodes (11): dataId, filename, sha256, sizeBytes, downloadVerification, companyAccountsJson, mainFormJson, dataId (+3 more)
 
-### Community 178 - "Annual Accounts TT02 Evidence"
+### Community 176 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.18
 Nodes (11): submission, archived, archivedAt, archiveReference, endEvent, instanceId, processCompleted, processEndedAt (+3 more)
 
-### Community 179 - "Annual Accounts Authority Map"
+### Community 177 - "Annual Accounts Authority Map"
 Cohesion: 0.27
 Nodes (11): Annual Accounts Authority Map, RR-0002 Hybrid System-User and Person Submission, RR-0002 Launch Subset and Schema Decisions, RR-0002 Public Filing Surface, RR-0002 TT02 Evidence and Release Gate, RR-0002 Evidence Register, RR-0002 Minimal Payload Map, RR-0002 Remaining Production and Code Gate (+3 more)
 
-### Community 180 - "Bank Module"
+### Community 178 - "Submission Review Data"
 Cohesion: 0.29
-Nodes (8): adminCostAccounts, AdminCostCategory, assertBankTransactionMatchesCost(), buildAdminCostLedgerLines(), parseBankCsv(), ParsedBankTransaction, roundMoney(), splitCsvLine()
+Nodes (9): buildCancellationEvidence(), buildCancellationLifecycle(), buildDeletionCompletionUpdate(), CancellationEvidence, CancellationLifecycleItem, CancellationStatus, cancellationStatusLabel(), nextCancellationStatus() (+1 more)
 
-### Community 181 - "RF1086 Submission"
-Cohesion: 0.25
-Nodes (8): DividendReceivedActionPayload, DividendReceivedDocumentStatus, DividendReceivedInput, dividendReceivedLedgerLines(), DividendReceivedTaxTreatment, DividendReceivedValidationError, roundMoney(), validateDividendReceived()
-
-### Community 182 - "Production Approval"
+### Community 179 - "Production Approval"
 Cohesion: 0.31
 Nodes (9): approvalMatchesCurrentPayload(), buildProductionApprovalManifest(), productionApprovalHash(), ProductionApprovalManifest, ProductionApprovalManifestInput, requiredHash(), requiredIdentifier(), sortedUnique() (+1 more)
 
-### Community 183 - "Shareholder Loan"
+### Community 180 - "Shareholder Loan"
 Cohesion: 0.25
 Nodes (8): roundMoney(), ShareholderLoanActionPayload, ShareholderLoanDirection, ShareholderLoanDocumentStatus, ShareholderLoanInput, shareholderLoanLedgerLines(), ShareholderLoanValidationError, validateShareholderLoan()
 
-### Community 184 - "Accepted At API Contract"
+### Community 181 - "Accepted At API Contract"
 Cohesion: 0.18
 Nodes (11): title, type, properties, required, title, type, acceptedAt, userId (+3 more)
 
-### Community 185 - "Run Customer Ready Gate"
+### Community 182 - "Selected Company API Contract"
+Cohesion: 0.18
+Nodes (11): items, title, type, properties, required, title, type, companies (+3 more)
+
+### Community 183 - "Run Customer Ready Gate"
 Cohesion: 0.18
 Nodes (7): previousIndex, revision, root, startedAt, taxSchemaRoot, temporaryRoot, transcript
 
-### Community 186 - "Controlled Production Beta Actions Tests"
+### Community 184 - "Controlled Production Beta Actions Tests"
 Cohesion: 0.18
 Nodes (6): actions, operatorPage, ownerCopy, ownerPage, supabaseServer, systemUserFlow
 
-### Community 187 - "RF1086 Feedback Schema Tests"
+### Community 185 - "RF1086 Feedback Schema Tests"
 Cohesion: 0.22
 Nodes (5): anonClient(), isLocalDatabase(), isLocalRuntime(), migrationName, signIn()
 
-### Community 188 - "Provider Neutral Integration Seams"
+### Community 186 - "Provider Neutral Integration Seams"
 Cohesion: 0.29
 Nodes (10): Backend System Manifest and Operational Control Plane, Open Banking Provider Port, Document Extraction Port, Live Adapter Approval Gate, Provider-Neutral Integration Seams, Founder Pricing Model, Live Charging Disabled, Production Filing Billing Gate (+2 more)
 
-### Community 189 - "Web Business Actions"
-Cohesion: 0.29
-Nodes (7): createOpeningBalanceSetup(), parseShareholders(), OpeningBalanceInput, openingBalanceLedgerLines(), OpeningShareholderInput, validateOpeningBalanceInput(), validInput
-
-### Community 190 - "Compatibility Schema"
+### Community 187 - "Compatibility Schema"
 Cohesion: 0.20
 Nodes (10): items, type, uniqueItems, $ref, exitedCapabilities, scopes, items, minItems (+2 more)
 
-### Community 191 - "Annual Accounts TT02 Evidence"
+### Community 188 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.20
 Nodes (10): companyAccounts, mainForm, instance, companyAccountsUploaded, createdProcessTask, dataIds, id, locked (+2 more)
 
-### Community 192 - "Backup Restore"
+### Community 189 - "Backup Restore"
 Cohesion: 0.38
 Nodes (7): assertRestoreIntegrity(), buildBackupManifest(), filingSubmissionCollections(), launchCriticalTables, productionRestoreLaunchGate(), restoreCompanyYearArchive(), RestoreGateRecord
 
-### Community 193 - "Production Submission"
+### Community 190 - "Production Submission"
 Cohesion: 0.22
 Nodes (8): ALLOWED_TRANSITIONS, ProductionSubmissionStatus, TERMINAL_STATUSES, transitionProductionSubmission(), actions, documents, feedbackPersistence, ownerPage
 
-### Community 194 - "System User Authority Client Tests"
-Cohesion: 0.22
-Nodes (7): createSystemUserAuthorityClient(), SystemUserAuthorityError, clientFor(), externalRef, input, right, validAuthorityResponse
-
-### Community 195 - "Company Cancellation List API Contract"
+### Community 191 - "Company Cancellation List API Contract"
 Cohesion: 0.20
 Nodes (10): items, title, type, additionalProperties, properties, required, title, type (+2 more)
 
-### Community 196 - "Talli Plan Implementation Gap Closure"
+### Community 192 - "Talli Plan Implementation Gap Closure"
 Cohesion: 0.24
 Nodes (10): Atomic AAL2 Evidence Import, Requirement-to-Evidence Matrix, Implementation Gap Inventory, Persistent Multi-Company System of Record, Plan Implementation Gap Closure, Production Security Baseline, Sensitive Action Step-Up, Tenant Isolation and Authorization (+2 more)
 
-### Community 197 - "Corporate Decision Facts"
+### Community 193 - "Corporate Decision Facts"
 Cohesion: 0.20
 Nodes (9): actionsSource, annualAccountsPayload, annualData, company, filingSource, formSource, readinessSource, shareholders (+1 more)
 
-### Community 198 - "Company Access Administration"
-Cohesion: 0.53
-Nodes (8): cancellation, client(), finalizeCompanyDeletion(), listCompanyCancellations(), request(), requestCompanyCancellation(), resumeCompanyCancellation(), reviewCompanyDeletion()
-
-### Community 199 - "CONTEXT Documentation"
+### Community 194 - "CONTEXT Documentation"
 Cohesion: 0.22
 Nodes (9): Norwegian Product Language Decision, Filing Readiness Gate, Norwegian-First Product Language, Unstructured Entry, Accessible Workflow Design, The Clear Desk, Restrained Nordic Visual System, Bounded Correctness Design Principles (+1 more)
 
-### Community 200 - "Enforce The Architecture And Migrate"
+### Community 195 - "Enforce The Architecture And Migrate"
 Cohesion: 0.22
 Nodes (9): Customer-Ready CI Aggregator, ADR-0013 Enforce the Architecture and Migrate Serially, Deterministic Graphify and Manifest Evidence, Machine-Readable Architecture Manifests, Unconditional Architecture Boundaries, Repository and Module Format, Compatibility and Serialized Migration, Non-Suppressible Architecture Failures (+1 more)
 
-### Community 201 - "Design README"
+### Community 196 - "Design README"
 Cohesion: 0.22
 Nodes (9): Domain Documentation Policy, Glossary Vocabulary and ADR Conflict Policy, Owner Copy and Terminology Guide, ownerCopy Source of Truth, Plain Norwegian Vocabulary Without Infrastructure Jargon, Accessible Status and Component System, Calm Nordic Design Language, Canonical Design Tokens (+1 more)
 
-### Community 202 - "System Boundary Public"
+### Community 197 - "System Boundary Public"
 Cohesion: 0.25
 Nodes (7): Adapter, Protocol, adapter_for(), The only supported Python import path for the system-boundary module., Callable composition adapter that constructs the production boundary., Register a source-level adapter binding for architecture verification., SystemBoundaryTransport
 
-### Community 203 - "Module Schema"
+### Community 198 - "Module Schema"
 Cohesion: 0.22
 Nodes (9): $ref, additionalProperties, properties, required, type, const, allowed, cachePolicy (+1 more)
 
-### Community 204 - "Company Tax TT02 Evidence"
+### Community 199 - "Company Tax TT02 Evidence"
 Cohesion: 0.22
 Nodes (9): instance, confirmationPrepared, envelopeDataId, envelopeUploaded, fileScanResult, id, processTask, validationJobId (+1 more)
 
-### Community 205 - "RF1086 TT02 Evidence"
+### Community 200 - "RF1086 TT02 Evidence"
 Cohesion: 0.22
 Nodes (9): Document archive eventual-consistency retry, RF-1086 no-activity launch shape, RF-1086 production gate remains closed, RF-1086 TT02 acceptance, RF-1086 authority-access prerequisites, RF-1086 hybrid submission flow, RF-1086 no-activity production scope, RF-1086 Production Submission Runbook (+1 more)
 
-### Community 206 - "Design Direction Rules"
+### Community 201 - "Design Direction Rules"
 Cohesion: 0.22
 Nodes (8): components, extensions, breakpoints, motion, shadows, generatedAt, schemaVersion, title
 
-### Community 207 - "OpenAPI Object Fields"
-Cohesion: 0.22
-Nodes (9): properties, required, title, type, items, title, type, invitations (+1 more)
-
-### Community 208 - "Invitation Side Effect API Contract"
+### Community 202 - "Invitation Side Effect API Contract"
 Cohesion: 0.22
 Nodes (9): const, title, type, properties, required, title, type, completed (+1 more)
 
-### Community 209 - "COMPATIBILITY Documentation"
+### Community 203 - "CI Release Gate Tests"
+Cohesion: 0.25
+Nodes (7): cleanWorktreePath, databaseHarnessPath, initializeTemporaryRepository(), localGatePath, run(), vercelConfigPath, workflowPath
+
+### Community 204 - "COMPATIBILITY Documentation"
 Cohesion: 0.25
 Nodes (8): One-Time Issue 186 Foundation Recovery, Two Consecutive Immutable Gates, Completed Migration Stages, Issue 186 Foundation Recovery, Digest-Pinned Gate Attestation, Capability Stage Exit Guard, Migration Stage Transition, Two-Revision Customer-Ready Gate
 
-### Community 210 - "Supabase Data Access"
-Cohesion: 0.43
-Nodes (4): GET(), sanitizeInternalRedirect(), LoginPage(), LoginProps
-
-### Community 211 - "Customer Ready Gate Evidence Schema"
+### Community 205 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.25
 Nodes (8): items, maxItems, minItems, type, additionalProperties, required, type, checks
 
-### Community 212 - "Shared Kernel"
+### Community 206 - "Shared Kernel"
 Cohesion: 0.25
 Nodes (7): allowedPrimitives, allowedPublicPackages, forbidden, forbiddenImportPrefixes, purpose, schemaVersion, sourceScopes
 
-### Community 213 - "Annual Accounts TT02 Evidence"
+### Community 207 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.25
 Nodes (8): contentType, dataId, dataType, downloadUrl, filename, reference, sizeBytes, receipt
 
-### Community 214 - "Company Tax TT02 Evidence"
+### Community 208 - "Company Tax TT02 Evidence"
 Cohesion: 0.25
 Nodes (8): Company tax return TT02 submission, Company-tax authority outcome pending, Internal party-number correction, Personal confirmation handoff, Schema-validated current-draft flow, ID-porten human submission boundary, Supported company-tax production model, CR-010 Company-tax production path
 
-### Community 215 - "Year End Interview"
-Cohesion: 0.25
-Nodes (7): ReviewedCorporateFacts, AnnualDecisionDraftIds, AnnualDecisionLifecycleSummary, AnnualDecisionShareholder, BoardParticipantDraft, CorporateAnnualDecisionForm(), Props
+### Community 209 - "Web Business Actions"
+Cohesion: 0.36
+Nodes (5): OpeningBalanceInput, openingBalanceLedgerLines(), OpeningShareholderInput, validateOpeningBalanceInput(), validInput
 
-### Community 216 - "RF1086 Submission"
-Cohesion: 0.39
-Nodes (6): ManualJournalLineInput, manualJournalRiskFlags(), roundMoney(), sensitiveAccounts, validateManualJournal(), balancedLines
-
-### Community 217 - "System User Requests"
-Cohesion: 0.29
-Nodes (6): allowedTransitions, generateSystemUserExternalRef(), SYSTEM_USER_CALLBACK_URL, SYSTEM_USER_RIGHT, SYSTEM_USER_SYSTEM_ID, SystemUserRequestStatus
-
-### Community 218 - "OpenAPI Object Fields"
-Cohesion: 0.25
-Nodes (8): properties, required, title, type, title, type, memberships, CompanyMembershipListResponse
-
-### Community 219 - "Company Membership Response API Contract"
+### Community 210 - "Company Membership Response API Contract"
 Cohesion: 0.25
 Nodes (8): properties, required, title, type, anyOf, $ref, membership, CompanyMembershipResponse
 
-### Community 220 - "Repository Package"
+### Community 211 - "Repository Package"
 Cohesion: 0.25
 Nodes (7): name, overrides, postcss, sharp, private, version, workspaces
 
-### Community 221 - "Repository Package"
+### Community 212 - "Repository Package"
 Cohesion: 0.25
 Nodes (8): dependencies, next, pg, react, react-dom, saxes, @supabase/ssr, @supabase/supabase-js
 
-### Community 222 - "Repository Package"
+### Community 213 - "Repository Package"
 Cohesion: 0.25
 Nodes (8): devDependencies, ajv, playwright, supabase, @types/node, @types/react, @types/react-dom, typescript
 
-### Community 224 - "Backend System Schema"
+### Community 215 - "Backend System Schema"
 Cohesion: 0.29
 Nodes (6): additionalProperties, $id, required, $schema, title, type
 
-### Community 225 - "Backend System Schema"
+### Community 216 - "Backend System Schema"
 Cohesion: 0.33
 Nodes (7): items, minItems, type, additionalProperties, required, adapterBindings, items
 
-### Community 226 - "Compatibility Baseline Schema"
+### Community 217 - "Compatibility Baseline Schema"
 Cohesion: 0.29
 Nodes (7): const, properties, decisionIssue, schemaVersion, sourceRevision, const, const
 
-### Community 227 - "Compatibility Baseline Schema"
+### Community 218 - "Compatibility Baseline Schema"
 Cohesion: 0.29
 Nodes (7): additionalProperties, required, type, records, items, minItems, type
 
-### Community 228 - "Company Tax TT02 Evidence"
+### Community 219 - "Company Tax TT02 Evidence"
 Cohesion: 0.29
 Nodes (7): receipt, byteLength, contentSha256, contentType, dataId, dataType, reference
 
-### Community 229 - "Company Tax TT02 Evidence"
+### Community 220 - "Company Tax TT02 Evidence"
 Cohesion: 0.29
 Nodes (7): submission, archived, archivedAt, archiveReference, processEndedAt, processTask, submitted
 
-### Community 230 - "Authority Onboarding Runbook"
+### Community 221 - "Authority Onboarding Runbook"
 Cohesion: 0.48
 Nodes (7): Altinn System User and System Register, Authority Onboarding Runbook, Test and Production Client Key Strategy, Onboarding Cost Approval Gate, Maskinporten Client, Operating Entity ENK, Tenor Synthetic Test Subjects
 
-### Community 231 - "Design Direction Rules"
+### Community 222 - "Design Direction Rules"
 Cohesion: 0.29
 Nodes (7): narrative, donts, dos, keyCharacteristics, northStar, overview, rules
 
-### Community 232 - "Holdingswift Produktkrav"
+### Community 223 - "Holdingswift Produktkrav"
 Cohesion: 0.33
 Nodes (7): Deterministic Corporate PDF Artifacts, Bank and Smart Bookkeeping, Corporate Document Generator, HoldingSwift Product Requirements and Architecture, Investment Book, Low-Cost Web Architecture, Passive Holding Company Automation
 
-### Community 233 - "Talli API Client Package"
+### Community 224 - "Talli API Client Package"
 Cohesion: 0.29
 Nodes (6): exports, files, name, private, type, version
 
-### Community 234 - "Authority Operations Actions Tests"
+### Community 225 - "Authority Operations Actions Tests"
 Cohesion: 0.29
 Nodes (6): actions, authorityAction, callbackAction, copy, operatorPage, server
 
-### Community 235 - "Company Access Cancellation Schema Tests"
+### Community 226 - "Company Access Cancellation Schema Tests"
 Cohesion: 0.29
 Nodes (4): archiveInventoryPath, archiveRoutePath, contractPath, expandPath
 
-### Community 236 - "Customer Agreement Actions Tests"
+### Community 227 - "Customer Agreement Actions Tests"
 Cohesion: 0.29
 Nodes (6): actions, agreementFields, companyLookup, copy, onboarding, workspace
 
-### Community 237 - "System User Requests Schema Tests"
+### Community 228 - "System User Requests Schema Tests"
 Cohesion: 0.29
 Nodes (5): matches, migrations, rollback, server, sql
 
-### Community 238 - "Backend System Schema"
+### Community 229 - "Backend System Schema"
 Cohesion: 0.33
 Nodes (6): minLength, type, additionalProperties, required, type, infrastructure
 
-### Community 239 - "Compatibility Baseline Schema"
+### Community 230 - "Compatibility Baseline Schema"
 Cohesion: 0.33
 Nodes (6): $ref, scopes, items, minItems, type, uniqueItems
 
-### Community 240 - "Customer Ready Gate Evidence Schema"
+### Community 231 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.33
 Nodes (5): additionalProperties, $id, required, $schema, type
 
-### Community 241 - "Database Catalog"
+### Community 232 - "Database Catalog"
 Cohesion: 0.33
 Nodes (5): compatibilityAdapterRegistry, ownershipPolicy, schemaVersion, source, tables
 
-### Community 242 - "Dependency Evidence"
+### Community 233 - "Dependency Evidence"
 Cohesion: 0.33
 Nodes (5): edges, generatedBy, modules, schemaVersion, technicalOwnership
 
-### Community 243 - "Module Schema"
+### Community 234 - "Module Schema"
 Cohesion: 0.33
 Nodes (6): minLength, type, tests, additionalProperties, required, type
 
-### Community 244 - "Annual Accounts TT02 Evidence"
+### Community 235 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.33
 Nodes (6): receiptPdf, dataId, exactApiMatch, filename, sha256, sizeBytes
 
-### Community 245 - "Annual Accounts TT02 Evidence"
+### Community 236 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.33
 Nodes (6): inbox, checkedAt, confirmation, dialogReference, displayStatus, status
 
-### Community 246 - "Production Systemregister Evidence"
+### Community 237 - "Production Systemregister Evidence"
 Cohesion: 0.33
 Nodes (6): Fixed RF-1086 authority definition, Idempotent Systemregister verification, Authority operations gate closed, Observed production scope set, Production Systemregister verification, Production Systemregister callback gate
 
-### Community 247 - "Canvas Color Tokens"
+### Community 238 - "Canvas Color Tokens"
 Cohesion: 0.33
 Nodes (6): canonical, displayName, role, tonalRamp, canvas, colorMeta
 
-### Community 248 - "RF1086 Production Tests"
-Cohesion: 0.47
-Nodes (3): documentStorageKey(), validateDocumentUpload(), GET()
-
-### Community 249 - "Company Tax Feedback Persistence"
+### Community 239 - "Company Tax Feedback Persistence"
 Cohesion: 0.47
 Nodes (6): Company Tax TT02 Feedback Persistence Plan, Feedback-Ready Pending Outcome, Sanitized Feedback Persistence, Company Tax Return TT02 Submission Plan, Read-Only Feedback Resume, Sanitized TT02 Evidence
 
-### Community 250 - "Corporate Document Artifacts"
+### Community 240 - "Corporate Document Artifacts"
 Cohesion: 0.47
 Nodes (6): Corporate Document Artifacts Plan, Immutable Corporate Decision Lifecycle, Owner-Attested Signed Copy, Reviewed Accounting Policy Gate, Corporate Document Backup and Restore Runbook, Immutable Corporate Artifact Restore
 
-### Community 251 - "Assert Deployed Schema Contract"
+### Community 241 - "Assert Deployed Schema Contract"
 Cohesion: 0.60
 Nodes (4): inspectDeployedSchema(), main(), missingDeployedSchemaPaths(), REQUIRED_DEPLOYED_SCHEMA_PATHS
 
-### Community 252 - "Corporate Document Database Runtime Tests"
+### Community 242 - "Corporate Document Database Runtime Tests"
 Cohesion: 0.40
 Nodes (5): bootstrapSql, docker(), migrationFiles, psql(), repositoryRoot
 
-### Community 253 - "Release Gate Yml"
+### Community 243 - "Release Gate Yml"
 Cohesion: 0.50
 Nodes (5): Backend System Boundary, Aggregate Release Gate Job, Application Verification Job, Customer-Ready Release Gate, Database Isolation Job
 
-### Community 254 - "Compatibility Baseline"
+### Community 244 - "Compatibility Baseline"
 Cohesion: 0.40
 Nodes (4): decisionIssue, records, schemaVersion, sourceRevision
 
-### Community 255 - "Module Schema"
+### Community 245 - "Module Schema"
 Cohesion: 0.40
 Nodes (5): items, type, uniqueItems, pattern, compatibilityExceptions
 
-### Community 256 - "Annual Accounts TT02 Evidence"
+### Community 246 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.40
 Nodes (5): Hybrid person signing and submission, Regnskapsregisteret processing decision pending, Annual accounts RR0002 TT02 validation, TT02 receipt and archive match, CR-011 Annual-accounts authority path
 
-### Community 257 - "Company Tax TT02 Evidence"
+### Community 247 - "Company Tax TT02 Evidence"
 Cohesion: 0.40
 Nodes (5): authorityValidation, deviationCodes, failureReasons, guidanceCodes, result
 
-### Community 258 - "Company Tax TT02 Evidence"
+### Community 248 - "Company Tax TT02 Evidence"
 Cohesion: 0.40
 Nodes (5): payloadHashes, naeringsspesifikasjon, skattemelding, submissionEnvelope, validationEnvelope
 
-### Community 259 - "Company Tax TT02 Evidence"
+### Community 249 - "Company Tax TT02 Evidence"
 Cohesion: 0.40
 Nodes (5): preflightValidation, deviationCodes, failureReasons, guidanceCodes, result
 
-### Community 260 - "Danger Color Tokens"
+### Community 250 - "Danger Color Tokens"
 Cohesion: 0.40
 Nodes (5): danger, canonical, displayName, role, tonalRamp
 
-### Community 261 - "Ink Color Tokens"
+### Community 251 - "Ink Color Tokens"
 Cohesion: 0.40
 Nodes (5): ink, canonical, displayName, role, tonalRamp
 
-### Community 262 - "Line Color Tokens"
+### Community 252 - "Line Color Tokens"
 Cohesion: 0.40
 Nodes (5): line, canonical, displayName, role, tonalRamp
 
-### Community 263 - "Muted Color Tokens"
+### Community 253 - "Muted Color Tokens"
 Cohesion: 0.40
 Nodes (5): muted, canonical, displayName, role, tonalRamp
 
-### Community 264 - "Primary Color Tokens"
+### Community 254 - "Primary Color Tokens"
 Cohesion: 0.40
 Nodes (5): primary, canonical, displayName, role, tonalRamp
 
-### Community 265 - "Strong Primary Tokens"
+### Community 255 - "Strong Primary Tokens"
 Cohesion: 0.40
 Nodes (5): primary-strong, canonical, displayName, role, tonalRamp
 
-### Community 266 - "Selection Color Tokens"
+### Community 256 - "Selection Color Tokens"
 Cohesion: 0.40
 Nodes (5): selection, canonical, displayName, role, tonalRamp
 
-### Community 267 - "Surface Color Tokens"
+### Community 257 - "Surface Color Tokens"
 Cohesion: 0.40
 Nodes (5): surface, canonical, displayName, role, tonalRamp
 
-### Community 268 - "Warning Color Tokens"
+### Community 258 - "Warning Color Tokens"
 Cohesion: 0.40
 Nodes (5): warning, canonical, displayName, role, tonalRamp
 
-### Community 269 - "Launch Copy"
+### Community 259 - "Launch Copy"
 Cohesion: 0.50
 Nodes (3): prohibitedLaunchClaims, validateLaunchCopy(), ownerCopySource
 
-### Community 270 - "Live Design Configuration"
+### Community 260 - "Live Design Configuration"
 Cohesion: 0.40
 Nodes (4): commentSyntax, cspChecked, files, insertBefore
 
-### Community 271 - "Assert Supabase Advisors"
+### Community 261 - "Assert Supabase Advisors"
 Cohesion: 0.40
 Nodes (4): blocking, findings, performanceWarnings, result
 
-### Community 272 - "Authority Operations Schema Tests"
+### Community 262 - "Authority Operations Schema Tests"
 Cohesion: 0.40
 Nodes (4): callbackMigrationNames, callbackRollbackUrl, migrationUrl, rollbackUrl
 
-### Community 273 - "Customer Agreement Schema Tests"
+### Community 263 - "Customer Agreement Schema Tests"
 Cohesion: 0.40
 Nodes (4): correctiveSql, reacceptanceSql, rollbackSql, sql
 
-### Community 275 - "Module Schema"
+### Community 265 - "Module Schema"
 Cohesion: 0.50
 Nodes (4): items, type, $ref, dependencies
 
-### Community 276 - "RF1086 Code Evidence Register"
+### Community 266 - "RF1086 Code Evidence Register"
 Cohesion: 0.50
 Nodes (4): Excluded RF-1086 codes K, S, and U, RF-1086 live filing rule, RF-1086 Code Evidence Register, Verified stiftelse code N
 
-### Community 278 - "Workspace Module"
+### Community 267 - "Workspace Module"
 Cohesion: 0.50
 Nodes (3): Actor, FilingStatus, Workspace
 
-### Community 279 - "Run Next"
+### Community 268 - "Run Next"
 Cohesion: 0.50
 Nodes (3): child, nextCli, requireFromRepositoryRoot
 
-### Community 281 - "Controlled Production Beta Schema Tests"
+### Community 270 - "Controlled Production Beta Schema Tests"
 Cohesion: 0.50
 Nodes (3): bindingSql, rollback, sql
 
-### Community 282 - "Customer Agreement Reacceptance UI Tests"
+### Community 271 - "Customer Agreement Reacceptance UI Tests"
 Cohesion: 0.50
 Nodes (3): actions, layout, moduleSource
 
-### Community 283 - "Root Workspace Dependency Graph Tests"
+### Community 272 - "Root Workspace Dependency Graph Tests"
 Cohesion: 0.50
 Nodes (3): rootLockfile, rootManifest, webManifest
 
-### Community 284 - "Apple App Icon"
+### Community 273 - "Apple App Icon"
 Cohesion: 0.67
 Nodes (3): Calm Green and Gold Palette, Talli Apple App Icon, Tally Mark Symbol
 
-### Community 285 - "Application Icon"
+### Community 274 - "Application Icon"
 Cohesion: 0.67
 Nodes (3): Green Gold Brand Palette, Talli Brand Icon, Tally Mark Motif
 
-### Community 286 - "Company Access Policies"
+### Community 275 - "Company Access Policies"
 Cohesion: 0.67
 Nodes (3): Adapter, company_access_adapter(), Register a source-level outbound adapter binding for architecture verification.
 
-### Community 288 - "Compatibility Baseline Schema"
+### Community 277 - "Compatibility Baseline Schema"
 Cohesion: 0.67
 Nodes (3): pattern, type, path
 
-### Community 289 - "Customer Ready Gate Evidence Schema"
+### Community 278 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): format, type, executedAt
 
-### Community 290 - "Customer Ready Gate Evidence Schema"
+### Community 279 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): pattern, type, producerDigest
 
-### Community 291 - "Customer Ready Gate Evidence Schema"
+### Community 280 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): revision, pattern, type
 
-### Community 292 - "Customer Ready Gate Evidence Schema"
+### Community 281 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): startedAt, format, type
 
-### Community 293 - "Customer Ready Gate Evidence Schema"
+### Community 282 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): transcriptDigest, pattern, type
 
-### Community 294 - "Customer Ready Gate Evidence Schema"
+### Community 283 - "Customer Ready Gate Evidence Schema"
 Cohesion: 0.67
 Nodes (3): transcriptPath, pattern, type
 
-### Community 296 - "Annual Accounts TT02 Evidence"
+### Community 285 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.67
 Nodes (3): payloadHashes, companyAccounts, mainForm
 
-### Community 297 - "Annual Accounts TT02 Evidence"
+### Community 286 - "Annual Accounts TT02 Evidence"
 Cohesion: 0.67
 Nodes (3): validation, hasErrors, issues
 
-### Community 298 - "Company Tax TT02 Evidence"
+### Community 287 - "Company Tax TT02 Evidence"
 Cohesion: 0.67
 Nodes (3): localSchemaValidation, schemas, status
 
 ## Knowledge Gaps
-- **2437 isolated node(s):** `schemaVersion`, `generatedAt`, `title`, `role`, `displayName` (+2432 more)
+- **2441 isolated node(s):** `schemaVersion`, `generatedAt`, `title`, `role`, `displayName` (+2436 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **43 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `datetime` connect `Holding Accounting Core` to `Filing Submission Core`, `Filing Submission Core`, `Corporate Document Engine`, `Cancellation Backend Tests`, `RF1086 Domain Model`, `Company Access Backend Tests`, `Company Access API`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `createTalliApiClient()` connect `Company Access Administration` to `Company Access Administration`, `Generated API Client`, `Company Access Administration`?**
-  _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Why does `requestMaskinportenToken()` connect `Maskinporten Integration` to `Web Business Actions`, `Company Tax Return Authority Test`, `Annual Accounts Authority`, `System User Flow`, `Authority Operations`, `RF1086 Authority Test`?**
+- **Why does `datetime` connect `Holding Accounting Core` to `Corporate Document Engine`, `Cancellation Backend Tests`, `RF1086 Domain Model`, `Company Access Backend Tests`, `Company Access API`, `Filing Submission Core`?**
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+- **Why does `createTalliApiClient()` connect `Company Access Administration` to `Generated API Client`?**
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+- **Why does `requestMaskinportenToken()` connect `Maskinporten Integration` to `Web Business Actions`, `Annual Accounts Authority`, `Authority Operations`, `System User Flow`, `RF1086 Authority Test`, `Company Tax Return Authority Test`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `createSupabaseServerClient()` (e.g. with `GET()` and `GET()`) actually correct?**
   _`createSupabaseServerClient()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 47 inferred relationships involving `AnnualData` (e.g. with `AdminCostInput` and `CompanyArchive`) actually correct?**
   _`AnnualData` has 47 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `schemaVersion`, `generatedAt`, `title` to the rest of the system?**
-  _2489 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _2493 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Holding Accounting Core` be split into smaller, more focused modules?**
-  _Cohesion score 0.053754751429170036 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05130804539438484 - nodes in this community are weakly interconnected._
