@@ -33,8 +33,12 @@ A filing model where the company owner or legal representative authenticates, re
 _Avoid_: Accountant-mediated filing
 
 **Simple holding AS**:
-A regular holding company with one bank account, few yearly transactions, investments in companies or securities, no payroll, no VAT, and no customer invoicing.
+A regular holding company with one or more NOK business bank accounts, low-complexity holding activity, investments in companies or simple securities, no payroll, no VAT, and no customer invoicing.
 _Avoid_: SME, operating business
+
+**Launch-supported holding company**:
+A small, active Norwegian holding AS that passes Talli's full-year eligibility boundary: Norwegian shareholders, one ordinary share class, no audit or consolidated accounts, and only supported holding investments, loans, group transfers, ownership events, NOK accounts, income, and costs. Operating activity, specialist reorganizations, foreign-tax complexity, and any case Talli cannot complete through all three direct filings are excluded.
+_Avoid_: Any holding company, registry-only match, partly supported company
 
 **Transaction capture**:
 The way bank and cash movements enter the accounting workflow before they become posted ledger entries.
@@ -101,7 +105,7 @@ A paid or invited review workflow where an accountant can inspect records and fi
 _Avoid_: Mandatory accountant approval
 
 **Needs-accountant case**:
-A company situation or transaction pattern that falls outside the simple holding AS path and should be blocked, escalated, or strongly warned before owner-managed direct filing.
+A company situation or transaction pattern outside the launch-supported holding-company boundary. Talli must stop the affected accounting or filing work, explain the boundary, and preserve read and export access rather than pretending it can complete the year.
 _Avoid_: Edge case
 
 **Risk response**:
