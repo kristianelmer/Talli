@@ -5,7 +5,10 @@ set -euo pipefail
 started_here=0
 next_env_path="apps/web/next-env.d.ts"
 next_env_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-next-env.XXXXXX")"
+tsconfig_path="apps/web/tsconfig.json"
+tsconfig_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-tsconfig.XXXXXX")"
 cp -- "$next_env_path" "$next_env_snapshot"
+cp -- "$tsconfig_path" "$tsconfig_snapshot"
 
 cleanup() {
   local command_status="$1"
@@ -18,6 +21,13 @@ cleanup() {
   else
     printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
       "$next_env_path" "$next_env_snapshot" >&2
+    cleanup_status=1
+  fi
+  if cp -- "$tsconfig_snapshot" "$tsconfig_path"; then
+    unlink "$tsconfig_snapshot" || cleanup_status=1
+  else
+    printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
+      "$tsconfig_path" "$tsconfig_snapshot" >&2
     cleanup_status=1
   fi
   if [[ "$started_here" == "1" ]]; then

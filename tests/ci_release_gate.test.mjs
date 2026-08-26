@@ -57,12 +57,14 @@ function initializeTemporaryRepository() {
 function createHarnessWorkspace(mode) {
   const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
   const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
+  const tsconfigPath = join(directory, "apps/web/tsconfig.json");
   const binDirectory = join(directory, "bin");
   const snapshotDirectory = join(directory, "snapshots");
   mkdirSync(dirname(nextEnvPath), { recursive: true });
   mkdirSync(binDirectory);
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
+  writeFileSync(tsconfigPath, "original config\n");
   const npmPath = join(binDirectory, "npm");
   writeFileSync(
     npmPath,
@@ -74,6 +76,7 @@ if [[ "$*" == "exec -- supabase status --output env" ]]; then
 fi
 if [[ "$*" == "run test:browser-owner" ]]; then
   printf 'generated declaration\\n' > apps/web/next-env.d.ts
+  printf 'generated config\\n' > apps/web/tsconfig.json
   if [[ "${mode}" == "command-failure" ]]; then
     exit 7
   fi
@@ -84,7 +87,13 @@ fi
 `,
   );
   chmodSync(npmPath, 0o755);
-  return { directory, nextEnvPath, snapshotDirectory, binDirectory };
+  return {
+    directory,
+    nextEnvPath,
+    tsconfigPath,
+    snapshotDirectory,
+    binDirectory,
+  };
 }
 
 test("release gate covers pull requests and main with least privilege", () => {
@@ -222,14 +231,16 @@ test("database harness restores generated drift and preserves failure semantics"
       if (mode === "success") {
         assert.equal(result.status, 0, result.stderr);
         assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
+        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else if (mode === "command-failure") {
         assert.equal(result.status, 7, result.stderr);
         assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
+        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else {
         assert.notEqual(result.status, 0);
-        assert.equal(readdirSync(workspace.snapshotDirectory).length, 1);
+        assert.equal(readdirSync(workspace.snapshotDirectory).length, 2);
       }
     } finally {
       rmSync(workspace.directory, { recursive: true, force: true });
