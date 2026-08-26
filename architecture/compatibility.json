@@ -7,8 +7,19 @@
   "migration": {
     "foundationRecovery": {
       "issue": "#186",
-      "status": "pending",
-      "gates": []
+      "status": "complete",
+      "gates": [
+        {
+          "revision": "602629f7a8d3ce28a49de9a5e280162405b617e3",
+          "evidencePath": "architecture/evidence/customer-ready-gates/602629f7a8d3ce28a49de9a5e280162405b617e3.json",
+          "evidenceDigest": "sha256:d851ef8f560dff82f4eaf9f81fff4e2cfda23403179ab303d8cd85a3bc24a5ee"
+        },
+        {
+          "revision": "c41c11561455e117f0fc8d0fefe6083033c26ed5",
+          "evidencePath": "architecture/evidence/customer-ready-gates/c41c11561455e117f0fc8d0fefe6083033c26ed5.json",
+          "evidenceDigest": "sha256:0a9dc0d3f037de0121f92b3eb008661a30a6bc054358d8e308c329a8bc2a3aa7"
+        }
+      ]
     },
     "order": [
       {
