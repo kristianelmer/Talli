@@ -1,0 +1,1567 @@
+customer-ready-release-gate revision=de35d1ead93ea28e9f9878b3cb57d460c7583c33
+startedAt=2026-08-26T20:21:22.880Z
+
+[schema-setup] command=git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git
+Cloning into '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-customer-ready-gate-nLatyC/skattemeldingen'...
+warning: refs/tags/v1.62.47 980e1eab4d0de1e6582adc4fde9be029d55c4694 is not a commit!
+Note: switching to '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+[schema-setup] exit=0
+[schema-setup] durationMs=22580
+
+[credential-scan] command=npm run test:credential-scan
+
+> talli-repository@0.1.0 test:credential-scan
+> node --test tests/committed_credentials.test.mjs && node scripts/check-committed-credentials.mjs
+
+✔ the credential scanner scans its own clean repository without matching itself (296.298416ms)
+✔ the credential scanner rejects a tracked source credential (277.677041ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 679.469667
+[credential-scan] exit=0
+[credential-scan] durationMs=1270
+
+[typecheck] command=npm run typecheck
+
+> talli-repository@0.1.0 typecheck
+> npm --prefix apps/web run typecheck
+
+
+> talli-web@0.1.0 typecheck
+> tsc --noEmit
+[typecheck] exit=0
+[typecheck] durationMs=1501
+
+[architecture] command=npm run check:architecture
+
+> talli-repository@0.1.0 check:architecture
+> node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json
+
+{
+  "edges": [
+    {
+      "from": "backend-system:company-access-administration",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-context",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:system-boundary-tracer",
+      "imports": [
+        "talli_backend.modules.system_boundary.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:system_boundary"
+    }
+  ],
+  "generatedBy": "scripts/check-architecture.mjs",
+  "modules": [
+    "backend-system:system_boundary",
+    "backend:company_access",
+    "web:company-access",
+    "web:system-boundary"
+  ],
+  "schemaVersion": "1.0",
+  "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "public.company_access_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.launch_signoffs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.notification_outbox"
+    }
+  ]
+}
+[architecture] exit=0
+[architecture] durationMs=7836
+
+[boundary] command=npm run test:boundary
+
+> talli-repository@0.1.0 test:boundary
+> npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract
+
+
+> talli-repository@0.1.0 test:boundary-backend
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.11, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/kristianelmer/.codex/worktrees/c0b6/Holding accounting/apps/backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 78 items
+
+apps/backend/tests/test_company_access.py .............................. [ 38%]
+...                                                                      [ 42%]
+apps/backend/tests/test_company_cancellation_lifecycle.py .............. [ 60%]
+.......                                                                  [ 69%]
+apps/backend/tests/test_company_onboarding.py ...............            [ 88%]
+apps/backend/tests/test_company_onboarding_migration.py ...              [ 92%]
+apps/backend/tests/test_system_boundary.py ......                        [100%]
+
+============================== 78 passed in 9.55s ==============================
+
+> talli-repository@0.1.0 test:boundary-web
+> node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs apps/web/tests/owner-mfa-transition.test.mjs tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs
+
+✔ create_invitation:outbox remains reachable and recovery finishes without another command (1.522208ms)
+✔ create_invitation:audit remains reachable and recovery finishes without another command (0.1565ms)
+✔ accept_invitation:audit remains reachable and recovery finishes without another command (0.13675ms)
+✔ revoke_invitation:audit remains reachable and recovery finishes without another command (1.087541ms)
+✔ resend_invitation:outbox remains reachable and recovery finishes without another command (0.153666ms)
+✔ resend_invitation:audit remains reachable and recovery finishes without another command (0.10625ms)
+✔ recovery actor comes from the server context and cannot claim another actor's continuation (0.127208ms)
+✔ delivery persistence is owned by atomic completion, never by a browser outbox insert (0.109708ms)
+✔ company-access administration transport uses only generated client operations (43.668583ms)
+✔ generated decoders fail closed on every unknown or token-shaped invitation field (0.935917ms)
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (73.541209ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (2.118959ms)
+✔ generated review decoder enforces evidence-reference length bounds (0.424125ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.338708ms)
+✔ every concurrent archive source failure trips the completion barrier (0.213042ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.082875ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (4.305125ms)
+✔ an unknown organization keeps the specific Enhetsregisteret guidance (1.21875ms)
+✔ onboarding and agreement transports use authenticated generated-client requests (49.161334ms)
+✔ actions and agreement gates have no direct business-persistence facade (7.192709ms)
+✔ company-access and system-boundary transports share typed fail-closed backend configuration (5.047625ms)
+✔ both transports reject remote HTTP in every Node environment (0.442ms)
+✔ company-access and system-boundary accept the same HTTPS and loopback origins (70.856166ms)
+✔ company-access transport sends the established session only through the generated client (0.600042ms)
+✔ the company-access app boundary owns its presentation model instead of a Supabase row DTO (7.803417ms)
+✔ company record presentations map generated camel-case contracts to existing web registry facts (1.004917ms)
+✔ company-access transport fails closed on a partial context response (0.316875ms)
+✔ generated company-context decoder rejects lower assurance, lower scope, and non-owner roles (0.404333ms)
+✔ company records and operator access use authenticated generated-client queries (5.159ms)
+✔ a verified user without an owner company reaches onboarding but other context failures stay closed (0.401875ms)
+✔ system-user callback resolves company authorization through its injected company-access query (5.190292ms)
+✔ every Stage 1 web consumer authorizes through company-access contracts (26.148042ms)
+✔ invitation login continuation accepts only same-origin absolute paths (0.908375ms)
+✔ side-effect identity is deterministic, actor-scoped, and purpose-scoped (1.418292ms)
+✔ two actors can reuse one operation id without losing audit evidence (1.207709ms)
+✔ same-actor retry reconciles exact rows and recovers an audit failure (0.426709ms)
+✔ foreign rows are not an oracle because actor-derived ids never trigger their lookup (0.126167ms)
+✔ owner AAL2 is distinguished from other context failures without weakening the gate (1.797917ms)
+✔ owner MFA inspection chooses enrollment, challenge, or verified state and fails closed (0.229416ms)
+✔ enrollment and verification expose no provider errors and only resume after confirmed AAL2 (0.339458ms)
+✔ owner transition is reachable after onboarding and exposes an accessible, Norwegian MFA gate (33.046292ms)
+✔ presents the generated tracer response as a safe Norwegian success (1.600084ms)
+✔ presents transport failures without leaking exception details (0.089542ms)
+✔ generated client accepts the declared success shape (32.694417ms)
+✔ generated client maps the typed correlation option to the declared header (0.625625ms)
+✔ generated client fails closed on an undeclared success shape (0.405334ms)
+✔ generated client rejects an availability value outside the closed contract (1.341875ms)
+✔ missing backend configuration fails closed with a typed error (0.483542ms)
+✔ web liveness stays process-only while readiness fails invalid configuration (0.484541ms)
+✔ web readiness validates local configuration without depending on backend reachability (0.414958ms)
+✔ company creation validates current explicit assent before the authenticated company-access command (1.197792ms)
+✔ the Server Action contains no retired onboarding facade or business-persistence adapter (0.247542ms)
+✔ workspace creation shows an unchecked authority and agreement control (0.64025ms)
+✔ company lookup submits the current authority and agreement evidence (0.0595ms)
+✔ the exact authority statement is centralized as linked copy fragments (0.605375ms)
+✔ owner layout replaces children with an accessible reacceptance gate (1.3235ms)
+✔ Server Action reaccepts through the authenticated generated-client boundary (0.434292ms)
+ℹ tests 57
+ℹ suites 0
+ℹ pass 57
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 485.572584
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs
+
+✔ company onboarding and agreement operations are generated-client boundaries (3.229833ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.17625ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (12.4725ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.507292ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (0.69025ms)
+✔ capability owns immutable business request contracts (4.326959ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (0.928583ms)
+✔ all company-access success responses declare X-Request-ID (1.767667ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (0.926125ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (1.130709ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (1.883667ms)
+✔ membership role selector has a target-specific accessible name (0.430041ms)
+✔ capability manifest attributes the latest company-access ownership migration (0.380375ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (4.214875ms)
+✔ destructive contract is a later release artifact outside the automatic runner (0.743375ms)
+✔ cutover removes every authenticated self-membership update surface (1.031208ms)
+✔ command receipts are backend-system technical idempotency state (1.786166ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (1.10625ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (1.366167ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (3.196916ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (2.028334ms)
+✔ the committed contract exposes the authenticated company-context operation (2.431708ms)
+✔ the committed contract exposes company-access invitation and membership administration (1.035542ms)
+✔ the tracer contract declares optional request and response correlation headers (0.927667ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (561.904333ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (7.225667ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (13.776792ms)
+✔ compatibility rejects newly required parameters and request bodies (5.550083ms)
+✔ compatibility rejects narrower authentication requirements (1.641334ms)
+✔ compatibility rejects removed or changed response headers (4.434875ms)
+✔ the generated package version matches the OpenAPI contract version (2.368167ms)
+✔ the generated client is committed and carries its provenance marker (0.36175ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.172334ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 720.994542
+[boundary] exit=0
+[boundary] durationMs=12079
+
+[build-web] command=TALLI_BACKEND_URL=http://127.0.0.1:8000 npm run build:web
+
+> talli-repository@0.1.0 build:web
+> npm --prefix apps/web run build
+
+
+> talli-web@0.1.0 build
+> cd ../.. && node apps/web/scripts/run-next.mjs build
+
+▲ Next.js 16.2.12 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.5s
+  Running TypeScript ...
+  Finished TypeScript in 5.9s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/24) ...
+  Generating static pages using 9 workers (6/24) 
+  Generating static pages using 9 workers (12/24) 
+  Generating static pages using 9 workers (18/24) 
+✓ Generating static pages using 9 workers (24/24) in 248ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /actions
+├ ƒ /actions/[type]
+├ ○ /apple-icon.png
+├ ƒ /archive/[companyId]/[incomeYear]/download
+├ ƒ /auth/confirm
+├ ƒ /auth/systembruker/confirm
+├ ƒ /billing
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/[obligation]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/review
+├ ƒ /connections
+├ ƒ /corporate-decisions/[decisionId]
+├ ƒ /dashboard
+├ ○ /databehandleravtale
+├ ƒ /documents
+├ ƒ /documents/[documentId]/download
+├ ƒ /documents/[documentId]/preview
+├ ○ /email-confirmed
+├ ƒ /filing
+├ ƒ /filing/[obligation]
+├ ƒ /health/live
+├ ƒ /health/ready
+├ ○ /icon.svg
+├ ƒ /invite/accept
+├ ƒ /login
+├ ƒ /mfa
+├ ƒ /onboarding
+├ ƒ /operator
+├ ○ /personvern
+├ ƒ /signup
+├ ƒ /system-boundary
+├ ƒ /transactions
+├ ○ /ui
+├ ƒ /verify-email
+├ ○ /vilkar
+├ ƒ /workspace
+└ ƒ /year-end
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+[build-web] exit=0
+[build-web] durationMs=10930
+
+[build-backend] command=npm run build:backend
+
+> talli-repository@0.1.0 build:backend
+> uv build --project apps/backend
+Building source distribution...
+Building wheel from source distribution...
+Successfully built apps/backend/dist/talli_backend-0.1.0.tar.gz
+Successfully built apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl
+[build-backend] exit=0
+[build-backend] durationMs=869
+
+[boundary-smoke] command=npm run test:boundary-smoke
+
+> talli-repository@0.1.0 test:boundary-smoke
+> node --test tests/production_boundary_smoke.mjs
+
+✔ built artifacts support both deployment orders and isolate backend failure (1336.704375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6463.007208
+[boundary-smoke] exit=0
+[boundary-smoke] durationMs=6714
+
+[launch-rehearsal] command=TALLI_PYTHON_BIN=.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal
+
+> talli-repository@0.1.0 test:launch-rehearsal
+> npm run test:opening && npm run test:documents && npm run test:bank && npm run test:bank-suggestions && npm run test:deployed-contract && npm run test:supabase-grants && npm run test:provider-ports && npm run test:manual-journal && npm run test:share-purchase && npm run test:share-sale && npm run test:share-lots && npm run test:investment-lots-schema && npm run test:dividend-received && npm run test:owner-dividend && npm run test:owner-dividend-payment && npm run test:shareholder-loan && npm run test:annual-data && npm run test:annual-readiness && npm run test:annual-corporate-documents && npm run test:authority-evidence && npm run test:authority-adapters && npm run test:authority-operations && npm run test:maskinporten && npm run test:system-user-requests && npm run test:rf1086:authority-client && npm run test:rf1086:production-pilot && npm run test:python-runtime && npm run test:corporate-documents && npm run test:corporate-decision-workflow && npm run test:rf1086:persisted && npm run test:rf1086:submission && npm run test:annual-accounts && npm run test:annual-accounts-xml && npm run test:annual-accounts-authority && npm run test:annual-accounts-authority-script && npm run test:company-tax-return && npm run test:company-tax-return-xml && npm run test:company-tax-return-authority && npm run test:company-tax-return-authority-script && npm run test:review && npm run test:billing && npm run test:cancellation && npm run test:operator-support && npm run test:operator-mfa && npm run test:deadlines && npm run test:archive && npm run test:backup-restore && npm run test:security && npm run test:trusted-aal2-schema && npm run test:filing-release-gate && npm run test:production-filing-guide && npm run test:launch-copy && npm run test:launch-signoff && npm run test:legal-policy && npm run test:ci-gate
+
+
+> talli-repository@0.1.0 test:opening
+> node --experimental-strip-types --test tests/opening_balance.test.mjs
+
+✔ validates opening balance and emits deterministic ledger lines (1.828ms)
+✔ blocks unreconciled shareholder share totals (0.275875ms)
+✔ blocks share capital mismatch against nominal value (0.079667ms)
+✔ blocks missing Norwegian shareholder identifiers (0.107625ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.24825
+
+> talli-repository@0.1.0 test:documents
+> node --experimental-strip-types --test tests/documents.test.mjs tests/document_removal_schema.test.mjs tests/workspace_presentation.test.mjs
+
+✔ accidental document removal is owner-only, audited, and blocked for linked evidence (8.16175ms)
+✔ a failed object-store removal can restore only the same recent owner request (0.713292ms)
+✔ removed documents disappear from active lists and cannot receive signed download URLs (0.739875ms)
+✔ document storage key scopes object by company, year, and document id (0.914458ms)
+✔ document storage key strips unsafe filename characters (0.103ms)
+✔ document upload accepts a bounded PDF based on signature, not only browser MIME (1.000834ms)
+✔ document upload rejects non-PDF content and oversized files (0.241333ms)
+✔ customer forms do not seed synthetic accounting facts (3.542542ms)
+✔ dashboard enters the dedicated annual workspace (0.526667ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.212792
+
+> talli-repository@0.1.0 test:bank
+> node --experimental-strip-types --test tests/bank_workflow.test.mjs
+
+✔ parses bank CSV with stable duplicate hash (1.442291ms)
+✔ builds deterministic admin cost posting lines (0.829333ms)
+✔ requires selected bank transaction to match cost amount (0.258292ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.656125
+
+> talli-repository@0.1.0 test:bank-suggestions
+> node --experimental-strip-types --test tests/bank_suggestions.test.mjs tests/bank_suggestion_schema.test.mjs tests/bank_suggestion_integration.test.mjs
+
+✔ server recomputes a suggestion before invoking the atomic acceptance RPC (4.158291ms)
+✔ transaction queue requires an explicit owner submit for every suggestion (1.271667ms)
+✔ bank suggestion approvals are immutable and posted atomically (4.888291ms)
+✔ database independently validates rule, version, direction, ambiguity, and period lock (0.836417ms)
+✔ suggests the required bank fee and annual fee posting (2.228333ms)
+✔ suggests system subscription and incoming interest postings (0.135208ms)
+✔ does not suggest on wrong direction, ambiguous text, or unknown transactions (0.084542ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.993334
+
+> talli-repository@0.1.0 test:deployed-contract
+> node --test tests/deployed_schema_contract.test.mjs
+
+✔ deployed schema contract covers every post-baseline product capability (1.503542ms)
+✔ reports only missing OpenAPI paths in stable order (0.210417ms)
+✔ fails closed when the response is not a PostgREST OpenAPI document (1.311125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.608041
+
+> talli-repository@0.1.0 test:supabase-grants
+> node --test tests/supabase_explicit_grants.test.mjs
+
+✔ Supabase Data API grants fail closed for anon and explicitly enable service_role (4.461542ms)
+✔ anonymous sessions cannot invoke authenticated mutation RPCs (1.402666ms)
+✔ Systembruker request objects have explicit least-privilege grants (1.928ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.356125
+
+> talli-repository@0.1.0 test:provider-ports
+> node --experimental-strip-types --test tests/provider_ports.test.mjs
+
+✔ bank provider port fails closed until a provider is approved (1.071584ms)
+✔ bank webhook receipts are replay-safe without persisting raw provider identifiers (0.462541ms)
+✔ bank diagnostics redact bearer and credential material (0.184792ms)
+✔ document extraction port validates tenant scope and remains disabled (0.186958ms)
+✔ extraction output is always review-required and restricted to supported fields (1.0025ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.659417
+
+> talli-repository@0.1.0 test:manual-journal
+> node --experimental-strip-types --test tests/manual_journal.test.mjs
+
+✔ accepts balanced manual journal (1.687625ms)
+✔ blocks unbalanced manual journal (0.243334ms)
+✔ requires warning acceptance for filing-sensitive accounts (0.171917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.339291
+
+> talli-repository@0.1.0 test:share-purchase
+> node --experimental-strip-types --test tests/share_purchase.test.mjs
+
+✔ builds deterministic share purchase payload and ledger lines (1.820292ms)
+✔ blocks unsupported share purchase treatment with machine-readable reasons (0.41175ms)
+✔ requires a whole share count for FIFO lots (0.169042ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.120042
+
+> talli-repository@0.1.0 test:share-sale
+> node --experimental-strip-types --test tests/share_sale.test.mjs
+
+✔ builds partial share sale payload and gain ledger lines (3.087459ms)
+✔ supports full sale and blocks oversale (0.32075ms)
+✔ uses FIFO lots rather than proportional position cost (9.642167ms)
+✔ blocks a legacy position that has no reconstructable lots (0.180458ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 170.003042
+
+> talli-repository@0.1.0 test:share-lots
+> node --experimental-strip-types --test tests/share_lots.test.mjs
+
+✔ allocates oldest acquisition lots first regardless of input order (12.233708ms)
+✔ uses stable lot id order and preserves cent-exact residual cost (0.159292ms)
+✔ rejects missing history, oversales, invalid lots, and future acquisitions (0.339792ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.608
+
+> talli-repository@0.1.0 test:investment-lots-schema
+> node --test tests/investment_lots_schema.test.mjs
+
+✔ FIFO migration owns lot history and atomic investment writes (3.505833ms)
+✔ legacy positions fail closed until lot history is reconstructed (0.848334ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.710042
+
+> talli-repository@0.1.0 test:dividend-received
+> node --experimental-strip-types --test tests/dividend_received.test.mjs
+
+✔ builds deterministic dividend received payload and ledger lines (1.584875ms)
+✔ blocks unsupported dividend tax treatment with machine-readable reason (0.22675ms)
+✔ summarizes annual dividend income and fritaksmetoden add-back (0.09925ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.114709
+
+> talli-repository@0.1.0 test:owner-dividend
+> node --experimental-strip-types --test tests/owner_dividend.test.mjs
+
+✔ legacy owner-dividend accounting and placeholder helpers are gone (0.888625ms)
+✔ dividend basis is recomputed from approved persisted annual facts in integer ore (1.341084ms)
+✔ dividend basis fails closed on unapproved or blocked annual facts (0.27975ms)
+✔ server exposes only the draft action and never posts accounting directly (0.4375ms)
+✔ wizard reviews all owners and meeting facts with proportional allocation only (0.491959ms)
+✔ workspace no longer embeds the legacy posting form or placeholder copy (0.199042ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.7145
+
+> talli-repository@0.1.0 test:owner-dividend-payment
+> node --experimental-strip-types --test tests/owner_dividend_payment.test.mjs
+
+✔ open payable is derived only from a finalized declaration and immutable payment events (1.196458ms)
+✔ payment validation accepts one eligible outgoing NOK transaction within the open payable (0.977708ms)
+✔ server delegates policy-bound accounting atomically to the payment RPC (0.374125ms)
+✔ workspace presents only eligible transactions for each finalized open payable (0.165042ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 154.561125
+
+> talli-repository@0.1.0 test:shareholder-loan
+> node --experimental-strip-types --test tests/shareholder_loan.test.mjs
+
+✔ builds supported shareholder-to-company loan ledger lines (3.121958ms)
+✔ builds supported company-to-corporate-shareholder loan ledger lines (0.174875ms)
+✔ blocks company-to-personal-shareholder loans with machine-readable reason (0.258042ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.767
+
+> talli-repository@0.1.0 test:annual-data
+> node --experimental-strip-types --test tests/annual_data.test.mjs
+
+✔ builds structured year-end answers without free text (1.519459ms)
+✔ does not mark activity years as no-activity (0.081417ms)
+✔ seeds recorded activity into an unsaved year-end interview (0.092792ms)
+✔ recorded activity cannot be hidden by a stale saved false answer (0.072375ms)
+✔ keeps user confirmations independent from registered activity (0.075042ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.196917
+
+> talli-repository@0.1.0 test:annual-readiness
+> node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs
+
+✔ evaluates ready state separately for all annual obligations (3.256334ms)
+✔ returns hard blocks for missing permission and billing (0.254042ms)
+✔ uses no-activity annual data to avoid unrelated tax-settlement clutter (0.157916ms)
+✔ keeps accepted warnings separate from open warnings (0.245333ms)
+✔ reports open warnings and obligation-specific blocks (0.160125ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 171.472958
+
+> talli-repository@0.1.0 test:annual-corporate-documents
+> node --experimental-strip-types --test tests/annual_corporate_documents.test.mjs
+
+✔ annual basis binds exact annual-data and annual-account payload hashes (12.049291ms)
+✔ annual decision renders exactly the two annual PDF artifacts (347.532458ms)
+✔ annual readiness becomes stale when the persisted source facts change (0.486708ms)
+✔ annual server action persists only a two-artifact immutable draft (0.384958ms)
+✔ year-end and filing UI expose the annual corporate lifecycle honestly (1.939583ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 525.368792
+
+> talli-repository@0.1.0 test:authority-evidence
+> node --experimental-strip-types --test tests/authority_test_evidence.test.mjs tests/annual_accounts_authority_evidence_import.test.mjs tests/company_tax_return_authority_evidence_import.test.mjs tests/rf1086_tt02_evidence.test.mjs tests/company_tax_return_tt02_evidence.test.mjs tests/annual_accounts_tt02_evidence.test.mjs
+
+✔ runtime imports validated RR0002 evidence as pending without enabling production (1.109583ms)
+✔ workspace offers a JSON evidence import and defaults manual evidence to pending (0.176041ms)
+✔ annual-accounts TT02 evidence is submitted, archived, test-only, and secret-free (4.387083ms)
+✔ builds accepted authority test evidence with receipt and archive refs (0.885375ms)
+✔ imports submitted annual-accounts TT02 evidence as pending runtime evidence (0.817959ms)
+✔ imports completed company-tax TT02 evidence as company- and year-bound pending evidence (0.960791ms)
+✔ company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches (0.650292ms)
+✔ annual-accounts TT02 import fails closed on company, production, and submission mismatches (0.197625ms)
+✔ requires test reference and recorder (2.70375ms)
+✔ gate requires accepted evidence with receipt and archive refs (0.140041ms)
+✔ gate surfaces latest rejected, blocked, and pending evidence (8.011625ms)
+✔ migration links test-authority submissions without opening the direct-write policy (2.081209ms)
+✔ migration exposes one authenticated owner-AAL2-protected atomic import RPC (1.088375ms)
+✔ RPC evidence URLs use one canonical HTTPS grammar and reject traversal (0.281708ms)
+✔ RPC retries compare evidence content without replacing the original actors (0.154541ms)
+✔ runtime imports completed company-tax TT02 evidence through exactly one atomic RPC (4.594417ms)
+✔ workspace offers a company-tax JSON evidence import bound to the active year (0.205166ms)
+✔ company-tax TT02 evidence is submitted, receipted, archived, test-only, and secret-free (9.241875ms)
+✔ RF-1086 TT02 evidence is accepted, complete, and secret-free (9.264708ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 186.606125
+
+> talli-repository@0.1.0 test:authority-adapters
+> node --experimental-strip-types --test tests/authority_adapters.test.mjs
+
+✔ RF-1086 transport is implemented but every production authority adapter remains disabled (1.866833ms)
+✔ RF-1086 plan preserves XML document, confirmation, feedback, and receipt sequence (0.089625ms)
+✔ tax return and annual accounts plans require an ID-porten person signing handoff (0.100958ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 166.839125
+
+> talli-repository@0.1.0 test:authority-operations
+> node --experimental-strip-types --test tests/authority_operations.test.mjs tests/authority_operations_schema.test.mjs tests/authority_operations_actions.test.mjs
+
+✔ authority operation environment fails closed and rejects test credentials (2.585167ms)
+✔ authority environment accepts the proven RSA PEM shape used by production filing (0.250541ms)
+✔ environment diagnostics expose only the invalid field (0.097083ms)
+✔ builds the one fixed RF-1086 own-system definition (1.323459ms)
+✔ requires the exact immutable operation and confirmation phrase (0.169625ms)
+✔ requires the separate exact callback operation and confirmation phrase (0.120291ms)
+✔ callback update performs a full PUT only from the exact empty-callback definition (28.91525ms)
+✔ an exact callback definition is already verified with GET only (0.2495ms)
+✔ a missing system is a definition conflict and never creates or updates (0.179584ms)
+✔ any non-callback definition drift blocks without a write (2.043708ms)
+✔ unknown or duplicate fields at every callback projection level block without a write (0.596375ms)
+✔ null and malformed callback projection values block without a write (0.674458ms)
+✔ PUT transport failures are always reconciled by GET (1.071458ms)
+✔ non-success PUT responses are always reconciled by GET (1.158334ms)
+✔ invalid successful PUT bodies are reconciled and preserve their safe failure when unchanged (0.313542ms)
+✔ every callback authority response is capped before status handling (2.430083ms)
+✔ final GET transport failures use only the fixed verification error (0.279958ms)
+✔ callback verification drift is reported as conflict after the one allowed PUT (0.269042ms)
+✔ creates a missing system then verifies it without leaking the token (0.653834ms)
+✔ returns already_verified for an exactly matching existing definition (0.154375ms)
+✔ does not overwrite a conflicting existing definition (0.180875ms)
+✔ rejects malformed authority responses with only safe errors (0.561458ms)
+✔ sanitizes network and upstream HTTP failures (0.228709ms)
+✔ authority operation is admin-only, AAL2-gated, exact, and service-audited (1.071583ms)
+✔ operator UI exposes only the immutable RF-1086 operation and redacted results (0.159542ms)
+✔ the server query is limited to recent redacted rows for active admins (0.121834ms)
+✔ callback update has a separate admin, fresh-AAL2, ops-gated audited action (0.206042ms)
+✔ operator callback UI is native, exact, and honest about its narrow effect (0.355625ms)
+✔ authority operations are constrained, RLS protected, and service-written (3.159417ms)
+✔ rollback revokes access before dropping the table (0.279667ms)
+✔ callback operation migration expands only the constrained safe audit contract (0.512083ms)
+✔ callback rollback removes callback rows before restoring the original constraints (0.149958ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 209.081416
+
+> talli-repository@0.1.0 test:maskinporten
+> node --experimental-strip-types --test tests/maskinporten.test.mjs
+
+✔ builds a short-lived TT02 system-user grant against the issuer audience (2.549167ms)
+✔ signs a verifiable compact RS256 JWT without exposing the private key (42.729791ms)
+✔ posts the JWT bearer grant and returns an opaque access token in memory (72.941333ms)
+✔ sanitizes authority errors and rejects malformed token responses (23.1145ms)
+✔ fails closed on invalid environment, identifiers, scope, and key material (0.393958ms)
+✔ loads one production credential set without treating an operations switch as an owner feature gate (50.631792ms)
+✔ rejects a token response that broadens or changes the requested scope (53.463333ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 409.891
+
+> talli-repository@0.1.0 test:system-user-requests
+> node --experimental-strip-types --test tests/system_user_requests.test.mjs tests/system_user_authority_client.test.mjs tests/system_user_callback_route.test.mjs
+
+✔ create sends one standard request with the exact fixed contract (30.920375ms)
+✔ lookup methods use only the standard request and system-user endpoints (0.816666ms)
+✔ the client rejects agent fields, mismatches, wrong hosts, and oversized bodies (0.939208ms)
+✔ response validation rejects unknown statuses and every fixed-field or shape mismatch (0.244917ms)
+✔ confirmation URLs use only the exact HTTPS host for their environment (0.235708ms)
+✔ query validation rejects invalid shapes, identity mismatches, and extra fields (0.68125ms)
+✔ authority errors expose only allowlisted safe codes (0.558042ms)
+✔ prototype names cannot bypass the documented authority-code allowlist (0.418583ms)
+✔ invalid inputs fail before network access without reflecting sensitive values (0.392459ms)
+✔ production route import defers canonical origin validation until a callback request (183.295709ms)
+✔ callback redirects use only the fixed Talli origin, with localhost limited to non-production (0.433208ms)
+✔ callback ignores every query parameter and uses only authenticated user, cookie UUID, and company-access authorization (2.590959ms)
+✔ missing cookie redirects to fixed manual status and still deletes the exact cookie path (0.234ms)
+✔ invalid cookie, missing user, stale request, and cross-owner request all fail closed (0.631917ms)
+✔ callback errors expose no provider detail, identifiers, or reflected input (0.256791ms)
+✔ callback maps only allowlisted local states (3.016875ms)
+✔ external references are opaque and transitions are monotonic (1.152166ms)
+✔ terminal Altinn failures cannot be reopened (0.087917ms)
+✔ invalid runtime statuses use the stable transition error (0.116541ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 406.424125
+
+> talli-repository@0.1.0 test:rf1086:authority-client
+> node --experimental-strip-types --test tests/rf1086_authority_client.test.mjs
+
+✔ executes the official hovedskjema, underskjema, confirmation, and archive sequence (46.469959ms)
+✔ accepts the documented lowercase main response and uses the production base only when explicit (0.296375ms)
+✔ returns structured sanitized authority errors without token or submitted field values (0.624916ms)
+✔ polls the documented forsendelseId after the observed eventual-consistency GLD_1017 (0.775625ms)
+✔ classifies authentication expiry and server failures as retryable (0.3995ms)
+✔ fails closed on missing XML, invalid years, references, idempotency keys, and bearer tokens (0.27625ms)
+✔ retrieves an individual allowlisted document with a bounded GET (0.2835ms)
+✔ individual document retrieval rejects disallowed types and streams over 10 MiB (5.031459ms)
+✔ document listing preserves inline XML and only strict UUID references (0.51175ms)
+✔ all JSON authority responses are streamed with a global 64 KiB cap (1.979042ms)
+✔ JSON authority responses reject non-JSON media types without exposing their body (0.1655ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 220.121458
+
+> talli-repository@0.1.0 test:rf1086:production-pilot
+> node --experimental-strip-types --test tests/production_pilot.test.mjs tests/production_approval.test.mjs tests/production_submission.test.mjs tests/controlled_production_beta_schema.test.mjs tests/rf1086_production.test.mjs tests/rf1086_production_environment.test.mjs tests/controlled_production_beta_actions.test.mjs tests/rf1086_production_runbook.test.mjs
+
+✔ operator entitlement action is exact and database-authorized (1.566916ms)
+✔ owner approval binds persisted preview data and requires a real-filing acknowledgement (0.288291ms)
+✔ send action rechecks approval, uses production-only credentials, and journals authority calls (1.217084ms)
+✔ production release does not begin or submit when delegated-token acquisition fails (1.105083ms)
+✔ production release makes no POST when transactional begin rejects after token acquisition (0.157459ms)
+✔ production release orders token, durable begin, then journaled external submission (0.114792ms)
+✔ owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration (1.201416ms)
+✔ production UI never equates receipt transport with final acceptance (0.155625ms)
+✔ a disabled production adapter tolerates an unapplied additive schema during rollout (0.101ms)
+✔ all migrations use portable JSONB object checks (3.325042ms)
+✔ creates a separate production-only aggregate with constrained states (3.821042ms)
+✔ denies direct customer mutation and keeps authority events service-only (0.476083ms)
+✔ approval and begin RPCs enforce owner AAL2 and an exact active entitlement (0.523083ms)
+✔ acceptance requires explicit final authority evidence and events are append-only (0.207083ms)
+✔ rollback revokes RPC access before dropping additive objects (0.099375ms)
+✔ Systembruker binding preserves every existing production filing gate (0.608541ms)
+✔ builds a deterministic canonical approval manifest (14.9855ms)
+✔ approval hash changes when any legally relevant value changes (0.277708ms)
+✔ matches only the exact current manifest and rejects blocked approvals (0.320917ms)
+✔ requires an exact active company/user/year/obligation/profile entitlement (1.680958ms)
+✔ rejects absent, future, and expired entitlements (0.104625ms)
+✔ bypasses billing only for an exact billing-exempt pilot (0.476375ms)
+✔ never applies the billing exemption to an inexact or non-exempt entitlement (0.1865ms)
+✔ allows only documented production submission transitions (1.037292ms)
+✔ transport acknowledgement cannot become accepted (0.112917ms)
+✔ uses explicit authority feedback for terminal outcomes (0.066958ms)
+✔ reconciliation action rechecks the exact owner, submission, and verified request without POST (0.377333ms)
+✔ initial send performs bounded feedback polling only after the journaled confirmation path (0.1655ms)
+✔ private artifact persistence verifies receipts and cleans up only after authoritative absence (0.248542ms)
+✔ filing page auto-resumes pending reconciliation and always exposes manual retry (0.121208ms)
+✔ persists stable prepared keys before each authority mutation and reports processing (2.961459ms)
+✔ confirmation remains journaled when the first archive read is still pending (0.388792ms)
+✔ resumes succeeded mutations without sending them twice (1.301959ms)
+✔ resumes a retryable mutation with its persisted idempotency key (0.200125ms)
+✔ does not retry a mutation that authority already blocked (0.341625ms)
+✔ quarantines a mutation timeout instead of retrying (0.296292ms)
+✔ records an explicit authority rejection as blocked without leaking XML (0.37025ms)
+✔ initial reconciliation polls five times without another POST (4.216583ms)
+✔ later reconciliation reads once and appends only state or artifact changes (0.320042ms)
+✔ submitted XML hashes are ignored while strict references are downloaded and classified (0.491625ms)
+✔ unknown archive shapes and malformed or mismatched feedback require action (0.305166ms)
+✔ transport uncertainty is durable unknown with safe codes only (0.144459ms)
+✔ bare GLD_021 and bare GLD_1017 archive responses remain processing (0.153042ms)
+✔ a transient artifact persistence failure remains reclaimable and retries read-only (0.416417ms)
+✔ Supabase connection and pool failures remain retryable through the real persistence mapping (0.574334ms)
+✔ Supabase constraint and schema failures remain terminal through the real persistence mapping (0.407542ms)
+✔ ambiguous metadata commit preserves the receipt and the next read-only attempt verifies it (0.68175ms)
+✔ authoritative metadata absence permits cleanup of resources owned by the failed attempt (0.149084ms)
+✔ existing metadata cannot accept a missing or mismatched private receipt (0.170959ms)
+✔ production stays disabled by default (1.579625ms)
+✔ returns only strict production configuration when every gate is present (0.299875ms)
+✔ rejects file paths, test material, wrong scope, partial configuration, and loose flag values (0.362375ms)
+✔ runbook covers the hand-held first production filing and immediate rollback (1.166458ms)
+✔ release docs require callback verification before self-service activation (0.116125ms)
+✔ runbook defines the activation order, recovery matrix, and local-proof boundary (0.297208ms)
+ℹ tests 55
+ℹ suites 0
+ℹ pass 55
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 216.908667
+
+> talli-repository@0.1.0 test:python-runtime
+> node --experimental-strip-types --test tests/python_runtime.test.mjs
+
+✔ uses an explicit configured Python runtime (0.804375ms)
+✔ finds the project virtualenv for local filing-engine calls (0.089208ms)
+✔ fails closed when no dependency-complete Python runtime is configured (0.236417ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 152.782167
+
+> talli-repository@0.1.0 test:corporate-documents
+> node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs
+
+✔ largest-remainder allocation is deterministic in integer øre (1.885125ms)
+✔ owner-dividend facts come only from persisted identity, shareholders, and approved annual totals (11.720708ms)
+✔ stale or tampered reviewed facts are rejected instead of silently replaced (0.623125ms)
+✔ annual-close input binds both annual-data and annual-account payload hashes (0.569959ms)
+✔ corporate lifecycle RPCs pass a fresh PostgreSQL rehearsal (3280.666666ms)
+✔ state is derived only from current immutable artifacts, events, and finalization (1.003167ms)
+✔ readiness fails closed for stale hashes, unsigned documents, and terminal decisions (1.033709ms)
+✔ annual filing gate requires the current annual decision hash and finalization when enabled (1.916875ms)
+✔ corporate decision schema is immutable, tenant scoped, and hash bound (5.415833ms)
+✔ accounting policy accounts are server-side reviewed facts (0.902042ms)
+✔ database RPCs recompute canonical hashes and persisted accounting facts (1.360375ms)
+✔ canonical Node JSON and hash match the Python renderer (332.546ms)
+✔ parser independently validates JSON, hashes, lengths, PDF bytes, and exact kinds (3.570375ms)
+✔ parser preserves a narrow blocked result without trusting arbitrary fields (0.23675ms)
+✔ renderer kills subprocesses that exceed bounded stdout or stderr (0.931958ms)
+✔ renderer uses no shell, a fixed argv, a timeout, and a restricted environment (8.010459ms)
+✔ storage keys are tenant scoped, content addressed, and reject path injection (0.522917ms)
+✔ uploads with upsert false and verifies an exact existing object on retry (0.904ms)
+✔ an existing object with different bytes fails closed (0.303792ms)
+✔ a later upload failure removes only objects created by this attempt (0.292667ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3391.033417
+
+> talli-repository@0.1.0 test:corporate-decision-workflow
+> node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs
+
+✔ signed corporate upload validates PDF bytes, MIME, size, and a separate immutable key (3.442292ms)
+✔ required signer names are derived from immutable canonical input (9.37525ms)
+✔ server exposes step-up-protected immutable lifecycle actions (0.415958ms)
+✔ review, signed attestation, and preview UI use honest owner-only copy (0.304666ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 168.696875
+
+> talli-repository@0.1.0 test:rf1086:persisted
+> node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs
+
+✔ builds RF-1086 no-activity case from persisted setup rows (1.796708ms)
+✔ renders persisted no-activity case through Python RF-1086 engine (272.2695ms)
+✔ renders persisted no-activity case without a Python runtime (0.816375ms)
+✔ serverless renderer matches the verified Python renderer for the no-activity profile (268.250416ms)
+✔ blocks persisted setup with mismatched shareholder totals in both renderers (262.62675ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 959.709167
+
+> talli-repository@0.1.0 test:rf1086:submission
+> node --experimental-strip-types --test tests/rf1086_submission_persisted.test.mjs
+
+✔ blocks simulated submission without authority confirmation (1.006584ms)
+✔ blocks simulated submission without final preview confirmation (0.075042ms)
+✔ prepares deterministic simulated submission calls and receipt from persisted preview (530.214375ms)
+✔ simulates a persisted submission without a Python runtime (10.166042ms)
+✔ serverless simulation matches the verified Python request plan (266.57075ms)
+✔ blocks production adapter even if the legacy environment flag is set (0.308042ms)
+✔ builds stable request payload hash and idempotency key (1.181459ms)
+✔ builds accepted receipt metadata and immutable submitted payload references (270.972833ms)
+✔ builds rejected feedback as structured error state (0.1405ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1243.198208
+
+> talli-repository@0.1.0 test:annual-accounts
+> node --experimental-strip-types --test tests/annual_accounts_payload.test.mjs
+
+✔ builds verified RR0002 annual accounts payload fields (1.894083ms)
+✔ includes system costs, bank interest, and share-sale losses in annual result (0.828416ms)
+✔ separates tax expense from result before tax and includes tax payable in debt (0.477541ms)
+✔ returns annual accounts feedback for missing notes and unsupported cases (0.369292ms)
+✔ persists annual accounts payload feedback into readiness gate shape (1.974625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 164.574708
+
+> talli-repository@0.1.0 test:annual-accounts-xml
+> node --experimental-strip-types --test tests/annual_accounts_xml.test.mjs
+
+✔ renders deterministic live-schema RR0002 main and company-accounts XML (4.628625ms)
+✔ rejects a payload with readiness blocks (0.781667ms)
+✔ rejects unbalanced or fractional whole-kroner payloads (0.3715ms)
+✔ rejects a missing field or mismatched official orid (0.237792ms)
+✔ rejects a calendar-invalid approval date (0.105125ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.255583
+
+> talli-repository@0.1.0 test:annual-accounts-authority
+> node --experimental-strip-types --test tests/annual_accounts_authority_client.test.mjs
+
+✔ prepares the official RR0002 instance for person signing without signing or submitting (38.783ms)
+✔ reads completed RR0002 signature, receipt, and archive evidence without downloading documents (0.67075ms)
+✔ fails closed on authority validation errors before locking the instance (0.786ms)
+✔ exchanges the Maskinporten token at the documented TT02 Altinn endpoint (0.219875ms)
+✔ rejects incomplete instances, invalid inputs, and production transport (0.486375ms)
+✔ sanitizes remote errors and never includes submitted XML or access tokens (0.308041ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 210.413375
+
+> talli-repository@0.1.0 test:annual-accounts-authority-script
+> node --experimental-strip-types --test tests/annual_accounts_authority_script.test.mjs
+
+✔ annual accounts authority rehearsal refuses to run without explicit test-write approval (139.897292ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 244.5315
+
+> talli-repository@0.1.0 test:company-tax-return
+> node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs
+
+✔ builds 2025 schema-backed company tax return payload candidate (3.07375ms)
+✔ uses the current-draft party number for both authority documents (0.214917ms)
+✔ reconciles interest, costs, exempt gains, and non-deductible losses (8.840333ms)
+✔ renders a negative taxable basis as a positive whole-number loss (0.178666ms)
+✔ blocks unsupported tax treatment and shareholder loans (0.164541ms)
+✔ builds no-activity payload candidate without activity warnings (0.12925ms)
+✔ blocks unsupported owner dividend and blocking actions (1.860833ms)
+✔ persists tax return payload feedback into skattemelding readiness (1.653625ms)
+✔ archives pending company-tax TT02 feedback without relabeling it as a simulated receipt (0.57275ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 182.466125
+
+> talli-repository@0.1.0 test:company-tax-return-xml
+> node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs
+
+✔ renders deterministic 2025 XML with escaped values and schema order (8.894ms)
+✔ rendered XML validates against the pinned official schemas when supplied (27.040333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 192.070583
+
+> talli-repository@0.1.0 test:company-tax-return-authority
+> node --experimental-strip-types --test tests/company_tax_return_authority_client.test.mjs
+
+✔ renders the official v2 envelope with base64 documents and 2025 submission purpose (1.144292ms)
+✔ rendered envelope validates against the pinned official request schema when supplied (6.611292ms)
+✔ renders and posts a reference-free envelope only to the documented validertest endpoint (33.292875ms)
+✔ summarizes validation status and guidance without retaining calculated documents (10.829083ms)
+✔ exchanges a system-user Maskinporten token at the official Altinn endpoint (0.441334ms)
+✔ uses the official current-document and Altinn async-validation sequence (2.005208ms)
+✔ replaces an existing company-tax envelope data element in place (0.28675ms)
+✔ advances exactly once from data to owner confirmation and returns the documented viewer URL (0.460291ms)
+✔ owner-confirmation preparation is idempotent and blocks unknown tasks without a write (0.477042ms)
+✔ retrieves exactly one clean XML feedback receipt through read-only calls (0.450875ms)
+✔ feedback retrieval treats missing feedback as retryable and duplicate feedback as blocked (0.268375ms)
+✔ feedback retrieval blocks rejected scans, non-XML content, and byte-length mismatches (0.425375ms)
+✔ polls read-only until the company tax feedback receipt is available (0.325125ms)
+✔ fails closed before validation until the uploaded envelope is virus-scan Clean (0.133375ms)
+✔ sanitizes remote errors and rejects production-by-default shortcuts (0.257709ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.371916
+
+> talli-repository@0.1.0 test:company-tax-return-authority-script
+> node --test tests/company_tax_return_authority_script.test.mjs
+
+✔ company tax rehearsal refuses to run without explicit TT02 write approval (143.126875ms)
+✔ company tax rehearsal is resumable, company-bound, and keeps final submission human-controlled (0.350333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 247.606542
+
+> talli-repository@0.1.0 test:review
+> node --experimental-strip-types --test tests/review_workflow.test.mjs
+
+✔ advisory review comments can be acknowledged (0.786541ms)
+✔ hard review comments cannot be acknowledged as advisory (0.203292ms)
+✔ hard review comments block simulated submission (0.092791ms)
+✔ workspace invitation presentation marks pending invitations expired (0.859333ms)
+✔ review checklist keeps advisory comments separate from hard system blocks (2.404209ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 153.184667
+
+> talli-repository@0.1.0 test:billing
+> node --experimental-strip-types --test tests/billing_persisted.test.mjs
+
+✔ builds founder and standard billing accounts with launch prices (0.834083ms)
+✔ blocks founder cohorts outside first 100 companies (0.224625ms)
+✔ filing package charge waits for subscription and readiness (0.102541ms)
+✔ unsupported cases remain no-charge and supported paid failures are refund eligible (0.080459ms)
+✔ simulated provider events persist idempotent payment and refund references (0.158833ms)
+✔ simulated provider events handle duplicate webhooks and subscription cancellation (0.333083ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 156.89875
+
+> talli-repository@0.1.0 test:cancellation
+> node --experimental-strip-types --test tests/cancellation.test.mjs
+
+✔ requires archive export before cancellation can move into retention hold (0.761417ms)
+✔ keeps final deletion behind legal review and explicit deletion state (0.078333ms)
+✔ builds archive and retention evidence for launch-critical records (0.817792ms)
+✔ shows explicit export, soft-delete, retention, and final deletion lifecycle states (0.327291ms)
+✔ builds retained deletion completion update with reviewer and actor (0.252ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.607334
+
+> talli-repository@0.1.0 test:operator-support
+> node --experimental-strip-types --test tests/operator_support.test.mjs
+
+✔ operator search denies non-operators and too-short queries (0.986709ms)
+✔ operator summary highlights filing, billing, refund, restore, and audit state (10.509084ms)
+✔ operator summary keeps cross-company data separated (0.12675ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 166.092292
+
+> talli-repository@0.1.0 test:operator-mfa
+> node --test tests/operator_mfa.test.mjs
+
+✔ operator MFA uses the signed-in browser session and official TOTP APIs (0.928417ms)
+✔ an existing AAL2 session can be re-verified after the freshness window expires (0.135959ms)
+✔ the MFA surface is rendered only inside the existing admin operator boundary (0.192459ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.151458
+
+> talli-repository@0.1.0 test:deadlines
+> node --experimental-strip-types --test tests/deadlines.test.mjs
+
+✔ shows upcoming deadlines before due dates (1.964708ms)
+✔ shows due on exact deadline date (0.987375ms)
+✔ shows overdue after deadline without fine guarantee language (0.431375ms)
+✔ shows simulated when RF-1086 receipt exists before deadline (0.125042ms)
+✔ shows late simulated when receipt is archived after deadline (0.092042ms)
+✔ represents RF-1086, skattemelding, and årsregnskap separately (3.042292ms)
+✔ queues configurable upcoming reminders with Norwegian no-guarantee language (0.390125ms)
+✔ prevents duplicate reminders and skips completed filings (0.143833ms)
+✔ queues overdue guidance without unsupported cases (0.151792ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 156.311417
+
+> talli-repository@0.1.0 test:archive
+> node --experimental-strip-types --test tests/archive_export.test.mjs
+
+✔ builds company-year archive from persisted workspace rows (3.126959ms)
+✔ archive download fetches only sanitized authority runs linked by submission id (0.824333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 155.343875
+
+> talli-repository@0.1.0 test:backup-restore
+> node --experimental-strip-types --test tests/backup_restore.test.mjs
+
+✔ company-tax evidence migration preserves an atomic reference-only backup boundary (1.496ms)
+✔ backup manifest identifies launch-critical tables and object references (1.494709ms)
+✔ restore fixture preserves launch-critical accounting state in isolated workspace (0.438667ms)
+✔ company-tax submissions are counted and round-trip with generic filing submissions (0.201167ms)
+✔ restore integrity rejects missing and mismatched company-tax authority evidence pairs (0.288875ms)
+✔ restore integrity fails when corporate lifecycle rows or object metadata are incomplete (0.163458ms)
+✔ restore integrity reports missing object warning and missing critical rows (0.152333ms)
+✔ production restore launch gate requires recent passing restore test (0.89975ms)
+✔ corporate release and restore runbooks keep external gates explicitly pending (1.30375ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 164.206875
+
+> talli-repository@0.1.0 test:security
+> node --experimental-strip-types --test tests/security_step_up.test.mjs
+
+✔ step-up accepts fresh signed AAL2 claims for the matching actor (1.849458ms)
+✔ step-up accepts supported signed MFA method references and uses the newest one (0.127958ms)
+✔ step-up fails closed for AAL1, cross-user, missing AMR, and string-only AMR claims (0.270583ms)
+✔ step-up rejects invalid, stale, and future MFA timestamps (0.148041ms)
+✔ all protected corporate actions require fresh AAL2 user presence (0.622ms)
+✔ server gate verifies claims, never reads legacy step-up rows, and audits allow/block (0.385708ms)
+✔ claims lookup failures are blocked and audited without leaking provider details (0.1185ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.88475
+
+> talli-repository@0.1.0 test:trusted-aal2-schema
+> node --test tests/trusted_aal2_schema.test.mjs
+
+✔ legacy step-up events are inaccessible to customer Data API roles (3.5885ms)
+✔ corporate step-up RPC trusts signed AAL2 and timestamped AMR claims only (1.083791ms)
+✔ final founder confirmation is a database-enforced launch signoff key (0.734542ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 111.861167
+
+> talli-repository@0.1.0 test:filing-release-gate
+> node --experimental-strip-types --test tests/filing_release_gate.test.mjs
+
+✔ release evidence keeps authority and filing switches off after local browser proof (0.998542ms)
+✔ keeps all production filing gates disabled without authority, billing, step-up, and human review (1.252791ms)
+✔ blocks production when authority evidence or filing-specific signoff is missing (0.271167ms)
+✔ marks only the exactly entitled RF obligation production ready when every release gate passes (0.901083ms)
+✔ cannot report production ready when a live adapter is unimplemented or disabled (0.148292ms)
+✔ fresh AAL2 and enabled adapters cannot replace final founder confirmation (0.141209ms)
+✔ a stale restore rehearsal blocks every production filing (0.116041ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.818708
+
+> talli-repository@0.1.0 test:production-filing-guide
+> node --test tests/production_filing_action_guide.test.mjs
+
+✔ checklist and guide keep the exact ordered stage sequence (1.773625ms)
+✔ both documents keep runtime signoffs in the signoff stage (0.342125ms)
+✔ both documents keep case-specific gates in their operating stages (0.249542ms)
+✔ mandatory gates stay affirmative without localized contradictions (7.453583ms)
+✔ mandatory-gate contradiction matcher rejects bypasses but allows fail-closed language (0.347458ms)
+✔ every guide stage uses only numbered checkbox action entries (2.283ms)
+✔ mandatory gate declarations stay outside exact action checkboxes (0.222125ms)
+✔ founder go-live approval stays pending until the complete evidence set exists (0.257375ms)
+✔ production credential readiness is verified without exposing the key (0.281041ms)
+✔ unknown outcome shutdown precedes read-only reconciliation (0.180291ms)
+✔ legal-pack approval stage says professional approval is pending (0.079459ms)
+✔ guide preserves switch, evidence, and unknown-outcome stop rules (0.135083ms)
+✔ both documents state the narrow scope and forbid adjacent filing scope (0.200792ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 129.476416
+
+> talli-repository@0.1.0 test:launch-copy
+> node --experimental-strip-types --test tests/launch_copy.test.mjs
+
+✔ requires non-affiliation and pre-production gate language in public app copy (2.200708ms)
+✔ rejects launch claims that outrun authority evidence (0.315208ms)
+✔ public homepage is a truthful invite-only free beta invitation (1.909208ms)
+✔ public legal copy identifies the real beta operator and contains no placeholders (0.269625ms)
+✔ email signup communicates the hosted twelve-character password floor (0.229625ms)
+✔ launch validator rejects beta overclaims about review, payment, and delivery (0.116167ms)
+✔ owner Systembruker copy distinguishes approval from verified readiness (0.854833ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 153.827333
+
+> talli-repository@0.1.0 test:launch-signoff
+> node --experimental-strip-types --test tests/launch_signoff.test.mjs
+
+✔ blocks launch when required signoffs are missing (1.778708ms)
+✔ blocks launch when signoff is rejected or incomplete (0.857541ms)
+✔ requires fresh restore signoff (0.135416ms)
+✔ rejects future-dated launch signoffs (0.74375ms)
+✔ passes only when every launch signoff is approved with evidence (0.1205ms)
+✔ builds persisted launch signoff record and validates approved evidence (0.331417ms)
+✔ documented launch_legal_name_public_copy entry is a valid approved record (0.072792ms)
+✔ launch evidence records the final founder gate as intentionally unapproved (1.931125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.215667
+
+> talli-repository@0.1.0 test:legal-policy
+> node --test tests/legal_policy_pack.test.mjs
+
+✔ terms cover holding-first scope, unsupported cases, filing limits, refunds, and no advisory guarantee (1.065875ms)
+✔ legal pack uses one beta-to-live business agreement and explicit electronic acceptance (1.745459ms)
+✔ privacy and pack metadata identify the supplier without transfer or hosting overclaims (0.309375ms)
+✔ production evidence retains both named-company gates and production filing NO-GO (0.257167ms)
+✔ privacy policy and DPA cover launch-critical data and processor boundaries (0.205542ms)
+✔ retention/delete policy distinguishes export, retention hold, and deletion constraints (0.154167ms)
+✔ incident policy covers detection, containment, notification, filing incidents, and postmortems (0.12925ms)
+✔ incident policy names pre-incorporation roles and a customer notification approach (0.093333ms)
+✔ retention policy fixes archive responsibility and audit-id pseudonymization (0.179958ms)
+✔ privacy policy states a GDPR art. 6 legal basis and a least-privilege operator access model (0.690334ms)
+✔ DPA covers breach notification to the controller, audit rights, and duration (0.153042ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.218459
+
+> talli-repository@0.1.0 test:ci-gate
+> node --test tests/ci_release_gate.test.mjs
+
+✔ release gate covers pull requests and main with least privilege (1.586709ms)
+✔ release gate runs every customer-readiness check before promotion (0.352167ms)
+✔ database isolation uses the locked Python renderer environment (0.1315ms)
+✔ local immutable gate rejects tracked, staged, and untracked drift (639.034583ms)
+✔ database harness restores generated drift and preserves failure semantics (1383.216208ms)
+✔ browser owner rehearsal includes executable owned-process lifecycle coverage (0.962542ms)
+✔ Vercel deploys the Next output produced by the root build (0.398125ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2135.140459
+[launch-rehearsal] exit=0
+[launch-rehearsal] durationMs=30929
+
+[production-dependency-audit] command=npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high
+found 0 vulnerabilities
+# npm audit report
+
+postcss  <=8.5.22
+Severity: moderate
+PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset - https://github.com/advisories/GHSA-fxqj-rqcc-2cmp
+fix available via `npm audit fix --force`
+Will install next@16.3.3, which is outside the stated dependency range
+node_modules/postcss
+  next  9.3.4-canary.0 - 16.3.0-preview.10
+  Depends on vulnerable versions of postcss
+  node_modules/next
+
+2 moderate severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix --force
+[production-dependency-audit] exit=0
+[production-dependency-audit] durationMs=1785
+
+[database-isolation] command=TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local
+
+> talli-repository@0.1.0 test:supabase:local
+> bash scripts/test-supabase-local.sh
+
+
+> talli-repository@0.1.0 test:supabase-advisors
+> node scripts/assert-supabase-advisors.mjs
+
+Supabase advisors: 0 blocking security/error findings; 16 performance warnings.
+
+> talli-repository@0.1.0 test:supabase
+> node --test --test-concurrency=1 tests/supabase_workspace.test.mjs tests/rf1086_feedback_schema.test.mjs tests/company_access_invitations_schema.test.mjs tests/company_access_cancellation_schema.test.mjs tests/company_access_database_runtime.test.mjs tests/company_access_onboarding_database_runtime.test.mjs
+
+✔ expand migration adds append-only revision-bound deletion reviews (1.909584ms)
+✔ request derives archive and source completeness inside one atomic RPC (0.811333ms)
+✔ archive route and generation triggers share one complete source inventory (2.667209ms)
+✔ expand deterministically supersedes and conceals legacy duplicates (1.120959ms)
+✔ review is admin+AAL2 only, append-only, and cannot be self-approved by an owner (0.696375ms)
+✔ finalize re-derives prerequisites and requires exact approved review (0.443042ms)
+✔ legacy export-required cancellations resume through a receipt-bound RPC (0.372583ms)
+✔ archive receipt completion is server-only, one-time, expiring, and generation-bound (0.781292ms)
+✔ direct lifecycle RPCs mirror strict request validation before receipts (0.599208ms)
+✔ archive and reconciliation reject null income years explicitly (0.2915ms)
+✔ review JSON is projected to the strict public response shape (0.193208ms)
+✔ lifecycle commands use durable receipts and least-privilege RLS (1.006542ms)
+✔ lifecycle mutations share operation-company-cancellation lock order (0.247917ms)
+✔ unknown command outcomes reconcile behind the exact operation lock (0.366042ms)
+✔ contract migration removes direct cancellation access only after generated-client cutover (0.459292ms)
+✔ the release Supabase suite includes cancellation schema coverage (0.18825ms)
+✔ company access RLS isolates tenants and exposes exact membership roles to owner policy (10191.312334ms)
+✔ cancellation lifecycle is atomic, review-bound, replay-safe, and tenant concealed (6070.347125ms)
+✔ invitation acceptance and membership administration use atomic bearer-scoped RPCs (7.862209ms)
+✔ invitation and membership mutations are not directly granted to authenticated web callers (1.098042ms)
+✔ invitation lookup is recipient-bound, expiry-aware, and never returns token hashes (0.70625ms)
+✔ command functions execute through a restricted RLS role instead of the migration owner (2.414208ms)
+✔ recipient table enumeration is removed and lookup requires the presented token (0.870166ms)
+✔ acceptance binds the verified Auth identity and rejects stale JWT claims atomically (0.962959ms)
+✔ consequential commands have durable replay receipts and concurrency preconditions (1.166458ms)
+✔ invitation side-effect recovery is receipt-owned, actor-derived, and proof-completed (3.655416ms)
+✔ pgcrypto hashing resolves the extension schema under an empty search path (0.70475ms)
+✔ expand and contract migrations preserve an explicit mixed-revision overlap (0.719041ms)
+✔ company-access onboarding is atomic, replay-safe, tenant-isolated, and phase-reversible (10403.221917ms)
+✔ feedback fixture cleanup preserves primary and returned Supabase errors (3.736792ms)
+✔ creates private, constrained feedback metadata and durable reconciliation state (0.920292ms)
+✔ uses explicit least privilege grants and owner/operator read policies (1.492917ms)
+✔ recording validates exact relationships and the deterministic private key (0.55125ms)
+✔ change-only reconciliation events are serialized and expose safe diagnostics only (0.563625ms)
+✔ backfills and atomically claims only an exact valid succeeded confirmation reference (0.920458ms)
+✔ rollback revokes functions first and restores only feature-owned schema and storage policy changes (0.504542ms)
+✔ local Supabase exposes read-only RLS metadata and service-only mutation RPCs (34.47375ms)
+✔ local Supabase recovers confirmed submissions and limits feedback data to authorized readers (1514.829125ms)
+✔ Supabase authenticated workspace persists owner data and denies outsider (3769.581292ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32902.16875
+
+> talli-repository@0.1.0 test:browser-owner
+> node --test --test-concurrency=1 tests/browser_fixture_safety.test.mjs tests/browser_process_lifecycle.test.mjs tests/browser_company_onboarding.mjs tests/browser_owner_annual_loop.mjs
+
+✔ a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI (11240.882916ms)
+✔ Supabase browser fixtures only accept loopback URLs (1.042167ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.155625ms)
+✔ owner browser harness stops before remote fixture creation (386.725041ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (368.168541ms)
+✔ browser owner annual loop uses persisted state and survives reload (18487.857125ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (72.098875ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (42.118208ms)
+✔ readiness failure tears down a live owned process (44.536208ms)
+✔ a listener that never responds cannot outlive the readiness deadline (110.601625ms)
+✔ a ready owned process is terminated and cleanup is idempotent (101.200084ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (12.086084ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.388041ms)
+✔ browser owner cleanup removes tracked sources before company and user (0.665333ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (0.237292ms)
+✔ browser owner cleanup removes immutable corporate and production filing graphs (249.050083ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32139.931458
+Stopped services: [supabase_inbucket_talli supabase_realtime_talli supabase_imgproxy_talli supabase_pg_meta_talli supabase_studio_talli supabase_edge_runtime_talli supabase_analytics_talli supabase_vector_talli supabase_pooler_talli]
+A new version of Supabase CLI is available: v2.115.0 (currently installed v2.109.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+[database-isolation] exit=0
+[database-isolation] durationMs=69604
+
+[whitespace] command=bash scripts/check-clean-worktree.sh
+[whitespace] exit=0
+[whitespace] durationMs=69
+
+executedAt=2026-08-26T20:24:09.048Z
+verdict=pass
