@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": [],
+  "allowedImports": ["collections.abc", "typing"],
   "forbiddenResponsibilities": [
     "Accounting, filing, billing, or authorization policy",
     "Business-table ownership or direct persistence",

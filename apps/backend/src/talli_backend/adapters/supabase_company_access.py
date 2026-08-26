@@ -1,28 +1,36 @@
-"""Supabase Auth and PostgREST adapter for the company-access port."""
+"""Supabase Auth plus restricted PostgreSQL adapter for company access."""
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import ipaddress
 import json
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+from uuid import UUID
+
+import psycopg
+from psycopg.rows import dict_row
 
 from talli_backend.modules.company_access.public import (
     AcceptInvitationGatewayCommand,
     AdministerMembershipGatewayCommand,
     CompanyAccessError,
     CompanyAccessGateway,
+    CompanyAgreementAcceptanceGatewayCommand,
+    CompanyOnboardingGatewayCommand,
     CreateInvitationGatewayCommand,
     FinalizeCompanyDeletionGatewayCommand,
     InvitationIdentityGatewayCommand,
     InvitationMutationGatewayCommand,
-    ResendInvitationGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
+    ResendInvitationGatewayCommand,
     ResumeCompanyCancellationGatewayCommand,
     ReviewCompanyDeletionGatewayCommand,
     company_access_adapter,
@@ -33,6 +41,28 @@ from talli_backend.modules.company_access.public import (
 class SupabaseConfiguration:
     url: str
     anon_key: str
+    database_url: str = ""
+
+
+def _database_contract_value(value: object) -> object:
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Mapping):
+        return {
+            str(key): _database_contract_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_database_contract_value(item) for item in value]
+    return value
+
+
+def _database_contract_row(row: Mapping[str, object]) -> Mapping[str, object]:
+    """Normalize psycopg-native scalars to the generated JSON contract boundary."""
+
+    return {key: _database_contract_value(value) for key, value in row.items()}
 
 
 def _validated_origin(raw: str) -> str:
@@ -71,52 +101,38 @@ class _RejectRedirects(HTTPRedirectHandler):
 
 @company_access_adapter(CompanyAccessGateway)
 class SupabaseCompanyAccessAdapter:
-    """Validate Supabase sessions and preserve their bearer for RLS reads."""
+    """Validate Supabase sessions and install their actor in restricted RLS transactions."""
 
     def __init__(self, configuration: SupabaseConfiguration) -> None:
+        self._configuration = configuration
         self._origin = _validated_origin(configuration.url)
         self._anon_key = configuration.anon_key
         self._opener = build_opener(_RejectRedirects)
 
     @classmethod
-    def from_environment(cls) -> "SupabaseCompanyAccessAdapter":
+    def from_environment(cls) -> SupabaseCompanyAccessAdapter:
         return cls(SupabaseConfiguration(
             url=os.environ.get("SUPABASE_URL", ""),
             anon_key=os.environ.get("SUPABASE_ANON_KEY", ""),
+            database_url=os.environ.get("TALLI_COMPANY_ACCESS_DATABASE_URL", ""),
         ))
 
-    def _headers(self, access_token: str, *, content: bool = False) -> dict[str, str]:
-        headers = {
+    def _auth_headers(self, access_token: str) -> dict[str, str]:
+        return {
             "Accept": "application/json",
             "apikey": self._anon_key,
             "Authorization": f"Bearer {access_token}",
         }
-        if content:
-            headers["Content-Type"] = "application/json"
-        return headers
 
-    async def _request(
-        self,
-        path: str,
-        access_token: str,
-        *,
-        method: str = "GET",
-        body: Mapping[str, object] | None = None,
-    ) -> object:
+    async def _auth_user(self, access_token: str) -> object:
         if not self._origin or not self._anon_key:
-            raise CompanyAccessError(
-                status=503,
-                code="COMPANY_ACCESS_UNAVAILABLE",
-                title="Company access unavailable",
-                detail="Company access is temporarily unavailable.",
-            )
+            raise self._unavailable()
 
         def send() -> object:
             request = Request(
-                f"{self._origin}{path}",
-                headers=self._headers(access_token, content=body is not None),
-                data=json.dumps(body).encode() if body is not None else None,
-                method=method,
+                f"{self._origin}/auth/v1/user",
+                headers=self._auth_headers(access_token),
+                method="GET",
             )
             try:
                 with self._opener.open(request, timeout=5) as response:
@@ -129,31 +145,125 @@ class SupabaseCompanyAccessAdapter:
                         title="Authentication required",
                         detail="A valid session is required.",
                     ) from None
-                try:
-                    provider_error = json.loads(error.read())
-                except json.JSONDecodeError:
-                    provider_error = {}
-                message = provider_error.get("message") if isinstance(provider_error, Mapping) else None
-                if message in {"company_access_not_found", "invitation_not_found"}:
-                    invitation = message == "invitation_not_found"
+                raise self._unavailable() from None
+            except (URLError, TimeoutError, json.JSONDecodeError):
+                raise self._unavailable() from None
+
+        return await asyncio.to_thread(send)
+
+    async def session_subject(self, access_token: str) -> str:
+        response = await self._auth_user(access_token)
+        if not isinstance(response, Mapping) or not isinstance(response.get("id"), str):
+            raise CompanyAccessError(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            )
+        return response["id"]
+
+    async def session_identity(self, access_token: str) -> Mapping[str, object]:
+        response = await self._auth_user(access_token)
+        if (
+            not isinstance(response, Mapping)
+            or not isinstance(response.get("id"), str)
+            or not isinstance(response.get("email"), str)
+        ):
+            raise CompanyAccessError(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session with a verified email is required.",
+            )
+        return {"id": response["id"], "email": response["email"]}
+
+    async def _verified_actor_context(
+        self, access_token: str
+    ) -> tuple[str, Mapping[str, object]]:
+        identity = await self.session_identity(access_token)
+        try:
+            payload = access_token.split(".")[1]
+            payload += "=" * (-len(payload) % 4)
+            decoded = json.loads(base64.urlsafe_b64decode(payload))
+        except (IndexError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            raise CompanyAccessError(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        actor_id = str(identity["id"])
+        if not isinstance(decoded, Mapping) or decoded.get("sub") != actor_id:
+            raise CompanyAccessError(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            )
+        claims: dict[str, object] = {
+            "sub": actor_id,
+            "email": str(identity["email"]).strip().lower(),
+            "role": "authenticated",
+            "aal": decoded.get("aal") if decoded.get("aal") in {"aal1", "aal2"} else "aal1",
+        }
+        if isinstance(decoded.get("amr"), list):
+            claims["amr"] = decoded["amr"]
+        return actor_id, claims
+
+    async def _database_rows(
+        self,
+        access_token: str,
+        query: str,
+        parameters: tuple[object, ...] = (),
+        *,
+        role: str = "company_access_executor",
+    ) -> list[Mapping[str, object]]:
+        if not self._configuration.database_url:
+            raise self._unavailable()
+        if role not in {"company_access_executor", "company_access_recovery_executor"}:
+            raise ValueError("unsupported company-access database role")
+        actor_id, claims = await self._verified_actor_context(access_token)
+
+        def execute() -> list[Mapping[str, object]]:
+            try:
+                with psycopg.connect(
+                    self._configuration.database_url,
+                    connect_timeout=5,
+                    row_factory=dict_row,
+                ) as connection, connection.transaction():
+                    connection.execute(f"set local role {role}")
+                    connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
+                        (actor_id,),
+                    )
+                    connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
+                        (json.dumps(claims, separators=(",", ":")),),
+                    )
+                    return [
+                        _database_contract_row(row)
+                        for row in connection.execute(query, parameters).fetchall()
+                    ]
+            except psycopg.OperationalError:
+                raise self._unavailable() from None
+            except psycopg.DatabaseError as error:
+                message = str(error)
+                if "company_access_not_found" in message or "invitation_not_found" in message:
+                    invitation = "invitation_not_found" in message
                     raise CompanyAccessError(
                         status=404,
                         code="INVITATION_NOT_FOUND" if invitation else "COMPANY_ACCESS_NOT_FOUND",
                         title="Invitation not found" if invitation else "Company access not found",
-                        detail=(
-                            "The requested invitation was not found or is no longer available."
-                            if invitation
-                            else "The requested company access resource was not found."
-                        ),
+                        detail="The requested company access resource was not found.",
                     ) from None
-                if message == "company_access_invalid_request":
+                if "company_access_invalid_request" in message:
                     raise CompanyAccessError(
                         status=422,
                         code="REQUEST_VALIDATION_FAILED",
                         title="Request validation failed",
                         detail="The request did not satisfy the company access policy.",
                     ) from None
-                if message == "company_access_conflict":
+                if "company_access_conflict" in message:
                     raise CompanyAccessError(
                         status=409,
                         code="COMPANY_ACCESS_CONFLICT",
@@ -172,90 +282,169 @@ class SupabaseCompanyAccessAdapter:
                         "An approved deletion review is required.",
                     ),
                 }
-                if message in lifecycle_errors:
-                    code, title, detail = lifecycle_errors[message]
-                    raise CompanyAccessError(
-                        status=409, code=code, title=title, detail=detail
-                    ) from None
-                if error.code == 409:
-                    raise CompanyAccessError(
-                        status=409,
-                        code="COMPANY_ACCESS_CONFLICT",
-                        title="Company access conflict",
-                        detail="The company access change conflicts with existing state.",
-                    ) from None
-                raise CompanyAccessError(
-                    status=503,
-                    code="COMPANY_ACCESS_UNAVAILABLE",
-                    title="Company access unavailable",
-                    detail="Company access is temporarily unavailable.",
-                ) from None
-            except (URLError, TimeoutError, json.JSONDecodeError):
-                raise CompanyAccessError(
-                    status=503,
-                    code="COMPANY_ACCESS_UNAVAILABLE",
-                    title="Company access unavailable",
-                    detail="Company access is temporarily unavailable.",
-                ) from None
+                for marker, (code, title, detail) in lifecycle_errors.items():
+                    if marker in message:
+                        raise CompanyAccessError(
+                            status=409, code=code, title=title, detail=detail
+                        ) from None
+                raise self._unavailable() from None
 
-        return await asyncio.to_thread(send)
+        return await asyncio.to_thread(execute)
 
-    async def session_subject(self, access_token: str) -> str:
-        response = await self._request("/auth/v1/user", access_token)
-        if not isinstance(response, Mapping) or not isinstance(response.get("id"), str):
-            raise CompanyAccessError(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session is required.",
-            )
-        return response["id"]
-
-    async def session_identity(self, access_token: str) -> Mapping[str, object]:
-        response = await self._request("/auth/v1/user", access_token)
-        if (
-            not isinstance(response, Mapping)
-            or not isinstance(response.get("id"), str)
-            or not isinstance(response.get("email"), str)
-        ):
-            raise CompanyAccessError(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session with a verified email is required.",
-            )
-        return {"id": response["id"], "email": response["email"]}
-
-    async def memberships(self, access_token: str, subject: str) -> list[Mapping[str, object]]:
-        query = urlencode({
-            "select": "company_id,role,accepted_at",
-            "user_id": f"eq.{subject}",
-            "accepted_at": "not.is.null",
-        })
-        response = await self._request(f"/rest/v1/company_memberships?{query}", access_token)
-        return response if isinstance(response, list) else []
+    async def memberships(
+        self, access_token: str, _subject: str
+    ) -> list[Mapping[str, object]]:
+        return await self._database_rows(
+            access_token,
+            """
+            select company_id, role, accepted_at
+            from public.company_memberships
+            where user_id = public.company_access_auth_uid_v1()
+              and accepted_at is not null
+            """,
+        )
 
     async def companies(self, access_token: str, company_ids: list[str]) -> list[Mapping[str, object]]:
         if not company_ids:
             return []
-        query = urlencode({
-            "select": "id,org_number,name,entity_type,address,postal_code,city,status_text,source,created_by,identity_confirmed_at,identity_locked_at,created_at",
-            "id": f"in.({','.join(company_ids)})",
-            "order": "created_at.desc",
-        }, safe="(),")
-        response = await self._request(f"/rest/v1/companies?{query}", access_token)
-        return response if isinstance(response, list) else []
+        return await self._database_rows(
+            access_token,
+            """
+            select id, org_number, name, entity_type, address, postal_code, city,
+              status_text, source, created_by, identity_confirmed_at,
+              identity_locked_at, created_at
+            from public.companies
+            where id = any(%s::uuid[])
+            order by created_at desc
+            """,
+            (company_ids,),
+        )
+
+    async def agreement_acceptances(
+        self, access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]:
+        if not company_ids:
+            return []
+        return await self._database_rows(
+            access_token,
+            """
+            select company_id, business_terms_version, business_terms_effective_date,
+              business_terms_path, business_terms_sha256, dpa_version,
+              dpa_effective_date, dpa_path, dpa_sha256,
+              authority_statement_version, acceptance_method
+            from public.customer_agreement_acceptances
+            where company_id = any(%s::uuid[])
+            order by accepted_at desc
+            """,
+            (company_ids,),
+        )
+
+    async def support_operator(
+        self, access_token: str, _subject: str
+    ) -> Mapping[str, object] | None:
+        rows = await self._database_rows(
+            access_token,
+            """
+            select user_id, role, active
+            from public.support_operators
+            where user_id = public.company_access_auth_uid_v1() and active
+            limit 1
+            """,
+        )
+        return rows[0] if rows else None
+
+    async def search_operator_companies(
+        self, access_token: str, query: str
+    ) -> list[Mapping[str, object]]:
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        return await self._database_rows(
+            access_token,
+            """
+            select id, org_number, name, entity_type, address, postal_code, city,
+              status_text, source, created_by, identity_confirmed_at,
+              identity_locked_at, created_at
+            from public.companies
+            where org_number ilike %s escape '\\'
+               or name ilike %s escape '\\'
+            order by created_at desc
+            limit 10
+            """,
+            (pattern, pattern),
+        )
+
+    async def onboard_company(
+        self, access_token: str, command: CompanyOnboardingGatewayCommand
+    ) -> Mapping[str, object]:
+        company = command.company
+        return await self._rpc_row(
+            access_token,
+            "company_access_onboard_company",
+            {
+                "p_operation_id": str(command.operation_id),
+                "p_verified_subject": str(command.verified_actor),
+                "p_verified_email": command.verified_email,
+                "p_org_number": company.org_number,
+                "p_name": company.name,
+                "p_entity_type": company.entity_type,
+                "p_address": company.address,
+                "p_postal_code": company.postal_code,
+                "p_city": company.city,
+                "p_status_text": company.status_text,
+                "p_source": company.source,
+                "p_agreement_accepted": True,
+                "p_business_terms_version": command.business_terms_version,
+                "p_business_terms_effective_date": command.business_terms_effective_date,
+                "p_business_terms_path": command.business_terms_path,
+                "p_business_terms_sha256": command.business_terms_sha256,
+                "p_dpa_version": command.dpa_version,
+                "p_dpa_effective_date": command.dpa_effective_date,
+                "p_dpa_path": command.dpa_path,
+                "p_dpa_sha256": command.dpa_sha256,
+                "p_authority_statement_version": command.authority_statement_version,
+                "p_acceptance_method": command.acceptance_method,
+            },
+        ) or {}
+
+    async def reaccept_agreement(
+        self, access_token: str, command: CompanyAgreementAcceptanceGatewayCommand
+    ) -> Mapping[str, object]:
+        return await self._rpc_row(
+            access_token,
+            "company_access_reaccept_agreement",
+            {
+                "p_operation_id": str(command.operation_id),
+                "p_company_id": str(command.company_id),
+                "p_verified_subject": str(command.verified_actor),
+                "p_verified_email": command.verified_email,
+                "p_agreement_accepted": True,
+                "p_business_terms_version": command.business_terms_version,
+                "p_business_terms_effective_date": command.business_terms_effective_date,
+                "p_business_terms_path": command.business_terms_path,
+                "p_business_terms_sha256": command.business_terms_sha256,
+                "p_dpa_version": command.dpa_version,
+                "p_dpa_effective_date": command.dpa_effective_date,
+                "p_dpa_path": command.dpa_path,
+                "p_dpa_sha256": command.dpa_sha256,
+                "p_authority_statement_version": command.authority_statement_version,
+                "p_acceptance_method": command.acceptance_method,
+            },
+        ) or {}
 
     async def invitations(
         self, access_token: str, company_id: str
     ) -> list[Mapping[str, object]]:
-        query = urlencode({
-            "select": "id,company_id,invited_email,role,status,expires_at,created_at,updated_at",
-            "company_id": f"eq.{company_id}",
-            "order": "updated_at.desc",
-        })
-        response = await self._request(f"/rest/v1/company_invitations?{query}", access_token)
-        return response if isinstance(response, list) else []
+        return await self._database_rows(
+            access_token,
+            """
+            select id, company_id, invited_email, role, status, expires_at,
+              created_at, updated_at
+            from public.company_invitations
+            where company_id = %s::uuid
+            order by updated_at desc
+            """,
+            (company_id,),
+        )
 
     async def create_invitation(
         self, access_token: str, command: CreateInvitationGatewayCommand
@@ -317,17 +506,18 @@ class SupabaseCompanyAccessAdapter:
     async def company_memberships(
         self, access_token: str, company_id: str
     ) -> list[Mapping[str, object]]:
-        query = urlencode({
-            "select": "company_id,user_id,role,accepted_at",
-            "company_id": f"eq.{company_id}",
-            "role": "in.(reviewer,read_only)",
-            "accepted_at": "not.is.null",
-            "order": "created_at.asc",
-        }, safe="(),")
-        response = await self._request(f"/rest/v1/company_memberships?{query}", access_token)
-        if not isinstance(response, list):
-            return []
-        return [{**row, "state": "active"} for row in response if isinstance(row, Mapping)]
+        return await self._database_rows(
+            access_token,
+            """
+            select company_id, user_id, role, accepted_at, 'active'::text as state
+            from public.company_memberships
+            where company_id = %s::uuid
+              and role in ('reviewer', 'read_only')
+              and accepted_at is not null
+            order by created_at asc
+            """,
+            (company_id,),
+        )
 
     async def administer_membership(
         self, access_token: str, command: AdministerMembershipGatewayCommand
@@ -344,35 +534,32 @@ class SupabaseCompanyAccessAdapter:
     async def pending_invitation_side_effects(
         self, access_token: str
     ) -> list[Mapping[str, object]]:
-        response = await self._request(
-            "/rest/v1/rpc/company_access_pending_invitation_side_effects",
+        return await self._database_rpc_rows(
             access_token,
-            method="POST",
-            body={},
+            "company_access_pending_invitation_side_effects",
+            {},
+            role="company_access_recovery_executor",
         )
-        return response if isinstance(response, list) else []
 
     async def complete_invitation_side_effect(
         self, access_token: str, operation_id: str
     ) -> bool:
-        response = await self._request(
-            "/rest/v1/rpc/company_access_complete_invitation_side_effect",
+        rows = await self._database_rpc_rows(
             access_token,
-            method="POST",
-            body={"p_operation_id": operation_id},
+            "company_access_complete_invitation_side_effect",
+            {"p_operation_id": operation_id},
+            role="company_access_recovery_executor",
         )
-        return response is True
+        return bool(rows and next(iter(rows[0].values()), False) is True)
 
     async def cancellations(
         self, access_token: str, company_id: str
     ) -> list[Mapping[str, object]]:
-        response = await self._request(
-            "/rest/v1/rpc/company_access_list_cancellations",
+        return await self._database_rpc_rows(
             access_token,
-            method="POST",
-            body={"p_company_id": company_id},
+            "company_access_list_cancellations",
+            {"p_company_id": company_id},
         )
-        return response if isinstance(response, list) else []
 
     async def request_cancellation(
         self, access_token: str, command: RequestCompanyCancellationGatewayCommand
@@ -439,7 +626,6 @@ class SupabaseCompanyAccessAdapter:
         function_name: str,
         body: Mapping[str, object],
     ) -> Mapping[str, object] | None:
-        path = f"/rest/v1/rpc/{function_name}"
         cancellation_command = function_name in {
             "company_access_request_cancellation",
             "company_access_resume_cancellation",
@@ -451,19 +637,52 @@ class SupabaseCompanyAccessAdapter:
                 access_token, function_name, body
             )
         try:
-            response = await self._request(path, access_token, method="POST", body=body)
+            response = await self._database_rpc_rows(access_token, function_name, body)
         except CompanyAccessError as error:
             if error.code != "COMPANY_ACCESS_UNAVAILABLE" or "p_operation_id" not in body:
                 raise
             # A receipt is definitively absent only after reconciliation has
             # linearized behind the original actor+operation transaction.
-            try:
-                response = await self._request(path, access_token, method="POST", body=body)
-            except CompanyAccessError as retry_error:
-                raise
+            response = await self._database_rpc_rows(access_token, function_name, body)
         if not isinstance(response, list) or not response or not isinstance(response[0], Mapping):
             return None
         return response[0]
+
+    async def _database_rpc_rows(
+        self,
+        access_token: str,
+        function_name: str,
+        body: Mapping[str, object],
+        *,
+        role: str = "company_access_executor",
+    ) -> list[Mapping[str, object]]:
+        allowed = {
+            "company_access_onboard_company",
+            "company_access_reaccept_agreement",
+            "company_access_create_invitation",
+            "company_access_lookup_invitation",
+            "company_access_accept_invitation",
+            "company_access_revoke_invitation",
+            "company_access_resend_invitation",
+            "company_access_administer_membership",
+            "company_access_pending_invitation_side_effects",
+            "company_access_complete_invitation_side_effect",
+            "company_access_list_cancellations",
+            "company_access_request_cancellation",
+            "company_access_resume_cancellation",
+            "company_access_review_deletion",
+            "company_access_finalize_deletion",
+            "company_access_reconcile_cancellation_operation",
+        }
+        if function_name not in allowed:
+            raise ValueError("unsupported company-access database function")
+        placeholders = ",".join("%s" for _ in body)
+        return await self._database_rows(
+            access_token,
+            f"select * from public.{function_name}({placeholders})",
+            tuple(body.values()),
+            role=role,
+        )
 
     async def _cancellation_rpc_row(
         self,
@@ -471,10 +690,9 @@ class SupabaseCompanyAccessAdapter:
         function_name: str,
         body: Mapping[str, object],
     ) -> Mapping[str, object]:
-        path = f"/rest/v1/rpc/{function_name}"
         for attempt in range(2):
             try:
-                response = await self._request(path, access_token, method="POST", body=body)
+                response = await self._database_rpc_rows(access_token, function_name, body)
             except CompanyAccessError as error:
                 if error.code != "COMPANY_ACCESS_UNAVAILABLE":
                     raise
@@ -509,11 +727,13 @@ class SupabaseCompanyAccessAdapter:
         }
         reconcile_body = dict(body)
         reconcile_body["p_command_name"] = command_names[function_name]
-        response = await self._request(
-            "/rest/v1/rpc/company_access_reconcile_cancellation_operation",
+        ordered = {"p_operation_id": reconcile_body.pop("p_operation_id")}
+        ordered["p_command_name"] = reconcile_body.pop("p_command_name")
+        ordered.update(reconcile_body)
+        response = await self._database_rpc_rows(
             access_token,
-            method="POST",
-            body=reconcile_body,
+            "company_access_reconcile_cancellation_operation",
+            ordered,
         )
         if (
             not isinstance(response, list)
@@ -543,6 +763,15 @@ class SupabaseCompanyAccessAdapter:
             code="COMPANY_ACCESS_UNAVAILABLE",
             title="Company access unavailable",
             detail="The cancellation operation outcome is still unknown; retry with the same operation ID.",
+        )
+
+    @staticmethod
+    def _unavailable() -> CompanyAccessError:
+        return CompanyAccessError(
+            status=503,
+            code="COMPANY_ACCESS_UNAVAILABLE",
+            title="Company access unavailable",
+            detail="Company access is temporarily unavailable.",
         )
 
 

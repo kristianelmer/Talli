@@ -117,8 +117,9 @@ test("review, signed attestation, and preview UI use honest owner-only copy", ()
   assert.match(pageSource, /requiredCorporateArtifactSigners/);
   assert.match(uploadSource, /signert kopi bekreftet av eier/i);
   assert.doesNotMatch(`${pageSource}\n${uploadSource}`, /verifisert signatur/i);
-  assert.match(previewSource, /company_memberships/);
-  assert.match(previewSource, /role["']?,\s*["']owner|\.eq\(["']role["'],\s*["']owner["']\)/);
+  assert.match(previewSource, /loadAcceptedMembershipCompany\(document\.company_id\)/);
+  assert.match(previewSource, /company\.role !== "owner"/);
+  assert.doesNotMatch(previewSource, /\.from\(["']company_memberships["']\)/);
   assert.match(previewSource, /Content-Disposition["']?,\s*["']inline|inline;/i);
   assert.match(previewSource, /application\/pdf/);
 });

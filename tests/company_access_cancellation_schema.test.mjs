@@ -73,7 +73,9 @@ test("archive route and generation triggers share one complete source inventory"
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
-  assert.deepEqual([...routeTables].sort(), [...declared.keys()].sort());
+  assert.match(route, /loadAcceptedMembershipCompany\(companyId\)/u);
+  const logicalRouteSources = new Set([...routeTables, "companies"]);
+  assert.deepEqual([...logicalRouteSources].sort(), [...declared.keys()].sort());
   const triggerInventory = new Map(
     [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]
       .map((match) => [match[1], match[2]]),
@@ -91,7 +93,8 @@ test("archive route and generation triggers share one complete source inventory"
   assert.equal(declared.has("company_archive_export_receipts"), false);
   assert.match(functionBody(source, "company_archive_lock_scope_v1"), /company_archive_lock_company_v1\(p_company_id\)/iu);
   assert.ok(
-    route.indexOf('"company_archive_begin_export"') < route.indexOf('.from("companies")'),
+    route.indexOf('"company_archive_begin_export"')
+      < route.indexOf("loadAcceptedMembershipCompany(companyId)"),
     "every authoritative source read must follow the generation boundary",
   );
 });

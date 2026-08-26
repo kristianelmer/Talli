@@ -120,7 +120,7 @@
     ],
     "currentCapability": "company_access",
     "currentIssue": "#138",
-    "status": "active",
+    "status": "exit-review",
     "exitedCapabilities": [],
     "completedStages": []
   },
@@ -252,40 +252,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_payment_events",
           "operation": "searchOperatorSupportDashboard"
-        }
-      ]
-    },
-    {
-      "id": "compat-company-onboarding-persistence",
-      "kind": "legacy-facade",
-      "capability": "company_access",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#138",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:company_access",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove workspace creation and customer-agreement onboarding persistence in #138; authenticated company-context reads have no exception.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:create_company_workspace_with_acceptance",
-          "operation": "createWorkspace"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:append_company_agreement_acceptance",
-          "operation": "reacceptCompanyAgreement"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:customer_agreement_acceptances",
-          "operation": "listCustomerAgreementAcceptances"
         }
       ]
     },
@@ -634,34 +600,6 @@
       ]
     },
     {
-      "id": "compat-owner-dividend-persistence",
-      "kind": "legacy-facade",
-      "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#144",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove owner-dividend company and membership persistence in #144.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "createOwnerDividendDecisionDraft"
-        }
-      ]
-    },
-    {
       "id": "compat-shareholder-loan-persistence",
       "kind": "legacy-facade",
       "capability": "corporate_governance",
@@ -719,12 +657,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
       "scopes": [
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "GET"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -825,24 +757,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148.",
       "scopes": [
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
@@ -955,18 +869,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove annual compliance workspace persistence in #149.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "queueDeadlineReminders"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1104,12 +1006,6 @@
       "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150.",
       "scopes": [
         {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "searchOperatorSupportDashboard"
-        },
-        {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
@@ -1124,31 +1020,13 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "recordLaunchSignoff"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
           "operation": "runProductionAuthorityOperation"
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "runProductionAuthorityOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "runProductionSystembrukerCallbackOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
           "operation": "runProductionSystembrukerCallbackOperation"
         },
         {
@@ -1160,19 +1038,7 @@
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "getOperatorContext"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "listAuthorityOperations"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
           "operation": "listAuthorityOperations"
         },
         {
@@ -1184,20 +1050,8 @@
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "listLaunchSignoffs"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
           "operation": "listSystemUserRequests"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
@@ -1215,36 +1069,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove RF-1086 filing and feedback persistence in #151.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "approveProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1444,12 +1268,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "recordCompanyTaxReturnTt02Evidence"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "rpc:import_company_tax_tt02_evidence",
           "operation": "recordCompanyTaxReturnTt02Evidence"
         }
@@ -1469,12 +1287,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove annual-accounts authority-evidence persistence in #153.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "recordAnnualAccountsTt02Evidence"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1761,12 +1573,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
           "operation": "GET"
         },
         {

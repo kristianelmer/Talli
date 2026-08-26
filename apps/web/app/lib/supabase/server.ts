@@ -17,31 +17,28 @@ import type {
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
 import type { SystemUserRequestStatus } from "../system-user-requests";
+import {
+  loadOperatorContext,
+  presentOperatorCompanyRecord,
+  searchOperatorCompanyRecords,
+  type CompanyRegistryPresentation,
+} from "../../../features/company-access";
 
-export type CompanyWorkspaceRow = {
-  id: string;
-  org_number: string;
-  name: string;
-  entity_type: string;
-  address: string;
-  postal_code: string;
-  city: string;
-  status_text: string;
-  source: string;
-  created_by: string;
-  identity_confirmed_at: string | null;
-  identity_locked_at: string | null;
-  created_at: string;
+async function backendOperatorSession(supabase: SupabaseClient) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return null;
+  try {
+    return {
+      accessToken: session.access_token,
+      operator: await loadOperatorContext(session.access_token),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type CompanyWorkspaceRow = CompanyRegistryPresentation & {
   role?: "owner" | "reviewer" | "read_only";
-};
-
-export type CustomerAgreementAcceptanceRow = {
-  company_id: string;
-  business_terms_version: string;
-  business_terms_sha256: string;
-  dpa_version: string;
-  dpa_sha256: string;
-  accepted_at: string;
 };
 
 export type LaunchSignoffRow = {
@@ -687,30 +684,9 @@ export async function getOperatorContext() {
     return { user: null, isOperator: false, isAdminOperator: false };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: operator } = await supabase
-    .from("support_operators")
-    .select("role, active")
-    .eq("user_id", user.id)
-    .eq("active", true)
-    .maybeSingle();
+  const operator = (await backendOperatorSession(supabase))?.operator ?? null;
   const isOperator = Boolean(operator);
   return { user, isOperator, isAdminOperator: operator?.role === "admin" };
-}
-
-export async function listCustomerAgreementAcceptances(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { acceptances: [] as CustomerAgreementAcceptanceRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("customer_agreement_acceptances")
-    .select("company_id, business_terms_version, business_terms_sha256, dpa_version, dpa_sha256, accepted_at")
-    .in("company_id", companyIds)
-    .order("accepted_at", { ascending: false });
-  return {
-    acceptances: (data ?? []) as CustomerAgreementAcceptanceRow[],
-    error: error?.message ?? null,
-  };
 }
 
 export async function listDocumentsForCompanies(companyIds: string[]) {
@@ -1217,15 +1193,7 @@ export async function listLaunchSignoffs(actorId?: string | null) {
     return { launchSignoffs: [] as LaunchSignoffRow[], isOperator: false, isAdminOperator: false, error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: operator, error: operatorError } = await supabase
-    .from("support_operators")
-    .select("user_id, role, active")
-    .eq("user_id", actorId)
-    .eq("active", true)
-    .maybeSingle();
-  if (operatorError) {
-    return { launchSignoffs: [] as LaunchSignoffRow[], isOperator: false, isAdminOperator: false, error: operatorError.message };
-  }
+  const operator = (await backendOperatorSession(supabase))?.operator ?? null;
   const isOperator = Boolean(operator);
   const isAdminOperator = operator?.role === "admin";
   if (!isOperator) {
@@ -1249,21 +1217,8 @@ export async function listAuthorityOperations(actorId?: string | null) {
     return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: operator, error: operatorError } = await supabase
-    .from("support_operators")
-    .select("role, active")
-    .eq("user_id", actorId)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-  if (operatorError) {
-    return {
-      operations: [] as AuthorityOperationRow[],
-      isAdminOperator: false,
-      error: "authority_operator_lookup_failed",
-    };
-  }
-  if (!operator) {
+  const operator = (await backendOperatorSession(supabase))?.operator ?? null;
+  if (!operator || operator.role !== "admin") {
     return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
   }
   const { data, error } = await supabase.from("authority_operations").select("*").order("created_at", { ascending: false }).limit(10);
@@ -1279,12 +1234,8 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
     return { summaries: [], isOperator: false, error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: operator } = await supabase
-    .from("support_operators")
-    .select("user_id")
-    .eq("user_id", actorId)
-    .eq("active", true)
-    .maybeSingle();
+  const operatorSession = await backendOperatorSession(supabase);
+  const operator = operatorSession?.operator ?? null;
   const isOperator = Boolean(operator);
   try {
     assertOperatorSearchAllowed({ isOperator, query });
@@ -1297,15 +1248,16 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
   }
 
   const normalized = query.trim();
-  const { data: companies, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .or(`org_number.ilike.%${normalized}%,name.ilike.%${normalized}%`)
-    .limit(10);
-  if (companyError) {
-    return { summaries: [], isOperator, error: companyError.message };
+  let companyRows: CompanyWorkspaceRow[];
+  try {
+    if (!operatorSession) throw new Error("operator_search_failed");
+    companyRows = (await searchOperatorCompanyRecords(
+      operatorSession.accessToken,
+      normalized,
+    )).companies.map(presentOperatorCompanyRecord);
+  } catch {
+    return { summaries: [], isOperator, error: "operator_search_failed" };
   }
-  const companyRows = (companies ?? []) as CompanyWorkspaceRow[];
   const companyIds = companyRows.map((company) => company.id);
   if (!companyIds.length) {
     return { summaries: [], isOperator, error: null };

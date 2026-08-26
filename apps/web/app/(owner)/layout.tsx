@@ -3,10 +3,8 @@ import Link from "next/link";
 
 import { reacceptCompanyAgreement, signOut } from "../actions";
 import { currentCustomerAgreements } from "../lib/customer-agreements";
-import { companiesRequiringCurrentCustomerAgreement } from "../lib/customer-agreement-reacceptance";
 import {
   getOperatorContext,
-  listCustomerAgreementAcceptances,
   needsEmailVerification,
 } from "../lib/supabase/server";
 import { listCompanyAccessContexts } from "../lib/company-access-context";
@@ -23,12 +21,12 @@ export default async function OwnerLayout({
   if (needsEmailVerification(user)) {
     redirect("/verify-email");
   }
-  const { companies, error: companiesError } = await listCompanyAccessContexts();
-  const { acceptances, error: acceptancesError } = companiesError
-    ? { acceptances: [], error: null }
-    : await listCustomerAgreementAcceptances(companies.map(({ id }) => id));
-  const agreementDataError = companiesError ?? acceptancesError;
-  const pendingCompanies = companiesRequiringCurrentCustomerAgreement(companies, acceptances);
+  const {
+    companies,
+    error: companiesError,
+    requiresAal2,
+  } = await listCompanyAccessContexts();
+  const pendingCompanies = companies.filter(({ currentAgreementAccepted }) => !currentAgreementAccepted);
   const pendingCompany = pendingCompanies[0];
   return (
     <div className="appShell">
@@ -47,7 +45,23 @@ export default async function OwnerLayout({
         </AppNav>
       </header>
       <main className="appMain">
-        {agreementDataError ? (
+        {requiresAal2 ? (
+          <section className="band" aria-labelledby="ownerMfaRequiredTitle">
+            <div className="sectionHeader">
+              <p className="eyebrow">Sikker innlogging</p>
+              <h1 id="ownerMfaRequiredTitle">
+                Bekreft innloggingen før du fortsetter
+              </h1>
+              <p>
+                Selskapet og avtalen er lagret. Arbeidsflaten åpnes når du har
+                bekreftet en sekssifret kode fra en autentiseringsapp.
+              </p>
+            </div>
+            <Link className="btn btn--primary" href="/mfa?next=%2Fonboarding">
+              Sett opp eller bekreft autentiseringsapp
+            </Link>
+          </section>
+        ) : companiesError ? (
           <section className="band" role="alert">
             <h1>Kunne ikke kontrollere gjeldende avtaleaksept</h1>
             <p>Arbeidsflaten er midlertidig stengt. Prøv igjen senere.</p>

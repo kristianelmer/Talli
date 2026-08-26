@@ -10,6 +10,11 @@ const operation = contract.paths?.[path]?.get;
 const companyAccessPath = "/api/v1/company-access/context";
 const companyAccessOperation = contract.paths?.[companyAccessPath]?.get;
 const companyAccessOperations = {
+  onboardCompany: ["/api/v1/company-access/onboarding", "post", "companyAccessOnboardCompany"],
+  reacceptAgreement: ["/api/v1/company-access/agreements/reaccept", "post", "companyAccessReacceptAgreement"],
+  getCompanyRecord: ["/api/v1/company-access/companies/{company_id}", "get", "companyAccessGetCompanyRecord"],
+  getOperatorContext: ["/api/v1/company-access/operator-context", "get", "companyAccessGetOperatorContext"],
+  searchOperatorCompanies: ["/api/v1/company-access/operator-companies", "get", "companyAccessSearchOperatorCompanies"],
   listInvitations: ["/api/v1/company-access/invitations", "get", "companyAccessListInvitations"],
   createInvitation: ["/api/v1/company-access/invitations", "post", "companyAccessCreateInvitation"],
   lookupInvitation: ["/api/v1/company-access/invitations/lookup", "post", "companyAccessLookupInvitation"],
@@ -71,7 +76,7 @@ function schemaType(schema) {
   }
   if (schema?.type === "null") return "null";
   if (schema?.type === "array") return `${schemaType(schema.items)}[]`;
-  if (schema?.type === "string" && schema.const !== undefined) {
+  if (schema?.const !== undefined) {
     return JSON.stringify(schema.const);
   }
   if (schema?.type === "string" && schema.enum?.length) {
@@ -159,6 +164,15 @@ const additionalSchemas = Object.fromEntries([
   "CompanyMembership",
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
+  "CompanyOnboardingRequest",
+  "CompanyOnboardingResponse",
+  "CompanyAgreementAcceptanceRequest",
+  "CompanyAgreementAcceptanceResponse",
+  "CompanyAccessRecord",
+  "CompanyAccessRecordResponse",
+  "OperatorContextResponse",
+  "OperatorCompanyRecord",
+  "OperatorCompanySearchResponse",
   "AcceptCompanyInvitationRequest",
   "CreateCompanyInvitationRequest",
   "InvitationLookup",
@@ -243,6 +257,13 @@ ${[
   "CompanyMembership",
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
+  "CompanyOnboardingResponse",
+  "CompanyAgreementAcceptanceResponse",
+  "CompanyAccessRecord",
+  "CompanyAccessRecordResponse",
+  "OperatorContextResponse",
+  "OperatorCompanyRecord",
+  "OperatorCompanySearchResponse",
   "InvitationLookup",
   "InvitationSideEffectContinuation",
   "InvitationSideEffectContinuationList",
@@ -399,6 +420,71 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return candidate;
+    },
+
+    async companyAccessOnboardCompany(
+      body: CompanyOnboardingRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyOnboardingResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/onboarding\`,
+        "POST",
+        request,
+        body,
+        isCompanyOnboardingResponse,
+      );
+    },
+
+    async companyAccessReacceptAgreement(
+      body: CompanyAgreementAcceptanceRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAgreementAcceptanceResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/agreements/reaccept\`,
+        "POST",
+        request,
+        body,
+        isCompanyAgreementAcceptanceResponse,
+      );
+    },
+
+    async companyAccessGetCompanyRecord(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAccessRecordResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/companies/\${encodeURIComponent(companyId)}\`,
+        "GET",
+        request,
+        undefined,
+        isCompanyAccessRecordResponse,
+      );
+    },
+
+    async companyAccessGetOperatorContext(
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorContextResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-context\`,
+        "GET",
+        request,
+        undefined,
+        isOperatorContextResponse,
+      );
+    },
+
+    async companyAccessSearchOperatorCompanies(
+      query: string,
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorCompanySearchResponse> {
+      const search = new URLSearchParams({ query });
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-companies?\${search}\`,
+        "GET",
+        request,
+        undefined,
+        isOperatorCompanySearchResponse,
+      );
     },
 
     async companyAccessListInvitations(

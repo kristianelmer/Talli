@@ -13,6 +13,7 @@ export async function cleanupBrowserOwnerResources(resources) {
   await attempt(() => resources.browser?.close());
   await attempt(() => stopOwnedProcess(resources.server));
   await attempt(() => stopOwnedProcess(resources.backend));
+  await attempt(() => resources.cleanupBackendDatabaseRole?.());
 
   if (resources.companyId && resources.databaseStarted) {
     await attempt(() =>

@@ -17,6 +17,14 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"

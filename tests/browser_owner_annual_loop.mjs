@@ -56,6 +56,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     admin,
     backend: undefined,
     browser: undefined,
+    cleanupBackendDatabaseRole: undefined,
     companyId: undefined,
     database,
     databaseStarted: false,
@@ -77,6 +78,20 @@ test("browser owner annual loop uses persisted state and survives reload", async
   try {
     resources.databaseStarted = true;
     await database.connect();
+    const backendDatabasePassword = randomUUID().replaceAll("-", "");
+    await database.query(
+      `alter role talli_company_access_backend login password '${backendDatabasePassword}'`,
+    );
+    resources.cleanupBackendDatabaseRole = async () => {
+      await database.query(
+        "alter role talli_company_access_backend nologin password null",
+      );
+      resources.cleanupBackendDatabaseRole = undefined;
+    };
+    const backendDatabaseUrl = databaseUrlForBackendRole(
+      databaseUrl,
+      backendDatabasePassword,
+    );
     const ownerEmail = `owner-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
     const orgNumber = String(Math.floor(100000000 + Math.random() * 899999999));
@@ -114,6 +129,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
       port: backendPort,
       supabaseUrl,
       anonKey,
+      databaseUrl: backendDatabaseUrl,
     });
     await waitForOwnedReadiness({
       process: resources.backend,
@@ -137,7 +153,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await loginForm.getByLabel("Passord").fill(password);
     await loginForm.getByRole("button", { name: "Logg inn" }).click();
     await page.waitForLoadState("networkidle");
-    await establishSyntheticAal2(page, baseUrl);
+    await establishOwnerAal2(page, baseUrl);
     await page.goto(`${baseUrl}/dashboard`);
     await page.waitForLoadState("networkidle");
 
@@ -405,30 +421,19 @@ async function seedAnnualLoop(admin, ids, onCompanyCreated) {
   );
 }
 
-async function establishSyntheticAal2(page, baseUrl) {
-  await page.goto(`${baseUrl}/operator`);
-  const enrollmentResponsePromise = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      new URL(response.url()).pathname.endsWith("/auth/v1/factors"),
-  );
+async function establishOwnerAal2(page, baseUrl) {
+  await page.goto(`${baseUrl}/mfa?next=%2Fdashboard`);
+  await page.getByRole("heading", {
+    name: "Beskytt kontoen før du fortsetter",
+  }).waitFor({ state: "visible" });
   await page
     .getByRole("button", { name: "Sett opp autentiseringsapp" })
     .click();
-  const enrollment = await (await enrollmentResponsePromise).json();
-  const secret = enrollment?.totp?.secret;
-  assert.equal(typeof secret, "string");
-  assert.match(secret, /^[A-Z2-7]+$/iu);
+  const secret = (await page.locator("code").innerText()).trim();
+  assert.match(secret, /^[A-Z2-7]+=*$/iu);
   await page.getByLabel("Sekssifret kode").fill(totp(secret));
-  await page.getByRole("button", { name: "Bekreft AAL2" }).click();
-  await page.waitForURL(
-    (url) =>
-      url.pathname === "/operator" &&
-      url.searchParams.get("authority") === "authority_mfa_ready",
-  );
-  await page
-    .getByText("Denne økten er bekreftet med AAL2.", { exact: true })
-    .waitFor();
+  await page.getByRole("button", { name: "Bekreft og fortsett" }).click();
+  await page.waitForURL((url) => url.pathname !== "/mfa");
 }
 
 function totp(secret) {
@@ -461,6 +466,7 @@ function startBackendServer({
   port,
   supabaseUrl: localSupabaseUrl,
   anonKey: localAnonKey,
+  databaseUrl: localDatabaseUrl,
 }) {
   const backendPython =
     process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
@@ -476,11 +482,20 @@ function startBackendServer({
       ...process.env,
       SUPABASE_URL: localSupabaseUrl,
       SUPABASE_ANON_KEY: localAnonKey,
+      TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
     },
     readinessProof: `TALLI_BACKEND_BOUND:${readinessNonce}`,
   });
+}
+
+function databaseUrlForBackendRole(value, password) {
+  const url = new URL(value);
+  assert.ok(isLoopbackPostgresUrl(value), "backend database fixture escaped loopback");
+  url.username = "talli_company_access_backend";
+  url.password = password;
+  return url.toString();
 }
 
 function startNextServer({ port, backendBaseUrl }) {

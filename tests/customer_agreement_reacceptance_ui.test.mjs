@@ -4,13 +4,12 @@ import test from "node:test";
 
 const layout = readFileSync(new URL("../apps/web/app/(owner)/layout.tsx", import.meta.url), "utf8");
 const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
-const moduleSource = readFileSync(new URL("../apps/web/app/lib/customer-agreement-reacceptance.ts", import.meta.url), "utf8");
 
 test("owner layout replaces children with an accessible reacceptance gate", () => {
-  assert.match(layout, /companiesRequiringCurrentCustomerAgreement/iu);
-  assert.match(layout, /listCustomerAgreementAcceptances/iu);
+  assert.match(layout, /listCompanyAccessContexts\(\)/iu);
+  assert.match(layout, /companies\.filter\(\(\{ currentAgreementAccepted \}\) => !currentAgreementAccepted\)/iu);
   assert.match(layout, /pendingCompanies\.length/iu);
-  assert.match(layout, /agreementDataError/iu);
+  assert.match(layout, /companiesError/iu);
   assert.match(layout, /Kunne ikke kontrollere gjeldende avtaleaksept/iu);
   assert.match(layout, /action=\{reacceptCompanyAgreement\}/iu);
   assert.match(layout, /name="companyId"/iu);
@@ -23,12 +22,13 @@ test("owner layout replaces children with an accessible reacceptance gate", () =
   assert.match(layout, /href="\/databehandleravtale"/iu);
 });
 
-test("Server Action maps typed results and alone owns the privileged adapter", () => {
+test("Server Action reaccepts through the authenticated generated-client boundary", () => {
   const action = actions.match(/export async function reacceptCompanyAgreement[\s\S]+?\n\}\n\nexport async function/iu)?.[0] ?? "";
-  assert.match(action, /reacceptCustomerAgreement/iu);
-  assert.match(action, /createSupabaseServiceRoleClient\(\)/iu);
-  assert.match(action, /\.rpc\("append_company_agreement_acceptance",\s*payload\)/iu);
-  assert.match(action, /if \(!result\.ok\) \{\s*failTo\(returnTo, result\.message\)/iu);
+  assert.match(action, /getCurrentSessionAccessToken\(\)/iu);
+  assert.match(action, /currentAgreementCommand\(formData, returnTo\)/iu);
+  assert.match(action, /await reacceptCompanyAgreementThroughApi\(accessToken, \{/iu);
+  assert.match(action, /companyAccessActionErrorMessage\(error\)/iu);
   assert.match(action, /revalidatePath\("\/", "layout"\)/iu);
-  assert.doesNotMatch(moduleSource, /createSupabaseServiceRoleClient|SUPABASE_SERVICE_ROLE_KEY|\.rpc\(/iu);
+  assert.doesNotMatch(action, /createSupabaseServiceRoleClient|SUPABASE_SERVICE_ROLE_KEY|\.rpc\(|\.from\(/iu);
+  assert.doesNotMatch(actions, /\.\/lib\/customer-agreement-reacceptance/iu);
 });

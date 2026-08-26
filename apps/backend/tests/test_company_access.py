@@ -1,21 +1,25 @@
 import asyncio
 import base64
+import inspect
 import json
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
+from typing import Self
 from urllib.parse import urlsplit
+from uuid import UUID
 
 import pytest
 import talli_backend.modules.company_access.public as company_access_public
 from fastapi.testclient import TestClient
-
-from talli_backend.main import create_app
 from talli_backend.adapters.supabase_company_access import (
     SupabaseCompanyAccessAdapter,
     SupabaseConfiguration,
+    _database_contract_row,
 )
+from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
     AcceptInvitationGatewayCommand,
     AdministerMembershipGatewayCommand,
@@ -31,16 +35,15 @@ def test_rpc_reconciles_one_unknown_outcome_with_the_identical_command() -> None
     adapter = SupabaseCompanyAccessAdapter(
         SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
     )
-    calls: list[tuple[str, str, str, Mapping[str, object] | None]] = []
+    calls: list[tuple[str, str, Mapping[str, object]]] = []
 
     async def request(
-        path: str,
         access_token: str,
-        *,
-        method: str = "GET",
-        body: Mapping[str, object] | None = None,
-    ) -> object:
-        calls.append((path, access_token, method, body))
+        function_name: str,
+        body: Mapping[str, object],
+        **_kwargs: object,
+    ) -> list[Mapping[str, object]]:
+        calls.append((function_name, access_token, body))
         if len(calls) == 1:
             raise CompanyAccessError(
                 status=503,
@@ -50,7 +53,7 @@ def test_rpc_reconciles_one_unknown_outcome_with_the_identical_command() -> None
             )
         return [{"id": "30000000-0000-0000-0000-000000000001"}]
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     body = {
         "p_operation_id": "40000000-0000-0000-0000-000000000001",
         "p_company_id": "10000000-0000-0000-0000-000000000001",
@@ -60,9 +63,30 @@ def test_rpc_reconciles_one_unknown_outcome_with_the_identical_command() -> None
 
     assert result == {"id": "30000000-0000-0000-0000-000000000001"}
     assert calls == [
-        ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
-        ("/rest/v1/rpc/company_access_create_invitation", "bearer", "POST", body),
+        ("company_access_create_invitation", "bearer", body),
+        ("company_access_create_invitation", "bearer", body),
     ]
+
+
+def test_psycopg_rows_are_normalized_to_contract_scalars() -> None:
+    company_id = UUID("10000000-0000-0000-0000-000000000001")
+    row = _database_contract_row({
+        "id": company_id,
+        "effective_date": date(2026, 7, 17),
+        "created_at": datetime(2026, 7, 17, 12, 0, tzinfo=UTC),
+        "nested": {"company_id": company_id},
+        "items": [company_id, date(2026, 7, 18)],
+        "active": True,
+    })
+
+    assert row == {
+        "id": str(company_id),
+        "effective_date": "2026-07-17",
+        "created_at": "2026-07-17T12:00:00+00:00",
+        "nested": {"company_id": str(company_id)},
+        "items": [str(company_id), "2026-07-18"],
+        "active": True,
+    }
 
 
 def access_token(aal: str = "aal1") -> str:
@@ -76,7 +100,7 @@ class CompanyAccessGatewayStub:
         self.invitation_status = "pending"
         self.invitation_email = "reviewer@example.no"
         self.invitation_expires_at = (
-            datetime.now(timezone.utc) + timedelta(days=1)
+            datetime.now(UTC) + timedelta(days=1)
         ).isoformat().replace("+00:00", "Z")
         self.calls: list[tuple[str, object]] = []
 
@@ -124,6 +148,26 @@ class CompanyAccessGatewayStub:
             },
         }
         return [companies[company_id] for company_id in company_ids if company_id in companies]
+
+    async def agreement_acceptances(
+        self, _access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]:
+        return [
+            {
+                "company_id": company_id,
+                "business_terms_version": "2026-07-17",
+                "business_terms_effective_date": "2026-07-17",
+                "business_terms_path": "/vilkar",
+                "business_terms_sha256": "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+                "dpa_version": "2026-07-17",
+                "dpa_effective_date": "2026-07-17",
+                "dpa_path": "/databehandleravtale",
+                "dpa_sha256": "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+                "authority_statement_version": "authority-v1",
+                "acceptance_method": "in_app_clickwrap",
+            }
+            for company_id in company_ids
+        ]
 
     async def session_identity(self, _access_token: str) -> Mapping[str, object]:
         return {"id": "owner-1", "email": self.invitation_email}
@@ -245,11 +289,10 @@ class CompanyAccessGatewayStub:
 
 
 class LocalSupabaseGateway:
-    """Hermetic HTTP server that exercises the Auth -> PostgREST gateway path."""
+    """Hermetic HTTP server for the only remaining Supabase HTTP seam: Auth."""
 
-    def __init__(self, membership_role: str = "owner", redirect_to: str | None = None) -> None:
+    def __init__(self, redirect_to: str | None = None) -> None:
         self.calls: list[tuple[str, str, str, str]] = []
-        self.membership_role = membership_role
         self.redirect_to = redirect_to
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
         self.url = f"http://127.0.0.1:{self._server.server_port}"
@@ -259,7 +302,7 @@ class LocalSupabaseGateway:
         gateway = self
 
         class Handler(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+            def do_GET(self) -> None:
                 path = urlsplit(self.path).path
                 authorization = self.headers.get("Authorization", "")
                 api_key = self.headers.get("apikey", "")
@@ -282,59 +325,6 @@ class LocalSupabaseGateway:
                     else:
                         self._json(401, {"message": "invalid session"})
                     return
-                if path == "/rest/v1/company_memberships":
-                    self._json(
-                        200,
-                        [] if token.startswith("outsider-") else [
-                            {"company_id": "10000000-0000-0000-0000-000000000001", "role": gateway.membership_role, "accepted_at": "2026-07-30T00:00:00Z"}
-                        ],
-                    )
-                    return
-                if path == "/rest/v1/companies":
-                    # This mirrors PostgREST RLS: a member never receives a
-                    # cross-company row even if they put its ID in a filter.
-                    self._json(200, [] if "20000000-0000-0000-0000-000000000002" in self.path else [{
-                        "id": "10000000-0000-0000-0000-000000000001",
-                        "org_number": "314159265",
-                        "name": "Talli Holding AS",
-                        "entity_type": "AS",
-                        "address": "Testveien 1",
-                        "postal_code": "0150",
-                        "city": "Oslo",
-                        "status_text": "Registrert",
-                        "source": "Brønnøysundregistrene",
-                        "created_by": "owner-1",
-                        "identity_confirmed_at": None,
-                        "identity_locked_at": None,
-                        "created_at": "2026-07-30T00:00:00Z",
-                    }])
-                    return
-                if path == "/rest/v1/company_invitations":
-                    self._json(200, [])
-                    return
-                self._json(404, {})
-
-            def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
-                path = urlsplit(self.path).path
-                authorization = self.headers.get("Authorization", "")
-                api_key = self.headers.get("apikey", "")
-                gateway.calls.append((path, authorization, api_key, self.path))
-                content_length = int(self.headers.get("Content-Length", "0"))
-                payload = json.loads(self.rfile.read(content_length) or b"{}")
-                if path == "/rest/v1/rpc/company_access_create_invitation":
-                    self._json(200, [{
-                        "id": "30000000-0000-0000-0000-000000000001",
-                        "company_id": payload["p_company_id"],
-                        "invited_email": payload["p_invited_email"],
-                        "role": payload["p_role"],
-                        "status": "pending",
-                        "expires_at": "2026-08-15T00:00:00Z",
-                        "created_at": "2026-08-01T00:00:00Z",
-                        "updated_at": "2026-08-01T00:00:00Z",
-                        "delivery_token": payload["p_acceptance_token"],
-                        "delivery_company_name": "Talli Holding AS",
-                    }])
-                    return
                 self._json(404, {})
 
             def _json(self, status: int, payload: object) -> None:
@@ -350,7 +340,7 @@ class LocalSupabaseGateway:
 
         return Handler
 
-    def __enter__(self) -> "LocalSupabaseGateway":
+    def __enter__(self) -> Self:
         self._thread.start()
         return self
 
@@ -402,6 +392,7 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
             "role": "owner",
             "resourceScope": "owner_sensitive",
             "aal": "aal2",
+            "currentAgreementAccepted": True,
         },
         "companies": [{
             "id": "10000000-0000-0000-0000-000000000001",
@@ -420,8 +411,42 @@ def test_company_context_returns_full_context_only_after_aal2() -> None:
             "role": "owner",
             "resourceScope": "owner_sensitive",
             "aal": "aal2",
+            "currentAgreementAccepted": True,
         }],
     }
+
+
+def test_company_context_accepts_uuid_values_returned_by_psycopg() -> None:
+    class PsycopgGatewayStub(CompanyAccessGatewayStub):
+        async def companies(
+            self, access_token: str, company_ids: list[str]
+        ) -> list[Mapping[str, object]]:
+            rows = await super().companies(access_token, company_ids)
+            return [{**row, "id": UUID(str(row["id"]))} for row in rows]
+
+        async def agreement_acceptances(
+            self, access_token: str, company_ids: list[str]
+        ) -> list[Mapping[str, object]]:
+            rows = await super().agreement_acceptances(access_token, company_ids)
+            return [
+                {
+                    **row,
+                    "business_terms_effective_date": date(2026, 7, 17),
+                    "dpa_effective_date": date(2026, 7, 17),
+                }
+                for row in rows
+            ]
+
+    response = TestClient(create_app(PsycopgGatewayStub())).get(
+        "/api/v1/company-access/context",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["selectedCompany"]["id"] == (
+        "10000000-0000-0000-0000-000000000001"
+    )
+    assert response.json()["selectedCompany"]["currentAgreementAccepted"] is True
 
 
 def test_cross_company_context_is_concealed() -> None:
@@ -481,26 +506,51 @@ def test_owner_context_contract_uses_fixed_role_scope_and_assurance_literals() -
     assert context["properties"]["aal"] == {"const": "aal2", "title": "Aal", "type": "string"}
 
 
-def test_real_gateway_validates_session_before_rls_reads_and_keeps_the_user_bearer() -> None:
-    with LocalSupabaseGateway() as server:
-        response = TestClient(gateway_app(server)).get(
-            "/api/v1/company-access/context",
-            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+def test_real_gateway_validates_session_then_routes_business_reads_to_backend_database() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(
+            url="http://127.0.0.1:1",
+            anon_key="anon-test-key",
+            database_url="postgresql://unused",
+        )
+    )
+    calls: list[str] = []
+
+    async def auth_user(_token: str) -> object:
+        calls.append("/auth/v1/user")
+        return {"id": "owner-1", "email": "owner@example.no"}
+
+    async def database_rows(
+        _token: str, query: str, _parameters: tuple[object, ...] = (), **_kwargs: object
+    ) -> list[Mapping[str, object]]:
+        calls.append("database")
+        stub = CompanyAccessGatewayStub()
+        if "from public.company_memberships" in query:
+            return [{
+                "company_id": "10000000-0000-0000-0000-000000000001",
+                "role": "owner",
+                "accepted_at": "now",
+            }]
+        if "from public.companies" in query:
+            return await stub.companies(
+                _token, ["10000000-0000-0000-0000-000000000001"]
+            )
+        return await stub.agreement_acceptances(
+            _token, ["10000000-0000-0000-0000-000000000001"]
         )
 
+    adapter._auth_user = auth_user  # type: ignore[method-assign]
+    adapter._database_rows = database_rows  # type: ignore[method-assign]
+    response = TestClient(create_app(adapter)).get(
+        "/api/v1/company-access/context",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
+
     assert response.status_code == 200
-    assert [path for path, *_ in server.calls] == [
-        "/auth/v1/user",
-        "/rest/v1/company_memberships",
-        "/rest/v1/companies",
-    ]
-    for _path, authorization, api_key, _request_path in server.calls:
-        assert authorization == f"Bearer {access_token('aal2')}"
-        assert api_key == "anon-test-key"
-        assert "service_role" not in authorization.lower()
+    assert calls == ["/auth/v1/user", "database", "database", "database"]
 
 
-def test_real_gateway_rejects_bad_sessions_before_postgrest_and_normalizes_provider_failures() -> None:
+def test_real_gateway_rejects_bad_sessions_before_database_access_and_normalizes_provider_failures() -> None:
     for token, expected_status, expected_code in [
         ("malformed", 401, "AUTHENTICATION_REQUIRED"),
         ("expired", 401, "AUTHENTICATION_REQUIRED"),
@@ -519,69 +569,125 @@ def test_real_gateway_rejects_bad_sessions_before_postgrest_and_normalizes_provi
 
 
 def test_real_gateway_aal1_and_rls_outsider_or_cross_company_reads_fail_closed() -> None:
-    with LocalSupabaseGateway() as server:
-        client = TestClient(gateway_app(server))
-        aal1 = client.get(
-            "/api/v1/company-access/context?resource_scope=workspace",
-            headers={"Authorization": f"Bearer {access_token()}"},
-        )
-        outsider = client.get(
-            "/api/v1/company-access/context",
-            headers={"Authorization": f"Bearer outsider-{access_token('aal2')}"},
-        )
-        cross_company = client.get(
-            "/api/v1/company-access/context?company_id=20000000-0000-0000-0000-000000000002",
-            headers={"Authorization": f"Bearer {access_token('aal2')}"},
-        )
+    gateway = CompanyAccessGatewayStub()
+    client = TestClient(create_app(gateway))
+    aal1 = client.get(
+        "/api/v1/company-access/context?resource_scope=workspace",
+        headers={"Authorization": f"Bearer {access_token()}"},
+    )
+    cross_company = client.get(
+        "/api/v1/company-access/context?company_id=20000000-0000-0000-0000-000000000002",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+    )
 
     assert aal1.status_code == 403
     assert aal1.json()["code"] == "AAL2_REQUIRED"
-    assert outsider.status_code == 404
-    assert outsider.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
     assert cross_company.status_code == 404
     assert cross_company.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
 
 
+def test_aal1_without_memberships_gets_onboarding_empty_state_before_company_reads() -> None:
+    class EmptyGateway(CompanyAccessGatewayStub):
+        company_read = False
+
+        async def memberships(
+            self, _access_token: str, _subject: str
+        ) -> list[Mapping[str, object]]:
+            return []
+
+        async def companies(
+            self, _access_token: str, _company_ids: list[str]
+        ) -> list[Mapping[str, object]]:
+            self.company_read = True
+            return []
+
+    gateway = EmptyGateway()
+    response = TestClient(create_app(gateway)).get(
+        "/api/v1/company-access/context",
+        headers={"Authorization": f"Bearer {access_token()}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
+    assert gateway.company_read is False
+
+
 def test_real_gateway_conceals_reviewer_and_read_only_memberships() -> None:
     for role in ("reviewer", "read_only"):
-        with LocalSupabaseGateway(role) as server:
-            response = TestClient(gateway_app(server)).get(
-                "/api/v1/company-access/context?company_id=10000000-0000-0000-0000-000000000001",
-                headers={"Authorization": f"Bearer {access_token('aal2')}"},
-            )
+        response = TestClient(create_app(CompanyAccessGatewayStub(role))).get(
+            "/api/v1/company-access/context?company_id=10000000-0000-0000-0000-000000000001",
+            headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        )
 
         assert response.status_code == 404
         assert response.json()["code"] == "COMPANY_CONTEXT_NOT_FOUND"
-        assert [path for path, *_ in server.calls] == [
-            "/auth/v1/user",
-            "/rest/v1/company_memberships",
-        ]
 
 
-def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc() -> None:
-    with LocalSupabaseGateway() as server:
-        response = TestClient(gateway_app(server)).post(
-            "/api/v1/company-access/invitations",
-            headers={"Authorization": f"Bearer {access_token('aal2')}"},
-            json={
-                "operationId": "40000000-0000-0000-0000-000000000001",
-                "companyId": "10000000-0000-0000-0000-000000000001",
-                "invitedEmail": "reviewer@example.no",
-                "role": "reviewer",
-            },
+def test_real_gateway_invitation_writer_uses_backend_database_rpc() -> None:
+    source = Path(inspect.getsourcefile(SupabaseCompanyAccessAdapter) or "").read_text()
+
+    assert "await self._database_rpc_rows(access_token, function_name, body)" in source
+    assert "/rest/v1/rpc/" not in source
+    assert "talli.verified_actor_id" in source
+    assert "talli.verified_actor_claims" in source
+
+
+def test_all_company_access_business_reads_use_the_verified_backend_database() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(
+            url="http://127.0.0.1:1",
+            anon_key="anon-test-key",
+            database_url="postgresql://unused",
+        )
+    )
+    calls: list[str] = []
+
+    async def database_rows(
+        _token: str, query: str, _parameters: tuple[object, ...] = (), **_kwargs: object
+    ) -> list[Mapping[str, object]]:
+        calls.append(query)
+        return []
+
+    adapter._database_rows = database_rows  # type: ignore[method-assign]
+
+    async def read_all() -> None:
+        await adapter.memberships("bearer", "actor")
+        await adapter.companies("bearer", ["10000000-0000-0000-0000-000000000001"])
+        await adapter.agreement_acceptances(
+            "bearer", ["10000000-0000-0000-0000-000000000001"]
+        )
+        await adapter.support_operator("bearer", "actor")
+        await adapter.search_operator_companies("bearer", "Holding")
+        await adapter.invitations("bearer", "10000000-0000-0000-0000-000000000001")
+        await adapter.company_memberships(
+            "bearer", "10000000-0000-0000-0000-000000000001"
         )
 
-    assert response.status_code == 201
-    assert [path for path, *_ in server.calls] == [
-        "/auth/v1/user",
-        "/rest/v1/company_memberships",
-        "/rest/v1/companies",
-        "/rest/v1/rpc/company_access_create_invitation",
-    ]
-    for _path, authorization, api_key, _request_path in server.calls:
-        assert authorization == f"Bearer {access_token('aal2')}"
-        assert api_key == "anon-test-key"
-        assert "service_role" not in authorization.lower()
+    asyncio.run(read_all())
+
+    assert len(calls) == 7
+    assert all("public." in query for query in calls)
+    assert all("/rest/v1" not in query for query in calls)
+
+
+def test_verified_actor_context_rejects_bearer_without_matching_subject() -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+
+    async def identity(_token: str) -> Mapping[str, object]:
+        return {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "email": "owner@example.no",
+        }
+
+    adapter.session_identity = identity  # type: ignore[method-assign]
+    payload = base64.urlsafe_b64encode(json.dumps({"aal": "aal2"}).encode()).decode().rstrip("=")
+
+    with pytest.raises(CompanyAccessError) as error:
+        asyncio.run(adapter._verified_actor_context(f"header.{payload}.signature"))
+
+    assert error.value.status == 401
 
 
 @pytest.mark.parametrize(
@@ -622,7 +728,7 @@ def test_real_gateway_invitation_write_keeps_bearer_and_uses_transactional_rpc()
         ),
     ],
 )
-def test_real_gateway_rejects_malformed_command_identifiers_before_postgrest(
+def test_real_gateway_rejects_malformed_command_identifiers_before_auth_or_database_access(
     path: str, payload: Mapping[str, object]
 ) -> None:
     with LocalSupabaseGateway() as server:
@@ -661,6 +767,40 @@ def test_owner_invites_supported_roles_without_exposing_token_hash(role: str) ->
     assert isinstance(command, CreateInvitationGatewayCommand)
     assert len(command.token_hash) == 64
     assert command.token_hash != command.acceptance_token
+
+
+def test_owner_invitation_accepts_uuid_rows_returned_by_psycopg() -> None:
+    class PsycopgGatewayStub(CompanyAccessGatewayStub):
+        async def memberships(
+            self, access_token: str, subject: str
+        ) -> list[Mapping[str, object]]:
+            rows = await super().memberships(access_token, subject)
+            return [
+                {**row, "company_id": UUID(str(row["company_id"]))}
+                for row in rows
+            ]
+
+        async def companies(
+            self, access_token: str, company_ids: list[str]
+        ) -> list[Mapping[str, object]]:
+            rows = await super().companies(access_token, company_ids)
+            return [{**row, "id": UUID(str(row["id"]))} for row in rows]
+
+    response = TestClient(create_app(PsycopgGatewayStub())).post(
+        "/api/v1/company-access/invitations",
+        headers={"Authorization": f"Bearer {access_token('aal2')}"},
+        json={
+            "operationId": "40000000-0000-0000-0000-000000000001",
+            "companyId": "10000000-0000-0000-0000-000000000001",
+            "invitedEmail": "reviewer@example.no",
+            "role": "reviewer",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["invitation"]["companyId"] == (
+        "10000000-0000-0000-0000-000000000001"
+    )
 
 
 def test_create_replay_builds_delivery_from_the_committed_token(monkeypatch: pytest.MonkeyPatch) -> None:

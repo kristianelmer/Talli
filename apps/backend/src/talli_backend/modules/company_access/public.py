@@ -7,10 +7,10 @@ import hashlib
 import json
 import re
 import secrets
-from collections.abc import Mapping
-from datetime import datetime, timezone
-from typing import Annotated, Callable, Literal, Protocol, TypeVar
-from uuid import UUID
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
+from typing import Annotated, Literal, Protocol, TypeVar, cast
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 
@@ -54,11 +54,162 @@ class CompanyContext(CompanyAccessModel):
     role: Literal["owner"]
     resource_scope: Literal["owner_sensitive"]
     aal: Literal["aal2"]
+    current_agreement_accepted: bool
 
 
 class CompanyContextResponse(CompanyAccessModel):
     selected_company: CompanyContext
     companies: list[CompanyContext]
+
+
+CompanyAccessRole = Literal["owner", "reviewer", "read_only"]
+
+
+class CompanyAccessRecord(CompanyAccessResponseModel):
+    id: str
+    org_number: str
+    name: str
+    entity_type: str
+    address: str
+    postal_code: str
+    city: str
+    status_text: str
+    source: str
+    created_by: str
+    identity_confirmed_at: str | None
+    identity_locked_at: str | None
+    created_at: str
+    role: CompanyAccessRole
+
+
+class CompanyAccessRecordResponse(CompanyAccessResponseModel):
+    company: CompanyAccessRecord
+
+
+class OperatorContextResponse(CompanyAccessResponseModel):
+    role: Literal["support", "admin"]
+    active: Literal[True]
+
+
+class OperatorCompanyRecord(CompanyAccessResponseModel):
+    id: str
+    org_number: str
+    name: str
+    entity_type: str
+    address: str
+    postal_code: str
+    city: str
+    status_text: str
+    source: str
+    created_by: str
+    identity_confirmed_at: str | None
+    identity_locked_at: str | None
+    created_at: str
+
+
+class OperatorCompanySearchResponse(CompanyAccessResponseModel):
+    companies: list[OperatorCompanyRecord]
+
+
+CURRENT_BUSINESS_TERMS_VERSION: Literal["2026-07-17"] = "2026-07-17"
+CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE: Literal["2026-07-17"] = "2026-07-17"
+CURRENT_BUSINESS_TERMS_PATH: Literal["/vilkar"] = "/vilkar"
+CURRENT_BUSINESS_TERMS_SHA256: Literal[
+    "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+] = "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+CURRENT_DPA_VERSION: Literal["2026-07-17"] = "2026-07-17"
+CURRENT_DPA_EFFECTIVE_DATE: Literal["2026-07-17"] = "2026-07-17"
+CURRENT_DPA_PATH: Literal["/databehandleravtale"] = "/databehandleravtale"
+CURRENT_DPA_SHA256: Literal[
+    "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+] = "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+CURRENT_AUTHORITY_STATEMENT_VERSION: Literal["authority-v1"] = "authority-v1"
+CURRENT_ACCEPTANCE_METHOD: Literal["in_app_clickwrap"] = "in_app_clickwrap"
+
+
+class CurrentAgreementRequest(CompanyAccessCommandModel):
+    agreement_accepted: Literal[True]
+    business_terms_version: Literal["2026-07-17"]
+    business_terms_sha256: Literal[
+        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+    ]
+    dpa_version: Literal["2026-07-17"]
+    dpa_sha256: Literal[
+        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+    ]
+
+
+class CompanyOnboardingRequest(CurrentAgreementRequest):
+    org_number: str = Field(pattern=r"^[0-9]{9}$")
+
+
+class CompanyAgreementAcceptanceRequest(CurrentAgreementRequest):
+    company_id: UUID
+
+
+class CompanyOnboardingResponse(CompanyAccessResponseModel):
+    company_id: UUID
+    current_agreement_accepted: Literal[True]
+    replayed: bool
+
+
+class CompanyAgreementAcceptanceResponse(CompanyAccessResponseModel):
+    company_id: UUID
+    current_agreement_accepted: Literal[True]
+    replayed: bool
+
+
+class CompanyRegistryIdentity(CompanyAccessCommandModel):
+    org_number: str = Field(pattern=r"^[0-9]{9}$")
+    name: str = Field(min_length=1)
+    entity_type: str
+    address: str
+    postal_code: str
+    city: str
+    status_text: str
+    source: Literal["brreg"]
+
+
+class CompanyOnboardingGatewayCommand(CompanyAccessCommandModel):
+    operation_id: UUID
+    verified_actor: UUID
+    verified_email: str
+    company: CompanyRegistryIdentity
+    business_terms_version: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_VERSION
+    business_terms_effective_date: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
+    business_terms_path: Literal["/vilkar"] = CURRENT_BUSINESS_TERMS_PATH
+    business_terms_sha256: Literal[
+        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+    ] = CURRENT_BUSINESS_TERMS_SHA256
+    dpa_version: Literal["2026-07-17"] = CURRENT_DPA_VERSION
+    dpa_effective_date: Literal["2026-07-17"] = CURRENT_DPA_EFFECTIVE_DATE
+    dpa_path: Literal["/databehandleravtale"] = CURRENT_DPA_PATH
+    dpa_sha256: Literal[
+        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+    ] = CURRENT_DPA_SHA256
+    authority_statement_version: Literal["authority-v1"] = CURRENT_AUTHORITY_STATEMENT_VERSION
+    acceptance_method: Literal["in_app_clickwrap"] = CURRENT_ACCEPTANCE_METHOD
+
+
+class CompanyAgreementAcceptanceGatewayCommand(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    verified_actor: UUID
+    verified_email: str
+    business_terms_version: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_VERSION
+    business_terms_effective_date: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
+    business_terms_path: Literal["/vilkar"] = CURRENT_BUSINESS_TERMS_PATH
+    business_terms_sha256: Literal[
+        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+    ] = CURRENT_BUSINESS_TERMS_SHA256
+    dpa_version: Literal["2026-07-17"] = CURRENT_DPA_VERSION
+    dpa_effective_date: Literal["2026-07-17"] = CURRENT_DPA_EFFECTIVE_DATE
+    dpa_path: Literal["/databehandleravtale"] = CURRENT_DPA_PATH
+    dpa_sha256: Literal[
+        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+    ] = CURRENT_DPA_SHA256
+    authority_statement_version: Literal["authority-v1"] = CURRENT_AUTHORITY_STATEMENT_VERSION
+    acceptance_method: Literal["in_app_clickwrap"] = CURRENT_ACCEPTANCE_METHOD
 
 
 InvitationRole = Literal["reviewer", "read_only"]
@@ -369,6 +520,26 @@ class CompanyAccessGateway(Protocol):
 
     async def companies(self, access_token: str, company_ids: list[str]) -> list[Mapping[str, object]]: ...
 
+    async def agreement_acceptances(
+        self, access_token: str, company_ids: list[str]
+    ) -> list[Mapping[str, object]]: ...
+
+    async def support_operator(
+        self, access_token: str, subject: str
+    ) -> Mapping[str, object] | None: ...
+
+    async def search_operator_companies(
+        self, access_token: str, query: str
+    ) -> list[Mapping[str, object]]: ...
+
+    async def onboard_company(
+        self, access_token: str, command: CompanyOnboardingGatewayCommand
+    ) -> Mapping[str, object]: ...
+
+    async def reaccept_agreement(
+        self, access_token: str, command: CompanyAgreementAcceptanceGatewayCommand
+    ) -> Mapping[str, object]: ...
+
     async def invitations(self, access_token: str, company_id: str) -> list[Mapping[str, object]]: ...
 
     async def create_invitation(
@@ -428,14 +599,30 @@ class CompanyAccessGateway(Protocol):
     ) -> Mapping[str, object] | None: ...
 
 
+class CompanyRegistryGateway(Protocol):
+    """Resolve a public Norwegian organization identity without owning support policy."""
+
+    async def lookup_company(self, org_number: str) -> Mapping[str, object]: ...
+
+
 Adapter = TypeVar("Adapter", bound=type)
 
 
-def company_access_adapter(port: type[CompanyAccessGateway]) -> Callable[[Adapter], Adapter]:
+def company_access_adapter(port: type[object]) -> Callable[[Adapter], Adapter]:
     """Register a source-level outbound adapter binding for architecture verification."""
 
     def register(adapter: Adapter) -> Adapter:
-        setattr(adapter, "__talli_port__", port)
+        setattr(adapter, "__talli_port__", port)  # noqa: B010
+        return adapter
+
+    return register
+
+
+def company_registry_adapter(port: type[object]) -> Callable[[Adapter], Adapter]:
+    """Register the public-company-registry adapter used by onboarding."""
+
+    def register(adapter: Adapter) -> Adapter:
+        setattr(adapter, "__talli_port__", port)  # noqa: B010
         return adapter
 
     return register
@@ -457,8 +644,13 @@ def _token_aal(access_token: str) -> Literal["aal1", "aal2"]:
 
 
 class CompanyAccessService:
-    def __init__(self, gateway: CompanyAccessGateway) -> None:
+    def __init__(
+        self,
+        gateway: CompanyAccessGateway,
+        company_registry: CompanyRegistryGateway | None = None,
+    ) -> None:
         self._gateway = gateway
+        self._company_registry = company_registry
 
     async def selected_context(
         self,
@@ -471,13 +663,6 @@ class CompanyAccessService:
         # This operation deliberately has one server-owned policy. A caller may
         # choose a company they own, but may never lower its owner-sensitive
         # scope or AAL2 requirement.
-        if aal != "aal2":
-            raise CompanyAccessError(
-                status=403,
-                code="AAL2_REQUIRED",
-                title="Additional verification required",
-                detail="Additional verification is required for this company context.",
-            )
         memberships = await self._gateway.memberships(access_token, subject)
         roles = {
             str(item["company_id"]): str(item["role"])
@@ -492,13 +677,31 @@ class CompanyAccessService:
                 title="Company context not found",
                 detail="The requested company context was not found.",
             )
+        if not roles:
+            raise CompanyAccessError(
+                status=404,
+                code="COMPANY_CONTEXT_NOT_FOUND",
+                title="Company context not found",
+                detail="The requested company context was not found.",
+            )
+        if aal != "aal2":
+            raise CompanyAccessError(
+                status=403,
+                code="AAL2_REQUIRED",
+                title="Additional verification required",
+                detail="Additional verification is required for this company context.",
+            )
         allowed_ids = [company_id] if company_id else list(roles)
         companies = await self._gateway.companies(access_token, allowed_ids)
+
+        def is_permitted_company(company: Mapping[str, object]) -> bool:
+            persisted_id = company.get("id")
+            return isinstance(persisted_id, (str, UUID)) and str(persisted_id) in roles
+
         permitted_companies = [
             company
             for company in companies
-            if isinstance(company.get("id"), str)
-            and company["id"] in roles
+            if is_permitted_company(company)
         ]
         if not permitted_companies:
             raise CompanyAccessError(
@@ -507,6 +710,16 @@ class CompanyAccessService:
                 title="Company context not found",
                 detail="The requested company context was not found.",
             )
+
+        agreement_rows = await self._gateway.agreement_acceptances(
+            access_token,
+            [str(company["id"]) for company in permitted_companies],
+        )
+        current_agreement_company_ids = {
+            str(row.get("company_id"))
+            for row in agreement_rows
+            if _is_current_agreement(row)
+        }
 
         def context(company: Mapping[str, object]) -> CompanyContext:
             return CompanyContext(
@@ -534,10 +747,150 @@ class CompanyAccessService:
                 role="owner",
                 resource_scope="owner_sensitive",
                 aal="aal2",
+                current_agreement_accepted=str(company["id"]) in current_agreement_company_ids,
             )
 
         contexts = [context(company) for company in permitted_companies]
         return CompanyContextResponse(selected_company=contexts[0], companies=contexts)
+
+    async def company_record(
+        self, access_token: str, *, company_id: str
+    ) -> CompanyAccessRecordResponse:
+        subject = await self._gateway.session_subject(access_token)
+        memberships = await self._gateway.memberships(access_token, subject)
+        membership = next(
+            (
+                row
+                for row in memberships
+                if str(row.get("company_id")) == company_id
+                and row.get("accepted_at") is not None
+                and row.get("role") in {"owner", "reviewer", "read_only"}
+            ),
+            None,
+        )
+        if membership is None:
+            raise _company_access_not_found()
+        companies = await self._gateway.companies(access_token, [company_id])
+        company = next(
+            (row for row in companies if str(row.get("id")) == company_id),
+            None,
+        )
+        if company is None:
+            raise _company_access_not_found()
+        return CompanyAccessRecordResponse(
+            company=_company_access_record(company, role=str(membership["role"]))
+        )
+
+    async def operator_context(self, access_token: str) -> OperatorContextResponse:
+        subject = await self._gateway.session_subject(access_token)
+        operator = await self._gateway.support_operator(access_token, subject)
+        role = (
+            str(operator.get("role"))
+            if operator is not None
+            and operator.get("active") is True
+            and operator.get("role") in {"support", "admin"}
+            else None
+        )
+        if role is None:
+            raise CompanyAccessError(
+                status=403,
+                code="OPERATOR_ACCESS_REQUIRED",
+                title="Operator access required",
+                detail="An active support operator grant is required.",
+            )
+        return OperatorContextResponse(
+            role=cast(Literal["support", "admin"], role), active=True
+        )
+
+    async def search_operator_companies(
+        self, access_token: str, *, query: str
+    ) -> OperatorCompanySearchResponse:
+        normalized = query.strip()
+        if len(normalized) < 2 or len(normalized) > 100:
+            raise CompanyAccessError(
+                status=422,
+                code="REQUEST_VALIDATION_FAILED",
+                title="Request validation failed",
+                detail="The operator search must contain between two and one hundred characters.",
+            )
+        await self.operator_context(access_token)
+        rows = await self._gateway.search_operator_companies(access_token, normalized)
+        return OperatorCompanySearchResponse(
+            companies=[_operator_company_record(row) for row in rows]
+        )
+
+    async def onboard_company(
+        self,
+        access_token: str,
+        command: CompanyOnboardingRequest,
+    ) -> CompanyOnboardingResponse:
+        if self._company_registry is None:
+            raise _company_access_unavailable()
+        identity = await self._gateway.session_identity(access_token)
+        actor, email = _verified_identity(identity)
+        raw_company = await self._company_registry.lookup_company(command.org_number)
+        try:
+            company = CompanyRegistryIdentity.model_validate(raw_company)
+        except ValueError:
+            raise _company_registry_unavailable() from None
+        if company.org_number != command.org_number:
+            raise _company_registry_unavailable()
+        if company.entity_type != "AS":
+            raise CompanyAccessError(
+                status=422,
+                code="UNSUPPORTED_COMPANY",
+                title="Unsupported company",
+                detail="Talli supports Norwegian limited companies (AS) in this onboarding flow.",
+            )
+        operation_id = uuid5(
+            NAMESPACE_URL,
+            f"talli:company-access:onboard:{actor}:{company.org_number}",
+        )
+        row = await self._gateway.onboard_company(
+            access_token,
+            CompanyOnboardingGatewayCommand(
+                operation_id=operation_id,
+                verified_actor=UUID(actor),
+                verified_email=email,
+                company=company,
+            ),
+        )
+        return _onboarding_response(row)
+
+    async def reaccept_agreement(
+        self,
+        access_token: str,
+        command: CompanyAgreementAcceptanceRequest,
+    ) -> CompanyAgreementAcceptanceResponse:
+        identity = await self._gateway.session_identity(access_token)
+        actor, email = _verified_identity(identity)
+        company_id = str(command.company_id)
+        memberships = await self._gateway.memberships(access_token, actor)
+        if not any(
+            str(row.get("company_id")) == company_id
+            and row.get("role") == "owner"
+            and row.get("accepted_at") is not None
+            for row in memberships
+        ):
+            raise _company_access_not_found()
+        operation_id = uuid5(
+            NAMESPACE_URL,
+            (
+                f"talli:company-access:reaccept:{actor}:{company_id}:"
+                f"{CURRENT_BUSINESS_TERMS_SHA256}:{CURRENT_DPA_SHA256}"
+            ),
+        )
+        row = await self._gateway.reaccept_agreement(
+            access_token,
+            CompanyAgreementAcceptanceGatewayCommand(
+                operation_id=operation_id,
+                company_id=command.company_id,
+                verified_actor=UUID(actor),
+                verified_email=email,
+            ),
+        )
+        response = _onboarding_response(row)
+        return CompanyAgreementAcceptanceResponse(**response.model_dump())
 
     async def list_invitations(
         self, access_token: str, *, company_id: str
@@ -661,7 +1014,7 @@ class CompanyAccessService:
             raise _invitation_not_found()
         return InvitationLookup(
             company_name=str(row["company_name"]),
-            role=str(row["role"]),
+            role=cast(InvitationRole, row["role"]),
             expires_at=str(row["expires_at"]),
         )
 
@@ -845,7 +1198,7 @@ class CompanyAccessService:
             raise _company_access_not_found()
         return CompanyDeletionReviewResponse(
             cancellation=self._cancellation(row),
-            review=CompanyDeletionReview(**row["review"]),
+            review=CompanyDeletionReview.model_validate(row["review"]),
         )
 
     async def resume_cancellation(
@@ -911,7 +1264,7 @@ class CompanyAccessService:
             )
         memberships = await self._gateway.memberships(access_token, str(identity["id"]))
         if not any(
-            row.get("company_id") == company_id
+            str(row.get("company_id")) == company_id
             and row.get("role") == "owner"
             and row.get("accepted_at") is not None
             for row in memberships
@@ -923,21 +1276,106 @@ class CompanyAccessService:
         self, access_token: str, company_id: str
     ) -> Mapping[str, object]:
         companies = await self._gateway.companies(access_token, [company_id])
-        if not companies or companies[0].get("id") != company_id:
+        if not companies or str(companies[0].get("id")) != company_id:
             raise _company_access_not_found()
         return companies[0]
 
     @staticmethod
     def _invitation(row: Mapping[str, object]) -> CompanyInvitation:
-        return CompanyInvitation(**row)
+        return CompanyInvitation.model_validate(row)
 
     @staticmethod
     def _membership(row: Mapping[str, object]) -> CompanyMembership:
-        return CompanyMembership(**row)
+        return CompanyMembership.model_validate(row)
 
     @staticmethod
     def _cancellation(row: Mapping[str, object]) -> CompanyCancellation:
-        return CompanyCancellation(**{key: value for key, value in row.items() if key != "review"})
+        return CompanyCancellation.model_validate(
+            {key: value for key, value in row.items() if key != "review"}
+        )
+
+
+def _is_current_agreement(row: Mapping[str, object]) -> bool:
+    return (
+        row.get("business_terms_version") == CURRENT_BUSINESS_TERMS_VERSION
+        and str(row.get("business_terms_effective_date"))
+        == CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
+        and row.get("business_terms_path") == CURRENT_BUSINESS_TERMS_PATH
+        and row.get("business_terms_sha256") == CURRENT_BUSINESS_TERMS_SHA256
+        and row.get("dpa_version") == CURRENT_DPA_VERSION
+        and str(row.get("dpa_effective_date")) == CURRENT_DPA_EFFECTIVE_DATE
+        and row.get("dpa_path") == CURRENT_DPA_PATH
+        and row.get("dpa_sha256") == CURRENT_DPA_SHA256
+        and row.get("authority_statement_version") == CURRENT_AUTHORITY_STATEMENT_VERSION
+        and row.get("acceptance_method") == CURRENT_ACCEPTANCE_METHOD
+    )
+
+
+def _verified_identity(identity: Mapping[str, object]) -> tuple[str, str]:
+    subject = identity.get("id")
+    if not isinstance(subject, str):
+        raise _authentication_required()
+    try:
+        UUID(subject)
+    except ValueError:
+        raise _authentication_required() from None
+    return subject, _identity_email(identity)
+
+
+def _onboarding_response(row: Mapping[str, object]) -> CompanyOnboardingResponse:
+    try:
+        company_id = UUID(str(row["company_id"]))
+    except (KeyError, ValueError):
+        raise _company_access_unavailable() from None
+    if row.get("current_agreement_accepted") is not True or not isinstance(
+        row.get("replayed"), bool
+    ):
+        raise _company_access_unavailable()
+    return CompanyOnboardingResponse(
+        company_id=company_id,
+        current_agreement_accepted=True,
+        replayed=bool(row["replayed"]),
+    )
+
+
+def _company_record_values(row: Mapping[str, object]) -> dict[str, object]:
+    required = (
+        "id",
+        "org_number",
+        "name",
+        "entity_type",
+        "address",
+        "postal_code",
+        "city",
+        "status_text",
+        "source",
+        "created_by",
+        "created_at",
+    )
+    if any(not isinstance(row.get(key), str) for key in required):
+        raise _company_access_unavailable()
+    return {
+        key: row.get(key)
+        for key in (
+            *required,
+            "identity_confirmed_at",
+            "identity_locked_at",
+        )
+    }
+
+
+def _company_access_record(
+    row: Mapping[str, object], *, role: str
+) -> CompanyAccessRecord:
+    if role not in {"owner", "reviewer", "read_only"}:
+        raise _company_access_unavailable()
+    return CompanyAccessRecord.model_validate(
+        {**_company_record_values(row), "role": cast(CompanyAccessRole, role)}
+    )
+
+
+def _operator_company_record(row: Mapping[str, object]) -> OperatorCompanyRecord:
+    return OperatorCompanyRecord.model_validate(_company_record_values(row))
 
 
 def _normalize_email(email: str) -> str:
@@ -975,10 +1413,10 @@ def _required_token_hash(token: str) -> str:
 
 def _is_expired(value: str) -> bool:
     try:
-        expires_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        expires_at = datetime.fromisoformat(value)
     except ValueError:
         return True
-    return expires_at <= datetime.now(timezone.utc)
+    return expires_at <= datetime.now(UTC)
 
 
 def _require_fresh_mfa(access_token: str) -> None:
@@ -987,15 +1425,15 @@ def _require_fresh_mfa(access_token: str) -> None:
         payload += "=" * (-len(payload) % 4)
         claims = json.loads(base64.urlsafe_b64decode(payload))
         entries = claims.get("amr")
-        timestamps = [
-            item.get("timestamp")
+        timestamps: list[float] = [
+            float(item["timestamp"])
             for item in entries
             if isinstance(item, Mapping)
             and item.get("method") in {"totp", "mfa/totp", "mfa/phone", "mfa/webauthn"}
             and isinstance(item.get("timestamp"), (int, float))
         ] if isinstance(entries, list) else []
         newest = max(timestamps) if timestamps else None
-        age = datetime.now(timezone.utc).timestamp() - newest if newest is not None else None
+        age = datetime.now(UTC).timestamp() - newest if newest is not None else None
     except (IndexError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
         age = None
     if _token_aal(access_token) != "aal2" or age is None or age < 0 or age > 15 * 60:
@@ -1035,6 +1473,24 @@ def _company_access_unavailable() -> CompanyAccessError:
     )
 
 
+def _company_registry_unavailable() -> CompanyAccessError:
+    return CompanyAccessError(
+        status=503,
+        code="COMPANY_REGISTRY_UNAVAILABLE",
+        title="Company registry unavailable",
+        detail="The public company registry is temporarily unavailable.",
+    )
+
+
+def _authentication_required() -> CompanyAccessError:
+    return CompanyAccessError(
+        status=401,
+        code="AUTHENTICATION_REQUIRED",
+        title="Authentication required",
+        detail="A valid session is required.",
+    )
+
+
 def _invitation_not_found() -> CompanyAccessError:
     return CompanyAccessError(
         status=404,
@@ -1049,11 +1505,18 @@ __all__ = [
     "AdministerCompanyMembershipRequest",
     "CompanyAccessError",
     "CompanyAccessGateway",
+    "CompanyAccessRecord",
+    "CompanyAccessRecordResponse",
     "CompanyAccessService",
+    "CompanyAgreementAcceptanceGatewayCommand",
+    "CompanyAgreementAcceptanceRequest",
+    "CompanyAgreementAcceptanceResponse",
     "CompanyCancellation",
+    "CompanyCancellationEvidence",
     "CompanyCancellationListResponse",
     "CompanyCancellationResponse",
-    "CompanyCancellationEvidence",
+    "CompanyContext",
+    "CompanyContextResponse",
     "CompanyDeletionReview",
     "CompanyDeletionReviewResponse",
     "CompanyInvitation",
@@ -1063,18 +1526,24 @@ __all__ = [
     "CompanyMembership",
     "CompanyMembershipListResponse",
     "CompanyMembershipResponse",
-    "CompanyContext",
-    "CompanyContextResponse",
+    "CompanyOnboardingGatewayCommand",
+    "CompanyOnboardingRequest",
+    "CompanyOnboardingResponse",
+    "CompanyRegistryGateway",
+    "CompanyRegistryIdentity",
     "CreateCompanyInvitationRequest",
     "FinalizeCompanyDeletionGatewayCommand",
     "FinalizeCompanyDeletionRequest",
     "InvitationLookup",
+    "InvitationRole",
     "InvitationSideEffectCompletion",
     "InvitationSideEffectContinuation",
     "InvitationSideEffectContinuationList",
     "InvitationTokenRequest",
-    "InvitationRole",
     "MembershipState",
+    "OperatorCompanyRecord",
+    "OperatorCompanySearchResponse",
+    "OperatorContextResponse",
     "RequestCompanyCancellationGatewayCommand",
     "RequestCompanyCancellationRequest",
     "ResumeCompanyCancellationGatewayCommand",
@@ -1082,4 +1551,5 @@ __all__ = [
     "ReviewCompanyDeletionGatewayCommand",
     "ReviewCompanyDeletionRequest",
     "company_access_adapter",
+    "company_registry_adapter",
 ]

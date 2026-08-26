@@ -17,6 +17,18 @@
       "routes": ["/api/v1/company-access/context"]
     },
     {
+      "name": "company-access-onboarding-and-support",
+      "purpose": "Runs atomic company onboarding and agreement acceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package.",
+      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "routes": [
+        "/api/v1/company-access/onboarding",
+        "/api/v1/company-access/agreements/reaccept",
+        "/api/v1/company-access/companies/{company_id}",
+        "/api/v1/company-access/operator-context",
+        "/api/v1/company-access/operator-companies"
+      ]
+    },
+    {
       "name": "company-access-administration",
       "purpose": "Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
@@ -46,7 +58,7 @@
   "technicalOwnership": {
     "schemas": ["public"],
     "tables": ["public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql"],
     "statement": "These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {
@@ -67,12 +79,18 @@
       "port": "CompanyAccessGateway",
       "adapter": "talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter",
       "owner": "backend-system",
-      "mode": "injected Supabase Auth and PostgREST adapter"
+      "mode": "injected Supabase Auth and restricted Postgres adapter"
+    },
+    {
+      "port": "CompanyRegistryGateway",
+      "adapter": "talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter",
+      "owner": "backend-system",
+      "mode": "injected bounded HTTPS public-registry adapter"
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.supabase_company_access", "talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
+    "transport": ["__future__", "re", "collections", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_company_access", "talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi"],
     "workflows": ["talli_backend.modules.company_access.public", "talli_backend.modules.system_boundary.public"],
-    "adapters": ["__future__", "asyncio", "collections.abc", "dataclasses", "ipaddress", "json", "os", "talli_backend.modules.company_access.public", "urllib.error", "urllib.parse", "urllib.request"]
+    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.modules.company_access.public", "urllib.error", "urllib.parse", "urllib.request"]
   }
 }

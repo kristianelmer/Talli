@@ -40,6 +40,7 @@ test("production route import defers canonical origin validation until a callbac
 
 function callbackFixture(options = {}) {
   const queries = [];
+  const companyLoads = [];
   const deletions = [];
   const reconciliations = [];
   const requestRow = options.requestRow === undefined
@@ -57,7 +58,7 @@ function callbackFixture(options = {}) {
       }
     : options.requestRow;
   const companyRow = options.companyRow === undefined
-    ? { id: companyId, org_number: "310279617" }
+    ? { id: companyId, org_number: "310279617", role: "owner" }
     : options.companyRow;
 
   const supabase = {
@@ -78,7 +79,7 @@ function callbackFixture(options = {}) {
           return builder;
         },
         async maybeSingle() {
-          return { data: table === "system_user_requests" ? requestRow : companyRow, error: null };
+          return { data: requestRow, error: null };
         },
       };
       return builder;
@@ -101,6 +102,10 @@ function callbackFixture(options = {}) {
         },
       };
     },
+    async loadCompany(candidateCompanyId) {
+      companyLoads.push(candidateCompanyId);
+      return companyRow;
+    },
     async reconcileRequest(input) {
       reconciliations.push(input);
       if (options.reconcileError) throw new Error("raw authority error with PII");
@@ -115,7 +120,7 @@ function callbackFixture(options = {}) {
     },
   });
 
-  return { handler, queries, deletions, reconciliations };
+  return { handler, queries, companyLoads, deletions, reconciliations };
 }
 
 test("callback redirects use only the fixed Talli origin, with localhost limited to non-production", () => {
@@ -135,7 +140,7 @@ test("callback redirects use only the fixed Talli origin, with localhost limited
   }
 });
 
-test("callback ignores every query parameter and uses only authenticated user, cookie UUID, and owner RLS", async () => {
+test("callback ignores every query parameter and uses only authenticated user, cookie UUID, and company-access authorization", async () => {
   const fixture = callbackFixture();
 
   const response = await fixture.handler(new Request(
@@ -148,6 +153,8 @@ test("callback ignores every query parameter and uses only authenticated user, c
     ["id", requestId],
     ["initiating_owner_user_id", ownerId],
   ]);
+  assert.deepEqual(fixture.queries.map(({ table }) => table), ["system_user_requests"]);
+  assert.deepEqual(fixture.companyLoads, [companyId]);
   assert.equal(fixture.reconciliations.length, 1);
   assert.equal(fixture.reconciliations[0].request.id, requestId);
   assert.equal(fixture.reconciliations[0].orgNumber, "310279617");
@@ -175,6 +182,7 @@ test("invalid cookie, missing user, stale request, and cross-owner request all f
       requestRow: { id: requestId, initiating_owner_user_id: ownerId },
       user: { id: "92345678-1234-4234-8234-123456789abc" },
     },
+    { companyRow: { id: companyId, org_number: "310279617", role: "reviewer" } },
   ]) {
     const fixture = callbackFixture(options);
     const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm?company=secret"));

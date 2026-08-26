@@ -7,7 +7,6 @@ const workspace = readFileSync(new URL("../apps/web/app/(owner)/workspace/page.t
 const companyLookup = readFileSync(new URL("../apps/web/app/(owner)/onboarding/CompanyLookupForm.tsx", import.meta.url), "utf8");
 const agreementFields = readFileSync(new URL("../apps/web/app/components/CustomerAgreementAcceptanceFields.tsx", import.meta.url), "utf8");
 const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
-const onboarding = readFileSync(new URL("../apps/web/app/lib/customer-onboarding.ts", import.meta.url), "utf8");
 const createWorkspaceAction = actions.match(
   /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/iu,
 )?.[0] ?? "";
@@ -18,31 +17,18 @@ const companyLookupForm = companyLookup.match(
   /<form[^>]+action=\{createWorkspace\}[\s\S]+?<\/form>/iu,
 )?.[0] ?? "";
 
-test("company creation requires current explicit company assent", () => {
-  assert.match(createWorkspaceAction, /onboardCustomer/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "agreementAccepted"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "businessTermsVersion"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "businessTermsSha256"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "dpaVersion"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "dpaSha256"\)/iu);
-  assert.match(createWorkspaceAction, /createSupabaseServiceRoleClient\(\)/iu);
-  assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance"/iu);
-  assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance",\s*payload\)/iu);
-  assert.doesNotMatch(createWorkspaceAction, /supabase\.rpc\("create_company_workspace_with_acceptance"/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("companies"\)\s*\.insert/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("company_memberships"\)\s*\.insert/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("audit_events"\)\s*\.insert/iu);
-  assert.match(createWorkspaceAction, /if \(!result\.ok\) \{\s*failTo\(returnTo, result\.message\);?\s*\}/iu);
+test("company creation validates current explicit assent before the authenticated company-access command", () => {
+  assert.match(createWorkspaceAction, /getCurrentSessionAccessToken\(\)/iu);
+  assert.match(createWorkspaceAction, /currentAgreementCommand\(formData, returnTo\)/iu);
+  assert.match(createWorkspaceAction, /formString\(formData, "orgNumber"\)/iu);
+  assert.match(createWorkspaceAction, /await onboardCompanyThroughApi\(accessToken, \{/iu);
+  assert.match(createWorkspaceAction, /companyAccessActionErrorMessage\(error\)/iu);
+  assert.doesNotMatch(createWorkspaceAction, /createSupabaseServiceRoleClient|\.rpc\(|\.from\(/iu);
 });
 
-test("the Server Action owns the server-only atomic RPC dependency", () => {
-  assert.match(createWorkspaceAction, /getAuthenticatedUser:\s*async/iu);
-  assert.match(createWorkspaceAction, /lookupCompanyIdentity:\s*fetchBrregEntity/iu);
-  assert.match(createWorkspaceAction, /assertSupportedCompanyIdentity:\s*assertSupportedBrregIdentity/iu);
-  assert.match(createWorkspaceAction, /createCompanyWorkspace:\s*async\s*\(payload\)/iu);
-  assert.match(createWorkspaceAction, /const serviceRoleClient = createSupabaseServiceRoleClient\(\)/iu);
-  assert.doesNotMatch(createWorkspaceAction, /SUPABASE_SERVICE_ROLE_KEY/iu);
-  assert.doesNotMatch(onboarding, /createSupabaseServiceRoleClient|SUPABASE_SERVICE_ROLE_KEY|\.rpc\(/iu);
+test("the Server Action contains no retired onboarding facade or business-persistence adapter", () => {
+  assert.doesNotMatch(actions, /\.\/lib\/(?:brreg|customer-onboarding)/iu);
+  assert.doesNotMatch(createWorkspaceAction, /SUPABASE_SERVICE_ROLE_KEY|create_company_workspace_with_acceptance/iu);
 });
 
 test("workspace creation shows an unchecked authority and agreement control", () => {

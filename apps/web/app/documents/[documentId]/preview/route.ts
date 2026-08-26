@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { COMPANY_DOCUMENTS_BUCKET } from "../../../lib/documents";
+import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
@@ -15,15 +16,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     .eq("id", documentId)
     .maybeSingle();
   if (documentError || !document) return new Response("Dokumentet finnes ikke", { status: 404 });
-  const membership = await supabase
-    .from("company_memberships")
-    .select("company_id")
-    .eq("company_id", document.company_id)
-    .eq("user_id", user.id)
-    .eq("role", "owner")
-    .not("accepted_at", "is", null)
-    .maybeSingle();
-  if (membership.error || !membership.data) return new Response("Ingen tilgang", { status: 403 });
+  const company = await loadAcceptedMembershipCompany(document.company_id);
+  if (!company || company.role !== "owner") return new Response("Ingen tilgang", { status: 403 });
   const artifact = await supabase
     .from("corporate_document_artifacts")
     .select("document_id, content_sha256, byte_length, mime_type, storage_key")

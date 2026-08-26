@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { buildPersistedCompanyArchive, firstArchiveSourceError } from "../../../../lib/archive";
+import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { requireStepUpForAction } from "../../../../lib/security";
 import {
   createSupabaseServerClient,
@@ -43,12 +44,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke starte autoritativ arkiveksport", { status: 500 });
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
+  const company = await loadAcceptedMembershipCompany(companyId);
+  if (!company) {
     return new Response("Fant ikke arkivet", { status: 404 });
   }
 

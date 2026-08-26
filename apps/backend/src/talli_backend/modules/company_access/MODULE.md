@@ -1,38 +1,43 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_invitations","public.company_memberships"],"ports":["CompanyAccessGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_invitations","public.company_memberships","public.customer_agreement_acceptances","public.support_operators"],"ports":["CompanyAccessGateway","CompanyRegistryGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
 
-`company_access` owns authenticated company context, company invitations,
-reviewer/read-only membership administration, and the cancellation-to-deletion
-lifecycle. It independently validates the Supabase session, preserves that
-bearer's RLS scope, and owns fresh-AAL2 owner and deletion-review policy,
-recipient binding, expiry, supported roles, atomic transitions, and concealment.
+`company_access` owns authenticated company onboarding, frozen agreement
+acceptance and freshness, accepted-member company records, active operator
+context and bounded operator search, company invitations, reviewer/read-only
+membership administration, and the cancellation-to-deletion lifecycle. It
+independently validates the Supabase session and matching bearer subject before
+installing a transaction-local actor context for restricted RLS execution.
 
 ## Owns and must not own
 
 It owns `public.companies`, `public.company_cancellations`,
-`public.company_deletion_reviews`, `public.company_invitations`, and
-`public.company_memberships`, with the latest ownership migration declared as
-`20260808120000_company_access_cancellation_lifecycle.sql`. The backend system owns
-`public.company_access_command_receipts` as technical idempotency state. It must not own onboarding,
-agreement acceptance, physical business-data deletion, or general support-operator workflows.
+`public.company_deletion_reviews`, `public.company_invitations`,
+`public.company_memberships`, `public.customer_agreement_acceptances`, and
+`public.support_operators`, with the latest ownership migration declared as
+`20260826100000_company_access_onboarding.sql`. The backend system owns
+`public.company_access_command_receipts` as technical idempotency state. It must
+not own expanded eligibility beyond the behavior-preserving Norwegian-AS rule,
+physical business-data deletion, or unrestricted general operator workflows.
 It must not use service-role access or bypass RLS for ordinary business calls.
 
 ## Public interface
 
 Import only `talli_backend.modules.company_access.public`.
 
-- Queries: company context, invitation/cancellation listing, membership listing,
-  and actor-derived pending side-effect continuations
-- Commands: invite, accept, revoke, resend, reviewer/read-only membership
+- Queries: owner-sensitive context, accepted-member company records, active
+  operator context and bounded search, invitation/cancellation listing,
+  membership listing, and actor-derived pending side-effect continuations
+- Commands: atomic onboarding with current agreement evidence, owner agreement
+  reacceptance, invite, accept, revoke, resend, reviewer/read-only membership
   transitions, owner cancellation request/resume, independent deletion review,
   and owner finalization
 - Error: `CompanyAccessError`
-- Port: `CompanyAccessGateway`
+- Ports: `CompanyAccessGateway` and `CompanyRegistryGateway`
 
 Business request contracts are immutable, reject undeclared fields, and live in
 this public entry point rather than the composition root. The public names include
@@ -46,6 +51,14 @@ this public entry point rather than the composition root. The public names inclu
 `InvitationSideEffectContinuationList`, `InvitationSideEffectCompletion`, and
 `company_access_adapter`.
 
+Onboarding and the backend-only company read boundary add
+`CompanyOnboardingRequest`, `CompanyOnboardingResponse`,
+`CompanyAgreementAcceptanceRequest`, `CompanyAgreementAcceptanceResponse`,
+`CompanyAccessRecord`, `CompanyAccessRecordResponse`,
+`OperatorContextResponse`, `OperatorCompanyRecord`,
+`OperatorCompanySearchResponse`, `CompanyRegistryGateway`, and
+`company_registry_adapter`.
+
 Cancellation contracts add `CompanyCancellation`, `CompanyCancellationListResponse`,
 `CompanyDeletionReview`, `RequestCompanyCancellationRequest`,
 `ResumeCompanyCancellationRequest`, `ReviewCompanyDeletionRequest`, and
@@ -54,8 +67,12 @@ responses continue to decode legacy `export_required` rows; new requests never
 create that state. Resume advances the exact revision-bound legacy row only after
 a current authoritative archive receipt exists.
 
-The system boundary injects `SupabaseCompanyAccessAdapter`; capability policy
-never constructs Supabase or HTTP infrastructure. Owner context and administration
+The system boundary injects `SupabaseCompanyAccessAdapter` and the bounded
+`BrregCompanyRegistryAdapter`; capability policy never constructs Supabase,
+PostgreSQL, or HTTP infrastructure. Production registry lookup is restricted to
+the official HTTPS host; only loopback HTTP fixtures are accepted. Redirects,
+oversized/non-JSON responses, malformed registry identities, and provider
+failure fail closed before a business write. Owner context and administration
 require accepted owner membership and AAL2. Invitation lookup and acceptance bind
 the validated subject and normalized Auth email to a pending, unexpired token hash.
 Acceptance and every role/removal transition execute in one database transaction
@@ -105,11 +122,23 @@ column; receipt JSON contains only token-independent delivery metadata. Atomic
 completion builds delivery from that committed metadata and token, inserts the
 outbox row, and clears/scrubs the receipt in one transaction. Acceptance,
 revocation, newer resend, and expiry recovery apply the same receipt scrub.
-Authenticated Data API roles have no receipt-table grant. #160 adds no
+After the staged `20260826101000` contract is applied, authenticated Data API,
+anonymous, and service roles have no direct grant on any company-access business
+table or RPC. The backend still validates `/auth/v1/user`, but every business
+read and write uses the NOLOGIN/NOINHERIT/NOBYPASSRLS executor with
+`talli.verified_actor_id` and bounded claims set transaction-locally. Missing or
+mismatched bearer subjects fail closed. Authenticated Data API roles have no receipt-table grant. #160 adds no
 clock-driven purge. An expired token is never returned, and a pending-side-effect
 recovery read clears it. Until recovery or another clearing command touches the
 receipt, the expired token can remain stored at rest. Retention/delivery migration
 remains #156. This is delivery-secret persistence, never token-hash disclosure.
+
+Runtime configuration requires `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and a
+restricted backend connection in `TALLI_COMPANY_ACCESS_DATABASE_URL` whose login
+role may `SET ROLE company_access_executor` (and the separately bounded recovery
+executor). `BRREG_BASE_URL` defaults to `https://data.brreg.no`; a custom value is
+accepted only when it is that provider or a loopback fixture. Optional
+`BRREG_TIMEOUT_SECONDS` is bounded above by ten seconds.
 
 Cancellation requests, legacy resume, and finalization require an accepted owner with an AAL2
 authentication method no older than fifteen minutes. Independent approval or

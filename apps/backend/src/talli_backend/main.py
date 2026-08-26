@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
-from typing import Literal
+from typing import Any, Literal, TypeVar, cast
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response
@@ -13,28 +13,37 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.modules.company_access.public import (
     AcceptCompanyInvitationRequest,
     AdministerCompanyMembershipRequest,
     CompanyAccessError,
     CompanyAccessGateway,
+    CompanyAccessRecordResponse,
     CompanyAccessService,
+    CompanyAgreementAcceptanceRequest,
+    CompanyAgreementAcceptanceResponse,
     CompanyCancellationListResponse,
     CompanyCancellationResponse,
+    CompanyContextResponse,
     CompanyDeletionReviewResponse,
-    CompanyInvitationListResponse,
     CompanyInvitationCommandRequest,
+    CompanyInvitationListResponse,
     CompanyInvitationResponse,
     CompanyMembershipListResponse,
     CompanyMembershipResponse,
-    CompanyContextResponse,
+    CompanyOnboardingRequest,
+    CompanyOnboardingResponse,
+    CompanyRegistryGateway,
     CreateCompanyInvitationRequest,
     FinalizeCompanyDeletionRequest,
     InvitationLookup,
     InvitationSideEffectCompletion,
     InvitationSideEffectContinuationList,
     InvitationTokenRequest,
+    OperatorCompanySearchResponse,
+    OperatorContextResponse,
     RequestCompanyCancellationRequest,
     ResumeCompanyCancellationRequest,
     ReviewCompanyDeletionRequest,
@@ -60,6 +69,8 @@ REQUEST_ID_PARAMETER = {
     "schema": {"type": "string"},
 }
 BEARER_AUTH = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
+BEARER_DEPENDENCY = Depends(BEARER_AUTH)
+ResponseT = TypeVar("ResponseT")
 
 
 def _to_camel(value: str) -> str:
@@ -139,7 +150,10 @@ def _problem_response(
 
 
 @adapter_for(SystemBoundaryTransport)
-def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> FastAPI:
+def create_app(
+    company_access_gateway: CompanyAccessGateway | None = None,
+    company_registry_gateway: CompanyRegistryGateway | None = None,
+) -> FastAPI:
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -154,7 +168,10 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         if company_access_gateway is not None
         else SupabaseCompanyAccessAdapter.from_environment()
     )
-    company_access_service = CompanyAccessService(gateway)
+    company_access_service = CompanyAccessService(
+        gateway,
+        company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
+    )
 
     def bearer_token(
         credentials: HTTPAuthorizationCredentials | None,
@@ -168,7 +185,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
             )
         return credentials.credentials
 
-    async def company_access_call(call: Awaitable[object]) -> object:
+    async def company_access_call(call: Awaitable[ResponseT]) -> ResponseT:
         try:
             return await call
         except CompanyAccessError as error:
@@ -275,7 +292,9 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         "/api/v1/company-access/context",
         operation_id="companyAccessGetSelectedContext",
         response_model=CompanyContextResponse,
-        responses=(
+        responses=cast(
+            dict[int | str, dict[str, Any]],
+            (
             {
                 200: {
                     "description": "Selected company context.",
@@ -294,12 +313,13 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
                 }
                 for status in (401, 403, 404, 422, 503)
             }
+            ),
         ),
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def get_selected_company_context(
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
         company_id: str | None = None,
     ) -> CompanyContextResponse:
         return await company_access_call(
@@ -309,7 +329,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
             )
         )
 
-    company_access_errors = {
+    company_access_errors: Any = {
         status: {
             "description": "Company access request failed.",
             "headers": {"X-Request-ID": REQUEST_ID_HEADER},
@@ -321,7 +341,106 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         }
         for status in (401, 403, 404, 409, 422, 503)
     }
-    company_access_success = {"headers": {"X-Request-ID": REQUEST_ID_HEADER}}
+    company_access_success: dict[str, Any] = {
+        "headers": {"X-Request-ID": REQUEST_ID_HEADER}
+    }
+
+    @application.post(
+        "/api/v1/company-access/onboarding",
+        operation_id="companyAccessOnboardCompany",
+        response_model=CompanyOnboardingResponse,
+        status_code=201,
+        responses={
+            201: {"description": "Company and current agreement evidence created atomically."}
+            | company_access_success
+        }
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def onboard_company(
+        command: CompanyOnboardingRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyOnboardingResponse:
+        return await company_access_call(
+            company_access_service.onboard_company(bearer_token(credentials), command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/agreements/reaccept",
+        operation_id="companyAccessReacceptAgreement",
+        response_model=CompanyAgreementAcceptanceResponse,
+        responses={
+            200: {"description": "Current agreement evidence accepted."}
+            | company_access_success
+        }
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def reaccept_company_agreement(
+        command: CompanyAgreementAcceptanceRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyAgreementAcceptanceResponse:
+        return await company_access_call(
+            company_access_service.reaccept_agreement(
+                bearer_token(credentials), command
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/companies/{company_id}",
+        operation_id="companyAccessGetCompanyRecord",
+        response_model=CompanyAccessRecordResponse,
+        responses={200: {"description": "Accepted-member company record."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_company_access_record(
+        company_id: str,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyAccessRecordResponse:
+        return await company_access_call(
+            company_access_service.company_record(
+                bearer_token(credentials), company_id=company_id
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/operator-context",
+        operation_id="companyAccessGetOperatorContext",
+        response_model=OperatorContextResponse,
+        responses={200: {"description": "Active operator context."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_company_access_operator_context(
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> OperatorContextResponse:
+        return await company_access_call(
+            company_access_service.operator_context(bearer_token(credentials))
+        )
+
+    @application.get(
+        "/api/v1/company-access/operator-companies",
+        operation_id="companyAccessSearchOperatorCompanies",
+        response_model=OperatorCompanySearchResponse,
+        responses={200: {"description": "Bounded operator company search."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def search_company_access_operator_companies(
+        query: str,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> OperatorCompanySearchResponse:
+        return await company_access_call(
+            company_access_service.search_operator_companies(
+                bearer_token(credentials), query=query
+            )
+        )
 
     @application.get(
         "/api/v1/company-access/invitations",
@@ -333,7 +452,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def list_company_invitations(
         company_id: str,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyInvitationListResponse:
         return await company_access_call(
             company_access_service.list_invitations(
@@ -352,7 +471,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def create_company_invitation(
         command: CreateCompanyInvitationRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyInvitationResponse:
         return await company_access_call(
             company_access_service.invite(bearer_token(credentials), command)
@@ -368,7 +487,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def lookup_company_invitation(
         command: InvitationTokenRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvitationLookup:
         return await company_access_call(
             company_access_service.lookup_invitation(
@@ -386,7 +505,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def accept_company_invitation(
         command: AcceptCompanyInvitationRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyMembershipResponse:
         return await company_access_call(
             company_access_service.accept_invitation(bearer_token(credentials), command)
@@ -403,7 +522,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def revoke_company_invitation(
         invitation_id: UUID,
         command: CompanyInvitationCommandRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyInvitationResponse:
         return await company_access_call(
             company_access_service.revoke_invitation(
@@ -424,7 +543,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def resend_company_invitation(
         invitation_id: UUID,
         command: CompanyInvitationCommandRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyInvitationResponse:
         return await company_access_call(
             company_access_service.resend_invitation(
@@ -443,7 +562,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def list_pending_invitation_side_effects(
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvitationSideEffectContinuationList:
         return await company_access_call(
             company_access_service.pending_invitation_side_effects(
@@ -461,7 +580,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def complete_invitation_side_effect(
         operation_id: UUID,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvitationSideEffectCompletion:
         return await company_access_call(
             company_access_service.complete_invitation_side_effect(
@@ -479,7 +598,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def list_company_memberships(
         company_id: str,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyMembershipListResponse:
         return await company_access_call(
             company_access_service.list_memberships(
@@ -498,7 +617,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def administer_company_membership(
         user_id: UUID,
         command: AdministerCompanyMembershipRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyMembershipResponse:
         return await company_access_call(
             company_access_service.administer_membership(
@@ -518,7 +637,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def list_company_cancellations(
         company_id: UUID,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyCancellationListResponse:
         return await company_access_call(
             company_access_service.list_cancellations(
@@ -537,7 +656,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     )
     async def request_company_cancellation(
         command: RequestCompanyCancellationRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyCancellationResponse:
         return await company_access_call(
             company_access_service.request_cancellation(bearer_token(credentials), command)
@@ -554,7 +673,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def review_company_deletion(
         cancellation_id: UUID,
         command: ReviewCompanyDeletionRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyDeletionReviewResponse:
         return await company_access_call(
             company_access_service.review_deletion(
@@ -573,7 +692,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def resume_company_cancellation(
         cancellation_id: UUID,
         command: ResumeCompanyCancellationRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyCancellationResponse:
         return await company_access_call(
             company_access_service.resume_cancellation(
@@ -592,7 +711,7 @@ def create_app(company_access_gateway: CompanyAccessGateway | None = None) -> Fa
     async def finalize_company_deletion(
         cancellation_id: UUID,
         command: FinalizeCompanyDeletionRequest,
-        credentials: HTTPAuthorizationCredentials | None = Depends(BEARER_AUTH),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyCancellationResponse:
         return await company_access_call(
             company_access_service.finalize_deletion(

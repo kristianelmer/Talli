@@ -41,43 +41,41 @@ export function assertCanonicalAgreementContent(
   return actualSha256;
 }
 
-function contractDocument(
-  kind: "business_terms" | "dpa",
+function contractDocument<
+  const Kind extends "business_terms" | "dpa",
+  const Version extends string,
+  const ContentSha256 extends string,
+>(
+  kind: Kind,
   path: "/vilkar" | "/databehandleravtale",
   content: ContractContent,
+  metadata: {
+    version: Version;
+    effectiveDate: string;
+    contentSha256: ContentSha256;
+  },
 ) {
-  const metadata = currentAgreementMetadata[kind];
-  const contentSha256 = assertCanonicalAgreementContent(kind, content, metadata.contentSha256);
+  assertCanonicalAgreementContent(kind, content, metadata.contentSha256);
   return {
     kind,
     version: metadata.version,
     effectiveDate: metadata.effectiveDate,
     path,
-    contentSha256,
+    contentSha256: metadata.contentSha256,
   } as const;
 }
 
 export const currentCustomerAgreements = {
-  businessTerms: contractDocument("business_terms", "/vilkar", ownerCopy.legal.terms),
-  dpa: contractDocument("dpa", "/databehandleravtale", ownerCopy.legal.dpa),
+  businessTerms: contractDocument(
+    "business_terms",
+    "/vilkar",
+    ownerCopy.legal.terms,
+    currentAgreementMetadata.business_terms,
+  ),
+  dpa: contractDocument(
+    "dpa",
+    "/databehandleravtale",
+    ownerCopy.legal.dpa,
+    currentAgreementMetadata.dpa,
+  ),
 } as const;
-
-export function assertCurrentCustomerAgreementForm(input: {
-  agreementAccepted: string;
-  businessTermsVersion: string;
-  businessTermsSha256: string;
-  dpaVersion: string;
-  dpaSha256: string;
-}) {
-  if (input.agreementAccepted !== "accepted") {
-    throw new Error("Du må bekrefte fullmakt og godta avtalevilkårene.");
-  }
-  if (
-    input.businessTermsVersion !== currentCustomerAgreements.businessTerms.version ||
-    input.businessTermsSha256 !== currentCustomerAgreements.businessTerms.contentSha256 ||
-    input.dpaVersion !== currentCustomerAgreements.dpa.version ||
-    input.dpaSha256 !== currentCustomerAgreements.dpa.contentSha256
-  ) {
-    throw new Error("Avtalevilkårene er oppdatert. Les dem og bekreft på nytt.");
-  }
-}

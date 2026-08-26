@@ -19,15 +19,13 @@ import {
   productionBillingGate,
   simulateBillingProviderEvent,
 } from "./lib/billing";
-import { assertSupportedBrregIdentity, fetchBrregEntity } from "./lib/brreg";
-import { onboardCustomer } from "./lib/customer-onboarding";
-import { reacceptCustomerAgreement } from "./lib/customer-agreement-reacceptance";
 import { getSiteUrl } from "./lib/site-url";
 import {
   clearPendingCancellationOperation,
   preservePendingCancellationOperation,
 } from "./lib/cancellation-operation-state";
 import { pendingCancellationOperationForError } from "./lib/cancellation-operation-policy";
+import { currentCustomerAgreements } from "./lib/customer-agreements";
 import { sanitizeInternalRedirect } from "./lib/internal-redirect";
 import {
   buildAnnualAccountsAuthorityTestRunFromEvidence,
@@ -94,10 +92,13 @@ import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/f
 import {
   acceptCompanyInvitation,
   administerCompanyMembership,
+  companyAccessActionErrorMessage,
   finalizeCompanyDeletion as finalizeCompanyDeletionThroughApi,
   completeInvitationSideEffect,
   createCompanyInvitation,
   listPendingInvitationSideEffects,
+  onboardCompanyThroughApi,
+  reacceptCompanyAgreementThroughApi,
   resendCompanyInvitation,
   requestCompanyCancellation as requestCompanyCancellationThroughApi,
   resumeCompanyCancellation as resumeCompanyCancellationThroughApi,
@@ -107,6 +108,10 @@ import {
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
 import { getCurrentSessionAccessToken } from "./lib/supabase/auth-session";
+import {
+  loadAcceptedMembershipCompany,
+  loadAuthorizedSupportOperator,
+} from "./lib/company-access-context";
 import {
   createCompanyAccessActionWorkflow,
   InvitationContinuationPendingError,
@@ -216,6 +221,27 @@ function formRawString(formData: FormData, key: string) {
 
 function formStrings(formData: FormData, key: string) {
   return formData.getAll(key).map((value) => typeof value === "string" ? value.trim() : "");
+}
+
+function currentAgreementCommand(formData: FormData, returnTo: string) {
+  if (formString(formData, "agreementAccepted") !== "accepted") {
+    failTo(returnTo, "Du må bekrefte fullmakt og godta avtalevilkårene.");
+  }
+  if (
+    formString(formData, "businessTermsVersion") !== currentCustomerAgreements.businessTerms.version
+    || formString(formData, "businessTermsSha256") !== currentCustomerAgreements.businessTerms.contentSha256
+    || formString(formData, "dpaVersion") !== currentCustomerAgreements.dpa.version
+    || formString(formData, "dpaSha256") !== currentCustomerAgreements.dpa.contentSha256
+  ) {
+    failTo(returnTo, "Avtalevilkårene er oppdatert. Les dem og bekreft på nytt.");
+  }
+  return {
+    agreementAccepted: true,
+    businessTermsVersion: currentCustomerAgreements.businessTerms.version,
+    businessTermsSha256: currentCustomerAgreements.businessTerms.contentSha256,
+    dpaVersion: currentCustomerAgreements.dpa.version,
+    dpaSha256: currentCustomerAgreements.dpa.contentSha256,
+  } as const;
 }
 
 function requiredFormUuid(formData: FormData, key: string) {
@@ -541,15 +567,8 @@ async function loadCorporateLifecycleActionContext(input: {
     throw new Error(decisionResult.error?.message ?? setResult.error?.message ?? "Fant ikke selskapsbeslutningen.");
   }
 
-  const membershipResult = await input.supabase
-    .from("company_memberships")
-    .select("company_id")
-    .eq("company_id", decision.company_id)
-    .eq("user_id", input.userId)
-    .eq("role", "owner")
-    .not("accepted_at", "is", null)
-    .maybeSingle();
-  if (membershipResult.error || !membershipResult.data) {
+  const company = await loadAcceptedMembershipCompany(decision.company_id);
+  if (!company || company.role !== "owner") {
     throw new Error("Bare en eier med akseptert tilgang kan behandle selskapsbeslutningen.");
   }
 
@@ -698,38 +717,26 @@ export async function createWorkspace(formData: FormData) {
   if (!hasSupabaseEnv()) {
     failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
-  const supabase = await createSupabaseServerClient();
-  const result = await onboardCustomer(
-    {
-      agreementAccepted: formString(formData, "agreementAccepted"),
-      businessTermsVersion: formString(formData, "businessTermsVersion"),
-      businessTermsSha256: formString(formData, "businessTermsSha256"),
-      dpaVersion: formString(formData, "dpaVersion"),
-      dpaSha256: formString(formData, "dpaSha256"),
-      orgNumber: formString(formData, "orgNumber"),
-    },
-    {
-      getAuthenticatedUser: async () => {
-        const { data, error } = await supabase.auth.getUser();
-        return error ? null : data.user;
-      },
-      lookupCompanyIdentity: fetchBrregEntity,
-      assertSupportedCompanyIdentity: assertSupportedBrregIdentity,
-      createCompanyWorkspace: async (payload) => {
-        const serviceRoleClient = createSupabaseServiceRoleClient();
-        const { error } = await serviceRoleClient.rpc("create_company_workspace_with_acceptance", payload);
-        if (error) {
-          throw new Error(error.message);
-        }
-      },
-    },
-  );
-  if (!result.ok) {
-    failTo(returnTo, result.message);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
+  const agreement = currentAgreementCommand(formData, returnTo);
+  const orgNumber = formString(formData, "orgNumber");
+  if (!/^\d{9}$/.test(orgNumber)) {
+    failTo(returnTo, "Organisasjonsnummer må ha 9 sifre.");
+  }
+  try {
+    await onboardCompanyThroughApi(accessToken, {
+      orgNumber,
+      ...agreement,
+    });
+  } catch (error) {
+    failTo(returnTo, companyAccessActionErrorMessage(error));
   }
 
   revalidatePath("/");
-  redirect(returnTo);
+  redirect("/mfa?next=%2Fonboarding");
 }
 
 export async function reacceptCompanyAgreement(formData: FormData) {
@@ -737,30 +744,22 @@ export async function reacceptCompanyAgreement(formData: FormData) {
   if (!hasSupabaseEnv()) {
     failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
-  const supabase = await createSupabaseServerClient();
-  const result = await reacceptCustomerAgreement(
-    {
-      companyId: formString(formData, "companyId"),
-      agreementAccepted: formString(formData, "agreementAccepted"),
-      businessTermsVersion: formString(formData, "businessTermsVersion"),
-      businessTermsSha256: formString(formData, "businessTermsSha256"),
-      dpaVersion: formString(formData, "dpaVersion"),
-      dpaSha256: formString(formData, "dpaSha256"),
-    },
-    {
-      getAuthenticatedUser: async () => {
-        const { data, error } = await supabase.auth.getUser();
-        return error ? null : data.user;
-      },
-      appendAcceptance: async (payload) => {
-        const serviceRoleClient = createSupabaseServiceRoleClient();
-        const { error } = await serviceRoleClient.rpc("append_company_agreement_acceptance", payload);
-        if (error) throw new Error(error.message);
-      },
-    },
-  );
-  if (!result.ok) {
-    failTo(returnTo, result.message);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
+  const agreement = currentAgreementCommand(formData, returnTo);
+  const companyId = formString(formData, "companyId");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(companyId)) {
+    failTo(returnTo, "Ugyldig selskap.");
+  }
+  try {
+    await reacceptCompanyAgreementThroughApi(accessToken, {
+      companyId,
+      ...agreement,
+    });
+  } catch (error) {
+    failTo(returnTo, companyAccessActionErrorMessage(error));
   }
   revalidatePath("/", "layout");
   redirect(returnTo);
@@ -1045,15 +1044,9 @@ export async function queueDeadlineReminders(formData: FormData) {
     leadDays: selectedLeadDays,
   }));
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("company_memberships")
-    .select("company_id")
-    .eq("company_id", companyId)
-    .eq("user_id", user.id)
-    .eq("role", "owner")
-    .maybeSingle();
-  if (membershipError || !membership) {
-    redirect(`/workspace?error=${encodeURIComponent(membershipError?.message ?? "Kun eier kan køe fristvarsler")}`);
+  const company = await loadAcceptedMembershipCompany(companyId);
+  if (!company || company.role !== "owner") {
+    redirect(`/workspace?error=${encodeURIComponent("Kun eier kan køe fristvarsler")}`);
   }
 
   const [
@@ -1138,13 +1131,9 @@ export async function generateRf1086Preview(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Fant ikke åpningsbalanse")}`);
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .eq("id", setup.company_id)
-    .single();
-  if (companyError || !company) {
-    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
+  const company = await loadAcceptedMembershipCompany(setup.company_id);
+  if (!company) {
+    redirect(`/workspace?error=${encodeURIComponent("Fant ikke selskap")}`);
   }
 
   const { data: shareholders, error: shareholdersError } = await supabase
@@ -2163,20 +2152,8 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
     failTo(returnTo, "Inntektsåret er ugyldig.");
   }
 
-  const [companyResult, membershipResult, setupResult, annualResult, lockResult] = await Promise.all([
-    supabase
-      .from("companies")
-      .select("id, org_number, name, entity_type, identity_locked_at")
-      .eq("id", companyId)
-      .maybeSingle(),
-    supabase
-      .from("company_memberships")
-      .select("company_id, user_id, role, accepted_at")
-      .eq("company_id", companyId)
-      .eq("user_id", user.id)
-      .eq("role", "owner")
-      .not("accepted_at", "is", null)
-      .maybeSingle(),
+  const [company, setupResult, annualResult, lockResult] = await Promise.all([
+    loadAcceptedMembershipCompany(companyId),
     supabase
       .from("opening_balance_setups")
       .select("id, company_id, income_year")
@@ -2196,10 +2173,10 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       .eq("income_year", incomeYear)
       .maybeSingle(),
   ]);
-  if (companyResult.error || !companyResult.data || companyResult.data.entity_type !== "AS") {
+  if (!company || company.entity_type !== "AS") {
     failTo(returnTo, "Fant ikke et støttet AS for beslutningen.");
   }
-  if (membershipResult.error || !membershipResult.data) {
+  if (company.role !== "owner") {
     failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette beslutningsutkast.");
   }
   if (setupResult.error || !setupResult.data) {
@@ -2265,9 +2242,9 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
 
     decision = buildOwnerDividendDecisionInput({
       company: {
-        id: companyResult.data.id,
-        organizationNumber: companyResult.data.org_number,
-        legalName: companyResult.data.name,
+        id: company.id,
+        organizationNumber: company.org_number,
+        legalName: company.name,
       },
       shareholders: persistedShareholders,
       annualBasis,
@@ -2391,20 +2368,8 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
     failTo(returnTo, "Inntektsåret er ugyldig.");
   }
-  const [companyResult, membershipResult, setupResult, annualResult, ledgerResult] = await Promise.all([
-    supabase
-      .from("companies")
-      .select("id, org_number, name, entity_type, identity_locked_at")
-      .eq("id", companyId)
-      .maybeSingle(),
-    supabase
-      .from("company_memberships")
-      .select("company_id, user_id, role, accepted_at")
-      .eq("company_id", companyId)
-      .eq("user_id", user.id)
-      .eq("role", "owner")
-      .not("accepted_at", "is", null)
-      .maybeSingle(),
+  const [company, setupResult, annualResult, ledgerResult] = await Promise.all([
+    loadAcceptedMembershipCompany(companyId),
     supabase
       .from("opening_balance_setups")
       .select("id, company_id, income_year")
@@ -2423,10 +2388,10 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
       .eq("company_id", companyId)
       .eq("income_year", incomeYear),
   ]);
-  if (companyResult.error || !companyResult.data || companyResult.data.entity_type !== "AS") {
+  if (!company || company.entity_type !== "AS") {
     failTo(returnTo, "Fant ikke et støttet AS for årsbeslutningen.");
   }
-  if (membershipResult.error || !membershipResult.data) {
+  if (company.role !== "owner") {
     failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette årsbeslutningen.");
   }
   if (setupResult.error || !setupResult.data) {
@@ -2478,9 +2443,9 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     const reviewedCounts = formStrings(formData, "reviewedShareholderShareCount");
     decision = buildAnnualCloseDecisionInput({
       company: {
-        id: companyResult.data.id,
-        organizationNumber: companyResult.data.org_number,
-        legalName: companyResult.data.name,
+        id: company.id,
+        organizationNumber: company.org_number,
+        legalName: company.name,
       },
       shareholders: persistedShareholders,
       annualBasis,
@@ -3618,13 +3583,9 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number, name, entity_type, address, postal_code, city, status_text, source, created_by, identity_confirmed_at, identity_locked_at, created_at")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Fant ikke selskap")}`);
+  const company = await loadAcceptedMembershipCompany(companyId);
+  if (!company) {
+    redirect(`/workspace?error=${encodeURIComponent("Fant ikke selskap")}`);
   }
 
   const [
@@ -4054,13 +4015,9 @@ export async function recordAnnualAccountsTt02Evidence(formData: FormData) {
     redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
+  const company = await loadAcceptedMembershipCompany(companyId);
+  if (!company) {
+    redirect(`/workspace?error=${encodeURIComponent("Selskapet finnes ikke")}`);
   }
 
   let record;
@@ -4121,13 +4078,9 @@ export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
     redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
   }
 
-  const { data: company, error: companyError } = await supabase
-    .from("companies")
-    .select("id, org_number")
-    .eq("id", companyId)
-    .single();
-  if (companyError || !company) {
-    redirect(`/workspace?error=${encodeURIComponent(companyError?.message ?? "Selskapet finnes ikke")}`);
+  const company = await loadAcceptedMembershipCompany(companyId);
+  if (!company) {
+    redirect(`/workspace?error=${encodeURIComponent("Selskapet finnes ikke")}`);
   }
 
   let persistence;
@@ -4170,17 +4123,8 @@ export async function recordLaunchSignoff(formData: FormData) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
 
-  const { data: operator, error: operatorError } = await supabase
-    .from("support_operators")
-    .select("user_id, role, active")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-  if (operatorError) {
-    redirect(`/workspace?error=${encodeURIComponent(operatorError.message)}`);
-  }
-  if (!operator) {
+  const operator = await loadAuthorizedSupportOperator();
+  if (!operator || operator.role !== "admin") {
     redirect("/workspace?error=Admin%20operator%20kreves%20for%20launch%20signoff");
   }
 
@@ -4236,14 +4180,8 @@ export async function runProductionAuthorityOperation(formData: FormData) {
     redirect("/login");
   }
 
-  const { data: operator, error: operatorError } = await supabase
-    .from("support_operators")
-    .select("role, active")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-  if (operatorError || !operator) {
+  const operator = await loadAuthorizedSupportOperator();
+  if (!operator || operator.role !== "admin") {
     redirect("/operator?authority=admin_operator_required");
   }
 
@@ -4351,14 +4289,8 @@ export async function runProductionSystembrukerCallbackOperation(formData: FormD
     redirect("/login");
   }
 
-  const { data: operator, error: operatorError } = await supabase
-    .from("support_operators")
-    .select("role, active")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-  if (operatorError || !operator) {
+  const operator = await loadAuthorizedSupportOperator();
+  if (!operator || operator.role !== "admin") {
     redirect("/operator?authority=admin_operator_required");
   }
 
@@ -4468,29 +4400,11 @@ async function loadOwnedSystemUserContext(input: {
   companyId: string;
   requestId?: string;
 }) {
-  const [{ data: company, error: companyError }, { data: membership, error: membershipError }] = await Promise.all([
-    input.supabase
-      .from("companies")
-      .select("id,org_number")
-      .eq("id", input.companyId)
-      .maybeSingle(),
-    input.supabase
-      .from("company_memberships")
-      .select("company_id,user_id,role,accepted_at")
-      .eq("company_id", input.companyId)
-      .eq("user_id", input.userId)
-      .eq("role", "owner")
-      .not("accepted_at", "is", null)
-      .maybeSingle(),
-  ]);
+  const company = await loadAcceptedMembershipCompany(input.companyId);
   if (
-    companyError
-    || membershipError
-    || !company
-    || !membership
+    !company
     || company.id !== input.companyId
-    || membership.company_id !== input.companyId
-    || membership.user_id !== input.userId
+    || company.role !== "owner"
     || !/^\d{9}$/u.test(company.org_number)
   ) {
     return null;
@@ -4702,7 +4616,7 @@ export async function approveProductionFiling(formData: FormData) {
     redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
   }
   await requireSensitiveActionStepUp(supabase, user.id, preview.company_id, "production_filing");
-  const { data: company } = await supabase.from("companies").select("id, org_number").eq("id", preview.company_id).single();
+  const company = await loadAcceptedMembershipCompany(preview.company_id);
   if (!company || preview.status !== "ready" || !preview.hovedskjema_xml) {
     redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
   }
@@ -4960,10 +4874,10 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
   }
   await requireSensitiveActionStepUp(supabase, user.id, approval.company_id, "production_filing");
-  const [{ data: preview }, { data: entitlement }, { data: company }] = await Promise.all([
+  const [{ data: preview }, { data: entitlement }, company] = await Promise.all([
     supabase.from("filing_previews").select("*").eq("id", approval.preview_id).single(),
     supabase.from("production_pilot_entitlements").select("*").eq("id", approval.entitlement_id).single(),
-    supabase.from("companies").select("id, org_number").eq("id", approval.company_id).single(),
+    loadAcceptedMembershipCompany(approval.company_id),
   ]);
   if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
     redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
@@ -5143,15 +5057,8 @@ export async function reconcileRf1086ProductionAction(
     return buildRf1086OwnerReconciliationActionState(storedState);
   }
 
-  const [membershipResult, approvalResult, entitlementResult, companyResult] = await Promise.all([
-    supabase
-      .from("company_memberships")
-      .select("company_id,user_id,role,accepted_at")
-      .eq("company_id", submission.company_id)
-      .eq("user_id", user.id)
-      .eq("role", "owner")
-      .not("accepted_at", "is", null)
-      .maybeSingle(),
+  const [company, approvalResult, entitlementResult] = await Promise.all([
+    loadAcceptedMembershipCompany(submission.company_id),
     supabase
       .from("filing_approval_snapshots")
       .select("id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,invalidated_at")
@@ -5162,17 +5069,12 @@ export async function reconcileRf1086ProductionAction(
       .select("id,company_id,user_id,income_year,obligation,case_profile,system_user_request_id,system_user_external_reference")
       .eq("id", submission.entitlement_id)
       .single(),
-    supabase.from("companies").select("id,org_number").eq("id", submission.company_id).single(),
   ]);
-  const membership = membershipResult.data;
   const approval = approvalResult.data;
   const entitlement = entitlementResult.data;
-  const company = companyResult.data;
   if (
-    membershipResult.error
-    || !membership
-    || membership.role !== "owner"
-    || !membership.accepted_at
+    !company
+    || company.role !== "owner"
     || approvalResult.error
     || !approval
     || approval.company_id !== submission.company_id
@@ -5189,8 +5091,6 @@ export async function reconcileRf1086ProductionAction(
     || entitlement.obligation !== submission.obligation
     || entitlement.case_profile !== submission.case_profile
     || !entitlement.system_user_request_id
-    || companyResult.error
-    || !company
   ) {
     return buildRf1086OwnerReconciliationActionState(storedState, {
       errorCode: "basis_unavailable",

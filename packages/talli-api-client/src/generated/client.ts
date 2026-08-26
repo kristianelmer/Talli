@@ -13,6 +13,7 @@ export interface CompanyContext {
   city: string;
   createdAt: string;
   createdBy: string;
+  currentAgreementAccepted: boolean;
   entityType: string;
   id: string;
   identityConfirmedAt: string | null;
@@ -69,6 +70,82 @@ export interface CompanyMembershipResponse {
   membership: CompanyMembership;
 }
 
+export interface CompanyOnboardingRequest {
+  agreementAccepted: true;
+  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
+  businessTermsVersion: "2026-07-17";
+  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
+  dpaVersion: "2026-07-17";
+  orgNumber: string;
+}
+
+export interface CompanyOnboardingResponse {
+  companyId: string;
+  currentAgreementAccepted: true;
+  replayed: boolean;
+}
+
+export interface CompanyAgreementAcceptanceRequest {
+  agreementAccepted: true;
+  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
+  businessTermsVersion: "2026-07-17";
+  companyId: string;
+  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
+  dpaVersion: "2026-07-17";
+}
+
+export interface CompanyAgreementAcceptanceResponse {
+  companyId: string;
+  currentAgreementAccepted: true;
+  replayed: boolean;
+}
+
+export interface CompanyAccessRecord {
+  address: string;
+  city: string;
+  createdAt: string;
+  createdBy: string;
+  entityType: string;
+  id: string;
+  identityConfirmedAt: string | null;
+  identityLockedAt: string | null;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  role: "owner" | "reviewer" | "read_only";
+  source: string;
+  statusText: string;
+}
+
+export interface CompanyAccessRecordResponse {
+  company: CompanyAccessRecord;
+}
+
+export interface OperatorContextResponse {
+  active: true;
+  role: "support" | "admin";
+}
+
+export interface OperatorCompanyRecord {
+  address: string;
+  city: string;
+  createdAt: string;
+  createdBy: string;
+  entityType: string;
+  id: string;
+  identityConfirmedAt: string | null;
+  identityLockedAt: string | null;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  source: string;
+  statusText: string;
+}
+
+export interface OperatorCompanySearchResponse {
+  companies: OperatorCompanyRecord[];
+}
+
 export interface AcceptCompanyInvitationRequest {
   operationId: string;
   token: string;
@@ -121,7 +198,7 @@ export interface InvitationSideEffectContinuationList {
 }
 
 export interface InvitationSideEffectCompletion {
-  completed: boolean;
+  completed: true;
   operationId: string;
 }
 
@@ -262,12 +339,13 @@ function isSystemBoundaryStatus(value: unknown): value is SystemBoundaryStatus {
 function isCompanyContext(value: unknown): value is CompanyContext {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["aal","address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
+    hasOnlyProperties(value, ["aal","address","city","createdAt","createdBy","currentAgreementAccepted","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","resourceScope","role","source","statusText"]) &&
     value.aal === "aal2" &&
     typeof value.address === "string" &&
     typeof value.city === "string" &&
     typeof value.createdAt === "string" &&
     typeof value.createdBy === "string" &&
+    typeof value.currentAgreementAccepted === "boolean" &&
     typeof value.entityType === "string" &&
     typeof value.id === "string" &&
     (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
@@ -350,6 +428,92 @@ function isCompanyMembershipResponse(value: unknown): value is CompanyMembership
     isRecord(value) &&
     hasOnlyProperties(value, ["membership"]) &&
     isCompanyMembership(value.membership)
+  );
+}
+
+function isCompanyOnboardingResponse(value: unknown): value is CompanyOnboardingResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","currentAgreementAccepted","replayed"]) &&
+    isUuid(value.companyId) &&
+    value.currentAgreementAccepted === true &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isCompanyAgreementAcceptanceResponse(value: unknown): value is CompanyAgreementAcceptanceResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","currentAgreementAccepted","replayed"]) &&
+    isUuid(value.companyId) &&
+    value.currentAgreementAccepted === true &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isCompanyAccessRecord(value: unknown): value is CompanyAccessRecord {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","role","source","statusText"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.createdBy === "string" &&
+    typeof value.entityType === "string" &&
+    typeof value.id === "string" &&
+    (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
+    (typeof value.identityLockedAt === "string" || value.identityLockedAt === null) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string" &&
+    (value.role === "owner" || value.role === "reviewer" || value.role === "read_only") &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
+  );
+}
+
+function isCompanyAccessRecordResponse(value: unknown): value is CompanyAccessRecordResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["company"]) &&
+    isCompanyAccessRecord(value.company)
+  );
+}
+
+function isOperatorContextResponse(value: unknown): value is OperatorContextResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["active","role"]) &&
+    value.active === true &&
+    (value.role === "support" || value.role === "admin")
+  );
+}
+
+function isOperatorCompanyRecord(value: unknown): value is OperatorCompanyRecord {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","source","statusText"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.createdBy === "string" &&
+    typeof value.entityType === "string" &&
+    typeof value.id === "string" &&
+    (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
+    (typeof value.identityLockedAt === "string" || value.identityLockedAt === null) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string" &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
+  );
+}
+
+function isOperatorCompanySearchResponse(value: unknown): value is OperatorCompanySearchResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companies"]) &&
+    Array.isArray(value.companies) && value.companies.every((item) => isOperatorCompanyRecord(item))
   );
 }
 
@@ -627,6 +791,71 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return candidate;
+    },
+
+    async companyAccessOnboardCompany(
+      body: CompanyOnboardingRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyOnboardingResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/onboarding`,
+        "POST",
+        request,
+        body,
+        isCompanyOnboardingResponse,
+      );
+    },
+
+    async companyAccessReacceptAgreement(
+      body: CompanyAgreementAcceptanceRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAgreementAcceptanceResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/agreements/reaccept`,
+        "POST",
+        request,
+        body,
+        isCompanyAgreementAcceptanceResponse,
+      );
+    },
+
+    async companyAccessGetCompanyRecord(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAccessRecordResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/companies/${encodeURIComponent(companyId)}`,
+        "GET",
+        request,
+        undefined,
+        isCompanyAccessRecordResponse,
+      );
+    },
+
+    async companyAccessGetOperatorContext(
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorContextResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-context`,
+        "GET",
+        request,
+        undefined,
+        isOperatorContextResponse,
+      );
+    },
+
+    async companyAccessSearchOperatorCompanies(
+      query: string,
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorCompanySearchResponse> {
+      const search = new URLSearchParams({ query });
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-companies?${search}`,
+        "GET",
+        request,
+        undefined,
+        isOperatorCompanySearchResponse,
+      );
     },
 
     async companyAccessListInvitations(

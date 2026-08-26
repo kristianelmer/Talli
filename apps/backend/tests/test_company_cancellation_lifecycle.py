@@ -1,19 +1,22 @@
 import asyncio
 import base64
 import json
-from pathlib import Path
-from datetime import datetime, timezone
 from collections.abc import Mapping
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
+from talli_backend.adapters.supabase_company_access import (
+    SupabaseCompanyAccessAdapter,
+    SupabaseConfiguration,
+)
 from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
-    CompanyCancellation,
-    CompanyInvitationCommandRequest,
-    CompanyDeletionReview,
     CompanyAccessError,
+    CompanyCancellation,
+    CompanyDeletionReview,
+    CompanyInvitationCommandRequest,
     FinalizeCompanyDeletionGatewayCommand,
     FinalizeCompanyDeletionRequest,
     RequestCompanyCancellationGatewayCommand,
@@ -22,11 +25,6 @@ from talli_backend.modules.company_access.public import (
     ReviewCompanyDeletionGatewayCommand,
     ReviewCompanyDeletionRequest,
 )
-from talli_backend.adapters.supabase_company_access import (
-    SupabaseCompanyAccessAdapter,
-    SupabaseConfiguration,
-)
-
 
 COMPANY_ID = "10000000-0000-0000-0000-000000000001"
 CANCELLATION_ID = "50000000-0000-0000-0000-000000000001"
@@ -35,7 +33,7 @@ OWNER_ID = "00000000-0000-0000-0000-000000000011"
 
 
 def access_token(*, aal: str = "aal2", mfa_age_seconds: int = 30) -> str:
-    now = int(datetime.now(timezone.utc).timestamp())
+    now = int(datetime.now(UTC).timestamp())
     claims = {
         "aal": aal,
         "amr": [{"method": "totp", "timestamp": now - mfa_age_seconds}],
@@ -425,25 +423,25 @@ def test_adapter_lists_cancellations_through_the_query_rpc_not_direct_table_acce
     adapter = SupabaseCompanyAccessAdapter(
         SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
     )
-    calls: list[tuple[str, str, str, Mapping[str, object] | None]] = []
+    calls: list[tuple[str, str, Mapping[str, object], str]] = []
 
     async def request(
-        path: str,
         access_token_value: str,
+        function_name: str,
+        body: Mapping[str, object],
         *,
-        method: str = "GET",
-        body: Mapping[str, object] | None = None,
-    ) -> object:
-        calls.append((path, access_token_value, method, body))
+        role: str = "company_access_executor",
+    ) -> list[Mapping[str, object]]:
+        calls.append((function_name, access_token_value, body, role))
         return []
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     assert asyncio.run(adapter.cancellations("bearer", COMPANY_ID)) == []
     assert calls == [(
-        "/rest/v1/rpc/company_access_list_cancellations",
+        "company_access_list_cancellations",
         "bearer",
-        "POST",
         {"p_company_id": COMPANY_ID},
+        "company_access_executor",
     )]
 
 
@@ -453,8 +451,10 @@ def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
     )
     calls: list[tuple[str, Mapping[str, object] | None]] = []
 
-    async def request(path: str, _token: str, *, method: str = "GET", body=None) -> object:
-        calls.append((path, body))
+    async def request(
+        _token: str, function_name: str, body: Mapping[str, object], **_kwargs: object
+    ) -> list[Mapping[str, object]]:
+        calls.append((function_name, body))
         if len(calls) == 1:
             raise CompanyAccessError(
                 status=503, code="COMPANY_ACCESS_UNAVAILABLE",
@@ -462,7 +462,7 @@ def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
             )
         return [{"found": True, "result": LifecycleGatewayStub._cancellation()}]
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     body = {
         "p_operation_id": OPERATION_ID,
         "p_company_id": COMPANY_ID,
@@ -471,7 +471,7 @@ def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
     }
     result = asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", body))
     assert result == LifecycleGatewayStub._cancellation()
-    assert calls[1][0].endswith("/company_access_reconcile_cancellation_operation")
+    assert calls[1][0] == "company_access_reconcile_cancellation_operation"
     assert calls[1][1] == {
         **body,
         "p_command_name": "request_cancellation",
@@ -491,7 +491,9 @@ def test_adapter_never_retries_after_malformed_reconciliation(reconciliation: ob
     )
     calls = 0
 
-    async def request(path: str, _token: str, *, method: str = "GET", body=None) -> object:
+    async def request(
+        _token: str, _function_name: str, _body: Mapping[str, object], **_kwargs: object
+    ) -> object:
         nonlocal calls
         calls += 1
         if calls == 1:
@@ -501,7 +503,7 @@ def test_adapter_never_retries_after_malformed_reconciliation(reconciliation: ob
             )
         return reconciliation
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     with pytest.raises(CompanyAccessError) as caught:
         asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", {
             "p_operation_id": OPERATION_ID,
@@ -529,7 +531,7 @@ def test_adapter_retries_only_after_explicit_receipt_absence() -> None:
             raise response
         return response
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     result = asyncio.run(adapter._rpc_row("bearer", "company_access_request_cancellation", {
         "p_operation_id": OPERATION_ID,
         "p_company_id": COMPANY_ID,
@@ -553,7 +555,7 @@ def test_adapter_reconciles_malformed_success_without_false_not_found(responses:
     async def request(*_args: object, **_kwargs: object) -> object:
         return queue.pop(0)
 
-    adapter._request = request  # type: ignore[method-assign]
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
     body = {
         "p_operation_id": OPERATION_ID,
         "p_company_id": COMPANY_ID,
