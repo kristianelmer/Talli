@@ -293,6 +293,7 @@ def _company_year_close_evidence_payload(
                 "sourceRecordId": str(output.source_record_id),
                 "revision": output.revision,
                 "factSha256": output.fact_sha256,
+                "economicFactsDigest": output.economic_facts_digest,
             }
             for output in evidence.outputs
         ],

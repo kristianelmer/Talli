@@ -94,6 +94,10 @@ revoke all on function ledger.close_company_year_v1(
   text, uuid, integer, date, text, uuid, text, jsonb,
   text, text[], text, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.close_company_year_without_economic_facts_v1(
+  text, uuid, integer, date, text, uuid, text, jsonb,
+  text, text[], text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.record_received_dividend_decision_v1(
   text, uuid, integer, text, jsonb, text, text, text, text, date, text, jsonb
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;

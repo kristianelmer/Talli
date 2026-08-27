@@ -38,7 +38,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`, and
 `supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`, and
 `supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql`, and
-`supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql`.
+`supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql`, and
+`supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -223,6 +224,15 @@ Growing collections use an opaque cursor and deterministic
 `CompanyYearCloseEvidenceKind`, `CompanyYearCloseGapCode`,
 `CompanyYearCloseLockId`, `CompanyYearCloseOutputKind`,
 `CompanyYearCloseOutputReference`, and `CompanyYearCloseState`.
+Every new close output reference declares the reconstruction economic-fact
+digest its source-owned result consumed. The service and database independently
+require all seven declarations to match the current immutable reconstruction
+fact set, and the database stores the derived digest beside each append-only
+source record ID, revision, and result hash. This is a receiving-contract
+binding, not proof that the source owner derived its result correctly; #188
+still requires actual source-owned cross-output facts and reconciliation.
+Historical close evidence without the binding remains readable but is not
+current.
 
 Reconstruction identifiers and closed values are `ReconstructionAssessmentId`,
 `ReconstructionEconomicFact`, `ReconstructionEconomicFactCorrection`,

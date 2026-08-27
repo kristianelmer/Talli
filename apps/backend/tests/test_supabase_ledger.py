@@ -568,6 +568,7 @@ def close_company_year_command() -> CloseCompanyYearCommand:
             ),
             revision=1,
             fact_sha256=kind.value.encode().hex().ljust(64, "0")[:64],
+            economic_facts_digest="e" * 64,
         )
         for kind in CompanyYearCloseOutputKind
     )
@@ -1780,6 +1781,10 @@ def test_company_year_close_adapter_binds_derived_state_and_evidence() -> None:
     assert [output["kind"] for output in evidence_payload[2]["outputs"]] == [
         kind.value for kind in CompanyYearCloseOutputKind
     ]
+    assert all(
+        output["economicFactsDigest"] == "e" * 64
+        for output in evidence_payload[2]["outputs"]
+    )
 
 
 def test_company_year_close_adapter_checks_the_permanent_replay_first() -> None:

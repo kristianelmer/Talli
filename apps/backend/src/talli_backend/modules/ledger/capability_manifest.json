@@ -61,7 +61,14 @@
       "uncapped": true,
       "candidateQueryIsMemberScoped": true,
       "recordingRevalidatesExactEntrySet": true,
-      "immutableSnapshotDigest": true
+      "immutableSnapshotDigest": true,
+      "closeOutputBinding": {
+        "requiredOutputCount": 7,
+        "serviceRevalidatesDigest": true,
+        "databaseRevalidatesDigest": true,
+        "immutableDerivedDigest": true,
+        "historicalUnboundOutputIsCurrent": false
+      }
     }
   },
   "supportedHoldingActionRules": {

@@ -25,6 +25,7 @@ const additiveLedgerMigrationPaths = [
   "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
   "20260827109000_ledger_opening_position_rebuild.sql",
   "20260827109200_ledger_reconstruction_economic_facts.sql",
+  "20260827109300_ledger_close_output_economic_facts.sql",
 ].map((name) => new URL(`../supabase/migrations/${name}`, import.meta.url));
 
 const economicFactsPath = new URL(

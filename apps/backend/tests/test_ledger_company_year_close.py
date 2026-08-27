@@ -49,6 +49,7 @@ RECONSTRUCTION_ID = ReconstructionAssessmentId(
 )
 NOW = Timestamp(datetime(2026, 12, 31, 22, tzinfo=UTC))
 LEDGER_STATE_DIGEST = "c" * 64
+ECONOMIC_FACTS_DIGEST = "e" * 64
 REQUIRED_OUTPUT_KINDS = tuple(CompanyYearCloseOutputKind)
 
 
@@ -67,6 +68,8 @@ def reconstruction(
         gap_codes=gaps,
         evidence_digest="a" * 64,
         ledger_state_digest=LEDGER_STATE_DIGEST,
+        economic_facts_digest=ECONOMIC_FACTS_DIGEST,
+        economic_fact_count=19,
         recorded_at=NOW,
         replayed=False,
     )
@@ -88,6 +91,7 @@ def evidence(
                 ),
                 revision=1,
                 fact_sha256=(output_kind.value.encode().hex().ljust(64, "0")[:64]),
+                economic_facts_digest=ECONOMIC_FACTS_DIGEST,
             )
             for output_kind in REQUIRED_OUTPUT_KINDS
         )
@@ -273,6 +277,31 @@ def test_reporting_reconciliation_requires_every_stable_output_reference() -> No
 
     assert getattr(failure.value, "code", None) == (
         "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+    )
+    assert persistence.recorded == []
+
+
+def test_reporting_outputs_must_bind_the_current_economic_fact_set() -> None:
+    facts = list(complete_evidence())
+    reporting = facts[2]
+    facts[2] = replace(
+        reporting,
+        outputs=(
+            replace(reporting.outputs[0], economic_facts_digest="f" * 64),
+            *reporting.outputs[1:],
+        ),
+    )
+    persistence = ClosePersistenceStub(reconstruction())
+
+    with pytest.raises(Exception) as failure:
+        asyncio.run(
+            LedgerService(persistence).close_company_year(
+                command(close_evidence=tuple(facts))
+            )
+        )
+
+    assert getattr(failure.value, "code", None) == (
+        "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
     )
     assert persistence.recorded == []
 

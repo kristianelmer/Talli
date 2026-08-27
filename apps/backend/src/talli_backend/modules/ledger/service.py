@@ -791,9 +791,16 @@ class LedgerService:
             or current.evidence_digest != command.reconstruction_evidence_digest
             or current.as_of != command.period_end
             or current.ledger_state_digest is None
+            or current.economic_facts_digest is None
+            or current.economic_fact_count is None
             or any(
                 item.ledger_state_digest != current.ledger_state_digest
                 for item in canonical
+            )
+            or any(
+                output.economic_facts_digest != current.economic_facts_digest
+                for item in canonical
+                for output in item.outputs
             )
         ):
             raise LedgerError.precondition_failed(

@@ -1213,14 +1213,24 @@ class CompanyYearCloseOutputReference:
     source_record_id: LedgerSourceRecordId
     revision: int
     fact_sha256: str
+    economic_facts_digest: str
 
     def __post_init__(self) -> None:
         digest = self.fact_sha256.strip().lower()
-        if self.revision < 1 or len(digest) != 64 or any(
-            character not in "0123456789abcdef" for character in digest
+        economic_facts_digest = self.economic_facts_digest.strip().lower()
+        if (
+            self.revision < 1
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or len(economic_facts_digest) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in economic_facts_digest
+            )
         ):
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         object.__setattr__(self, "fact_sha256", digest)
+        object.__setattr__(self, "economic_facts_digest", economic_facts_digest)
 
 
 @dataclass(frozen=True, slots=True)

@@ -6,6 +6,10 @@ const migration = readFileSync(new URL(
   "../supabase/migrations/20260827104000_ledger_company_year_close.sql",
   import.meta.url,
 ), "utf8");
+const economicFactsMigration = readFileSync(new URL(
+  "../supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql",
+  import.meta.url,
+), "utf8");
 const lifecycle = readFileSync(new URL(
   "./ledger_database_runtime.test.mjs",
   import.meta.url,
@@ -135,6 +139,33 @@ test("close assessments and evidence are immutable forced-RLS ledger data", () =
   assert.doesNotMatch(
     migration,
     /grant[^;]+(?:insert|update|delete)[^;]+ledger\.company_year_close_(?:assessments|evidence)[^;]+ledger_executor/iu,
+  );
+});
+
+test("every close output is bound to the reconstruction economic-fact set", () => {
+  assert.match(
+    economicFactsMigration,
+    /add column if not exists economic_facts_digest text/iu,
+  );
+  assert.match(
+    economicFactsMigration,
+    /create trigger ledger_company_year_close_output_bind_economic_facts[\s\S]+before insert/iu,
+  );
+  assert.match(
+    economicFactsMigration,
+    /close_company_year_without_economic_facts_v1[\s\S]+revoke all/iu,
+  );
+  assert.match(
+    economicFactsMigration,
+    /pg_get_functiondef[\s\S]+drop function ledger\.close_company_year_without_economic_facts_v1/iu,
+  );
+  assert.match(
+    economicFactsMigration,
+    /output ->> 'economicFactsDigest'[\s\S]+v_economic_facts_digest/iu,
+  );
+  assert.match(
+    economicFactsMigration,
+    /output\.economic_facts_digest is distinct from[\s\S]+fact_set\.facts_digest/iu,
   );
 });
 

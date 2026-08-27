@@ -18,6 +18,7 @@ const lossCoverageCapitalReductionPath = "/repo/supabase/migrations/202608271080
 const openingPositionRebuildPath = "/repo/supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql";
 const openingPositionAcceptancePath = "/repo/supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql";
 const reconstructionEconomicFactsPath = "/repo/supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql";
+const closeOutputEconomicFactsPath = "/repo/supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -1499,6 +1500,7 @@ commit;
 function companyYearCloseEvidence({
   periodEnd = "2026-12-31",
   ledgerStateDigest,
+  economicFactsDigest = "__ECONOMIC_FACTS_DIGEST__",
   statuses = {},
   omit = [],
   revision = 1,
@@ -1537,10 +1539,29 @@ function companyYearCloseEvidence({
             sourceRecordId: `close-output:${outputKind.toLowerCase()}:${revision}`,
             revision,
             factSha256: (outputIndex + 20 + revision).toString(16).padStart(64, "0"),
+            economicFactsDigest,
           }))
         : [],
     };
   });
+}
+
+function economicFactsBoundEvidenceSql(
+  evidence,
+  reconstructionAssessmentId,
+  verifiedSubject,
+) {
+  return String.raw`pg_catalog.replace(
+    '${sqlQuote(JSON.stringify(evidence))}',
+    '__ECONOMIC_FACTS_DIGEST__',
+    coalesce((
+      select snapshot.facts_digest
+      from ledger.get_reconstruction_economic_facts_v1(
+        '${reconstructionAssessmentId}'::uuid,
+        '${verifiedSubject}'::text
+      ) snapshot
+    ), '')
+  )::jsonb`;
 }
 
 function companyYearCloseCall({
@@ -1575,7 +1596,9 @@ from ledger.close_company_year_v1(
   '${sqlQuote(reason)}'::text,
   '${reconstructionAssessmentId}'::uuid,
   '${reconstructionDigest}'::text,
-  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  ${economicFactsBoundEvidenceSql(
+    evidence, reconstructionAssessmentId, verifiedSubject
+  )},
   '${derivedState}'::text,
   ${gapsSql},
   '${sqlQuote(correlationId)}'::text,
@@ -1621,7 +1644,9 @@ from ledger.get_company_year_close_replay_v1(
   '${sqlQuote(reason)}'::text,
   '${reconstructionAssessmentId}'::uuid,
   '${reconstructionDigest}'::text,
-  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  ${economicFactsBoundEvidenceSql(
+    evidence, reconstructionAssessmentId, verifiedSubject
+  )},
   '${sqlQuote(correlationId)}'::text,
   '${verifiedSubject}'::text
 ) close_replay;
@@ -1815,6 +1840,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", openingPositionRebuildPath]);
     psql(containerName, ["--file", openingPositionAcceptancePath]);
     psql(containerName, ["--file", reconstructionEconomicFactsPath]);
+    psql(containerName, ["--file", closeOutputEconomicFactsPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -5585,6 +5611,16 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
       evidence: missingOutputEvidence,
     })), /ledger_company_year_close_evidence_invalid/iu);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000018",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      evidence: companyYearCloseEvidence({
+        ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+        economicFactsDigest: "f".repeat(64),
+      }),
+    })), /ledger_company_year_close_reconstruction_stale/iu);
 
     assert.equal(psql(containerName, ["-Atq"],
       companyYearCloseReplayTransaction({
@@ -5620,10 +5656,14 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           evidence.ledger_state_digest = '${closedCompanyYear.ledger_state_digest}'
         ) from ledger.company_year_close_evidence evidence
           where evidence.assessment_id = '${closedCompanyYear.assessment_id}'),
+        (select bool_and(
+          output.economic_facts_digest = '${yearEndReconstruction.economic_facts_digest}'
+        ) from ledger.company_year_close_reporting_outputs output
+          where output.assessment_id = '${closedCompanyYear.assessment_id}'),
         (select string_agg(output.kind, ',' order by output.ordinal)
           from ledger.company_year_close_reporting_outputs output
           where output.assessment_id = '${closedCompanyYear.assessment_id}'));
-    `)), "1:7:t:INVESTMENTS,CORPORATE_GOVERNANCE,SHAREHOLDER_REGISTER_FILING,COMPANY_TAX_FILING,ANNUAL_ACCOUNTS_FILING,SAF_T,COMPANY_ARCHIVE");
+    `)), "1:7:t:t:INVESTMENTS,CORPORATE_GOVERNANCE,SHAREHOLDER_REGISTER_FILING,COMPANY_TAX_FILING,ANNUAL_ACCOUNTS_FILING,SAF_T,COMPANY_ARCHIVE");
     const closedCompanyYearReplay = jsonOutput(
       containerName,
       companyYearCloseTransaction({
@@ -6436,6 +6476,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", openingPositionRebuildPath]);
     psql(containerName, ["--file", openingPositionAcceptancePath]);
     psql(containerName, ["--file", reconstructionEconomicFactsPath]);
+    psql(containerName, ["--file", closeOutputEconomicFactsPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
