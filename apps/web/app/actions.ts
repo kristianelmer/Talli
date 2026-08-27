@@ -104,6 +104,12 @@ import {
   reviewCompanyDeletion as reviewCompanyDeletionThroughApi,
   revokeCompanyInvitation,
 } from "../features/company-access";
+import {
+  ledgerActionErrorMessage,
+  ledgerOutcomeMayBeUnknown,
+  lockLedgerPeriod,
+  postLedgerManualJournal,
+} from "../features/ledger";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
 import {
@@ -125,7 +131,6 @@ import {
   createInvitationSideEffectStore,
   persistInvitationAudit,
 } from "./lib/invitation-side-effects";
-import { validateManualJournal } from "./lib/manual-journal";
 import {
   OpeningShareholderInput,
   openingBalanceLedgerLines,
@@ -987,6 +992,7 @@ export async function lockCompanyYear(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const reason = formString(formData, "reason");
+  const operationId = requiredFormUuid(formData, "operationId");
   if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
     redirect("/workspace?error=Ugyldig%20inntekts%C3%A5r");
   }
@@ -994,14 +1000,22 @@ export async function lockCompanyYear(formData: FormData) {
     redirect("/workspace?error=L%C3%A5se%C3%A5rsak%20mangler");
   }
 
-  const { error } = await supabase.from("period_locks").insert({
-    company_id: companyId,
-    income_year: incomeYear,
-    reason,
-    locked_by: user.id,
-  });
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
+  try {
+    await lockLedgerPeriod(
+      accessToken,
+      { companyId, incomeYear, reason },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const retry = ledgerOutcomeMayBeUnknown(error)
+      ? `&lockOperationId=${encodeURIComponent(operationId)}`
+      : "";
+    redirect(`/workspace?error=${encodeURIComponent(ledgerActionErrorMessage(error))}${retry}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -5230,35 +5244,40 @@ export async function postManualJournal(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const memo = formString(formData, "memo") || "Manuell journal";
-  let journal;
-  try {
-    journal = validateManualJournal({
-      warningAccepted: formData.get("warningAccepted") === "on",
-      lines: [0, 1].map((index) => ({
-        account: formString(formData, `account${index}`),
-        description: formString(formData, `description${index}`),
-        debit: Number(formString(formData, `debit${index}`) || "0"),
-        credit: Number(formString(formData, `credit${index}`) || "0"),
-      })),
-    });
-  } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig manuell journal")}`);
+  const operationId = requiredFormUuid(formData, "operationId");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    redirect("/workspace?error=Innlogging%20kreves");
   }
-
-  const warningAcceptedAt = journal.riskFlags.length > 0 ? new Date().toISOString() : null;
-  const { error } = await supabase.from("ledger_entries").insert({
-    company_id: companyId,
-    income_year: incomeYear,
-    entry_type: "manual_journal",
-    memo,
-    lines: journal.lines,
-    risk_flags: journal.riskFlags,
-    warning_accepted_by: warningAcceptedAt ? user.id : null,
-    warning_accepted_at: warningAcceptedAt,
-    created_by: user.id,
-  });
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  try {
+    await postLedgerManualJournal(
+      accessToken,
+      {
+        companyId,
+        incomeYear,
+        memo,
+        warningAccepted: formData.get("warningAccepted") === "on",
+        lines: [0, 1].map((index) => ({
+          account: formString(formData, `account${index}`),
+          description: formString(formData, `description${index}`),
+          debit: {
+            amount: formString(formData, `debit${index}`) || "0",
+            currency: "NOK" as const,
+          },
+          credit: {
+            amount: formString(formData, `credit${index}`) || "0",
+            currency: "NOK" as const,
+          },
+        })),
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const retry = ledgerOutcomeMayBeUnknown(error)
+      ? `&manualOperationId=${encodeURIComponent(operationId)}`
+      : "";
+    redirect(`/workspace?error=${encodeURIComponent(ledgerActionErrorMessage(error))}${retry}`);
   }
 
   await supabase.from("audit_events").insert({
@@ -5272,6 +5291,12 @@ export async function postManualJournal(formData: FormData) {
   revalidatePath("/");
   redirect("/workspace");
 }
+
+/*
+ * The TypeScript manual-journal validator was retired by #139. The generated
+ * request schema owns wire syntax and the Python ledger capability owns every
+ * posting invariant, warning, and account decision.
+ */
 
 function parseShareholders(formData: FormData): OpeningShareholderInput[] {
   const names = formData.getAll("shareholderName").map(String);

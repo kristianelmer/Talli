@@ -35,6 +35,14 @@ const companyAccessOperations = {
   reviewDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/reviews", "post", "companyAccessReviewDeletion"],
   finalizeDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/finalize", "post", "companyAccessFinalizeDeletion"],
 };
+const ledgerOperations = {
+  listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
+  listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
+  postOpeningBalance: ["/api/v1/ledger/opening-balances", "post", "ledgerPostOpeningBalance"],
+  postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+  postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
+  lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+};
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
   throw new Error(`Expected systemBoundaryGetTracerStatus at ${path}`);
@@ -43,6 +51,11 @@ if (companyAccessOperation?.operationId !== "companyAccessGetSelectedContext") {
   throw new Error(`Expected companyAccessGetSelectedContext at ${companyAccessPath}`);
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(companyAccessOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(ledgerOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -107,7 +120,19 @@ function renderInterface(name, schema) {
   return `export interface ${name} {\n${properties}\n}`;
 }
 
+function renderSchema(name, schema) {
+  if (schema?.type === "string" && schema.enum?.length) {
+    return `export type ${name} = ${schemaType(schema)};`;
+  }
+  return renderInterface(name, schema);
+}
+
 function renderGuard(name, schema) {
+  if (schema?.type === "string" && schema.enum?.length) {
+    return `function is${name}(value: unknown): value is ${name} {
+  return ${schema.enum.map((candidate) => `value === ${JSON.stringify(candidate)}`).join(" || ")};
+}`;
+  }
   const allowedProperties = Object.keys(schema.properties ?? {});
   const required = new Set(schema.required ?? []);
   const propertyCheck = (propertySchema, value) => {
@@ -213,6 +238,24 @@ const additionalSchemas = Object.fromEntries([
   "ReviewCompanyDeletionRequest",
   "FinalizeCompanyDeletionRequest",
 ].map((name) => [name, contract.components.schemas[name]]));
+const ledgerSchemas = Object.fromEntries([
+  "AdministrativeCostCategory",
+  "LedgerAdministrativeCostWire",
+  "LedgerEntryKind",
+  "LedgerEntryPageWire",
+  "LedgerEntryViewWire",
+  "LedgerLineWire",
+  "LedgerLockPeriodWire",
+  "LedgerManualJournalWire",
+  "LedgerMoneyWire",
+  "LedgerOpeningBalanceWire",
+  "LedgerPageWire",
+  "LedgerPeriodLockPageWire",
+  "LedgerPeriodLockWire",
+  "LedgerPostedEntryWire",
+  "LedgerRiskFlagWire",
+  "LedgerRiskCode",
+].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
 );
@@ -226,7 +269,9 @@ ${renderInterface("CompanyContext", companyContextSchema)}
 
 ${renderInterface("CompanyContextResponse", companyContextResponseSchema)}
 
-${Object.entries(additionalSchemas).map(([name, schema]) => renderInterface(name, schema)).join("\n\n")}
+${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${renderInterface("ProblemDetails", problemSchema)}
 
@@ -302,6 +347,8 @@ ${[
   "CompanyDeletionReviewResponse",
 ].map((name) => renderGuard(name, additionalSchemas[name])).join("\n\n")}
 
+${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${renderGuard("ProblemDetails", problemSchema)}
 
 export class TalliApiError extends Error {
@@ -331,6 +378,16 @@ export interface TalliRequestOptions {
   requestId?: string;
 }
 
+export interface TalliMutationOptions extends TalliRequestOptions {
+  idempotencyKey: string;
+}
+
+export interface LedgerListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
 }
@@ -346,6 +403,10 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     body: unknown,
     guard: (value: unknown) => value is T,
   ): Promise<T> {
+    const idempotencyKey = "idempotencyKey" in request
+      && typeof request.idempotencyKey === "string"
+      ? request.idempotencyKey
+      : undefined;
     const response = await fetchImplementation(url, {
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
@@ -354,6 +415,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         ...(body === undefined ? {} : { ["Content-Type"]: "application/json" }),
         ...options.headers,
         ...request.headers,
+        ...(idempotencyKey === undefined
+          ? {}
+          : { ["Idempotency-Key"]: idempotencyKey }),
         ...(request.requestId === undefined
           ? {}
           : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
@@ -766,6 +830,90 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyCancellationResponse,
+      );
+    },
+
+    async ledgerListEntries(
+      request: LedgerListRequest,
+    ): Promise<LedgerEntryPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/entries?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerListPeriodLocks(
+      request: LedgerListRequest,
+    ): Promise<LedgerPeriodLockPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/period-locks?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerPeriodLockPageWire,
+      );
+    },
+
+    async ledgerPostOpeningBalance(
+      body: LedgerOpeningBalanceWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/opening-balances\`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerPostAdministrativeCost(
+      body: LedgerAdministrativeCostWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/administrative-costs\`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerPostManualJournal(
+      body: LedgerManualJournalWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/manual-journals\`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerLockPeriod(
+      body: LedgerLockPeriodWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPeriodLockWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/period-locks\`,
+        "POST",
+        request,
+        body,
+        isLedgerPeriodLockWire,
       );
     },
   };

@@ -1,7 +1,7 @@
 # Backend system boundary
 
 <!-- architecture-inventory
-{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["public"],"technicalStatements":["These tables implement idempotency, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."],"technicalTables":["public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
+{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
 -->
 
 <!-- architecture-inventory
@@ -10,6 +10,10 @@
 
 <!-- architecture-inventory
 {"routes":["/api/v1/company-access/agreements/reaccept","/api/v1/company-access/companies/{company_id}","/api/v1/company-access/company-year-admissions","/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks","/api/v1/company-access/eligibility/definitive","/api/v1/company-access/eligibility/precheck","/api/v1/company-access/onboarding","/api/v1/company-access/operator-companies","/api/v1/company-access/operator-context"],"technicalMigrations":["supabase/migrations/20260826100000_company_access_onboarding.sql","supabase/migrations/20260826110000_company_year_admission.sql"],"workflowPurposes":["company-access-onboarding-and-support=>Retains the fail-closed legacy onboarding response, runs agreement reacceptance, accepted-member company lookup, and bounded support-operator context and company search through the company_access public package.","company-year-eligibility-and-admission=>Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package."],"workflows":["company-access-onboarding-and-support","company-year-eligibility-and-admission"]}
+-->
+
+<!-- architecture-inventory
+{"adapterBindingModes":["LedgerPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["LedgerPersistence=>backend-system"],"adapterBindings":["LedgerPersistence=>talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"],"adapterDependencies":["datetime","decimal","talli_backend.application.ledger_session","talli_backend.application.ledger_workflow","talli_backend.modules.ledger.public","talli_backend.modules.ledger.service","talli_backend.shared.kernel"],"ports":["LedgerPersistence"],"publicPackages":["talli_backend.modules.ledger.public"],"routes":["/api/v1/ledger/administrative-costs","/api/v1/ledger/entries","/api/v1/ledger/manual-journals","/api/v1/ledger/opening-balances","/api/v1/ledger/period-locks"],"technicalMigrations":["supabase/migrations/20260827100000_ledger_capability.sql"],"transportDependencies":["datetime","talli_backend.adapters.supabase_ledger","talli_backend.application.ledger_workflow","talli_backend.modules.ledger.public","talli_backend.shared.kernel"],"workflowDependencies":["talli_backend.modules.ledger.public"],"workflowPurposes":["ledger-posting-and-period-control=>Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, and company-year locking through the ledger public package."],"workflows":["ledger-posting-and-period-control"]}
 -->
 
 ## Purpose
@@ -68,12 +72,28 @@ support lookup to the capability's verified operator policy. The composition
 root injects `CompanyRegistryGateway` through
 `talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter`.
 
+The `ledger-posting-and-period-control` workflow serves
+`/api/v1/ledger/entries`, `/api/v1/ledger/period-locks`,
+`/api/v1/ledger/opening-balances`, `/api/v1/ledger/administrative-costs`,
+and `/api/v1/ledger/manual-journals`.
+It calls only `talli_backend.modules.ledger.public` and injects the
+`LedgerPersistence` port through
+`talli_backend.adapters.supabase_ledger.SupabaseLedgerSession`. Authentication
+and transport parsing remain in the application/system boundary; ledger owns
+posting and lock behavior.
+
 ## Operational and technical ownership
 
 The backend system owns the deny-by-default `public.launch_signoffs` operational
-control state. It also owns `public.company_access_command_receipts` as technical
-idempotency state and `public.notification_outbox` as technical event-delivery
-state. These tables own no accounting, filing, billing, or authorization policy.
+control state. It also owns `public.company_access_command_receipts` and
+`backend_system.ledger_command_receipts` as technical idempotency state,
+`backend_system.ledger_cursor_signing_keys` for opaque cursor integrity,
+`backend_system.ledger_migration_runs`,
+`backend_system.ledger_migration_source_rows`,
+`backend_system.ledger_migration_quarantine`, and
+`backend_system.ledger_migration_reconciliations` as cutover evidence, and
+`public.notification_outbox` as technical event-delivery state. These tables own
+no accounting, filing, billing, or authorization policy.
 Their migrations are `supabase/migrations/0001_authenticated_workspace.sql` and
 `supabase/migrations/20260801090000_company_access_invitations.sql`, extended by
 `supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql`
@@ -81,6 +101,9 @@ and `supabase/migrations/20260826100000_company_access_onboarding.sql`.
 The atomic company-year admission, immutable promise snapshot, eligibility
 assessment, recheck receipt, and restricted executor functions are added by
 `supabase/migrations/20260826110000_company_year_admission.sql`.
+The ledger command journal, cursor keys, and cutover evidence are added by
+`supabase/migrations/20260827100000_ledger_capability.sql` in the
+`backend_system` schema.
 
 ## Infrastructure and adapters
 

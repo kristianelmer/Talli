@@ -23,14 +23,27 @@ import {
   searchOperatorCompanyRecords,
   type CompanyRegistryPresentation,
 } from "../../../features/company-access";
+import {
+  loadLedgerEntries,
+  loadLedgerPeriodLocks,
+  presentLedgerEntries,
+  presentLedgerPeriodLocks,
+  type LedgerEntryPresentation,
+  type LedgerPeriodLockPresentation,
+} from "../../../features/ledger";
+
+async function backendAccessToken(supabase: SupabaseClient) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
 
 async function backendOperatorSession(supabase: SupabaseClient) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) return null;
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return null;
   try {
     return {
-      accessToken: session.access_token,
-      operator: await loadOperatorContext(session.access_token),
+      accessToken,
+      operator: await loadOperatorContext(accessToken),
     };
   } catch {
     return null;
@@ -94,14 +107,7 @@ export type OpeningBalanceSetupRow = {
   created_by: string;
 };
 
-export type PeriodLockRow = {
-  id: string;
-  company_id: string;
-  income_year: number;
-  reason: string;
-  locked_by: string;
-  locked_at: string;
-};
+export type PeriodLockRow = LedgerPeriodLockPresentation;
 
 export type AnnualDataRow = {
   id: string;
@@ -420,20 +426,7 @@ export type FilingReadinessSnapshotRow = {
   updated_at: string;
 };
 
-export type LedgerEntryRow = {
-  id: string;
-  company_id: string;
-  setup_id: string | null;
-  income_year: number;
-  entry_type: string;
-  memo: string;
-  lines: unknown[];
-  risk_flags: { code: string; account?: string; message: string }[];
-  warning_accepted_by: string | null;
-  warning_accepted_at: string | null;
-  created_by: string;
-  created_at: string;
-};
+export type LedgerEntryRow = LedgerEntryPresentation;
 
 export type BankTransactionRow = {
   id: string;
@@ -737,16 +730,14 @@ export async function listPeriodLocks(companyIds: string[]) {
     return { locks: [] as PeriodLockRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("period_locks")
-    .select("id, company_id, income_year, reason, locked_by, locked_at")
-    .in("company_id", companyIds)
-    .order("locked_at", { ascending: false });
-
-  return {
-    locks: (data ?? []) as PeriodLockRow[],
-    error: error?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return { locks: [] as PeriodLockRow[], error: "Innlogging kreves." };
+  try {
+    const locks = await loadLedgerPeriodLocks(accessToken, companyIds);
+    return { locks: presentLedgerPeriodLocks(locks), error: null };
+  } catch {
+    return { locks: [] as PeriodLockRow[], error: "Periodesperrer kunne ikke lastes." };
+  }
 }
 
 export async function listAnnualData(companyIds: string[]) {
@@ -1055,16 +1046,14 @@ export async function listLedgerEntries(companyIds: string[]) {
     return { entries: [] as LedgerEntryRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("ledger_entries")
-    .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  return {
-    entries: (data ?? []) as LedgerEntryRow[],
-    error: error?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return { entries: [] as LedgerEntryRow[], error: "Innlogging kreves." };
+  try {
+    const entries = await loadLedgerEntries(accessToken, companyIds);
+    return { entries: presentLedgerEntries(entries), error: null };
+  } catch {
+    return { entries: [] as LedgerEntryRow[], error: "Hovedboken kunne ikke lastes." };
+  }
 }
 
 export async function listFilingReadinessSnapshots(companyIds: string[]) {

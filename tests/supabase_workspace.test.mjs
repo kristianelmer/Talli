@@ -21,7 +21,6 @@ import {
 } from "../apps/web/app/lib/dividend-received.ts";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
-import { validateManualJournal } from "../apps/web/app/lib/manual-journal.ts";
 import { openingBalanceLedgerLines } from "../apps/web/app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
 import {
@@ -2848,13 +2847,17 @@ test(
     });
     assert.ok(outsiderTaxActionInsertError);
 
-    const manualJournal = validateManualJournal({
-      warningAccepted: true,
+    const manualJournal = {
       lines: [
         { account: "1800", description: "Manual investment correction", debit: 100, credit: 0 },
         { account: "1920", description: "Bank", debit: 0, credit: 100 },
       ],
-    });
+      riskFlags: [{
+        account: "1800",
+        code: "manual_journal_sensitive_account",
+        message: "Manuell journal berører filing-sensitiv konto 1800.",
+      }],
+    };
     const { data: manualEntry, error: manualEntryError } = await owner
       .from("ledger_entries")
       .insert({

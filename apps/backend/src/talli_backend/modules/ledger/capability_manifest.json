@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "manifestId": "narrow-ledger",
+  "boundaryVersion": "2026.1",
+  "changeKind": "legacy-behavior-freeze",
+  "decisionReferences": ["#124", "#125", "#126", "#127", "#132", "#139"],
+  "money": {"currency": "NOK", "decimalPlaces": 2},
+  "openingBalance": {
+    "memo": "Åpningsbalanse for Talli-start",
+    "accounts": ["1920", "2000", "2050"],
+    "retainsZeroEquityLine": true
+  },
+  "manualJournal": {
+    "sensitiveAccounts": ["1370", "1800", "2000", "2050", "2255", "2800", "8070", "8090"],
+    "minimumLines": 2,
+    "requiresBalance": true
+  },
+  "administrativeCostAccounts": {
+    "BANK_FEE": "7770",
+    "ACCOUNTING_FEE": "6705",
+    "SOFTWARE": "6420",
+    "PUBLIC_FEE": "7790",
+    "LEGAL_ADVISORY": "6720",
+    "OTHER_ADMIN_COST": "7795"
+  }
+}

@@ -403,6 +403,109 @@ export interface FinalizeCompanyDeletionRequest {
   operationId: string;
 }
 
+export type AdministrativeCostCategory = "BANK_FEE" | "ACCOUNTING_FEE" | "SOFTWARE" | "PUBLIC_FEE" | "LEGAL_ADVISORY" | "OTHER_ADMIN_COST";
+
+export interface LedgerAdministrativeCostWire {
+  amount: LedgerMoneyWire;
+  bankTransactionId: string;
+  category: AdministrativeCostCategory;
+  companyId: string;
+  documentId?: string | null;
+  incomeYear: number;
+  paidDate: string;
+  payee: string;
+}
+
+export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT";
+
+export interface LedgerEntryPageWire {
+  items: LedgerEntryViewWire[];
+  page: LedgerPageWire;
+}
+
+export interface LedgerEntryViewWire {
+  companyId: string;
+  entryId: string;
+  entryKind: LedgerEntryKind;
+  incomeYear: number;
+  lines: LedgerLineWire[];
+  memo: string;
+  postedAt: string;
+  postedBy: string;
+  riskFlags: LedgerRiskFlagWire[];
+  warningAcceptedAt: string | null;
+  warningAcceptedBy: string | null;
+}
+
+export interface LedgerLineWire {
+  account: string;
+  credit: LedgerMoneyWire;
+  debit: LedgerMoneyWire;
+  description: string;
+}
+
+export interface LedgerLockPeriodWire {
+  companyId: string;
+  incomeYear: number;
+  reason: string;
+}
+
+export interface LedgerManualJournalWire {
+  companyId: string;
+  incomeYear: number;
+  lines: LedgerLineWire[];
+  memo: string;
+  warningAccepted: boolean;
+}
+
+export interface LedgerMoneyWire {
+  amount: string;
+  currency: "NOK";
+}
+
+export interface LedgerOpeningBalanceWire {
+  bankBalance: LedgerMoneyWire;
+  companyId: string;
+  incomeYear: number;
+  shareCapitalSnapshot: LedgerMoneyWire;
+}
+
+export interface LedgerPageWire {
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
+export interface LedgerPeriodLockPageWire {
+  items: LedgerPeriodLockWire[];
+  page: LedgerPageWire;
+}
+
+export interface LedgerPeriodLockWire {
+  companyId: string;
+  incomeYear: number;
+  lockedAt: string;
+  lockedBy: string;
+  periodLockId: string;
+  reason: string;
+  replayed: boolean;
+}
+
+export interface LedgerPostedEntryWire {
+  companyId: string;
+  entryId: string;
+  entryKind: LedgerEntryKind;
+  incomeYear: number;
+  postedAt: string;
+  replayed: boolean;
+}
+
+export interface LedgerRiskFlagWire {
+  account: string;
+  code: LedgerRiskCode;
+}
+
+export type LedgerRiskCode = "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -862,6 +965,167 @@ function isCompanyDeletionReviewResponse(value: unknown): value is CompanyDeleti
   );
 }
 
+function isAdministrativeCostCategory(value: unknown): value is AdministrativeCostCategory {
+  return value === "BANK_FEE" || value === "ACCOUNTING_FEE" || value === "SOFTWARE" || value === "PUBLIC_FEE" || value === "LEGAL_ADVISORY" || value === "OTHER_ADMIN_COST";
+}
+
+function isLedgerAdministrativeCostWire(value: unknown): value is LedgerAdministrativeCostWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","bankTransactionId","category","companyId","documentId","incomeYear","paidDate","payee"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    (typeof value.bankTransactionId === "string" && value.bankTransactionId.length >= 1 && value.bankTransactionId.length <= 255) &&
+    isAdministrativeCostCategory(value.category) &&
+    isUuid(value.companyId) &&
+    (value.documentId === undefined || ((typeof value.documentId === "string" && value.documentId.length >= 1 && value.documentId.length <= 255) || value.documentId === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.paidDate === "string" &&
+    (typeof value.payee === "string" && value.payee.length >= 1 && value.payee.length <= 255)
+  );
+}
+
+function isLedgerEntryKind(value: unknown): value is LedgerEntryKind {
+  return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT";
+}
+
+function isLedgerEntryPageWire(value: unknown): value is LedgerEntryPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isLedgerEntryViewWire(item)) &&
+    isLedgerPageWire(value.page)
+  );
+}
+
+function isLedgerEntryViewWire(value: unknown): value is LedgerEntryViewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","entryId","entryKind","incomeYear","lines","memo","postedAt","postedBy","riskFlags","warningAcceptedAt","warningAcceptedBy"]) &&
+    typeof value.companyId === "string" &&
+    typeof value.entryId === "string" &&
+    isLedgerEntryKind(value.entryKind) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.lines) && value.lines.every((item) => isLedgerLineWire(item)) &&
+    typeof value.memo === "string" &&
+    isDateTime(value.postedAt) &&
+    typeof value.postedBy === "string" &&
+    Array.isArray(value.riskFlags) && value.riskFlags.every((item) => isLedgerRiskFlagWire(item)) &&
+    (isDateTime(value.warningAcceptedAt) || value.warningAcceptedAt === null) &&
+    (typeof value.warningAcceptedBy === "string" || value.warningAcceptedBy === null)
+  );
+}
+
+function isLedgerLineWire(value: unknown): value is LedgerLineWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["account","credit","debit","description"]) &&
+    (typeof value.account === "string" && value.account.length <= 16) &&
+    isLedgerMoneyWire(value.credit) &&
+    isLedgerMoneyWire(value.debit) &&
+    (typeof value.description === "string" && value.description.length <= 500)
+  );
+}
+
+function isLedgerLockPeriodWire(value: unknown): value is LedgerLockPeriodWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","reason"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 500)
+  );
+}
+
+function isLedgerManualJournalWire(value: unknown): value is LedgerManualJournalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","lines","memo","warningAccepted"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.lines) && value.lines.every((item) => isLedgerLineWire(item)) &&
+    (typeof value.memo === "string" && value.memo.length >= 1 && value.memo.length <= 500) &&
+    typeof value.warningAccepted === "boolean"
+  );
+}
+
+function isLedgerMoneyWire(value: unknown): value is LedgerMoneyWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","currency"]) &&
+    (typeof value.amount === "string" && value.amount.length <= 64 && new RegExp("^-?(?:0|[1-9]\\d*)(?:\\.\\d{1,2})?$", "u").test(value.amount)) &&
+    value.currency === "NOK"
+  );
+}
+
+function isLedgerOpeningBalanceWire(value: unknown): value is LedgerOpeningBalanceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankBalance","companyId","incomeYear","shareCapitalSnapshot"]) &&
+    isLedgerMoneyWire(value.bankBalance) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isLedgerMoneyWire(value.shareCapitalSnapshot)
+  );
+}
+
+function isLedgerPageWire(value: unknown): value is LedgerPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["hasMore","nextCursor"]) &&
+    typeof value.hasMore === "boolean" &&
+    (typeof value.nextCursor === "string" || value.nextCursor === null)
+  );
+}
+
+function isLedgerPeriodLockPageWire(value: unknown): value is LedgerPeriodLockPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isLedgerPeriodLockWire(item)) &&
+    isLedgerPageWire(value.page)
+  );
+}
+
+function isLedgerPeriodLockWire(value: unknown): value is LedgerPeriodLockWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","lockedAt","lockedBy","periodLockId","reason","replayed"]) &&
+    typeof value.companyId === "string" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isDateTime(value.lockedAt) &&
+    typeof value.lockedBy === "string" &&
+    typeof value.periodLockId === "string" &&
+    typeof value.reason === "string" &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isLedgerPostedEntryWire(value: unknown): value is LedgerPostedEntryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","entryId","entryKind","incomeYear","postedAt","replayed"]) &&
+    typeof value.companyId === "string" &&
+    typeof value.entryId === "string" &&
+    isLedgerEntryKind(value.entryKind) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isDateTime(value.postedAt) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isLedgerRiskFlagWire(value: unknown): value is LedgerRiskFlagWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["account","code"]) &&
+    typeof value.account === "string" &&
+    isLedgerRiskCode(value.code)
+  );
+}
+
+function isLedgerRiskCode(value: unknown): value is LedgerRiskCode {
+  return value === "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
+}
+
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
@@ -903,6 +1167,16 @@ export interface TalliRequestOptions {
   requestId?: string;
 }
 
+export interface TalliMutationOptions extends TalliRequestOptions {
+  idempotencyKey: string;
+}
+
+export interface LedgerListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
 }
@@ -918,6 +1192,10 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     body: unknown,
     guard: (value: unknown) => value is T,
   ): Promise<T> {
+    const idempotencyKey = "idempotencyKey" in request
+      && typeof request.idempotencyKey === "string"
+      ? request.idempotencyKey
+      : undefined;
     const response = await fetchImplementation(url, {
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
@@ -926,6 +1204,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         ...(body === undefined ? {} : { ["Content-Type"]: "application/json" }),
         ...options.headers,
         ...request.headers,
+        ...(idempotencyKey === undefined
+          ? {}
+          : { ["Idempotency-Key"]: idempotencyKey }),
         ...(request.requestId === undefined
           ? {}
           : { ["X-Request-ID"]: request.requestId }),
@@ -1338,6 +1619,90 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyCancellationResponse,
+      );
+    },
+
+    async ledgerListEntries(
+      request: LedgerListRequest,
+    ): Promise<LedgerEntryPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/entries?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerListPeriodLocks(
+      request: LedgerListRequest,
+    ): Promise<LedgerPeriodLockPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/period-locks?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerPeriodLockPageWire,
+      );
+    },
+
+    async ledgerPostOpeningBalance(
+      body: LedgerOpeningBalanceWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/opening-balances`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerPostAdministrativeCost(
+      body: LedgerAdministrativeCostWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/administrative-costs`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerPostManualJournal(
+      body: LedgerManualJournalWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/manual-journals`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerLockPeriod(
+      body: LedgerLockPeriodWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPeriodLockWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/period-locks`,
+        "POST",
+        request,
+        body,
+        isLedgerPeriodLockWire,
       );
     },
   };

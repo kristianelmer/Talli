@@ -1,0 +1,602 @@
+"""Stable public contract for Talli's narrow-ledger capability."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Protocol, TypeVar
+from uuid import UUID
+
+from talli_backend.shared.kernel import (
+    ActorId,
+    CompanyId,
+    CorrelationId,
+    DomainError,
+    ErrorCategory,
+    IdempotencyKey,
+    IncomeYear,
+    LocalDate,
+    Money,
+    Timestamp,
+)
+
+
+def _opaque_uuid(value: str, label: str) -> str:
+    try:
+        parsed = UUID(value)
+    except (ValueError, AttributeError, TypeError):
+        raise ValueError(f"{label} must be a UUID") from None
+    return str(parsed)
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerEntryId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "ledger entry id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class PeriodLockId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "period lock id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerCursor:
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value or len(self.value) > 4096:
+            raise ValueError("ledger cursor is invalid")
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerSourceRecordId:
+    """Ledger-owned immutable correlation to a source capability record."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("ledger source record id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class LedgerSourceCapability(StrEnum):
+    LEDGER = "LEDGER"
+    BANKING = "BANKING"
+    INVESTMENTS = "INVESTMENTS"
+    CORPORATE_GOVERNANCE = "CORPORATE_GOVERNANCE"
+    SHAREHOLDER_REGISTER_FILING = "SHAREHOLDER_REGISTER_FILING"
+    COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
+
+
+class AdministrativeCostCategory(StrEnum):
+    BANK_FEE = "BANK_FEE"
+    ACCOUNTING_FEE = "ACCOUNTING_FEE"
+    SOFTWARE = "SOFTWARE"
+    PUBLIC_FEE = "PUBLIC_FEE"
+    LEGAL_ADVISORY = "LEGAL_ADVISORY"
+    OTHER_ADMIN_COST = "OTHER_ADMIN_COST"
+
+
+class BankSuggestionRule(StrEnum):
+    BANK_FEE = "BANK_FEE"
+    SYSTEM_SUBSCRIPTION = "SYSTEM_SUBSCRIPTION"
+    DEPOSIT_INTEREST = "DEPOSIT_INTEREST"
+
+
+class ShareholderLoanDirection(StrEnum):
+    SHAREHOLDER_TO_COMPANY = "SHAREHOLDER_TO_COMPANY"
+    COMPANY_TO_CORPORATE_SHAREHOLDER = "COMPANY_TO_CORPORATE_SHAREHOLDER"
+
+
+class TaxSettlementKind(StrEnum):
+    PAYABLE = "payable"
+    PAYMENT = "payment"
+    REFUND = "refund"
+
+
+class LedgerEntryKind(StrEnum):
+    OPENING_BALANCE = "OPENING_BALANCE"
+    ADMINISTRATIVE_COST = "ADMINISTRATIVE_COST"
+    MANUAL_JOURNAL = "MANUAL_JOURNAL"
+    BANK_RULE_SUGGESTION = "BANK_RULE_SUGGESTION"
+    DIVIDEND_RECEIVED = "DIVIDEND_RECEIVED"
+    OWNER_DIVIDEND_DECLARED = "OWNER_DIVIDEND_DECLARED"
+    OWNER_DIVIDEND_PAYMENT = "OWNER_DIVIDEND_PAYMENT"
+    SHARE_PURCHASE = "SHARE_PURCHASE"
+    SHARE_SALE = "SHARE_SALE"
+    SHAREHOLDER_LOAN = "SHAREHOLDER_LOAN"
+    TAX_SETTLEMENT = "TAX_SETTLEMENT"
+
+
+class LedgerRiskCode(StrEnum):
+    MANUAL_JOURNAL_SENSITIVE_ACCOUNT = "MANUAL_JOURNAL_SENSITIVE_ACCOUNT"
+
+
+class LedgerErrorCode(StrEnum):
+    ACCOUNT_INVALID = "LEDGER_ACCOUNT_INVALID"
+    ADMINISTRATIVE_COST_NOT_POSITIVE = "LEDGER_ADMINISTRATIVE_COST_NOT_POSITIVE"
+    AMOUNT_NEGATIVE = "LEDGER_AMOUNT_NEGATIVE"
+    COMPANY_SCOPE_INVALID = "LEDGER_COMPANY_SCOPE_INVALID"
+    COMPANY_YEAR_NOT_ADMITTED = "LEDGER_COMPANY_YEAR_NOT_ADMITTED"
+    CURRENCY_MISMATCH = "LEDGER_CURRENCY_MISMATCH"
+    DEPENDENCY_UNAVAILABLE = "LEDGER_DEPENDENCY_UNAVAILABLE"
+    DESCRIPTION_REQUIRED = "LEDGER_DESCRIPTION_REQUIRED"
+    ENTRY_REQUIRES_TWO_LINES = "LEDGER_ENTRY_REQUIRES_TWO_LINES"
+    ENTRY_UNBALANCED = "LEDGER_ENTRY_UNBALANCED"
+    FORBIDDEN = "LEDGER_FORBIDDEN"
+    IDEMPOTENCY_IN_PROGRESS = "LEDGER_IDEMPOTENCY_IN_PROGRESS"
+    IDEMPOTENCY_KEY_REUSED = "LEDGER_IDEMPOTENCY_KEY_REUSED"
+    INVALID_CURSOR = "LEDGER_INVALID_CURSOR"
+    INVALID_INPUT = "LEDGER_INVALID_INPUT"
+    LINE_NOT_ONE_SIDED = "LEDGER_LINE_NOT_ONE_SIDED"
+    LINE_ZERO = "LEDGER_LINE_ZERO"
+    LOCK_REASON_REQUIRED = "LEDGER_LOCK_REASON_REQUIRED"
+    MEMO_REQUIRED = "LEDGER_MEMO_REQUIRED"
+    NOT_FOUND = "LEDGER_NOT_FOUND"
+    OPENING_ALREADY_EXISTS = "LEDGER_OPENING_ALREADY_EXISTS"
+    OPENING_BALANCE_NEGATIVE = "LEDGER_OPENING_BALANCE_NEGATIVE"
+    OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED = (
+        "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
+    )
+    PAGE_LIMIT_INVALID = "LEDGER_PAGE_LIMIT_INVALID"
+    PAYEE_REQUIRED = "LEDGER_PAYEE_REQUIRED"
+    PERIOD_LOCKED = "LEDGER_PERIOD_LOCKED"
+    WARNING_ACCEPTANCE_REQUIRED = "LEDGER_WARNING_ACCEPTANCE_REQUIRED"
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerRiskFlag:
+    code: LedgerRiskCode
+    account: str
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerLine:
+    account: str
+    description: str
+    debit: Money
+    credit: Money
+
+    def __post_init__(self) -> None:
+        description = self.description.strip()
+        if len(self.account) != 4 or not self.account.isdigit():
+            raise LedgerError.invalid_input("LEDGER_ACCOUNT_INVALID")
+        if not description or len(description) > 500:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        if self.debit.currency != self.credit.currency:
+            raise LedgerError.invalid_input("LEDGER_CURRENCY_MISMATCH")
+        if self.debit.amount < 0 or self.credit.amount < 0:
+            raise LedgerError.invalid_input("LEDGER_AMOUNT_NEGATIVE")
+        if self.debit.amount > 0 and self.credit.amount > 0:
+            raise LedgerError.invalid_input("LEDGER_LINE_NOT_ONE_SIDED")
+        object.__setattr__(self, "description", description)
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+
+
+@dataclass(frozen=True, slots=True)
+class PostOpeningBalanceCommand(LedgerCommand):
+    bank_balance: Money
+    share_capital_snapshot: Money
+    opening_snapshot_id: LedgerSourceRecordId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PostAdministrativeCostCommand(LedgerCommand):
+    bank_transaction_id: LedgerSourceRecordId
+    category: AdministrativeCostCategory
+    payee: str
+    amount: Money
+    paid_date: LocalDate
+    document_id: LedgerSourceRecordId | None = None
+
+    def __post_init__(self) -> None:
+        if not self.payee.strip() or len(self.payee) > 255:
+            raise LedgerError.invalid_input("LEDGER_PAYEE_REQUIRED")
+
+
+@dataclass(frozen=True, slots=True)
+class PostBankSuggestionOutcomeCommand(LedgerCommand):
+    acceptance_id: LedgerSourceRecordId
+    rule: BankSuggestionRule
+    amount: Money
+    transaction_text: str
+
+    def __post_init__(self) -> None:
+        text = self.transaction_text.strip()
+        if not text or len(text) > 500:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "transaction_text", text)
+
+
+@dataclass(frozen=True, slots=True)
+class PostInvestmentDividendCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    paying_company_name: str
+    gross_amount: Money
+
+    def __post_init__(self) -> None:
+        name = self.paying_company_name.strip()
+        if not name or len(name) > 255:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "paying_company_name", name)
+
+
+@dataclass(frozen=True, slots=True)
+class PostInvestmentPurchaseCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    investment_name: str
+    purchase_amount: Money
+
+    def __post_init__(self) -> None:
+        name = self.investment_name.strip()
+        if not name or len(name) > 255:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "investment_name", name)
+
+
+@dataclass(frozen=True, slots=True)
+class PostInvestmentSaleCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    investment_name: str
+    proceeds: Money
+    fifo_cost_basis_reduction: Money
+
+    def __post_init__(self) -> None:
+        name = self.investment_name.strip()
+        if not name or len(name) > 255:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "investment_name", name)
+
+
+@dataclass(frozen=True, slots=True)
+class PostOwnerDividendDeclaredCommand(LedgerCommand):
+    finalization_id: LedgerSourceRecordId
+    declared_amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class PostOwnerDividendPaymentCommand(LedgerCommand):
+    payment_event_id: LedgerSourceRecordId
+    payment_amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class PostShareholderLoanCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    counterparty_name: str
+    direction: ShareholderLoanDirection
+    amount: Money
+
+    def __post_init__(self) -> None:
+        name = self.counterparty_name.strip()
+        if not name or len(name) > 255:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "counterparty_name", name)
+
+
+@dataclass(frozen=True, slots=True)
+class PostTaxSettlementCommand(LedgerCommand):
+    settlement_id: LedgerSourceRecordId
+    settlement_kind: TaxSettlementKind
+    amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class PostManualJournalCommand(LedgerCommand):
+    memo: str
+    lines: tuple[LedgerLine, ...]
+    warning_accepted: bool
+
+    def __post_init__(self) -> None:
+        if not self.memo.strip() or len(self.memo) > 500:
+            raise LedgerError.invalid_input("LEDGER_MEMO_REQUIRED")
+        if not 2 <= len(self.lines) <= 100:
+            raise LedgerError.invalid_input("LEDGER_ENTRY_REQUIRES_TWO_LINES")
+
+
+@dataclass(frozen=True, slots=True)
+class LockPeriodCommand(LedgerCommand):
+    reason: str
+
+    def __post_init__(self) -> None:
+        if not self.reason.strip() or len(self.reason) > 500:
+            raise LedgerError.invalid_input("LEDGER_LOCK_REASON_REQUIRED")
+
+
+@dataclass(frozen=True, slots=True)
+class PostedLedgerEntry:
+    entry_id: LedgerEntryId
+    company_id: CompanyId
+    income_year: IncomeYear
+    entry_kind: LedgerEntryKind
+    posted_at: Timestamp
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PeriodLock:
+    period_lock_id: PeriodLockId
+    company_id: CompanyId
+    income_year: IncomeYear
+    reason: str
+    locked_by: ActorId
+    locked_at: Timestamp
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerEntryView:
+    entry_id: LedgerEntryId
+    company_id: CompanyId
+    income_year: IncomeYear
+    entry_kind: LedgerEntryKind
+    memo: str
+    lines: tuple[LedgerLine, ...]
+    risk_flags: tuple[LedgerRiskFlag, ...]
+    warning_accepted_by: ActorId | None
+    warning_accepted_at: Timestamp | None
+    posted_by: ActorId
+    posted_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerPage:
+    next_cursor: LedgerCursor | None
+    has_more: bool
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerEntryPage:
+    items: tuple[LedgerEntryView, ...]
+    page: LedgerPage
+
+
+@dataclass(frozen=True, slots=True)
+class PeriodLockPage:
+    items: tuple[PeriodLock, ...]
+    page: LedgerPage
+
+
+class LedgerError(DomainError):
+    @staticmethod
+    def _declared(code: LedgerErrorCode | str) -> str:
+        return LedgerErrorCode(code).value
+
+    @classmethod
+    def invalid_input(
+        cls, code: LedgerErrorCode | str, message: str = ""
+    ) -> LedgerError:
+        return cls(
+            code=cls._declared(code),
+            category=ErrorCategory.INVALID_INPUT,
+            message=message,
+        )
+
+    @classmethod
+    def conflict(cls, code: LedgerErrorCode | str, message: str = "") -> LedgerError:
+        return cls(
+            code=cls._declared(code),
+            category=ErrorCategory.CONFLICT,
+            message=message,
+        )
+
+    @classmethod
+    def forbidden(
+        cls, code: LedgerErrorCode | str = LedgerErrorCode.FORBIDDEN
+    ) -> LedgerError:
+        return cls(code=cls._declared(code), category=ErrorCategory.FORBIDDEN)
+
+    @classmethod
+    def not_found(
+        cls, code: LedgerErrorCode | str = LedgerErrorCode.NOT_FOUND
+    ) -> LedgerError:
+        return cls(code=cls._declared(code), category=ErrorCategory.NOT_FOUND)
+
+    @classmethod
+    def precondition_failed(
+        cls, code: LedgerErrorCode | str, message: str = ""
+    ) -> LedgerError:
+        return cls(
+            code=cls._declared(code),
+            category=ErrorCategory.PRECONDITION_FAILED,
+            message=message,
+        )
+
+    @classmethod
+    def unavailable(cls) -> LedgerError:
+        return cls(
+            code=LedgerErrorCode.DEPENDENCY_UNAVAILABLE.value,
+            category=ErrorCategory.DEPENDENCY_UNAVAILABLE,
+        )
+
+
+class LedgerPersistence(Protocol):
+    async def post_entry(
+        self,
+        command: LedgerCommand,
+        *,
+        entry_kind: LedgerEntryKind,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+        risk_flags: tuple[LedgerRiskFlag, ...],
+        warning_accepted: bool,
+        source_capability: LedgerSourceCapability,
+        source_record_id: LedgerSourceRecordId,
+    ) -> PostedLedgerEntry: ...
+
+    async def lock_period(self, command: LockPeriodCommand) -> PeriodLock: ...
+
+    async def list_entries(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LedgerCursor | None,
+        limit: int,
+    ) -> LedgerEntryPage: ...
+
+    async def list_period_locks(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LedgerCursor | None,
+        limit: int,
+    ) -> PeriodLockPage: ...
+
+
+LedgerAdapter = TypeVar("LedgerAdapter", bound=type[object])
+
+
+def ledger_persistence_adapter(
+    contract: type[object],
+) -> Callable[[LedgerAdapter], LedgerAdapter]:
+    """Declare an infrastructure binding without registering global state."""
+
+    def declare(adapter: LedgerAdapter) -> LedgerAdapter:
+        _ = contract
+        return adapter
+
+    return declare
+
+
+class LedgerCommands(Protocol):
+    async def post_opening_balance(
+        self, command: PostOpeningBalanceCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_administrative_cost(
+        self, command: PostAdministrativeCostCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_bank_suggestion_outcome(
+        self, command: PostBankSuggestionOutcomeCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_investment_dividend(
+        self, command: PostInvestmentDividendCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_investment_purchase(
+        self, command: PostInvestmentPurchaseCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_investment_sale(
+        self, command: PostInvestmentSaleCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_owner_dividend_declared(
+        self, command: PostOwnerDividendDeclaredCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_owner_dividend_payment(
+        self, command: PostOwnerDividendPaymentCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_shareholder_loan(
+        self, command: PostShareholderLoanCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_tax_settlement(
+        self, command: PostTaxSettlementCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def post_manual_journal(
+        self, command: PostManualJournalCommand
+    ) -> PostedLedgerEntry: ...
+
+    async def lock_period(self, command: LockPeriodCommand) -> PeriodLock: ...
+
+
+class LedgerQueries(Protocol):
+    async def list_entries(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LedgerCursor | None,
+        limit: int,
+    ) -> LedgerEntryPage: ...
+
+    async def list_period_locks(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LedgerCursor | None,
+        limit: int,
+    ) -> PeriodLockPage: ...
+
+
+__all__ = [
+    "AdministrativeCostCategory",
+    "BankSuggestionRule",
+    "LedgerCommands",
+    "LedgerCursor",
+    "LedgerEntryId",
+    "LedgerEntryKind",
+    "LedgerEntryPage",
+    "LedgerEntryView",
+    "LedgerError",
+    "LedgerErrorCode",
+    "LedgerLine",
+    "LedgerPersistence",
+    "LedgerQueries",
+    "LedgerRiskCode",
+    "LedgerRiskFlag",
+    "LedgerSourceCapability",
+    "LedgerSourceRecordId",
+    "LedgerPage",
+    "LockPeriodCommand",
+    "PeriodLock",
+    "PeriodLockId",
+    "PeriodLockPage",
+    "PostAdministrativeCostCommand",
+    "PostBankSuggestionOutcomeCommand",
+    "PostInvestmentDividendCommand",
+    "PostInvestmentPurchaseCommand",
+    "PostInvestmentSaleCommand",
+    "PostOwnerDividendDeclaredCommand",
+    "PostOwnerDividendPaymentCommand",
+    "PostShareholderLoanCommand",
+    "PostTaxSettlementCommand",
+    "ShareholderLoanDirection",
+    "TaxSettlementKind",
+    "PostedLedgerEntry",
+    "PostManualJournalCommand",
+    "PostOpeningBalanceCommand",
+    "ledger_persistence_adapter",
+]

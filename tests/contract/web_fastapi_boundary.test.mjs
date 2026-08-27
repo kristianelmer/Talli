@@ -79,6 +79,51 @@ test("the committed contract exposes company-access invitation and membership ad
   assert.deepEqual(contract.components.schemas.CompanyMembership.properties.state.enum, ["active", "removed"]);
 });
 
+test("the committed contract exposes only ledger-owned browser commands", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operations = [
+    ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
+    ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
+    ["/api/v1/ledger/opening-balances", "post", "ledgerPostOpeningBalance"],
+    ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+    ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
+    ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+  ];
+  for (const [path, method, operationId] of operations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+
+  for (const path of [
+    "/api/v1/ledger/bank-suggestion-outcomes",
+    "/api/v1/ledger/investment-purchases",
+    "/api/v1/ledger/investment-sales",
+    "/api/v1/ledger/investment-dividends",
+    "/api/v1/ledger/owner-dividends/declared",
+    "/api/v1/ledger/owner-dividends/payments",
+    "/api/v1/ledger/shareholder-loans",
+    "/api/v1/ledger/tax-settlements",
+  ]) {
+    assert.equal(contract.paths[path], undefined);
+  }
+
+  const money = contract.components.schemas.LedgerMoneyWire;
+  assert.equal(money.properties.currency.const, "NOK");
+  assert.equal(money.properties.amount.type, "string");
+  assert.match(money.properties.amount.pattern, /\\d/u);
+  const mutation = contract.paths["/api/v1/ledger/manual-journals"].post;
+  assert.equal(
+    mutation.parameters.some(
+      (parameter) => parameter.in === "header"
+        && parameter.name === "Idempotency-Key"
+        && parameter.required === true,
+    ),
+    true,
+  );
+});
+
 test("the tracer contract declares optional request and response correlation headers", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operation = contract.paths["/api/v1/system-boundary/tracer"].get;
@@ -314,6 +359,9 @@ test("the generated client is committed and carries its provenance marker", () =
   assert.match(generatedClient, /systemBoundaryGetTracerStatus/);
   assert.match(generatedClient, /companyAccessResumeCancellation/);
   assert.match(generatedClient, /ResumeCompanyCancellationRequest/);
+  assert.match(generatedClient, /ledgerPostManualJournal/);
+  assert.match(generatedClient, /ledgerListEntries/);
+  assert.match(generatedClient, /Idempotency-Key/);
   assert.match(generatedClient, /requestId\?: string/);
   assert.doesNotMatch(generatedClient, /ECONNREFUSED|Forbindelsen virker/);
 });

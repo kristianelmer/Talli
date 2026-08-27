@@ -99,7 +99,14 @@ import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation
 import { loadPendingCancellationOperation } from "../../lib/cancellation-operation-state";
 
 type WorkspaceProps = {
-  searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string; recovery?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    operatorOrg?: string;
+    dividendPayment?: string;
+    recovery?: string;
+    lockOperationId?: string;
+    manualOperationId?: string;
+  }>;
 };
 
 export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
@@ -520,6 +527,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={lockCompanyYear}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <input name="operationId" type="hidden" value={params?.lockOperationId ?? randomUUID()} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
@@ -1985,6 +1993,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={postManualJournal}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <input name="operationId" type="hidden" value={params?.manualOperationId ?? randomUUID()} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />

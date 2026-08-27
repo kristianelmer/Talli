@@ -33,6 +33,14 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:ledger-posting-and-period-control",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
@@ -45,11 +53,38 @@
   "modules": [
     "backend-system:system_boundary",
     "backend:company_access",
+    "backend:ledger",
     "web:company-access",
+    "web:ledger",
+    "web:public-acquisition",
     "web:system-boundary"
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_cursor_signing_keys"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_source_rows"
+    },
     {
       "owner": "backend-system",
       "table": "public.company_access_command_receipts"

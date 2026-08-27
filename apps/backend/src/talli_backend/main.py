@@ -2,19 +2,25 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal, TypeVar, cast
+from datetime import date, datetime
+from typing import Annotated, Any, Literal, TypeVar, cast
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
+from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.application.ledger_workflow import (
+    LedgerAuthenticationError,
+    LedgerSessionFactory,
+)
 from talli_backend.modules.company_access.public import (
     AcceptCompanyInvitationRequest,
     AdministerCompanyMembershipRequest,
@@ -60,6 +66,34 @@ from talli_backend.modules.system_boundary.public import (
     SystemBoundaryTransport,
     adapter_for,
 )
+from talli_backend.modules.ledger.public import (
+    AdministrativeCostCategory,
+    LedgerCursor,
+    LedgerEntryPage,
+    LedgerEntryKind,
+    LedgerEntryView,
+    LedgerError,
+    LedgerLine,
+    LedgerRiskFlag,
+    LedgerRiskCode,
+    LedgerSourceRecordId,
+    LockPeriodCommand,
+    PeriodLock,
+    PeriodLockPage,
+    PostAdministrativeCostCommand,
+    PostedLedgerEntry,
+    PostManualJournalCommand,
+    PostOpeningBalanceCommand,
+)
+from talli_backend.shared.kernel import (
+    CompanyId,
+    CorrelationId,
+    ErrorCategory,
+    IdempotencyKey,
+    IncomeYear,
+    LocalDate,
+    Money,
+)
 
 API_VERSION = "v1"
 CONTRACT_VERSION = "1.0.0"
@@ -103,6 +137,186 @@ class ProblemDetails(TransportModel):
     instance: str
     code: str
     request_id: str
+
+
+class StrictTransportModel(TransportModel):
+    model_config = ConfigDict(
+        alias_generator=lambda name: _to_camel(name),
+        populate_by_name=True,
+        extra="forbid",
+    )
+
+
+class LedgerMoneyWire(StrictTransportModel):
+    amount: str = Field(
+        max_length=64,
+        pattern=r"^-?(?:0|[1-9]\d*)(?:\.\d{1,2})?$",
+    )
+    currency: Literal["NOK"]
+
+    def to_domain(self) -> Money:
+        return Money.nok(self.amount)
+
+
+class LedgerLineWire(StrictTransportModel):
+    account: str = Field(max_length=16)
+    description: str = Field(max_length=500)
+    debit: LedgerMoneyWire
+    credit: LedgerMoneyWire
+
+    def to_domain(self) -> LedgerLine:
+        return LedgerLine(
+            account=self.account,
+            description=self.description,
+            debit=self.debit.to_domain(),
+            credit=self.credit.to_domain(),
+        )
+
+
+class LedgerCompanyYearWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+
+
+class LedgerOpeningBalanceWire(LedgerCompanyYearWire):
+    bank_balance: LedgerMoneyWire
+    share_capital_snapshot: LedgerMoneyWire
+
+
+class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
+    bank_transaction_id: str = Field(min_length=1, max_length=255)
+    category: AdministrativeCostCategory
+    payee: str = Field(min_length=1, max_length=255)
+    amount: LedgerMoneyWire
+    paid_date: date
+    document_id: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class LedgerManualJournalWire(LedgerCompanyYearWire):
+    memo: str = Field(min_length=1, max_length=500)
+    lines: list[LedgerLineWire] = Field(min_length=2, max_length=100)
+    warning_accepted: bool
+
+
+class LedgerLockPeriodWire(LedgerCompanyYearWire):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class LedgerPostedEntryWire(TransportModel):
+    entry_id: str
+    company_id: str
+    income_year: int
+    entry_kind: LedgerEntryKind
+    posted_at: datetime
+    replayed: bool
+
+
+class LedgerRiskFlagWire(TransportModel):
+    code: LedgerRiskCode
+    account: str
+
+
+class LedgerEntryViewWire(TransportModel):
+    entry_id: str
+    company_id: str
+    income_year: int
+    entry_kind: LedgerEntryKind
+    memo: str
+    lines: list[LedgerLineWire]
+    risk_flags: list[LedgerRiskFlagWire]
+    warning_accepted_by: str | None
+    warning_accepted_at: datetime | None
+    posted_by: str
+    posted_at: datetime
+
+
+class LedgerPeriodLockWire(TransportModel):
+    period_lock_id: str
+    company_id: str
+    income_year: int
+    reason: str
+    locked_by: str
+    locked_at: datetime
+    replayed: bool
+
+
+class LedgerPageWire(TransportModel):
+    next_cursor: str | None
+    has_more: bool
+
+
+class LedgerEntryPageWire(TransportModel):
+    items: list[LedgerEntryViewWire]
+    page: LedgerPageWire
+
+
+class LedgerPeriodLockPageWire(TransportModel):
+    items: list[LedgerPeriodLockWire]
+    page: LedgerPageWire
+
+
+def _money_wire(value: Money) -> LedgerMoneyWire:
+    return LedgerMoneyWire(amount=format(value.amount, "f"), currency=value.currency.value)
+
+
+def _line_wire(value: LedgerLine) -> LedgerLineWire:
+    return LedgerLineWire(
+        account=value.account,
+        description=value.description,
+        debit=_money_wire(value.debit),
+        credit=_money_wire(value.credit),
+    )
+
+
+def _risk_wire(value: LedgerRiskFlag) -> LedgerRiskFlagWire:
+    return LedgerRiskFlagWire(code=value.code, account=value.account)
+
+
+def _posted_wire(value: PostedLedgerEntry) -> LedgerPostedEntryWire:
+    return LedgerPostedEntryWire(
+        entry_id=str(value.entry_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        entry_kind=value.entry_kind,
+        posted_at=value.posted_at.value,
+        replayed=value.replayed,
+    )
+
+
+def _lock_wire(value: PeriodLock) -> LedgerPeriodLockWire:
+    return LedgerPeriodLockWire(
+        period_lock_id=str(value.period_lock_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        reason=value.reason,
+        locked_by=str(value.locked_by.subject),
+        locked_at=value.locked_at.value,
+        replayed=value.replayed,
+    )
+
+
+def _entry_view_wire(value: LedgerEntryView) -> LedgerEntryViewWire:
+    return LedgerEntryViewWire(
+        entry_id=str(value.entry_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        entry_kind=value.entry_kind,
+        memo=value.memo,
+        lines=[_line_wire(line) for line in value.lines],
+        risk_flags=[_risk_wire(flag) for flag in value.risk_flags],
+        warning_accepted_by=(
+            str(value.warning_accepted_by.subject)
+            if value.warning_accepted_by is not None
+            else None
+        ),
+        warning_accepted_at=(
+            value.warning_accepted_at.value
+            if value.warning_accepted_at is not None
+            else None
+        ),
+        posted_by=str(value.posted_by.subject),
+        posted_at=value.posted_at.value,
+    )
 
 
 class ApiProblem(Exception):
@@ -160,6 +374,7 @@ def _problem_response(
 def create_app(
     company_access_gateway: CompanyAccessGateway | None = None,
     company_registry_gateway: CompanyRegistryGateway | None = None,
+    ledger_session_factory: LedgerSessionFactory | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="Talli API",
@@ -179,6 +394,7 @@ def create_app(
         gateway,
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
+    ledger_application = compose_ledger_application(ledger_session_factory)
 
     def bearer_token(
         credentials: HTTPAuthorizationCredentials | None,
@@ -202,6 +418,38 @@ def create_app(
                 title=error.title,
                 detail=error.detail,
             ) from None
+
+    async def ledger_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except LedgerAuthenticationError:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        except LedgerError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Ledger request failed",
+                detail=error.message or "The ledger request could not be completed.",
+            ) from None
+
+    def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
+        try:
+            return factory()
+        except (TypeError, ValueError):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT") from None
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
@@ -822,6 +1070,263 @@ def create_app(
                 bearer_token(credentials), cancellation_id, command
             )
         )
+
+    ledger_errors: Any = {
+        status: {
+            "description": "Ledger request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (400, 401, 403, 404, 409, 422, 503)
+    }
+    ledger_success: dict[str, Any] = {
+        "headers": {"X-Request-ID": REQUEST_ID_HEADER}
+    }
+
+    def ledger_correlation(request: Request) -> CorrelationId:
+        return CorrelationId(request.state.request_id)
+
+    @application.get(
+        "/api/v1/ledger/entries",
+        operation_id="ledgerListEntries",
+        response_model=LedgerEntryPageWire,
+        responses={200: {"description": "Authorized ledger-entry page."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_ledger_entries(
+        request: Request,
+        company_id: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        limit: int = Query(default=50, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerEntryPageWire:
+        async def execute() -> LedgerEntryPageWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            page: LedgerEntryPage = await session.list_entries(
+                actor_id=session.actor_id,
+                company_ids=ledger_input(
+                    lambda: tuple(CompanyId(str(value)) for value in company_id)
+                ),
+                correlation_id=ledger_correlation(request),
+                cursor=ledger_input(lambda: LedgerCursor(cursor)) if cursor else None,
+                limit=limit,
+            )
+            return LedgerEntryPageWire(
+                items=[_entry_view_wire(item) for item in page.items],
+                page=LedgerPageWire(
+                    next_cursor=(
+                        str(page.page.next_cursor)
+                        if page.page.next_cursor is not None
+                        else None
+                    ),
+                    has_more=page.page.has_more,
+                ),
+            )
+
+        return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/ledger/period-locks",
+        operation_id="ledgerListPeriodLocks",
+        response_model=LedgerPeriodLockPageWire,
+        responses={200: {"description": "Authorized period-lock page."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_ledger_period_locks(
+        request: Request,
+        company_id: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        limit: int = Query(default=50, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerPeriodLockPageWire:
+        async def execute() -> LedgerPeriodLockPageWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            page: PeriodLockPage = await session.list_period_locks(
+                actor_id=session.actor_id,
+                company_ids=ledger_input(
+                    lambda: tuple(CompanyId(str(value)) for value in company_id)
+                ),
+                correlation_id=ledger_correlation(request),
+                cursor=ledger_input(lambda: LedgerCursor(cursor)) if cursor else None,
+                limit=limit,
+            )
+            return LedgerPeriodLockPageWire(
+                items=[_lock_wire(item) for item in page.items],
+                page=LedgerPageWire(
+                    next_cursor=(
+                        str(page.page.next_cursor)
+                        if page.page.next_cursor is not None
+                        else None
+                    ),
+                    has_more=page.page.has_more,
+                ),
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/opening-balances",
+        operation_id="ledgerPostOpeningBalance",
+        response_model=LedgerPostedEntryWire,
+        status_code=201,
+        responses={201: {"description": "Opening balance posted."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def post_ledger_opening_balance(
+        request: Request,
+        command: LedgerOpeningBalanceWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerPostedEntryWire:
+        async def execute() -> LedgerPostedEntryWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain_command = ledger_input(
+                lambda: PostOpeningBalanceCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=ledger_correlation(request),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    bank_balance=command.bank_balance.to_domain(),
+                    share_capital_snapshot=command.share_capital_snapshot.to_domain(),
+                )
+            )
+            result = await session.post_opening_balance(domain_command)
+            return _posted_wire(result)
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/administrative-costs",
+        operation_id="ledgerPostAdministrativeCost",
+        response_model=LedgerPostedEntryWire,
+        status_code=201,
+        responses={201: {"description": "Administrative cost posted."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def post_ledger_administrative_cost(
+        request: Request,
+        command: LedgerAdministrativeCostWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerPostedEntryWire:
+        async def execute() -> LedgerPostedEntryWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain_command = ledger_input(
+                lambda: PostAdministrativeCostCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=ledger_correlation(request),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    bank_transaction_id=LedgerSourceRecordId(command.bank_transaction_id),
+                    category=command.category,
+                    payee=command.payee,
+                    amount=command.amount.to_domain(),
+                    paid_date=LocalDate(command.paid_date),
+                    document_id=(
+                        LedgerSourceRecordId(command.document_id)
+                        if command.document_id is not None
+                        else None
+                    ),
+                )
+            )
+            result = await session.post_administrative_cost(domain_command)
+            return _posted_wire(result)
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/manual-journals",
+        operation_id="ledgerPostManualJournal",
+        response_model=LedgerPostedEntryWire,
+        status_code=201,
+        responses={201: {"description": "Manual journal posted."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def post_ledger_manual_journal(
+        request: Request,
+        command: LedgerManualJournalWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerPostedEntryWire:
+        async def execute() -> LedgerPostedEntryWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain_command = ledger_input(
+                lambda: PostManualJournalCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=ledger_correlation(request),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    memo=command.memo,
+                    lines=tuple(line.to_domain() for line in command.lines),
+                    warning_accepted=command.warning_accepted,
+                )
+            )
+            result = await session.post_manual_journal(domain_command)
+            return _posted_wire(result)
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/period-locks",
+        operation_id="ledgerLockPeriod",
+        response_model=LedgerPeriodLockWire,
+        status_code=201,
+        responses={201: {"description": "Period locked."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def lock_ledger_period(
+        request: Request,
+        command: LedgerLockPeriodWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerPeriodLockWire:
+        async def execute() -> LedgerPeriodLockWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain_command = ledger_input(
+                lambda: LockPeriodCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=ledger_correlation(request),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    reason=command.reason,
+                )
+            )
+            result = await session.lock_period(domain_command)
+            return _lock_wire(result)
+
+        return await ledger_call(execute)
 
     @application.get("/health/live", include_in_schema=False)
     async def liveness() -> JSONResponse:

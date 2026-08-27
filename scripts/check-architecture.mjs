@@ -1219,7 +1219,7 @@ function validateSystemManifest(root, errors, schema) {
     if (!manifest.infrastructure?.[field]) errors.push(`architecture/backend-system.json: missing infrastructure.${field}`);
   }
   for (const table of technical.tables ?? []) {
-    if (!/^public\.[a-z_]+$/u.test(table)) errors.push(`architecture/backend-system.json: invalid technical table ${table}`);
+    if (!/^[a-z][a-z0-9_]*\.[a-z_]+$/u.test(table)) errors.push(`architecture/backend-system.json: invalid technical table ${table}`);
   }
   for (const migrationPath of technical.migrations ?? []) {
     const sourcePath = join(root, migrationPath);
@@ -1235,8 +1235,27 @@ function discoverMigrationTables(root) {
   const tables = new Set();
   for (const path of walk(join(root, "supabase/migrations"), (candidate) => candidate.endsWith(".sql"))) {
     const source = readFileSync(path, "utf8");
-    for (const match of source.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(public\.[a-z_]+)/giu)) {
-      tables.add(match[1].toLowerCase());
+    const statements = source.matchAll(
+      /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+set\s+schema\s+([a-z][a-z0-9_]*)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+rename\s+to\s+([a-z_]+)/giu,
+    );
+    for (const match of statements) {
+      if (match[1]) {
+        tables.add(match[1].toLowerCase());
+        continue;
+      }
+      if (match[2] && match[3]) {
+        const previous = match[2].toLowerCase();
+        if (tables.delete(previous)) {
+          tables.add(`${match[3].toLowerCase()}.${previous.split(".")[1]}`);
+        }
+        continue;
+      }
+      if (match[4] && match[5]) {
+        const previous = match[4].toLowerCase();
+        if (tables.delete(previous)) {
+          tables.add(`${previous.split(".")[0]}.${match[5].toLowerCase()}`);
+        }
+      }
     }
   }
   return [...tables].sort();

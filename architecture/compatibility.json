@@ -365,18 +365,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "lockCompanyYear"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "postManualJournal"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
           "operation": "recordAdminCost"
         },
@@ -419,12 +407,6 @@
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "listLedgerEntries"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
           "operation": "listOpeningSetups"
         },
@@ -433,12 +415,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_shareholders",
           "operation": "listOpeningSetups"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "listPeriodLocks"
         }
       ]
     },

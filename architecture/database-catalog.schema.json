@@ -15,7 +15,7 @@
         "type": "object",
         "required": ["name", "kind"],
         "properties": {
-          "name": { "type": "string", "pattern": "^public\\.[a-z_]+$" },
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z_]+$" },
           "kind": { "enum": ["capability-business", "technical", "legacy-business"] },
           "owner": { "type": "string", "pattern": "^backend:[a-z][a-z0-9_]*$" }
         },
