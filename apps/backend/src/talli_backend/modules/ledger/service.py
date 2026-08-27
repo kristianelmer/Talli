@@ -7,7 +7,9 @@ from decimal import Decimal
 
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    ApprovedOneSidedIntercompanyLoanFundingFacts,
     ApprovedLossCoverageCapitalReductionFacts,
+    ApprovedOwnerLoanFundingFacts,
     BankInterestIncomeFacts,
     BankLoanEvent,
     BankSuggestionRule,
@@ -18,6 +20,8 @@ from talli_backend.modules.ledger.public import (
     GroupContributionFacts,
     GroupContributionPerspective,
     GroupContributionRelationship,
+    IntercompanyLoanPerspective,
+    IntercompanyLoanRelationship,
     LedgerCursor,
     LedgerEntryKind,
     LedgerError,
@@ -71,6 +75,27 @@ _ADMINISTRATIVE_COST_ACCOUNTS = {
     AdministrativeCostCategory.LEGAL_ADVISORY: "6720",
     AdministrativeCostCategory.OTHER_ADMIN_COST: "7795",
 }
+
+
+def _owner_loan_funding_lines(
+    amount: Money,
+    *,
+    counterparty_name: str | None = None,
+) -> tuple[LedgerLine, LedgerLine]:
+    received_description = (
+        "Owner-loan funding received"
+        if counterparty_name is None
+        else f"Loan received from {counterparty_name}"
+    )
+    payable_description = (
+        "Debt to owner"
+        if counterparty_name is None
+        else f"Loan payable to {counterparty_name}"
+    )
+    return (
+        LedgerLine("1920", received_description, amount, _ZERO),
+        LedgerLine("2255", payable_description, _ZERO, amount),
+    )
 _BANK_SUGGESTION_LINES = {
     BankSuggestionRule.BANK_FEE: ("7770", "Bankomkostninger", False),
     BankSuggestionRule.SYSTEM_SUBSCRIPTION: ("6700", "Fremmede tjenester", False),
@@ -178,11 +203,13 @@ class LedgerService:
 
         facts = command.facts
         required_sources: frozenset[LedgerSourceCapability]
+        primary_source_capability: LedgerSourceCapability
         entry_kind: LedgerEntryKind
         memo: str
         lines: tuple[LedgerLine, ...]
         if isinstance(facts, BankInterestIncomeFacts):
             required_sources = frozenset({LedgerSourceCapability.BANKING})
+            primary_source_capability = LedgerSourceCapability.BANKING
             _positive(facts.amount, "LEDGER_INVALID_INPUT")
             entry_kind = LedgerEntryKind.BANK_INTEREST
             memo = "Bank interest supported by bank advice"
@@ -190,10 +217,57 @@ class LedgerService:
                 LedgerLine("1920", "Bank interest received", facts.amount, _ZERO),
                 LedgerLine("8050", "Bank interest income", _ZERO, facts.amount),
             )
+        elif isinstance(facts, ApprovedOwnerLoanFundingFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    LedgerSourceCapability.BANKING,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
+            _positive(facts.principal, "LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.SHAREHOLDER_LOAN
+            memo = "Approved owner-to-company loan funding"
+            lines = _owner_loan_funding_lines(facts.principal)
+        elif isinstance(facts, ApprovedOneSidedIntercompanyLoanFundingFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    LedgerSourceCapability.BANKING,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
+            _positive(facts.principal, "LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.INTERCOMPANY_LOAN
+            memo = f"Approved intercompany loan funding: {facts.perspective.value}"
+            if facts.perspective is IntercompanyLoanPerspective.LENDER:
+                receivable_account = (
+                    "1320"
+                    if facts.relationship
+                    is IntercompanyLoanRelationship.PARENT_TO_SUBSIDIARY
+                    else "1325"
+                )
+                lines = (
+                    LedgerLine(
+                        receivable_account,
+                        "Intercompany loan receivable",
+                        facts.principal,
+                        _ZERO,
+                    ),
+                    LedgerLine("1920", "Intercompany funding paid", _ZERO, facts.principal),
+                )
+            else:
+                lines = (
+                    LedgerLine(
+                        "1920", "Intercompany funding received", facts.principal, _ZERO
+                    ),
+                    LedgerLine("2260", "Intercompany loan payable", _ZERO, facts.principal),
+                )
         elif isinstance(facts, CompanyTaxAccrualFacts):
             required_sources = frozenset(
                 {LedgerSourceCapability.COMPANY_TAX_FILING}
             )
+            primary_source_capability = LedgerSourceCapability.COMPANY_TAX_FILING
             if (
                 facts.current_tax.amount < 0
                 or facts.deferred_tax_increase.amount < 0
@@ -229,6 +303,7 @@ class LedgerService:
                 )
         elif isinstance(facts, OrdinaryBankLoanFacts):
             required_sources = frozenset({LedgerSourceCapability.BANKING})
+            primary_source_capability = LedgerSourceCapability.BANKING
             if len(
                 {facts.principal.currency, facts.interest.currency, facts.fee.currency}
             ) != 1 or any(
@@ -277,6 +352,7 @@ class LedgerService:
             required_sources = frozenset(
                 {LedgerSourceCapability.CORPORATE_GOVERNANCE}
             )
+            primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
             if (
                 facts.nominal_increase.amount <= 0
                 or facts.share_premium.amount < 0
@@ -316,6 +392,7 @@ class LedgerService:
             required_sources = frozenset(
                 {LedgerSourceCapability.CORPORATE_GOVERNANCE}
             )
+            primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
             _positive(facts.nominal_reduction, "LEDGER_INVALID_INPUT")
             entry_kind = LedgerEntryKind.CAPITAL_REDUCTION
             if (
@@ -354,6 +431,7 @@ class LedgerService:
                     LedgerSourceCapability.COMPANY_TAX_FILING,
                 }
             )
+            primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
             amounts = (
                 facts.gross_tax_amount,
                 facts.related_tax,
@@ -417,7 +495,7 @@ class LedgerService:
 
         actual_sources = frozenset(source.capability for source in sources)
         if (
-            command.primary_source.capability not in required_sources
+            command.primary_source.capability is not primary_source_capability
             or actual_sources != required_sources
         ):
             raise LedgerError.precondition_failed(
@@ -778,19 +856,9 @@ class LedgerService:
     ) -> PostedLedgerEntry:
         _positive(command.amount, "LEDGER_INVALID_INPUT")
         if command.direction is ShareholderLoanDirection.SHAREHOLDER_TO_COMPANY:
-            lines = (
-                LedgerLine(
-                    "1920",
-                    f"Loan received from {command.counterparty_name}",
-                    command.amount,
-                    _ZERO,
-                ),
-                LedgerLine(
-                    "2255",
-                    f"Loan payable to {command.counterparty_name}",
-                    _ZERO,
-                    command.amount,
-                ),
+            lines = _owner_loan_funding_lines(
+                command.amount,
+                counterparty_name=command.counterparty_name,
             )
         else:
             lines = (

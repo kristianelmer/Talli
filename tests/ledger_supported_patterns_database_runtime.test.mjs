@@ -59,6 +59,7 @@ test("the predecessor expand remains forward-compatible during recutover", () =>
     "CAPITAL_REDUCTION",
     "COMPANY_TAX_ACCRUAL",
     "GROUP_CONTRIBUTION",
+    "INTERCOMPANY_LOAN",
   ]) {
     assert.match(predecessorExpand, new RegExp(`'${entryKind}'`, "u"));
   }

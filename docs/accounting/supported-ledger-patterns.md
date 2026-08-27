@@ -180,6 +180,8 @@ Require two identified Norwegian companies, direction, group/related-party relat
 
 Post the actual lender's receivable and borrower's debt symmetrically when both entities are in Talli, with one shared event identity and independently balanced journals. Post interest to the separately identified group-interest categories shown in [regnskapsloven § 6-1](https://lovdata.no/lov/1998-07-17-56/%C2%A76-1). A one-sided ledger may post only from complete counterparty evidence and must retain the counterparty reference.
 
+For Talli's account and SAF-T mapping, parent-to-subsidiary loan receivables use `1320`, other same-group loan receivables use `1325`, and group-company liabilities use `2260`, matching the [Skatteetaten-published SAF-T standard-account list](https://github.com/Skatteetaten/saf-t/blob/master/General%20Ledger%20Standard%20Accounts/CSV/General_Ledger_Standard_Accounts_4_character_2020.csv). These stay distinct from owner receivables (`1370`) and owner liabilities (`2255`).
+
 Hard block foreign party/currency, circular/netted/unmatched transfers, cash pooling, subordination, convertibility, capitalization/waiver, non-arm's-length or undocumented terms, inconsistent counterparties, or any [§ 6-41 interest-limitation](https://lovdata.no/lov/1999-03-26-14/%C2%A76-41) exposure that the applicable tax module cannot resolve. This implements the [#172 “normal Norwegian intercompany loan” boundary](https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104).
 
 ### Dividend received by the holding company

@@ -42,12 +42,14 @@ accepts a closed `SupportedHoldingActionFacts` variant and immutable
 `LedgerFactReference` values. The initial variants are
 `BankInterestIncomeFacts`, `CompanyTaxAccrualFacts`,
 `OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
-`ApprovedLossCoverageCapitalReductionFacts`, and `GroupContributionFacts`;
-their
+`ApprovedLossCoverageCapitalReductionFacts`, `ApprovedOwnerLoanFundingFacts`,
+`ApprovedOneSidedIntercompanyLoanFundingFacts`, and `GroupContributionFacts`; their
 closed phase and relationship values are `BankLoanEvent`,
 `CapitalIncreasePhase`, `CapitalReductionRecognition`,
-`GroupContributionRelationship`, and `GroupContributionPerspective`. Callers
-cannot select an account, line, pattern, or rule version.
+`IntercompanyLoanPerspective`, `IntercompanyLoanRelationship`,
+`GroupContributionRelationship`, and
+`GroupContributionPerspective`. Callers cannot select an account, line,
+pattern, or rule version.
 
 The capital-reduction receiver accepts only an approval fact emitted by the
 corporate-governance source owner. Ledger validates the accounting amount and
@@ -56,6 +58,17 @@ transfer, filing timeliness, or other corporate-law eligibility. The later
 registration transition, three-year dividend restriction, and paid-in-capital
 reconciliation remain fail-closed until their owning capability stages provide
 and verify those facts.
+
+The related-party loan receivers likewise require a corporate-governance
+approval as the primary fact and a banking match as corroboration. Ledger owns
+only the owner-debt and intercompany receivable/payable translation; approval,
+arm's-length, counterparty, agreement, and tax-limitation decisions remain with
+their source owners.
+The intercompany receiver is explicitly limited to the documented one-sided
+case and retains one shared governance event reference; paired Talli companies
+remain fail-closed pending an atomic two-company coordinator. Parent-to-
+subsidiary receivables use account 1320, other same-group receivables use 1325,
+and group-company liabilities use 2260.
 
 The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`, `LockPeriodCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,

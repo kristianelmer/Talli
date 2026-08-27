@@ -210,6 +210,16 @@ class CapitalReductionRecognition(StrEnum):
     FIRST_RECOGNIZED_AFTER_REGISTRATION = "FIRST_RECOGNIZED_AFTER_REGISTRATION"
 
 
+class IntercompanyLoanPerspective(StrEnum):
+    LENDER = "LENDER"
+    BORROWER = "BORROWER"
+
+
+class IntercompanyLoanRelationship(StrEnum):
+    PARENT_TO_SUBSIDIARY = "PARENT_TO_SUBSIDIARY"
+    OTHER_SAME_GROUP = "OTHER_SAME_GROUP"
+
+
 class GroupContributionRelationship(StrEnum):
     SUBSIDIARY_TO_PARENT = "SUBSIDIARY_TO_PARENT"
     PARENT_TO_SUBSIDIARY = "PARENT_TO_SUBSIDIARY"
@@ -254,6 +264,18 @@ class ApprovedLossCoverageCapitalReductionFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class ApprovedOwnerLoanFundingFacts:
+    principal: Money
+
+
+@dataclass(frozen=True, slots=True)
+class ApprovedOneSidedIntercompanyLoanFundingFacts:
+    perspective: IntercompanyLoanPerspective
+    relationship: IntercompanyLoanRelationship
+    principal: Money
+
+
+@dataclass(frozen=True, slots=True)
 class GroupContributionFacts:
     relationship: GroupContributionRelationship
     perspective: GroupContributionPerspective
@@ -265,7 +287,9 @@ class GroupContributionFacts:
 
 
 SupportedHoldingActionFacts: TypeAlias = (
-    BankInterestIncomeFacts
+    ApprovedOneSidedIntercompanyLoanFundingFacts
+    | ApprovedOwnerLoanFundingFacts
+    | BankInterestIncomeFacts
     | CashCapitalIncreaseFacts
     | CompanyTaxAccrualFacts
     | GroupContributionFacts
@@ -292,6 +316,7 @@ class LedgerEntryKind(StrEnum):
     CAPITAL_REDUCTION = "CAPITAL_REDUCTION"
     COMPANY_TAX_ACCRUAL = "COMPANY_TAX_ACCRUAL"
     GROUP_CONTRIBUTION = "GROUP_CONTRIBUTION"
+    INTERCOMPANY_LOAN = "INTERCOMPANY_LOAN"
 
 
 class LedgerRiskCode(StrEnum):
@@ -843,6 +868,8 @@ class LedgerQueries(Protocol):
 
 __all__ = [
     "AdministrativeCostCategory",
+    "ApprovedOneSidedIntercompanyLoanFundingFacts",
+    "ApprovedOwnerLoanFundingFacts",
     "BankInterestIncomeFacts",
     "BankLoanEvent",
     "BankSuggestionRule",
@@ -853,6 +880,8 @@ __all__ = [
     "GroupContributionFacts",
     "GroupContributionPerspective",
     "GroupContributionRelationship",
+    "IntercompanyLoanPerspective",
+    "IntercompanyLoanRelationship",
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",

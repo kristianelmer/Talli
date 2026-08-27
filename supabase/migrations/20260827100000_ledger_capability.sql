@@ -311,7 +311,7 @@ where not ledger.entry_lines_are_valid_v1(entry.lines, true)
     'dividend_to_owner_payment', 'owner_dividend_payment',
     'share_purchase', 'share_sale', 'shareholder_loan', 'tax_settlement',
     'bank_interest', 'bank_loan', 'capital_increase', 'capital_reduction',
-    'company_tax_accrual', 'group_contribution'
+    'company_tax_accrual', 'group_contribution', 'intercompany_loan'
   )
 on conflict (run_id, source_table, source_id) do nothing;
 
@@ -352,6 +352,7 @@ set lines = ledger.normalize_lines_v1(lines),
       when 'capital_reduction' then 'CAPITAL_REDUCTION'
       when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
       when 'group_contribution' then 'GROUP_CONTRIBUTION'
+      when 'intercompany_loan' then 'INTERCOMPANY_LOAN'
     end,
     source_capability = coalesce(
       source_capability,
@@ -376,6 +377,7 @@ set lines = ledger.normalize_lines_v1(lines),
         when 'capital_reduction' then 'CORPORATE_GOVERNANCE'
         when 'company_tax_accrual' then 'COMPANY_TAX_FILING'
         when 'group_contribution' then 'CORPORATE_GOVERNANCE'
+        when 'intercompany_loan' then 'CORPORATE_GOVERNANCE'
         else 'LEDGER'
       end
     ),
@@ -441,6 +443,7 @@ begin
     when 'capital_reduction' then 'CAPITAL_REDUCTION'
     when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
     when 'group_contribution' then 'GROUP_CONTRIBUTION'
+    when 'intercompany_loan' then 'INTERCOMPANY_LOAN'
     else pg_catalog.upper(pg_catalog.btrim(new.entry_kind))
   end;
   if new.entry_kind not in (
@@ -449,7 +452,7 @@ begin
     'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
     'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
     'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
-    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
+    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION', 'INTERCOMPANY_LOAN'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;
@@ -476,6 +479,7 @@ begin
       when 'CAPITAL_REDUCTION' then 'CORPORATE_GOVERNANCE'
       when 'COMPANY_TAX_ACCRUAL' then 'COMPANY_TAX_FILING'
       when 'GROUP_CONTRIBUTION' then 'CORPORATE_GOVERNANCE'
+      when 'INTERCOMPANY_LOAN' then 'CORPORATE_GOVERNANCE'
       else 'LEDGER'
     end
   );
@@ -1414,7 +1418,7 @@ begin
       'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
       'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
       'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
-      'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
+      'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION', 'INTERCOMPANY_LOAN'
     )
     or pg_catalog.jsonb_typeof(p_risk_flags) is distinct from 'array'
     or not ledger.entry_lines_are_valid_v1(p_lines, false)

@@ -7,6 +7,8 @@ import pytest
 
 from talli_backend.modules.ledger.public import (
     ApprovedLossCoverageCapitalReductionFacts,
+    ApprovedOneSidedIntercompanyLoanFundingFacts,
+    ApprovedOwnerLoanFundingFacts,
     BankInterestIncomeFacts,
     BankLoanEvent,
     CashCapitalIncreaseFacts,
@@ -16,6 +18,8 @@ from talli_backend.modules.ledger.public import (
     GroupContributionFacts,
     GroupContributionPerspective,
     GroupContributionRelationship,
+    IntercompanyLoanPerspective,
+    IntercompanyLoanRelationship,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
@@ -180,6 +184,91 @@ def test_bank_loan_payment_separates_principal_interest_and_fee() -> None:
         ("7770", "100.00", "0.00"),
         ("1920", "0.00", "12100.00"),
     ]
+
+
+def test_approved_owner_loan_funding_posts_bank_against_owner_debt() -> None:
+    persistence = PatternPersistenceStub()
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                ApprovedOwnerLoanFundingFacts(principal=Money.nok("50000.00")),
+                source(
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    "owner-loan-approval",
+                ),
+                source(LedgerSourceCapability.BANKING, "owner-loan-bank-match"),
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == [
+        ("1920", "50000.00", "0.00"),
+        ("2255", "0.00", "50000.00"),
+    ]
+
+
+def test_bank_match_cannot_masquerade_as_the_owner_loan_approval() -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    ApprovedOwnerLoanFundingFacts(principal=Money.nok("50000.00")),
+                    source(LedgerSourceCapability.BANKING, "owner-loan-bank-primary"),
+                    source(
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        "owner-loan-governance-corroborating",
+                    ),
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+    assert persistence.calls == []
+
+
+@pytest.mark.parametrize(
+    ("perspective", "expected"),
+    [
+        (
+            IntercompanyLoanPerspective.LENDER,
+            [("1320", "80000.00", "0.00"), ("1920", "0.00", "80000.00")],
+        ),
+        (
+            IntercompanyLoanPerspective.BORROWER,
+            [("1920", "80000.00", "0.00"), ("2260", "0.00", "80000.00")],
+        ),
+    ],
+)
+def test_approved_intercompany_funding_posts_each_company_perspective(
+    perspective: IntercompanyLoanPerspective,
+    expected: list[tuple[str, str, str]],
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                ApprovedOneSidedIntercompanyLoanFundingFacts(
+                    perspective=perspective,
+                    relationship=IntercompanyLoanRelationship.PARENT_TO_SUBSIDIARY,
+                    principal=Money.nok("80000.00"),
+                ),
+                source(
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    "intercompany-shared-event",
+                ),
+                source(
+                    LedgerSourceCapability.BANKING,
+                    f"intercompany-bank-{perspective.value.lower()}",
+                ),
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == expected
 
 
 def test_registered_cash_capital_reclassifies_nominal_premium_and_bank() -> None:
@@ -347,11 +436,13 @@ def test_source_owner_mismatch_blocks_before_persistence() -> None:
 def test_fact_variants_never_accept_accounts_lines_or_rule_selection() -> None:
     forbidden = {"account", "accounts", "line", "lines", "pattern", "rule_version"}
     for facts in (
+        ApprovedOneSidedIntercompanyLoanFundingFacts,
         BankInterestIncomeFacts,
         CompanyTaxAccrualFacts,
         OrdinaryBankLoanFacts,
         CashCapitalIncreaseFacts,
         ApprovedLossCoverageCapitalReductionFacts,
+        ApprovedOwnerLoanFundingFacts,
         GroupContributionFacts,
     ):
         assert not (set(facts.__dataclass_fields__) & forbidden)

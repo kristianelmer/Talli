@@ -984,6 +984,45 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       commit;
     `);
     assert.equal(capitalReductionPosting.entry_kind, "CAPITAL_REDUCTION");
+    const intercompanyLoanLines = JSON.stringify([
+      { account: "1320", description: "Intercompany loan receivable", debit: "80000.00", credit: "0.00", currency: "NOK" },
+      { account: "1920", description: "Intercompany funding paid", debit: "0.00", credit: "80000.00", currency: "NOK" },
+    ]);
+    const intercompanyLoanSources = JSON.stringify([
+      {
+        role: "PRIMARY",
+        capability: "CORPORATE_GOVERNANCE",
+        recordId: "golden:runtime-intercompany-approval",
+        revision: 1,
+        factSha256: "e".repeat(64),
+      },
+      {
+        role: "CORROBORATING",
+        capability: "BANKING",
+        recordId: "golden:runtime-intercompany-bank",
+        revision: 1,
+        factSha256: "f".repeat(64),
+      },
+    ]);
+    const intercompanyLoanPosting = jsonOutput(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select row_to_json(posted)::text
+      from ledger.post_supported_entry_v1(
+        '62000000-0000-4000-8000-000000000003', '${companyId}', 2026,
+        'INTERCOMPANY_LOAN', 'Approved intercompany loan funding: LENDER',
+        '${sqlQuote(intercompanyLoanLines)}'::jsonb, 'CORPORATE_GOVERNANCE',
+        'golden:runtime-intercompany-approval', 'intercompany-loan-runtime', '${ownerId}',
+        '2026-08-27', 'ledger-supported-patterns-2026.1',
+        '${sqlQuote(intercompanyLoanSources)}'::jsonb
+      ) posted;
+      commit;
+    `);
+    assert.equal(intercompanyLoanPosting.entry_kind, "INTERCOMPANY_LOAN");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from ledger.entry_sources
+      where entry_id = '${intercompanyLoanPosting.ledger_entry_id}';
+    `)), "2");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         (select count(*) from ledger.entry_contexts
