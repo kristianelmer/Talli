@@ -14,6 +14,7 @@ const companyYearClosePath = "/repo/supabase/migrations/20260827104000_ledger_co
 const receivedDividendPath = "/repo/supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql";
 const bankLoanPath = "/repo/supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql";
 const cashCapitalIncreasePath = "/repo/supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql";
+const lossCoverageCapitalReductionPath = "/repo/supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -976,6 +977,93 @@ commit;
 `;
 }
 
+function lossCoverageCapitalReductionSources(phase, sourceRecordId) {
+  const sources = [
+    {
+      role: "PRIMARY",
+      capability: "CORPORATE_GOVERNANCE",
+      recordId: sourceRecordId,
+      revision: 1,
+      factSha256: "5".repeat(64),
+    },
+    {
+      role: "CORROBORATING",
+      capability: "DOCUMENTS",
+      recordId: `${sourceRecordId}:documents`,
+      revision: 1,
+      factSha256: "6".repeat(64),
+    },
+  ];
+  if (phase !== "DECIDED_NOT_REGISTERED") {
+    sources.push({
+      role: "CORROBORATING",
+      capability: "SHAREHOLDER_REGISTER_FILING",
+      recordId: `${sourceRecordId}:shareholder-register`,
+      revision: 1,
+      factSha256: "7".repeat(64),
+    });
+  }
+  return sources;
+}
+
+function lossCoverageCapitalReductionLines(phase, nominalReductionNok) {
+  if (phase === "DECIDED_NOT_REGISTERED") {
+    return [
+      { account: "2033", description: "Unregistered capital reduction", debit: nominalReductionNok, credit: "0.00", currency: "NOK" },
+      { account: "2080", description: "Uncovered loss", debit: "0.00", credit: nominalReductionNok, currency: "NOK" },
+    ];
+  }
+  if (phase === "REGISTERED") {
+    return [
+      { account: "2000", description: "Registered share capital", debit: nominalReductionNok, credit: "0.00", currency: "NOK" },
+      { account: "2033", description: "Registered unregistered capital reduction", debit: "0.00", credit: nominalReductionNok, currency: "NOK" },
+    ];
+  }
+  return [
+    { account: "2000", description: "Registered share capital", debit: nominalReductionNok, credit: "0.00", currency: "NOK" },
+    { account: "2080", description: "Uncovered loss", debit: "0.00", credit: nominalReductionNok, currency: "NOK" },
+  ];
+}
+
+function lossCoverageCapitalReductionTransaction({
+  phase,
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey,
+  capitalReductionReference = "capital-reduction:runtime-1",
+  nominalReductionNok = "20000.00",
+  memo,
+  lines = lossCoverageCapitalReductionLines(phase, nominalReductionNok),
+  sourceRecordId,
+  correlationId = sourceRecordId,
+  eventDate,
+  sources = lossCoverageCapitalReductionSources(phase, sourceRecordId),
+}) {
+  const functionName = {
+    DECIDED_NOT_REGISTERED: "record_loss_coverage_capital_reduction_decision_v1",
+    REGISTERED: "record_loss_coverage_capital_reduction_registration_v1",
+    FIRST_RECOGNIZED_AFTER_REGISTRATION:
+      "record_loss_coverage_capital_reduction_direct_registration_v1",
+  }[phase];
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(posted)::text
+from ledger.${functionName}(
+  '${sqlQuote(idempotencyKey)}'::text, '${company}'::uuid, ${incomeYear}::integer,
+  '${sqlQuote(capitalReductionReference)}'::text, ${numericSql(nominalReductionNok)},
+  '${sqlQuote(memo)}'::text, '${sqlQuote(JSON.stringify(lines))}'::jsonb,
+  'CORPORATE_GOVERNANCE'::text, '${sqlQuote(sourceRecordId)}'::text,
+  '${sqlQuote(correlationId)}'::text, '${verifiedSubject}'::text,
+  '${eventDate}'::date, 'ledger-supported-patterns-2026.1'::text,
+  '${sqlQuote(JSON.stringify(sources))}'::jsonb
+) posted;
+commit;
+`;
+}
+
 function correctionCall({
   actorId = ownerId,
   verifiedSubject = actorId,
@@ -1433,6 +1521,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", receivedDividendPath]);
     psql(containerName, ["--file", bankLoanPath]);
     psql(containerName, ["--file", cashCapitalIncreasePath]);
+    psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -1463,7 +1552,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
             'company_year_close_reporting_outputs',
             'received_dividend_decisions', 'received_dividend_settlements',
             'bank_loan_anchors', 'bank_loan_payment_allocations',
-            'cash_capital_increase_phases'
+            'cash_capital_increase_phases',
+            'loss_coverage_capital_reduction_phases'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -1472,7 +1562,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.cash_capital_increase_phases:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.cash_capital_increase_phases:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.loss_coverage_capital_reduction_phases:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -3085,6 +3175,582 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           ('ledger.record_cash_capital_increase_registration_v1${capitalIncreaseSignature}'::regprocedure)
         ) wrapper(function_name);
       `)), "f:f", `${forbiddenRole} gained direct capital lifecycle authority`);
+    }
+
+    const capitalReductionDecisionOptions = {
+      phase: "DECIDED_NOT_REGISTERED",
+      idempotencyKey: "69000000-0000-4000-8000-000000000001",
+      memo: "Loss-coverage capital reduction decided, not registered",
+      sourceRecordId: "loss-coverage-capital-reduction-decision-runtime",
+      eventDate: "2026-06-01",
+    };
+    const capitalReductionRegistrationOptions = {
+      phase: "REGISTERED",
+      idempotencyKey: "69000000-0000-4000-8000-000000000002",
+      memo: "Registered loss-coverage capital reduction",
+      sourceRecordId: "loss-coverage-capital-reduction-registration-runtime",
+      eventDate: "2026-06-15",
+    };
+    const capitalReductionDirectOptions = {
+      phase: "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+      idempotencyKey: "69000000-0000-4000-8000-000000000003",
+      capitalReductionReference: "capital-reduction:direct-runtime",
+      memo: "Registered loss-coverage capital reduction first recognized",
+      sourceRecordId: "loss-coverage-capital-reduction-direct-runtime",
+      eventDate: "2026-07-01",
+    };
+    const assertNoCapitalReductionArtifacts = (sourceRecordId, idempotencyKey) => {
+      assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select concat_ws(':',
+          (select count(*) from ledger.entries
+            where source_record_id = '${sqlQuote(sourceRecordId)}'),
+          (select count(*) from ledger.entry_contexts context
+            join ledger.entries entry on entry.id = context.entry_id
+            where entry.source_record_id = '${sqlQuote(sourceRecordId)}'),
+          (select count(*) from ledger.entry_sources source
+            join ledger.entries entry on entry.id = source.entry_id
+            where entry.source_record_id = '${sqlQuote(sourceRecordId)}'),
+          (select count(*) from backend_system.ledger_command_receipts
+            where idempotency_key = '${sqlQuote(idempotencyKey)}'),
+          (select count(*) from ledger.loss_coverage_capital_reduction_phases phase
+            join ledger.entries entry on entry.id = phase.entry_id
+            where entry.source_record_id = '${sqlQuote(sourceRecordId)}'));
+      `)), "0:0:0:0:0");
+    };
+
+    const capitalReductionDecision = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDecisionOptions),
+    );
+    assert.equal(capitalReductionDecision.entry_kind, "CAPITAL_REDUCTION");
+    assert.equal(capitalReductionDecision.replayed, false);
+    const capitalReductionDecisionReplay = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDecisionOptions),
+    );
+    assert.equal(
+      capitalReductionDecisionReplay.ledger_entry_id,
+      capitalReductionDecision.ledger_entry_id,
+    );
+    assert.equal(capitalReductionDecisionReplay.replayed, true);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionDecisionOptions,
+      nominalReductionNok: "19999.00",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+
+    const missingReductionAnchor = {
+      ...capitalReductionRegistrationOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000004",
+      capitalReductionReference: "capital-reduction:opening-without-anchor",
+      sourceRecordId: "loss-coverage-capital-reduction-opening-anchor-missing-runtime",
+    };
+    assert.match(
+      psqlFailure(
+        containerName,
+        lossCoverageCapitalReductionTransaction(missingReductionAnchor),
+      ),
+      exactDatabaseError("ledger_opening_capital_reduction_anchor_missing"),
+    );
+    assertNoCapitalReductionArtifacts(
+      missingReductionAnchor.sourceRecordId,
+      missingReductionAnchor.idempotencyKey,
+    );
+
+    const invalidCapitalReductionSources = [
+      {
+        ...capitalReductionDecisionOptions,
+        idempotencyKey: "69000000-0000-4000-8000-000000000005",
+        capitalReductionReference: "capital-reduction:invalid-decision-sources",
+        sourceRecordId: "loss-coverage-capital-reduction-invalid-decision-sources-runtime",
+        sources: [{
+          role: "PRIMARY",
+          capability: "CORPORATE_GOVERNANCE",
+          recordId: "loss-coverage-capital-reduction-invalid-decision-sources-runtime",
+          revision: 1,
+          factSha256: "8".repeat(64),
+        }],
+      },
+      {
+        ...capitalReductionRegistrationOptions,
+        idempotencyKey: "69000000-0000-4000-8000-000000000006",
+        sourceRecordId: "loss-coverage-capital-reduction-invalid-registration-sources-runtime",
+        sources: lossCoverageCapitalReductionSources(
+          "REGISTERED",
+          "loss-coverage-capital-reduction-invalid-registration-sources-runtime",
+        ).slice(0, 2),
+      },
+      {
+        ...capitalReductionDirectOptions,
+        idempotencyKey: "69000000-0000-4000-8000-000000000007",
+        capitalReductionReference: "capital-reduction:invalid-direct-sources",
+        sourceRecordId: "loss-coverage-capital-reduction-invalid-direct-sources-runtime",
+        sources: [
+          ...lossCoverageCapitalReductionSources(
+            "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+            "loss-coverage-capital-reduction-invalid-direct-sources-runtime",
+          ),
+          {
+            role: "CORROBORATING",
+            capability: "DOCUMENTS",
+            recordId: "loss-coverage-capital-reduction-extra-direct-document-runtime",
+            revision: 1,
+            factSha256: "9".repeat(64),
+          },
+        ],
+      },
+    ];
+    for (const invalidSources of invalidCapitalReductionSources) {
+      assert.match(
+        psqlFailure(
+          containerName,
+          lossCoverageCapitalReductionTransaction(invalidSources),
+        ),
+        exactDatabaseError("ledger_loss_coverage_capital_reduction_phase_invalid"),
+      );
+      assertNoCapitalReductionArtifacts(
+        invalidSources.sourceRecordId,
+        invalidSources.idempotencyKey,
+      );
+    }
+
+    const failedReductionAttempts = [
+      {
+        options: {
+          ...capitalReductionRegistrationOptions,
+          idempotencyKey: "69000000-0000-4000-8000-000000000008",
+          nominalReductionNok: "20001.00",
+          sourceRecordId: "loss-coverage-capital-reduction-amount-mismatch-runtime",
+        },
+        error: "ledger_loss_coverage_capital_reduction_amount_mismatch",
+      },
+      {
+        options: {
+          ...capitalReductionRegistrationOptions,
+          idempotencyKey: "69000000-0000-4000-8000-000000000009",
+          sourceRecordId: "loss-coverage-capital-reduction-backdated-registration-runtime",
+          eventDate: "2026-05-31",
+        },
+        error: "ledger_loss_coverage_capital_reduction_phase_invalid",
+      },
+      {
+        options: {
+          ...capitalReductionDirectOptions,
+          idempotencyKey: "69000000-0000-4000-8000-000000000010",
+          capitalReductionReference: "capital-reduction:malformed-direct",
+          sourceRecordId: "loss-coverage-capital-reduction-malformed-direct-runtime",
+          lines: { unexpected: "object" },
+        },
+        error: "ledger_loss_coverage_capital_reduction_phase_invalid",
+      },
+      {
+        options: {
+          ...capitalReductionDirectOptions,
+          idempotencyKey: "69000000-0000-4000-8000-000000000011",
+          capitalReductionReference: "capital-reduction:mismatched-direct-journal",
+          sourceRecordId: "loss-coverage-capital-reduction-mismatched-direct-journal-runtime",
+          lines: lossCoverageCapitalReductionLines(
+            "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+            "19000.00",
+          ),
+        },
+        error: "ledger_loss_coverage_capital_reduction_amount_mismatch",
+      },
+      {
+        options: {
+          ...capitalReductionDirectOptions,
+          idempotencyKey: "69000000-0000-4000-8000-000000000012",
+          capitalReductionReference: "capital-reduction:runtime-1",
+          sourceRecordId: "loss-coverage-capital-reduction-direct-after-decision-runtime",
+        },
+        error: "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+      },
+    ];
+    for (const failedAttempt of failedReductionAttempts) {
+      assert.match(
+        psqlFailure(
+          containerName,
+          lossCoverageCapitalReductionTransaction(failedAttempt.options),
+        ),
+        exactDatabaseError(failedAttempt.error),
+      );
+      assertNoCapitalReductionArtifacts(
+        failedAttempt.options.sourceRecordId,
+        failedAttempt.options.idempotencyKey,
+      );
+    }
+
+    const capitalReductionDirect = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDirectOptions),
+    );
+    assert.equal(capitalReductionDirect.entry_kind, "CAPITAL_REDUCTION");
+    assert.equal(capitalReductionDirect.replayed, false);
+    const capitalReductionDirectReplay = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDirectOptions),
+    );
+    assert.equal(
+      capitalReductionDirectReplay.ledger_entry_id,
+      capitalReductionDirect.ledger_entry_id,
+    );
+    assert.equal(capitalReductionDirectReplay.replayed, true);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionDirectOptions,
+      eventDate: "2026-07-02",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+    const decisionAfterDirect = {
+      ...capitalReductionDecisionOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000013",
+      capitalReductionReference: capitalReductionDirectOptions.capitalReductionReference,
+      sourceRecordId: "loss-coverage-capital-reduction-decision-after-direct-runtime",
+    };
+    assert.match(
+      psqlFailure(
+        containerName,
+        lossCoverageCapitalReductionTransaction(decisionAfterDirect),
+      ),
+      exactDatabaseError(
+        "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+      ),
+    );
+    assertNoCapitalReductionArtifacts(
+      decisionAfterDirect.sourceRecordId,
+      decisionAfterDirect.idempotencyKey,
+    );
+
+    const capitalReductionRegistration = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionRegistrationOptions),
+    );
+    assert.equal(capitalReductionRegistration.entry_kind, "CAPITAL_REDUCTION");
+    assert.equal(capitalReductionRegistration.replayed, false);
+    const capitalReductionRegistrationReplay = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionRegistrationOptions),
+    );
+    assert.equal(
+      capitalReductionRegistrationReplay.ledger_entry_id,
+      capitalReductionRegistration.ledger_entry_id,
+    );
+    assert.equal(capitalReductionRegistrationReplay.replayed, true);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionRegistrationOptions,
+      eventDate: "2026-06-16",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+    for (const duplicateReduction of [
+      {
+        ...capitalReductionDecisionOptions,
+        idempotencyKey: "69000000-0000-4000-8000-000000000014",
+        sourceRecordId: "loss-coverage-capital-reduction-duplicate-decision-runtime",
+      },
+      {
+        ...capitalReductionRegistrationOptions,
+        idempotencyKey: "69000000-0000-4000-8000-000000000015",
+        sourceRecordId: "loss-coverage-capital-reduction-duplicate-registration-runtime",
+      },
+    ]) {
+      assert.match(
+        psqlFailure(
+          containerName,
+          lossCoverageCapitalReductionTransaction(duplicateReduction),
+        ),
+        exactDatabaseError(
+          "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+        ),
+      );
+      assertNoCapitalReductionArtifacts(
+        duplicateReduction.sourceRecordId,
+        duplicateReduction.idempotencyKey,
+      );
+    }
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'phase', phase.phase,
+        'incomeYear', phase.income_year,
+        'eventDate', phase.event_date,
+        'nominalReduction', phase.nominal_reduction,
+        'sources', (select pg_catalog.jsonb_agg(
+          source.source_capability order by source.ordinal
+        ) from ledger.entry_sources source where source.entry_id = phase.entry_id)
+      ) order by phase.event_date)::text
+      from ledger.loss_coverage_capital_reduction_phases phase
+      where phase.company_id = '${companyId}'
+        and phase.capital_reduction_reference_id = 'capital-reduction:runtime-1';
+    `), [
+      {
+        phase: "DECIDED_NOT_REGISTERED",
+        incomeYear: 2026,
+        eventDate: "2026-06-01",
+        nominalReduction: 20000,
+        sources: ["CORPORATE_GOVERNANCE", "DOCUMENTS"],
+      },
+      {
+        phase: "REGISTERED",
+        incomeYear: 2026,
+        eventDate: "2026-06-15",
+        nominalReduction: 20000,
+        sources: [
+          "CORPORATE_GOVERNANCE",
+          "DOCUMENTS",
+          "SHAREHOLDER_REGISTER_FILING",
+        ],
+      },
+    ]);
+
+    const crossYearReductionReference = "capital-reduction:cross-year-runtime";
+    const crossYearReductionDecisionOptions = {
+      ...capitalReductionDecisionOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000016",
+      capitalReductionReference: crossYearReductionReference,
+      sourceRecordId: "loss-coverage-capital-reduction-cross-year-decision-runtime",
+      eventDate: "2026-12-20",
+    };
+    jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(crossYearReductionDecisionOptions),
+    );
+    const concurrentReductionRegistrationOptions = [
+      {
+        applicationName: "loss_coverage_reduction_registration_2027",
+        incomeYear: 2027,
+        eventDate: "2027-01-10",
+        idempotencyKey: "69000000-0000-4000-8000-000000000017",
+        sourceRecordId: "loss-coverage-capital-reduction-concurrent-registration-2027-runtime",
+      },
+      {
+        applicationName: "loss_coverage_reduction_registration_2029",
+        incomeYear: 2029,
+        eventDate: "2029-01-10",
+        idempotencyKey: "69000000-0000-4000-8000-000000000018",
+        sourceRecordId: "loss-coverage-capital-reduction-concurrent-registration-2029-runtime",
+      },
+    ];
+    const concurrentReductionRegistrationTransaction = (options) =>
+      lossCoverageCapitalReductionTransaction({
+        ...capitalReductionRegistrationOptions,
+        capitalReductionReference: crossYearReductionReference,
+        incomeYear: options.incomeYear,
+        eventDate: options.eventDate,
+        idempotencyKey: options.idempotencyKey,
+        sourceRecordId: options.sourceRecordId,
+      });
+    const firstConcurrentReductionRegistration = interactivePsql(containerName);
+    firstConcurrentReductionRegistration.child.stdin.write(String.raw`
+      set application_name = '${concurrentReductionRegistrationOptions[0].applicationName}';
+      ${concurrentReductionRegistrationTransaction(
+        concurrentReductionRegistrationOptions[0],
+      ).replace("commit;", "select 'loss_coverage_first_registration_uncommitted';")}
+    `);
+    await waitForOutput(
+      firstConcurrentReductionRegistration,
+      /loss_coverage_first_registration_uncommitted/u,
+    );
+    const secondConcurrentReductionRegistration = interactivePsql(containerName);
+    secondConcurrentReductionRegistration.child.stdin.end(String.raw`
+      set application_name = '${concurrentReductionRegistrationOptions[1].applicationName}';
+      ${concurrentReductionRegistrationTransaction(
+        concurrentReductionRegistrationOptions[1],
+      )}
+    `);
+    let secondConcurrentReductionRegistrationBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      secondConcurrentReductionRegistrationBlocked = lastOutputLine(psql(
+        containerName,
+        ["-Atq"],
+        String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = 'loss_coverage_reduction_registration_2029'
+            and wait_event_type = 'Lock';
+        `,
+      )) === "1";
+      if (secondConcurrentReductionRegistrationBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      secondConcurrentReductionRegistrationBlocked,
+      true,
+      "cross-year registrations did not contend on the stable reduction reference",
+    );
+    firstConcurrentReductionRegistration.child.stdin.end("commit;\n\\q\n");
+    const concurrentReductionRegistrationResults = await Promise.all([
+      processResult(firstConcurrentReductionRegistration),
+      processResult(secondConcurrentReductionRegistration),
+    ]);
+    assert.equal(concurrentReductionRegistrationResults[0].code, 0);
+    assert.notEqual(concurrentReductionRegistrationResults[1].code, 0);
+    assert.match(
+      concurrentReductionRegistrationResults[1].stderr,
+      exactDatabaseError(
+        "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+      ),
+    );
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'entries', (select count(*) from ledger.entries entry
+          where entry.source_record_id in (
+            'loss-coverage-capital-reduction-concurrent-registration-2027-runtime',
+            'loss-coverage-capital-reduction-concurrent-registration-2029-runtime'
+          )),
+        'contexts', (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id in (
+            'loss-coverage-capital-reduction-concurrent-registration-2027-runtime',
+            'loss-coverage-capital-reduction-concurrent-registration-2029-runtime'
+          )),
+        'sources', (select count(*) from ledger.entry_sources source
+          join ledger.entries entry on entry.id = source.entry_id
+          where entry.source_record_id in (
+            'loss-coverage-capital-reduction-concurrent-registration-2027-runtime',
+            'loss-coverage-capital-reduction-concurrent-registration-2029-runtime'
+          )),
+        'receipts', (select count(*) from backend_system.ledger_command_receipts receipt
+          where receipt.idempotency_key in (
+            '69000000-0000-4000-8000-000000000017',
+            '69000000-0000-4000-8000-000000000018'
+          )),
+        'phases', (select count(*)
+          from ledger.loss_coverage_capital_reduction_phases phase
+          where phase.company_id = '${companyId}'
+            and phase.capital_reduction_reference_id = '${crossYearReductionReference}'
+            and phase.phase = 'REGISTERED')
+      )::text;
+    `), { contexts: 1, entries: 1, phases: 1, receipts: 1, sources: 3 });
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'phase', phase.phase,
+        'incomeYear', phase.income_year,
+        'eventDate', phase.event_date,
+        'nominalReduction', phase.nominal_reduction,
+        'entrySource', entry.source_record_id
+      ) order by phase.event_date)::text
+      from ledger.loss_coverage_capital_reduction_phases phase
+      join ledger.entries entry on entry.id = phase.entry_id
+      where phase.company_id = '${companyId}'
+        and phase.capital_reduction_reference_id = '${crossYearReductionReference}';
+    `), [
+      {
+        phase: "DECIDED_NOT_REGISTERED",
+        incomeYear: 2026,
+        eventDate: "2026-12-20",
+        nominalReduction: 20000,
+        entrySource: "loss-coverage-capital-reduction-cross-year-decision-runtime",
+      },
+      {
+        phase: "REGISTERED",
+        incomeYear: 2027,
+        eventDate: "2027-01-10",
+        nominalReduction: 20000,
+        entrySource: "loss-coverage-capital-reduction-concurrent-registration-2027-runtime",
+      },
+    ]);
+
+    const otherTenantDirectReductionOptions = {
+      ...capitalReductionDirectOptions,
+      actorId: otherOwnerId,
+      company: otherCompanyId,
+      idempotencyKey: "69000000-0000-4000-8000-000000000019",
+      capitalReductionReference: "capital-reduction:runtime-1",
+      sourceRecordId: "loss-coverage-capital-reduction-other-tenant-direct-runtime",
+    };
+    const otherTenantDirectReduction = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(otherTenantDirectReductionOptions),
+    );
+    assert.equal(otherTenantDirectReduction.entry_kind, "CAPITAL_REDUCTION");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${otherOwnerId}';
+      set local talli.verified_actor_claims =
+        '{"sub":"${otherOwnerId}","role":"authenticated","aal":"aal2"}';
+      select count(*) from ledger.loss_coverage_capital_reduction_phases
+      where company_id = '${companyId}';
+      commit;
+    `)), "0");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${ownerId}';
+      set local talli.verified_actor_claims =
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}';
+      select count(*) from ledger.loss_coverage_capital_reduction_phases
+      where company_id = '${otherCompanyId}';
+      commit;
+    `)), "0");
+
+    const capitalReductionSignature =
+      "(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)";
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_decision_v1${capitalReductionSignature}',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_registration_v1${capitalReductionSignature}',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_direct_registration_v1${capitalReductionSignature}',
+          'execute'
+        ));
+    `)), "t:t:t");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.loss_coverage_capital_reduction_phases', 'insert'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.loss_coverage_capital_reduction_phases', 'update'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.loss_coverage_capital_reduction_phases', 'delete'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.loss_coverage_capital_reduction_phases', 'truncate'
+        ));
+    `)), "f:f:f:f");
+    for (const forbiddenRole of [
+      "anon",
+      "authenticated",
+      "service_role",
+      "ledger_workflow_executor",
+      "talli_ledger_backend",
+    ]) {
+      assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select concat_ws(':',
+          pg_catalog.bool_or(pg_catalog.has_function_privilege(
+            '${forbiddenRole}', wrapper.function_name, 'execute'
+          )),
+          pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.loss_coverage_capital_reduction_phases', 'insert'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.loss_coverage_capital_reduction_phases', 'update'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.loss_coverage_capital_reduction_phases', 'delete'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.loss_coverage_capital_reduction_phases', 'truncate'
+          ))
+        from (values
+          ('ledger.record_loss_coverage_capital_reduction_decision_v1${capitalReductionSignature}'::regprocedure),
+          ('ledger.record_loss_coverage_capital_reduction_registration_v1${capitalReductionSignature}'::regprocedure),
+          ('ledger.record_loss_coverage_capital_reduction_direct_registration_v1${capitalReductionSignature}'::regprocedure)
+        ) wrapper(function_name);
+      `)), "f:f", `${forbiddenRole} gained direct reduction lifecycle authority`);
+    }
+    for (const roleSql of [
+      actorContext(ownerId),
+      "set local role authenticated;",
+    ]) {
+      assert.match(psqlFailure(containerName, String.raw`
+        begin;
+        ${roleSql}
+        insert into ledger.loss_coverage_capital_reduction_phases default values;
+        commit;
+      `), /permission denied/iu);
     }
 
     const blockedReconstruction = jsonOutput(
@@ -4790,12 +5456,24 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.bank_loan_anchors),
         (select count(*) from ledger.bank_loan_payment_allocations),
         (select count(*) from ledger.cash_capital_increase_phases),
+        (select count(*) from ledger.loss_coverage_capital_reduction_phases),
+        encode(extensions.digest(coalesce((select string_agg(
+          company_id::text || '|' || capital_reduction_reference_id || '|' ||
+          phase || '|' || entry_id::text || '|' || income_year::text || '|' ||
+          event_date::text || '|' || nominal_reduction::text,
+          E'\n' order by company_id, capital_reduction_reference_id, phase
+        ) from ledger.loss_coverage_capital_reduction_phases), ''), 'sha256'), 'hex'),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries), ''), 'sha256'), 'hex'));
     `));
 
     psql(containerName, ["--file", rollbackPath]);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select pg_catalog.to_regclass(
+        'ledger.loss_coverage_capital_reduction_phases'
+      ) is not null;
+    `)), "t");
     assert.match(psqlFailure(containerName, receivedDividendDecisionTransaction({
       idempotencyKey: "66000000-0000-4000-8000-000000000010",
       sourceRecordId: "received-dividend-rollback-denied",
@@ -4849,6 +5527,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       ...capitalRegistrationOptions,
       idempotencyKey: "68000000-0000-4000-8000-000000000028",
       sourceRecordId: "cash-capital-increase-rollback-registration-denied",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionDecisionOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000020",
+      capitalReductionReference: "capital-reduction:rollback-decision-denied",
+      sourceRecordId: "loss-coverage-capital-reduction-rollback-decision-denied",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionRegistrationOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000021",
+      sourceRecordId: "loss-coverage-capital-reduction-rollback-registration-denied",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, lossCoverageCapitalReductionTransaction({
+      ...capitalReductionDirectOptions,
+      idempotencyKey: "69000000-0000-4000-8000-000000000022",
+      capitalReductionReference: "capital-reduction:rollback-direct-denied",
+      sourceRecordId: "loss-coverage-capital-reduction-rollback-direct-denied",
     })), /permission denied/iu);
     assert.match(psqlFailure(containerName, correctionTransaction({
       originalEntryId: correctionOriginal.ledger_entry_id,
@@ -4919,8 +5614,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           'ledger_executor',
           'ledger.record_cash_capital_increase_registration_v1(text,uuid,integer,text,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
           'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_decision_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_registration_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_loss_coverage_capital_reduction_direct_registration_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
         ));
-    `)), "f:f:f:f:f:f:f:f:f:f:f");
+    `)), "f:f:f:f:f:f:f:f:f:f:f:f:f:f");
     assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -5036,6 +5746,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", receivedDividendPath]);
     psql(containerName, ["--file", bankLoanPath]);
     psql(containerName, ["--file", cashCapitalIncreasePath]);
+    psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -5184,6 +5895,50 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       capitalRegistration.ledger_entry_id,
     );
     assert.equal(recutoverCapitalRegistration.replayed, true);
+    const recutoverCapitalReductionDecision = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDecisionOptions),
+    );
+    assert.equal(
+      recutoverCapitalReductionDecision.ledger_entry_id,
+      capitalReductionDecision.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalReductionDecision.replayed, true);
+    const recutoverCapitalReductionRegistration = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionRegistrationOptions),
+    );
+    assert.equal(
+      recutoverCapitalReductionRegistration.ledger_entry_id,
+      capitalReductionRegistration.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalReductionRegistration.replayed, true);
+    const recutoverCapitalReductionDirect = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(capitalReductionDirectOptions),
+    );
+    assert.equal(
+      recutoverCapitalReductionDirect.ledger_entry_id,
+      capitalReductionDirect.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalReductionDirect.replayed, true);
+    assert.equal(jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(crossYearReductionDecisionOptions),
+    ).replayed, true);
+    assert.equal(jsonOutput(
+      containerName,
+      concurrentReductionRegistrationTransaction(
+        concurrentReductionRegistrationOptions[0],
+      ),
+    ).replayed, true);
+    assert.equal(jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction(otherTenantDirectReductionOptions),
+    ).replayed, true);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from ledger.loss_coverage_capital_reduction_phases;
+    `)), "6");
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -5198,6 +5953,13 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.bank_loan_anchors),
         (select count(*) from ledger.bank_loan_payment_allocations),
         (select count(*) from ledger.cash_capital_increase_phases),
+        (select count(*) from ledger.loss_coverage_capital_reduction_phases),
+        encode(extensions.digest(coalesce((select string_agg(
+          company_id::text || '|' || capital_reduction_reference_id || '|' ||
+          phase || '|' || entry_id::text || '|' || income_year::text || '|' ||
+          event_date::text || '|' || nominal_reduction::text,
+          E'\n' order by company_id, capital_reduction_reference_id, phase
+        ) from ledger.loss_coverage_capital_reduction_phases), ''), 'sha256'), 'hex'),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries where id <> '${malformedLegacyEntryId}'), ''),

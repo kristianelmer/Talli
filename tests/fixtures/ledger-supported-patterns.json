@@ -198,12 +198,33 @@
       "section": "Registered capital reduction solely for loss coverage",
       "input": {
         "eventId": "golden:capital-reduction:1",
+        "capitalReductionReferenceId": "capital-reduction:1",
         "decisionDate": "2026-06-01",
         "registrationDate": "2026-06-15",
+        "shareCount": "100",
+        "oldNominalPerShareNok": "500.00",
+        "newNominalPerShareNok": "300.00",
+        "paidInCapitalPerShareBeforeNok": "500.00",
+        "paidInCapitalPerShareAfterNok": "500.00",
+        "oldRegisteredShareCapitalNok": "50000.00",
+        "newRegisteredShareCapitalNok": "30000.00",
         "nominalReductionNok": "20000.00",
         "uncoveredLossNok": "20000.00",
         "cashToOwnersNok": "0.00",
-        "ownersAndShareCountUnchanged": true
+        "ownersAndShareCountUnchanged": true,
+        "sourceReferences": {
+          "boardProposal": "corporate-governance:capital-reduction-proposal:1",
+          "generalMeetingDecision": "corporate-governance:capital-reduction-decision:1",
+          "balanceEvidence": "documents:capital-reduction-balance:1",
+          "registrySubmission": "corporate-governance:capital-reduction-submission:1",
+          "registryRegistration": "corporate-governance:capital-reduction-registration:1",
+          "updatedArticles": "documents:articles:capital-reduction-registered:1",
+          "shareholderRegister": "shareholder-register-filing:capital-reduction:1"
+        }
+      },
+      "lifecycleShapes": {
+        "decisionThenRegistration": ["DECIDED_NOT_REGISTERED", "REGISTERED"],
+        "firstRecognizedAfterRegistration": ["FIRST_RECOGNIZED_AFTER_REGISTRATION"]
       },
       "journals": [
         {
@@ -223,8 +244,16 @@
           ]
         }
       ],
+      "firstRegisteredJournal": {
+        "phase": "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+        "company": "talli-company",
+        "lines": [
+          { "account": "REGISTERED_SHARE_CAPITAL", "debitNok": "20000.00", "creditNok": "0.00" },
+          { "account": "UNCOVERED_LOSS", "debitNok": "0.00", "creditNok": "20000.00" }
+        ]
+      },
       "projections": ["LEDGER", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "SAF_T", "ARCHIVE"],
-      "blocks": ["PAID_IN_CAPITAL_REPAYMENT", "LOSS_EVIDENCE_INSUFFICIENT", "MINIMUM_CAPITAL_BREACH"]
+      "blocks": ["PAID_IN_CAPITAL_REPAYMENT", "LOSS_EVIDENCE_INSUFFICIENT", "MINIMUM_CAPITAL_BREACH", "OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING"]
     },
     {
       "id": "bank-interest-income",

@@ -31,6 +31,15 @@ const cashCapitalIncreaseMigrationUrl = new URL(
 const cashCapitalIncreaseMigration = existsSync(cashCapitalIncreaseMigrationUrl)
   ? readFileSync(cashCapitalIncreaseMigrationUrl, "utf8")
   : "";
+const lossCoverageCapitalReductionMigrationUrl = new URL(
+  "../supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
+  import.meta.url,
+);
+const lossCoverageCapitalReductionMigration = existsSync(
+  lossCoverageCapitalReductionMigrationUrl,
+)
+  ? readFileSync(lossCoverageCapitalReductionMigrationUrl, "utf8")
+  : "";
 const lifecycle = readFileSync(new URL(
   "./ledger_database_runtime.test.mjs",
   import.meta.url,
@@ -353,5 +362,191 @@ test("fresh lifecycle covers cash-capital rollback revocation and recutover", ()
   assert.match(
     lifecycle,
     /psql\(containerName, \["--file", rollbackPath\]\);[\s\S]+record_cash_capital_increase_subscription_v1[\s\S]+record_cash_capital_increase_restricted_payment_v1[\s\S]+record_cash_capital_increase_registration_v1[\s\S]+psql\(containerName, \["--file", cashCapitalIncreasePath\]\)/iu,
+  );
+});
+
+test("loss-coverage capital reduction uses one append-only forced-RLS phase lifecycle", () => {
+  assert.ok(
+    lossCoverageCapitalReductionMigration,
+    "missing additive loss-coverage capital-reduction lifecycle migration",
+  );
+  assert.equal(
+    (lossCoverageCapitalReductionMigration.match(
+      /create table if not exists ledger\.loss_coverage_capital_reduction_phases/giu,
+    ) ?? []).length,
+    1,
+    "loss-coverage reduction must use one append-only phase table",
+  );
+  assert.equal(
+    (lossCoverageCapitalReductionMigration.match(
+      /create table if not exists ledger\.[a-z0-9_]*capital_reduction[a-z0-9_]*/giu,
+    ) ?? []).length,
+    1,
+    "loss-coverage reduction must not split lifecycle identity across tables",
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /alter table ledger\.loss_coverage_capital_reduction_phases enable row level security/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /alter table ledger\.loss_coverage_capital_reduction_phases force row level security/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /create trigger ledger_loss_coverage_capital_reduction_phases_immutable/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /primary key\s*\(company_id, capital_reduction_reference_id, phase\)/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /entry_id uuid not null unique/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /phase text not null[\s\S]+?'DECIDED_NOT_REGISTERED'[\s\S]+?'REGISTERED'[\s\S]+?'FIRST_RECOGNIZED_AFTER_REGISTRATION'/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /grant select, insert on ledger\.loss_coverage_capital_reduction_phases\s+to ledger_store_owner/iu,
+  );
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /revoke all on ledger\.loss_coverage_capital_reduction_phases\s+from public/iu,
+  );
+  assert.doesNotMatch(
+    lossCoverageCapitalReductionMigration,
+    /grant[^;]+(?:insert|update|delete)[^;]+ledger\.loss_coverage_capital_reduction_phases[^;]+(?:ledger_executor|ledger_workflow_executor|authenticated|anon|service_role|talli_ledger_backend)/iu,
+  );
+});
+
+test("loss-coverage reduction wrappers enforce exact source-owned phase shapes", () => {
+  const wrappers = new Map([
+    [
+      "record_loss_coverage_capital_reduction_decision_v1",
+      ["CORPORATE_GOVERNANCE", "DOCUMENTS"],
+    ],
+    [
+      "record_loss_coverage_capital_reduction_registration_v1",
+      [
+        "CORPORATE_GOVERNANCE",
+        "DOCUMENTS",
+        "SHAREHOLDER_REGISTER_FILING",
+      ],
+    ],
+    [
+      "record_loss_coverage_capital_reduction_direct_registration_v1",
+      [
+        "CORPORATE_GOVERNANCE",
+        "DOCUMENTS",
+        "SHAREHOLDER_REGISTER_FILING",
+      ],
+    ],
+  ]);
+  const actualWrappers = [...lossCoverageCapitalReductionMigration.matchAll(
+    /create or replace function ledger\.(record_loss_coverage_capital_reduction_[a-z0-9_]+_v1)\s*\(/giu,
+  )].map((match) => match[1]).sort();
+  assert.deepEqual(actualWrappers, [...wrappers.keys()].sort());
+
+  for (const [wrapperName, capabilities] of wrappers) {
+    const wrapper = lossCoverageCapitalReductionMigration.match(
+      new RegExp(
+        `create or replace function ledger\\.${wrapperName}\\([\\s\\S]+?\\$function\\$\\s*;`,
+        "iu",
+      ),
+    )?.[0];
+    assert.ok(wrapper, `missing ${wrapperName}`);
+    assert.match(
+      wrapper,
+      /p_capital_reduction_reference_id text/iu,
+      `${wrapperName} lacks the stable lifecycle reference`,
+    );
+    assert.match(wrapper, /p_nominal_reduction numeric/iu);
+    assert.match(wrapper, /from ledger\.post_supported_entry_v1\(/iu);
+    assert.match(
+      wrapper,
+      /p_source_capability is distinct from 'CORPORATE_GOVERNANCE'/iu,
+    );
+    assert.match(
+      wrapper,
+      /p_sources -> 0 ->> 'capability' is distinct from 'CORPORATE_GOVERNANCE'/iu,
+    );
+    const capabilityLiteral = capabilities
+      .map((capability) => `'${capability}'`)
+      .join(",\\s*");
+    assert.match(
+      wrapper,
+      new RegExp(`array\\[\\s*${capabilityLiteral}\\s*\\]::text\\[\\]`, "iu"),
+    );
+    assert.doesNotMatch(wrapper, /'2000'|'2033'|'2080'/u);
+    assert.doesNotMatch(
+      wrapper,
+      /->>\s*'account'|jsonb_extract_path_text\([^;]+account/iu,
+    );
+    assert.doesNotMatch(wrapper, /case\s+when[^;]+account|when\s+'\d{4}'/iu);
+    assert.match(
+      lossCoverageCapitalReductionMigration,
+      new RegExp(
+        `grant execute on function ledger\\.${wrapperName}\\([\\s\\S]+?\\)\\s+to ledger_executor`,
+        "iu",
+      ),
+    );
+    assert.match(
+      lossCoverageCapitalReductionMigration,
+      new RegExp(
+        `revoke all on function ledger\\.${wrapperName}\\([\\s\\S]+?\\)\\s+from public`,
+        "iu",
+      ),
+      `${wrapperName} retains PostgreSQL's default PUBLIC execute grant`,
+    );
+    assert.doesNotMatch(
+      lossCoverageCapitalReductionMigration,
+      new RegExp(
+        `grant execute on function ledger\\.${wrapperName}\\([\\s\\S]+?\\)\\s+to (?:authenticated|anon|service_role|ledger_workflow_executor|talli_ledger_backend)`,
+        "iu",
+      ),
+    );
+  }
+
+  assert.match(
+    lossCoverageCapitalReductionMigration,
+    /pg_advisory_xact_lock[\s\S]+?capital[_:-]reduction/iu,
+  );
+  for (const lifecycleControl of [
+    "ledger_loss_coverage_capital_reduction_phase_invalid",
+    "ledger_loss_coverage_capital_reduction_amount_mismatch",
+    "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+    "ledger_opening_capital_reduction_anchor_missing",
+  ]) {
+    assert.match(
+      lossCoverageCapitalReductionMigration,
+      new RegExp(lifecycleControl, "iu"),
+      `missing lifecycle control ${lifecycleControl}`,
+    );
+  }
+});
+
+test("fresh lifecycle covers loss-coverage reduction rollback and recutover", () => {
+  assert.match(
+    lifecycle,
+    /20260827108000_ledger_loss_coverage_capital_reduction_lifecycle\.sql/iu,
+  );
+  for (const runtimeEvidence of [
+    "record_loss_coverage_capital_reduction_decision_v1",
+    "record_loss_coverage_capital_reduction_registration_v1",
+    "record_loss_coverage_capital_reduction_direct_registration_v1",
+    "loss_coverage_capital_reduction_phases",
+    "loss-coverage-capital-reduction-decision-runtime",
+    "loss-coverage-capital-reduction-registration-runtime",
+    "loss-coverage-capital-reduction-direct-runtime",
+    "ledger_opening_capital_reduction_anchor_missing",
+  ]) {
+    assert.match(lifecycle, new RegExp(runtimeEvidence, "iu"));
+  }
+  assert.match(
+    lifecycle,
+    /psql\(containerName, \["--file", rollbackPath\]\);[\s\S]+record_loss_coverage_capital_reduction_decision_v1[\s\S]+record_loss_coverage_capital_reduction_registration_v1[\s\S]+record_loss_coverage_capital_reduction_direct_registration_v1[\s\S]+psql\(containerName, \["--file", lossCoverageCapitalReductionPath\]\)/iu,
   );
 });

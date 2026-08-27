@@ -41,11 +41,14 @@ from talli_backend.application.ledger_workflow import (
     RecordTaxSettlementCommand,
 )
 from talli_backend.modules.ledger.public import (
+    ApprovedLossCoverageCapitalReductionFacts,
     BankLoanEvent,
     BankLoanReferenceId,
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalIncreaseReferenceId,
+    CapitalReductionRecognition,
+    CapitalReductionReferenceId,
     CloseCompanyYearCommand,
     CompanyYearCloseAssessment,
     CompanyYearCloseAssessmentId,
@@ -521,6 +524,30 @@ def _map_database_error(message: str) -> LedgerError:
             "ledger_opening_capital_increase_anchor_missing",
             LedgerError.precondition_failed(
                 "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"
+            ),
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_phase_invalid",
+            LedgerError.precondition_failed(
+                "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_INVALID"
+            ),
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_amount_mismatch",
+            LedgerError.precondition_failed(
+                "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_AMOUNT_MISMATCH"
+            ),
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+            LedgerError.conflict(
+                "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_ALREADY_RECORDED"
+            ),
+        ),
+        (
+            "ledger_opening_capital_reduction_anchor_missing",
+            LedgerError.precondition_failed(
+                "LEDGER_OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING"
             ),
         ),
         (
@@ -1133,6 +1160,129 @@ class SupabaseLedgerSession:
             capital_increase_reference_id=capital_increase_reference_id,
             nominal_increase=nominal_increase,
             share_premium=share_premium,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def _record_loss_coverage_capital_reduction(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        expected_recognition: CapitalReductionRecognition,
+        function_name: str,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        facts = command.facts
+        if (
+            not isinstance(facts, ApprovedLossCoverageCapitalReductionFacts)
+            or facts.recognition is not expected_recognition
+            or capital_reduction_reference_id
+            != facts.capital_reduction_reference_id
+            or nominal_reduction != facts.nominal_reduction
+            or sum((line.debit.amount for line in lines), Decimal("0.00"))
+            != nominal_reduction.amount
+            or sum((line.credit.amount for line in lines), Decimal("0.00"))
+            != nominal_reduction.amount
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        row = await self._one_idempotent_row(
+            f"""
+            select * from ledger.{function_name}(
+              %s::text, %s::uuid, %s::integer, %s::text, %s::numeric,
+              %s::text, %s::jsonb, %s::text, %s::text, %s::text,
+              %s::text, %s::date, %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(capital_reduction_reference_id),
+                nominal_reduction.amount,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                command.primary_source.capability.value,
+                str(command.primary_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return _posted_entry(row)
+
+    async def record_loss_coverage_capital_reduction_decision(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_loss_coverage_capital_reduction(
+            command,
+            expected_recognition=CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            function_name="record_loss_coverage_capital_reduction_decision_v1",
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_loss_coverage_capital_reduction_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_loss_coverage_capital_reduction(
+            command,
+            expected_recognition=CapitalReductionRecognition.REGISTERED,
+            function_name="record_loss_coverage_capital_reduction_registration_v1",
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_loss_coverage_capital_reduction_direct_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_loss_coverage_capital_reduction(
+            command,
+            expected_recognition=(
+                CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION
+            ),
+            function_name=(
+                "record_loss_coverage_capital_reduction_direct_registration_v1"
+            ),
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
             memo=memo,
             lines=lines,
         )

@@ -5,8 +5,11 @@ import base64
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
+
+from talli_backend.modules.ledger import public as ledger_public
 
 from talli_backend.adapters.supabase_ledger import (
     LedgerSupabaseConfiguration,
@@ -28,11 +31,13 @@ from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     AdministrativeCostCorrectionScope,
     AdministrativeCostCorrectionFacts,
+    ApprovedLossCoverageCapitalReductionFacts,
     BankLoanEvent,
     BankLoanReferenceId,
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalIncreaseReferenceId,
+    CapitalReductionRecognition,
     BankInterestIncomeFacts,
     CloseCompanyYearCommand,
     CompanyYearCloseEvidence,
@@ -310,6 +315,72 @@ def cash_capital_increase_command(
             nominal_increase=Money.nok("100.00"),
             share_premium=Money.nok("25.00"),
         ),
+    )
+
+
+def capital_reduction_reference_id() -> object:
+    reference_type = getattr(
+        ledger_public,
+        "CapitalReductionReferenceId",
+        LedgerSourceRecordId,
+    )
+    return reference_type("capital-reduction:loss-coverage:1")
+
+
+def registered_capital_reduction_recognition() -> CapitalReductionRecognition:
+    return getattr(
+        CapitalReductionRecognition,
+        "REGISTERED",
+        cast(CapitalReductionRecognition, "REGISTERED"),
+    )
+
+
+def capital_reduction_command(
+    recognition: CapitalReductionRecognition,
+) -> RecognizeHoldingActionCommand:
+    fields: dict[str, object] = {
+        "recognition": recognition,
+        "nominal_reduction": Money.nok("100.00"),
+    }
+    if (
+        "capital_reduction_reference_id"
+        in ApprovedLossCoverageCapitalReductionFacts.__dataclass_fields__
+    ):
+        fields["capital_reduction_reference_id"] = capital_reduction_reference_id()
+    corroborating_capabilities = [LedgerSourceCapability.DOCUMENTS]
+    if recognition is not CapitalReductionRecognition.DECIDED_NOT_REGISTERED:
+        corroborating_capabilities.append(
+            LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
+        )
+    return RecognizeHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId(f"capital-reduction-{str(recognition).lower()}"),
+        idempotency_key=IdempotencyKey(
+            f"capital-reduction-{str(recognition).lower()}-2026"
+        ),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            record_id=LedgerSourceRecordId(
+                f"capital-reduction:{str(recognition).lower()}:1"
+            ),
+            revision=2,
+            fact_sha256="e" * 64,
+        ),
+        corroborating_sources=tuple(
+            LedgerFactReference(
+                capability=capability,
+                record_id=LedgerSourceRecordId(
+                    f"{capability.value.lower()}:capital-reduction:1"
+                ),
+                revision=1,
+                fact_sha256=f"{index + 1:064x}",
+            )
+            for index, capability in enumerate(corroborating_capabilities)
+        ),
+        facts=ApprovedLossCoverageCapitalReductionFacts(**fields),  # type: ignore[arg-type]
     )
 
 
@@ -1056,6 +1127,196 @@ def test_cash_capital_increase_adapter_rejects_each_binding_mismatch_before_sql(
     assert failure.value.code == "LEDGER_INVALID_INPUT"
 
 
+@pytest.mark.parametrize(
+    (
+        "recognition",
+        "method_name",
+        "function_name",
+        "lines",
+        "expected_capabilities",
+    ),
+    [
+        (
+            CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            "record_loss_coverage_capital_reduction_decision",
+            "record_loss_coverage_capital_reduction_decision_v1",
+            (
+                LedgerLine("2033", "Unregistered", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("100")),
+            ),
+            ("CORPORATE_GOVERNANCE", "DOCUMENTS"),
+        ),
+        (
+            registered_capital_reduction_recognition(),
+            "record_loss_coverage_capital_reduction_registration",
+            "record_loss_coverage_capital_reduction_registration_v1",
+            (
+                LedgerLine("2000", "Capital", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2033", "Unregistered", Money.nok("0"), Money.nok("100")),
+            ),
+            (
+                "CORPORATE_GOVERNANCE",
+                "DOCUMENTS",
+                "SHAREHOLDER_REGISTER_FILING",
+            ),
+        ),
+        (
+            CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION,
+            "record_loss_coverage_capital_reduction_direct_registration",
+            "record_loss_coverage_capital_reduction_direct_registration_v1",
+            (
+                LedgerLine("2000", "Capital", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("100")),
+            ),
+            (
+                "CORPORATE_GOVERNANCE",
+                "DOCUMENTS",
+                "SHAREHOLDER_REGISTER_FILING",
+            ),
+        ),
+    ],
+)
+def test_loss_coverage_capital_reduction_adapter_binds_exact_phase_rpc(
+    recognition: CapitalReductionRecognition,
+    method_name: str,
+    function_name: str,
+    lines: tuple[LedgerLine, ...],
+    expected_capabilities: tuple[str, ...],
+) -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000008",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "CAPITAL_REDUCTION",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        getattr(session, method_name)(
+            capital_reduction_command(recognition),
+            capital_reduction_reference_id=capital_reduction_reference_id(),
+            nominal_reduction=Money.nok("100.00"),
+            memo="Loss-coverage capital reduction",
+            lines=lines,
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.CAPITAL_REDUCTION
+    assert f"ledger.{function_name}" in calls[0][0]
+    parameters = calls[0][1]
+    assert parameters[3:5] == (
+        "capital-reduction:loss-coverage:1",
+        Money.nok("100").amount,
+    )
+    assert parameters[12] == "ledger-supported-patterns-2026.1"
+    sources = json.loads(str(parameters[13]))
+    assert tuple(source["capability"] for source in sources) == expected_capabilities
+    assert tuple(source["role"] for source in sources) == (
+        "PRIMARY",
+        *("CORROBORATING" for _ in expected_capabilities[1:]),
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "method_name",
+        "command_recognition",
+        "capital_reduction_reference_value",
+        "nominal_reduction",
+        "lines",
+    ),
+    [
+        (
+            "record_loss_coverage_capital_reduction_decision",
+            CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            "capital-reduction:wrong",
+            Money.nok("100"),
+            (
+                LedgerLine("2033", "Unregistered", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("100")),
+            ),
+        ),
+        (
+            "record_loss_coverage_capital_reduction_decision",
+            CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            "capital-reduction:loss-coverage:1",
+            Money.nok("99"),
+            (
+                LedgerLine("2033", "Unregistered", Money.nok("99"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("99")),
+            ),
+        ),
+        (
+            "record_loss_coverage_capital_reduction_decision",
+            registered_capital_reduction_recognition(),
+            "capital-reduction:loss-coverage:1",
+            Money.nok("100"),
+            (
+                LedgerLine("2033", "Unregistered", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("100")),
+            ),
+        ),
+        (
+            "record_loss_coverage_capital_reduction_decision",
+            CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            "capital-reduction:loss-coverage:1",
+            Money.nok("100"),
+            (
+                LedgerLine("2033", "Unregistered", Money.nok("99"), Money.nok("0")),
+                LedgerLine("2080", "Loss", Money.nok("0"), Money.nok("100")),
+            ),
+        ),
+        (
+            "record_loss_coverage_capital_reduction_registration",
+            registered_capital_reduction_recognition(),
+            "capital-reduction:loss-coverage:1",
+            Money.nok("100"),
+            (
+                LedgerLine("2000", "Capital", Money.nok("100"), Money.nok("0")),
+                LedgerLine("2033", "Unregistered", Money.nok("0"), Money.nok("99")),
+            ),
+        ),
+    ],
+)
+def test_loss_coverage_capital_reduction_adapter_rejects_binding_mismatch_before_sql(
+    method_name: str,
+    command_recognition: CapitalReductionRecognition,
+    capital_reduction_reference_value: str,
+    nominal_reduction: Money,
+    lines: tuple[LedgerLine, ...],
+) -> None:
+    session = bound_session()
+
+    async def forbidden_database(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("database must not be called")
+
+    session._database_rows = forbidden_database  # type: ignore[method-assign]
+    reference_type = type(capital_reduction_reference_id())
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            getattr(session, method_name)(
+                capital_reduction_command(command_recognition),
+                capital_reduction_reference_id=reference_type(
+                    capital_reduction_reference_value
+                ),
+                nominal_reduction=nominal_reduction,
+                memo="Loss-coverage capital reduction",
+                lines=lines,
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+
+
 def test_correction_adapter_binds_original_replacement_and_two_sources() -> None:
     session = bound_session()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -1446,6 +1707,22 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
         (
             "ledger_opening_capital_increase_anchor_missing",
             "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING",
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_phase_invalid",
+            "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_INVALID",
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_amount_mismatch",
+            "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_AMOUNT_MISMATCH",
+        ),
+        (
+            "ledger_loss_coverage_capital_reduction_phase_already_recorded",
+            "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_ALREADY_RECORDED",
+        ),
+        (
+            "ledger_opening_capital_reduction_anchor_missing",
+            "LEDGER_OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING",
         ),
         ("ledger_entry_already_corrected", "LEDGER_ENTRY_ALREADY_CORRECTED"),
         ("ledger_opening_already_exists", "LEDGER_OPENING_ALREADY_EXISTS"),

@@ -225,6 +225,84 @@ test("cash capital increase phases retain one stable lifecycle reference", () =>
   ]);
 });
 
+test("loss-coverage capital reduction preserves stable lifecycle and per-share evidence", () => {
+  const capitalReduction = fixture.patterns.find(
+    (pattern) => pattern.id === "capital-reduction-loss-coverage",
+  );
+
+  assert.equal(
+    capitalReduction.input.capitalReductionReferenceId,
+    "capital-reduction:1",
+  );
+  assert.deepEqual(capitalReduction.lifecycleShapes, {
+    decisionThenRegistration: ["DECIDED_NOT_REGISTERED", "REGISTERED"],
+    firstRecognizedAfterRegistration: ["FIRST_RECOGNIZED_AFTER_REGISTRATION"],
+  });
+  assert.deepEqual(
+    capitalReduction.journals.map((journal) => journal.phase),
+    ["DECIDED_NOT_REGISTERED", "REGISTERED"],
+  );
+  assert.deepEqual(capitalReduction.firstRegisteredJournal, {
+    phase: "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+    company: "talli-company",
+    lines: [
+      {
+        account: "REGISTERED_SHARE_CAPITAL",
+        debitNok: "20000.00",
+        creditNok: "0.00",
+      },
+      {
+        account: "UNCOVERED_LOSS",
+        debitNok: "0.00",
+        creditNok: "20000.00",
+      },
+    ],
+  });
+  const directRegistrationDebit = capitalReduction.firstRegisteredJournal.lines
+    .reduce((sum, line) => sum + cents(line.debitNok), 0n);
+  const directRegistrationCredit = capitalReduction.firstRegisteredJournal.lines
+    .reduce((sum, line) => sum + cents(line.creditNok), 0n);
+  assert.equal(directRegistrationDebit, directRegistrationCredit);
+  assert.ok(directRegistrationDebit > 0n);
+  assert.deepEqual(capitalReduction.input.sourceReferences, {
+    boardProposal: "corporate-governance:capital-reduction-proposal:1",
+    generalMeetingDecision: "corporate-governance:capital-reduction-decision:1",
+    balanceEvidence: "documents:capital-reduction-balance:1",
+    registrySubmission: "corporate-governance:capital-reduction-submission:1",
+    registryRegistration: "corporate-governance:capital-reduction-registration:1",
+    updatedArticles: "documents:articles:capital-reduction-registered:1",
+    shareholderRegister: "shareholder-register-filing:capital-reduction:1",
+  });
+
+  const shareCount = BigInt(capitalReduction.input.shareCount);
+  assert.equal(
+    (cents(capitalReduction.input.oldNominalPerShareNok)
+      - cents(capitalReduction.input.newNominalPerShareNok)) * shareCount,
+    cents(capitalReduction.input.nominalReductionNok),
+  );
+  assert.equal(
+    cents(capitalReduction.input.oldNominalPerShareNok) * shareCount,
+    cents(capitalReduction.input.oldRegisteredShareCapitalNok),
+  );
+  assert.equal(
+    cents(capitalReduction.input.newNominalPerShareNok) * shareCount,
+    cents(capitalReduction.input.newRegisteredShareCapitalNok),
+  );
+  assert.equal(
+    cents(capitalReduction.input.paidInCapitalPerShareBeforeNok),
+    cents(capitalReduction.input.paidInCapitalPerShareAfterNok),
+    "loss coverage must preserve historical paid-in capital per surviving share",
+  );
+  assert.equal(capitalReduction.input.ownersAndShareCountUnchanged, true);
+  assert.equal(capitalReduction.input.cashToOwnersNok, "0.00");
+  assert.deepEqual(capitalReduction.blocks, [
+    "PAID_IN_CAPITAL_REPAYMENT",
+    "LOSS_EVIDENCE_INSUFFICIENT",
+    "MINIMUM_CAPITAL_BREACH",
+    "OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING",
+  ]);
+});
+
 test("ordinary bank-loan phases retain stable agreement and loan linkage", () => {
   const bankLoan = fixture.patterns.find(
     (pattern) => pattern.id === "ordinary-bank-loan",

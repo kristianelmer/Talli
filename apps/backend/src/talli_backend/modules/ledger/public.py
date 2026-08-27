@@ -151,6 +151,22 @@ class CapitalIncreaseReferenceId:
         return self.value
 
 
+@dataclass(frozen=True, slots=True)
+class CapitalReductionReferenceId:
+    """Ledger-owned stable identity for one loss-coverage reduction lifecycle."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("capital-reduction reference id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
 class LedgerSourceCapability(StrEnum):
     LEDGER = "LEDGER"
     BANKING = "BANKING"
@@ -326,6 +342,7 @@ class CapitalIncreasePhase(StrEnum):
 
 class CapitalReductionRecognition(StrEnum):
     DECIDED_NOT_REGISTERED = "DECIDED_NOT_REGISTERED"
+    REGISTERED = "REGISTERED"
     FIRST_RECOGNIZED_AFTER_REGISTRATION = "FIRST_RECOGNIZED_AFTER_REGISTRATION"
 
 
@@ -402,6 +419,7 @@ class CashCapitalIncreaseFacts:
 @dataclass(frozen=True, slots=True)
 class ApprovedLossCoverageCapitalReductionFacts:
     recognition: CapitalReductionRecognition
+    capital_reduction_reference_id: CapitalReductionReferenceId
     nominal_reduction: Money
 
 
@@ -535,6 +553,18 @@ class LedgerErrorCode(StrEnum):
     )
     OPENING_CAPITAL_INCREASE_ANCHOR_MISSING = (
         "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"
+    )
+    LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_INVALID = (
+        "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_INVALID"
+    )
+    LOSS_COVERAGE_CAPITAL_REDUCTION_AMOUNT_MISMATCH = (
+        "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_AMOUNT_MISMATCH"
+    )
+    LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_ALREADY_RECORDED = (
+        "LEDGER_LOSS_COVERAGE_CAPITAL_REDUCTION_PHASE_ALREADY_RECORDED"
+    )
+    OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING = (
+        "LEDGER_OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING"
     )
     RECEIVED_DIVIDEND_ALREADY_SETTLED = "LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"
     RECEIVED_DIVIDEND_DECISION_INVALID = "LEDGER_RECEIVED_DIVIDEND_DECISION_INVALID"
@@ -1093,6 +1123,36 @@ class LedgerPersistence(Protocol):
         lines: tuple[LedgerLine, ...],
     ) -> PostedLedgerEntry: ...
 
+    async def record_loss_coverage_capital_reduction_decision(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_loss_coverage_capital_reduction_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_loss_coverage_capital_reduction_direct_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_reduction_reference_id: CapitalReductionReferenceId,
+        nominal_reduction: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
     async def record_received_dividend_decision(
         self,
         command: RecognizeHoldingActionCommand,
@@ -1307,6 +1367,7 @@ __all__ = [
     "CashCapitalIncreaseFacts",
     "CapitalIncreaseReferenceId",
     "CapitalIncreasePhase",
+    "CapitalReductionReferenceId",
     "CapitalReductionRecognition",
     "CloseCompanyYearCommand",
     "CompanyTaxAccrualFacts",

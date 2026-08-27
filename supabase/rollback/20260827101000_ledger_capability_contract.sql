@@ -93,6 +93,18 @@ revoke all on function ledger.record_cash_capital_increase_registration_v1(
   text, uuid, integer, text, numeric, numeric, text, jsonb, text, text,
   text, text, date, text, jsonb
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_loss_coverage_capital_reduction_decision_v1(
+  text, uuid, integer, text, numeric, text, jsonb, text, text, text,
+  text, date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_loss_coverage_capital_reduction_registration_v1(
+  text, uuid, integer, text, numeric, text, jsonb, text, text, text,
+  text, date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_loss_coverage_capital_reduction_direct_registration_v1(
+  text, uuid, integer, text, numeric, text, jsonb, text, text, text,
+  text, date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.lock_period(
   text, uuid, integer, text, text, text
 ) from ledger_executor, talli_ledger_backend;

@@ -707,9 +707,6 @@ class LedgerService:
             else:
                 raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, ApprovedLossCoverageCapitalReductionFacts):
-            required_sources = frozenset(
-                {LedgerSourceCapability.CORPORATE_GOVERNANCE}
-            )
             primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
             _positive(facts.nominal_reduction, "LEDGER_INVALID_INPUT")
             entry_kind = LedgerEntryKind.CAPITAL_REDUCTION
@@ -717,6 +714,12 @@ class LedgerService:
                 facts.recognition
                 is CapitalReductionRecognition.DECIDED_NOT_REGISTERED
             ):
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                    }
+                )
                 memo = "Loss-coverage capital reduction decided, not registered"
                 lines = (
                     LedgerLine(
@@ -729,7 +732,40 @@ class LedgerService:
                         "2080", "Uncovered loss", _ZERO, facts.nominal_reduction
                     ),
                 )
-            else:
+            elif facts.recognition is CapitalReductionRecognition.REGISTERED:
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                    }
+                )
+                memo = "Loss-coverage capital reduction registered"
+                lines = (
+                    LedgerLine(
+                        "2000",
+                        "Registered share capital",
+                        facts.nominal_reduction,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        "2033",
+                        "Unregistered capital reduction",
+                        _ZERO,
+                        facts.nominal_reduction,
+                    ),
+                )
+            elif (
+                facts.recognition
+                is CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION
+            ):
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                    }
+                )
                 memo = "Registered loss-coverage capital reduction first recognized"
                 lines = (
                     LedgerLine(
@@ -742,6 +778,8 @@ class LedgerService:
                         "2080", "Uncovered loss", _ZERO, facts.nominal_reduction
                     ),
                 )
+            else:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, GroupContributionFacts):
             required_sources = frozenset(
                 {
@@ -888,6 +926,44 @@ class LedgerService:
                     ),
                     nominal_increase=facts.nominal_increase,
                     share_premium=facts.share_premium,
+                    memo=memo,
+                    lines=lines,
+                )
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if isinstance(facts, ApprovedLossCoverageCapitalReductionFacts):
+            if (
+                facts.recognition
+                is CapitalReductionRecognition.DECIDED_NOT_REGISTERED
+            ):
+                return await self._persistence.record_loss_coverage_capital_reduction_decision(
+                    command,
+                    capital_reduction_reference_id=(
+                        facts.capital_reduction_reference_id
+                    ),
+                    nominal_reduction=facts.nominal_reduction,
+                    memo=memo,
+                    lines=lines,
+                )
+            if facts.recognition is CapitalReductionRecognition.REGISTERED:
+                return await self._persistence.record_loss_coverage_capital_reduction_registration(
+                    command,
+                    capital_reduction_reference_id=(
+                        facts.capital_reduction_reference_id
+                    ),
+                    nominal_reduction=facts.nominal_reduction,
+                    memo=memo,
+                    lines=lines,
+                )
+            if (
+                facts.recognition
+                is CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION
+            ):
+                return await self._persistence.record_loss_coverage_capital_reduction_direct_registration(
+                    command,
+                    capital_reduction_reference_id=(
+                        facts.capital_reduction_reference_id
+                    ),
+                    nominal_reduction=facts.nominal_reduction,
                     memo=memo,
                     lines=lines,
                 )

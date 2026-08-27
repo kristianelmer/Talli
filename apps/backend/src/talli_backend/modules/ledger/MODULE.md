@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -14,6 +14,7 @@ query ordering, compatibility period locks, and evidence-bound company-year
 close locks. It owns
 `ledger.bank_loan_anchors`, `ledger.bank_loan_payment_allocations`,
 `ledger.cash_capital_increase_phases`,
+`ledger.loss_coverage_capital_reduction_phases`,
 `ledger.company_year_close_assessments`, `ledger.company_year_close_evidence`,
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
@@ -29,7 +30,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827104000_ledger_company_year_close.sql`, and
 `supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`, and
 `supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`, and
-`supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`.
+`supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`, and
+`supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -98,13 +100,18 @@ from before the reconstructed boundary fails closed with
 `OPENING_CAPITAL_INCREASE_ANCHOR_MISSING` until opening rebuild can supply a
 verified phase anchor.
 
-The capital-reduction receiver accepts only an approval fact emitted by the
-corporate-governance source owner. Ledger validates the accounting amount and
-translates it; it does not decide minimum capital, loss evidence, owner value
-transfer, filing timeliness, or other corporate-law eligibility. The later
-registration transition, three-year dividend restriction, and paid-in-capital
-reconciliation remain fail-closed until their owning capability stages provide
-and verify those facts.
+The loss-coverage capital-reduction receiver binds one stable, ledger-owned
+`CapitalReductionReferenceId` to either a decided-not-registered entry followed
+by its exact registration reclassification, or one direct first recognition
+after registration. Decision facts require corporate governance and documents;
+registered facts also require the shareholder-register owner. The append-only
+phase record enforces amount continuity, nondecreasing dates, exclusive paths,
+replay, and cross-year serialization. A linked registration without a verified
+decision anchor fails closed with `OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING`.
+Ledger does not decide minimum capital, loss sufficiency, owner value transfer,
+filing timeliness, shareholder changes, the three-year dividend restriction, or
+paid-in-capital reconciliation; those facts remain with their owning
+capabilities, and this receiver exposes no producer or browser writer.
 
 The related-party loan receivers likewise require a corporate-governance
 approval as the primary fact and a banking match as corroboration. Ledger owns

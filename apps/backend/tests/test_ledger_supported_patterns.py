@@ -59,6 +59,7 @@ ACTOR_ID = ActorId(
 )
 LOAN_REFERENCE_ID = BankLoanReferenceId("bank-loan:ordinary-facility:1")
 CAPITAL_INCREASE_REFERENCE_VALUE = "capital-increase:ordinary-cash:1"
+CAPITAL_REDUCTION_REFERENCE_VALUE = "capital-reduction:loss-coverage:1"
 
 
 class PatternPersistenceStub:
@@ -239,6 +240,70 @@ class PatternPersistenceStub:
             replayed=False,
         )
 
+    async def record_loss_coverage_capital_reduction_decision(
+        self,
+        command: object,
+        *,
+        capital_reduction_reference_id: object,
+        nominal_reduction: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_loss_coverage_capital_reduction(
+            "capital_reduction_decision",
+            command,
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
+            **draft,
+        )
+
+    async def record_loss_coverage_capital_reduction_registration(
+        self,
+        command: object,
+        *,
+        capital_reduction_reference_id: object,
+        nominal_reduction: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_loss_coverage_capital_reduction(
+            "capital_reduction_registration",
+            command,
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
+            **draft,
+        )
+
+    async def record_loss_coverage_capital_reduction_direct_registration(
+        self,
+        command: object,
+        *,
+        capital_reduction_reference_id: object,
+        nominal_reduction: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_loss_coverage_capital_reduction(
+            "capital_reduction_direct_registration",
+            command,
+            capital_reduction_reference_id=capital_reduction_reference_id,
+            nominal_reduction=nominal_reduction,
+            **draft,
+        )
+
+    def _record_loss_coverage_capital_reduction(
+        self,
+        operation: str,
+        command: object,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        self.calls.append({"operation": operation, "command": command, **draft})
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000010"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.CAPITAL_REDUCTION,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
 
 def source(
     capability: LedgerSourceCapability,
@@ -277,9 +342,54 @@ def capital_reduction_facts(
     ),
     nominal_reduction: Money = Money.nok("20000.00"),
 ) -> ApprovedLossCoverageCapitalReductionFacts:
-    return ApprovedLossCoverageCapitalReductionFacts(
-        recognition=recognition,
-        nominal_reduction=nominal_reduction,
+    fields: dict[str, object] = {
+        "recognition": recognition,
+        "nominal_reduction": nominal_reduction,
+    }
+    if (
+        "capital_reduction_reference_id"
+        in ApprovedLossCoverageCapitalReductionFacts.__dataclass_fields__
+    ):
+        fields["capital_reduction_reference_id"] = capital_reduction_reference_id()
+    return ApprovedLossCoverageCapitalReductionFacts(**fields)  # type: ignore[arg-type]
+
+
+def capital_reduction_reference_id() -> object:
+    reference_type = getattr(
+        ledger_public,
+        "CapitalReductionReferenceId",
+        LedgerSourceRecordId,
+    )
+    return reference_type(CAPITAL_REDUCTION_REFERENCE_VALUE)
+
+
+def registered_capital_reduction_recognition() -> CapitalReductionRecognition:
+    return getattr(
+        CapitalReductionRecognition,
+        "REGISTERED",
+        cast(CapitalReductionRecognition, "REGISTERED"),
+    )
+
+
+def capital_reduction_sources(
+    recognition: CapitalReductionRecognition,
+) -> tuple[LedgerFactReference, tuple[LedgerFactReference, ...]]:
+    corroborating = [
+        source(LedgerSourceCapability.DOCUMENTS, "capital-reduction-documents"),
+    ]
+    if recognition is not CapitalReductionRecognition.DECIDED_NOT_REGISTERED:
+        corroborating.append(
+            source(
+                LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                "capital-reduction-shareholder-register",
+            )
+        )
+    return (
+        source(
+            LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            "capital-reduction-governance",
+        ),
+        tuple(corroborating),
     )
 
 
@@ -1116,71 +1226,151 @@ def test_cash_capital_increase_rejects_invalid_amounts_before_persistence(
     assert persistence.calls == []
 
 
-def test_decided_loss_coverage_reduction_reclassifies_equity_without_cash() -> None:
+def test_loss_coverage_capital_reduction_has_a_stable_lifecycle_reference() -> None:
+    reference_type = getattr(ledger_public, "CapitalReductionReferenceId", None)
+
+    assert reference_type is not None
+    assert (
+        "capital_reduction_reference_id"
+        in ApprovedLossCoverageCapitalReductionFacts.__dataclass_fields__
+    )
+    assert str(reference_type(f"  {CAPITAL_REDUCTION_REFERENCE_VALUE}  ")) == (
+        CAPITAL_REDUCTION_REFERENCE_VALUE
+    )
+    for invalid in ("", "   ", "x" * 256):
+        with pytest.raises(ValueError):
+            reference_type(invalid)
+
+
+@pytest.mark.parametrize(
+    ("recognition", "operation", "expected"),
+    [
+        (
+            CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+            "capital_reduction_decision",
+            [("2033", "20000.00", "0.00"), ("2080", "0.00", "20000.00")],
+        ),
+        (
+            registered_capital_reduction_recognition(),
+            "capital_reduction_registration",
+            [("2000", "20000.00", "0.00"), ("2033", "0.00", "20000.00")],
+        ),
+        (
+            CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION,
+            "capital_reduction_direct_registration",
+            [("2000", "20000.00", "0.00"), ("2080", "0.00", "20000.00")],
+        ),
+    ],
+)
+def test_loss_coverage_capital_reduction_phases_use_exact_sources_journals_and_ports(
+    recognition: CapitalReductionRecognition,
+    operation: str,
+    expected: list[tuple[str, str, str]],
+) -> None:
     persistence = PatternPersistenceStub()
+    primary, corroborating = capital_reduction_sources(recognition)
 
     asyncio.run(
         LedgerService(persistence).recognize_holding_action(
             command(
-                capital_reduction_facts(),
-                source(
-                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
-                    "capital-reduction-decision",
-                ),
+                capital_reduction_facts(recognition=recognition),
+                primary,
+                *corroborating,
             )
         )
     )
 
-    assert posted_lines(persistence) == [
-        ("2033", "20000.00", "0.00"),
-        ("2080", "0.00", "20000.00"),
-    ]
+    assert posted_lines(persistence) == expected
+    assert persistence.calls[0]["operation"] == operation
+    assert str(persistence.calls[0]["capital_reduction_reference_id"]) == (
+        CAPITAL_REDUCTION_REFERENCE_VALUE
+    )
+    assert persistence.calls[0]["nominal_reduction"] == Money.nok("20000.00")
 
 
-def test_approved_loss_coverage_fact_requires_a_positive_accounting_amount() -> None:
+@pytest.mark.parametrize(
+    "recognition",
+    [
+        CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+        registered_capital_reduction_recognition(),
+        CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION,
+    ],
+)
+def test_loss_coverage_capital_reduction_requires_exact_phase_source_topology(
+    recognition: CapitalReductionRecognition,
+) -> None:
+    persistence = PatternPersistenceStub()
+    primary, corroborating = capital_reduction_sources(recognition)
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    capital_reduction_facts(recognition=recognition),
+                    primary,
+                    *corroborating[:-1],
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+    assert persistence.calls == []
+
+
+def test_loss_coverage_capital_reduction_rejects_an_unknown_runtime_phase() -> None:
     persistence = PatternPersistenceStub()
 
-    with pytest.raises(LedgerError):
+    with pytest.raises(LedgerError) as failure:
         asyncio.run(
             LedgerService(persistence).recognize_holding_action(
                 command(
                     capital_reduction_facts(
-                        nominal_reduction=Money.nok("0.00")
+                        recognition=cast(CapitalReductionRecognition, "UNSUPPORTED")
                     ),
                     source(
                         LedgerSourceCapability.CORPORATE_GOVERNANCE,
-                        "capital-reduction-invalid-shape",
+                        "capital-reduction-unsupported-phase",
+                    ),
+                    source(
+                        LedgerSourceCapability.DOCUMENTS,
+                        "capital-reduction-unsupported-documents",
+                    ),
+                    source(
+                        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                        "capital-reduction-unsupported-shareholder-register",
                     ),
                 )
             )
         )
 
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
     assert persistence.calls == []
 
 
-def test_first_seen_registered_reduction_posts_directly_against_loss() -> None:
+@pytest.mark.parametrize("nominal_reduction", ["0.00", "-1.00"])
+def test_loss_coverage_capital_reduction_rejects_invalid_amount_before_persistence(
+    nominal_reduction: str,
+) -> None:
     persistence = PatternPersistenceStub()
+    recognition = CapitalReductionRecognition.DECIDED_NOT_REGISTERED
+    primary, corroborating = capital_reduction_sources(recognition)
 
-    asyncio.run(
-        LedgerService(persistence).recognize_holding_action(
-            command(
-                capital_reduction_facts(
-                    recognition=(
-                        CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION
-                    )
-                ),
-                source(
-                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
-                    "capital-reduction-first-seen-registered",
-                ),
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    capital_reduction_facts(
+                        recognition=recognition,
+                        nominal_reduction=Money.nok(nominal_reduction),
+                    ),
+                    primary,
+                    *corroborating,
+                )
             )
         )
-    )
 
-    assert posted_lines(persistence) == [
-        ("2000", "20000.00", "0.00"),
-        ("2080", "0.00", "20000.00"),
-    ]
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
 
 
 @pytest.mark.parametrize(
