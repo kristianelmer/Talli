@@ -239,6 +239,7 @@ const additionalSchemas = Object.fromEntries([
   "FinalizeCompanyDeletionRequest",
 ].map((name) => [name, contract.components.schemas[name]]));
 const ledgerSchemas = Object.fromEntries([
+  "AdministrativeCostEntryWire",
   "AdministrativeCostCategory",
   "LedgerAdministrativeCostWire",
   "LedgerEntryKind",
@@ -884,14 +885,18 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     async ledgerPostAdministrativeCost(
       body: LedgerAdministrativeCostWire,
       request: TalliMutationOptions,
-    ): Promise<LedgerPostedEntryWire> {
-      return executeJson(
+    ): Promise<AdministrativeCostEntryWire> {
+      const result = await executeJson(
         \`\${baseUrl}/api/v1/ledger/administrative-costs\`,
         "POST",
         request,
         body,
-        isLedgerPostedEntryWire,
+        isAdministrativeCostEntryWire,
       );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
     },
 
     async ledgerPostManualJournal(

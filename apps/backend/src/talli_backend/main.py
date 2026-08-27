@@ -235,6 +235,15 @@ class NewYearOpeningEntryWire(TransportModel):
     replayed: bool
 
 
+class AdministrativeCostEntryWire(TransportModel):
+    entry_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    entry_kind: Literal["ADMINISTRATIVE_COST"]
+    posted_at: datetime
+    replayed: bool
+
+
 class NewYearStartResultWire(TransportModel):
     setup_id: UUID
     posted_entry: NewYearOpeningEntryWire
@@ -1281,7 +1290,7 @@ def create_app(
     @application.post(
         "/api/v1/ledger/administrative-costs",
         operation_id="ledgerPostAdministrativeCost",
-        response_model=LedgerPostedEntryWire,
+        response_model=AdministrativeCostEntryWire,
         status_code=201,
         responses={201: {"description": "Administrative cost posted."} | ledger_success}
         | ledger_errors,
@@ -1295,8 +1304,8 @@ def create_app(
             str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
         ],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerPostedEntryWire:
-        async def execute() -> LedgerPostedEntryWire:
+    ) -> AdministrativeCostEntryWire:
+        async def execute() -> AdministrativeCostEntryWire:
             session = await ledger_application.session(bearer_token(credentials))
             domain_command = ledger_input(
                 lambda: PostAdministrativeCostCommand(
@@ -1318,7 +1327,20 @@ def create_app(
                 )
             )
             result = await session.post_administrative_cost(domain_command)
-            return _posted_wire(result)
+            if (
+                result.company_id != domain_command.company_id
+                or result.income_year != domain_command.income_year
+                or result.entry_kind is not LedgerEntryKind.ADMINISTRATIVE_COST
+            ):
+                raise LedgerError.unavailable()
+            return AdministrativeCostEntryWire(
+                entry_id=UUID(str(result.entry_id)),
+                company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year),
+                entry_kind=result.entry_kind.value,
+                posted_at=result.posted_at.value,
+                replayed=result.replayed,
+            )
 
         return await ledger_call(execute)
 

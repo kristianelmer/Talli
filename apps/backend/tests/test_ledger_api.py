@@ -10,6 +10,7 @@ from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.modules.ledger.public import (
     LedgerCursor,
     LedgerEntryId,
+    LedgerEntryKind,
     LedgerEntryPage,
     LedgerPage,
     LedgerSourceRecordId,
@@ -145,6 +146,19 @@ def headers(*, idempotency: bool = True) -> dict[str, str]:
 
 def money(amount: str) -> dict[str, str]:
     return {"amount": amount, "currency": "NOK"}
+
+
+def administrative_cost_body() -> dict[str, object]:
+    return {
+        "companyId": str(COMPANY_ID),
+        "incomeYear": 2026,
+        "bankTransactionId": "70000000-0000-4000-8000-000000000007",
+        "category": "BANK_FEE",
+        "payee": "Bank",
+        "amount": money("100.00"),
+        "paidDate": "2026-08-27",
+        "documentId": None,
+    }
 
 
 def manual_body() -> dict[str, object]:
@@ -341,6 +355,61 @@ def test_malformed_opaque_values_are_reported_as_invalid_input() -> None:
         assert response.json()["code"] == "LEDGER_INVALID_INPUT"
         assert response.headers["content-type"].startswith("application/problem+json")
     assert session.calls == []
+
+
+def test_administrative_cost_success_must_match_the_exact_command_purpose() -> None:
+    class AdministrativeSession(LedgerSessionStub):
+        def __init__(
+            self,
+            *,
+            company_id: CompanyId = COMPANY_ID,
+            income_year: IncomeYear = IncomeYear(2026),
+            entry_kind: LedgerEntryKind = LedgerEntryKind.ADMINISTRATIVE_COST,
+        ) -> None:
+            super().__init__()
+            self.company_id = company_id
+            self.income_year = income_year
+            self.entry_kind = entry_kind
+
+        async def post_entry(self, command: object, **posting: object) -> PostedLedgerEntry:
+            self.calls.append(("post_entry", {"command": command, **posting}))
+            return PostedLedgerEntry(
+                entry_id=ENTRY_ID,
+                company_id=self.company_id,
+                income_year=self.income_year,
+                entry_kind=self.entry_kind,
+                posted_at=NOW,
+                replayed=False,
+            )
+
+    valid = AdministrativeSession()
+    valid_response = TestClient(
+        create_app(ledger_session_factory=valid)
+    ).post(
+        "/api/v1/ledger/administrative-costs",
+        headers=headers(),
+        json=administrative_cost_body(),
+    )
+    assert valid_response.status_code == 201
+    assert valid_response.json()["entryKind"] == "ADMINISTRATIVE_COST"
+
+    inconsistent_results = (
+        ("company", AdministrativeSession(
+            company_id=CompanyId("10000000-0000-0000-0000-000000000099")
+        )),
+        ("year", AdministrativeSession(income_year=IncomeYear(2025))),
+        ("kind", AdministrativeSession(entry_kind=LedgerEntryKind.MANUAL_JOURNAL)),
+    )
+    for mismatch, inconsistent in inconsistent_results:
+        response = TestClient(
+            create_app(ledger_session_factory=inconsistent)
+        ).post(
+            "/api/v1/ledger/administrative-costs",
+            headers=headers(),
+            json=administrative_cost_body(),
+        )
+        assert response.status_code == 503, mismatch
+        assert response.json()["code"] == "LEDGER_DEPENDENCY_UNAVAILABLE"
 
 
 def test_ledger_transport_bounds_queries_and_mutation_text() -> None:

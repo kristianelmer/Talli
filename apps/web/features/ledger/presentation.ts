@@ -92,6 +92,7 @@ export function presentLedgerPeriodLocks(
 const LEDGER_ERROR_MESSAGES: Record<string, string> = {
   LEDGER_ACCOUNT_INVALID: "Konto må være fire sifre.",
   LEDGER_AMOUNT_NEGATIVE: "Beløp kan ikke være negativt.",
+  LEDGER_ADMINISTRATIVE_COST_NOT_POSITIVE: "Beløp må være større enn 0.",
   AUTHENTICATION_REQUIRED: "Innlogging kreves.",
   LEDGER_DESCRIPTION_REQUIRED: "Alle journallinjer må ha beskrivelse.",
   LEDGER_ENTRY_UNBALANCED: "Manuell journal må balansere.",
@@ -101,6 +102,7 @@ const LEDGER_ERROR_MESSAGES: Record<string, string> = {
   LEDGER_LINE_NOT_ONE_SIDED: "Hver journallinje må ha enten debet eller kredit.",
   LEDGER_LINE_ZERO: "Hver journallinje må ha et beløp.",
   LEDGER_MEMO_REQUIRED: "Beskrivelse av posteringen mangler.",
+  LEDGER_PAYEE_REQUIRED: "Mottaker må fylles ut.",
   LEDGER_COMPANY_YEAR_NOT_ADMITTED: "Selskapsåret er ikke godkjent for denne handlingen.",
   LEDGER_OPENING_ALREADY_EXISTS: "Åpningsbalansen er allerede registrert for dette året.",
   SHAREHOLDER_REGISTER_FILING_INVALID_INPUT: "Kontroller aksjetall og aksjonæropplysninger.",

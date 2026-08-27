@@ -403,6 +403,15 @@ export interface FinalizeCompanyDeletionRequest {
   operationId: string;
 }
 
+export interface AdministrativeCostEntryWire {
+  companyId: string;
+  entryId: string;
+  entryKind: "ADMINISTRATIVE_COST";
+  incomeYear: number;
+  postedAt: string;
+  replayed: boolean;
+}
+
 export type AdministrativeCostCategory = "BANK_FEE" | "ACCOUNTING_FEE" | "SOFTWARE" | "PUBLIC_FEE" | "LEGAL_ADVISORY" | "OTHER_ADMIN_COST";
 
 export interface LedgerAdministrativeCostWire {
@@ -987,6 +996,19 @@ function isCompanyDeletionReviewResponse(value: unknown): value is CompanyDeleti
     hasOnlyProperties(value, ["cancellation","review"]) &&
     isCompanyCancellation(value.cancellation) &&
     isCompanyDeletionReview(value.review)
+  );
+}
+
+function isAdministrativeCostEntryWire(value: unknown): value is AdministrativeCostEntryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","entryId","entryKind","incomeYear","postedAt","replayed"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.entryId) &&
+    value.entryKind === "ADMINISTRATIVE_COST" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isDateTime(value.postedAt) &&
+    typeof value.replayed === "boolean"
   );
 }
 
@@ -1732,14 +1754,18 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     async ledgerPostAdministrativeCost(
       body: LedgerAdministrativeCostWire,
       request: TalliMutationOptions,
-    ): Promise<LedgerPostedEntryWire> {
-      return executeJson(
+    ): Promise<AdministrativeCostEntryWire> {
+      const result = await executeJson(
         `${baseUrl}/api/v1/ledger/administrative-costs`,
         "POST",
         request,
         body,
-        isLedgerPostedEntryWire,
+        isAdministrativeCostEntryWire,
       );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
     },
 
     async ledgerPostManualJournal(

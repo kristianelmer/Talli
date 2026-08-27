@@ -93,6 +93,50 @@
         "title": "AdministrativeCostCategory",
         "type": "string"
       },
+      "AdministrativeCostEntryWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "entryId": {
+            "format": "uuid",
+            "title": "Entryid",
+            "type": "string"
+          },
+          "entryKind": {
+            "const": "ADMINISTRATIVE_COST",
+            "title": "Entrykind",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "postedAt": {
+            "format": "date-time",
+            "title": "Postedat",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entryId",
+          "companyId",
+          "incomeYear",
+          "entryKind",
+          "postedAt",
+          "replayed"
+        ],
+        "title": "AdministrativeCostEntryWire",
+        "type": "object"
+      },
       "CompanyAccessRecord": {
         "additionalProperties": false,
         "properties": {
@@ -12449,7 +12493,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LedgerPostedEntryWire"
+                  "$ref": "#/components/schemas/AdministrativeCostEntryWire"
                 }
               }
             },

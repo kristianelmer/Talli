@@ -7,6 +7,7 @@ import { TalliApiError } from "@talli/talli-api-client";
 import {
   loadLedgerEntries,
   loadLedgerPeriodLocks,
+  postLedgerAdministrativeCost,
   postLedgerManualJournal,
   startNewYear,
   ledgerActionErrorMessage,
@@ -51,6 +52,14 @@ test("ledger errors keep the frozen plain-Norwegian guidance", () => {
   assert.equal(
     ledgerActionErrorMessage(problem("LEDGER_INVALID_INPUT")),
     "Kontroller beløp, aksjetall og øvrige opplysninger.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_PAYEE_REQUIRED")),
+    "Mottaker må fylles ut.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_ADMINISTRATIVE_COST_NOT_POSITIVE")),
+    "Beløp må være større enn 0.",
   );
   assert.equal(
     ledgerActionErrorMessage(problem("LEDGER_COMPANY_YEAR_NOT_ADMITTED")),
@@ -169,6 +178,73 @@ test("ledger mutation transport injects decimal money and idempotency headers", 
       amount: "100.00",
       currency: "NOK",
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("administrative-cost transport requires exact purpose-bound success evidence", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const operationId = "30000000-0000-4000-8000-000000000030";
+  const command = {
+    amount: { amount: "125.50", currency: "NOK" },
+    bankTransactionId: "70000000-0000-4000-8000-000000000007",
+    category: "BANK_FEE",
+    companyId: "10000000-0000-0000-0000-000000000001",
+    documentId: null,
+    incomeYear: 2026,
+    paidDate: "2026-04-15",
+    payee: "Example Bank",
+  };
+  let captured;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  try {
+    globalThis.fetch = async (url, request) => {
+      captured = { url: String(url), request };
+      return Response.json({
+        companyId: command.companyId,
+        entryId: "40000000-0000-0000-0000-000000000004",
+        entryKind: "ADMINISTRATIVE_COST",
+        incomeYear: 2026,
+        postedAt: "2026-08-27T10:00:00Z",
+        replayed: false,
+      }, { status: 201 });
+    };
+    await postLedgerAdministrativeCost(
+      "session-token", command, operationId, operationId,
+    );
+    assert.equal(
+      captured.url,
+      "https://backend.example/api/v1/ledger/administrative-costs",
+    );
+    const headers = new Headers(captured.request.headers);
+    assert.equal(headers.get("Idempotency-Key"), operationId);
+    assert.deepEqual(JSON.parse(captured.request.body), command);
+
+    for (const inconsistent of [
+      { entryKind: "MANUAL_JOURNAL" },
+      { companyId: "10000000-0000-0000-0000-000000000099" },
+      { incomeYear: 2025 },
+    ]) {
+      globalThis.fetch = async () => Response.json({
+        companyId: command.companyId,
+        entryId: "40000000-0000-0000-0000-000000000004",
+        entryKind: "ADMINISTRATIVE_COST",
+        incomeYear: 2026,
+        postedAt: "2026-08-27T10:00:00Z",
+        replayed: false,
+        ...inconsistent,
+      }, { status: 201 });
+      await assert.rejects(
+        postLedgerAdministrativeCost(
+          "session-token", command, operationId, operationId,
+        ),
+        (error) => error instanceof TalliApiError && error.status === 502,
+      );
+    }
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
