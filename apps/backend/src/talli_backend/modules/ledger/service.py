@@ -46,6 +46,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     LedgerEntryPage,
     LockPeriodCommand,
+    OpeningBalanceCategory,
     OrdinaryBankLoanFacts,
     PeriodLock,
     PeriodLockPage,
@@ -67,6 +68,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionState,
     RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
+    RebuildCompanyYearOpeningCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
     PostedLedgerEntry,
@@ -87,6 +89,128 @@ _ADMINISTRATIVE_COST_ACCOUNTS = {
     AdministrativeCostCategory.PUBLIC_FEE: "7790",
     AdministrativeCostCategory.LEGAL_ADVISORY: "6720",
     AdministrativeCostCategory.OTHER_ADMIN_COST: "7795",
+}
+
+_OPENING_BALANCE_RULES = {
+    OpeningBalanceCategory.SUBSIDIARY_LOAN_RECEIVABLE: (
+        "1320", "Loan receivable from subsidiary", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.GROUP_COMPANY_LOAN_RECEIVABLE: (
+        "1325", "Loan receivable from group company", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE: (
+        "1370", "Loan receivable from corporate shareholder", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.BANK: (
+        "1920", "Bank balance", True, LedgerSourceCapability.BANKING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.RESTRICTED_BANK: (
+        "1921", "Restricted bank balance", True, LedgerSourceCapability.BANKING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.INVESTMENT: (
+        "1800", "Investment position", True, LedgerSourceCapability.INVESTMENTS,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.SUBSCRIPTION_RECEIVABLE: (
+        "1500", "Subscription receivable", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.DIVIDEND_RECEIVABLE: (
+        "1530", "Dividend receivable", True, LedgerSourceCapability.INVESTMENTS,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.GROUP_CONTRIBUTION_RECEIVABLE: (
+        "1560", "Group contribution receivable", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.TAX_RECEIVABLE: (
+        "1570", "Tax receivable", True,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL: (
+        "2000", "Registered share capital", False,
+        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.SHARE_PREMIUM: (
+        "2020", "Share premium", False,
+        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.UNREGISTERED_CAPITAL_INCREASE: (
+        "2030", "Unregistered capital increase", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.UNREGISTERED_CAPITAL_REDUCTION: (
+        "2033", "Unregistered capital reduction", True,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.OTHER_PAID_IN_EQUITY: (
+        "2035", "Other paid-in equity", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.RETAINED_EARNINGS: (
+        "2050", "Retained earnings", False,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.UNCOVERED_LOSS: (
+        "2050", "Uncovered loss", True,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.OTHER_EQUITY: (
+        "2080", "Other equity", False,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.BANK_LOAN_PAYABLE: (
+        "2220", "Bank loan payable", False, LedgerSourceCapability.BANKING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.OWNER_LOAN_PAYABLE: (
+        "2255", "Owner loan payable", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.INTERCOMPANY_LOAN_PAYABLE: (
+        "2260", "Intercompany loan payable", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.SUPPLIER_PAYABLE: (
+        "2400", "Supplier payable", False, LedgerSourceCapability.DOCUMENTS,
+        LedgerSourceCapability.LEDGER,
+    ),
+    OpeningBalanceCategory.CURRENT_TAX_PAYABLE: (
+        "2500", "Current tax payable", False,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.DIVIDEND_PAYABLE: (
+        "2800", "Dividend payable", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.GROUP_CONTRIBUTION_PAYABLE: (
+        "2960", "Group contribution payable", False,
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        LedgerSourceCapability.DOCUMENTS,
+    ),
 }
 
 
@@ -1043,6 +1167,74 @@ class LedgerService:
             company_id=company_id,
             income_year=income_year,
             correlation_id=correlation_id,
+        )
+
+    async def rebuild_company_year_opening(
+        self, command: RebuildCompanyYearOpeningCommand
+    ) -> PostedLedgerEntry:
+        if command.prior_closing_source.capability is not LedgerSourceCapability.LEDGER:
+            raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
+        components = tuple(
+            sorted(
+                command.components,
+                key=lambda component: (
+                    component.category.value,
+                    str(component.reference_id),
+                ),
+            )
+        )
+        identities = {
+            (component.category, str(component.reference_id))
+            for component in components
+        }
+        if len(identities) != len(components):
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        seen_sources = {
+            (
+                command.prior_closing_source.capability,
+                command.prior_closing_source.record_id,
+                command.prior_closing_source.revision,
+            )
+        }
+        lines: list[LedgerLine] = []
+        entry_sources = [command.prior_closing_source]
+        for component in components:
+            account, description, is_debit, primary, corroborating = (
+                _OPENING_BALANCE_RULES[component.category]
+            )
+            if (
+                component.primary_source.capability is not primary
+                or len(component.corroborating_sources) != 1
+                or component.corroborating_sources[0].capability is not corroborating
+            ):
+                raise LedgerError.precondition_failed(
+                    "LEDGER_OPENING_EVIDENCE_INVALID"
+                )
+            component_sources = (
+                component.primary_source,
+                *component.corroborating_sources,
+            )
+            for source in component_sources:
+                identity = (source.capability, source.record_id, source.revision)
+                if identity in seen_sources:
+                    raise LedgerError.invalid_input("LEDGER_OPENING_SOURCE_OVERLAP")
+                seen_sources.add(identity)
+                entry_sources.append(source)
+            lines.append(
+                LedgerLine(
+                    account,
+                    f"{description}: {component.reference_id}",
+                    component.amount if is_debit else _ZERO,
+                    _ZERO if is_debit else component.amount,
+                )
+            )
+        canonical_lines = tuple(lines)
+        _balanced(canonical_lines)
+        canonical_command = replace(command, components=components)
+        return await self._persistence.rebuild_company_year_opening(
+            canonical_command,
+            lines=canonical_lines,
+            entry_sources=tuple(entry_sources),
         )
 
     async def post_opening_balance(

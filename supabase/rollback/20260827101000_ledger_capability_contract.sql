@@ -121,6 +121,9 @@ revoke all on function ledger.record_loss_coverage_capital_reduction_direct_regi
 revoke all on function ledger.lock_period(
   text, uuid, integer, text, text, text
 ) from ledger_executor, talli_ledger_backend;
+revoke all on function ledger.rebuild_company_year_opening_v1(
+  text, uuid, integer, date, text, jsonb, text, text, text, text, jsonb, jsonb
+) from ledger_executor, talli_ledger_backend;
 revoke all on function ledger.list_entries(uuid[], text, integer, text)
   from ledger_executor, talli_ledger_backend;
 revoke all on function ledger.list_period_locks(uuid[], text, integer, text)

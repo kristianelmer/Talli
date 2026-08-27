@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from datetime import UTC, date, datetime
 
 import pytest
 
 from talli_backend.modules.ledger.public import (
     LedgerError,
+    LedgerEntryKind,
+    LedgerEntryId,
+    LedgerFactReference,
+    LedgerSourceCapability,
     LedgerSourceRecordId,
+    OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    PostedLedgerEntry,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
     ReconstructionEvidence,
@@ -16,6 +24,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidenceStatus,
     ReconstructionGapCode,
     ReconstructionState,
+    RebuildCompanyYearOpeningCommand,
     RecordReconstructionAssessmentCommand,
 )
 from talli_backend.modules.ledger.service import LedgerService
@@ -28,6 +37,7 @@ from talli_backend.shared.kernel import (
     IdempotencyKey,
     IncomeYear,
     LocalDate,
+    Money,
     Timestamp,
     UserId,
 )
@@ -64,6 +74,25 @@ class ReconstructionPersistenceStub:
             evidence_digest="a" * 64,
             ledger_state_digest="b" * 64,
             recorded_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
+    async def rebuild_company_year_opening(
+        self,
+        command: RebuildCompanyYearOpeningCommand,
+        *,
+        lines: tuple[object, ...],
+        entry_sources: tuple[LedgerFactReference, ...],
+    ) -> PostedLedgerEntry:
+        self.calls.append(
+            {"command": command, "lines": lines, "entry_sources": entry_sources}
+        )
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("50000000-0000-0000-0000-000000000005"),
+            company_id=command.company_id,
+            income_year=command.income_year,
+            entry_kind=LedgerEntryKind.OPENING_BALANCE,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
             replayed=False,
         )
 
@@ -228,4 +257,130 @@ def test_bank_and_activity_coverage_must_start_on_january_first_and_reach_cutoff
         )
 
     assert failure.value.code == "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    assert persistence.calls == []
+
+
+def opening_component(
+    category: OpeningBalanceCategory,
+    reference_id: str,
+    amount: str,
+    primary_capability: LedgerSourceCapability,
+    digest_character: str,
+) -> OpeningBalanceComponent:
+    return OpeningBalanceComponent(
+        category=category,
+        reference_id=LedgerSourceRecordId(reference_id),
+        amount=Money.nok(amount),
+        primary_source=LedgerFactReference(
+            capability=primary_capability,
+            record_id=LedgerSourceRecordId(f"fact:{reference_id}"),
+            revision=1,
+            fact_sha256=digest_character * 64,
+        ),
+        corroborating_sources=(
+            LedgerFactReference(
+                capability=LedgerSourceCapability.DOCUMENTS,
+                record_id=LedgerSourceRecordId(f"document:{reference_id}"),
+                revision=1,
+                fact_sha256=digest_character.upper().lower() * 64,
+            ),
+        ),
+    )
+
+
+def opening_position_command() -> RebuildCompanyYearOpeningCommand:
+    return RebuildCompanyYearOpeningCommand(
+        company_id=COMPANY_ID,
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("ledger-opening-position-test"),
+        idempotency_key=IdempotencyKey("opening-position-2026"),
+        income_year=INCOME_YEAR,
+        opening_date=LocalDate(date(2026, 1, 1)),
+        prior_closing_source=LedgerFactReference(
+            capability=LedgerSourceCapability.LEDGER,
+            record_id=LedgerSourceRecordId("prior-close:2025"),
+            revision=1,
+            fact_sha256="0" * 64,
+        ),
+        components=(
+            opening_component(
+                OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL,
+                "share-capital",
+                "30000.00",
+                LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                "1",
+            ),
+            opening_component(
+                OpeningBalanceCategory.BANK_LOAN_PAYABLE,
+                "bank-loan:prior-year:2",
+                "25000.00",
+                LedgerSourceCapability.BANKING,
+                "2",
+            ),
+            opening_component(
+                OpeningBalanceCategory.BANK,
+                "bank-account:1",
+                "105000.00",
+                LedgerSourceCapability.BANKING,
+                "3",
+            ),
+            opening_component(
+                OpeningBalanceCategory.BANK_LOAN_PAYABLE,
+                "bank-loan:prior-year:1",
+                "50000.00",
+                LedgerSourceCapability.BANKING,
+                "4",
+            ),
+        ),
+    )
+
+
+def test_complete_opening_is_canonical_balanced_and_account_free() -> None:
+    persistence = ReconstructionPersistenceStub()
+
+    result = asyncio.run(
+        LedgerService(persistence).rebuild_company_year_opening(
+            opening_position_command()
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.OPENING_BALANCE
+    call = persistence.calls[0]
+    canonical = call["command"]
+    assert isinstance(canonical, RebuildCompanyYearOpeningCommand)
+    assert [component.category for component in canonical.components] == [
+        OpeningBalanceCategory.BANK,
+        OpeningBalanceCategory.BANK_LOAN_PAYABLE,
+        OpeningBalanceCategory.BANK_LOAN_PAYABLE,
+        OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL,
+    ]
+    lines = call["lines"]
+    assert [(line.account, line.debit.amount, line.credit.amount) for line in lines] == [
+        ("1920", Money.nok("105000.00").amount, Money.nok("0").amount),
+        ("2220", Money.nok("0").amount, Money.nok("50000.00").amount),
+        ("2220", Money.nok("0").amount, Money.nok("25000.00").amount),
+        ("2000", Money.nok("0").amount, Money.nok("30000.00").amount),
+    ]
+    assert "account" not in OpeningBalanceComponent.__dataclass_fields__
+    assert "debit" not in OpeningBalanceComponent.__dataclass_fields__
+    assert "credit" not in OpeningBalanceComponent.__dataclass_fields__
+    assert "lines" not in RebuildCompanyYearOpeningCommand.__dataclass_fields__
+
+
+def test_opening_source_overlap_fails_before_persistence() -> None:
+    persistence = ReconstructionPersistenceStub()
+    command = opening_position_command()
+    duplicated = replace(
+        command.components[1],
+        primary_source=command.components[0].primary_source,
+    )
+    command = replace(command, components=(command.components[0], duplicated))
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(LedgerService(persistence).rebuild_company_year_opening(command))
+
+    assert failure.value.code in {
+        "LEDGER_OPENING_EVIDENCE_INVALID",
+        "LEDGER_OPENING_SOURCE_OVERLAP",
+    }
     assert persistence.calls == []

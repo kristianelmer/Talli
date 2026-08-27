@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -15,6 +15,8 @@ close locks. It owns
 `ledger.bank_loan_anchors`, `ledger.bank_loan_payment_allocations`,
 `ledger.cash_capital_increase_phases`,
 `ledger.loss_coverage_capital_reduction_phases`,
+`ledger.opening_position_rebuilds`, `ledger.opening_position_components`,
+`ledger.opening_position_component_sources`,
 `ledger.company_year_close_assessments`, `ledger.company_year_close_evidence`,
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
@@ -31,7 +33,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`, and
 `supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`, and
 `supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`, and
-`supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`.
+`supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`, and
+`supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -81,10 +84,19 @@ for the stable, ledger-owned `BankLoanReferenceId`; source record identifiers
 remain separate capability correlations. Payments link to that anchor, may
 span later admitted company-years, and atomically reject chronology errors,
 inconsistent replays, and cumulative principal above the original
-disbursement. A payment
-for a loan reconstructed from an earlier year fails closed with
-`OPENING_LOAN_ANCHOR_MISSING` until the opening-rebuild slice can create a
-verified anchor; this increment does not infer opening debt from a payment.
+disbursement. `RebuildCompanyYearOpeningCommand` is an account-free,
+backend-only opening-position receiver increment. It currently maps a closed
+subset of semantic asset, liability, and equity components; each carries a
+stable reference, positive NOK amount, and exact primary and corroborating
+facts. Ledger derives one balanced journal without a suspense or
+retained-earnings plug, then persistence atomically records the journal,
+component facts, and provenance. Repeatable bank-loan components can become an
+immutable principal basis for current-year payments without fabricating a
+prior-year disbursement. This increment is not yet the authoritative new-year
+producer and does not yet reconstruct lifecycle-specific phase anchors,
+accrued-interest balances, deferred-tax balances, or every supported investment
+classification. Final reconstruction readiness remains fail closed until the
+opening model, current-year activity, and reconciliation are complete.
 
 The cash-capital-increase receiver accepts only a stable, ledger-owned
 `CapitalIncreaseReferenceId` and immutable facts already approved by their
@@ -161,9 +173,12 @@ The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,
 `PostOpeningBalanceCommand`, `PostOwnerDividendDeclaredCommand`,
 `PostOwnerDividendPaymentCommand`, `PostShareholderLoanCommand`, and
-`PostTaxSettlementCommand`. `RecordReconstructionAssessmentCommand` accepts
+`PostTaxSettlementCommand`, and `RebuildCompanyYearOpeningCommand`.
+`RecordReconstructionAssessmentCommand` accepts
 only immutable evidence issued by the exact public source capability declared
-for each fact; it is intentionally not exposed as a browser mutation.
+for each fact; it is intentionally not exposed as a browser mutation. The
+opening-position command is likewise backend-only and cannot accept accounts,
+debit/credit choices, or lines.
 Supporting closed values are `BankSuggestionRule`,
 `LedgerCursor`, `LedgerErrorCode`, `ShareholderLoanDirection`, and
 `TaxSettlementKind`.

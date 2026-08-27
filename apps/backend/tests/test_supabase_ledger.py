@@ -57,6 +57,9 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceCapability,
     LedgerSourceRecordId,
     OrdinaryBankLoanFacts,
+    OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    RebuildCompanyYearOpeningCommand,
     PostManualJournalCommand,
     PostedLedgerEntry,
     ReconstructionAssessmentId,
@@ -160,6 +163,75 @@ def reconstruction_command() -> RecordReconstructionAssessmentCommand:
         income_year=IncomeYear(2026),
         as_of=as_of,
         evidence=evidence,
+    )
+
+
+def opening_position_command() -> RebuildCompanyYearOpeningCommand:
+    bank = OpeningBalanceComponent(
+        category=OpeningBalanceCategory.BANK,
+        reference_id=LedgerSourceRecordId("bank-account:1"),
+        amount=Money.nok("105000.00"),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.BANKING,
+            record_id=LedgerSourceRecordId("bank-balance:1"),
+            revision=1,
+            fact_sha256="1" * 64,
+        ),
+        corroborating_sources=(LedgerFactReference(
+            capability=LedgerSourceCapability.DOCUMENTS,
+            record_id=LedgerSourceRecordId("bank-document:1"),
+            revision=1,
+            fact_sha256="2" * 64,
+        ),),
+    )
+    loan = OpeningBalanceComponent(
+        category=OpeningBalanceCategory.BANK_LOAN_PAYABLE,
+        reference_id=LedgerSourceRecordId("bank-loan:prior-year:1"),
+        amount=Money.nok("75000.00"),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.BANKING,
+            record_id=LedgerSourceRecordId("bank-loan-statement:2025:1"),
+            revision=1,
+            fact_sha256="3" * 64,
+        ),
+        corroborating_sources=(LedgerFactReference(
+            capability=LedgerSourceCapability.DOCUMENTS,
+            record_id=LedgerSourceRecordId("bank-loan-agreement:1"),
+            revision=2,
+            fact_sha256="4" * 64,
+        ),),
+    )
+    capital = OpeningBalanceComponent(
+        category=OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL,
+        reference_id=LedgerSourceRecordId("share-capital"),
+        amount=Money.nok("30000.00"),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+            record_id=LedgerSourceRecordId("share-capital:2025"),
+            revision=1,
+            fact_sha256="5" * 64,
+        ),
+        corroborating_sources=(LedgerFactReference(
+            capability=LedgerSourceCapability.DOCUMENTS,
+            record_id=LedgerSourceRecordId("share-capital-document:2025"),
+            revision=1,
+            fact_sha256="6" * 64,
+        ),),
+    )
+    return RebuildCompanyYearOpeningCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("ledger-opening-position-adapter"),
+        idempotency_key=IdempotencyKey("opening-position-adapter-2026"),
+        income_year=IncomeYear(2026),
+        opening_date=LocalDate(date(2026, 1, 1)),
+        prior_closing_source=LedgerFactReference(
+            capability=LedgerSourceCapability.LEDGER,
+            record_id=LedgerSourceRecordId("prior-close:2025"),
+            revision=1,
+            fact_sha256="0" * 64,
+        ),
+        components=(bank, loan, capital),
     )
 
 
@@ -657,6 +729,62 @@ def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result
         "coverageThrough": "2026-08-27",
         "gapCode": None,
     }
+
+
+def test_opening_position_adapter_binds_atomic_component_rpc() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "50000000-0000-0000-0000-000000000005",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "OPENING_BALANCE",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    requested = opening_position_command()
+    lines = (
+        LedgerLine("1920", "Bank balance: bank-account:1", Money.nok("105000"), Money.nok("0")),
+        LedgerLine("2220", "Bank loan payable: bank-loan:prior-year:1", Money.nok("0"), Money.nok("75000")),
+        LedgerLine("2000", "Registered share capital: share-capital", Money.nok("0"), Money.nok("30000")),
+    )
+    entry_sources = (
+        requested.prior_closing_source,
+        *(
+            source
+            for component in requested.components
+            for source in (component.primary_source, *component.corroborating_sources)
+        ),
+    )
+    result = asyncio.run(
+        session.rebuild_company_year_opening(
+            requested,
+            lines=lines,
+            entry_sources=entry_sources,
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.OPENING_BALANCE
+    assert "ledger.rebuild_company_year_opening_v1" in calls[0][0]
+    parameters = calls[0][1]
+    assert parameters[:5] == (
+        "opening-position-adapter-2026",
+        "10000000-0000-0000-0000-000000000001",
+        2026,
+        date(2026, 1, 1),
+        "Complete evidenced opening position",
+    )
+    components = json.loads(str(parameters[11]))
+    assert [component["category"] for component in components] == [
+        "BANK", "BANK_LOAN_PAYABLE", "REGISTERED_SHARE_CAPITAL"
+    ]
 
 
 def test_supported_pattern_adapter_binds_rule_event_and_source_provenance() -> None:
@@ -1670,6 +1798,7 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
             "ledger_company_year_close_reconstruction_stale",
             "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE",
         ),
+        ("ledger_reconstruction_stale", "LEDGER_RECONSTRUCTION_STALE"),
         (
             "ledger_correction_original_kind_unsupported",
             "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED",

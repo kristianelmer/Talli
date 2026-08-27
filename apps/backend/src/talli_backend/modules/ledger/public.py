@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Protocol, TypeAlias, TypeVar
 from uuid import UUID
@@ -290,6 +291,34 @@ class ReconstructionState(StrEnum):
     READY = "READY"
 
 
+class OpeningBalanceCategory(StrEnum):
+    SUBSIDIARY_LOAN_RECEIVABLE = "SUBSIDIARY_LOAN_RECEIVABLE"
+    GROUP_COMPANY_LOAN_RECEIVABLE = "GROUP_COMPANY_LOAN_RECEIVABLE"
+    CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE = "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE"
+    BANK = "BANK"
+    RESTRICTED_BANK = "RESTRICTED_BANK"
+    INVESTMENT = "INVESTMENT"
+    SUBSCRIPTION_RECEIVABLE = "SUBSCRIPTION_RECEIVABLE"
+    DIVIDEND_RECEIVABLE = "DIVIDEND_RECEIVABLE"
+    GROUP_CONTRIBUTION_RECEIVABLE = "GROUP_CONTRIBUTION_RECEIVABLE"
+    TAX_RECEIVABLE = "TAX_RECEIVABLE"
+    REGISTERED_SHARE_CAPITAL = "REGISTERED_SHARE_CAPITAL"
+    SHARE_PREMIUM = "SHARE_PREMIUM"
+    UNREGISTERED_CAPITAL_INCREASE = "UNREGISTERED_CAPITAL_INCREASE"
+    UNREGISTERED_CAPITAL_REDUCTION = "UNREGISTERED_CAPITAL_REDUCTION"
+    OTHER_PAID_IN_EQUITY = "OTHER_PAID_IN_EQUITY"
+    RETAINED_EARNINGS = "RETAINED_EARNINGS"
+    UNCOVERED_LOSS = "UNCOVERED_LOSS"
+    OTHER_EQUITY = "OTHER_EQUITY"
+    BANK_LOAN_PAYABLE = "BANK_LOAN_PAYABLE"
+    OWNER_LOAN_PAYABLE = "OWNER_LOAN_PAYABLE"
+    INTERCOMPANY_LOAN_PAYABLE = "INTERCOMPANY_LOAN_PAYABLE"
+    SUPPLIER_PAYABLE = "SUPPLIER_PAYABLE"
+    CURRENT_TAX_PAYABLE = "CURRENT_TAX_PAYABLE"
+    DIVIDEND_PAYABLE = "DIVIDEND_PAYABLE"
+    GROUP_CONTRIBUTION_PAYABLE = "GROUP_CONTRIBUTION_PAYABLE"
+
+
 class CompanyYearCloseEvidenceKind(StrEnum):
     BANK_ROWS_RESOLVED = "BANK_ROWS_RESOLVED"
     MATERIAL_BALANCES_DOCUMENTED = "MATERIAL_BALANCES_DOCUMENTED"
@@ -521,7 +550,10 @@ class LedgerErrorCode(StrEnum):
     MEMO_REQUIRED = "LEDGER_MEMO_REQUIRED"
     NOT_FOUND = "LEDGER_NOT_FOUND"
     OPENING_ALREADY_EXISTS = "LEDGER_OPENING_ALREADY_EXISTS"
+    OPENING_BALANCE_INVALID = "LEDGER_OPENING_BALANCE_INVALID"
     OPENING_BALANCE_NEGATIVE = "LEDGER_OPENING_BALANCE_NEGATIVE"
+    OPENING_EVIDENCE_INVALID = "LEDGER_OPENING_EVIDENCE_INVALID"
+    OPENING_SOURCE_OVERLAP = "LEDGER_OPENING_SOURCE_OVERLAP"
     OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED = (
         "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
     )
@@ -535,6 +567,7 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    RECONSTRUCTION_STALE = "LEDGER_RECONSTRUCTION_STALE"
     BANK_LOAN_ALREADY_EXISTS = "LEDGER_BANK_LOAN_ALREADY_EXISTS"
     BANK_LOAN_EVENT_INVALID = "LEDGER_BANK_LOAN_EVENT_INVALID"
     OPENING_LOAN_ANCHOR_MISSING = "LEDGER_OPENING_LOAN_ANCHOR_MISSING"
@@ -778,6 +811,36 @@ class ReconstructionEvidence:
 class RecordReconstructionAssessmentCommand(LedgerCommand):
     as_of: LocalDate
     evidence: tuple[ReconstructionEvidence, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningBalanceComponent:
+    """One source-owned semantic balance in the opening-position increment."""
+
+    category: OpeningBalanceCategory
+    reference_id: LedgerSourceRecordId
+    amount: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        if self.amount.currency != "NOK" or self.amount.amount <= 0:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+
+
+@dataclass(frozen=True, slots=True)
+class RebuildCompanyYearOpeningCommand(LedgerCommand):
+    """Atomically record one classified and evidenced Jan-1 opening increment."""
+
+    opening_date: LocalDate
+    prior_closing_source: LedgerFactReference
+    components: tuple[OpeningBalanceComponent, ...]
+
+    def __post_init__(self) -> None:
+        if self.opening_date.value != date(int(self.income_year), 1, 1):
+            raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
+        if not 2 <= len(self.components) <= 49:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1204,6 +1267,14 @@ class LedgerPersistence(Protocol):
         gap_codes: tuple[ReconstructionGapCode, ...],
     ) -> ReconstructionAssessment: ...
 
+    async def rebuild_company_year_opening(
+        self,
+        command: RebuildCompanyYearOpeningCommand,
+        *,
+        lines: tuple[LedgerLine, ...],
+        entry_sources: tuple[LedgerFactReference, ...],
+    ) -> PostedLedgerEntry: ...
+
     async def get_reconstruction_assessment(
         self,
         *,
@@ -1305,6 +1376,10 @@ class LedgerCommands(Protocol):
     async def record_reconstruction_assessment(
         self, command: RecordReconstructionAssessmentCommand
     ) -> ReconstructionAssessment: ...
+
+    async def rebuild_company_year_opening(
+        self, command: RebuildCompanyYearOpeningCommand
+    ) -> PostedLedgerEntry: ...
 
     async def post_manual_journal(
         self, command: PostManualJournalCommand
@@ -1409,12 +1484,15 @@ __all__ = [
     "LockPeriodCommand",
     "ApprovedLossCoverageCapitalReductionFacts",
     "OrdinaryBankLoanFacts",
+    "OpeningBalanceCategory",
+    "OpeningBalanceComponent",
     "PeriodLock",
     "PeriodLockId",
     "PeriodLockPage",
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
     "RecordReconstructionAssessmentCommand",
+    "RebuildCompanyYearOpeningCommand",
     "RecognizeHoldingActionCommand",
     "ReconstructionAssessment",
     "ReconstructionAssessmentId",

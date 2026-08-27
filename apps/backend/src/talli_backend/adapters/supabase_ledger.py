@@ -87,6 +87,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionState,
     RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
+    RebuildCompanyYearOpeningCommand,
     ledger_persistence_adapter,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
@@ -481,6 +482,10 @@ def _map_database_error(message: str) -> LedgerError:
             ),
         ),
         (
+            "ledger_reconstruction_stale",
+            LedgerError.precondition_failed("LEDGER_RECONSTRUCTION_STALE"),
+        ),
+        (
             "ledger_bank_loan_already_exists",
             LedgerError.conflict("LEDGER_BANK_LOAN_ALREADY_EXISTS"),
         ),
@@ -567,6 +572,18 @@ def _map_database_error(message: str) -> LedgerError:
         (
             "ledger_opening_already_exists",
             LedgerError.conflict("LEDGER_OPENING_ALREADY_EXISTS"),
+        ),
+        (
+            "ledger_opening_balance_invalid",
+            LedgerError.precondition_failed("LEDGER_OPENING_BALANCE_INVALID"),
+        ),
+        (
+            "ledger_opening_evidence_invalid",
+            LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID"),
+        ),
+        (
+            "ledger_opening_source_overlap",
+            LedgerError.precondition_failed("LEDGER_OPENING_SOURCE_OVERLAP"),
         ),
         (
             "ledger_entry_already_corrected",
@@ -1519,6 +1536,79 @@ class SupabaseLedgerSession:
         )
         try:
             return _reconstruction_assessment(row)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def rebuild_company_year_opening(
+        self,
+        command: RebuildCompanyYearOpeningCommand,
+        *,
+        lines: tuple[LedgerLine, ...],
+        entry_sources: tuple[LedgerFactReference, ...],
+    ) -> PostedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        expected_sources = (
+            command.prior_closing_source,
+            *(
+                source
+                for component in command.components
+                for source in (
+                    component.primary_source,
+                    *component.corroborating_sources,
+                )
+            ),
+        )
+        if entry_sources != expected_sources:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        source_payload = tuple(
+            _fact_reference_payload(source, primary=index == 0)
+            for index, source in enumerate(entry_sources)
+        )
+        component_payload = tuple(
+            {
+                "ordinal": index,
+                "category": component.category.value,
+                "referenceId": str(component.reference_id),
+                "amountNok": format(component.amount.amount, "f"),
+                "balanceSide": (
+                    "DEBIT" if lines[index - 1].debit.amount > 0 else "CREDIT"
+                ),
+                "sources": [
+                    _fact_reference_payload(component.primary_source, primary=True),
+                    *(
+                        _fact_reference_payload(source, primary=False)
+                        for source in component.corroborating_sources
+                    ),
+                ],
+            }
+            for index, component in enumerate(command.components, start=1)
+        )
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.rebuild_company_year_opening_v1(
+              %s::text, %s::uuid, %s::integer, %s::date, %s::text,
+              %s::jsonb, %s::text, %s::text, %s::text, %s::text,
+              %s::jsonb, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                command.opening_date.value,
+                "Complete evidenced opening position",
+                json.dumps([_line_payload(line) for line in lines], separators=(",", ":")),
+                command.prior_closing_source.capability.value,
+                str(command.prior_closing_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                json.dumps(source_payload, separators=(",", ":")),
+                json.dumps(component_payload, separators=(",", ":")),
+            ),
+        )
+        try:
+            return _posted_entry(row)
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 

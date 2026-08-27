@@ -23,6 +23,7 @@ const additiveLedgerMigrationPaths = [
   "20260827106000_ledger_bank_loan_lifecycle.sql",
   "20260827107000_ledger_cash_capital_increase_lifecycle.sql",
   "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
+  "20260827109000_ledger_opening_position_rebuild.sql",
 ].map((name) => new URL(`../supabase/migrations/${name}`, import.meta.url));
 const lifecyclePath = new URL("./ledger_database_runtime.test.mjs", import.meta.url);
 
