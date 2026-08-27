@@ -5,14 +5,19 @@ import test from "node:test";
 const actionsUrl = new URL("../apps/web/app/actions.ts", import.meta.url);
 const pageUrl = new URL("../apps/web/app/(owner)/transactions/page.tsx", import.meta.url);
 
-test("server recomputes a suggestion before invoking the atomic acceptance RPC", async () => {
+test("backend coordinator revalidates the suggestion inside the atomic writer", async () => {
   const source = await readFile(actionsUrl, "utf8");
+  const start = source.indexOf("export async function acceptBankTransactionSuggestion");
+  const end = source.indexOf("\nexport async function ", start + 1);
+  const action = source.slice(start, end);
 
-  assert.match(source, /export async function acceptBankTransactionSuggestion/);
-  assert.match(source, /suggestBankTransaction\(\{[\s\S]*transaction\.text[\s\S]*transaction\.amount/);
-  assert.match(source, /suggestion\.ruleId !== requestedRuleId/);
-  assert.match(source, /suggestion\.ruleVersion !== requestedRuleVersion/);
-  assert.match(source, /\.rpc\("accept_bank_transaction_suggestion"/);
+  assert.notEqual(start, -1);
+  assert.match(action, /postLedgerBankSuggestionOutcome\(/);
+  assert.match(action, /acceptanceId: operationId/);
+  assert.match(action, /rule: requestedRuleId/);
+  assert.match(action, /ruleVersion: requestedRuleVersion/);
+  assert.doesNotMatch(action, /\.rpc\("accept_bank_transaction_suggestion"/);
+  assert.doesNotMatch(action, /suggestBankTransaction\(|matched_entry_id|matched_action_id/);
 });
 
 test("transaction queue requires an explicit owner submit for every suggestion", async () => {

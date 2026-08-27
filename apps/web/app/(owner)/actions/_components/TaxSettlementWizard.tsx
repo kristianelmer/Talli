@@ -12,9 +12,13 @@ import {
 import { ActionPreview, type LedgerLine } from "./ActionPreview";
 import { DocStatusSelect, SelectField, TextField } from "./fields";
 
-type Props = { companyId: string; incomeYear: number };
+type Props = { companyId: string; incomeYear: number; operationId?: string };
 
-export function TaxSettlementWizard({ companyId, incomeYear }: Props) {
+export function TaxSettlementWizard({
+  companyId,
+  incomeYear,
+  operationId: initialOperationId,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.taxSettlement;
 
@@ -22,6 +26,7 @@ export function TaxSettlementWizard({ companyId, incomeYear }: Props) {
   const [settlementDate, setSettlementDate] = useState("");
   const [amount, setAmount] = useState("");
   const [documentStatus, setDocumentStatus] = useState("attached");
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready = settlementDate.trim() !== "" && amount.trim() !== "";
 
@@ -48,6 +53,7 @@ export function TaxSettlementWizard({ companyId, incomeYear }: Props) {
 
   return (
     <form action={recordTaxSettlement} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />

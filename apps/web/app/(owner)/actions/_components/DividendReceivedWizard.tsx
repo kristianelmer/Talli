@@ -18,12 +18,14 @@ type Props = {
   companyId: string;
   incomeYear: number;
   investments: DividendInvestment[];
+  operationId?: string;
 };
 
 export function DividendReceivedWizard({
   companyId,
   incomeYear,
   investments,
+  operationId: initialOperationId,
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.dividendReceived;
@@ -35,6 +37,7 @@ export function DividendReceivedWizard({
   const [grossAmount, setGrossAmount] = useState("");
   const [treatment, setTreatment] = useState("fritaksmetoden");
   const [documentStatus, setDocumentStatus] = useState("attached");
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
     linkedInvestmentId.trim() !== "" &&
@@ -96,6 +99,7 @@ export function DividendReceivedWizard({
 
   return (
     <form action={recordDividendReceived} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />

@@ -794,7 +794,7 @@ function startNextServer({ port, siteOrigin, mockBaseUrl, localSupabase }) {
   const server = spawn(
     process.execPath,
     [
-      "node_modules/next/dist/bin/next",
+      "apps/web/node_modules/next/dist/bin/next",
       "dev",
       "apps/web",
       "--hostname",

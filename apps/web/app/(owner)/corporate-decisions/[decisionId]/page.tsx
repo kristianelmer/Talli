@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ decisionId: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; finalizeDecisionOperationId?: string }>;
 };
 
 const KIND_LABELS: Record<CorporateArtifactKind, string> = {
@@ -208,6 +208,7 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
           {factsApproved && allSigned ? (
             <form action={finalizeCorporateDecision} className="wizardForm">
               <LifecycleFields decisionId={decision.id} setId={documentSet.id} decisionHash={decision.decision_hash} />
+              <input type="hidden" name="operationId" value={query?.finalizeDecisionOperationId ?? randomUUID()} />
               <input type="hidden" name="finalizationId" value={randomUUID()} />
               {decision.decision_kind === "owner_dividend" ? (
                 <>

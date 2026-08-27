@@ -12,10 +12,10 @@ import { assertValueMatchesSchema } from "../scripts/check-openapi-contract.mjs"
 import { createBaselineTalliApiClient } from "./fixtures/talli-api-client-v1.0.0.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
-const requireFromRepositoryRoot = createRequire(
-  new URL("../package.json", import.meta.url),
+const requireFromWebPackage = createRequire(
+  new URL("../apps/web/package.json", import.meta.url),
 );
-const nextCli = requireFromRepositoryRoot.resolve("next/dist/bin/next");
+const nextCli = requireFromWebPackage.resolve("next/dist/bin/next");
 const baseline = JSON.parse(
   readFileSync(
     resolve(repositoryRoot, "contracts/openapi/baselines/talli-v1.0.0.json"),

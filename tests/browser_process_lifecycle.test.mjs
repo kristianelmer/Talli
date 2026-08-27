@@ -241,7 +241,6 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "authority_test_runs",
     "authority_permissions",
     "filing_previews",
-    "ledger_entries",
     "opening_shareholders",
     "opening_balance_setups",
     "billing_accounts",
@@ -250,6 +249,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "company_archive_export_attempts",
     "company_archive_source_generations",
   ]);
+  assert.ok(calls.includes("delete from ledger.entries where company_id = $1"));
   const restoreTriggerMode = calls.indexOf("set local session_replication_role = origin");
   assert.ok(
     calls.indexOf("delete from public.company_eligibility_assessments where company_id = $1")

@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostOpeningBalance"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostBankSuggestionOutcome","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
@@ -12,12 +12,12 @@ snake-case presentation shape used by owner screens, but it does not validate
 balance, choose accounts, construct postings, decide warnings, or authorize a
 company action.
 
-Only opening balance, supported administrative cost, manual journal, period
-lock, ledger/lock queries, and the frozen opening-snapshot compatibility read
-are browser-facing. The compatibility read does not assign future filing policy
-or persistence ownership to this feature. Future banking, investment,
-governance, and tax mutations remain behind named legacy facades until their
-serialized capability stages; arbitrary source lines are not a browser API.
+The browser sends only business facts and stable operation identifiers. The
+backend ledger application coordinates the supported administrative-cost,
+bank-suggestion, investment, shareholder-loan, tax-settlement, corporate
+decision, and owner-dividend writers in one request-bound transaction. The
+compatibility read does not assign filing policy or persistence ownership to
+this feature, and arbitrary source lines are not a browser API.
 
 ## Transport and presentation
 

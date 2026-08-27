@@ -27,9 +27,15 @@ type Props = {
   companyId: string;
   incomeYear: number;
   positions: SalePosition[];
+  operationId?: string;
 };
 
-export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
+export function ShareSaleWizard({
+  companyId,
+  incomeYear,
+  positions,
+  operationId: initialOperationId,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.shareSale;
   const sellable = positions.filter(
@@ -41,6 +47,7 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
   const [soldShareCount, setSoldShareCount] = useState("");
   const [proceeds, setProceeds] = useState("");
   const [documentStatus, setDocumentStatus] = useState("attached");
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const selected = sellable.find((position) => position.id === positionId);
   const ready =
@@ -98,6 +105,7 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
 
   return (
     <form action={recordShareSale} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />

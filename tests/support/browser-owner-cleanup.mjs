@@ -110,7 +110,6 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "authority_test_runs",
       "authority_permissions",
       "filing_previews",
-      "ledger_entries",
       "opening_shareholders",
       "opening_balance_setups",
       "billing_accounts",
@@ -122,6 +121,11 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       await database.query(`delete from public.${table} where company_id = $1`, [
         companyId,
       ]);
+      if (table === "filing_previews") {
+        await database.query("delete from ledger.entries where company_id = $1", [
+          companyId,
+        ]);
+      }
     }
     await database.query("commit");
   } catch (error) {

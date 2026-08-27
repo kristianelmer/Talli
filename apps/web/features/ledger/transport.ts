@@ -1,12 +1,20 @@
 import {
   createTalliApiClient,
   type LedgerAdministrativeCostWire,
+  type LedgerBankSuggestionWire,
+  type LedgerCorporateDecisionFinalizationWire,
   type LedgerEntryViewWire,
+  type LedgerInvestmentDividendWire,
+  type LedgerInvestmentPurchaseWire,
+  type LedgerInvestmentSaleWire,
   type LedgerLockPeriodWire,
   type LedgerManualJournalWire,
   type LedgerOpeningSnapshotWire,
+  type LedgerOwnerDividendPaymentWire,
   type LedgerPeriodLockWire,
+  type LedgerShareholderLoanWire,
   type LedgerSourceCapability,
+  type LedgerTaxSettlementWire,
   type NewYearStartWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
@@ -239,6 +247,102 @@ export function postLedgerAdministrativeCost(
   requestId?: string,
 ) {
   return client(accessToken).ledgerPostAdministrativeCost(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerInvestmentDividend(
+  accessToken: string,
+  command: LedgerInvestmentDividendWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostInvestmentDividend(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerShareholderLoan(
+  accessToken: string,
+  command: LedgerShareholderLoanWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostShareholderLoan(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerTaxSettlement(
+  accessToken: string,
+  command: LedgerTaxSettlementWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostTaxSettlement(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerBankSuggestionOutcome(
+  accessToken: string,
+  command: LedgerBankSuggestionWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostBankSuggestionOutcome(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerInvestmentPurchase(
+  accessToken: string,
+  command: LedgerInvestmentPurchaseWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostInvestmentPurchase(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerInvestmentSale(
+  accessToken: string,
+  command: LedgerInvestmentSaleWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostInvestmentSale(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function finalizeLedgerCorporateDecision(
+  accessToken: string,
+  command: LedgerCorporateDecisionFinalizationWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerFinalizeCorporateDecision(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function postLedgerOwnerDividendPayment(
+  accessToken: string,
+  command: LedgerOwnerDividendPaymentWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).ledgerPostOwnerDividendPayment(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

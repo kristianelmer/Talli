@@ -12,10 +12,10 @@ if (existsSync(".env")) {
   loadEnvFile(".env");
 }
 
-const requireFromRepositoryRoot = createRequire(
-  new URL("../../../package.json", import.meta.url),
+const requireFromWebPackage = createRequire(
+  new URL("../package.json", import.meta.url),
 );
-const nextCli = requireFromRepositoryRoot.resolve("next/dist/bin/next");
+const nextCli = requireFromWebPackage.resolve("next/dist/bin/next");
 
 const child = spawn(
   process.execPath,

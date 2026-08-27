@@ -103,6 +103,15 @@ test("server exposes step-up-protected immutable lifecycle actions", () => {
     assert.match(action, new RegExp(rpcMarker));
     assert.match(action, /decision_hash|decisionHash/);
   }
+  const finalizeStart = actionsSource.indexOf("export async function finalizeCorporateDecision");
+  const finalizeEnd = actionsSource.indexOf("\nexport async function ", finalizeStart + 1);
+  const finalize = actionsSource.slice(finalizeStart, finalizeEnd < 0 ? undefined : finalizeEnd);
+  assert.match(finalize, /finalizeLedgerCorporateDecision/);
+  assert.match(finalize, /requiredFormUuid\(formData, "operationId"\)/);
+  assert.match(finalize, /finalizationId:\s*operationId/);
+  assert.match(finalize, /finalizeDecisionOperationId/);
+  assert.match(finalize, /verifyCurrentAnnualSource:\s*false/);
+  assert.doesNotMatch(finalize, /\.rpc\("finalize_corporate_decision"/);
   const attestStart = actionsSource.indexOf("export async function attestSignedCorporateArtifact");
   const attestEnd = actionsSource.indexOf("\nexport async function ", attestStart + 1);
   const attest = actionsSource.slice(attestStart, attestEnd);

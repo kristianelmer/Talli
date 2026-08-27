@@ -13,6 +13,7 @@ import {
 } from "./support/browser-owner-cleanup.mjs";
 import {
   allocateLoopbackPort,
+  ownedProcessDiagnostics,
   startOwnedProcess,
   waitForOwnedReadiness,
 } from "./support/owned-process-lifecycle.mjs";
@@ -79,18 +80,31 @@ test("browser owner annual loop uses persisted state and survives reload", async
     resources.databaseStarted = true;
     await database.connect();
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
+    const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
     await database.query(
       `alter role talli_company_access_backend login password '${backendDatabasePassword}'`,
+    );
+    await database.query(
+      `alter role talli_ledger_backend login password '${ledgerDatabasePassword}'`,
     );
     resources.cleanupBackendDatabaseRole = async () => {
       await database.query(
         "alter role talli_company_access_backend nologin password null",
       );
+      await database.query(
+        "alter role talli_ledger_backend nologin password null",
+      );
       resources.cleanupBackendDatabaseRole = undefined;
     };
-    const backendDatabaseUrl = databaseUrlForBackendRole(
+    const backendDatabaseUrl = databaseUrlForRole(
       databaseUrl,
+      "talli_company_access_backend",
       backendDatabasePassword,
+    );
+    const ledgerDatabaseUrl = databaseUrlForRole(
+      databaseUrl,
+      "talli_ledger_backend",
+      ledgerDatabasePassword,
     );
     const ownerEmail = `owner-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
@@ -112,6 +126,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
     await seedAnnualLoop(
       admin,
+      database,
       {
         companyId,
         setupId,
@@ -124,12 +139,19 @@ test("browser owner annual loop uses persisted state and survives reload", async
         resources.companyId = companyId;
       },
     );
+    await assertLedgerDatabaseBoundaries({
+      companyId,
+      databaseUrl: ledgerDatabaseUrl,
+      ownerEmail,
+      ownerId,
+    });
 
     resources.backend = startBackendServer({
       port: backendPort,
       supabaseUrl,
       anonKey,
       databaseUrl: backendDatabaseUrl,
+      ledgerDatabaseUrl,
     });
     await waitForOwnedReadiness({
       process: resources.backend,
@@ -154,6 +176,12 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await loginForm.getByRole("button", { name: "Logg inn" }).click();
     await page.waitForLoadState("networkidle");
     await establishOwnerAal2(page, baseUrl);
+    const ownerSession = await browserSupabaseSession(page);
+    await assertLedgerReadBoundaries({
+      accessToken: ownerSession.access_token,
+      backendBaseUrl,
+      companyId,
+    });
     await page.goto(`${baseUrl}/dashboard`);
     await page.waitForLoadState("networkidle");
 
@@ -237,12 +265,18 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await expectText(page, "sim-rf1086-");
     await expectText(page, "Eksporter arkiv");
   } catch (error) {
-    resources.primaryFailure = error;
-    throw error;
+    const diagnostics = new Error(
+      `${error instanceof Error ? error.message : String(error)}\n`
+        + `web=${ownedProcessDiagnostics(resources.server)}\n`
+        + `backend=${ownedProcessDiagnostics(resources.backend)}`,
+      { cause: error },
+    );
+    resources.primaryFailure = diagnostics;
+    throw diagnostics;
   }
 });
 
-async function seedAnnualLoop(admin, ids, onCompanyCreated) {
+async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
   const { companyId, setupId, shareholderId, previewId, ownerId, orgNumber } =
     ids;
   await assertNoError(
@@ -320,19 +354,37 @@ async function seedAnnualLoop(admin, ids, onCompanyCreated) {
       created_by: ownerId,
     }),
   );
-  await assertNoError(
-    admin.from("ledger_entries").insert({
-      company_id: companyId,
-      setup_id: setupId,
-      income_year: 2025,
-      entry_type: "opening_balance",
-      memo: "Åpningsbalanse",
-      lines: [
-        { account: "1920", debit: 30000, credit: 0 },
-        { account: "2000", debit: 0, credit: 30000 },
-      ],
-      created_by: ownerId,
-    }),
+  await database.query(
+    String.raw`
+      insert into ledger.entries (
+        company_id, setup_id, income_year, entry_kind, memo, lines, created_by,
+        source_capability, source_record_id, correlation_id
+      ) values ($1, $2, 2025, 'OPENING_BALANCE', 'Åpningsbalanse', $3::jsonb, $4,
+        'SHAREHOLDER_REGISTER_FILING', $5, $6)
+    `,
+    [
+      companyId,
+      setupId,
+      JSON.stringify([
+        {
+          account: "1920",
+          description: "Bankinnskudd",
+          debit: "30000.00",
+          credit: "0.00",
+          currency: "NOK",
+        },
+        {
+          account: "2000",
+          description: "Aksjekapital",
+          debit: "0.00",
+          credit: "30000.00",
+          currency: "NOK",
+        },
+      ]),
+      ownerId,
+      `opening-setup:${setupId}`,
+      `browser-fixture:${setupId}`,
+    ],
   );
   await assertNoError(
     admin.from("annual_data").insert({
@@ -467,6 +519,7 @@ function startBackendServer({
   supabaseUrl: localSupabaseUrl,
   anonKey: localAnonKey,
   databaseUrl: localDatabaseUrl,
+  ledgerDatabaseUrl,
 }) {
   const backendPython =
     process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
@@ -483,6 +536,7 @@ function startBackendServer({
       SUPABASE_URL: localSupabaseUrl,
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
+      TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
     },
@@ -490,10 +544,10 @@ function startBackendServer({
   });
 }
 
-function databaseUrlForBackendRole(value, password) {
+function databaseUrlForRole(value, role, password) {
   const url = new URL(value);
   assert.ok(isLoopbackPostgresUrl(value), "backend database fixture escaped loopback");
-  url.username = "talli_company_access_backend";
+  url.username = role;
   url.password = password;
   return url.toString();
 }
@@ -502,7 +556,7 @@ function startNextServer({ port, backendBaseUrl }) {
   return startOwnedProcess({
     command: process.execPath,
     args: [
-      "node_modules/next/dist/bin/next",
+      "apps/web/node_modules/next/dist/bin/next",
       "dev",
       "apps/web",
       "--hostname",
@@ -517,10 +571,92 @@ function startNextServer({ port, backendBaseUrl }) {
 }
 
 async function expectText(page, text) {
-  await page
-    .getByText(text, { exact: false })
-    .first()
-    .waitFor({ timeout: 15000 });
+  try {
+    await page
+      .getByText(text, { exact: false })
+      .first()
+      .waitFor({ timeout: 15000 });
+  } catch (error) {
+    const body = (await page.locator("body").innerText()).slice(0, 2000);
+    throw new Error(
+      `Expected ${JSON.stringify(text)} at ${page.url()}; body=${JSON.stringify(body)}`,
+      { cause: error },
+    );
+  }
+}
+
+async function assertLedgerReadBoundaries({ accessToken, backendBaseUrl, companyId }) {
+  for (const path of ["opening-snapshots", "period-locks", "entries"]) {
+    const url = new URL(`/api/v1/ledger/${path}`, backendBaseUrl);
+    url.searchParams.append("companyId", companyId);
+    url.searchParams.set("limit", "100");
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error(
+        `ledger browser boundary ${path} returned ${response.status}: ${await response.text()}`,
+      );
+    }
+  }
+}
+
+async function assertLedgerDatabaseBoundaries({ companyId, databaseUrl, ownerEmail, ownerId }) {
+  const ledgerDatabase = new pg.Client({ connectionString: databaseUrl });
+  await ledgerDatabase.connect();
+  try {
+    await ledgerDatabase.query("begin");
+    await ledgerDatabase.query("set local role ledger_executor");
+    await ledgerDatabase.query(
+      "select pg_catalog.set_config('talli.verified_actor_id', $1, true)",
+      [ownerId],
+    );
+    await ledgerDatabase.query(
+      "select pg_catalog.set_config('talli.verified_actor_claims', $1, true)",
+      [JSON.stringify({
+        aal: "aal2",
+        email: ownerEmail,
+        role: "authenticated",
+        sub: ownerId,
+      })],
+    );
+    await ledgerDatabase.query(
+      "select * from backend_system.list_opening_snapshots_legacy_v1(array[$1]::uuid[], null, 100, $2)",
+      [companyId, ownerId],
+    );
+    await ledgerDatabase.query(
+      "select * from ledger.list_period_locks(array[$1]::uuid[], null, 100, $2)",
+      [companyId, ownerId],
+    );
+    await ledgerDatabase.query(
+      "select * from ledger.list_entries(array[$1]::uuid[], null, 100, $2)",
+      [companyId, ownerId],
+    );
+    await ledgerDatabase.query("rollback");
+  } finally {
+    await ledgerDatabase.end();
+  }
+}
+
+async function browserSupabaseSession(page) {
+  const storageKey = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
+  const cookies = await page.context().cookies();
+  const exact = cookies.find((cookie) => cookie.name === storageKey);
+  const encoded = exact?.value ?? cookies
+    .filter((cookie) => cookie.name.startsWith(`${storageKey}.`))
+    .sort((left, right) => (
+      Number(left.name.slice(storageKey.length + 1))
+      - Number(right.name.slice(storageKey.length + 1))
+    ))
+    .map((cookie) => cookie.value)
+    .join("");
+  assert.ok(encoded, "browser Supabase session cookie is absent after MFA");
+  const serialized = encoded.startsWith("base64-")
+    ? Buffer.from(encoded.slice("base64-".length), "base64url").toString("utf8")
+    : encoded;
+  const session = JSON.parse(serialized);
+  assert.ok(session.access_token, "browser Supabase session cookie has no access token");
+  return session;
 }
 
 async function assertNoError(query) {

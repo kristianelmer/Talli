@@ -4,13 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  AdminCostCategory,
-  assertBankTransactionMatchesCost,
-  buildAdminCostLedgerLines,
-  parseBankCsv,
-} from "./lib/bank";
-import { suggestBankTransaction } from "./lib/bank-suggestions";
+import { parseBankCsv } from "./lib/bank";
 import {
   applyBillingProviderEvent,
   BillingValidationError,
@@ -85,7 +79,6 @@ import {
 } from "./lib/corporate-signed-artifacts";
 import {
   DividendReceivedValidationError,
-  dividendReceivedLedgerLines,
   validateDividendReceived,
 } from "./lib/dividend-received";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/filing-overrides";
@@ -105,10 +98,19 @@ import {
   revokeCompanyInvitation,
 } from "../features/company-access";
 import {
+  finalizeLedgerCorporateDecision,
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   lockLedgerPeriod,
+  postLedgerAdministrativeCost,
+  postLedgerBankSuggestionOutcome,
+  postLedgerInvestmentDividend,
+  postLedgerInvestmentPurchase,
+  postLedgerInvestmentSale,
   postLedgerManualJournal,
+  postLedgerOwnerDividendPayment,
+  postLedgerShareholderLoan,
+  postLedgerTaxSettlement,
   startNewYear,
   type NewYearShareholderWire,
 } from "../features/ledger";
@@ -133,18 +135,11 @@ import {
   createInvitationSideEffectStore,
   persistInvitationAudit,
 } from "./lib/invitation-side-effects";
-import {
-  persistLedgerAudit,
-} from "./lib/ledger-audit-side-effects";
+import { persistLedgerAudit } from "./lib/ledger-audit-side-effects";
 import {
   OwnerDividendDraftBasisError,
   buildOwnerDividendAnnualBasis,
 } from "./lib/owner-dividend";
-import {
-  deriveOpenDividendPayable,
-  OwnerDividendPaymentError,
-  validateOwnerDividendPaymentInput,
-} from "./lib/owner-dividend-payment";
 import {
   Rf1086ProductionAdapterDisabledError,
   rf1086ProductionEnvironment,
@@ -198,10 +193,8 @@ import {
   SensitiveActionStepUpError,
 } from "./lib/security";
 import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
-import { ShareSaleValidationError, validateShareSale } from "./lib/share-sale";
 import {
   ShareholderLoanValidationError,
-  shareholderLoanLedgerLines,
   validateShareholderLoan,
 } from "./lib/shareholder-loan";
 import {
@@ -216,8 +209,6 @@ import {
 } from "./lib/supabase/server";
 import {
   TaxSettlementValidationError,
-  expectedBankAmountForTaxSettlement,
-  taxSettlementLedgerLines,
   validateTaxSettlement,
 } from "./lib/tax-settlement";
 
@@ -465,44 +456,26 @@ function failTo(returnTo: string, message: string): never {
   redirect(`${returnTo}${separator}error=${encodeURIComponent(message)}`);
 }
 
-const investmentWriteErrors: Record<string, string> = {
-  authentication_required: "Innlogging kreves.",
-  company_owner_required: "Bare eier kan postere aksjekjøp og aksjesalg.",
-  income_year_locked: "Regnskapsåret er låst.",
-  idempotency_key_conflict: "Handlings-ID er allerede brukt til en annen postering.",
-  bank_transaction_mismatch: "Banktransaksjonen er ugyldig, allerede avstemt eller har feil beløp.",
-  bank_transaction_concurrent_match: "Banktransaksjonen ble avstemt av en annen handling. Last siden på nytt.",
-  document_mismatch: "Bilaget tilhører ikke valgt selskap og år.",
-  investment_position_identity_conflict: "Investerings-ID-en finnes med andre selskaps- eller skatteopplysninger.",
-  investment_position_mismatch: "Investeringsposisjonen tilhører ikke valgt selskap.",
-  lot_history_incomplete: "Anskaffelseshistorikken må rekonstrueres før aksjene kan selges.",
-  missing_acquisition_lots: "Aksjesalget mangler anskaffelsesposter.",
-  lot_position_mismatch: "Anskaffelsespostene stemmer ikke med investeringsposisjonen.",
-  sale_exceeds_lots: "Salg kan ikke overstige tilgjengelige aksjer.",
-};
-
-function investmentWriteError(message: string) {
-  const code = Object.keys(investmentWriteErrors).find((candidate) => message.includes(candidate));
-  return code ? `${code}: ${investmentWriteErrors[code]}` : "Investeringsposteringen kunne ikke lagres atomisk.";
+function ownerPathWithQuery(
+  path: string,
+  values: Record<string, string | undefined>,
+) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined) query.set(key, value);
+  }
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${query.toString()}`;
 }
 
-const bankSuggestionErrors: Record<string, string> = {
-  authentication_required: "Innlogging kreves.",
-  bank_transaction_not_found: "Fant ikke banktransaksjonen.",
-  company_owner_required: "Bare eier kan godkjenne et bankforslag.",
-  income_year_locked: "Regnskapsåret er låst.",
-  bank_transaction_already_reconciled: "Banktransaksjonen er allerede avstemt.",
-  bank_suggestion_acceptance_conflict: "Et annet bankforslag er allerede godkjent.",
-  bank_rule_version_mismatch: "Forslaget er utdatert. Last siden på nytt.",
-  bank_suggestion_rule_mismatch: "Transaksjonen passer ikke lenger med forslaget.",
-  bank_suggestion_ambiguous: "Transaksjonsteksten er tvetydig og må vurderes manuelt.",
-  bank_suggestion_direction_mismatch: "Beløpsretningen passer ikke med forslaget.",
-};
-
-function bankSuggestionWriteError(message: string) {
-  const code = Object.keys(bankSuggestionErrors).find((candidate) => message.includes(candidate));
-  return code ? bankSuggestionErrors[code] : "Bankforslaget kunne ikke godkjennes atomisk.";
-}
+const LEDGER_ADMIN_COST_CATEGORIES = {
+  bank_fee: "BANK_FEE",
+  accounting_fee: "ACCOUNTING_FEE",
+  software: "SOFTWARE",
+  public_fee: "PUBLIC_FEE",
+  legal_advisory: "LEGAL_ADVISORY",
+  other_admin_cost: "OTHER_ADMIN_COST",
+} as const;
 
 /**
  * Post-success redirect for the holding-action wizards (#96). When the owner
@@ -1729,40 +1702,42 @@ export async function acceptBankTransactionSuggestion(formData: FormData) {
     failTo(returnTo, "Innlogging kreves.");
   }
 
-  const bankTransactionId = formString(formData, "bankTransactionId");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const bankTransactionId = requiredFormUuid(formData, "bankTransactionId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
   const requestedRuleId = formString(formData, "ruleId");
   const requestedRuleVersion = formString(formData, "ruleVersion");
-  const { data: transaction, error: transactionError } = await supabase
-    .from("bank_transactions")
-    .select("id, text, amount, matched_entry_id, matched_action_id, accepted_warning")
-    .eq("id", bankTransactionId)
-    .single();
-  if (transactionError || !transaction) {
-    failTo(returnTo, transactionError?.message ?? "Fant ikke banktransaksjonen.");
-  }
-  if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-    failTo(returnTo, bankSuggestionErrors.bank_transaction_already_reconciled);
-  }
-
-  const suggestion = suggestBankTransaction({
-    text: transaction.text,
-    amount: Number(transaction.amount),
-  });
-  if (
-    !suggestion ||
-    suggestion.ruleId !== requestedRuleId ||
-    suggestion.ruleVersion !== requestedRuleVersion
-  ) {
+  if (!(["bank_fee", "system_subscription", "deposit_interest"] as const).includes(
+    requestedRuleId as "bank_fee" | "system_subscription" | "deposit_interest",
+  )) {
     failTo(returnTo, "Forslaget er endret eller ikke lenger gyldig. Last siden på nytt.");
   }
-
-  const { error: writeError } = await supabase.rpc("accept_bank_transaction_suggestion", {
-    p_bank_transaction_id: transaction.id,
-    p_rule_id: suggestion.ruleId,
-    p_rule_version: suggestion.ruleVersion,
-  });
-  if (writeError) {
-    failTo(returnTo, bankSuggestionWriteError(writeError.message));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
+  try {
+    await postLedgerBankSuggestionOutcome(
+      accessToken,
+      {
+        acceptanceId: operationId,
+        bankTransactionId,
+        companyId,
+        incomeYear,
+        rule: requestedRuleId as "bank_fee" | "system_subscription" | "deposit_interest",
+        ruleVersion: requestedRuleVersion,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: ledgerActionErrorMessage(error),
+      suggestionOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      suggestionBankTransactionId: outcomeMayBeUnknown ? bankTransactionId : undefined,
+    }));
   }
 
   revalidatePath("/");
@@ -1770,102 +1745,92 @@ export async function acceptBankTransactionSuggestion(formData: FormData) {
 }
 
 export async function recordAdminCost(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId");
-  const category = formString(formData, "category") as AdminCostCategory;
+  const category = LEDGER_ADMIN_COST_CATEGORIES[
+    formString(formData, "category") as keyof typeof LEDGER_ADMIN_COST_CATEGORIES
+  ];
+  if (!category) failTo(returnTo, "Ugyldig administrasjonskostnad");
   const payee = formString(formData, "payee");
-  const amount = Number(formString(formData, "amount"));
+  const amount = formString(formData, "amount");
   const paidDate = formString(formData, "paidDate");
-  const documentId = formString(formData, "documentId");
-  const returnTo = returnTarget(formData);
-
-  const { data: transaction, error: transactionError } = await supabase
-    .from("bank_transactions")
-    .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-    .eq("id", bankTransactionId)
-    .single();
-  if (transactionError || !transaction) {
-    failTo(returnTo, transactionError?.message ?? "Fant ikke banktransaksjon");
-  }
-  if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-    failTo(returnTo, "Banktransaksjonen tilhører ikke valgt selskap og år.");
-  }
-  if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-    failTo(returnTo, "Banktransaksjonen er allerede avstemt.");
-  }
+  const documentId = formString(formData, "documentId") || null;
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    assertBankTransactionMatchesCost(Number(transaction.amount), amount);
+    await postLedgerAdministrativeCost(
+      accessToken,
+      {
+        amount: { amount, currency: "NOK" },
+        bankTransactionId,
+        category,
+        companyId,
+        documentId,
+        incomeYear,
+        paidDate,
+        payee,
+      },
+      operationId,
+      operationId,
+    );
   } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Bankmatch feilet");
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: ledgerActionErrorMessage(error),
+      adminCostOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      adminCostBankTransactionId: outcomeMayBeUnknown ? bankTransactionId : undefined,
+    }));
   }
 
-  let lines;
   try {
-    lines = buildAdminCostLedgerLines({ category, payee, amount });
-  } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Ugyldig administrasjonskostnad");
+    await persistLedgerAudit(createInvitationSideEffectStore(supabase), {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "bank",
+      action: "admin_cost_posted_and_matched",
+      message: `Administrasjonskostnad postert og avstemt for ${incomeYear}.`,
+    });
+  } catch {
+    redirect(ownerPathWithQuery(returnTo, {
+      error: "Administrasjonskostnaden ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.",
+      adminCostOperationId: operationId,
+      adminCostBankTransactionId: bankTransactionId,
+    }));
   }
-
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "admin_cost",
-      memo: `Admin cost paid to ${payee} on ${paidDate || "unknown date"}${documentId ? ` (document ${documentId})` : ""}`,
-      lines,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    failTo(returnTo, entryError?.message ?? "Kunne ikke postere administrasjonskostnad");
-  }
-
-  const { error: matchError } = await supabase
-    .from("bank_transactions")
-    .update({ matched_entry_id: entry.id })
-    .eq("id", bankTransactionId);
-  if (matchError) {
-    failTo(returnTo, matchError.message);
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "bank",
-    action: "admin_cost_posted_and_matched",
-    message: `Administrasjonskostnad postert og avstemt for ${incomeYear}.`,
-  });
 
   revalidatePath("/");
   redirect(returnTo);
 }
 
 export async function recordDividendReceived(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
@@ -1890,112 +1855,70 @@ export async function recordDividendReceived(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig mottatt utbytte";
-    failTo(returnTarget(formData), message);
+    failTo(returnTo, message);
   }
 
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    if (Number(transaction.amount) !== payload.gross_amount) {
-      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20brutto%20utbytte");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = dividendReceivedLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "dividend_received",
-      memo: `Dividend received from ${payload.paying_company_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere mottatt utbytte")}`);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await postLedgerInvestmentDividend(
+      accessToken,
+      {
+        actionId: operationId,
+        bankTransactionId,
+        companyId,
+        declaredDate: payload.declared_date,
+        documentId,
+        documentStatus: payload.document_status,
+        grossAmount: { amount: String(payload.gross_amount), currency: "NOK" },
+        incomeYear,
+        linkedInvestmentId: payload.linked_investment_id,
+        paidDate: payload.paid_date,
+        payingCompanyName: payload.paying_company_name,
+        taxTreatment: payload.tax_treatment,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
+      ? "/actions/dividend-received"
+      : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: ledgerActionErrorMessage(error),
+      dividendReceivedOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
-  const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "dividend_received",
-    action_date: payload.paid_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
-  });
-  if (actionError) {
-    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
+  try {
+    await persistLedgerAudit(createInvitationSideEffectStore(supabase), {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "ledger",
+      action: "dividend_received_recorded",
+      message: `Mottatt utbytte postert fra ${payload.paying_company_name} for ${incomeYear}.`,
+    });
+  } catch {
+    const retryTarget = returnTo === "/actions" ? "/actions/dividend-received" : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: "Utbyttet ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.",
+      dividendReceivedOperationId: operationId,
+    }));
   }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "dividend_received_recorded",
-    message: `Mottatt utbytte postert fra ${payload.paying_company_name} for ${incomeYear}.`,
-  });
 
   revalidatePath("/");
-  succeedTo(returnTarget(formData));
+  succeedTo(returnTo);
 }
 
 export async function recordSharePurchase(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
@@ -2022,127 +1945,96 @@ export async function recordSharePurchase(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjekjøp";
-    failTo(returnTarget(formData), message);
+    failTo(returnTo, message);
   }
 
-  const actionId = crypto.randomUUID();
-  const { error: writeError } = await supabase.rpc("record_share_purchase_fifo", {
-    p_action_id: actionId,
-    p_company_id: companyId,
-    p_income_year: incomeYear,
-    p_investment_key: payload.investment_key,
-    p_investment_name: payload.investment_name,
-    p_investment_kind: payload.investment_kind,
-    p_tax_treatment: payload.tax_treatment,
-    p_acquisition_date: payload.acquisition_date,
-    p_share_count: payload.share_count,
-    p_purchase_amount: payload.purchase_amount,
-    p_org_number: payload.org_number,
-    p_bank_transaction_id: bankTransactionId,
-    p_document_id: documentId,
-    p_document_status: payload.document_status,
-  });
-  if (writeError) {
-    failTo(returnTarget(formData), investmentWriteError(writeError.message));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await postLedgerInvestmentPurchase(
+      accessToken,
+      {
+        acquisitionDate: payload.acquisition_date,
+        actionId: operationId,
+        bankTransactionId,
+        companyId,
+        documentId,
+        documentStatus: payload.document_status,
+        incomeYear,
+        investmentKey: payload.investment_key,
+        investmentKind: payload.investment_kind,
+        investmentName: payload.investment_name,
+        orgNumber: payload.org_number,
+        purchaseAmount: { amount: String(payload.purchase_amount), currency: "NOK" },
+        shareCount: payload.share_count,
+        taxTreatment: payload.tax_treatment,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
+      ? "/actions/share-purchase"
+      : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: ledgerActionErrorMessage(error),
+      sharePurchaseOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   revalidatePath("/");
-  succeedTo(returnTarget(formData));
+  succeedTo(returnTo);
 }
 
 export async function recordShareSale(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const positionId = formString(formData, "positionId");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
   const documentId = formString(formData, "documentId") || null;
-  const { data: position, error: positionError } = await supabase
-    .from("investment_positions")
-    .select("id, company_id, investment_key, name, share_count, cost_basis, lot_history_status")
-    .eq("id", positionId)
-    .single();
-  if (positionError || !position) {
-    redirect(`/workspace?error=${encodeURIComponent(positionError?.message ?? "Fant ikke investeringsposisjon")}`);
-  }
-  if (position.company_id !== companyId) {
-    redirect("/workspace?error=Investeringsposisjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap");
-  }
-  if (position.lot_history_status !== "complete") {
-    failTo(returnTarget(formData), investmentWriteErrors.lot_history_incomplete);
-  }
-
-  const { data: acquisitionLots, error: acquisitionLotsError } = await supabase
-    .from("investment_lots")
-    .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
-    .eq("position_id", position.id)
-    .gt("remaining_share_count", 0)
-    .order("acquisition_date", { ascending: true })
-    .order("id", { ascending: true });
-  if (acquisitionLotsError) {
-    failTo(returnTarget(formData), investmentWriteError(acquisitionLotsError.message));
-  }
-
-  let payload;
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    payload = validateShareSale({
-      positionId: position.id,
-      investmentKey: position.investment_key,
-      investmentName: position.name,
-      currentShareCount: Number(position.share_count),
-      currentCostBasis: Number(position.cost_basis),
-      acquisitionLots: (acquisitionLots ?? []).map((lot) => ({
-        id: lot.id,
-        acquisitionDate: lot.acquisition_date,
-        remainingShareCount: Number(lot.remaining_share_count),
-        remainingCostBasis: Number(lot.remaining_cost_basis),
-      })),
-      saleDate: formString(formData, "saleDate"),
-      soldShareCount: Number(formString(formData, "soldShareCount")),
-      proceeds: Number(formString(formData, "proceeds")),
-      bankTransactionId,
-      documentId,
-      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
-    });
+    await postLedgerInvestmentSale(
+      accessToken,
+      {
+        actionId: operationId,
+        bankTransactionId,
+        companyId,
+        documentId,
+        documentStatus: formString(formData, "documentStatus") as
+          | "attached"
+          | "missing_accepted_warning"
+          | "not_required",
+        incomeYear,
+        positionId,
+        proceeds: { amount: formString(formData, "proceeds"), currency: "NOK" },
+        saleDate: formString(formData, "saleDate"),
+        soldShareCount: Number(formString(formData, "soldShareCount")),
+      },
+      operationId,
+      operationId,
+    );
   } catch (error) {
-    const message =
-      error instanceof ShareSaleValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig aksjesalg";
-    failTo(returnTarget(formData), message);
-  }
-
-  const actionId = crypto.randomUUID();
-  const { error: writeError } = await supabase.rpc("record_share_sale_fifo", {
-    p_action_id: actionId,
-    p_company_id: companyId,
-    p_income_year: incomeYear,
-    p_position_id: position.id,
-    p_sale_date: payload.sale_date,
-    p_sold_share_count: payload.sold_share_count,
-    p_proceeds: payload.proceeds,
-    p_bank_transaction_id: bankTransactionId,
-    p_document_id: documentId,
-    p_document_status: payload.document_status,
-  });
-  if (writeError) {
-    failTo(returnTarget(formData), investmentWriteError(writeError.message));
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
+      ? "/actions/share-sale"
+      : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: ledgerActionErrorMessage(error),
+      shareSaleOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   revalidatePath("/");
-  succeedTo(returnTarget(formData));
+  succeedTo(returnTo);
 }
 
 export async function createOwnerDividendDecisionDraft(formData: FormData) {
@@ -2738,32 +2630,47 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
 }
 
 export async function finalizeCorporateDecision(formData: FormData) {
-  const setup = await corporateLifecycleActionSetup(formData);
+  const setup = await corporateLifecycleActionSetup(formData, undefined, {
+    verifyCurrentAnnualSource: false,
+  });
   await requireSensitiveActionStepUp(
     setup.supabase,
     setup.user.id,
     setup.context.decision.company_id,
     "finalize_corporate_decision",
   );
-  const finalizationId = requiredFormUuid(formData, "finalizationId");
+  const operationId = requiredFormUuid(formData, "operationId");
   const holdingActionId = setup.context.decision.decision_kind === "owner_dividend"
     ? requiredFormUuid(formData, "holdingActionId")
     : null;
   const ledgerEntryId = setup.context.decision.decision_kind === "owner_dividend"
     ? requiredFormUuid(formData, "ledgerEntryId")
     : null;
-  const { error } = await setup.supabase.rpc("finalize_corporate_decision", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      decision_hash: setup.decisionHash,
-      finalization_id: finalizationId,
-      holding_action_id: holdingActionId,
-      ledger_entry_id: ledgerEntryId,
-      idempotency_key: `corporate-finalized:${finalizationId}`,
-    },
-  });
-  if (error) failTo(setup.returnTo, error.message);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(setup.returnTo, "Innlogging kreves.");
+  try {
+    await finalizeLedgerCorporateDecision(
+      accessToken,
+      {
+        companyId: setup.context.decision.company_id,
+        decisionHash: setup.decisionHash,
+        decisionId: setup.decisionId,
+        finalizationId: operationId,
+        holdingActionId,
+        incomeYear: setup.context.decision.income_year,
+        ledgerEntryId,
+        setId: setup.setId,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(setup.returnTo, {
+      error: ledgerActionErrorMessage(error),
+      finalizeDecisionOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
+  }
   revalidatePath("/");
   redirect(setup.returnTo);
 }
@@ -2778,78 +2685,54 @@ export async function recordOwnerDividendPayment(formData: FormData) {
     setup.context.decision.company_id,
     "record_owner_dividend_payment",
   );
+  const operationId = requiredFormUuid(formData, "operationId");
   const bankTransactionId = requiredFormUuid(formData, "bankTransactionId");
   const holdingActionId = requiredFormUuid(formData, "holdingActionId");
   const ledgerEntryId = requiredFormUuid(formData, "ledgerEntryId");
-  const [finalizationResult, eventsResult, transactionResult] = await Promise.all([
-    setup.supabase
-      .from("corporate_decision_finalizations")
-      .select("id, decision_id, finalization_kind, decision_hash, accounting_policy_version")
-      .eq("decision_id", setup.decisionId)
-      .maybeSingle(),
-    setup.supabase
-      .from("corporate_document_events")
-      .select("decision_id, event_kind, metadata")
-      .eq("decision_id", setup.decisionId)
-      .eq("event_kind", "payment_recorded"),
-    setup.supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id")
-      .eq("id", bankTransactionId)
-      .maybeSingle(),
-  ]);
-  if (finalizationResult.error || eventsResult.error || transactionResult.error
-    || !transactionResult.data) {
-    failTo(
-      setup.returnTo,
-      finalizationResult.error?.message
-        ?? eventsResult.error?.message
-        ?? transactionResult.error?.message
-        ?? "Fant ikke banktransaksjonen.",
-    );
-  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(setup.returnTo, "Innlogging kreves.");
   try {
-    const payable = deriveOpenDividendPayable({
-      decision: setup.context.decision,
-      documentSet: setup.context.documentSet,
-      finalization: finalizationResult.data,
-      events: eventsResult.data ?? [],
-    });
-    validateOwnerDividendPaymentInput({ payable, transaction: transactionResult.data });
+    await postLedgerOwnerDividendPayment(
+      accessToken,
+      {
+        bankTransactionId,
+        companyId: setup.context.decision.company_id,
+        decisionHash: setup.decisionHash,
+        decisionId: setup.decisionId,
+        holdingActionId,
+        incomeYear: setup.context.decision.income_year,
+        ledgerEntryId,
+        setId: setup.setId,
+      },
+      operationId,
+      operationId,
+    );
   } catch (error) {
-    const message = error instanceof OwnerDividendPaymentError
-      ? `${error.code}: ${error.message}`
-      : error instanceof Error ? error.message : "Utbyttebetalingen er ugyldig.";
-    failTo(setup.returnTo, message);
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(setup.returnTo, {
+      error: ledgerActionErrorMessage(error),
+      ownerDividendPaymentOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      ownerDividendPaymentBankTransactionId: outcomeMayBeUnknown ? bankTransactionId : undefined,
+    }));
   }
-  const { error } = await setup.supabase.rpc("record_owner_dividend_payment", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      decision_hash: setup.decisionHash,
-      bank_transaction_id: bankTransactionId,
-      holding_action_id: holdingActionId,
-      ledger_entry_id: ledgerEntryId,
-      idempotency_key: `owner-dividend-payment:${holdingActionId}`,
-    },
-  });
-  if (error) failTo(setup.returnTo, error.message);
   revalidatePath("/");
   redirect("/workspace?dividendPayment=recorded");
 }
 
 export async function recordShareholderLoan(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
@@ -2877,113 +2760,77 @@ export async function recordShareholderLoan(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig aksjonærlån";
-    failTo(returnTarget(formData), message);
+    failTo(returnTo, message);
   }
 
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    const expectedAmount = payload.direction === "shareholder_to_company" ? payload.amount : -payload.amount;
-    if (Number(transaction.amount) !== expectedAmount) {
-      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20aksjon%C3%A6rl%C3%A5net");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-  }
-
-  const lines = shareholderLoanLedgerLines(payload);
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "shareholder_loan",
-      memo: `Shareholder loan: ${payload.counterparty_name}`,
-      lines,
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere aksjonærlån")}`);
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await postLedgerShareholderLoan(
+      accessToken,
+      {
+        actionId: operationId,
+        amount: { amount: String(payload.amount), currency: "NOK" },
+        bankTransactionId,
+        companyId,
+        counterpartyName: payload.counterparty_name,
+        direction: payload.direction,
+        documentId,
+        documentStatus: payload.document_status,
+        incomeYear,
+        interestModelled: payload.interest_modelled,
+        loanDate: payload.loan_date,
+        relatedPartySecurity: payload.related_party_security,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
+      ? "/actions/shareholder-loan"
+      : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: ledgerActionErrorMessage(error),
+      shareholderLoanOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
-  const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "shareholder_loan",
-    action_date: payload.loan_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
-  });
-  if (actionError) {
-    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
+  try {
+    await persistLedgerAudit(createInvitationSideEffectStore(supabase), {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "ledger",
+      action: "shareholder_loan_recorded",
+      message: `Aksjonærlån postert for ${payload.counterparty_name} i ${incomeYear}.`,
+    });
+  } catch {
+    const retryTarget = returnTo === "/actions" ? "/actions/shareholder-loan" : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: "Aksjonærlånet ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.",
+      shareholderLoanOperationId: operationId,
+    }));
   }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "shareholder_loan_recorded",
-    message: `Aksjonærlån postert for ${payload.counterparty_name} i ${incomeYear}.`,
-  });
 
   revalidatePath("/");
-  succeedTo(returnTarget(formData));
+  succeedTo(returnTo);
 }
 
 export async function recordTaxSettlement(formData: FormData) {
+  const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
+    failTo(returnTo, "Innlogging kreves.");
   }
 
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
@@ -3005,98 +2852,58 @@ export async function recordTaxSettlement(formData: FormData) {
         : error instanceof Error
           ? error.message
           : "Ugyldig skatteoppgjør";
-    failTo(returnTarget(formData), message);
+    failTo(returnTo, message);
   }
 
-  if (bankTransactionId) {
-    const { data: transaction, error: transactionError } = await supabase
-      .from("bank_transactions")
-      .select("id, company_id, income_year, amount, matched_entry_id, matched_action_id, accepted_warning")
-      .eq("id", bankTransactionId)
-      .single();
-    if (transactionError || !transaction) {
-      redirect(`/workspace?error=${encodeURIComponent(transactionError?.message ?? "Fant ikke banktransaksjon")}`);
-    }
-    if (transaction.company_id !== companyId || Number(transaction.income_year) !== incomeYear) {
-      redirect("/workspace?error=Banktransaksjonen%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
-    if (transaction.matched_entry_id || transaction.matched_action_id || transaction.accepted_warning) {
-      redirect("/workspace?error=Banktransaksjonen%20er%20allerede%20avstemt");
-    }
-    const expectedAmount = expectedBankAmountForTaxSettlement(payload);
-    if (expectedAmount === null || Number(transaction.amount) !== expectedAmount) {
-      redirect("/workspace?error=Banktransaksjonen%20m%C3%A5%20matche%20skatteoppgj%C3%B8ret");
-    }
-  }
-  if (documentId) {
-    const { data: document, error: documentError } = await supabase
-      .from("documents")
-      .select("id, company_id, income_year")
-      .eq("id", documentId)
-      .single();
-    if (documentError || !document) {
-      redirect(`/workspace?error=${encodeURIComponent(documentError?.message ?? "Fant ikke bilag")}`);
-    }
-    if (document.company_id !== companyId || Number(document.income_year) !== incomeYear) {
-      redirect("/workspace?error=Bilaget%20tilh%C3%B8rer%20ikke%20valgt%20selskap%20og%20%C3%A5r");
-    }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await postLedgerTaxSettlement(
+      accessToken,
+      {
+        actionId: operationId,
+        amount: { amount: String(payload.amount), currency: "NOK" },
+        bankTransactionId,
+        companyId,
+        documentId,
+        documentStatus: payload.document_status,
+        incomeYear,
+        settlementDate: payload.settlement_date,
+        settlementKind: payload.settlement_type,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
+      ? "/actions/tax-settlement"
+      : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: ledgerActionErrorMessage(error),
+      taxSettlementOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      entry_type: "tax_settlement",
-      memo: `Skatteoppgjør: ${payload.settlement_type}`,
-      lines: taxSettlementLedgerLines(payload),
-      risk_flags: [],
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (entryError || !entry) {
-    redirect(`/workspace?error=${encodeURIComponent(entryError?.message ?? "Kunne ikke postere skatteoppgjør")}`);
+  try {
+    await persistLedgerAudit(createInvitationSideEffectStore(supabase), {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "ledger",
+      action: "tax_settlement_recorded",
+      message: `Skatteoppgjør postert for ${incomeYear}.`,
+    });
+  } catch {
+    const retryTarget = returnTo === "/actions" ? "/actions/tax-settlement" : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: "Skatteoppgjøret ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.",
+      taxSettlementOperationId: operationId,
+    }));
   }
-
-  const actionId = crypto.randomUUID();
-  const { error: actionError } = await supabase.from("holding_actions").insert({
-    id: actionId,
-    company_id: companyId,
-    income_year: incomeYear,
-    action_type: "tax_settlement",
-    action_date: payload.settlement_date,
-    payload,
-    ledger_entry_id: entry.id,
-    bank_transaction_id: bankTransactionId,
-    document_id: documentId,
-    risk_level: "ready",
-    created_by: user.id,
-  });
-  if (actionError) {
-    redirect(`/workspace?error=${encodeURIComponent(actionError.message)}`);
-  }
-
-  if (bankTransactionId) {
-    const { error: matchError } = await supabase
-      .from("bank_transactions")
-      .update({ matched_action_id: actionId })
-      .eq("id", bankTransactionId);
-    if (matchError) {
-      redirect(`/workspace?error=${encodeURIComponent(matchError.message)}`);
-    }
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "tax_settlement_recorded",
-    message: `Skatteoppgjør postert for ${incomeYear}.`,
-  });
 
   revalidatePath("/");
-  succeedTo(returnTarget(formData));
+  succeedTo(returnTo);
 }
 
 export async function saveBillingAccount(formData: FormData) {

@@ -100,14 +100,15 @@ test("payment validation accepts one eligible outgoing NOK transaction within th
   }
 });
 
-test("server delegates policy-bound accounting atomically to the payment RPC", () => {
+test("server delegates policy-bound accounting atomically to the ledger coordinator", () => {
   const start = actionsSource.indexOf("export async function recordOwnerDividendPayment");
   assert.notEqual(start, -1);
   const end = actionsSource.indexOf("\nexport async function ", start + 1);
   const action = actionsSource.slice(start, end < 0 ? undefined : end);
-  assert.match(action, /record_owner_dividend_payment/);
-  assert.match(action, /record_owner_dividend_payment|finalize_corporate_decision/);
-  assert.match(action, /validateOwnerDividendPaymentInput/);
+  assert.match(action, /postLedgerOwnerDividendPayment/);
+  assert.match(action, /requiredFormUuid\(formData, "operationId"\)/);
+  assert.doesNotMatch(action, /\.rpc\("record_owner_dividend_payment"/);
+  assert.doesNotMatch(action, /validateOwnerDividendPaymentInput/);
   assert.match(action, /verifyCurrentAnnualSource:\s*false/);
   assert.match(actionsSource, /if \(input\.verifyCurrentAnnualSource !== false\)/);
   assert.doesNotMatch(action, /dividend_payable_account|bank_account|account:\s*["'](?:1920|2920)["']/);

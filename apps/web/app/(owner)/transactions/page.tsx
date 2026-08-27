@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import {
@@ -37,7 +38,15 @@ function formatKr(amount: number): string {
 }
 
 type TransactionsPageProps = {
-  searchParams?: Promise<{ error?: string; posted?: string; imported?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    posted?: string;
+    imported?: string;
+    suggestionOperationId?: string;
+    suggestionBankTransactionId?: string;
+    adminCostOperationId?: string;
+    adminCostBankTransactionId?: string;
+  }>;
 };
 
 export default async function TransactionsPage({
@@ -176,7 +185,27 @@ export default async function TransactionsPage({
                           </ul>
                           <p className="fieldHelp">{t.queue.suggestionHint}</p>
                           <form action={acceptBankTransactionSuggestion}>
+                            <input
+                              type="hidden"
+                              name="operationId"
+                              value={
+                                query?.suggestionBankTransactionId === transaction.id &&
+                                query.suggestionOperationId
+                                  ? query.suggestionOperationId
+                                  : randomUUID()
+                              }
+                            />
                             <input type="hidden" name="returnTo" value={RETURN_TO} />
+                            <input
+                              type="hidden"
+                              name="companyId"
+                              value={transaction.company_id}
+                            />
+                            <input
+                              type="hidden"
+                              name="incomeYear"
+                              value={transaction.income_year}
+                            />
                             <input
                               type="hidden"
                               name="bankTransactionId"
@@ -196,6 +225,16 @@ export default async function TransactionsPage({
                           <h3 className="txResolveTitle">{t.queue.resolveCostTitle}</h3>
                           <p className="fieldHelp">{t.queue.resolveCostHint}</p>
                           <form className="txCostForm" action={recordAdminCost}>
+                            <input
+                              type="hidden"
+                              name="operationId"
+                              value={
+                                query?.adminCostBankTransactionId === transaction.id &&
+                                query.adminCostOperationId
+                                  ? query.adminCostOperationId
+                                  : randomUUID()
+                              }
+                            />
                             <input type="hidden" name="returnTo" value={RETURN_TO} />
                             <input type="hidden" name="companyId" value={primaryCompany.id} />
                             <input type="hidden" name="incomeYear" value={transaction.income_year} />

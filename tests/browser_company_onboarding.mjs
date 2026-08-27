@@ -598,7 +598,10 @@ async function hasHorizontalOverflow(page) {
 }
 
 function errorAlert(page) {
-  return page.getByRole("alert").filter({ hasText: /\S/u }).last();
+  // Next.js also owns a route-announcer alert whose text is the page title.
+  // Select the product danger banner so navigation timing cannot satisfy the
+  // failure assertion with that unrelated live region.
+  return page.locator('[role="alert"].banner--danger').filter({ hasText: /\S/u }).last();
 }
 
 async function actorState(database, ownerId) {
@@ -811,7 +814,7 @@ function startNextServer({ port, backendBaseUrl }) {
   return startOwnedProcess({
     command: process.execPath,
     args: [
-      "node_modules/next/dist/bin/next",
+      "apps/web/node_modules/next/dist/bin/next",
       "dev",
       "apps/web",
       "--hostname",

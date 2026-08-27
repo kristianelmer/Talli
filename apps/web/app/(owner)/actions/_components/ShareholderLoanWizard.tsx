@@ -17,9 +17,13 @@ import {
   TextField,
 } from "./fields";
 
-type Props = { companyId: string; incomeYear: number };
+type Props = { companyId: string; incomeYear: number; operationId?: string };
 
-export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
+export function ShareholderLoanWizard({
+  companyId,
+  incomeYear,
+  operationId: initialOperationId,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.shareholderLoan;
 
@@ -30,6 +34,7 @@ export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
   const [interestModelled, setInterestModelled] = useState(false);
   const [relatedPartySecurity, setRelatedPartySecurity] = useState(false);
   const [documentStatus, setDocumentStatus] = useState("attached");
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   // These two "needs-accountant" branches are surfaced immediately, before the
   // rest of the form is complete, so the owner is not led down a dead end.
@@ -85,6 +90,7 @@ export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
 
   return (
     <form action={recordShareholderLoan} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />

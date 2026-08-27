@@ -107,6 +107,15 @@ type WorkspaceProps = {
     lockOperationId?: string;
     manualOperationId?: string;
     newYearOperationId?: string;
+    adminCostOperationId?: string;
+    adminCostBankTransactionId?: string;
+    dividendReceivedOperationId?: string;
+    sharePurchaseOperationId?: string;
+    shareSaleOperationId?: string;
+    shareholderLoanOperationId?: string;
+    taxSettlementOperationId?: string;
+    ownerDividendPaymentOperationId?: string;
+    ownerDividendPaymentBankTransactionId?: string;
   }>;
 };
 
@@ -200,6 +209,14 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
         return false;
       }
     });
+  const retryAdminCostBankTransactionId = unmatchedTransactions.find(
+    (transaction) =>
+      transaction.id === params?.adminCostBankTransactionId && Number(transaction.amount) < 0,
+  )?.id;
+  const retryOwnerDividendPayment = ownerDividendPayables.find((payable) =>
+    eligibleDividendTransactions(payable).some(
+      (transaction) => transaction.id === params?.ownerDividendPaymentBankTransactionId,
+    ));
   const submissionPresentation = buildWorkspaceSubmissionPresentation({
     submissions,
     authorityTestRuns: primaryAuthorityTestRuns,
@@ -834,6 +851,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Registrer støttet aksjonær- eller konsernlån.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordShareholderLoan}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.shareholderLoanOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -909,6 +931,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Beregn estimat og poster betaling eller refusjon.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordTaxSettlement}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.taxSettlementOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1551,6 +1578,8 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <div className="setupGrid">
                     {ownerDividendPayables.map((payable) => {
                       const eligible = eligibleDividendTransactions(payable);
+                      const retryingThisPayment =
+                        retryOwnerDividendPayment?.decisionId === payable.decisionId;
                       return (
                         <div className="dataPanel formPanel" key={payable.finalizationId}>
                           <span className="panelLabel">Beslutning {payable.incomeYear}</span>
@@ -1570,6 +1599,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                             <p data-status="warning">Ingen uavstemte utgående banktransaksjoner passer restgjelden.</p>
                           ) : (
                             <form action={recordOwnerDividendPayment}>
+                              <input
+                                name="operationId"
+                                type="hidden"
+                                value={
+                                  retryingThisPayment && params?.ownerDividendPaymentOperationId
+                                    ? params.ownerDividendPaymentOperationId
+                                    : randomUUID()
+                                }
+                              />
                               <input name="decisionId" type="hidden" value={payable.decisionId} />
                               <input name="documentSetId" type="hidden" value={payable.documentSetId} />
                               <input name="decisionHash" type="hidden" value={payable.decisionHash} />
@@ -1577,7 +1615,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                               <input name="ledgerEntryId" type="hidden" value={randomUUID()} />
                               <label>
                                 Utgående banktransaksjon
-                                <select name="bankTransactionId" required defaultValue="">
+                                <select
+                                  name="bankTransactionId"
+                                  required
+                                  defaultValue={
+                                    retryingThisPayment
+                                      ? params?.ownerDividendPaymentBankTransactionId
+                                      : ""
+                                  }
+                                >
                                   <option value="" disabled>Velg transaksjon</option>
                                   {eligible.map((transaction) => (
                                     <option value={transaction.id} key={transaction.id}>
@@ -1620,6 +1666,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
 
                   <form className="dataPanel formPanel" action={recordAdminCost}>
                     <span className="panelLabel">Administrasjonskostnad</span>
+                    <input
+                      name="operationId"
+                      type="hidden"
+                      value={
+                        retryAdminCostBankTransactionId && params?.adminCostOperationId
+                          ? params.adminCostOperationId
+                          : randomUUID()
+                      }
+                    />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår
@@ -1627,7 +1682,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </label>
                     <label>
                       Banktransaksjon
-                      <select name="bankTransactionId" required>
+                      <select
+                        name="bankTransactionId"
+                        required
+                        defaultValue={retryAdminCostBankTransactionId ?? ""}
+                      >
                         <option value="">Velg uavstemt utbetaling</option>
                         {unmatchedTransactions
                           .filter((transaction) => Number(transaction.amount) < 0)
@@ -1701,6 +1760,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Poster kvalifiserende utbytte fra porteføljeselskap.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordDividendReceived}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.dividendReceivedOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1794,6 +1858,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Registrer kjøp og oppdater investeringsregister.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordSharePurchase}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.sharePurchaseOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1900,6 +1969,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Selg fra eksisterende investeringsposisjon.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordShareSale}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.shareSaleOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår

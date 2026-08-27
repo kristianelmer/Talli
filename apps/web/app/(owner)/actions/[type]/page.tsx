@@ -39,7 +39,14 @@ function isActionSlug(value: string): value is ActionSlug {
 
 type ActionPageProps = {
   params: Promise<{ type: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    dividendReceivedOperationId?: string;
+    sharePurchaseOperationId?: string;
+    shareSaleOperationId?: string;
+    shareholderLoanOperationId?: string;
+    taxSettlementOperationId?: string;
+  }>;
 };
 
 export default async function ActionPage({
@@ -94,13 +101,20 @@ export default async function ActionPage({
   let body: React.ReactNode;
   switch (type) {
     case "share-purchase":
-      body = <SharePurchaseWizard companyId={companyId} incomeYear={incomeYear} />;
+      body = (
+        <SharePurchaseWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.sharePurchaseOperationId}
+        />
+      );
       break;
     case "share-sale":
       body = (
         <ShareSaleWizard
           companyId={companyId}
           incomeYear={incomeYear}
+          operationId={query?.shareSaleOperationId}
           positions={companyPositions.map((position) => ({
             id: position.id,
             investment_key: position.investment_key,
@@ -125,6 +139,7 @@ export default async function ActionPage({
         <DividendReceivedWizard
           companyId={companyId}
           incomeYear={incomeYear}
+          operationId={query?.dividendReceivedOperationId}
           investments={companyPositions.map((position) => ({
             investment_key: position.investment_key,
             name: position.name,
@@ -209,11 +224,21 @@ export default async function ActionPage({
       break;
     case "shareholder-loan":
       body = (
-        <ShareholderLoanWizard companyId={companyId} incomeYear={incomeYear} />
+        <ShareholderLoanWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.shareholderLoanOperationId}
+        />
       );
       break;
     case "tax-settlement":
-      body = <TaxSettlementWizard companyId={companyId} incomeYear={incomeYear} />;
+      body = (
+        <TaxSettlementWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.taxSettlementOperationId}
+        />
+      );
       break;
   }
 

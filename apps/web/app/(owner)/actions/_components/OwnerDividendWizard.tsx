@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { createOwnerDividendDecisionDraft } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import {
-  allocateDividendOreProportionally,
   type ApprovedAnnualCorporateBasis,
   type ReviewedCorporateFacts,
 } from "../../../lib/corporate-decision-facts";
+import { allocateDividendOreProportionally } from "../../../lib/dividend-allocation";
 
 export type DividendShareholder = {
   id: string;

@@ -1,11 +1,19 @@
 export {
+  finalizeLedgerCorporateDecision,
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
   loadLedgerPeriodLocks,
   loadOpeningSnapshots,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
+  postLedgerBankSuggestionOutcome,
+  postLedgerInvestmentDividend,
+  postLedgerInvestmentPurchase,
+  postLedgerInvestmentSale,
   postLedgerManualJournal,
+  postLedgerOwnerDividendPayment,
+  postLedgerShareholderLoan,
+  postLedgerTaxSettlement,
   startNewYear,
 } from "./transport.ts";
 export type { LedgerEntryArchiveWire } from "./transport.ts";
@@ -24,10 +32,19 @@ export {
 } from "./presentation.ts";
 export type {
   LedgerAdministrativeCostWire,
+  LedgerBankSuggestionWire,
+  LedgerCorporateDecisionFinalizationWire,
+  LedgerInvestmentDividendWire,
+  LedgerInvestmentPurchaseWire,
+  LedgerInvestmentSaleWire,
   LedgerLineWire,
   LedgerLockPeriodWire,
   LedgerManualJournalWire,
   LedgerMoneyWire,
+  LedgerOwnerDividendPaymentWire,
+  LedgerShareholderLoanWire,
+  LedgerTaxSettlementWire,
+  LedgerWriterResultWire,
   NewYearShareholderWire,
   NewYearStartWire,
 } from "@talli/talli-api-client";

@@ -746,3 +746,248 @@ test("ledger period-lock transport returns an empty result without a backend cal
     globalThis.fetch = originalFetch;
   }
 });
+
+const presentationSource = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const transactionPageSource = presentationSource("../app/(owner)/transactions/page.tsx");
+const workspacePageSource = presentationSource("../app/(owner)/workspace/page.tsx");
+const actionPageSource = presentationSource("../app/(owner)/actions/[type]/page.tsx");
+const corporateDecisionPageSource = presentationSource(
+  "../app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+);
+const ledgerActionWizardSources = {
+  recordDividendReceived: presentationSource(
+    "../app/(owner)/actions/_components/DividendReceivedWizard.tsx",
+  ),
+  recordSharePurchase: presentationSource(
+    "../app/(owner)/actions/_components/SharePurchaseWizard.tsx",
+  ),
+  recordShareSale: presentationSource(
+    "../app/(owner)/actions/_components/ShareSaleWizard.tsx",
+  ),
+  recordShareholderLoan: presentationSource(
+    "../app/(owner)/actions/_components/ShareholderLoanWizard.tsx",
+  ),
+  recordTaxSettlement: presentationSource(
+    "../app/(owner)/actions/_components/TaxSettlementWizard.tsx",
+  ),
+};
+
+function formsForLedgerAction(pageSource, actionName) {
+  const form = new RegExp(
+    `<form\\b[^>]*\\baction=\\{${actionName}\\}[^>]*>([\\s\\S]*?)<\\/form>`,
+    "gu",
+  );
+  return [...pageSource.matchAll(form)].map((match) => match[1]);
+}
+
+function assertSingleHiddenOperationId(form, context) {
+  const fields = form.match(/<input\b[^>]*\bname="operationId"[^>]*\/>/gu) ?? [];
+  assert.equal(fields.length, 1, `${context} must submit exactly one operation ID`);
+  assert.match(fields[0], /\btype="hidden"/u, `${context} operation ID must be hidden`);
+}
+
+test("every approved ledger-coordinator form submits one operation ID", () => {
+  const instances = [
+    [transactionPageSource, "acceptBankTransactionSuggestion", "transaction suggestion"],
+    [transactionPageSource, "recordAdminCost", "transaction administrative cost"],
+    [workspacePageSource, "recordAdminCost", "workspace administrative cost"],
+    [workspacePageSource, "recordDividendReceived", "workspace received dividend"],
+    [workspacePageSource, "recordSharePurchase", "workspace share purchase"],
+    [workspacePageSource, "recordShareSale", "workspace share sale"],
+    [workspacePageSource, "recordShareholderLoan", "workspace shareholder loan"],
+    [workspacePageSource, "recordTaxSettlement", "workspace tax settlement"],
+    [workspacePageSource, "recordOwnerDividendPayment", "workspace owner-dividend payment"],
+    [
+      corporateDecisionPageSource,
+      "finalizeCorporateDecision",
+      "corporate-decision finalization",
+    ],
+    ...Object.entries(ledgerActionWizardSources).map(([actionName, wizardSource]) => [
+      wizardSource,
+      actionName,
+      `${actionName} wizard`,
+    ]),
+  ];
+
+  assert.equal(instances.length, 15);
+  for (const [pageSource, actionName, context] of instances) {
+    const forms = formsForLedgerAction(pageSource, actionName);
+    assert.equal(forms.length, 1, `${context} form must remain present`);
+    assertSingleHiddenOperationId(forms[0], context);
+  }
+});
+
+test("client action wizards keep one stable operation ID for their mounted form", () => {
+  for (const [actionName, wizardSource] of Object.entries(ledgerActionWizardSources)) {
+    assert.match(wizardSource, /operationId\?: string/u, `${actionName} accepts a retry ID`);
+    assert.match(
+      wizardSource,
+      /useState\(\(\) => initialOperationId \?\? crypto\.randomUUID\(\)\)/u,
+      `${actionName} creates its operation ID only once`,
+    );
+    assert.doesNotMatch(
+      wizardSource,
+      /value=\{crypto\.randomUUID\(\)\}/u,
+      `${actionName} must not regenerate the ID while rendering`,
+    );
+  }
+});
+
+test("ledger retry IDs are plumbed only to the matching page form", () => {
+  for (const [queryName, componentName] of [
+    ["dividendReceivedOperationId", "DividendReceivedWizard"],
+    ["sharePurchaseOperationId", "SharePurchaseWizard"],
+    ["shareSaleOperationId", "ShareSaleWizard"],
+    ["shareholderLoanOperationId", "ShareholderLoanWizard"],
+    ["taxSettlementOperationId", "TaxSettlementWizard"],
+  ]) {
+    assert.match(actionPageSource, new RegExp(`${queryName}\\?: string`, "u"));
+    assert.match(
+      actionPageSource,
+      new RegExp(`<${componentName}[\\s\\S]*?operationId=\\{query\\?\\.${queryName}\\}`, "u"),
+    );
+  }
+
+  assert.match(transactionPageSource, /suggestionOperationId\?: string/u);
+  assert.match(transactionPageSource, /suggestionBankTransactionId\?: string/u);
+  assert.match(
+    transactionPageSource,
+    /name="companyId"[\s\S]*?transaction\.company_id[\s\S]*?name="incomeYear"[\s\S]*?transaction\.income_year/u,
+  );
+  assert.match(
+    transactionPageSource,
+    /query\?\.suggestionBankTransactionId === transaction\.id[\s\S]*?query\.suggestionOperationId[\s\S]*?randomUUID\(\)/u,
+  );
+  assert.match(transactionPageSource, /adminCostOperationId\?: string/u);
+  assert.match(transactionPageSource, /adminCostBankTransactionId\?: string/u);
+  assert.match(
+    transactionPageSource,
+    /query\?\.adminCostBankTransactionId === transaction\.id[\s\S]*?query\.adminCostOperationId[\s\S]*?randomUUID\(\)/u,
+  );
+
+  for (const queryName of [
+    "adminCostOperationId",
+    "dividendReceivedOperationId",
+    "sharePurchaseOperationId",
+    "shareSaleOperationId",
+    "shareholderLoanOperationId",
+    "taxSettlementOperationId",
+    "ownerDividendPaymentOperationId",
+    "ownerDividendPaymentBankTransactionId",
+  ]) {
+    assert.match(workspacePageSource, new RegExp(`${queryName}\\?: string`, "u"));
+  }
+  assert.match(corporateDecisionPageSource, /finalizeDecisionOperationId\?: string/u);
+  assert.match(
+    corporateDecisionPageSource,
+    /name="operationId" value=\{query\?\.finalizeDecisionOperationId \?\? randomUUID\(\)\}/u,
+  );
+});
+
+const ledgerActionsSource = presentationSource("../app/actions.ts");
+
+function ledgerServerActionSource(actionName) {
+  const start = ledgerActionsSource.indexOf(`export async function ${actionName}`);
+  assert.notEqual(start, -1, `${actionName} must exist`);
+  const end = ledgerActionsSource.indexOf("\nexport async function ", start + 1);
+  return ledgerActionsSource.slice(start, end < 0 ? undefined : end);
+}
+
+test("all relocated ledger writers use the stable operation ID at the generated boundary", () => {
+  const coordinators = {
+    acceptBankTransactionSuggestion: ["postLedgerBankSuggestionOutcome", "acceptanceId"],
+    recordAdminCost: ["postLedgerAdministrativeCost", null],
+    recordDividendReceived: ["postLedgerInvestmentDividend", "actionId"],
+    recordSharePurchase: ["postLedgerInvestmentPurchase", "actionId"],
+    recordShareSale: ["postLedgerInvestmentSale", "actionId"],
+    finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
+    recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
+    recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
+    recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
+  };
+
+  for (const [actionName, [coordinator, commandIdentity]] of Object.entries(coordinators)) {
+    const action = ledgerServerActionSource(actionName);
+    assert.match(action, /requiredFormUuid\(formData, "operationId"\)/u, actionName);
+    assert.match(action, /getCurrentSessionAccessToken\(\)/u, actionName);
+    assert.match(action, new RegExp(`await ${coordinator}\\(`, "u"), actionName);
+    assert.match(
+      action,
+      new RegExp(`${coordinator}\\([\\s\\S]*?operationId,[\\s\\S]*?operationId`, "u"),
+      `${actionName} uses operationId as Idempotency-Key and request ID`,
+    );
+    if (commandIdentity) {
+      assert.match(action, new RegExp(`${commandIdentity}: operationId`, "u"), actionName);
+    }
+    assert.doesNotMatch(action, /\.from\("ledger_entries"\)|buildAdminCostLedgerLines|dividendReceivedLedgerLines|shareholderLoanLedgerLines|taxSettlementLedgerLines/u, actionName);
+    assert.doesNotMatch(action, /\.rpc\("(?:accept_bank_transaction_suggestion|record_share_purchase_fifo|record_share_sale_fifo|finalize_corporate_decision|record_owner_dividend_payment)"/u, actionName);
+  }
+});
+
+test("committed retries reach the coordinator before mutable legacy state can reject them", () => {
+  const suggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
+  assert.doesNotMatch(suggestion, /matched_entry_id|matched_action_id|accepted_warning|suggestBankTransaction/u);
+
+  const sale = ledgerServerActionSource("recordShareSale");
+  assert.doesNotMatch(sale, /investment_positions|investment_lots|validateShareSale/u);
+
+  const finalization = ledgerServerActionSource("finalizeCorporateDecision");
+  assert.match(finalization, /verifyCurrentAnnualSource: false/u);
+
+  const payment = ledgerServerActionSource("recordOwnerDividendPayment");
+  assert.doesNotMatch(payment, /corporate_decision_finalizations|corporate_document_events|bank_transactions|deriveOpenDividendPayable|validateOwnerDividendPaymentInput/u);
+
+  for (const actionName of [
+    "recordAdminCost",
+    "recordDividendReceived",
+    "recordSharePurchase",
+    "recordShareholderLoan",
+    "recordTaxSettlement",
+  ]) {
+    const action = ledgerServerActionSource(actionName);
+    assert.doesNotMatch(action, /\.from\("(?:bank_transactions|documents|holding_actions|investment_positions|investment_lots)"\)/u, actionName);
+  }
+});
+
+test("unknown ledger outcomes preserve only the scoped retry operation", () => {
+  const retryFields = {
+    acceptBankTransactionSuggestion: ["suggestionOperationId", "suggestionBankTransactionId"],
+    recordAdminCost: ["adminCostOperationId", "adminCostBankTransactionId"],
+    recordDividendReceived: ["dividendReceivedOperationId"],
+    recordSharePurchase: ["sharePurchaseOperationId"],
+    recordShareSale: ["shareSaleOperationId"],
+    finalizeCorporateDecision: ["finalizeDecisionOperationId"],
+    recordOwnerDividendPayment: ["ownerDividendPaymentOperationId", "ownerDividendPaymentBankTransactionId"],
+    recordShareholderLoan: ["shareholderLoanOperationId"],
+    recordTaxSettlement: ["taxSettlementOperationId"],
+  };
+  for (const [actionName, fields] of Object.entries(retryFields)) {
+    const action = ledgerServerActionSource(actionName);
+    assert.match(action, /ledgerOutcomeMayBeUnknown\(error\)/u, actionName);
+    assert.match(action, /ledgerActionErrorMessage\(error\)/u, actionName);
+    for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
+  }
+
+  for (const actionName of [
+    "recordAdminCost",
+    "recordDividendReceived",
+    "recordShareholderLoan",
+    "recordTaxSettlement",
+  ]) {
+    const action = ledgerServerActionSource(actionName);
+    assert.match(action, /await persistLedgerAudit\(/u, actionName);
+    assert.ok(
+      action.indexOf("postLedger") < action.indexOf("persistLedgerAudit"),
+      `${actionName} keeps audit after the committed business coordinator`,
+    );
+  }
+  for (const actionName of [
+    "acceptBankTransactionSuggestion",
+    "recordSharePurchase",
+    "recordShareSale",
+    "finalizeCorporateDecision",
+    "recordOwnerDividendPayment",
+  ]) {
+    assert.doesNotMatch(ledgerServerActionSource(actionName), /persistLedgerAudit/u, actionName);
+  }
+});
