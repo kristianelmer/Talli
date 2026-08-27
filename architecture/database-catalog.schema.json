@@ -17,13 +17,22 @@
         "properties": {
           "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z_]+$" },
           "kind": { "enum": ["capability-business", "technical", "legacy-business"] },
-          "owner": { "type": "string", "pattern": "^backend:[a-z][a-z0-9_]*$" }
+          "owner": { "type": "string", "pattern": "^backend:[a-z][a-z0-9_]*$" },
+          "compatibilityResources": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^table:[a-z][a-z0-9_]*$" }
+          }
         },
         "allOf": [
           {
             "if": { "properties": { "kind": { "const": "capability-business" } } },
             "then": { "required": ["owner"] },
             "else": { "not": { "required": ["owner"] } }
+          },
+          {
+            "if": { "required": ["compatibilityResources"] },
+            "then": { "properties": { "kind": { "const": "capability-business" } } }
           }
         ],
         "additionalProperties": false

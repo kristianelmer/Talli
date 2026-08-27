@@ -548,11 +548,25 @@ class SupabaseLedgerSession:
         )
         warning_actor = value.get("warningAcceptedBy")
         warning_at = value.get("warningAcceptedAt")
+        source_capability = value.get("sourceCapability")
+        source_record_id = value.get("sourceRecordId")
+        created_at = value.get("createdAt")
         return LedgerEntryView(
             entry_id=LedgerEntryId(str(value["entryId"])),
             company_id=CompanyId(str(value["companyId"])),
             income_year=IncomeYear(int(value["incomeYear"])),
             entry_kind=LedgerEntryKind(str(value["entryKind"])),
+            source_capability=(
+                LedgerSourceCapability(str(source_capability))
+                if source_capability is not None
+                else None
+            ),
+            source_record_id=(
+                LedgerSourceRecordId(str(source_record_id))
+                if source_record_id is not None
+                else None
+            ),
+            created_at=_timestamp(created_at) if created_at is not None else None,
             memo=str(value["memo"]),
             lines=lines,
             risk_flags=risks,

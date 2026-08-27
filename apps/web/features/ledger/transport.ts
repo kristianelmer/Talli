@@ -5,12 +5,26 @@ import {
   type LedgerLockPeriodWire,
   type LedgerManualJournalWire,
   type LedgerPeriodLockWire,
+  type LedgerSourceCapability,
   type NewYearStartWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
 const PAGE_LIMIT = 100;
 const MAX_CURSOR_PAGES = 10_000;
+
+export type LedgerEntryArchiveWire = LedgerEntryViewWire & {
+  createdAt: string;
+  sourceCapability: LedgerSourceCapability;
+  sourceRecordId: string;
+};
+
+export class LedgerArchiveFactsUnavailableError extends Error {
+  constructor() {
+    super("Ledger archive facts are unavailable.");
+    this.name = "LedgerArchiveFactsUnavailableError";
+  }
+}
 
 function client(accessToken: string) {
   return createTalliApiClient({
@@ -63,6 +77,35 @@ export async function loadLedgerEntries(
     limit: PAGE_LIMIT,
     ...request(requestId),
   }));
+}
+
+export async function loadLedgerEntriesForArchive(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<LedgerEntryArchiveWire[]> {
+  if (companyIds.length === 0) return [];
+  const api = client(accessToken);
+  const entries = await loadAllPages((cursor) => api.ledgerListEntries({
+    companyIds,
+    cursor,
+    includeSource: true,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+  for (const entry of entries) {
+    if (
+      entry.sourceCapability === undefined
+      || entry.sourceCapability === null
+      || typeof entry.sourceRecordId !== "string"
+      || entry.sourceRecordId.length === 0
+      || typeof entry.createdAt !== "string"
+      || entry.createdAt.length === 0
+    ) {
+      throw new LedgerArchiveFactsUnavailableError();
+    }
+  }
+  return entries as LedgerEntryArchiveWire[];
 }
 
 export async function loadLedgerPeriodLocks(

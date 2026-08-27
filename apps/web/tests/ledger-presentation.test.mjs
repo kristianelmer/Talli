@@ -5,7 +5,9 @@ import test from "node:test";
 import { TalliApiError } from "@talli/talli-api-client";
 
 import {
+  LedgerArchiveFactsUnavailableError,
   loadLedgerEntries,
+  loadLedgerEntriesForArchive,
   loadLedgerPeriodLocks,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
@@ -13,6 +15,7 @@ import {
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   presentLedgerEntries,
+  presentLedgerEntriesForArchive,
   presentLedgerPeriodLocks,
 } from "../features/ledger/index.ts";
 
@@ -103,6 +106,9 @@ function entry(overrides = {}) {
     postedAt: "2026-08-27T10:00:00Z",
     postedBy: "20000000-0000-0000-0000-000000000002",
     riskFlags: [{ account: "1800", code: "MANUAL_JOURNAL_SENSITIVE_ACCOUNT" }],
+    sourceCapability: "LEDGER",
+    sourceRecordId: "manual:test-entry",
+    createdAt: "2026-08-27T09:59:57Z",
     warningAcceptedBy: "20000000-0000-0000-0000-000000000002",
     warningAcceptedAt: "2026-08-27T09:59:58Z",
     ...overrides,
@@ -129,9 +135,76 @@ test("ledger query transport follows opaque pages through the generated client",
     assert.equal(result.length, 1);
     assert.equal(calls.length, 2);
     assert.match(calls[0].url, /companyId=10000000-0000-0000-0000-000000000001/u);
+    assert.doesNotMatch(calls[0].url, /includeSource/u);
     assert.match(calls[1].url, /cursor=cursor-2/u);
     assert.equal(new Headers(calls[0].request.headers).get("Authorization"), "Bearer session-token");
     assert.equal(new Headers(calls[0].request.headers).get("X-Request-ID"), "ledger-list-test");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("generated ledger query rejects a partial expanded source pair", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const item = entry();
+  delete item.sourceRecordId;
+  globalThis.fetch = async () => Response.json(page([item]));
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    await assert.rejects(
+      loadLedgerEntriesForArchive("session-token", ["10000000-0000-0000-0000-000000000001"]),
+      (error) => error instanceof TalliApiError && error.status === 502,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("source-aware ledger query fails closed against a source-unaware backend", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const item = entry();
+  delete item.sourceCapability;
+  delete item.sourceRecordId;
+  delete item.createdAt;
+  globalThis.fetch = async () => Response.json(page([item]));
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    await assert.rejects(
+      loadLedgerEntriesForArchive("session-token", ["10000000-0000-0000-0000-000000000001"]),
+      (error) => error instanceof LedgerArchiveFactsUnavailableError,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("source-aware ledger queries opt into the expanded response", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  let capturedUrl = "";
+  globalThis.fetch = async (url) => {
+    capturedUrl = String(url);
+    return Response.json(page([entry()]));
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    const entries = await loadLedgerEntriesForArchive(
+      "session-token",
+      ["10000000-0000-0000-0000-000000000001"],
+    );
+    assert.equal(entries.length, 1);
+    assert.match(capturedUrl, /includeSource=true/u);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
@@ -439,6 +512,61 @@ test("ledger presentation maps generated facts without recreating posting policy
     locked_at: "2026-08-27T10:00:00Z",
     locked_by: "20000000-0000-0000-0000-000000000002",
     reason: "Filing complete",
+  });
+});
+
+test("opening entries recover their setup identity from canonical ledger source facts", () => {
+  const [opening] = presentLedgerEntries([entry({
+    entryKind: "OPENING_BALANCE",
+    sourceCapability: "SHAREHOLDER_REGISTER_FILING",
+    sourceRecordId: "opening-setup:60000000-0000-0000-0000-000000000006",
+  })]);
+  assert.equal(opening.setup_id, "60000000-0000-0000-0000-000000000006");
+
+  const [legacyOpening] = presentLedgerEntries([entry({
+    entryKind: "OPENING_BALANCE",
+    sourceCapability: "LEDGER",
+    sourceRecordId: "legacy:40000000-0000-0000-0000-000000000004",
+  })]);
+  assert.equal(legacyOpening.setup_id, null);
+  assert.throws(() => presentLedgerEntries([entry({
+    entryKind: "OPENING_BALANCE",
+    sourceCapability: "SHAREHOLDER_REGISTER_FILING",
+    sourceRecordId: "legacy:40000000-0000-0000-0000-000000000004",
+  })]), /opening ledger source/iu);
+});
+
+test("archive presentation preserves the complete frozen ledger row projection", () => {
+  const [archived] = presentLedgerEntriesForArchive([entry({
+    entryKind: "OPENING_BALANCE",
+    sourceCapability: "SHAREHOLDER_REGISTER_FILING",
+    sourceRecordId: "opening-setup:60000000-0000-0000-0000-000000000006",
+  })]);
+  assert.deepEqual(archived, {
+    id: "40000000-0000-0000-0000-000000000004",
+    company_id: "10000000-0000-0000-0000-000000000001",
+    setup_id: "60000000-0000-0000-0000-000000000006",
+    income_year: 2026,
+    entry_type: "opening_balance",
+    memo: "Manual correction",
+    lines: [
+      {
+        debit: 100,
+        credit: 0,
+        account: "1800",
+        currency: "NOK",
+        description: "Investment",
+      },
+      {
+        debit: 0,
+        credit: 100,
+        account: "1920",
+        currency: "NOK",
+        description: "Bank",
+      },
+    ],
+    created_by: "20000000-0000-0000-0000-000000000002",
+    created_at: "2026-08-27T09:59:57Z",
   });
 });
 

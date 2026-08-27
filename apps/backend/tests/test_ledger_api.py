@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -12,7 +13,12 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryId,
     LedgerEntryKind,
     LedgerEntryPage,
+    LedgerEntryView,
+    LedgerLine,
     LedgerPage,
+    LedgerRiskCode,
+    LedgerRiskFlag,
+    LedgerSourceCapability,
     LedgerSourceRecordId,
     PeriodLock,
     PeriodLockId,
@@ -25,6 +31,7 @@ from talli_backend.shared.kernel import (
     ActorKind,
     CompanyId,
     IncomeYear,
+    Money,
     Timestamp,
     UserId,
 )
@@ -44,6 +51,8 @@ class LedgerSessionStub:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object]] = []
         self.tokens: list[str] = []
+        self.entry_items: tuple[LedgerEntryView, ...] = ()
+        self.entry_next_cursor: LedgerCursor | None = LedgerCursor("opaque-next")
 
     @property
     def actor_id(self) -> ActorId:
@@ -112,8 +121,11 @@ class LedgerSessionStub:
     async def list_entries(self, **query: object) -> LedgerEntryPage:
         self.calls.append(("list_entries", query))
         return LedgerEntryPage(
-            items=(),
-            page=LedgerPage(next_cursor=LedgerCursor("opaque-next"), has_more=True),
+            items=self.entry_items,
+            page=LedgerPage(
+                next_cursor=self.entry_next_cursor,
+                has_more=self.entry_next_cursor is not None,
+            ),
         )
 
     async def list_period_locks(self, **query: object) -> PeriodLockPage:
@@ -127,6 +139,43 @@ class LedgerSessionStub:
 def client_and_session() -> tuple[TestClient, LedgerSessionStub]:
     session = LedgerSessionStub()
     return TestClient(create_app(ledger_session_factory=session)), session
+
+
+def entry_view() -> LedgerEntryView:
+    return LedgerEntryView(
+        entry_id=ENTRY_ID,
+        company_id=COMPANY_ID,
+        income_year=IncomeYear(2026),
+        entry_kind=LedgerEntryKind.MANUAL_JOURNAL,
+        source_capability=LedgerSourceCapability.LEDGER,
+        source_record_id=LedgerSourceRecordId("manual:ledger-api-test"),
+        created_at=NOW,
+        memo="Manual correction",
+        lines=(
+            LedgerLine(
+                account="1800",
+                description="Investment",
+                debit=Money.nok("100.00"),
+                credit=Money.nok("0.00"),
+            ),
+            LedgerLine(
+                account="1920",
+                description="Bank",
+                debit=Money.nok("0.00"),
+                credit=Money.nok("100.00"),
+            ),
+        ),
+        risk_flags=(
+            LedgerRiskFlag(
+                code=LedgerRiskCode.MANUAL_JOURNAL_SENSITIVE_ACCOUNT,
+                account="1800",
+            ),
+        ),
+        warning_accepted_by=None,
+        warning_accepted_at=None,
+        posted_by=ACTOR_ID,
+        posted_at=NOW,
+    )
 
 
 class UnauthenticatedSessionFactory:
@@ -523,3 +572,58 @@ def test_ledger_queries_are_authenticated_and_cursor_paginated() -> None:
     assert query["actor_id"] == ACTOR_ID
     assert str(query["cursor"]) == "opaque-current"
     assert query["limit"] == 25
+
+
+def test_ledger_entry_source_projection_is_opt_in_during_expand() -> None:
+    client, session = client_and_session()
+    session.entry_items = (entry_view(),)
+    session.entry_next_cursor = None
+
+    legacy_response = client.get(
+        f"/api/v1/ledger/entries?companyId={COMPANY_ID}",
+        headers=headers(),
+    )
+    source_response = client.get(
+        f"/api/v1/ledger/entries?companyId={COMPANY_ID}&includeSource=true",
+        headers=headers(),
+    )
+
+    assert legacy_response.status_code == 200
+    assert "sourceCapability" not in legacy_response.json()["items"][0]
+    assert "sourceRecordId" not in legacy_response.json()["items"][0]
+    assert "createdAt" not in legacy_response.json()["items"][0]
+    assert legacy_response.json()["items"][0]["warningAcceptedBy"] is None
+    assert legacy_response.json()["items"][0]["warningAcceptedAt"] is None
+    assert legacy_response.json()["page"] == {"nextCursor": None, "hasMore": False}
+    assert source_response.status_code == 200
+    assert source_response.json()["items"][0]["sourceCapability"] == "LEDGER"
+    assert source_response.json()["items"][0]["sourceRecordId"] == "manual:ledger-api-test"
+    assert source_response.json()["items"][0]["createdAt"] == "2026-08-27T10:00:00Z"
+
+
+def test_source_unaware_database_keeps_legacy_reads_but_blocks_source_queries() -> None:
+    client, session = client_and_session()
+    session.entry_items = (
+        replace(
+            entry_view(),
+            source_capability=None,
+            source_record_id=None,
+            created_at=None,
+        ),
+    )
+    session.entry_next_cursor = None
+
+    legacy_response = client.get(
+        f"/api/v1/ledger/entries?companyId={COMPANY_ID}",
+        headers=headers(),
+    )
+    source_response = client.get(
+        f"/api/v1/ledger/entries?companyId={COMPANY_ID}&includeSource=true",
+        headers=headers(),
+    )
+
+    assert legacy_response.status_code == 200
+    assert "sourceCapability" not in legacy_response.json()["items"][0]
+    assert "createdAt" not in legacy_response.json()["items"][0]
+    assert source_response.status_code == 503
+    assert source_response.json()["code"] == "LEDGER_DEPENDENCY_UNAVAILABLE"

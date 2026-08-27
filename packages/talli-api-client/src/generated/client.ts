@@ -434,6 +434,7 @@ export interface LedgerEntryPageWire {
 
 export interface LedgerEntryViewWire {
   companyId: string;
+  createdAt?: string;
   entryId: string;
   entryKind: LedgerEntryKind;
   incomeYear: number;
@@ -442,6 +443,8 @@ export interface LedgerEntryViewWire {
   postedAt: string;
   postedBy: string;
   riskFlags: LedgerRiskFlagWire[];
+  sourceCapability?: LedgerSourceCapability;
+  sourceRecordId?: string;
   warningAcceptedAt: string | null;
   warningAcceptedBy: string | null;
 }
@@ -539,6 +542,8 @@ export interface LedgerRiskFlagWire {
 }
 
 export type LedgerRiskCode = "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
+
+export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING";
 
 export interface ProblemDetails {
   code: string;
@@ -1047,8 +1052,9 @@ function isLedgerEntryPageWire(value: unknown): value is LedgerEntryPageWire {
 function isLedgerEntryViewWire(value: unknown): value is LedgerEntryViewWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["companyId","entryId","entryKind","incomeYear","lines","memo","postedAt","postedBy","riskFlags","warningAcceptedAt","warningAcceptedBy"]) &&
+    hasOnlyProperties(value, ["companyId","createdAt","entryId","entryKind","incomeYear","lines","memo","postedAt","postedBy","riskFlags","sourceCapability","sourceRecordId","warningAcceptedAt","warningAcceptedBy"]) &&
     typeof value.companyId === "string" &&
+    (value.createdAt === undefined || isDateTime(value.createdAt)) &&
     typeof value.entryId === "string" &&
     isLedgerEntryKind(value.entryKind) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
@@ -1057,8 +1063,12 @@ function isLedgerEntryViewWire(value: unknown): value is LedgerEntryViewWire {
     isDateTime(value.postedAt) &&
     typeof value.postedBy === "string" &&
     Array.isArray(value.riskFlags) && value.riskFlags.every((item) => isLedgerRiskFlagWire(item)) &&
+    (value.sourceCapability === undefined || isLedgerSourceCapability(value.sourceCapability)) &&
+    (value.sourceRecordId === undefined || (typeof value.sourceRecordId === "string" && value.sourceRecordId.length >= 1 && value.sourceRecordId.length <= 255)) &&
     (isDateTime(value.warningAcceptedAt) || value.warningAcceptedAt === null) &&
-    (typeof value.warningAcceptedBy === "string" || value.warningAcceptedBy === null)
+    (typeof value.warningAcceptedBy === "string" || value.warningAcceptedBy === null) &&
+    (value.sourceCapability === undefined) === (value.sourceRecordId === undefined) &&
+    (value.sourceCapability === undefined) === (value.createdAt === undefined)
   );
 }
 
@@ -1210,6 +1220,10 @@ function isLedgerRiskCode(value: unknown): value is LedgerRiskCode {
   return value === "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
 }
 
+function isLedgerSourceCapability(value: unknown): value is LedgerSourceCapability {
+  return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING";
+}
+
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
@@ -1259,6 +1273,10 @@ export interface LedgerListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerEntryListRequest extends LedgerListRequest {
+  includeSource?: boolean;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -1707,12 +1725,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     },
 
     async ledgerListEntries(
-      request: LedgerListRequest,
+      request: LedgerEntryListRequest,
     ): Promise<LedgerEntryPageWire> {
       const query = new URLSearchParams();
       for (const companyId of request.companyIds) query.append("companyId", companyId);
       if (request.cursor !== undefined) query.set("cursor", request.cursor);
       if (request.limit !== undefined) query.set("limit", String(request.limit));
+      if (request.includeSource !== undefined) query.set("includeSource", String(request.includeSource));
       return executeJson(
         `${baseUrl}/api/v1/ledger/entries?${query}`,
         "GET",

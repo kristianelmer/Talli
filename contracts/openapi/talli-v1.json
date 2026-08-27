@@ -2112,9 +2112,28 @@
         "type": "object"
       },
       "LedgerEntryViewWire": {
+        "dependentRequired": {
+          "createdAt": [
+            "sourceCapability",
+            "sourceRecordId"
+          ],
+          "sourceCapability": [
+            "createdAt",
+            "sourceRecordId"
+          ],
+          "sourceRecordId": [
+            "createdAt",
+            "sourceCapability"
+          ]
+        },
         "properties": {
           "companyId": {
             "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
             "type": "string"
           },
           "entryId": {
@@ -2154,6 +2173,16 @@
             },
             "title": "Riskflags",
             "type": "array"
+          },
+          "sourceCapability": {
+            "$ref": "#/components/schemas/LedgerSourceCapability",
+            "title": "Sourcecapability"
+          },
+          "sourceRecordId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Sourcerecordid",
+            "type": "string"
           },
           "warningAcceptedAt": {
             "anyOf": [
@@ -2469,6 +2498,18 @@
         ],
         "title": "LedgerRiskFlagWire",
         "type": "object"
+      },
+      "LedgerSourceCapability": {
+        "enum": [
+          "LEDGER",
+          "BANKING",
+          "INVESTMENTS",
+          "CORPORATE_GOVERNANCE",
+          "SHAREHOLDER_REGISTER_FILING",
+          "COMPANY_TAX_FILING"
+        ],
+        "title": "LedgerSourceCapability",
+        "type": "string"
       },
       "NewYearOpeningEntryWire": {
         "properties": {
@@ -12971,6 +13012,16 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeSource",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Includesource",
+              "type": "boolean"
             }
           },
           {

@@ -1,12 +1,61 @@
 import { createHash } from "node:crypto";
 
-import { buildPersistedCompanyArchive, firstArchiveSourceError } from "../../../../lib/archive";
+import {
+  LedgerArchiveFactsUnavailableError,
+  loadLedgerEntriesForArchive,
+  presentLedgerEntriesForArchive,
+} from "../../../../../features/ledger";
+import {
+  buildPersistedCompanyArchive,
+  firstArchiveSourceError,
+  type LedgerEntryRow,
+} from "../../../../lib/archive";
 import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { requireStepUpForAction } from "../../../../lib/security";
+import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
 } from "../../../../lib/supabase/server";
+
+async function loadArchiveLedgerEntries(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+  legacyFallback: () => PromiseLike<{
+    data: LedgerEntryRow[] | null;
+    error: unknown | null;
+  }>,
+) {
+  try {
+    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);
+    const presented = presentLedgerEntriesForArchive(entries);
+    if (presented.some((entry) => entry.company_id !== companyId)) {
+      throw new Error("Ledger query escaped the authorized company scope.");
+    }
+    return {
+      data: presented
+        .filter((entry) => entry.income_year === incomeYear)
+        .map((entry) => ({
+          id: entry.id,
+          company_id: entry.company_id,
+          setup_id: entry.setup_id,
+          income_year: entry.income_year,
+          entry_type: entry.entry_type,
+          memo: entry.memo,
+          lines: entry.lines,
+          created_by: entry.created_by,
+          created_at: entry.created_at,
+        })),
+      error: null,
+    };
+  } catch (error) {
+    if (error instanceof LedgerArchiveFactsUnavailableError) {
+      return await legacyFallback();
+    }
+    return { data: null, error: new Error("Ledger archive source unavailable.") };
+  }
+}
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
   const { companyId, incomeYear: incomeYearParam } = await params;
@@ -20,6 +69,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    return new Response("Innlogging kreves", { status: 401 });
+  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     return new Response("Innlogging kreves", { status: 401 });
   }
 
@@ -82,11 +135,16 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
-      supabase
-        .from("ledger_entries")
-        .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
+      loadArchiveLedgerEntries(
+        accessToken,
+        companyId,
+        incomeYear,
+        () => supabase
+          .from("ledger_entries")
+          .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
+          .eq("company_id", companyId)
+          .eq("income_year", incomeYear),
+      ),
       supabase
         .from("documents")
         .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")

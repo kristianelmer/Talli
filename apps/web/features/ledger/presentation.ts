@@ -6,6 +6,8 @@ import type {
 } from "@talli/talli-api-client";
 import { TalliApiError } from "@talli/talli-api-client";
 
+import type { LedgerEntryArchiveWire } from "./transport.ts";
+
 const ENTRY_TYPES: Record<LedgerEntryKind, string> = {
   ADMINISTRATIVE_COST: "admin_cost",
   BANK_RULE_SUGGESTION: "bank_rule_suggestion",
@@ -20,6 +22,12 @@ const ENTRY_TYPES: Record<LedgerEntryKind, string> = {
   TAX_SETTLEMENT: "tax_settlement",
 };
 
+const ARCHIVE_ENTRY_TYPES: Record<LedgerEntryKind, string> = {
+  ...ENTRY_TYPES,
+  OWNER_DIVIDEND_DECLARED: "dividend_to_owner_declared",
+  OWNER_DIVIDEND_PAYMENT: "dividend_to_owner_payment",
+};
+
 const RISK_CODES: Record<LedgerRiskCode, string> = {
   MANUAL_JOURNAL_SENSITIVE_ACCOUNT: "manual_journal_sensitive_account",
 };
@@ -27,7 +35,7 @@ const RISK_CODES: Record<LedgerRiskCode, string> = {
 export type LedgerEntryPresentation = {
   id: string;
   company_id: string;
-  setup_id: null;
+  setup_id: string | null;
   income_year: number;
   entry_type: string;
   memo: string;
@@ -38,6 +46,35 @@ export type LedgerEntryPresentation = {
   created_by: string;
   created_at: string;
 };
+
+export type LedgerEntryArchivePresentation = {
+  id: string;
+  company_id: string;
+  setup_id: string | null;
+  income_year: number;
+  entry_type: string;
+  memo: string;
+  lines: {
+    debit: number;
+    credit: number;
+    account: string;
+    currency: "NOK";
+    description: string;
+  }[];
+  created_by: string;
+  created_at: string;
+};
+
+const OPENING_SETUP_SOURCE = /^opening-setup:([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/iu;
+
+function openingSetupId(entry: LedgerEntryViewWire) {
+  if (entry.entryKind !== "OPENING_BALANCE") return null;
+  if (entry.sourceCapability === undefined && entry.sourceRecordId === undefined) return null;
+  if (entry.sourceCapability !== "SHAREHOLDER_REGISTER_FILING") return null;
+  const match = entry.sourceRecordId?.match(OPENING_SETUP_SOURCE);
+  if (!match) throw new Error("Invalid opening ledger source.");
+  return match[1].toLowerCase();
+}
 
 export type LedgerPeriodLockPresentation = {
   id: string;
@@ -54,7 +91,7 @@ export function presentLedgerEntries(
   return entries.map((entry) => ({
     id: entry.entryId,
     company_id: entry.companyId,
-    setup_id: null,
+    setup_id: openingSetupId(entry),
     income_year: entry.incomeYear,
     entry_type: ENTRY_TYPES[entry.entryKind],
     memo: entry.memo,
@@ -73,6 +110,28 @@ export function presentLedgerEntries(
     warning_accepted_at: entry.warningAcceptedAt,
     created_by: entry.postedBy,
     created_at: entry.postedAt,
+  }));
+}
+
+export function presentLedgerEntriesForArchive(
+  entries: readonly LedgerEntryArchiveWire[],
+): LedgerEntryArchivePresentation[] {
+  return entries.map((entry) => ({
+    id: entry.entryId,
+    company_id: entry.companyId,
+    setup_id: openingSetupId(entry),
+    income_year: entry.incomeYear,
+    entry_type: ARCHIVE_ENTRY_TYPES[entry.entryKind],
+    memo: entry.memo,
+    lines: entry.lines.map((line) => ({
+      debit: Number(line.debit.amount),
+      credit: Number(line.credit.amount),
+      account: line.account,
+      currency: line.debit.currency,
+      description: line.description,
+    })),
+    created_by: entry.postedBy,
+    created_at: entry.createdAt,
   }));
 }
 

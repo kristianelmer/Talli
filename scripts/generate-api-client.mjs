@@ -177,6 +177,12 @@ function renderGuard(name, schema) {
         : `    (value.${property} === undefined || ${check})`;
     }),
   ];
+  if (name === "LedgerEntryViewWire") {
+    checks.push(
+      "    (value.sourceCapability === undefined) === (value.sourceRecordId === undefined)",
+      "    (value.sourceCapability === undefined) === (value.createdAt === undefined)",
+    );
+  }
   return `function is${name}(value: unknown): value is ${name} {
   return (
     isRecord(value) &&
@@ -259,6 +265,7 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerPostedEntryWire",
   "LedgerRiskFlagWire",
   "LedgerRiskCode",
+  "LedgerSourceCapability",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
@@ -390,6 +397,10 @@ export interface LedgerListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerEntryListRequest extends LedgerListRequest {
+  includeSource?: boolean;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -838,12 +849,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     },
 
     async ledgerListEntries(
-      request: LedgerListRequest,
+      request: LedgerEntryListRequest,
     ): Promise<LedgerEntryPageWire> {
       const query = new URLSearchParams();
       for (const companyId of request.companyIds) query.append("companyId", companyId);
       if (request.cursor !== undefined) query.set("cursor", request.cursor);
       if (request.limit !== undefined) query.set("limit", String(request.limit));
+      if (request.includeSource !== undefined) query.set("includeSource", String(request.includeSource));
       return executeJson(
         \`\${baseUrl}/api/v1/ledger/entries?\${query}\`,
         "GET",

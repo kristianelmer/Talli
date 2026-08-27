@@ -1355,7 +1355,41 @@ function validateDatabaseCatalog(root, backendSystem, manifests, compatibility, 
       errors.push(`architecture/database-catalog.json: capability table ownership is not catalogued ${table}`);
     }
   }
-  return catalog;
+  const nativeClaims = new Map();
+  for (const entry of catalogEntries) {
+    if (!entry.name?.startsWith("public.")) continue;
+    nativeClaims.set(`table:${entry.name.slice("public.".length)}`, entry);
+  }
+  const aliasClaims = new Map();
+  const conflictedResources = new Set();
+  for (const entry of catalogEntries) {
+    for (const resource of entry.compatibilityResources ?? []) {
+      const native = nativeClaims.get(resource);
+      if (native) {
+        errors.push(
+          `architecture/database-catalog.json: compatibility resource ${resource} on ${entry.name} collides with catalog table ${native.name}`,
+        );
+        conflictedResources.add(resource);
+      }
+      const existing = aliasClaims.get(resource);
+      if (existing) {
+        errors.push(existing === entry
+          ? `architecture/database-catalog.json: compatibility resource ${resource} is declared more than once by ${entry.name}`
+          : `architecture/database-catalog.json: compatibility resource ${resource} is declared by both ${existing.name} and ${entry.name}`);
+        conflictedResources.add(resource);
+      } else {
+        aliasClaims.set(resource, entry);
+      }
+    }
+  }
+  const resourceOwners = new Map();
+  for (const [resource, entry] of nativeClaims) {
+    if (!conflictedResources.has(resource)) resourceOwners.set(resource, entry.owner);
+  }
+  for (const [resource, entry] of aliasClaims) {
+    if (!conflictedResources.has(resource)) resourceOwners.set(resource, entry.owner);
+  }
+  return { catalog, resourceOwners };
 }
 
 function validateSystemBindings(root, system, manifests, errors) {
@@ -2319,9 +2353,13 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
   const compatibilityBaselinePath = join(resolvedRoot, "architecture/compatibility-baseline.json");
   const compatibility = readJson(compatibilityPath, []);
-  const databaseCatalog = readJson(
-    join(resolvedRoot, "architecture/database-catalog.json"),
+  const { resourceOwners: databaseResourceOwners } = validateDatabaseCatalog(
+    resolvedRoot,
+    backendSystem,
+    manifests,
+    compatibility,
     errors,
+    schemas.databaseCatalog,
   );
   const compatibilityBaseline = readJson(compatibilityBaselinePath, errors);
   const compatibilitySourceRegistry = readGitJson(
@@ -2394,11 +2432,8 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
       sourceAtRevision,
       currentSource: (path) => readFileSync(join(resolvedRoot, path), "utf8"),
       resourceOwner: (resource) => {
-        const match = /^table:([a-z_]+)$/u.exec(resource);
-        if (!match) return undefined;
-        return databaseCatalog.tables?.find(
-          (entry) => entry.name === `public.${match[1]}`,
-        )?.owner;
+        if (!/^table:[a-z_]+$/u.test(resource)) return undefined;
+        return databaseResourceOwners.get(resource);
       },
       gateEvidenceSchema: schemas.customerReadyGateEvidence,
       loadGateEvidence: (path) => (
@@ -2422,14 +2457,6 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
   checkSharedKernel(resolvedRoot, sharedKernel, errors);
-  validateDatabaseCatalog(
-    resolvedRoot,
-    backendSystem,
-    manifests,
-    compatibility,
-    errors,
-    schemas.databaseCatalog,
-  );
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",

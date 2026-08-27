@@ -359,6 +359,9 @@ class LedgerEntryView:
     company_id: CompanyId
     income_year: IncomeYear
     entry_kind: LedgerEntryKind
+    source_capability: LedgerSourceCapability | None
+    source_record_id: LedgerSourceRecordId | None
+    created_at: Timestamp | None
     memo: str
     lines: tuple[LedgerLine, ...]
     risk_flags: tuple[LedgerRiskFlag, ...]
@@ -366,6 +369,17 @@ class LedgerEntryView:
     warning_accepted_at: Timestamp | None
     posted_by: ActorId
     posted_at: Timestamp
+
+    def __post_init__(self) -> None:
+        archive_facts = (
+            self.source_capability,
+            self.source_record_id,
+            self.created_at,
+        )
+        if any(value is None for value in archive_facts) and not all(
+            value is None for value in archive_facts
+        ):
+            raise ValueError("ledger source identity must be complete")
 
 
 @dataclass(frozen=True, slots=True)

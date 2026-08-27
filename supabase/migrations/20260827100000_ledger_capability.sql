@@ -340,7 +340,10 @@ set lines = ledger.normalize_lines_v1(lines),
     source_capability = coalesce(
       source_capability,
       case pg_catalog.lower(entry_kind)
-        when 'opening_balance' then 'SHAREHOLDER_REGISTER_FILING'
+        when 'opening_balance' then case
+          when setup_id is not null then 'SHAREHOLDER_REGISTER_FILING'
+          else 'LEDGER'
+        end
         when 'bank_rule_suggestion' then 'BANKING'
         when 'dividend_received' then 'INVESTMENTS'
         when 'share_purchase' then 'INVESTMENTS'
@@ -424,7 +427,11 @@ begin
   new.source_capability := coalesce(
     new.source_capability,
     case new.entry_kind
-      when 'OPENING_BALANCE' then 'SHAREHOLDER_REGISTER_FILING'
+      when 'OPENING_BALANCE' then case
+        when nullif(pg_catalog.to_jsonb(new) ->> 'setup_id', '') is not null
+        then 'SHAREHOLDER_REGISTER_FILING'
+        else 'LEDGER'
+      end
       when 'BANK_RULE_SUGGESTION' then 'BANKING'
       when 'DIVIDEND_RECEIVED' then 'INVESTMENTS'
       when 'SHARE_PURCHASE' then 'INVESTMENTS'
@@ -438,7 +445,12 @@ begin
   );
   new.source_record_id := coalesce(
     nullif(pg_catalog.btrim(new.source_record_id), ''),
-    'rollback:' || new.id::text
+    case
+      when new.entry_kind = 'OPENING_BALANCE'
+        and nullif(pg_catalog.to_jsonb(new) ->> 'setup_id', '') is not null
+      then 'opening-setup:' || (pg_catalog.to_jsonb(new) ->> 'setup_id')
+      else 'rollback:' || new.id::text
+    end
   );
   new.correlation_id := coalesce(
     nullif(pg_catalog.btrim(new.correlation_id), ''),
@@ -1539,6 +1551,9 @@ begin
       'companyId', entry.company_id,
       'incomeYear', entry.income_year,
       'entryKind', entry.entry_kind,
+      'sourceCapability', entry.source_capability,
+      'sourceRecordId', entry.source_record_id,
+      'createdAt', entry.created_at,
       'memo', entry.memo,
       'lines', entry.lines,
       'riskFlags', entry.risk_flags,

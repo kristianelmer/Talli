@@ -189,7 +189,11 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   assert.deepEqual(result.evidence.modules, [
     "backend-system:system_boundary",
     "backend:company_access",
+    "backend:ledger",
+    "backend:shareholder_register_filing",
     "web:company-access",
+    "web:ledger",
+    "web:public-acquisition",
     "web:system-boundary",
   ]);
   assert.deepEqual(result.evidence.edges, [
@@ -216,6 +220,24 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.company_access.public"],
       kind: "workflow",
       to: "backend:company_access",
+    },
+    {
+      from: "backend-system:ledger-posting-and-period-control",
+      imports: ["talli_backend.modules.ledger.public"],
+      kind: "workflow",
+      to: "backend:ledger",
+    },
+    {
+      from: "backend-system:new-year-start",
+      imports: ["talli_backend.modules.ledger.public"],
+      kind: "workflow",
+      to: "backend:ledger",
+    },
+    {
+      from: "backend-system:new-year-start",
+      imports: ["talli_backend.modules.shareholder_register_filing.public"],
+      kind: "workflow",
+      to: "backend:shareholder_register_filing",
     },
     {
       from: "backend-system:system-boundary-tracer",
@@ -1318,6 +1340,45 @@ test("database catalog and declared public import paths are authoritative", () =
   }
 });
 
+test("database compatibility resources are globally unambiguous", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-catalog-aliases-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  const catalogPath = join(temporaryRoot, "architecture/database-catalog.json");
+  const pristine = JSON.parse(readFileSync(catalogPath, "utf8"));
+  const errorsFor = (mutate) => {
+    const catalog = structuredClone(pristine);
+    mutate(catalog.tables);
+    writeFileSync(catalogPath, JSON.stringify(catalog));
+    return checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+  };
+
+  try {
+    assert.match(errorsFor((tables) => {
+      tables.find((entry) => entry.name === "ledger.entries")
+        .compatibilityResources.push("table:ledger_entries");
+    }), /compatibility resource table:ledger_entries is declared more than once by ledger\.entries/u);
+
+    assert.match(errorsFor((tables) => {
+      tables.find((entry) => entry.name === "ledger.period_locks")
+        .compatibilityResources.push("table:ledger_entries");
+    }), /compatibility resource table:ledger_entries is declared by both ledger\.entries and ledger\.period_locks/u);
+
+    assert.match(errorsFor((tables) => {
+      tables.find((entry) => entry.name === "ledger.entries")
+        .compatibilityResources.push("table:companies");
+    }), /compatibility resource table:companies on ledger\.entries collides with catalog table public\.companies/u);
+
+    assert.match(errorsFor((tables) => {
+      tables.find((entry) => entry.name === "public.companies")
+        .compatibilityResources = ["table:companies"];
+    }), /compatibility resource table:companies on public\.companies collides with catalog table public\.companies/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("staged contract table retirement requires an empty-table preflight and rollback", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-contract-table-"));
   for (const directory of ["architecture", "apps", "supabase"]) {
@@ -1576,7 +1637,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
   assert.equal(expected.size, baseline.records.length);
 
   assert.equal(registry.records.length, 18);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 210);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 202);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {

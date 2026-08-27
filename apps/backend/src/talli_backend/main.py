@@ -10,7 +10,8 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -77,6 +78,7 @@ from talli_backend.modules.ledger.public import (
     LedgerLine,
     LedgerRiskFlag,
     LedgerRiskCode,
+    LedgerSourceCapability,
     LedgerSourceRecordId,
     LockPeriodCommand,
     PeriodLock,
@@ -255,10 +257,25 @@ class LedgerRiskFlagWire(TransportModel):
 
 
 class LedgerEntryViewWire(TransportModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "dependentRequired": {
+                "sourceCapability": ["sourceRecordId", "createdAt"],
+                "sourceRecordId": ["sourceCapability", "createdAt"],
+                "createdAt": ["sourceCapability", "sourceRecordId"],
+            }
+        }
+    )
+
     entry_id: str
     company_id: str
     income_year: int
     entry_kind: LedgerEntryKind
+    source_capability: LedgerSourceCapability | SkipJsonSchema[None] = None
+    source_record_id: str | SkipJsonSchema[None] = Field(
+        default=None, min_length=1, max_length=255
+    )
+    created_at: datetime | SkipJsonSchema[None] = None
     memo: str
     lines: list[LedgerLineWire]
     risk_flags: list[LedgerRiskFlagWire]
@@ -266,6 +283,19 @@ class LedgerEntryViewWire(TransportModel):
     warning_accepted_at: datetime | None
     posted_by: str
     posted_at: datetime
+
+    @model_validator(mode="after")
+    def source_identity_is_complete(self) -> LedgerEntryViewWire:
+        archive_facts = (
+            self.source_capability,
+            self.source_record_id,
+            self.created_at,
+        )
+        if any(value is None for value in archive_facts) and not all(
+            value is None for value in archive_facts
+        ):
+            raise ValueError("ledger source identity must be complete")
+        return self
 
 
 class LedgerPeriodLockWire(TransportModel):
@@ -333,12 +363,30 @@ def _lock_wire(value: PeriodLock) -> LedgerPeriodLockWire:
     )
 
 
-def _entry_view_wire(value: LedgerEntryView) -> LedgerEntryViewWire:
+def _entry_view_wire(
+    value: LedgerEntryView, *, include_source: bool
+) -> LedgerEntryViewWire:
+    if include_source and (
+        value.source_capability is None
+        or value.source_record_id is None
+        or value.created_at is None
+    ):
+        raise LedgerError.unavailable()
+    source = (
+        {
+            "source_capability": value.source_capability,
+            "source_record_id": str(value.source_record_id),
+            "created_at": value.created_at.value,
+        }
+        if include_source
+        else {}
+    )
     return LedgerEntryViewWire(
         entry_id=str(value.entry_id),
         company_id=str(value.company_id),
         income_year=int(value.income_year),
         entry_kind=value.entry_kind,
+        **source,
         memo=value.memo,
         lines=[_line_wire(line) for line in value.lines],
         risk_flags=[_risk_wire(flag) for flag in value.risk_flags],
@@ -1147,6 +1195,7 @@ def create_app(
         "/api/v1/ledger/entries",
         operation_id="ledgerListEntries",
         response_model=LedgerEntryPageWire,
+        response_model_exclude_unset=True,
         responses={200: {"description": "Authorized ledger-entry page."} | ledger_success}
         | ledger_errors,
         tags=["ledger"],
@@ -1159,6 +1208,7 @@ def create_app(
         ],
         cursor: Annotated[str | None, Query(max_length=4096)] = None,
         limit: int = Query(default=50, ge=1, le=100),
+        include_source: Annotated[bool, Query(alias="includeSource")] = False,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> LedgerEntryPageWire:
         async def execute() -> LedgerEntryPageWire:
@@ -1173,7 +1223,10 @@ def create_app(
                 limit=limit,
             )
             return LedgerEntryPageWire(
-                items=[_entry_view_wire(item) for item in page.items],
+                items=[
+                    _entry_view_wire(item, include_source=include_source)
+                    for item in page.items
+                ],
                 page=LedgerPageWire(
                     next_cursor=(
                         str(page.page.next_cursor)

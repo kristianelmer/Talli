@@ -213,38 +213,67 @@ def test_declared_database_outcomes_keep_their_closed_contract(
 
 
 def test_entry_projection_keeps_the_exact_warning_acceptance_timestamp() -> None:
-    projected = bound_session()._entry_view(
-        {
-            "entryId": "40000000-0000-0000-0000-000000000004",
-            "companyId": "10000000-0000-0000-0000-000000000001",
-            "incomeYear": 2026,
-            "entryKind": "MANUAL_JOURNAL",
-            "memo": "Manual entry",
-            "lines": [
-                {
-                    "account": "7795",
-                    "description": "Cost",
-                    "debit": "100.00",
-                    "credit": "0.00",
-                    "currency": "NOK",
-                },
-                {
-                    "account": "1920",
-                    "description": "Bank",
-                    "debit": "0.00",
-                    "credit": "100.00",
-                    "currency": "NOK",
-                },
-            ],
-            "riskFlags": [],
-            "warningAcceptedBy": str(ACTOR_ID.subject),
-            "warningAcceptedAt": "2026-08-27T09:59:58Z",
-            "postedBy": str(ACTOR_ID.subject),
-            "postedAt": "2026-08-27T10:00:00Z",
-        }
-    )
+    payload = {
+        "entryId": "40000000-0000-0000-0000-000000000004",
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "entryKind": "MANUAL_JOURNAL",
+        "sourceCapability": "LEDGER",
+        "sourceRecordId": "manual:test-projection",
+        "createdAt": "2026-08-27T09:59:57Z",
+        "memo": "Manual entry",
+        "lines": [
+            {
+                "account": "7795",
+                "description": "Cost",
+                "debit": "100.00",
+                "credit": "0.00",
+                "currency": "NOK",
+            },
+            {
+                "account": "1920",
+                "description": "Bank",
+                "debit": "0.00",
+                "credit": "100.00",
+                "currency": "NOK",
+            },
+        ],
+        "riskFlags": [],
+        "warningAcceptedBy": str(ACTOR_ID.subject),
+        "warningAcceptedAt": "2026-08-27T09:59:58Z",
+        "postedBy": str(ACTOR_ID.subject),
+        "postedAt": "2026-08-27T10:00:00Z",
+    }
+    projected = bound_session()._entry_view(payload)
 
     assert projected.warning_accepted_at is not None
     assert projected.warning_accepted_at.value == datetime(
         2026, 8, 27, 9, 59, 58, tzinfo=UTC
     )
+    assert projected.source_capability is LedgerSourceCapability.LEDGER
+    assert projected.source_record_id == LedgerSourceRecordId(
+        "manual:test-projection"
+    )
+    assert projected.created_at is not None
+    assert projected.created_at.value == datetime(
+        2026, 8, 27, 9, 59, 57, tzinfo=UTC
+    )
+
+    legacy_payload = dict(payload)
+    legacy_payload.pop("sourceCapability")
+    legacy_payload.pop("sourceRecordId")
+    legacy_payload.pop("createdAt")
+    legacy = bound_session()._entry_view(legacy_payload)
+    assert legacy.source_capability is None
+    assert legacy.source_record_id is None
+    assert legacy.created_at is None
+
+    partial_payload = dict(legacy_payload)
+    partial_payload["sourceCapability"] = "LEDGER"
+    with pytest.raises(ValueError, match="source identity"):
+        bound_session()._entry_view(partial_payload)
+
+    partial_payload = dict(payload)
+    partial_payload.pop("createdAt")
+    with pytest.raises(ValueError, match="source identity"):
+        bound_session()._entry_view(partial_payload)
