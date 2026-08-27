@@ -126,7 +126,7 @@ begin
       'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
       'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
       'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
-      'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
+      'CAPITAL_REDUCTION', 'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
     )
     or pg_catalog.jsonb_typeof(p_risk_flags) is distinct from 'array'
     or not ledger.entry_lines_are_valid_v1(p_lines, false)
@@ -397,7 +397,7 @@ begin
     'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
     'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
     'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
-    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
+    'CAPITAL_REDUCTION', 'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;
@@ -421,6 +421,7 @@ begin
       when 'BANK_INTEREST' then 'BANKING'
       when 'BANK_LOAN' then 'BANKING'
       when 'CAPITAL_INCREASE' then 'CORPORATE_GOVERNANCE'
+      when 'CAPITAL_REDUCTION' then 'CORPORATE_GOVERNANCE'
       when 'COMPANY_TAX_ACCRUAL' then 'COMPANY_TAX_FILING'
       when 'GROUP_CONTRIBUTION' then 'CORPORATE_GOVERNANCE'
       else 'LEDGER'

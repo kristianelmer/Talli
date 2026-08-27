@@ -56,6 +56,7 @@ test("the predecessor expand remains forward-compatible during recutover", () =>
     "BANK_INTEREST",
     "BANK_LOAN",
     "CAPITAL_INCREASE",
+    "CAPITAL_REDUCTION",
     "COMPANY_TAX_ACCRUAL",
     "GROUP_CONTRIBUTION",
   ]) {

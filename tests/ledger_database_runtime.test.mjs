@@ -958,6 +958,32 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(supportedPosting.entry_kind, "BANK_INTEREST");
     assert.equal(supportedPosting.replayed, false);
     assert.equal(jsonOutput(containerName, supportedCall()).replayed, true);
+    const capitalReductionLines = JSON.stringify([
+      { account: "2006", description: "Unregistered capital reduction", debit: "20000.00", credit: "0.00", currency: "NOK" },
+      { account: "2080", description: "Uncovered loss", debit: "0.00", credit: "20000.00", currency: "NOK" },
+    ]);
+    const capitalReductionSources = JSON.stringify([{
+      role: "PRIMARY",
+      capability: "CORPORATE_GOVERNANCE",
+      recordId: "golden:runtime-capital-reduction",
+      revision: 1,
+      factSha256: "d".repeat(64),
+    }]);
+    const capitalReductionPosting = jsonOutput(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select row_to_json(posted)::text
+      from ledger.post_supported_entry_v1(
+        '62000000-0000-4000-8000-000000000002', '${companyId}', 2026,
+        'CAPITAL_REDUCTION', 'Loss-coverage capital reduction decided, not registered',
+        '${sqlQuote(capitalReductionLines)}'::jsonb, 'CORPORATE_GOVERNANCE',
+        'golden:runtime-capital-reduction', 'capital-reduction-runtime', '${ownerId}',
+        '2026-08-27', 'ledger-supported-patterns-2026.1',
+        '${sqlQuote(capitalReductionSources)}'::jsonb
+      ) posted;
+      commit;
+    `);
+    assert.equal(capitalReductionPosting.entry_kind, "CAPITAL_REDUCTION");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         (select count(*) from ledger.entry_contexts

@@ -7,11 +7,13 @@ from decimal import Decimal
 
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    ApprovedLossCoverageCapitalReductionFacts,
     BankInterestIncomeFacts,
     BankLoanEvent,
     BankSuggestionRule,
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
+    CapitalReductionRecognition,
     CompanyTaxAccrualFacts,
     GroupContributionFacts,
     GroupContributionPerspective,
@@ -309,6 +311,41 @@ class LedgerService:
                     LedgerLine("2020", "Share premium", _ZERO, facts.share_premium),
                     LedgerLine("1920", "Released contribution bank", total, _ZERO),
                     LedgerLine("1950", "Restricted contribution bank", _ZERO, total),
+                )
+        elif isinstance(facts, ApprovedLossCoverageCapitalReductionFacts):
+            required_sources = frozenset(
+                {LedgerSourceCapability.CORPORATE_GOVERNANCE}
+            )
+            _positive(facts.nominal_reduction, "LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.CAPITAL_REDUCTION
+            if (
+                facts.recognition
+                is CapitalReductionRecognition.DECIDED_NOT_REGISTERED
+            ):
+                memo = "Loss-coverage capital reduction decided, not registered"
+                lines = (
+                    LedgerLine(
+                        "2006",
+                        "Unregistered capital reduction",
+                        facts.nominal_reduction,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        "2080", "Uncovered loss", _ZERO, facts.nominal_reduction
+                    ),
+                )
+            else:
+                memo = "Registered loss-coverage capital reduction first recognized"
+                lines = (
+                    LedgerLine(
+                        "2000",
+                        "Registered share capital",
+                        facts.nominal_reduction,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        "2080", "Uncovered loss", _ZERO, facts.nominal_reduction
+                    ),
                 )
         elif isinstance(facts, GroupContributionFacts):
             required_sources = frozenset(

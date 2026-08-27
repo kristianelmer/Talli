@@ -310,7 +310,7 @@ where not ledger.entry_lines_are_valid_v1(entry.lines, true)
     'dividend_to_owner_declared', 'owner_dividend_declared',
     'dividend_to_owner_payment', 'owner_dividend_payment',
     'share_purchase', 'share_sale', 'shareholder_loan', 'tax_settlement',
-    'bank_interest', 'bank_loan', 'capital_increase',
+    'bank_interest', 'bank_loan', 'capital_increase', 'capital_reduction',
     'company_tax_accrual', 'group_contribution'
   )
 on conflict (run_id, source_table, source_id) do nothing;
@@ -349,6 +349,7 @@ set lines = ledger.normalize_lines_v1(lines),
       when 'bank_interest' then 'BANK_INTEREST'
       when 'bank_loan' then 'BANK_LOAN'
       when 'capital_increase' then 'CAPITAL_INCREASE'
+      when 'capital_reduction' then 'CAPITAL_REDUCTION'
       when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
       when 'group_contribution' then 'GROUP_CONTRIBUTION'
     end,
@@ -372,6 +373,7 @@ set lines = ledger.normalize_lines_v1(lines),
         when 'bank_interest' then 'BANKING'
         when 'bank_loan' then 'BANKING'
         when 'capital_increase' then 'CORPORATE_GOVERNANCE'
+        when 'capital_reduction' then 'CORPORATE_GOVERNANCE'
         when 'company_tax_accrual' then 'COMPANY_TAX_FILING'
         when 'group_contribution' then 'CORPORATE_GOVERNANCE'
         else 'LEDGER'
@@ -436,6 +438,7 @@ begin
     when 'bank_interest' then 'BANK_INTEREST'
     when 'bank_loan' then 'BANK_LOAN'
     when 'capital_increase' then 'CAPITAL_INCREASE'
+    when 'capital_reduction' then 'CAPITAL_REDUCTION'
     when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
     when 'group_contribution' then 'GROUP_CONTRIBUTION'
     else pg_catalog.upper(pg_catalog.btrim(new.entry_kind))
@@ -445,7 +448,7 @@ begin
     'BANK_RULE_SUGGESTION', 'DIVIDEND_RECEIVED',
     'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
     'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
-    'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
+    'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
     'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
@@ -470,6 +473,7 @@ begin
       when 'BANK_INTEREST' then 'BANKING'
       when 'BANK_LOAN' then 'BANKING'
       when 'CAPITAL_INCREASE' then 'CORPORATE_GOVERNANCE'
+      when 'CAPITAL_REDUCTION' then 'CORPORATE_GOVERNANCE'
       when 'COMPANY_TAX_ACCRUAL' then 'COMPANY_TAX_FILING'
       when 'GROUP_CONTRIBUTION' then 'CORPORATE_GOVERNANCE'
       else 'LEDGER'
@@ -1409,7 +1413,7 @@ begin
       'BANK_RULE_SUGGESTION', 'DIVIDEND_RECEIVED',
       'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
       'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
-      'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
+      'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
       'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
     )
     or pg_catalog.jsonb_typeof(p_risk_flags) is distinct from 'array'

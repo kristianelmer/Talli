@@ -6,10 +6,12 @@ from datetime import UTC, date, datetime
 import pytest
 
 from talli_backend.modules.ledger.public import (
+    ApprovedLossCoverageCapitalReductionFacts,
     BankInterestIncomeFacts,
     BankLoanEvent,
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
+    CapitalReductionRecognition,
     CompanyTaxAccrualFacts,
     GroupContributionFacts,
     GroupContributionPerspective,
@@ -90,6 +92,19 @@ def command(
         primary_source=primary,
         corroborating_sources=tuple(corroborating),
         facts=facts,
+    )
+
+
+def capital_reduction_facts(
+    *,
+    recognition: CapitalReductionRecognition = (
+        CapitalReductionRecognition.DECIDED_NOT_REGISTERED
+    ),
+    nominal_reduction: Money = Money.nok("20000.00"),
+) -> ApprovedLossCoverageCapitalReductionFacts:
+    return ApprovedLossCoverageCapitalReductionFacts(
+        recognition=recognition,
+        nominal_reduction=nominal_reduction,
     )
 
 
@@ -192,6 +207,73 @@ def test_registered_cash_capital_reclassifies_nominal_premium_and_bank() -> None
     ]
 
 
+def test_decided_loss_coverage_reduction_reclassifies_equity_without_cash() -> None:
+    persistence = PatternPersistenceStub()
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                capital_reduction_facts(),
+                source(
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    "capital-reduction-decision",
+                ),
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == [
+        ("2006", "20000.00", "0.00"),
+        ("2080", "0.00", "20000.00"),
+    ]
+
+
+def test_approved_loss_coverage_fact_requires_a_positive_accounting_amount() -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError):
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    capital_reduction_facts(
+                        nominal_reduction=Money.nok("0.00")
+                    ),
+                    source(
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        "capital-reduction-invalid-shape",
+                    ),
+                )
+            )
+        )
+
+    assert persistence.calls == []
+
+
+def test_first_seen_registered_reduction_posts_directly_against_loss() -> None:
+    persistence = PatternPersistenceStub()
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                capital_reduction_facts(
+                    recognition=(
+                        CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION
+                    )
+                ),
+                source(
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    "capital-reduction-first-seen-registered",
+                ),
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == [
+        ("2000", "20000.00", "0.00"),
+        ("2080", "0.00", "20000.00"),
+    ]
+
+
 @pytest.mark.parametrize(
     ("relationship", "perspective", "expected"),
     [
@@ -269,6 +351,7 @@ def test_fact_variants_never_accept_accounts_lines_or_rule_selection() -> None:
         CompanyTaxAccrualFacts,
         OrdinaryBankLoanFacts,
         CashCapitalIncreaseFacts,
+        ApprovedLossCoverageCapitalReductionFacts,
         GroupContributionFacts,
     ):
         assert not (set(facts.__dataclass_fields__) & forbidden)

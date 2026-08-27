@@ -205,6 +205,11 @@ class CapitalIncreasePhase(StrEnum):
     REGISTERED = "REGISTERED"
 
 
+class CapitalReductionRecognition(StrEnum):
+    DECIDED_NOT_REGISTERED = "DECIDED_NOT_REGISTERED"
+    FIRST_RECOGNIZED_AFTER_REGISTRATION = "FIRST_RECOGNIZED_AFTER_REGISTRATION"
+
+
 class GroupContributionRelationship(StrEnum):
     SUBSIDIARY_TO_PARENT = "SUBSIDIARY_TO_PARENT"
     PARENT_TO_SUBSIDIARY = "PARENT_TO_SUBSIDIARY"
@@ -243,6 +248,12 @@ class CashCapitalIncreaseFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class ApprovedLossCoverageCapitalReductionFacts:
+    recognition: CapitalReductionRecognition
+    nominal_reduction: Money
+
+
+@dataclass(frozen=True, slots=True)
 class GroupContributionFacts:
     relationship: GroupContributionRelationship
     perspective: GroupContributionPerspective
@@ -258,6 +269,7 @@ SupportedHoldingActionFacts: TypeAlias = (
     | CashCapitalIncreaseFacts
     | CompanyTaxAccrualFacts
     | GroupContributionFacts
+    | ApprovedLossCoverageCapitalReductionFacts
     | OrdinaryBankLoanFacts
 )
 
@@ -277,6 +289,7 @@ class LedgerEntryKind(StrEnum):
     BANK_INTEREST = "BANK_INTEREST"
     BANK_LOAN = "BANK_LOAN"
     CAPITAL_INCREASE = "CAPITAL_INCREASE"
+    CAPITAL_REDUCTION = "CAPITAL_REDUCTION"
     COMPANY_TAX_ACCRUAL = "COMPANY_TAX_ACCRUAL"
     GROUP_CONTRIBUTION = "GROUP_CONTRIBUTION"
 
@@ -835,6 +848,7 @@ __all__ = [
     "BankSuggestionRule",
     "CashCapitalIncreaseFacts",
     "CapitalIncreasePhase",
+    "CapitalReductionRecognition",
     "CompanyTaxAccrualFacts",
     "GroupContributionFacts",
     "GroupContributionPerspective",
@@ -857,6 +871,7 @@ __all__ = [
     "LedgerSourceRecordId",
     "LedgerPage",
     "LockPeriodCommand",
+    "ApprovedLossCoverageCapitalReductionFacts",
     "OrdinaryBankLoanFacts",
     "PeriodLock",
     "PeriodLockId",

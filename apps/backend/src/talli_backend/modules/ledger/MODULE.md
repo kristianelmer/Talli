@@ -42,10 +42,20 @@ accepts a closed `SupportedHoldingActionFacts` variant and immutable
 `LedgerFactReference` values. The initial variants are
 `BankInterestIncomeFacts`, `CompanyTaxAccrualFacts`,
 `OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
-`GroupContributionFacts`; their closed phase and relationship values are
-`BankLoanEvent`, `CapitalIncreasePhase`, `GroupContributionRelationship`, and
-`GroupContributionPerspective`. Callers cannot select an account, line,
-pattern, or rule version.
+`ApprovedLossCoverageCapitalReductionFacts`, and `GroupContributionFacts`;
+their
+closed phase and relationship values are `BankLoanEvent`,
+`CapitalIncreasePhase`, `CapitalReductionRecognition`,
+`GroupContributionRelationship`, and `GroupContributionPerspective`. Callers
+cannot select an account, line, pattern, or rule version.
+
+The capital-reduction receiver accepts only an approval fact emitted by the
+corporate-governance source owner. Ledger validates the accounting amount and
+translates it; it does not decide minimum capital, loss evidence, owner value
+transfer, filing timeliness, or other corporate-law eligibility. The later
+registration transition, three-year dividend restriction, and paid-in-capital
+reconciliation remain fail-closed until their owning capability stages provide
+and verify those facts.
 
 The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`, `LockPeriodCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,
