@@ -463,11 +463,36 @@ export interface LedgerMoneyWire {
   currency: "NOK";
 }
 
-export interface LedgerOpeningBalanceWire {
+export interface NewYearShareholderWire {
+  name: string;
+  nationalId?: string | null;
+  orgNumber?: string | null;
+  shareCount: number;
+  shareholderKind: "norwegian_person" | "norwegian_company";
+}
+
+export interface NewYearOpeningEntryWire {
+  companyId: string;
+  entryId: string;
+  entryKind: "OPENING_BALANCE";
+  incomeYear: number;
+  postedAt: string;
+  replayed: boolean;
+}
+
+export interface NewYearStartResultWire {
+  postedEntry: NewYearOpeningEntryWire;
+  setupId: string;
+}
+
+export interface NewYearStartWire {
   bankBalance: LedgerMoneyWire;
   companyId: string;
   incomeYear: number;
-  shareCapitalSnapshot: LedgerMoneyWire;
+  nominalValue: LedgerMoneyWire;
+  shareCapital: LedgerMoneyWire;
+  shareCount: number;
+  shareholders: NewYearShareholderWire[];
 }
 
 export interface LedgerPageWire {
@@ -1057,14 +1082,51 @@ function isLedgerMoneyWire(value: unknown): value is LedgerMoneyWire {
   );
 }
 
-function isLedgerOpeningBalanceWire(value: unknown): value is LedgerOpeningBalanceWire {
+function isNewYearShareholderWire(value: unknown): value is NewYearShareholderWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["bankBalance","companyId","incomeYear","shareCapitalSnapshot"]) &&
+    hasOnlyProperties(value, ["name","nationalId","orgNumber","shareCount","shareholderKind"]) &&
+    (typeof value.name === "string" && value.name.length >= 1 && value.name.length <= 255) &&
+    (value.nationalId === undefined || ((typeof value.nationalId === "string" && new RegExp("^\\d{11}$", "u").test(value.nationalId)) || value.nationalId === null)) &&
+    (value.orgNumber === undefined || ((typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) || value.orgNumber === null)) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0 && value.shareCount <= 2147483647) &&
+    (value.shareholderKind === "norwegian_person" || value.shareholderKind === "norwegian_company")
+  );
+}
+
+function isNewYearOpeningEntryWire(value: unknown): value is NewYearOpeningEntryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","entryId","entryKind","incomeYear","postedAt","replayed"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.entryId) &&
+    value.entryKind === "OPENING_BALANCE" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isDateTime(value.postedAt) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isNewYearStartResultWire(value: unknown): value is NewYearStartResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["postedEntry","setupId"]) &&
+    isNewYearOpeningEntryWire(value.postedEntry) &&
+    isUuid(value.setupId)
+  );
+}
+
+function isNewYearStartWire(value: unknown): value is NewYearStartWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankBalance","companyId","incomeYear","nominalValue","shareCapital","shareCount","shareholders"]) &&
     isLedgerMoneyWire(value.bankBalance) &&
     isUuid(value.companyId) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    isLedgerMoneyWire(value.shareCapitalSnapshot)
+    isLedgerMoneyWire(value.nominalValue) &&
+    isLedgerMoneyWire(value.shareCapital) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 2147483647 && value.shareCount > 0) &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isNewYearShareholderWire(item))
   );
 }
 
@@ -1654,16 +1716,16 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async ledgerPostOpeningBalance(
-      body: LedgerOpeningBalanceWire,
+    async ledgerStartNewYear(
+      body: NewYearStartWire,
       request: TalliMutationOptions,
-    ): Promise<LedgerPostedEntryWire> {
+    ): Promise<NewYearStartResultWire> {
       return executeJson(
-        `${baseUrl}/api/v1/ledger/opening-balances`,
+        `${baseUrl}/api/v1/new-year-starts`,
         "POST",
         request,
         body,
-        isLedgerPostedEntryWire,
+        isNewYearStartResultWire,
       );
     },
 

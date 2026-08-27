@@ -21,7 +21,6 @@ import {
 } from "../apps/web/app/lib/dividend-received.ts";
 import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
-import { openingBalanceLedgerLines } from "../apps/web/app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
@@ -843,7 +842,11 @@ test(
         income_year: 2025,
         entry_type: "opening_balance",
         memo: "Åpningsbalanse for Talli-start",
-        lines: openingBalanceLedgerLines(openingInput),
+        lines: [
+          { account: "1920", description: "Bankinnskudd", debit: openingInput.bankBalance, credit: 0 },
+          { account: "2000", description: "Aksjekapital", debit: 0, credit: openingInput.shareCapital },
+          { account: "2050", description: "Annen egenkapital", debit: 0, credit: 0 },
+        ],
         created_by: ownerUser.id,
       })
       .select("id, lines")

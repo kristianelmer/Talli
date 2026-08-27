@@ -41,6 +41,22 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
@@ -54,6 +70,7 @@
     "backend-system:system_boundary",
     "backend:company_access",
     "backend:ledger",
+    "backend:shareholder_register_filing",
     "web:company-access",
     "web:ledger",
     "web:public-acquisition",
@@ -84,6 +101,10 @@
     {
       "owner": "backend-system",
       "table": "backend_system.ledger_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_workflow_receipts"
     },
     {
       "owner": "backend-system",

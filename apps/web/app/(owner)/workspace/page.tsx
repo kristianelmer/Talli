@@ -106,6 +106,7 @@ type WorkspaceProps = {
     recovery?: string;
     lockOperationId?: string;
     manualOperationId?: string;
+    newYearOperationId?: string;
   }>;
 };
 
@@ -325,6 +326,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={createOpeningBalanceSetup}>
                   <input name="companyId" type="hidden" value={companies[0].id} />
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.newYearOperationId ?? randomUUID()}
+                  />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />

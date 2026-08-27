@@ -10,6 +10,7 @@
     { "name": "backend_system.ledger_migration_reconciliations", "kind": "technical" },
     { "name": "backend_system.ledger_migration_runs", "kind": "technical" },
     { "name": "backend_system.ledger_migration_source_rows", "kind": "technical" },
+    { "name": "backend_system.ledger_workflow_receipts", "kind": "technical" },
     { "name": "public.annual_data", "kind": "legacy-business" },
     { "name": "public.audit_events", "kind": "legacy-business" },
     { "name": "public.authority_operations", "kind": "legacy-business" },

@@ -13,7 +13,11 @@ import { CompanyYearAdmissionForm } from "./CompanyYearAdmissionForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
 
 type OnboardingProps = {
-  searchParams?: Promise<{ error?: string; step?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    newYearOperationId?: string;
+    step?: string;
+  }>;
 };
 
 export default async function OnboardingPage({ searchParams }: OnboardingProps) {
@@ -74,7 +78,11 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
         <CompanyYearAdmissionForm continuation={pendingAdmission} />
       ) : null}
       {phase === "balances" && primaryCompany ? (
-        <OpeningBalanceForm companyId={primaryCompany.id} incomeYear={year} />
+        <OpeningBalanceForm
+          companyId={primaryCompany.id}
+          incomeYear={year}
+          operationId={params?.newYearOperationId}
+        />
       ) : null}
       {phase === "bank" && primaryCompany ? (
         <BankImportForm

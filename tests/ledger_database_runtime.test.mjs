@@ -125,6 +125,31 @@ as $function$
   select nullif(pg_catalog.current_setting('talli.verified_actor_id', true), '')::uuid;
 $function$;
 
+create or replace function public.company_access_auth_jwt_v1()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select coalesce(
+    nullif(pg_catalog.current_setting('talli.verified_actor_claims', true), '')::jsonb,
+    '{}'::jsonb
+  );
+$function$;
+
+create or replace function public.company_access_has_current_agreement_v1(
+  p_company_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select p_company_id is not null;
+$function$;
+
 create or replace function public.company_access_is_accepted_owner_v1(p_company_id uuid)
 returns boolean
 language sql
@@ -160,12 +185,18 @@ $function$;
 
 alter function public.company_access_auth_uid_v1()
   owner to company_access_executor;
+alter function public.company_access_auth_jwt_v1()
+  owner to company_access_executor;
+alter function public.company_access_has_current_agreement_v1(uuid)
+  owner to company_access_executor;
 alter function public.company_access_is_accepted_owner_v1(uuid)
   owner to company_access_executor;
 alter function public.company_access_is_accepted_member_v1(uuid)
   owner to company_access_executor;
 
 revoke all on function public.company_access_auth_uid_v1(),
+  public.company_access_auth_jwt_v1(),
+  public.company_access_has_current_agreement_v1(uuid),
   public.company_access_is_accepted_owner_v1(uuid),
   public.company_access_is_accepted_member_v1(uuid)
 from public, anon, authenticated, service_role;
@@ -202,6 +233,16 @@ insert into public.company_eligibility_assessments (
   'supported', true, '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
   timestamptz '2026-01-01 08:00:00+00'
+), (
+  '70000000-0000-0000-0000-000000000002', '${companyId}', 2027,
+  'supported', true, '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+  timestamptz '2026-01-01 08:00:00+00'
+), (
+  '70000000-0000-0000-0000-000000000003', '${companyId}', 2029,
+  'supported', true, '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+  timestamptz '2026-01-01 08:00:00+00'
 );
 insert into public.company_year_admissions (
   id, company_id, accounting_year, eligibility_assessment_id,
@@ -210,6 +251,14 @@ insert into public.company_year_admissions (
   '71000000-0000-0000-0000-000000000001', '${companyId}', 2026,
   '70000000-0000-0000-0000-000000000001', '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '71000000-0000-0000-0000-000000000002', '${companyId}', 2027,
+  '70000000-0000-0000-0000-000000000002', '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '71000000-0000-0000-0000-000000000003', '${companyId}', 2029,
+  '70000000-0000-0000-0000-000000000003', '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 );
 insert into public.company_year_acceptances (
   id, company_year_admission_id, company_id, accounting_year,
@@ -217,6 +266,16 @@ insert into public.company_year_acceptances (
 ) values (
   '72000000-0000-0000-0000-000000000001',
   '71000000-0000-0000-0000-000000000001', '${companyId}', 2026,
+  '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '72000000-0000-0000-0000-000000000002',
+  '71000000-0000-0000-0000-000000000002', '${companyId}', 2027,
+  '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '72000000-0000-0000-0000-000000000003',
+  '71000000-0000-0000-0000-000000000003', '${companyId}', 2029,
   '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 );
@@ -298,8 +357,34 @@ function actorContext(actorId) {
   return String.raw`
 set local role ledger_executor;
 set local talli.verified_actor_id = '${actorId}';
-set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticated","aal":"aal1"}';
+set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticated","aal":"aal2"}';
 `;
+}
+
+function workflowActorContext(actorId, aal = "aal2") {
+  return String.raw`
+set local role ledger_workflow_executor;
+set local talli.verified_actor_id = '${actorId}';
+set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticated","aal":"${aal}"}';
+`;
+}
+
+function newYearRequest(incomeYear = 2027, bankBalance = "45000.00") {
+  return {
+    companyId,
+    incomeYear,
+    bankBalance,
+    shareCapital: "30000.00",
+    shareCount: 100,
+    nominalValue: "300.00",
+    shareholders: [{
+      name: "Runtime Owner",
+      shareholderKind: "norwegian_person",
+      nationalId: "01010112345",
+      orgNumber: "999999999",
+      shareCount: 100,
+    }],
+  };
 }
 
 function postCall({
@@ -512,12 +597,194 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       where (namespace.nspname = 'ledger'
           and class.relname = any(array['entries', 'period_locks']))
         or (namespace.nspname = 'backend_system'
-          and class.relname = 'ledger_command_receipts');
+          and class.relname = any(array[
+            'ledger_command_receipts', 'ledger_workflow_receipts'
+          ]));
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true",
     );
+
+    const workflowRequest = newYearRequest();
+    const workflowRequestSql = sqlQuote(JSON.stringify(workflowRequest));
+    const shareholdersSql = sqlQuote(JSON.stringify(workflowRequest.shareholders));
+    const openingLines = [
+      { account: "1920", description: "Bankinnskudd", debit: "45000.00", credit: "0.00", currency: "NOK" },
+      { account: "2000", description: "Aksjekapital", debit: "0.00", credit: "30000.00", currency: "NOK" },
+      { account: "2050", description: "Annen egenkapital", debit: "0.00", credit: "15000.00", currency: "NOK" },
+    ];
+    const openingLinesSql = sqlQuote(JSON.stringify(openingLines));
+    const workflowKey = "73000000-0000-4000-8000-000000000007";
+
+    const aal1Failure = psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId, "aal1")}
+      select backend_system.claim_ledger_workflow_v1(
+        'new_year_start', '${workflowKey}', '${companyId}',
+        '${workflowRequestSql}'::jsonb, '${ownerId}'
+      );
+      select backend_system.record_opening_snapshot_legacy_v1(
+        '${companyId}', 2027, 45000.00, 30000.00, 100, 300.00,
+        '${shareholdersSql}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `);
+    assert.match(aal1Failure, /ledger_company_year_not_admitted/iu);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from public.opening_balance_setups
+      where company_id = '${companyId}' and income_year = 2027;
+    `)), "0");
+
+    psql(containerName, [], String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.claim_ledger_workflow_v1(
+        'new_year_start', '${workflowKey}', '${companyId}',
+        '${workflowRequestSql}'::jsonb, '${ownerId}'
+      );
+      select backend_system.record_opening_snapshot_legacy_v1(
+        '${companyId}', 2027, 45000.00, 30000.00, 100, 300.00,
+        '${shareholdersSql}'::jsonb, '${ownerId}'
+      ) as setup_id \gset
+      select * from ledger.post_entry(
+        '${workflowKey}', '${companyId}', 2027, 'OPENING_BALANCE',
+        'Åpningsbalanse for Talli-start', '${openingLinesSql}'::jsonb,
+        '[]'::jsonb, false, 'SHAREHOLDER_REGISTER_FILING',
+        'opening-setup:' || :'setup_id', 'new-year-runtime', '${ownerId}'
+      ) \gset posted_
+      select backend_system.complete_ledger_workflow_v1(
+        'new_year_start', '${workflowKey}', '${companyId}',
+        '${workflowRequestSql}'::jsonb,
+        pg_catalog.jsonb_build_object(
+          'setupId', :'setup_id',
+          'entryId', :'posted_ledger_entry_id',
+          'companyId', :'posted_company_id',
+          'incomeYear', :'posted_income_year'::integer,
+          'entryKind', :'posted_entry_kind',
+          'postedAt', :'posted_posted_at'
+        ),
+        '${ownerId}'
+      );
+      commit;
+    `);
+
+    const newYearEvidence = jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'setups', (select count(*) from public.opening_balance_setups
+          where company_id = '${companyId}' and income_year = 2027),
+        'shareholders', (select count(*) from public.opening_shareholders shareholder
+          join public.opening_balance_setups setup on setup.id = shareholder.setup_id
+          where setup.company_id = '${companyId}' and setup.income_year = 2027),
+        'identifiers', (select pg_catalog.jsonb_build_object(
+            'nationalId', shareholder.national_id,
+            'orgNumber', shareholder.org_number
+          )
+          from public.opening_shareholders shareholder
+          join public.opening_balance_setups setup on setup.id = shareholder.setup_id
+          where setup.company_id = '${companyId}' and setup.income_year = 2027),
+        'entries', (select count(*) from ledger.entries
+          where company_id = '${companyId}' and income_year = 2027
+            and entry_kind = 'OPENING_BALANCE'),
+        'lines', (select lines from ledger.entries
+          where company_id = '${companyId}' and income_year = 2027
+            and entry_kind = 'OPENING_BALANCE'),
+        'workflowReceipts', (select count(*)
+          from backend_system.ledger_workflow_receipts
+          where company_id = '${companyId}' and operation_name = 'new_year_start'
+            and idempotency_key = '${workflowKey}')
+      )::text;
+    `);
+    assert.deepEqual(newYearEvidence, {
+      entries: 1,
+      identifiers: {
+        nationalId: "01010112345",
+        orgNumber: "999999999",
+      },
+      lines: [
+        { account: "1920", description: "Bankinnskudd", debit: 45000, credit: 0, currency: "NOK" },
+        { account: "2000", description: "Aksjekapital", debit: 0, credit: 30000, currency: "NOK" },
+        { account: "2050", description: "Annen egenkapital", debit: 0, credit: 15000, currency: "NOK" },
+      ],
+      setups: 1,
+      shareholders: 1,
+      workflowReceipts: 1,
+    });
+
+    const replay = jsonOutput(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.claim_ledger_workflow_v1(
+        'new_year_start', '${workflowKey}', '${companyId}',
+        '${workflowRequestSql}'::jsonb, '${ownerId}'
+      )::text;
+      commit;
+    `);
+    assert.equal(replay.incomeYear, 2027);
+
+    const changedRequest = sqlQuote(JSON.stringify(newYearRequest(2027, "45001.00")));
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.claim_ledger_workflow_v1(
+        'new_year_start', '${workflowKey}', '${companyId}',
+        '${changedRequest}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `), /ledger_idempotency_key_reused/iu);
+
+    const failedRequest = newYearRequest(2029, "50000.00");
+    const failedRequestSql = sqlQuote(JSON.stringify(failedRequest));
+    const failedShareholdersSql = sqlQuote(JSON.stringify(failedRequest.shareholders));
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.claim_ledger_workflow_v1(
+        'new_year_start', '73000000-0000-4000-8000-000000000009',
+        '${companyId}', '${failedRequestSql}'::jsonb, '${ownerId}'
+      );
+      select backend_system.record_opening_snapshot_legacy_v1(
+        '${companyId}', 2029, 50000.00, 30000.00, 100, 300.00,
+        '${failedShareholdersSql}'::jsonb, '${ownerId}'
+      ) as setup_id \gset
+      select * from ledger.post_entry(
+        '73000000-0000-4000-8000-000000000009', '${companyId}', 2029,
+        'OPENING_BALANCE', 'Åpningsbalanse for Talli-start',
+        '${sqlQuote(JSON.stringify([
+          { account: "1920", description: "Bankinnskudd", debit: "50000.00", credit: "0.00", currency: "NOK" },
+          { account: "2000", description: "Aksjekapital", debit: "0.00", credit: "30000.00", currency: "NOK" },
+          { account: "2050", description: "Annen egenkapital", debit: "0.00", credit: "20000.00", currency: "NOK" },
+        ]))}'::jsonb, '[]'::jsonb, false,
+        'SHAREHOLDER_REGISTER_FILING', 'opening-setup:' || :'setup_id',
+        'new-year-runtime-failure', '${ownerId}'
+      );
+      select backend_system.complete_ledger_workflow_v1(
+        'unsupported_operation', '73000000-0000-4000-8000-000000000009',
+        '${companyId}', '${failedRequestSql}'::jsonb, '{}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `), /ledger_invalid_input/iu);
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'setups', (select count(*) from public.opening_balance_setups
+          where company_id = '${companyId}' and income_year = 2029),
+        'entries', (select count(*) from ledger.entries
+          where company_id = '${companyId}' and income_year = 2029),
+        'receipts', (select count(*) from backend_system.ledger_workflow_receipts
+          where company_id = '${companyId}'
+            and idempotency_key = '73000000-0000-4000-8000-000000000009')
+      )::text;
+    `), { entries: 0, receipts: 0, setups: 0 });
+
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      insert into public.opening_balance_setups (
+        company_id, income_year, bank_balance, share_capital,
+        share_count, nominal_value, created_by
+      ) values ('${companyId}', 2030, 0, 30000, 100, 300, '${ownerId}');
+      commit;
+    `), /permission denied/iu);
 
     psql(containerName, [], String.raw`
       begin;

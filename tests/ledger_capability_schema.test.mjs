@@ -68,6 +68,46 @@ test("commands bind verified identity, closed admission, and permanent idempoten
   assert.match(source, /idempotency_key\s*~\s*'\^\[A-Za-z0-9\._:-\]\{16,255\}\$'/u);
 });
 
+test("new-year coordination is atomic, replayable, and keeps posting policy in ledger", () => {
+  const source = artifact(expandPath, "expand");
+  const claim = functionBody(source, "backend_system", "claim_ledger_workflow_v1");
+  const opening = functionBody(source, "backend_system", "record_opening_snapshot_legacy_v1");
+  const complete = functionBody(source, "backend_system", "complete_ledger_workflow_v1");
+  assert.match(source, /create role ledger_workflow_store_owner nologin noinherit nobypassrls/iu);
+  assert.match(source, /create role ledger_workflow_executor nologin noinherit nobypassrls/iu);
+  assert.match(source, /backend_system\.ledger_workflow_receipts/iu);
+  assert.match(source, /ledger_workflow_receipts_immutable/iu);
+  assert.match(claim, /pg_try_advisory_xact_lock/iu);
+  assert.match(claim, /digest\(p_request::text, 'sha256'\)/iu);
+  assert.doesNotMatch(claim, /p_request_fingerprint/iu);
+  assert.match(opening, /company_access_auth_jwt_v1\(\)[\s\S]+aal/iu);
+  assert.match(opening, /company_access_company_year_allows_consequential_v1/iu);
+  const companyYearLockAt = opening.search(/ledger\.lock_company_year_v1/iu);
+  const admissionLockAt = opening.search(
+    /company_access_company_year_allows_consequential_v1/iu,
+  );
+  assert.ok(companyYearLockAt >= 0 && admissionLockAt > companyYearLockAt);
+  assert.match(opening, /insert into public\.opening_balance_setups/iu);
+  assert.match(opening, /insert into public\.opening_shareholders/iu);
+  assert.doesNotMatch(opening, /'(?:1920|2000|2050)'/u);
+  assert.match(complete, /insert into backend_system\.ledger_workflow_receipts/iu);
+  assert.doesNotMatch(source, /grant[^;]+(?:insert|update|delete)[^;]+opening_balance_setups[^;]+ledger_workflow_executor/iu);
+  assert.match(source, /grant execute on function[\s\S]+ledger\.post_entry[\s\S]+to ledger_workflow_executor/iu);
+});
+
+test("consequential admission serializes with recheck and requires AAL2 plus current agreement", () => {
+  const source = artifact(expandPath, "expand");
+  const admission = functionBody(
+    source,
+    "public",
+    "company_access_company_year_allows_consequential_v1",
+  );
+  assert.match(admission, /company_access_auth_jwt_v1\(\)[\s\S]+aal[\s\S]+aal2/iu);
+  assert.match(admission, /company_access_has_current_agreement_v1/iu);
+  assert.match(admission, /eligibility-recheck\|/iu);
+  assert.match(admission, /pg_advisory_xact_lock/iu);
+});
+
 test("persistence enforces canonical balanced two-decimal NOK entries", () => {
   const source = artifact(expandPath, "expand");
   const validator = functionBody(source, "ledger", "entry_lines_are_valid_v1");
@@ -105,7 +145,7 @@ test("migration evidence is pre-transform, reconciled, and immutable", () => {
   assert.match(source, /source_row_count\s*=\s*accepted_row_count\s*\+\s*quarantined_row_count/iu);
   assert.match(source, /unique\s*\(\s*run_id\s*,\s*source_table\s*,\s*source_id\s*\)/iu);
   assert.match(source, /quarantine\.run_id\s*=\s*pg_catalog\.current_setting\([\s\S]*?'talli\.ledger_migration_run_id'[\s\S]*?\)::uuid/iu);
-  for (const trigger of ["ledger_command_receipts_immutable", "ledger_migration_source_rows_immutable", "ledger_migration_quarantine_immutable", "ledger_migration_reconciliations_immutable"]) {
+  for (const trigger of ["ledger_command_receipts_immutable", "ledger_workflow_receipts_immutable", "ledger_migration_source_rows_immutable", "ledger_migration_quarantine_immutable", "ledger_migration_reconciliations_immutable"]) {
     assert.match(source, new RegExp(trigger, "iu"));
   }
 });
@@ -136,6 +176,7 @@ test("rollback disables target before restoring the frozen legacy writer", () =>
   const restoreAt = source.search(/alter table ledger\.ledger_entries set schema public/iu);
   assert.ok(disableAt >= 0 && restoreAt > disableAt);
   assert.match(source, /revoke ledger_executor from talli_ledger_backend/iu);
+  assert.match(source, /revoke ledger_workflow_executor from talli_ledger_backend/iu);
   assert.match(source, /rename column entry_kind to entry_type/iu);
   assert.match(source, /grant select, insert on public\.ledger_entries to authenticated/iu);
   assert.match(source, /grant execute on function public\.accept_bank_transaction_suggestion/iu);

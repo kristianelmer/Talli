@@ -312,24 +312,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
           "operation": "createOwnerDividendDecisionDraft"
         },
         {

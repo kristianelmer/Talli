@@ -7,7 +7,8 @@ import base64
 import ipaddress
 import json
 import os
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -22,6 +23,7 @@ from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.ledger_workflow import (
     LedgerApplication,
     LedgerSessionFactory,
+    NewYearStartCommand,
 )
 from talli_backend.modules.ledger.public import (
     LedgerCommand,
@@ -44,6 +46,10 @@ from talli_backend.modules.ledger.public import (
     PeriodLockPage,
     PostedLedgerEntry,
     ledger_persistence_adapter,
+)
+from talli_backend.modules.shareholder_register_filing.public import (
+    OpeningSnapshotId,
+    RecordOpeningSnapshotCommand,
 )
 from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import (
@@ -276,6 +282,38 @@ class SupabaseLedgerSession:
 
     def _unavailable(self) -> LedgerError:
         return LedgerError.unavailable()
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[SupabaseLedgerWorkflowTransaction]:
+        if not self._database_url:
+            raise self._unavailable()
+        try:
+            async with await psycopg.AsyncConnection.connect(
+                self._database_url,
+                connect_timeout=5,
+                row_factory=dict_row,
+            ) as connection:
+                async with connection.transaction():
+                    await connection.execute("set local role ledger_workflow_executor")
+                    await connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
+                        (str(self.actor_id.subject),),
+                    )
+                    await connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
+                        (self._verified.claims_json,),
+                    )
+                    yield SupabaseLedgerWorkflowTransaction(
+                        self._database_url,
+                        self._verified,
+                        connection,
+                    )
+        except LedgerError:
+            raise
+        except psycopg.OperationalError:
+            raise self._unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_database_error(str(error)) from None
 
     async def _database_rows(
         self,
@@ -535,6 +573,159 @@ class SupabaseLedgerSession:
             locked_by=_actor(value["lockedBy"]),
             locked_at=_timestamp(value["lockedAt"]),
             replayed=False,
+        )
+
+
+class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
+    """Ledger and frozen-facade operations bound to one PostgreSQL transaction."""
+
+    def __init__(
+        self,
+        database_url: str,
+        verified: _VerifiedActor,
+        connection: psycopg.AsyncConnection[Mapping[str, object]],
+    ) -> None:
+        super().__init__(database_url, verified)
+        self._connection = connection
+
+    async def _database_rows(
+        self,
+        query: str,
+        parameters: tuple[object, ...] = (),
+    ) -> list[Mapping[str, object]]:
+        try:
+            cursor = await self._connection.execute(query, parameters)
+            return list(await cursor.fetchall())
+        except psycopg.OperationalError:
+            raise self._unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_database_error(str(error)) from None
+
+    async def _one_idempotent_row(
+        self,
+        query: str,
+        parameters: tuple[object, ...],
+    ) -> Mapping[str, object]:
+        rows = await self._database_rows(query, parameters)
+        if len(rows) != 1:
+            raise self._unavailable()
+        return rows[0]
+
+    def _new_year_command(self, command: object) -> NewYearStartCommand:
+        if not isinstance(command, NewYearStartCommand):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        return command
+
+    async def claim_workflow(
+        self,
+        *,
+        operation_name: str,
+        command: object,
+        request: dict[str, object],
+    ) -> dict[str, object] | None:
+        typed = self._new_year_command(command)
+        row = await self._one_idempotent_row(
+            """
+            select backend_system.claim_ledger_workflow_v1(
+              %s::text, %s::text, %s::uuid, %s::jsonb, %s::text
+            ) as result
+            """,
+            (
+                operation_name,
+                str(typed.idempotency_key),
+                str(typed.company_id),
+                json.dumps(request, separators=(",", ":")),
+                str(typed.actor_id.subject),
+            ),
+        )
+        result = row.get("result")
+        if result is None:
+            return None
+        if not isinstance(result, Mapping):
+            raise self._unavailable()
+        return dict(result)
+
+    async def record_legacy_opening_snapshot(
+        self,
+        command: RecordOpeningSnapshotCommand,
+        *,
+        ledger_bank_balance: Money,
+    ) -> OpeningSnapshotId:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        typed = command
+        shareholders = [
+            {
+                "name": shareholder.name,
+                "shareholderKind": shareholder.shareholder_kind,
+                "nationalId": shareholder.national_id,
+                "orgNumber": shareholder.org_number,
+                "shareCount": shareholder.share_count,
+            }
+            for shareholder in typed.shareholders
+        ]
+        row = await self._one_idempotent_row(
+            """
+            select backend_system.record_opening_snapshot_legacy_v1(
+              %s::uuid, %s::integer, %s::numeric, %s::numeric,
+              %s::integer, %s::numeric, %s::jsonb, %s::text
+            ) as setup_id
+            """,
+            (
+                str(typed.company_id),
+                int(typed.income_year),
+                ledger_bank_balance.amount,
+                typed.share_capital.amount,
+                typed.share_count,
+                typed.nominal_value.amount,
+                json.dumps(shareholders, separators=(",", ":")),
+                str(typed.actor_id.subject),
+            ),
+        )
+        return OpeningSnapshotId(str(row["setup_id"]))
+
+    async def complete_workflow(
+        self,
+        *,
+        operation_name: str,
+        command: object,
+        result: dict[str, object],
+    ) -> None:
+        typed = self._new_year_command(command)
+        request = {
+            "companyId": str(typed.company_id),
+            "incomeYear": int(typed.income_year),
+            "bankBalance": format(typed.bank_balance.amount, "f"),
+            "shareCapital": format(typed.share_capital.amount, "f"),
+            "shareCount": typed.share_count,
+            "nominalValue": format(typed.nominal_value.amount, "f"),
+            "shareholders": [
+                {
+                    "name": shareholder.name,
+                    "shareholderKind": shareholder.shareholder_kind,
+                    "nationalId": shareholder.national_id,
+                    "orgNumber": shareholder.org_number,
+                    "shareCount": shareholder.share_count,
+                }
+                for shareholder in typed.shareholders
+            ],
+        }
+        await self._one_idempotent_row(
+            """
+            select backend_system.complete_ledger_workflow_v1(
+              %s::text, %s::text, %s::uuid, %s::jsonb, %s::jsonb, %s::text
+            ) as completed
+            """,
+            (
+                operation_name,
+                str(typed.idempotency_key),
+                str(typed.company_id),
+                json.dumps(request, separators=(",", ":")),
+                json.dumps(result, separators=(",", ":")),
+                str(typed.actor_id.subject),
+            ),
         )
 
 

@@ -20,6 +20,7 @@ from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.application.ledger_workflow import (
     LedgerAuthenticationError,
     LedgerSessionFactory,
+    NewYearStartCommand,
 )
 from talli_backend.modules.company_access.public import (
     AcceptCompanyInvitationRequest,
@@ -83,7 +84,10 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostedLedgerEntry,
     PostManualJournalCommand,
-    PostOpeningBalanceCommand,
+)
+from talli_backend.modules.shareholder_register_filing.public import (
+    OpeningShareholder,
+    ShareholderRegisterFilingError,
 )
 from talli_backend.shared.kernel import (
     CompanyId,
@@ -178,9 +182,20 @@ class LedgerCompanyYearWire(StrictTransportModel):
     income_year: int = Field(ge=2000, le=2100)
 
 
-class LedgerOpeningBalanceWire(LedgerCompanyYearWire):
+class NewYearShareholderWire(StrictTransportModel):
+    name: str = Field(min_length=1, max_length=255)
+    shareholder_kind: Literal["norwegian_person", "norwegian_company"]
+    national_id: str | None = Field(default=None, pattern=r"^\d{11}$")
+    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
+    share_count: int = Field(ge=0, le=2_147_483_647)
+
+
+class NewYearStartWire(LedgerCompanyYearWire):
     bank_balance: LedgerMoneyWire
-    share_capital_snapshot: LedgerMoneyWire
+    share_capital: LedgerMoneyWire
+    share_count: int = Field(gt=0, le=2_147_483_647)
+    nominal_value: LedgerMoneyWire
+    shareholders: list[NewYearShareholderWire] = Field(min_length=1, max_length=100)
 
 
 class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
@@ -209,6 +224,20 @@ class LedgerPostedEntryWire(TransportModel):
     entry_kind: LedgerEntryKind
     posted_at: datetime
     replayed: bool
+
+
+class NewYearOpeningEntryWire(TransportModel):
+    entry_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    entry_kind: Literal["OPENING_BALANCE"]
+    posted_at: datetime
+    replayed: bool
+
+
+class NewYearStartResultWire(TransportModel):
+    setup_id: UUID
+    posted_entry: NewYearOpeningEntryWire
 
 
 class LedgerRiskFlagWire(TransportModel):
@@ -444,11 +473,26 @@ def create_app(
                 title="Ledger request failed",
                 detail=error.message or "The ledger request could not be completed.",
             ) from None
+        except ShareholderRegisterFilingError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="New-year request failed",
+                detail=error.message or "The opening snapshot could not be recorded.",
+            ) from None
 
     def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
         try:
             return factory()
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, ShareholderRegisterFilingError):
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT") from None
 
     @application.exception_handler(ApiProblem)
@@ -1177,38 +1221,60 @@ def create_app(
         return await ledger_call(execute)
 
     @application.post(
-        "/api/v1/ledger/opening-balances",
-        operation_id="ledgerPostOpeningBalance",
-        response_model=LedgerPostedEntryWire,
+        "/api/v1/new-year-starts",
+        operation_id="ledgerStartNewYear",
+        response_model=NewYearStartResultWire,
         status_code=201,
-        responses={201: {"description": "Opening balance posted."} | ledger_success}
+        responses={201: {"description": "Company year started atomically."} | ledger_success}
         | ledger_errors,
         tags=["ledger"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
-    async def post_ledger_opening_balance(
+    async def start_new_year(
         request: Request,
-        command: LedgerOpeningBalanceWire,
+        command: NewYearStartWire,
         idempotency_key: Annotated[
             str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
         ],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerPostedEntryWire:
-        async def execute() -> LedgerPostedEntryWire:
+    ) -> NewYearStartResultWire:
+        async def execute() -> NewYearStartResultWire:
             session = await ledger_application.session(bearer_token(credentials))
             domain_command = ledger_input(
-                lambda: PostOpeningBalanceCommand(
+                lambda: NewYearStartCommand(
                     company_id=CompanyId(str(command.company_id)),
                     actor_id=session.actor_id,
                     correlation_id=ledger_correlation(request),
                     idempotency_key=IdempotencyKey(idempotency_key),
                     income_year=IncomeYear(command.income_year),
                     bank_balance=command.bank_balance.to_domain(),
-                    share_capital_snapshot=command.share_capital_snapshot.to_domain(),
+                    share_capital=command.share_capital.to_domain(),
+                    share_count=command.share_count,
+                    nominal_value=command.nominal_value.to_domain(),
+                    shareholders=tuple(
+                        OpeningShareholder(
+                            name=shareholder.name,
+                            shareholder_kind=shareholder.shareholder_kind,
+                            national_id=shareholder.national_id,
+                            org_number=shareholder.org_number,
+                            share_count=shareholder.share_count,
+                        )
+                        for shareholder in command.shareholders
+                    ),
                 )
             )
-            result = await session.post_opening_balance(domain_command)
-            return _posted_wire(result)
+            result = await session.start_new_year(domain_command)
+            return NewYearStartResultWire(
+                setup_id=str(result.setup_id),
+                posted_entry=NewYearOpeningEntryWire(
+                    entry_id=str(result.posted_entry.entry_id),
+                    company_id=str(result.posted_entry.company_id),
+                    income_year=int(result.posted_entry.income_year),
+                    entry_kind="OPENING_BALANCE",
+                    posted_at=result.posted_entry.posted_at.value,
+                    replayed=result.posted_entry.replayed,
+                ),
+            )
 
         return await ledger_call(execute)
 

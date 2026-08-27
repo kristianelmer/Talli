@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -11,11 +12,13 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryId,
     LedgerEntryPage,
     LedgerPage,
+    LedgerSourceRecordId,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
     PostedLedgerEntry,
 )
+from talli_backend.modules.shareholder_register_filing.public import OpeningSnapshotId
 from talli_backend.shared.kernel import (
     ActorId,
     ActorKind,
@@ -32,6 +35,7 @@ ACTOR_ID = ActorId(
     subject=UserId("20000000-0000-0000-0000-000000000002"),
 )
 ENTRY_ID = LedgerEntryId("40000000-0000-0000-0000-000000000004")
+SETUP_ID = OpeningSnapshotId("60000000-0000-0000-0000-000000000006")
 NOW = Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC))
 
 
@@ -47,6 +51,39 @@ class LedgerSessionStub:
     async def session(self, access_token: str) -> LedgerSessionStub:
         self.tokens.append(access_token)
         return self
+
+    @asynccontextmanager
+    async def transaction(self):
+        self.calls.append(("transaction", "begin"))
+        yield self
+        self.calls.append(("transaction", "commit"))
+
+    async def claim_workflow(
+        self, *, operation_name: str, command: object, request: dict[str, object]
+    ) -> None:
+        self.calls.append(
+            ("claim_workflow", {"operation": operation_name, "request": request})
+        )
+        return None
+
+    async def record_legacy_opening_snapshot(
+        self, command: object, *, ledger_bank_balance: object
+    ) -> OpeningSnapshotId:
+        self.calls.append(
+            ("record_legacy_opening_snapshot", {"command": command, "bank": ledger_bank_balance})
+        )
+        return SETUP_ID
+
+    async def complete_workflow(
+        self,
+        *,
+        operation_name: str,
+        command: object,
+        result: dict[str, object],
+    ) -> None:
+        self.calls.append(
+            ("complete_workflow", {"operation": operation_name, "result": result})
+        )
 
     async def post_entry(self, command: object, **posting: object) -> PostedLedgerEntry:
         self.calls.append(("post_entry", {"command": command, **posting}))
@@ -148,7 +185,7 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
         "ledgerPostManualJournal",
-        "ledgerPostOpeningBalance",
+        "ledgerStartNewYear",
     } <= operations
     assert not {
         "ledgerPostBankSuggestionOutcome",
@@ -168,10 +205,61 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "/api/v1/ledger/investment-sales",
         "/api/v1/ledger/owner-dividends/declared",
         "/api/v1/ledger/owner-dividends/payments",
+        "/api/v1/ledger/opening-balances",
         "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/structured-entries",
         "/api/v1/ledger/tax-settlements",
     } & client.app.openapi()["paths"].keys()
+
+
+def test_new_year_start_exposes_business_facts_without_raw_ledger_lines() -> None:
+    client, session = client_and_session()
+    body = {
+        "companyId": str(COMPANY_ID),
+        "incomeYear": 2026,
+        "bankBalance": money("45000.00"),
+        "shareCapital": money("30000.00"),
+        "shareCount": 100,
+        "nominalValue": money("300.00"),
+        "shareholders": [
+            {
+                "name": "Owner",
+                "shareholderKind": "norwegian_person",
+                "nationalId": "01010112345",
+                "orgNumber": None,
+                "shareCount": 100,
+            }
+        ],
+    }
+
+    response = client.post(
+        "/api/v1/new-year-starts", headers=headers(), json=body
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json() == {
+        "setupId": str(SETUP_ID),
+        "postedEntry": {
+            "entryId": str(ENTRY_ID),
+            "companyId": str(COMPANY_ID),
+            "incomeYear": 2026,
+            "entryKind": "OPENING_BALANCE",
+            "postedAt": "2026-08-27T10:00:00Z",
+            "replayed": False,
+        },
+    }
+    posting = next(value for name, value in session.calls if name == "post_entry")
+    assert posting["source_record_id"] == LedgerSourceRecordId(
+        f"opening-setup:{SETUP_ID}"
+    )
+    assert [line.account for line in posting["lines"]] == ["1920", "2000", "2050"]
+
+    raw_lines = client.post(
+        "/api/v1/new-year-starts",
+        headers=headers(),
+        json={**body, "lines": []},
+    )
+    assert raw_lines.status_code == 422
 
 
 def test_mutation_requires_bearer_and_idempotency_header() -> None:

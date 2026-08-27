@@ -82,9 +82,9 @@ test("the committed contract exposes company-access invitation and membership ad
 test("the committed contract exposes only ledger-owned browser commands", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operations = [
+    ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
     ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
     ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
-    ["/api/v1/ledger/opening-balances", "post", "ledgerPostOpeningBalance"],
     ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
     ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
     ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
@@ -97,6 +97,7 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
   }
 
   for (const path of [
+    "/api/v1/ledger/opening-balances",
     "/api/v1/ledger/bank-suggestion-outcomes",
     "/api/v1/ledger/investment-purchases",
     "/api/v1/ledger/investment-sales",

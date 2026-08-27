@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { TalliApiError } from "@talli/talli-api-client";
@@ -7,6 +8,7 @@ import {
   loadLedgerEntries,
   loadLedgerPeriodLocks,
   postLedgerManualJournal,
+  startNewYear,
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   presentLedgerEntries,
@@ -45,6 +47,22 @@ test("ledger errors keep the frozen plain-Norwegian guidance", () => {
   assert.equal(
     ledgerActionErrorMessage(problem("LEDGER_DESCRIPTION_REQUIRED")),
     "Alle journallinjer må ha beskrivelse.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_INVALID_INPUT")),
+    "Kontroller beløp, aksjetall og øvrige opplysninger.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_COMPANY_YEAR_NOT_ADMITTED")),
+    "Selskapsåret er ikke godkjent for denne handlingen.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_OPENING_ALREADY_EXISTS")),
+    "Åpningsbalansen er allerede registrert for dette året.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("SHAREHOLDER_REGISTER_FILING_INVALID_INPUT")),
+    "Kontroller aksjetall og aksjonæropplysninger.",
   );
 });
 
@@ -156,6 +174,140 @@ test("ledger mutation transport injects decimal money and idempotency headers", 
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
+});
+
+test("new-year start uses the generated atomic workflow without exposing ledger lines", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  let captured;
+  globalThis.fetch = async (url, request) => {
+    captured = { url: String(url), request };
+    return Response.json({
+      setupId: "60000000-0000-0000-0000-000000000006",
+      postedEntry: {
+        companyId: "10000000-0000-0000-0000-000000000001",
+        entryId: "40000000-0000-0000-0000-000000000004",
+        entryKind: "OPENING_BALANCE",
+        incomeYear: 2026,
+        postedAt: "2026-08-27T10:00:00Z",
+        replayed: false,
+      },
+    }, { status: 201 });
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    await startNewYear(
+      "session-token",
+      {
+        bankBalance: { amount: "45000.00", currency: "NOK" },
+        companyId: "10000000-0000-0000-0000-000000000001",
+        incomeYear: 2026,
+        nominalValue: { amount: "300.00", currency: "NOK" },
+        shareCapital: { amount: "30000.00", currency: "NOK" },
+        shareCount: 100,
+        shareholders: [{
+          name: "Owner",
+          nationalId: "01010112345",
+          orgNumber: null,
+          shareCount: 100,
+          shareholderKind: "norwegian_person",
+        }],
+      },
+      "60000000-0000-4000-8000-000000000006",
+      "new-year-test",
+    );
+
+    assert.equal(captured.url, "https://backend.example/api/v1/new-year-starts");
+    const headers = new Headers(captured.request.headers);
+    assert.equal(headers.get("Idempotency-Key"), "60000000-0000-4000-8000-000000000006");
+    assert.equal("lines" in JSON.parse(captured.request.body), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("new-year start rejects malformed or non-opening success evidence", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  const command = {
+    bankBalance: { amount: "45000.00", currency: "NOK" },
+    companyId: "10000000-0000-0000-0000-000000000001",
+    incomeYear: 2026,
+    nominalValue: { amount: "300.00", currency: "NOK" },
+    shareCapital: { amount: "30000.00", currency: "NOK" },
+    shareCount: 100,
+    shareholders: [{
+      name: "Owner",
+      nationalId: "01010112345",
+      orgNumber: null,
+      shareCount: 100,
+      shareholderKind: "norwegian_person",
+    }],
+  };
+
+  try {
+    for (const response of [
+      {
+        setupId: "",
+        postedEntry: {
+          companyId: command.companyId,
+          entryId: "40000000-0000-0000-0000-000000000004",
+          entryKind: "OPENING_BALANCE",
+          incomeYear: 2026,
+          postedAt: "2026-08-27T10:00:00Z",
+          replayed: false,
+        },
+      },
+      {
+        setupId: "60000000-0000-0000-0000-000000000006",
+        postedEntry: {
+          companyId: command.companyId,
+          entryId: "40000000-0000-0000-0000-000000000004",
+          entryKind: "MANUAL_JOURNAL",
+          incomeYear: 2026,
+          postedAt: "2026-08-27T10:00:00Z",
+          replayed: false,
+        },
+      },
+    ]) {
+      globalThis.fetch = async () => Response.json(response, { status: 201 });
+      await assert.rejects(
+        startNewYear(
+          "session-token",
+          command,
+          "60000000-0000-4000-8000-000000000006",
+        ),
+        (error) => error instanceof TalliApiError && error.status === 502,
+      );
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("opening setup action has no direct business persistence or duplicate posting policy", () => {
+  const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+  const form = readFileSync(
+    new URL("../app/(owner)/onboarding/OpeningBalanceForm.tsx", import.meta.url),
+    "utf8",
+  );
+  const start = actions.indexOf("export async function createOpeningBalanceSetup");
+  const end = actions.indexOf("export async function lockCompanyYear", start);
+  const body = actions.slice(start, end);
+  assert.match(body, /startNewYear\(/u);
+  assert.doesNotMatch(body, /\.from\("(?:opening_balance_setups|opening_shareholders|ledger_entries)"\)/u);
+  assert.match(body, /persistLedgerAudit\(/u);
+  assert.match(body, /\.from\("audit_events"\)/u);
+  assert.doesNotMatch(body, /(?:1920|2000|2050)/u);
+  assert.match(body, /newYearOperationId/iu);
+  assert.match(body, /kontrollsporet kunne ikke bekreftes/u);
+  assert.doesNotMatch(form, /useMemo|capitalOk|sharesOk|shareholdersOk|canSubmit/u);
 });
 
 test("ledger presentation maps generated facts without recreating posting policy", () => {

@@ -9,6 +9,20 @@ select pg_catalog.pg_advisory_xact_lock(
 );
 
 -- Exactly one writer: disable every target entry point before exposing legacy.
+revoke all on function
+  backend_system.claim_ledger_workflow_v1(text, text, uuid, jsonb, text),
+  backend_system.record_opening_snapshot_legacy_v1(
+    uuid, integer, numeric, numeric, integer, numeric, jsonb, text
+  ),
+  backend_system.complete_ledger_workflow_v1(
+    text, text, uuid, jsonb, jsonb, text
+  )
+from ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.post_entry(
+  text, uuid, integer, text, text, jsonb, jsonb, boolean,
+  text, text, text, text
+) from ledger_workflow_executor;
+revoke ledger_workflow_executor from talli_ledger_backend;
 revoke all on function ledger.post_entry(
   text, uuid, integer, text, text, jsonb, jsonb, boolean,
   text, text, text, text

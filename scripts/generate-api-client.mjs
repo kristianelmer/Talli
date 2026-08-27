@@ -36,9 +36,9 @@ const companyAccessOperations = {
   finalizeDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/finalize", "post", "companyAccessFinalizeDeletion"],
 };
 const ledgerOperations = {
+  startNewYear: ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
-  postOpeningBalance: ["/api/v1/ledger/opening-balances", "post", "ledgerPostOpeningBalance"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
@@ -248,7 +248,10 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerLockPeriodWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
-  "LedgerOpeningBalanceWire",
+  "NewYearShareholderWire",
+  "NewYearOpeningEntryWire",
+  "NewYearStartResultWire",
+  "NewYearStartWire",
   "LedgerPageWire",
   "LedgerPeriodLockPageWire",
   "LedgerPeriodLockWire",
@@ -865,16 +868,16 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async ledgerPostOpeningBalance(
-      body: LedgerOpeningBalanceWire,
+    async ledgerStartNewYear(
+      body: NewYearStartWire,
       request: TalliMutationOptions,
-    ): Promise<LedgerPostedEntryWire> {
+    ): Promise<NewYearStartResultWire> {
       return executeJson(
-        \`\${baseUrl}/api/v1/ledger/opening-balances\`,
+        \`\${baseUrl}/api/v1/new-year-starts\`,
         "POST",
         request,
         body,
-        isLedgerPostedEntryWire,
+        isNewYearStartResultWire,
       );
     },
 

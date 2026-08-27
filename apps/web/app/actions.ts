@@ -109,6 +109,8 @@ import {
   ledgerOutcomeMayBeUnknown,
   lockLedgerPeriod,
   postLedgerManualJournal,
+  startNewYear,
+  type NewYearShareholderWire,
 } from "../features/ledger";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -132,10 +134,8 @@ import {
   persistInvitationAudit,
 } from "./lib/invitation-side-effects";
 import {
-  OpeningShareholderInput,
-  openingBalanceLedgerLines,
-  validateOpeningBalanceInput,
-} from "./lib/opening-balance";
+  persistLedgerAudit,
+} from "./lib/ledger-audit-side-effects";
 import {
   OwnerDividendDraftBasisError,
   buildOwnerDividendAnnualBasis,
@@ -902,76 +902,68 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   if (!user) {
     failTo(returnTo, "Innlogging kreves.");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    failTo(returnTo, "Innlogging kreves.");
+  }
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const shareholders = parseShareholders(formData);
-  const input = {
-    bankBalance: Number(formString(formData, "bankBalance")),
-    shareCapital: Number(formString(formData, "shareCapital")),
+  const operationId = requiredFormUuid(formData, "operationId");
+  const command = {
+    companyId,
+    incomeYear,
+    bankBalance: {
+      amount: formString(formData, "bankBalance"),
+      currency: "NOK" as const,
+    },
+    shareCapital: {
+      amount: formString(formData, "shareCapital"),
+      currency: "NOK" as const,
+    },
     shareCount: Number(formString(formData, "shareCount")),
-    nominalValue: Number(formString(formData, "nominalValue")),
-    shareholders,
+    nominalValue: {
+      amount: formString(formData, "nominalValue"),
+      currency: "NOK" as const,
+    },
+    shareholders: parseShareholders(formData),
   };
   try {
-    validateOpeningBalanceInput(input);
+    await startNewYear(accessToken, command, operationId, operationId);
   } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Ugyldig åpningsbalanse");
+    const separator = returnTo.includes("?") ? "&" : "?";
+    const continuation = ledgerOutcomeMayBeUnknown(error)
+      ? `&newYearOperationId=${encodeURIComponent(operationId)}`
+      : "";
+    redirect(
+      `${returnTo}${separator}error=${encodeURIComponent(ledgerActionErrorMessage(error))}${continuation}`,
+    );
   }
 
-  const { data: setup, error: setupError } = await supabase
-    .from("opening_balance_setups")
-    .insert({
-      company_id: companyId,
-      income_year: incomeYear,
-      bank_balance: input.bankBalance,
-      share_capital: input.shareCapital,
-      share_count: input.shareCount,
-      nominal_value: input.nominalValue,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (setupError || !setup) {
-    failTo(returnTo, setupError?.message ?? "Kunne ikke lagre åpningsbalanse");
+  // Audit persistence remains on its frozen #155 facade during the serialized
+  // ledger stage; the accounting and shareholder records above are atomic.
+  try {
+    const frozenAuditStore = createInvitationSideEffectStore(supabase);
+    await persistLedgerAudit({
+      async insertAudit(row) {
+        const { error } = await supabase.from("audit_events").insert(row);
+        return { error };
+      },
+      findAudit: frozenAuditStore.findAudit,
+    }, {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "ledger",
+      action: "opening_balance_locked",
+      message: `Åpningsbalanse låst for ${incomeYear}.`,
+    });
+  } catch {
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(
+      `${returnTo}${separator}error=${encodeURIComponent("Åpningsbalansen ble lagret, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.")}&newYearOperationId=${encodeURIComponent(operationId)}`,
+    );
   }
-
-  const { error: shareholderError } = await supabase.from("opening_shareholders").insert(
-    shareholders.map((shareholder) => ({
-      setup_id: setup.id,
-      company_id: companyId,
-      name: shareholder.name,
-      shareholder_kind: shareholder.shareholderKind,
-      national_id: shareholder.nationalId || null,
-      org_number: shareholder.orgNumber || null,
-      share_count: shareholder.shareCount,
-      created_by: user.id,
-    })),
-  );
-  if (shareholderError) {
-    failTo(returnTo, shareholderError.message);
-  }
-
-  const { error: ledgerError } = await supabase.from("ledger_entries").insert({
-    company_id: companyId,
-    setup_id: setup.id,
-    income_year: incomeYear,
-    entry_type: "opening_balance",
-    memo: "Åpningsbalanse for Talli-start",
-    lines: openingBalanceLedgerLines(input),
-    created_by: user.id,
-  });
-  if (ledgerError) {
-    failTo(returnTo, ledgerError.message);
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "opening_balance_locked",
-    message: `Åpningsbalanse låst for ${incomeYear}.`,
-  });
 
   revalidatePath("/");
   redirect(returnTo);
@@ -5298,7 +5290,7 @@ export async function postManualJournal(formData: FormData) {
  * posting invariant, warning, and account decision.
  */
 
-function parseShareholders(formData: FormData): OpeningShareholderInput[] {
+function parseShareholders(formData: FormData): NewYearShareholderWire[] {
   const names = formData.getAll("shareholderName").map(String);
   return names
     .map((name, index) => ({
@@ -5306,8 +5298,8 @@ function parseShareholders(formData: FormData): OpeningShareholderInput[] {
       shareholderKind: String(formData.getAll("shareholderKind")[index] ?? "norwegian_person") as
         | "norwegian_person"
         | "norwegian_company",
-      nationalId: String(formData.getAll("shareholderNationalId")[index] ?? "").trim(),
-      orgNumber: String(formData.getAll("shareholderOrgNumber")[index] ?? "").trim(),
+      nationalId: String(formData.getAll("shareholderNationalId")[index] ?? "").trim() || null,
+      orgNumber: String(formData.getAll("shareholderOrgNumber")[index] ?? "").trim() || null,
       shareCount: Number(formData.getAll("shareholderShareCount")[index] ?? 0),
     }))
     .filter((shareholder) => shareholder.name || shareholder.shareCount > 0);

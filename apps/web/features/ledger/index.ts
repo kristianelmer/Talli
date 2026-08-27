@@ -4,7 +4,7 @@ export {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
-  postLedgerOpeningBalance,
+  startNewYear,
 } from "./transport.ts";
 export {
   presentLedgerEntries,
@@ -20,5 +20,6 @@ export type {
   LedgerLockPeriodWire,
   LedgerManualJournalWire,
   LedgerMoneyWire,
-  LedgerOpeningBalanceWire,
+  NewYearShareholderWire,
+  NewYearStartWire,
 } from "@talli/talli-api-client";

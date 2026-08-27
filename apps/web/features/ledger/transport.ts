@@ -4,8 +4,8 @@ import {
   type LedgerEntryViewWire,
   type LedgerLockPeriodWire,
   type LedgerManualJournalWire,
-  type LedgerOpeningBalanceWire,
   type LedgerPeriodLockWire,
+  type NewYearStartWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -80,13 +80,13 @@ export async function loadLedgerPeriodLocks(
   }));
 }
 
-export function postLedgerOpeningBalance(
+export function startNewYear(
   accessToken: string,
-  command: LedgerOpeningBalanceWire,
+  command: NewYearStartWire,
   idempotencyKey: string,
   requestId?: string,
 ) {
-  return client(accessToken).ledgerPostOpeningBalance(
+  return client(accessToken).ledgerStartNewYear(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

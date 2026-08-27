@@ -26,15 +26,31 @@ begin
   ) then
     create role talli_ledger_backend nologin noinherit nobypassrls;
   end if;
+  if not exists (
+    select 1 from pg_catalog.pg_roles where rolname = 'ledger_workflow_store_owner'
+  ) then
+    create role ledger_workflow_store_owner nologin noinherit nobypassrls;
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_roles where rolname = 'ledger_workflow_executor'
+  ) then
+    create role ledger_workflow_executor nologin noinherit nobypassrls;
+  end if;
 end
 $ledger_roles$;
 
 alter role ledger_store_owner nologin noinherit nobypassrls;
 alter role ledger_executor nologin noinherit nobypassrls;
 alter role talli_ledger_backend nologin noinherit nobypassrls;
+alter role ledger_workflow_store_owner nologin noinherit nobypassrls;
+alter role ledger_workflow_executor nologin noinherit nobypassrls;
 grant ledger_executor to talli_ledger_backend with inherit false, set true;
+grant ledger_workflow_executor to talli_ledger_backend with inherit false, set true;
 grant usage, create on schema ledger to ledger_store_owner;
 grant usage on schema ledger to ledger_executor;
+grant usage on schema backend_system to ledger_workflow_store_owner,
+  ledger_workflow_executor;
+grant usage on schema ledger to ledger_workflow_executor;
 
 create table if not exists backend_system.ledger_migration_runs (
   id uuid primary key,
@@ -144,6 +160,21 @@ create table if not exists backend_system.ledger_command_receipts (
   actor_id uuid not null,
   company_id uuid not null references public.companies(id) on delete restrict,
   operation_name text not null check (operation_name in ('post_entry', 'lock_period')),
+  idempotency_key text not null check (
+    idempotency_key ~ '^[A-Za-z0-9._:-]{16,255}$'
+  ),
+  request_fingerprint text not null check (request_fingerprint ~ '^[0-9a-f]{64}$'),
+  result jsonb not null,
+  completed_at timestamptz not null default statement_timestamp(),
+  unique (api_major, actor_id, company_id, operation_name, idempotency_key)
+);
+
+create table if not exists backend_system.ledger_workflow_receipts (
+  id uuid primary key default gen_random_uuid(),
+  api_major text not null check (api_major = 'v1'),
+  actor_id uuid not null,
+  company_id uuid not null references public.companies(id) on delete restrict,
+  operation_name text not null check (operation_name in ('new_year_start')),
   idempotency_key text not null check (
     idempotency_key ~ '^[A-Za-z0-9._:-]{16,255}$'
   ),
@@ -506,43 +537,69 @@ create or replace function public.company_access_company_year_allows_consequenti
   p_income_year integer
 )
 returns boolean
-language sql
-stable
+language plpgsql
+volatile
 security definer
 set search_path = ''
 as $function$
-  select public.company_access_is_accepted_owner_v1(p_company_id)
-    and exists (
-      select 1
-      from public.company_year_admissions admission
-      join public.company_year_acceptances acceptance
-        on acceptance.company_year_admission_id = admission.id
-        and acceptance.company_id = admission.company_id
-        and acceptance.accounting_year = admission.accounting_year
-      join lateral (
-        select assessment.decision,
-          assessment.consequential_operations_allowed,
-          assessment.capability_manifest_version,
-          assessment.capability_manifest_sha256
-        from public.company_eligibility_assessments assessment
-        where assessment.company_id = admission.company_id
-          and assessment.accounting_year = admission.accounting_year
-        order by assessment.assessed_at desc, assessment.id desc
-        limit 1
-      ) current_assessment on true
-      where admission.company_id = p_company_id
-        and admission.accounting_year = p_income_year
-        and current_assessment.decision = 'supported'
-        and current_assessment.consequential_operations_allowed
-        and current_assessment.capability_manifest_version
-          = admission.capability_manifest_version
-        and current_assessment.capability_manifest_sha256
-          = admission.capability_manifest_sha256
-        and acceptance.capability_manifest_version
-          = admission.capability_manifest_version
-        and acceptance.capability_manifest_sha256
-          = admission.capability_manifest_sha256
-    );
+declare
+  v_admission_id uuid;
+begin
+  if not public.company_access_is_accepted_owner_v1(p_company_id)
+    or coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
+    or not public.company_access_has_current_agreement_v1(p_company_id)
+  then
+    return false;
+  end if;
+
+  select admission.id into v_admission_id
+  from public.company_year_admissions admission
+  where admission.company_id = p_company_id
+    and admission.accounting_year = p_income_year;
+  if v_admission_id is null then
+    return false;
+  end if;
+
+  -- Serialize with eligibility rechecks so a consequential command cannot
+  -- observe an assessment that is being superseded in the same instant.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      'eligibility-recheck|' || v_admission_id::text,
+      187
+    )
+  );
+
+  return exists (
+    select 1
+    from public.company_year_admissions admission
+    join public.company_year_acceptances acceptance
+      on acceptance.company_year_admission_id = admission.id
+      and acceptance.company_id = admission.company_id
+      and acceptance.accounting_year = admission.accounting_year
+    join lateral (
+      select assessment.decision,
+        assessment.consequential_operations_allowed,
+        assessment.capability_manifest_version,
+        assessment.capability_manifest_sha256
+      from public.company_eligibility_assessments assessment
+      where assessment.company_id = admission.company_id
+        and assessment.accounting_year = admission.accounting_year
+      order by assessment.assessed_at desc, assessment.id desc
+      limit 1
+    ) current_assessment on true
+    where admission.id = v_admission_id
+      and current_assessment.decision = 'supported'
+      and current_assessment.consequential_operations_allowed
+      and current_assessment.capability_manifest_version
+        = admission.capability_manifest_version
+      and current_assessment.capability_manifest_sha256
+        = admission.capability_manifest_sha256
+      and acceptance.capability_manifest_version
+        = admission.capability_manifest_version
+      and acceptance.capability_manifest_sha256
+        = admission.capability_manifest_sha256
+  );
+end;
 $function$;
 
 do $company_access_contract_owner$
@@ -569,10 +626,14 @@ alter table ledger.period_locks enable row level security;
 alter table ledger.period_locks force row level security;
 alter table backend_system.ledger_command_receipts enable row level security;
 alter table backend_system.ledger_command_receipts force row level security;
+alter table backend_system.ledger_workflow_receipts enable row level security;
+alter table backend_system.ledger_workflow_receipts force row level security;
 
 grant usage on schema public to ledger_store_owner;
 grant execute on function
   public.company_access_auth_uid_v1(),
+  public.company_access_auth_jwt_v1(),
+  public.company_access_has_current_agreement_v1(uuid),
   public.company_access_is_accepted_owner_v1(uuid),
   public.company_access_is_accepted_member_v1(uuid)
 to ledger_store_owner;
@@ -580,11 +641,26 @@ grant select, insert on ledger.entries, ledger.period_locks
 to ledger_store_owner;
 grant select, insert on backend_system.ledger_command_receipts
 to ledger_store_owner;
+grant usage on schema public, ledger to ledger_workflow_store_owner;
+grant execute on function
+  public.company_access_auth_uid_v1(),
+  public.company_access_auth_jwt_v1(),
+  public.company_access_has_current_agreement_v1(uuid),
+  public.company_access_is_accepted_owner_v1(uuid),
+  public.company_access_is_accepted_member_v1(uuid),
+  public.company_access_company_year_allows_consequential_v1(uuid, integer)
+to ledger_workflow_store_owner;
+grant select, insert on public.opening_balance_setups,
+  public.opening_shareholders
+to ledger_workflow_store_owner;
+grant select, insert on backend_system.ledger_workflow_receipts
+to ledger_workflow_store_owner;
 grant select on backend_system.ledger_cursor_signing_keys
 to ledger_store_owner;
 revoke all on ledger.entries, ledger.period_locks
 from ledger_executor, talli_ledger_backend;
 revoke all on backend_system.ledger_command_receipts,
+  backend_system.ledger_workflow_receipts,
   backend_system.ledger_cursor_signing_keys,
   backend_system.ledger_migration_runs,
   backend_system.ledger_migration_source_rows,
@@ -592,6 +668,46 @@ revoke all on backend_system.ledger_command_receipts,
   backend_system.ledger_migration_quarantine
 from ledger_executor, talli_ledger_backend;
 
+drop policy if exists "ledger workflow reads receipts"
+  on backend_system.ledger_workflow_receipts;
+create policy "ledger workflow reads receipts"
+on backend_system.ledger_workflow_receipts for select
+to ledger_workflow_store_owner
+using (
+  actor_id = public.company_access_auth_uid_v1()
+  and public.company_access_is_accepted_owner_v1(company_id)
+);
+drop policy if exists "ledger workflow appends receipts"
+  on backend_system.ledger_workflow_receipts;
+create policy "ledger workflow appends receipts"
+on backend_system.ledger_workflow_receipts for insert
+to ledger_workflow_store_owner
+with check (
+  actor_id = public.company_access_auth_uid_v1()
+  and public.company_access_is_accepted_owner_v1(company_id)
+);
+
+drop policy if exists "ledger workflow creates opening setups"
+  on public.opening_balance_setups;
+create policy "ledger workflow creates opening setups"
+on public.opening_balance_setups for insert to ledger_workflow_store_owner
+with check (
+  created_by = public.company_access_auth_uid_v1()
+  and public.company_access_is_accepted_owner_v1(company_id)
+);
+drop policy if exists "ledger workflow reads opening setups"
+  on public.opening_balance_setups;
+create policy "ledger workflow reads opening setups"
+on public.opening_balance_setups for select to ledger_workflow_store_owner
+using (public.company_access_is_accepted_owner_v1(company_id));
+drop policy if exists "ledger workflow creates opening shareholders"
+  on public.opening_shareholders;
+create policy "ledger workflow creates opening shareholders"
+on public.opening_shareholders for insert to ledger_workflow_store_owner
+with check (
+  created_by = public.company_access_auth_uid_v1()
+  and public.company_access_is_accepted_owner_v1(company_id)
+);
 drop policy if exists "ledger store reads entries" on ledger.entries;
 create policy "ledger store reads entries"
 on ledger.entries for select to ledger_store_owner
@@ -656,6 +772,11 @@ drop trigger if exists ledger_command_receipts_immutable
 create trigger ledger_command_receipts_immutable
 before update or delete on backend_system.ledger_command_receipts
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+drop trigger if exists ledger_workflow_receipts_immutable
+  on backend_system.ledger_workflow_receipts;
+create trigger ledger_workflow_receipts_immutable
+before update or delete on backend_system.ledger_workflow_receipts
+for each row execute function backend_system.prevent_ledger_technical_mutation();
 drop trigger if exists ledger_cursor_signing_keys_immutable
   on backend_system.ledger_cursor_signing_keys;
 create trigger ledger_cursor_signing_keys_immutable
@@ -676,6 +797,249 @@ drop trigger if exists ledger_migration_reconciliations_immutable
 create trigger ledger_migration_reconciliations_immutable
 before update or delete on backend_system.ledger_migration_reconciliations
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+create or replace function backend_system.claim_ledger_workflow_v1(
+  p_operation_name text,
+  p_idempotency_key text,
+  p_company_id uuid,
+  p_request jsonb,
+  p_verified_subject text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_fingerprint text;
+  v_receipt backend_system.ledger_workflow_receipts%rowtype;
+begin
+  if v_actor_id is null
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then
+    raise exception 'ledger_forbidden';
+  end if;
+  if p_operation_name <> 'new_year_start'
+    or p_company_id is null
+    or coalesce(p_idempotency_key, '') !~ '^[A-Za-z0-9._:-]{16,255}$'
+    or pg_catalog.jsonb_typeof(p_request) is distinct from 'object'
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+  if not public.company_access_is_accepted_member_v1(p_company_id) then
+    raise exception 'ledger_not_found';
+  end if;
+  if not public.company_access_is_accepted_owner_v1(p_company_id) then
+    raise exception 'ledger_forbidden';
+  end if;
+
+  v_fingerprint := pg_catalog.encode(
+    public.digest(p_request::text, 'sha256'), 'hex'
+  );
+  if not pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended(
+    'ledger-workflow:v1:' || v_actor_id::text || ':' || p_company_id::text
+      || ':' || p_operation_name || ':' || p_idempotency_key,
+    0
+  )) then
+    raise exception 'ledger_idempotency_in_progress';
+  end if;
+
+  select receipt.* into v_receipt
+  from backend_system.ledger_workflow_receipts receipt
+  where receipt.api_major = 'v1'
+    and receipt.actor_id = v_actor_id
+    and receipt.company_id = p_company_id
+    and receipt.operation_name = p_operation_name
+    and receipt.idempotency_key = p_idempotency_key;
+  if not found then
+    return null;
+  end if;
+  if v_receipt.request_fingerprint <> v_fingerprint then
+    raise exception 'ledger_idempotency_key_reused';
+  end if;
+  return v_receipt.result;
+end;
+$function$;
+
+create or replace function backend_system.record_opening_snapshot_legacy_v1(
+  p_company_id uuid,
+  p_income_year integer,
+  p_bank_balance numeric,
+  p_share_capital numeric,
+  p_share_count integer,
+  p_nominal_value numeric,
+  p_shareholders jsonb,
+  p_verified_subject text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_setup_id uuid := pg_catalog.gen_random_uuid();
+  v_shareholder jsonb;
+  v_name text;
+  v_kind text;
+  v_national_id text;
+  v_org_number text;
+  v_shares integer;
+  v_total_shares bigint := 0;
+begin
+  if v_actor_id is null
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then
+    raise exception 'ledger_forbidden';
+  end if;
+  if p_company_id is null
+    or p_income_year not between 2000 and 2100
+    or p_bank_balance is null or p_bank_balance < 0
+    or p_bank_balance <> pg_catalog.round(p_bank_balance, 2)
+    or p_share_capital is null or p_share_capital < 0
+    or p_share_capital <> pg_catalog.round(p_share_capital, 2)
+    or p_share_count is null or p_share_count <= 0
+    or p_nominal_value is null or p_nominal_value <= 0
+    or p_nominal_value <> pg_catalog.round(p_nominal_value, 2)
+    or p_share_capital <> pg_catalog.round(p_share_count * p_nominal_value, 2)
+    or pg_catalog.jsonb_typeof(p_shareholders) is distinct from 'array'
+    or pg_catalog.jsonb_array_length(p_shareholders) not between 1 and 100
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+  if not public.company_access_is_accepted_member_v1(p_company_id) then
+    raise exception 'ledger_not_found';
+  end if;
+  if not public.company_access_is_accepted_owner_v1(p_company_id) then
+    raise exception 'ledger_forbidden';
+  end if;
+  -- Every ledger writer takes the company-year lock before the eligibility
+  -- recheck lock. Keeping this order identical to ledger.post_entry prevents
+  -- a new-year workflow and another posting from deadlocking each other.
+  perform ledger.lock_company_year_v1(p_company_id, p_income_year);
+  if coalesce(public.company_access_auth_jwt_v1() ->> 'aal', '') <> 'aal2'
+    or not public.company_access_company_year_allows_consequential_v1(
+      p_company_id, p_income_year
+    )
+  then
+    raise exception 'ledger_company_year_not_admitted';
+  end if;
+
+  if exists (
+    select 1 from public.opening_balance_setups setup
+    where setup.company_id = p_company_id
+      and setup.income_year = p_income_year
+  ) then
+    raise exception 'ledger_opening_already_exists';
+  end if;
+
+  for v_shareholder in
+    select value from pg_catalog.jsonb_array_elements(p_shareholders)
+  loop
+    if pg_catalog.jsonb_typeof(v_shareholder) is distinct from 'object'
+      or pg_catalog.jsonb_typeof(v_shareholder -> 'name') is distinct from 'string'
+      or pg_catalog.jsonb_typeof(v_shareholder -> 'shareholderKind')
+        is distinct from 'string'
+      or pg_catalog.jsonb_typeof(v_shareholder -> 'shareCount')
+        is distinct from 'number'
+      or (v_shareholder ->> 'shareCount') !~ '^[0-9]+$'
+    then
+      raise exception 'ledger_invalid_input';
+    end if;
+    v_name := pg_catalog.btrim(v_shareholder ->> 'name');
+    v_kind := v_shareholder ->> 'shareholderKind';
+    v_national_id := nullif(pg_catalog.btrim(
+      coalesce(v_shareholder ->> 'nationalId', '')
+    ), '');
+    v_org_number := nullif(pg_catalog.btrim(
+      coalesce(v_shareholder ->> 'orgNumber', '')
+    ), '');
+    v_shares := (v_shareholder ->> 'shareCount')::integer;
+    if v_name = '' or pg_catalog.char_length(v_name) > 255
+      or v_kind not in ('norwegian_person', 'norwegian_company')
+      or v_shares < 0
+      or (v_kind = 'norwegian_person' and coalesce(v_national_id, '') !~ '^[0-9]{11}$')
+      or (v_kind = 'norwegian_company' and coalesce(v_org_number, '') !~ '^[0-9]{9}$')
+    then
+      raise exception 'ledger_invalid_input';
+    end if;
+    v_total_shares := v_total_shares + v_shares;
+  end loop;
+  if v_total_shares <> p_share_count then
+    raise exception 'ledger_invalid_input';
+  end if;
+
+  insert into public.opening_balance_setups (
+    id, company_id, income_year, bank_balance, share_capital,
+    share_count, nominal_value, created_by
+  ) values (
+    v_setup_id, p_company_id, p_income_year, p_bank_balance, p_share_capital,
+    p_share_count, p_nominal_value, v_actor_id
+  );
+  insert into public.opening_shareholders (
+    setup_id, company_id, name, shareholder_kind, national_id,
+    org_number, share_count, created_by
+  )
+  select
+    v_setup_id,
+    p_company_id,
+    pg_catalog.btrim(value ->> 'name'),
+    value ->> 'shareholderKind',
+    nullif(pg_catalog.btrim(coalesce(value ->> 'nationalId', '')), ''),
+    nullif(pg_catalog.btrim(coalesce(value ->> 'orgNumber', '')), ''),
+    (value ->> 'shareCount')::integer,
+    v_actor_id
+  from pg_catalog.jsonb_array_elements(p_shareholders);
+  return v_setup_id;
+end;
+$function$;
+
+create or replace function backend_system.complete_ledger_workflow_v1(
+  p_operation_name text,
+  p_idempotency_key text,
+  p_company_id uuid,
+  p_request jsonb,
+  p_result jsonb,
+  p_verified_subject text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_fingerprint text;
+begin
+  if v_actor_id is null
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+    or p_operation_name <> 'new_year_start'
+    or p_company_id is null
+    or coalesce(p_idempotency_key, '') !~ '^[A-Za-z0-9._:-]{16,255}$'
+    or pg_catalog.jsonb_typeof(p_request) is distinct from 'object'
+    or pg_catalog.jsonb_typeof(p_result) is distinct from 'object'
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+  v_fingerprint := pg_catalog.encode(
+    public.digest(p_request::text, 'sha256'), 'hex'
+  );
+  insert into backend_system.ledger_workflow_receipts (
+    api_major, actor_id, company_id, operation_name, idempotency_key,
+    request_fingerprint, result
+  ) values (
+    'v1', v_actor_id, p_company_id, p_operation_name, p_idempotency_key,
+    v_fingerprint, p_result
+  );
+end;
+$function$;
 
 create or replace function ledger.lock_company_year_v1(
   p_company_id uuid,
@@ -1378,6 +1742,28 @@ alter table ledger.period_locks owner to ledger_store_owner;
 alter table backend_system.ledger_command_receipts owner to ledger_store_owner;
 alter table backend_system.ledger_cursor_signing_keys owner to ledger_store_owner;
 
+do $ledger_workflow_ownership$
+begin
+  execute pg_catalog.format(
+    'grant ledger_workflow_store_owner to %I', current_user
+  );
+  alter table backend_system.ledger_workflow_receipts
+    owner to ledger_workflow_store_owner;
+  alter function backend_system.claim_ledger_workflow_v1(
+    text, text, uuid, jsonb, text
+  ) owner to ledger_workflow_store_owner;
+  alter function backend_system.record_opening_snapshot_legacy_v1(
+    uuid, integer, numeric, numeric, integer, numeric, jsonb, text
+  ) owner to ledger_workflow_store_owner;
+  alter function backend_system.complete_ledger_workflow_v1(
+    text, text, uuid, jsonb, jsonb, text
+  ) owner to ledger_workflow_store_owner;
+  execute pg_catalog.format(
+    'revoke ledger_workflow_store_owner from %I', current_user
+  );
+end
+$ledger_workflow_ownership$;
+
 alter function ledger.entry_lines_are_valid_v1(jsonb, boolean)
   owner to ledger_store_owner;
 alter function ledger.normalize_lines_v1(jsonb)
@@ -1419,7 +1805,18 @@ revoke all on function
   ledger.list_entries(uuid[], text, integer, text),
   ledger.list_period_locks(uuid[], text, integer, text)
 from public, anon, authenticated, service_role, ledger_executor,
-  talli_ledger_backend;
+  ledger_workflow_executor, talli_ledger_backend;
+
+revoke all on function
+  backend_system.claim_ledger_workflow_v1(text, text, uuid, jsonb, text),
+  backend_system.record_opening_snapshot_legacy_v1(
+    uuid, integer, numeric, numeric, integer, numeric, jsonb, text
+  ),
+  backend_system.complete_ledger_workflow_v1(
+    text, text, uuid, jsonb, jsonb, text
+  )
+from public, anon, authenticated, service_role, ledger_executor,
+  ledger_store_owner, ledger_workflow_executor, talli_ledger_backend;
 
 grant execute on function
   ledger.post_entry(
@@ -1430,6 +1827,23 @@ grant execute on function
   ledger.list_entries(uuid[], text, integer, text),
   ledger.list_period_locks(uuid[], text, integer, text)
 to ledger_executor;
+
+grant execute on function
+  backend_system.claim_ledger_workflow_v1(text, text, uuid, jsonb, text),
+  backend_system.record_opening_snapshot_legacy_v1(
+    uuid, integer, numeric, numeric, integer, numeric, jsonb, text
+  ),
+  backend_system.complete_ledger_workflow_v1(
+    text, text, uuid, jsonb, jsonb, text
+  ),
+  ledger.post_entry(
+    text, uuid, integer, text, text, jsonb, jsonb, boolean,
+    text, text, text, text
+  )
+to ledger_workflow_executor;
+
+grant execute on function ledger.lock_company_year_v1(uuid, integer)
+to ledger_workflow_store_owner;
 
 alter schema ledger owner to ledger_store_owner;
 alter schema backend_system owner to ledger_store_owner;
