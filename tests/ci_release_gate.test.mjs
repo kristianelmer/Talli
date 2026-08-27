@@ -185,6 +185,19 @@ test("database isolation uses the locked Python renderer environment", () => {
   );
 });
 
+test("database isolation runs the complete ledger contract lifecycle", () => {
+  const databaseHarness = readFileSync(databaseHarnessPath, "utf8");
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
+  assert.match(databaseHarness, /npm run test:ledger-database-lifecycle/u);
+  assert.equal(
+    packageJson.scripts["test:ledger-database-lifecycle"],
+    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_database_runtime.test.mjs",
+  );
+});
+
 test("local immutable gate rejects tracked, staged, and untracked drift", () => {
   const localGate = readFileSync(localGatePath, "utf8");
   assert.match(localGate, /scripts\/check-clean-worktree\.sh/u);

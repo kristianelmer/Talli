@@ -60,6 +60,7 @@ eval "$(npm exec -- supabase status --output env)"
 npm exec -- supabase migration up --local --include-all >/dev/null
 
 npm run test:supabase-advisors
+npm run test:ledger-database-lifecycle
 
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$ANON_KEY" \
