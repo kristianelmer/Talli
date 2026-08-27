@@ -26,8 +26,10 @@ import {
 import {
   loadLedgerEntries,
   loadLedgerPeriodLocks,
+  loadOpeningSnapshots,
   presentLedgerEntries,
   presentLedgerPeriodLocks,
+  presentOpeningSnapshots,
   type LedgerEntryPresentation,
   type LedgerPeriodLockPresentation,
 } from "../../../features/ledger";
@@ -705,24 +707,26 @@ export async function listOpeningSetups(companyIds: string[]) {
     return { setups: [] as OpeningBalanceSetupRow[], shareholders: [] as OpeningShareholderRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data: setups, error } = await supabase
-    .from("opening_balance_setups")
-    .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-  const setupIds = (setups ?? []).map((setup) => setup.id);
-  const { data: shareholders, error: shareholderError } = setupIds.length
-    ? await supabase
-        .from("opening_shareholders")
-        .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
-        .in("setup_id", setupIds)
-    : { data: [], error: null };
-
-  return {
-    setups: (setups ?? []) as OpeningBalanceSetupRow[],
-    shareholders: (shareholders ?? []) as OpeningShareholderRow[],
-    error: error?.message ?? shareholderError?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) {
+    return {
+      setups: [] as OpeningBalanceSetupRow[],
+      shareholders: [] as OpeningShareholderRow[],
+      error: "Innlogging kreves.",
+    };
+  }
+  try {
+    const projection = presentOpeningSnapshots(
+      await loadOpeningSnapshots(accessToken, companyIds),
+    );
+    return { ...projection, error: null };
+  } catch {
+    return {
+      setups: [] as OpeningBalanceSetupRow[],
+      shareholders: [] as OpeningShareholderRow[],
+      error: "Åpningsopplysningene kunne ikke hentes.",
+    };
+  }
 }
 
 export async function listPeriodLocks(companyIds: string[]) {

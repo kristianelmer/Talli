@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerListEntries","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostOpeningBalance"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostOpeningBalance"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
@@ -13,7 +13,9 @@ balance, choose accounts, construct postings, decide warnings, or authorize a
 company action.
 
 Only opening balance, supported administrative cost, manual journal, period
-lock, and ledger/lock queries are browser-facing. Future banking, investment,
+lock, ledger/lock queries, and the frozen opening-snapshot compatibility read
+are browser-facing. The compatibility read does not assign future filing policy
+or persistence ownership to this feature. Future banking, investment,
 governance, and tax mutations remain behind named legacy facades until their
 serialized capability stages; arbitrary source lines are not a browser API.
 

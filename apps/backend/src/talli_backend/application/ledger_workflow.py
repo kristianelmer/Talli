@@ -14,6 +14,10 @@ from talli_backend.application.ledger_session import (
     LedgerSessionFactory,
     LedgerWorkflowTransaction,
 )
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+)
 from talli_backend.application.shareholder_register_compatibility import (
     LegacyShareholderRegisterFilingFacade,
 )
@@ -287,6 +291,23 @@ class LedgerApplicationSession:
         limit: int,
     ) -> PeriodLockPage:
         return await self._ledger.list_period_locks(
+            actor_id=actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            cursor=cursor,
+            limit=limit,
+        )
+
+    async def list_opening_snapshots(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LegacyOpeningSnapshotCursor | None,
+        limit: int,
+    ) -> LegacyOpeningSnapshotPage:
+        return await self._persistence.list_opening_snapshots(
             actor_id=actor_id,
             company_ids=company_ids,
             correlation_id=correlation_id,

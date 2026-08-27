@@ -37,6 +37,7 @@ const companyAccessOperations = {
 };
 const ledgerOperations = {
   startNewYear: ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
+  listOpeningSnapshots: ["/api/v1/ledger/opening-snapshots", "get", "ledgerListOpeningSnapshots"],
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
@@ -142,7 +143,13 @@ function renderGuard(name, schema) {
     }
     if (propertySchema?.type === "null") return `${value} === null`;
     if (propertySchema?.type === "array") {
-      return `Array.isArray(${value}) && ${value}.every((item) => ${propertyCheck(propertySchema.items, "item")})`;
+      const checks = [
+        `Array.isArray(${value})`,
+        `${value}.every((item) => ${propertyCheck(propertySchema.items, "item")})`,
+      ];
+      if (propertySchema.minItems !== undefined) checks.push(`${value}.length >= ${propertySchema.minItems}`);
+      if (propertySchema.maxItems !== undefined) checks.push(`${value}.length <= ${propertySchema.maxItems}`);
+      return checks.join(" && ");
     }
     if (propertySchema?.const !== undefined) return `${value} === ${JSON.stringify(propertySchema.const)}`;
     if (propertySchema?.enum?.length) {
@@ -259,6 +266,9 @@ const ledgerSchemas = Object.fromEntries([
   "NewYearOpeningEntryWire",
   "NewYearStartResultWire",
   "NewYearStartWire",
+  "LedgerOpeningShareholderWire",
+  "LedgerOpeningSnapshotPageWire",
+  "LedgerOpeningSnapshotWire",
   "LedgerPageWire",
   "LedgerPeriodLockPageWire",
   "LedgerPeriodLockWire",
@@ -401,6 +411,12 @@ export interface LedgerListRequest extends TalliRequestOptions {
 
 export interface LedgerEntryListRequest extends LedgerListRequest {
   includeSource?: boolean;
+}
+
+export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -862,6 +878,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerListOpeningSnapshots(
+      request: LedgerOpeningSnapshotListRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/opening-snapshots?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
       );
     },
 

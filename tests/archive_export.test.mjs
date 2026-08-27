@@ -507,8 +507,7 @@ test("archive ledger facts come through the generated capability query with a fr
     new URL("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url),
     "utf8",
   );
-  assert.match(route, /error instanceof LedgerArchiveFactsUnavailableError/u);
-  assert.match(route, /\.from\("ledger_entries"\)/u);
+  assert.doesNotMatch(route, /\.from\("ledger_entries"\)/u);
   assert.match(route, /getCurrentSessionAccessToken/u);
   assert.match(route, /loadLedgerEntriesForArchive\(accessToken, \[companyId\]\)/u);
   assert.match(route, /presentLedgerEntriesForArchive\(entries\)/u);
@@ -522,6 +521,6 @@ test("archive ledger facts come through the generated capability query with a fr
     route.indexOf("const accessToken = await getCurrentSessionAccessToken()")
       < route.indexOf('"company_archive_begin_export"'),
   );
-  assert.match(route, /loadArchiveLedgerEntries\([\s\S]+accessToken,[\s\S]+companyId,[\s\S]+incomeYear,[\s\S]+ledger_entries/iu);
+  assert.match(route, /loadArchiveLedgerEntries\(accessToken, companyId, incomeYear\)/u);
   assert.match(route, /firstArchiveSourceError\(sourceResults\)/u);
 });

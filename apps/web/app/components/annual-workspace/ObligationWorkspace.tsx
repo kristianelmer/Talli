@@ -96,6 +96,7 @@ export function ObligationWorkspace({
             <h2 id="preview-title">Forhåndsvisning</h2>
             <form action={generateRf1086Preview} className={styles.form}>
               <input type="hidden" name="returnTo" value={view.href} />
+              <input type="hidden" name="companyId" value={model.context.companyId} />
               <input type="hidden" name="setupId" value={setup.id} />
               <button className={styles.primaryButton} type="submit">Lag ny forhåndsvisning</button>
             </form>

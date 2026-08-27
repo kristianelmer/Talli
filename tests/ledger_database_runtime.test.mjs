@@ -23,6 +23,8 @@ const otherOwnerId = "00000000-0000-0000-0000-000000000055";
 const companyId = "10000000-0000-0000-0000-000000000001";
 const otherCompanyId = "20000000-0000-0000-0000-000000000002";
 const malformedLegacyEntryId = "40000000-0000-0000-0000-000000000002";
+const overlapOpeningEntryId = "40000000-0000-0000-0000-000000000097";
+const overlapOpeningSetupId = "30000000-0000-0000-0000-000000000097";
 
 const futurePostingRoutines = [
   "accept_bank_transaction_suggestion",
@@ -290,6 +292,16 @@ insert into public.opening_balance_setups (
   timestamptz '2026-01-01 09:00:00+00'
 );
 
+insert into public.opening_shareholders (
+  id, setup_id, company_id, name, shareholder_kind, national_id,
+  org_number, share_count, created_by, created_at
+) values (
+  '31000000-0000-0000-0000-000000000001',
+  '30000000-0000-0000-0000-000000000001', '${companyId}',
+  'Runtime Owner', 'norwegian_person', '01010112345', null, 100,
+  '${ownerId}', timestamptz '2026-01-01 09:00:00+00'
+);
+
 insert into public.ledger_entries (
   id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags,
   posted_at, created_by, created_at
@@ -311,6 +323,178 @@ insert into public.ledger_entries (
     '[]'::jsonb, timestamptz '2026-02-01 09:00:00+00', '${ownerId}',
     timestamptz '2026-02-01 09:00:00+00'
   );
+`;
+
+const archiveFreshnessFixtureSql = String.raw`
+create role company_archive_projection_executor nologin noinherit nobypassrls;
+create table public.company_archive_source_generations (
+  company_id uuid not null,
+  income_year integer not null,
+  generation bigint not null default 0,
+  updated_at timestamptz not null default statement_timestamp(),
+  primary key (company_id, income_year)
+);
+create table public.company_archive_export_attempts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null,
+  income_year integer not null,
+  source_generation bigint not null,
+  started_at timestamptz not null default statement_timestamp()
+);
+alter table public.company_archive_source_generations enable row level security;
+alter table public.company_archive_export_attempts enable row level security;
+create policy "archive projection executor manages generations"
+on public.company_archive_source_generations for all
+to company_archive_projection_executor using (true) with check (true);
+create policy "archive projection executor manages attempts"
+on public.company_archive_export_attempts for all
+to company_archive_projection_executor using (true) with check (true);
+grant select, insert, update, delete
+on public.company_archive_source_generations, public.company_archive_export_attempts
+to company_archive_projection_executor;
+revoke all
+on public.company_archive_source_generations, public.company_archive_export_attempts
+from public, anon, authenticated, service_role;
+create or replace function public.company_archive_lock_company_v1(p_company_id uuid)
+returns void
+language plpgsql
+volatile
+set search_path = ''
+as $function$
+begin
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_company_id::text, 157)
+  );
+end;
+$function$;
+create or replace function public.company_archive_lock_scope_v1(
+  p_company_id uuid, p_income_year integer
+) returns void
+language sql
+volatile
+set search_path = ''
+as $function$
+  select public.company_archive_lock_company_v1(p_company_id);
+$function$;
+create or replace function public.company_archive_track_source_write_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_company_id uuid;
+  v_scope record;
+begin
+  for v_company_id in
+    with changed_rows(row_data) as (
+      select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
+      union all
+      select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
+    )
+    select distinct (row_data ->> tg_argv[1])::uuid
+    from changed_rows
+    where (row_data ->> tg_argv[1]) is not null
+    order by 1
+  loop
+    perform public.company_archive_lock_company_v1(v_company_id);
+  end loop;
+
+  if tg_argv[0] = 'year' then
+    for v_scope in
+      with changed_rows(row_data) as (
+        select pg_catalog.to_jsonb(old) where tg_op in ('UPDATE', 'DELETE')
+        union all
+        select pg_catalog.to_jsonb(new) where tg_op in ('INSERT', 'UPDATE')
+      )
+      select distinct (row_data ->> tg_argv[1])::uuid as scope_company_id,
+             (row_data ->> 'income_year')::integer as scope_income_year
+      from changed_rows
+      where (row_data ->> tg_argv[1]) is not null
+        and (row_data ->> 'income_year') is not null
+      order by 1, 2
+    loop
+      insert into public.company_archive_source_generations(
+        company_id, income_year, generation, updated_at
+      ) values (
+        v_scope.scope_company_id, v_scope.scope_income_year, 1,
+        pg_catalog.statement_timestamp()
+      )
+      on conflict (company_id, income_year) do update
+        set generation = public.company_archive_source_generations.generation + 1,
+            updated_at = excluded.updated_at;
+    end loop;
+  end if;
+  return coalesce(new, old);
+end;
+$function$;
+alter function public.company_archive_track_source_write_v1()
+  owner to company_archive_projection_executor;
+grant execute on function public.company_archive_lock_company_v1(uuid),
+  public.company_archive_lock_scope_v1(uuid, integer)
+to company_archive_projection_executor;
+revoke all on function public.company_archive_track_source_write_v1()
+from public, anon, authenticated, service_role;
+create trigger company_archive_track_ledger_entries
+before insert or update or delete on public.ledger_entries
+for each row execute function public.company_archive_track_source_write_v1(
+  'year', 'company_id'
+);
+create or replace function public.company_archive_begin_export_fixture(
+  p_company_id uuid, p_income_year integer
+) returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_attempt_id uuid;
+begin
+  perform public.company_archive_lock_scope_v1(p_company_id, p_income_year);
+  insert into public.company_archive_source_generations(
+    company_id, income_year, generation
+  ) values (p_company_id, p_income_year, 0)
+  on conflict (company_id, income_year) do nothing;
+  insert into public.company_archive_export_attempts(
+    company_id, income_year, source_generation
+  )
+  select p_company_id, p_income_year, generation
+  from public.company_archive_source_generations
+  where company_id = p_company_id and income_year = p_income_year
+  returning id into v_attempt_id;
+  return v_attempt_id;
+end;
+$function$;
+alter function public.company_archive_begin_export_fixture(uuid, integer)
+  owner to company_archive_projection_executor;
+create or replace function public.company_archive_complete_export_fixture(
+  p_attempt_id uuid
+) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_attempt public.company_archive_export_attempts%rowtype;
+  v_generation bigint;
+begin
+  select * into strict v_attempt
+  from public.company_archive_export_attempts
+  where id = p_attempt_id for update;
+  perform public.company_archive_lock_scope_v1(
+    v_attempt.company_id, v_attempt.income_year
+  );
+  select generation into strict v_generation
+  from public.company_archive_source_generations
+  where company_id = v_attempt.company_id
+    and income_year = v_attempt.income_year;
+  if v_generation <> v_attempt.source_generation then
+    raise exception 'archive_export_stale';
+  end if;
+end;
+$function$;
+alter function public.company_archive_complete_export_fixture(uuid)
+  owner to company_archive_projection_executor;
 `;
 
 function docker(args, options = {}) {
@@ -358,6 +542,30 @@ function actorContext(actorId) {
 set local role ledger_executor;
 set local talli.verified_actor_id = '${actorId}';
 set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticated","aal":"aal2"}';
+`;
+}
+
+function openingSnapshotCall({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  companyIds = [companyId],
+  cursor = null,
+  limit = 100,
+  page = false,
+} = {}) {
+  const ids = companyIds.map((id) => `'${id}'::uuid`).join(",");
+  const cursorSql = cursor === null ? "null" : `'${sqlQuote(cursor)}'`;
+  const projection = page
+    ? "pg_catalog.jsonb_build_object('items', items, 'nextCursor', next_cursor, 'hasMore', has_more)"
+    : "items";
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select ${projection}::text
+from backend_system.list_opening_snapshots_legacy_v1(
+  array[${ids}]::uuid[], ${cursorSql}, ${limit}, '${verifiedSubject}'
+);
+commit;
 `;
 }
 
@@ -537,6 +745,24 @@ function assertLegacyRoutinesDisabled(containerName) {
   }
 }
 
+function archiveTriggerState(containerName, relation) {
+  return lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+    select concat_ws(':', count(*), coalesce(bool_and(
+      trigger.tgname = 'company_archive_track_ledger_entries'
+      and trigger.tgenabled in ('O', 'A')
+      and trigger.tgtype = 31
+      and trigger.tgnargs = 2
+      and encode(trigger.tgargs, 'hex') = '7965617200636f6d70616e795f696400'
+    ), false))
+    from pg_catalog.pg_trigger trigger
+    where trigger.tgrelid = '${relation}'::regclass
+      and trigger.tgfoid = pg_catalog.to_regprocedure(
+        'public.company_archive_track_source_write_v1()'
+      )
+      and not trigger.tgisinternal;
+  `));
+}
+
 test("ledger authority survives expand, contract, concurrency, rollback, and recutover", { timeout: 180_000 }, async (t) => {
   const dockerInfo = docker(["info", "--format", "{{.ServerVersion}}"]).status;
   if (dockerInfo !== 0) {
@@ -571,6 +797,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     }
     psql(containerName, [], predecessorCompanyAccessSql);
     psql(containerName, [], seedSql);
+    psql(containerName, [], archiveFreshnessFixtureSql);
 
     psql(containerName, ["--file", expandPath]);
 
@@ -605,6 +832,81 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       forcedRls,
       "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true",
     );
+
+    for (const actorId of [ownerId, reviewerId, readOnlyId]) {
+      const projection = jsonOutput(containerName, openingSnapshotCall({ actorId }));
+      assert.equal(projection.length, 1);
+      assert.equal(projection[0].companyId, companyId);
+      assert.equal(projection[0].setupId, "30000000-0000-0000-0000-000000000001");
+      assert.equal(projection[0].bankBalance, "30000.00");
+      assert.equal(projection[0].shareholders[0].nationalId, "01010112345");
+    }
+    const exactMoneyProjection = jsonOutput(containerName, String.raw`
+      begin;
+      update public.opening_balance_setups
+      set bank_balance = 9007199254740993.12
+      where id = '30000000-0000-0000-0000-000000000001';
+      ${actorContext(ownerId)}
+      select items::text
+      from backend_system.list_opening_snapshots_legacy_v1(
+        array['${companyId}'::uuid], null, 100, '${ownerId}'
+      );
+      rollback;
+    `);
+    assert.equal(
+      exactMoneyProjection[0].bankBalance,
+      "9007199254740993.12",
+    );
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      update public.opening_balance_setups
+      set bank_balance = 30000.001
+      where id = '30000000-0000-0000-0000-000000000001';
+      ${actorContext(ownerId)}
+      select items::text
+      from backend_system.list_opening_snapshots_legacy_v1(
+        array['${companyId}'::uuid], null, 100, '${ownerId}'
+      );
+      rollback;
+    `), /ledger_dependency_unavailable/iu);
+    assert.deepEqual(
+      jsonOutput(containerName, openingSnapshotCall({ actorId: outsiderId })),
+      [],
+    );
+    assert.deepEqual(
+      jsonOutput(containerName, openingSnapshotCall({
+        actorId: ownerId,
+        companyIds: [companyId, otherCompanyId],
+      })).map((item) => item.companyId),
+      [companyId],
+    );
+    assert.match(psqlFailure(containerName, openingSnapshotCall({
+      actorId: ownerId,
+      verifiedSubject: reviewerId,
+    })), /ledger_forbidden/iu);
+    assert.match(psqlFailure(containerName, openingSnapshotCall({
+      actorId: ownerId,
+      companyIds: [companyId, companyId],
+    })), /ledger_invalid_input/iu);
+
+    psql(containerName, [], String.raw`
+      insert into public.opening_shareholders (
+        setup_id, company_id, name, shareholder_kind, national_id,
+        share_count, created_by
+      )
+      select
+        '30000000-0000-0000-0000-000000000001', '${companyId}',
+        'Overflow ' || ordinal, 'norwegian_person',
+        pg_catalog.lpad(ordinal::text, 11, '0'), 0, '${ownerId}'
+      from pg_catalog.generate_series(1, 100) as series(ordinal);
+    `);
+    assert.match(
+      psqlFailure(containerName, openingSnapshotCall({ actorId: ownerId })),
+      /ledger_dependency_unavailable/iu,
+    );
+    psql(containerName, [], String.raw`
+      delete from public.opening_shareholders where name like 'Overflow %';
+    `);
 
     const workflowRequest = newYearRequest();
     const workflowRequestSql = sqlQuote(JSON.stringify(workflowRequest));
@@ -790,6 +1092,26 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       begin;
       set local role authenticated;
       set local request.jwt.claim.sub = '${ownerId}';
+      insert into public.opening_balance_setups (
+        id, company_id, income_year, bank_balance, share_capital,
+        share_count, nominal_value, locked_at, created_by, created_at
+      ) values (
+        '${overlapOpeningSetupId}', '${companyId}', 2028,
+        30000.00, 30000.00, 100, 300.00,
+        timestamptz '2028-01-01 09:00:00+00', '${ownerId}',
+        timestamptz '2028-01-01 09:00:00+00'
+      );
+      insert into public.ledger_entries (
+        id, company_id, setup_id, income_year, entry_type, memo, lines,
+        risk_flags, posted_at, created_by, created_at
+      ) values (
+        '${overlapOpeningEntryId}', '${companyId}', '${overlapOpeningSetupId}',
+        2028, 'opening_balance', 'Expand overlap opening',
+        '[{"account":"1920","description":"Bank","debit":"30000.00","credit":"0.00","currency":"NOK"},
+          {"account":"2000","description":"Equity","debit":"0.00","credit":"30000.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, timestamptz '2028-01-01 09:00:00+00', '${ownerId}',
+        timestamptz '2028-01-01 09:00:00+00'
+      );
       insert into public.ledger_entries (
         id, company_id, income_year, entry_type, memo, lines, risk_flags,
         posted_at, created_by, created_at
@@ -858,6 +1180,47 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
 
     psql(containerName, ["--file", contractPath]);
 
+    const contractOpeningProjection = jsonOutput(
+      containerName,
+      openingSnapshotCall({ actorId: reviewerId }),
+    );
+    assert.deepEqual(
+      contractOpeningProjection.map((item) => item.incomeYear),
+      [2028, 2027, 2026],
+    );
+    const openingPageOne = jsonOutput(
+      containerName,
+      openingSnapshotCall({ actorId: reviewerId, limit: 1, page: true }),
+    );
+    assert.equal(openingPageOne.items.length, 1);
+    assert.equal(openingPageOne.items[0].incomeYear, 2028);
+    assert.equal(openingPageOne.hasMore, true);
+    assert.equal(typeof openingPageOne.nextCursor, "string");
+    const openingPageTwo = jsonOutput(
+      containerName,
+      openingSnapshotCall({
+        actorId: reviewerId,
+        cursor: openingPageOne.nextCursor,
+        limit: 1,
+        page: true,
+      }),
+    );
+    assert.equal(openingPageTwo.items[0].incomeYear, 2027);
+    assert.match(
+      psqlFailure(containerName, openingSnapshotCall({
+        actorId: reviewerId,
+        cursor: `${openingPageOne.nextCursor}tampered`,
+        limit: 1,
+      })),
+      /ledger_invalid_cursor/iu,
+    );
+
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':', source_capability, source_record_id,
+        created_at = timestamptz '2028-01-01 09:00:00+00')
+      from ledger.entries where id = '${overlapOpeningEntryId}';
+    `)), `SHAREHOLDER_REGISTER_FILING:opening-setup:${overlapOpeningSetupId}:t`);
+
     const directWrites = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         to_regclass('public.ledger_entries') is null,
@@ -890,8 +1253,62 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
 
     assertLegacyRoutinesDisabled(containerName);
 
+    assert.equal(archiveTriggerState(containerName, "ledger.entries"), "1:t");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        role.rolcanlogin,
+        role.rolinherit,
+        role.rolbypassrls,
+        owner.rolname = 'company_archive_projection_executor',
+        has_table_privilege(
+          'company_archive_projection_executor',
+          'public.company_archive_source_generations', 'insert,update'
+        ),
+        has_table_privilege(
+          'authenticated', 'public.company_archive_source_generations', 'select'
+        ),
+        generation.relrowsecurity
+      )
+      from pg_catalog.pg_roles role
+      join pg_catalog.pg_proc function
+        on function.oid = pg_catalog.to_regprocedure(
+          'public.company_archive_track_source_write_v1()'
+        )
+      join pg_catalog.pg_roles owner on owner.oid = function.proowner
+      join pg_catalog.pg_class generation
+        on generation.oid = 'public.company_archive_source_generations'::regclass
+      where role.rolname = 'company_archive_projection_executor';
+    `)), "f:f:f:t:t:f:t");
+    const archiveAttemptId = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select public.company_archive_begin_export_fixture('${companyId}', 2026);
+    `));
+    const archiveGenerationBeforePost = Number(lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      String.raw`
+        select generation from public.company_archive_source_generations
+        where company_id = '${companyId}' and income_year = 2026;
+      `,
+    )));
+
     const firstPost = jsonOutput(containerName, postTransaction());
+    const archiveGenerationAfterPost = Number(lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      String.raw`
+        select generation from public.company_archive_source_generations
+        where company_id = '${companyId}' and income_year = 2026;
+      `,
+    )));
+    assert.equal(archiveGenerationAfterPost, archiveGenerationBeforePost + 1);
+    assert.match(psqlFailure(containerName, String.raw`
+      select public.company_archive_complete_export_fixture('${archiveAttemptId}');
+    `), /archive_export_stale/iu);
     const replayedPost = jsonOutput(containerName, postTransaction());
+    assert.equal(Number(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select generation from public.company_archive_source_generations
+      where company_id = '${companyId}' and income_year = 2026;
+    `))), archiveGenerationAfterPost);
     assert.equal(firstPost.company_id, companyId);
     assert.equal(firstPost.income_year, 2026);
     assert.equal(firstPost.entry_kind, "MANUAL_JOURNAL");
@@ -905,6 +1322,56 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           where idempotency_key = '50000000-0000-4000-8000-000000000001'))
       from ledger.entries;
     `)), "1:1");
+
+    const concurrentArchiveAttemptId = lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      String.raw`
+        select public.company_archive_begin_export_fixture('${companyId}', 2027);
+      `,
+    ));
+    const archiveWriter = interactivePsql(containerName);
+    archiveWriter.child.stdin.write(String.raw`
+      set application_name = 'ledger_archive_writer';
+      begin;
+      ${actorContext(ownerId)}
+      ${postCall({
+        incomeYear: 2027,
+        idempotencyKey: "50000000-0000-4000-8000-000000000040",
+        sourceRecordId: "manual:archive-concurrency",
+        correlationId: "ledger-archive-concurrency",
+      })}
+      select 'ledger_archive_writer_ready';
+    `);
+    await waitForOutput(archiveWriter, /ledger_archive_writer_ready/u);
+
+    const archiveCompletion = interactivePsql(containerName);
+    archiveCompletion.child.stdin.end(String.raw`
+      set application_name = 'ledger_archive_completion';
+      select public.company_archive_complete_export_fixture(
+        '${concurrentArchiveAttemptId}'
+      );
+    `);
+    let completionBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      completionBlocked = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'ledger_archive_completion'
+          and wait_event_type = 'Lock' and wait_event = 'advisory';
+      `)) === "1";
+      if (completionBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      completionBlocked,
+      true,
+      "archive completion did not serialize behind the ledger write",
+    );
+    archiveWriter.child.stdin.end("commit;\n\\q\n");
+    assert.equal((await processResult(archiveWriter)).code, 0);
+    const completionResult = await processResult(archiveCompletion);
+    assert.notEqual(completionResult.code, 0);
+    assert.match(completionResult.stderr, /archive_export_stale/iu);
 
     const conflict = psqlFailure(containerName, postTransaction({
       fingerprint: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -1094,6 +1561,22 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
 
     psql(containerName, ["--file", rollbackPath]);
+    const rollbackOpeningProjection = jsonOutput(
+      containerName,
+      openingSnapshotCall({ actorId: readOnlyId }),
+    );
+    assert.deepEqual(
+      rollbackOpeningProjection.map((item) => item.incomeYear),
+      [2028, 2027, 2026],
+    );
+    assert.equal(
+      archiveTriggerState(containerName, "public.ledger_entries"),
+      "1:t",
+    );
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select setup_id from public.ledger_entries
+      where id = '${overlapOpeningEntryId}';
+    `)), overlapOpeningSetupId);
     const overlapPrivileges = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         has_table_privilege('authenticated', 'public.ledger_entries', 'insert'),
@@ -1103,6 +1586,16 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(overlapPrivileges, "t:t:t:f");
 
+    const rollbackGenerationBeforeInsert = Number(lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      String.raw`
+        select coalesce((
+          select generation from public.company_archive_source_generations
+          where company_id = '${companyId}' and income_year = 2028
+        ), 0::bigint);
+      `,
+    )));
     psql(containerName, [], String.raw`
       begin;
       set local role authenticated;
@@ -1120,9 +1613,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       );
       commit;
     `);
+    assert.equal(Number(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select generation from public.company_archive_source_generations
+      where company_id = '${companyId}' and income_year = 2028;
+    `))), rollbackGenerationBeforeInsert + 1);
 
     psql(containerName, ["--file", expandPath]);
     psql(containerName, ["--file", contractPath]);
+    assert.deepEqual(
+      jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
+        .map((item) => item.incomeYear),
+      [2028, 2027, 2026],
+    );
+    assert.equal(archiveTriggerState(containerName, "ledger.entries"), "1:t");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select source_record_id from ledger.entries
+      where id = '${overlapOpeningEntryId}';
+    `)), `opening-setup:${overlapOpeningSetupId}`);
 
     const recutoverWrites = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',

@@ -16,6 +16,9 @@ from talli_backend.adapters.supabase_ledger import (
     _map_database_error,
 )
 from talli_backend.application.ledger_session import LedgerAuthenticationError
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningSnapshotCursor,
+)
 from talli_backend.modules.ledger.public import (
     LedgerEntryKind,
     LedgerError,
@@ -277,3 +280,119 @@ def test_entry_projection_keeps_the_exact_warning_acceptance_timestamp() -> None
     partial_payload.pop("createdAt")
     with pytest.raises(ValueError, match="source identity"):
         bound_session()._entry_view(partial_payload)
+
+
+def opening_snapshot_payload() -> dict[str, object]:
+    return {
+        "setupId": "60000000-0000-0000-0000-000000000006",
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "bankBalance": "9007199254740993.12",
+        "shareCapital": "30000.00",
+        "shareCount": 100,
+        "nominalValue": "300.00",
+        "lockedAt": "2026-08-27T10:00:00Z",
+        "createdAt": "2026-08-27T09:00:00Z",
+        "createdBy": str(ACTOR_ID.subject),
+        "shareholders": [
+            {
+                "shareholderId": "70000000-0000-0000-0000-000000000007",
+                "setupId": "60000000-0000-0000-0000-000000000006",
+                "companyId": "10000000-0000-0000-0000-000000000001",
+                "name": "Owner",
+                "shareholderKind": "norwegian_person",
+                "nationalId": "01010112345",
+                "orgNumber": None,
+                "shareCount": 100,
+            }
+        ],
+    }
+
+
+def test_opening_snapshot_query_binds_actor_scope_and_decodes_facts() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "items": [opening_snapshot_payload()],
+            "next_cursor": "opaque-opening-next",
+            "has_more": True,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    company_id = CompanyId("10000000-0000-0000-0000-000000000001")
+    snapshots = asyncio.run(
+        session.list_opening_snapshots(
+            actor_id=ACTOR_ID,
+            company_ids=(company_id,),
+            correlation_id=CorrelationId("opening-query-test"),
+            cursor=None,
+            limit=25,
+        )
+    )
+
+    assert len(snapshots.items) == 1
+    assert snapshots.items[0].company_id == company_id
+    assert snapshots.items[0].bank_balance == Money.nok("9007199254740993.12")
+    assert snapshots.items[0].shareholders[0].national_id == "01010112345"
+    assert snapshots.next_cursor == LegacyOpeningSnapshotCursor("opaque-opening-next")
+    assert snapshots.has_more is True
+    assert "backend_system.list_opening_snapshots_legacy_v1" in calls[0][0]
+    assert calls[0][1] == ([str(company_id)], None, 25, str(ACTOR_ID.subject))
+
+
+def test_opening_snapshot_query_rejects_forged_actor_before_database_io() -> None:
+    session = bound_session()
+
+    async def forbidden_database(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("database must not be called")
+
+    session._database_rows = forbidden_database  # type: ignore[method-assign]
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            session.list_opening_snapshots(
+                actor_id=OTHER_ACTOR,
+                company_ids=(
+                    CompanyId("10000000-0000-0000-0000-000000000001"),
+                ),
+                correlation_id=CorrelationId("opening-query-forged"),
+                cursor=None,
+                limit=100,
+            )
+        )
+    assert failure.value.code == "LEDGER_FORBIDDEN"
+
+
+def test_opening_snapshot_query_maps_inconsistent_facts_to_unavailable() -> None:
+    session = bound_session()
+    malformed = opening_snapshot_payload()
+    malformed["shareholders"] = [
+        {
+            **malformed["shareholders"][0],  # type: ignore[index]
+            "setupId": "60000000-0000-0000-0000-000000000099",
+        }
+    ]
+
+    async def database_rows(
+        _query: str, _parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        return [{"items": [malformed], "next_cursor": None, "has_more": False}]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            session.list_opening_snapshots(
+                actor_id=ACTOR_ID,
+                company_ids=(
+                    CompanyId("10000000-0000-0000-0000-000000000001"),
+                ),
+                correlation_id=CorrelationId("opening-query-malformed"),
+                cursor=None,
+                limit=100,
+            )
+        )
+    assert failure.value.code == "LEDGER_DEPENDENCY_UNAVAILABLE"

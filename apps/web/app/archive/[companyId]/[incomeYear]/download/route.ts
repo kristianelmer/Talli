@@ -1,14 +1,12 @@
 import { createHash } from "node:crypto";
 
 import {
-  LedgerArchiveFactsUnavailableError,
   loadLedgerEntriesForArchive,
   presentLedgerEntriesForArchive,
 } from "../../../../../features/ledger";
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
-  type LedgerEntryRow,
 } from "../../../../lib/archive";
 import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { requireStepUpForAction } from "../../../../lib/security";
@@ -22,10 +20,6 @@ async function loadArchiveLedgerEntries(
   accessToken: string,
   companyId: string,
   incomeYear: number,
-  legacyFallback: () => PromiseLike<{
-    data: LedgerEntryRow[] | null;
-    error: unknown | null;
-  }>,
 ) {
   try {
     const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);
@@ -49,10 +43,7 @@ async function loadArchiveLedgerEntries(
         })),
       error: null,
     };
-  } catch (error) {
-    if (error instanceof LedgerArchiveFactsUnavailableError) {
-      return await legacyFallback();
-    }
+  } catch {
     return { data: null, error: new Error("Ledger archive source unavailable.") };
   }
 }
@@ -135,16 +126,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
-      loadArchiveLedgerEntries(
-        accessToken,
-        companyId,
-        incomeYear,
-        () => supabase
-          .from("ledger_entries")
-          .select("id, company_id, setup_id, income_year, entry_type, memo, lines, created_by, created_at")
-          .eq("company_id", companyId)
-          .eq("income_year", incomeYear),
-      ),
+      loadArchiveLedgerEntries(accessToken, companyId, incomeYear),
       supabase
         .from("documents")
         .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")

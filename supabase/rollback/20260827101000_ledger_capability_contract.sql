@@ -34,7 +34,9 @@ revoke all on function ledger.list_entries(uuid[], text, integer, text)
   from ledger_executor, talli_ledger_backend;
 revoke all on function ledger.list_period_locks(uuid[], text, integer, text)
   from ledger_executor, talli_ledger_backend;
-revoke ledger_executor from talli_ledger_backend;
+-- Keep the backend's NOINHERIT membership in the read-only executor so the
+-- opening-snapshot compatibility query remains available throughout rollback.
+-- Every ledger writer and ledger-table query above is still explicitly revoked.
 
 drop trigger if exists ledger_entries_enforce_boundary on ledger.entries;
 drop policy if exists "ledger store reads entries" on ledger.entries;
@@ -76,7 +78,10 @@ begin
   new.source_capability := coalesce(
     new.source_capability,
     case pg_catalog.lower(pg_catalog.btrim(new.entry_type))
-      when 'opening_balance' then 'SHAREHOLDER_REGISTER_FILING'
+      when 'opening_balance' then case
+        when new.setup_id is not null then 'SHAREHOLDER_REGISTER_FILING'
+        else 'LEDGER'
+      end
       when 'bank_rule_suggestion' then 'BANKING'
       when 'dividend_received' then 'INVESTMENTS'
       when 'share_purchase' then 'INVESTMENTS'
@@ -232,13 +237,16 @@ do $restore_archive_trigger$
 begin
   if pg_catalog.to_regprocedure(
     'public.company_archive_track_source_write_v1()'
-  ) is not null then
-    create trigger company_archive_track_ledger_entries
-    before insert or update or delete on public.ledger_entries
-    for each row execute function public.company_archive_track_source_write_v1(
-      'year', 'company_id'
-    );
+  ) is null then
+    raise exception 'ledger_archive_freshness_function_missing';
   end if;
+  drop trigger if exists company_archive_track_ledger_entries
+    on public.ledger_entries;
+  create trigger company_archive_track_ledger_entries
+  before insert or update or delete on public.ledger_entries
+  for each row execute function public.company_archive_track_source_write_v1(
+    'year', 'company_id'
+  );
 end
 $restore_archive_trigger$;
 

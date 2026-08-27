@@ -1637,7 +1637,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
   assert.equal(expected.size, baseline.records.length);
 
   assert.equal(registry.records.length, 18);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 202);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 188);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {

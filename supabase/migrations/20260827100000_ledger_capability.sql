@@ -48,8 +48,8 @@ grant ledger_executor to talli_ledger_backend with inherit false, set true;
 grant ledger_workflow_executor to talli_ledger_backend with inherit false, set true;
 grant usage, create on schema ledger to ledger_store_owner;
 grant usage on schema ledger to ledger_executor;
-grant usage on schema backend_system to ledger_workflow_store_owner,
-  ledger_workflow_executor;
+grant usage on schema backend_system to ledger_executor,
+  ledger_workflow_store_owner, ledger_workflow_executor;
 grant usage on schema ledger to ledger_workflow_executor;
 
 create table if not exists backend_system.ledger_migration_runs (
@@ -711,7 +711,7 @@ drop policy if exists "ledger workflow reads opening setups"
   on public.opening_balance_setups;
 create policy "ledger workflow reads opening setups"
 on public.opening_balance_setups for select to ledger_workflow_store_owner
-using (public.company_access_is_accepted_owner_v1(company_id));
+using (public.company_access_is_accepted_member_v1(company_id));
 drop policy if exists "ledger workflow creates opening shareholders"
   on public.opening_shareholders;
 create policy "ledger workflow creates opening shareholders"
@@ -720,6 +720,11 @@ with check (
   created_by = public.company_access_auth_uid_v1()
   and public.company_access_is_accepted_owner_v1(company_id)
 );
+drop policy if exists "ledger workflow reads opening shareholders"
+  on public.opening_shareholders;
+create policy "ledger workflow reads opening shareholders"
+on public.opening_shareholders for select to ledger_workflow_store_owner
+using (public.company_access_is_accepted_member_v1(company_id));
 drop policy if exists "ledger store reads entries" on ledger.entries;
 create policy "ledger store reads entries"
 on ledger.entries for select to ledger_store_owner
@@ -1008,6 +1013,251 @@ begin
     v_actor_id
   from pg_catalog.jsonb_array_elements(p_shareholders);
   return v_setup_id;
+end;
+$function$;
+
+-- Read-only compatibility projection for the still-legacy opening tables. The
+-- active ledger stage names the returned compatibility facts outside the
+-- frozen future capability contract and leaves filing policy unchanged.
+create or replace function backend_system.list_opening_snapshots_legacy_v1(
+  p_company_ids uuid[],
+  p_cursor text,
+  p_limit integer,
+  p_verified_subject text
+)
+returns table (items jsonb, next_cursor text, has_more boolean)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_company_count integer;
+  v_distinct_company_count integer;
+  v_cursor_created_at timestamptz;
+  v_cursor_id uuid;
+  v_encoded text;
+  v_signature text;
+  v_payload jsonb;
+  v_key_id uuid;
+  v_issued_at timestamptz;
+  v_companies text;
+  v_company_hash text;
+  v_count integer;
+  v_last_created_at timestamptz;
+  v_last_id uuid;
+begin
+  if v_actor_id is null
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then
+    raise exception 'ledger_forbidden';
+  end if;
+  if p_company_ids is null
+    or pg_catalog.cardinality(p_company_ids) = 0
+    or pg_catalog.cardinality(p_company_ids) > 100
+    or p_limit is null
+    or p_limit < 1 or p_limit > 100
+    or (p_cursor is not null and pg_catalog.length(p_cursor) > 4096)
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+  select pg_catalog.count(company_id), pg_catalog.count(distinct company_id)
+  into v_company_count, v_distinct_company_count
+  from pg_catalog.unnest(p_company_ids) company_id;
+  if v_company_count <> pg_catalog.cardinality(p_company_ids)
+    or v_distinct_company_count <> v_company_count
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+
+  select coalesce(
+    pg_catalog.string_agg(company_id::text, ',' order by company_id), ''
+  ) into v_companies
+  from pg_catalog.unnest(p_company_ids) company_id;
+  v_company_hash := pg_catalog.encode(
+    public.digest(v_companies, 'sha256'), 'hex'
+  );
+
+  if p_cursor is not null then
+    begin
+      v_encoded := pg_catalog.split_part(p_cursor, '.', 1);
+      v_signature := pg_catalog.split_part(p_cursor, '.', 2);
+      if v_encoded = '' or v_signature !~ '^[0-9a-f]{64}$'
+        or pg_catalog.split_part(p_cursor, '.', 3) <> ''
+      then
+        raise exception 'ledger_invalid_cursor';
+      end if;
+      v_payload := pg_catalog.convert_from(pg_catalog.decode(
+        pg_catalog.translate(v_encoded, '-_', '+/') ||
+          pg_catalog.repeat(
+            '=', (4 - pg_catalog.length(v_encoded) % 4) % 4
+          ),
+        'base64'
+      ), 'UTF8')::jsonb;
+      v_key_id := (v_payload ->> 'kid')::uuid;
+      v_issued_at := (v_payload ->> 'issuedAt')::timestamptz;
+      if ledger.cursor_secret_v1(v_key_id) is null
+        or v_signature <> pg_catalog.encode(public.hmac(
+          v_encoded, ledger.cursor_secret_v1(v_key_id), 'sha256'
+        ), 'hex')
+        or v_issued_at < pg_catalog.statement_timestamp() - interval '7 days'
+        or v_issued_at > pg_catalog.statement_timestamp() + interval '5 minutes'
+        or v_payload ->> 'resource' <> 'opening_snapshots'
+        or v_payload ->> 'companies' <> v_company_hash
+      then
+        raise exception 'ledger_invalid_cursor';
+      end if;
+      v_cursor_created_at := (v_payload ->> 'createdAt')::timestamptz;
+      v_cursor_id := (v_payload ->> 'id')::uuid;
+    exception
+      when others then
+        raise exception 'ledger_invalid_cursor';
+    end;
+  end if;
+
+  select pg_catalog.count(*) into v_count
+  from (
+    select setup.id
+    from public.opening_balance_setups setup
+    where setup.company_id = any(p_company_ids)
+      and public.company_access_is_accepted_member_v1(setup.company_id)
+      and (
+        p_cursor is null
+        or (setup.created_at, setup.id)
+          < (v_cursor_created_at, v_cursor_id)
+      )
+    order by setup.created_at desc, setup.id desc
+    limit p_limit + 1
+  ) visible;
+  has_more := v_count > p_limit;
+
+  if exists (
+    select 1
+    from (
+      select setup.bank_balance, setup.share_capital, setup.nominal_value
+      from public.opening_balance_setups setup
+      where setup.company_id = any(p_company_ids)
+        and public.company_access_is_accepted_member_v1(setup.company_id)
+        and (
+          p_cursor is null
+          or (setup.created_at, setup.id)
+            < (v_cursor_created_at, v_cursor_id)
+        )
+      order by setup.created_at desc, setup.id desc
+      limit p_limit
+    ) page_setup
+    where page_setup.bank_balance <> pg_catalog.round(page_setup.bank_balance, 2)
+      or page_setup.share_capital <> pg_catalog.round(page_setup.share_capital, 2)
+      or page_setup.nominal_value <> pg_catalog.round(page_setup.nominal_value, 2)
+  ) then
+    raise exception 'ledger_dependency_unavailable';
+  end if;
+
+  if exists (
+    select 1
+    from (
+      select setup.id
+      from public.opening_balance_setups setup
+      where setup.company_id = any(p_company_ids)
+        and public.company_access_is_accepted_member_v1(setup.company_id)
+        and (
+          p_cursor is null
+          or (setup.created_at, setup.id)
+            < (v_cursor_created_at, v_cursor_id)
+        )
+      order by setup.created_at desc, setup.id desc
+      limit p_limit
+    ) page_setup
+    where exists (
+      select 1
+      from public.opening_shareholders shareholder
+      where shareholder.setup_id = page_setup.id
+      offset 100 limit 1
+    )
+  ) then
+    raise exception 'ledger_dependency_unavailable';
+  end if;
+
+  select coalesce(
+    pg_catalog.jsonb_agg(snapshot.item order by snapshot.created_at desc, snapshot.id desc),
+    '[]'::jsonb
+  )
+  into items
+  from (
+    select
+      setup.created_at,
+      setup.id,
+      pg_catalog.jsonb_build_object(
+        'setupId', setup.id,
+        'companyId', setup.company_id,
+        'incomeYear', setup.income_year,
+        'bankBalance', setup.bank_balance::text,
+        'shareCapital', setup.share_capital::text,
+        'shareCount', setup.share_count,
+        'nominalValue', setup.nominal_value::text,
+        'lockedAt', setup.locked_at,
+        'createdAt', setup.created_at,
+        'createdBy', setup.created_by,
+        'shareholders', (
+          select coalesce(
+            pg_catalog.jsonb_agg(
+              pg_catalog.jsonb_build_object(
+                'shareholderId', shareholder.id,
+                'setupId', shareholder.setup_id,
+                'companyId', shareholder.company_id,
+                'name', shareholder.name,
+                'shareholderKind', shareholder.shareholder_kind,
+                'nationalId', shareholder.national_id,
+                'orgNumber', shareholder.org_number,
+                'shareCount', shareholder.share_count
+              ) order by shareholder.id
+            ),
+            '[]'::jsonb
+          )
+          from (
+            select shareholder.*
+            from public.opening_shareholders shareholder
+            where shareholder.setup_id = setup.id
+            order by shareholder.id
+            limit 101
+          ) shareholder
+        )
+      ) item
+    from public.opening_balance_setups setup
+    where setup.company_id = any(p_company_ids)
+      and public.company_access_is_accepted_member_v1(setup.company_id)
+      and (
+        p_cursor is null
+        or (setup.created_at, setup.id)
+          < (v_cursor_created_at, v_cursor_id)
+      )
+    order by setup.created_at desc, setup.id desc
+    limit p_limit
+  ) snapshot;
+
+  if has_more and pg_catalog.jsonb_array_length(items) > 0 then
+    select setup.created_at, setup.id
+    into v_last_created_at, v_last_id
+    from public.opening_balance_setups setup
+    where setup.company_id = any(p_company_ids)
+      and public.company_access_is_accepted_member_v1(setup.company_id)
+      and (
+        p_cursor is null
+        or (setup.created_at, setup.id)
+          < (v_cursor_created_at, v_cursor_id)
+      )
+    order by setup.created_at desc, setup.id desc
+    offset p_limit - 1 limit 1;
+    next_cursor := ledger.cursor_encode_v1(
+      'opening_snapshots', p_company_ids, v_last_created_at, v_last_id
+    );
+  else
+    next_cursor := null;
+  end if;
+  return next;
 end;
 $function$;
 
@@ -1770,6 +2020,9 @@ begin
   alter function backend_system.record_opening_snapshot_legacy_v1(
     uuid, integer, numeric, numeric, integer, numeric, jsonb, text
   ) owner to ledger_workflow_store_owner;
+  alter function backend_system.list_opening_snapshots_legacy_v1(
+    uuid[], text, integer, text
+  ) owner to ledger_workflow_store_owner;
   alter function backend_system.complete_ledger_workflow_v1(
     text, text, uuid, jsonb, jsonb, text
   ) owner to ledger_workflow_store_owner;
@@ -1827,6 +2080,7 @@ revoke all on function
   backend_system.record_opening_snapshot_legacy_v1(
     uuid, integer, numeric, numeric, integer, numeric, jsonb, text
   ),
+  backend_system.list_opening_snapshots_legacy_v1(uuid[], text, integer, text),
   backend_system.complete_ledger_workflow_v1(
     text, text, uuid, jsonb, jsonb, text
   )
@@ -1842,6 +2096,15 @@ grant execute on function
   ledger.list_entries(uuid[], text, integer, text),
   ledger.list_period_locks(uuid[], text, integer, text)
 to ledger_executor;
+
+grant execute on function
+  backend_system.list_opening_snapshots_legacy_v1(uuid[], text, integer, text)
+to ledger_executor;
+
+grant execute on function
+  ledger.cursor_secret_v1(uuid),
+  ledger.cursor_encode_v1(text, uuid[], timestamptz, uuid)
+to ledger_workflow_store_owner;
 
 grant execute on function
   backend_system.claim_ledger_workflow_v1(text, text, uuid, jsonb, text),

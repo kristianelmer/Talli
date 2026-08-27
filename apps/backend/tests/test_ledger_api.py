@@ -8,6 +8,12 @@ from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
 from talli_backend.application.ledger_session import LedgerAuthenticationError
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningShareholderView,
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+    LegacyOpeningSnapshotView,
+)
 from talli_backend.modules.ledger.public import (
     LedgerCursor,
     LedgerEntryId,
@@ -53,6 +59,9 @@ class LedgerSessionStub:
         self.tokens: list[str] = []
         self.entry_items: tuple[LedgerEntryView, ...] = ()
         self.entry_next_cursor: LedgerCursor | None = LedgerCursor("opaque-next")
+        self.opening_snapshots = LegacyOpeningSnapshotPage(
+            items=(), next_cursor=None, has_more=False
+        )
 
     @property
     def actor_id(self) -> ActorId:
@@ -83,6 +92,23 @@ class LedgerSessionStub:
             ("record_legacy_opening_snapshot", {"command": command, "bank": ledger_bank_balance})
         )
         return SETUP_ID
+
+    async def list_opening_snapshots(
+        self, *, actor_id, company_ids, correlation_id, cursor, limit
+    ) -> LegacyOpeningSnapshotPage:
+        self.calls.append(
+            (
+                "list_opening_snapshots",
+                {
+                    "actor_id": actor_id,
+                    "company_ids": company_ids,
+                    "correlation_id": correlation_id,
+                    "cursor": cursor,
+                    "limit": limit,
+                },
+            )
+        )
+        return self.opening_snapshots
 
     async def complete_workflow(
         self,
@@ -249,6 +275,7 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerPostAdministrativeCost",
         "ledgerPostManualJournal",
         "ledgerStartNewYear",
+        "ledgerListOpeningSnapshots",
     } <= operations
     assert not {
         "ledgerPostBankSuggestionOutcome",
@@ -273,6 +300,80 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "/api/v1/ledger/structured-entries",
         "/api/v1/ledger/tax-settlements",
     } & client.app.openapi()["paths"].keys()
+
+
+def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
+    client, session = client_and_session()
+    shareholder_id = "70000000-0000-0000-0000-000000000007"
+    session.opening_snapshots = LegacyOpeningSnapshotPage(
+        items=(LegacyOpeningSnapshotView(
+            setup_id=str(SETUP_ID),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            bank_balance=Money.nok("45000.00"),
+            share_capital=Money.nok("30000.00"),
+            share_count=100,
+            nominal_value=Money.nok("300.00"),
+            locked_at=NOW,
+            created_at=Timestamp(datetime(2026, 8, 27, 9, tzinfo=UTC)),
+            created_by=ACTOR_ID,
+            shareholders=(
+                LegacyOpeningShareholderView(
+                    shareholder_id=shareholder_id,
+                    setup_id=str(SETUP_ID),
+                    company_id=COMPANY_ID,
+                    name="Owner",
+                    shareholder_kind="norwegian_person",
+                    national_id="01010112345",
+                    org_number=None,
+                    share_count=100,
+                ),
+            ),
+        ),),
+        next_cursor=LegacyOpeningSnapshotCursor("opaque-opening-next"),
+        has_more=True,
+    )
+
+    response = client.get(
+        f"/api/v1/ledger/opening-snapshots?companyId={COMPANY_ID}&limit=25",
+        headers={"Authorization": "Bearer session-token"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "items": [
+            {
+                "setupId": str(SETUP_ID),
+                "companyId": str(COMPANY_ID),
+                "incomeYear": 2026,
+                "bankBalance": money("45000.00"),
+                "shareCapital": money("30000.00"),
+                "shareCount": 100,
+                "nominalValue": money("300.00"),
+                "lockedAt": "2026-08-27T10:00:00Z",
+                "createdAt": "2026-08-27T09:00:00Z",
+                "createdBy": str(ACTOR_ID.subject),
+                "shareholders": [
+                    {
+                        "shareholderId": shareholder_id,
+                        "setupId": str(SETUP_ID),
+                        "companyId": str(COMPANY_ID),
+                        "name": "Owner",
+                        "shareholderKind": "norwegian_person",
+                        "nationalId": "01010112345",
+                        "orgNumber": None,
+                        "shareCount": 100,
+                    }
+                ],
+            }
+        ],
+        "nextCursor": "opaque-opening-next",
+        "hasMore": True,
+    }
+    call = next(value for name, value in session.calls if name == "list_opening_snapshots")
+    assert call["company_ids"] == (COMPANY_ID,)
+    assert call["cursor"] is None
+    assert call["limit"] == 25
 
 
 def test_new_year_start_exposes_business_facts_without_raw_ledger_lines() -> None:

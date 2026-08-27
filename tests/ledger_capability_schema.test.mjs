@@ -122,6 +122,60 @@ test("persistence enforces canonical balanced two-decimal NOK entries", () => {
   assert.match(source, /unique index[^;]+company_id[^;]+income_year[^;]+OPENING_BALANCE/iu);
 });
 
+test("entry queries retain canonical source identity for archive reconstruction", () => {
+  const source = artifact(expandPath, "expand");
+  const listEntries = functionBody(source, "ledger", "list_entries");
+  assert.match(listEntries, /'sourceCapability',\s*entry\.source_capability/iu);
+  assert.match(listEntries, /'sourceRecordId',\s*entry\.source_record_id/iu);
+  assert.match(listEntries, /'createdAt',\s*entry\.created_at/iu);
+});
+
+test("opening-snapshot compatibility query is bounded, member-scoped, and read-only", () => {
+  const source = artifact(expandPath, "expand");
+  const query = functionBody(
+    source,
+    "backend_system",
+    "list_opening_snapshots_legacy_v1",
+  );
+  assert.match(query, /stable/iu);
+  assert.match(query, /security definer/iu);
+  assert.match(query, /set search_path = ''/iu);
+  assert.match(query, /p_verified_subject/iu);
+  assert.match(query, /company_access_auth_uid_v1\(\)/iu);
+  assert.match(query, /cardinality\(p_company_ids\) = 0/iu);
+  assert.match(query, /cardinality\(p_company_ids\) > 100/iu);
+  assert.match(query, /p_limit < 1 or p_limit > 100/iu);
+  assert.match(query, /length\(p_cursor\) > 4096/iu);
+  assert.match(query, /count\(distinct company_id\)/iu);
+  assert.match(query, /'opening_snapshots'/iu);
+  assert.match(query, /ledger\.cursor_secret_v1/iu);
+  assert.match(query, /limit p_limit \+ 1/iu);
+  assert.match(query, /limit p_limit/iu);
+  assert.match(query, /offset 100 limit 1/iu);
+  assert.match(query, /bank_balance <> pg_catalog\.round\(page_setup\.bank_balance, 2\)/iu);
+  assert.match(query, /share_capital <> pg_catalog\.round\(page_setup\.share_capital, 2\)/iu);
+  assert.match(query, /nominal_value <> pg_catalog\.round\(page_setup\.nominal_value, 2\)/iu);
+  assert.match(query, /'bankBalance',\s*setup\.bank_balance::text/iu);
+  assert.match(query, /'shareCapital',\s*setup\.share_capital::text/iu);
+  assert.match(query, /'nominalValue',\s*setup\.nominal_value::text/iu);
+  assert.match(query, /company_access_is_accepted_member_v1/iu);
+  assert.match(query, /order by snapshot\.created_at desc, snapshot\.id desc/iu);
+  assert.match(query, /order by shareholder\.id/iu);
+  assert.doesNotMatch(query, /\b(?:insert|update|delete)\b/iu);
+  assert.match(
+    source,
+    /create policy "ledger workflow reads opening setups"[\s\S]+company_access_is_accepted_member_v1/iu,
+  );
+  assert.match(
+    source,
+    /create policy "ledger workflow reads opening shareholders"[\s\S]+company_access_is_accepted_member_v1/iu,
+  );
+  assert.match(
+    source,
+    /grant execute on function\s+backend_system\.list_opening_snapshots_legacy_v1\(uuid\[\], text, integer, text\)\s+to ledger_executor/iu,
+  );
+});
+
 test("serialization and signed cursors are bounded and owner-only", () => {
   const source = artifact(expandPath, "expand");
   for (const name of ["post_entry", "lock_period"]) {
@@ -154,6 +208,9 @@ test("the frozen overlap trigger can invoke private normalization helpers", () =
   const source = artifact(expandPath, "expand");
   const trigger = functionBody(source, "ledger", "enforce_entry_v1");
   assert.match(trigger, /security definer/iu);
+  assert.match(trigger, /to_jsonb\(new\)\s*->>\s*'setup_id'/iu);
+  assert.match(trigger, /opening-setup:/iu);
+  assert.doesNotMatch(trigger, /new\.setup_id/iu);
   assert.match(source, /alter function ledger\.enforce_entry_v1\(\)\s+owner to ledger_store_owner/iu);
 });
 
@@ -168,6 +225,21 @@ test("contract removes legacy writers, facades, and cross-capability FKs", () =>
   for (const constraint of ["bank_transactions_matched_entry_id_fkey", "holding_actions_ledger_entry_id_fkey", "bank_suggestion_acceptances_ledger_entry_id_fkey", "corporate_decision_finalizations_ledger_entry_id_fkey", "ledger_entries_setup_id_fkey"]) {
     assert.match(source, new RegExp(`drop constraint if exists ${constraint}`, "iu"));
   }
+  assert.match(source, /ledger_contract_unsupported_legacy_setup_reference/u);
+  assert.doesNotMatch(
+    source,
+    /drop trigger if exists company_archive_track_ledger_entries/iu,
+  );
+  assert.match(
+    source,
+    /company_archive_track_source_write_v1\(\)[\s\S]+count\(\*\)[\s\S]+ledger\.entries/iu,
+  );
+  assert.match(source, /company_archive_track_ledger_entries/u);
+  assert.match(source, /tgenabled in \('O', 'A'\)/u);
+  assert.match(source, /tgtype = 31/u);
+  assert.match(source, /tgnargs = 2/u);
+  assert.match(source, /7965617200636f6d70616e795f696400/u);
+  assert.match(source, /ledger_archive_freshness_function_missing/u);
 });
 
 test("rollback disables target before restoring the frozen legacy writer", () => {
@@ -175,9 +247,19 @@ test("rollback disables target before restoring the frozen legacy writer", () =>
   const disableAt = source.search(/revoke all on function ledger\.post_entry/iu);
   const restoreAt = source.search(/alter table ledger\.ledger_entries set schema public/iu);
   assert.ok(disableAt >= 0 && restoreAt > disableAt);
-  assert.match(source, /revoke ledger_executor from talli_ledger_backend/iu);
+  assert.doesNotMatch(source, /revoke ledger_executor from talli_ledger_backend/iu);
+  assert.doesNotMatch(
+    source,
+    /revoke all on function backend_system\.list_opening_snapshots_legacy_v1/iu,
+  );
   assert.match(source, /revoke ledger_workflow_executor from talli_ledger_backend/iu);
   assert.match(source, /rename column entry_kind to entry_type/iu);
   assert.match(source, /grant select, insert on public\.ledger_entries to authenticated/iu);
   assert.match(source, /grant execute on function public\.accept_bank_transaction_suggestion/iu);
+  assert.match(
+    source,
+    /drop trigger if exists company_archive_track_ledger_entries\s+on public\.ledger_entries;[\s\S]+create trigger company_archive_track_ledger_entries/iu,
+  );
+  assert.match(source, /ledger_archive_freshness_function_missing/u);
+  assert.match(source, /opening-setup:[\s\S]+new\.setup_id/iu);
 });

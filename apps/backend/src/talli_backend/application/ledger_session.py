@@ -3,12 +3,16 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+)
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
 )
-from talli_backend.shared.kernel import ActorId, Money
+from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, Money
 
 
 class LedgerAuthenticationError(Exception):
@@ -50,6 +54,16 @@ class AuthenticatedLedgerSession(LedgerPersistence, Protocol):
     def transaction(
         self,
     ) -> AbstractAsyncContextManager[LedgerWorkflowTransaction]: ...
+
+    async def list_opening_snapshots(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LegacyOpeningSnapshotCursor | None,
+        limit: int,
+    ) -> LegacyOpeningSnapshotPage: ...
 
 
 class LedgerSessionFactory(Protocol):

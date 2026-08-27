@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { TalliApiError } from "@talli/talli-api-client";
+import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 
 import {
-  LedgerArchiveFactsUnavailableError,
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
   loadLedgerPeriodLocks,
+  loadOpeningSnapshots,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
   startNewYear,
@@ -17,6 +17,7 @@ import {
   presentLedgerEntries,
   presentLedgerEntriesForArchive,
   presentLedgerPeriodLocks,
+  presentOpeningSnapshots,
 } from "../features/ledger/index.ts";
 
 test("an in-progress idempotent command preserves its operation id for retry", () => {
@@ -115,6 +116,172 @@ function entry(overrides = {}) {
   };
 }
 
+const OPENING_COMPANY_ID = "10000000-0000-0000-0000-000000000001";
+const OPENING_SETUP_ID = "60000000-0000-0000-0000-000000000006";
+
+function openingSnapshot(overrides = {}) {
+  return {
+    setupId: OPENING_SETUP_ID,
+    companyId: OPENING_COMPANY_ID,
+    incomeYear: 2026,
+    bankBalance: { amount: "45000.00", currency: "NOK" },
+    shareCapital: { amount: "30000.00", currency: "NOK" },
+    shareCount: 100,
+    nominalValue: { amount: "300.00", currency: "NOK" },
+    lockedAt: "2026-08-27T10:00:00Z",
+    createdAt: "2026-08-27T09:00:00Z",
+    createdBy: "20000000-0000-0000-0000-000000000002",
+    shareholders: [{
+      shareholderId: "70000000-0000-0000-0000-000000000007",
+      setupId: OPENING_SETUP_ID,
+      companyId: OPENING_COMPANY_ID,
+      name: "Owner",
+      shareholderKind: "norwegian_person",
+      nationalId: "01010112345",
+      orgNumber: null,
+      shareCount: 100,
+    }],
+    ...overrides,
+  };
+}
+
+function openingPage(items, nextCursor = null) {
+  return { items, hasMore: nextCursor !== null, nextCursor };
+}
+
+test("opening-snapshot transport chunks companies and follows opaque pages", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const calls = [];
+  const companyIds = Array.from({ length: 101 }, (_, index) => (
+    `10000000-0000-0000-0000-${(index + 1).toString(16).padStart(12, "0")}`
+  ));
+  const secondChunkSetupId = "60000000-0000-0000-0000-000000000008";
+  globalThis.fetch = async (url, request) => {
+    calls.push({ url: String(url), request });
+    if (String(url).includes("cursor=opaque-next")) {
+      return Response.json(openingPage([]));
+    }
+    if ((String(url).match(/companyId=/gu) ?? []).length === 100) {
+      return Response.json(openingPage([openingSnapshot()], "opaque-next"));
+    }
+    return Response.json(openingPage([openingSnapshot({
+      setupId: secondChunkSetupId,
+      companyId: companyIds[100],
+      createdAt: "2026-08-27T11:00:00Z",
+      shareholders: [{
+        ...openingSnapshot().shareholders[0],
+        shareholderId: "70000000-0000-0000-0000-000000000009",
+        setupId: secondChunkSetupId,
+        companyId: companyIds[100],
+      }],
+    })]));
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    const result = await loadOpeningSnapshots(
+      "session-token",
+      [...companyIds, companyIds[0]],
+      "opening-query-test",
+    );
+
+    assert.equal(result.length, 2);
+    assert.equal(result[0].setupId, secondChunkSetupId);
+    assert.equal(result[1].setupId, OPENING_SETUP_ID);
+    assert.equal(calls.length, 3);
+    assert.equal((calls[0].url.match(/companyId=/gu) ?? []).length, 100);
+    assert.match(calls[1].url, /cursor=opaque-next/u);
+    assert.equal((calls[2].url.match(/companyId=/gu) ?? []).length, 1);
+    const headers = new Headers(calls[0].request.headers);
+    assert.equal(headers.get("Authorization"), "Bearer session-token");
+    assert.equal(headers.get("X-Request-ID"), "opening-query-test");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("opening-snapshot compatibility projection preserves the frozen shape", () => {
+  assert.deepEqual(presentOpeningSnapshots([openingSnapshot()]), {
+    setups: [{
+      id: OPENING_SETUP_ID,
+      company_id: OPENING_COMPANY_ID,
+      income_year: 2026,
+      bank_balance: 45000,
+      share_capital: 30000,
+      share_count: 100,
+      nominal_value: 300,
+      locked_at: "2026-08-27T10:00:00Z",
+      created_by: "20000000-0000-0000-0000-000000000002",
+    }],
+    shareholders: [{
+      id: "70000000-0000-0000-0000-000000000007",
+      setup_id: OPENING_SETUP_ID,
+      company_id: OPENING_COMPANY_ID,
+      name: "Owner",
+      shareholder_kind: "norwegian_person",
+      national_id: "01010112345",
+      org_number: null,
+      share_count: 100,
+    }],
+  });
+});
+
+test("opening-snapshot decoders reject malformed collections and invariants", async () => {
+  const generated = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async () => Response.json(openingPage([
+      openingSnapshot({ shareholders: [] }),
+    ])),
+  });
+  await assert.rejects(
+    generated.ledgerListOpeningSnapshots({ companyIds: [OPENING_COMPANY_ID] }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
+
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  try {
+    for (const malformed of [
+      openingSnapshot({ shareCapital: { amount: "29999.00", currency: "NOK" } }),
+      openingSnapshot({
+        shareholders: [{
+          ...openingSnapshot().shareholders[0],
+          shareholderKind: "norwegian_company",
+        }],
+      }),
+      openingSnapshot({
+        shareholders: [
+          { ...openingSnapshot().shareholders[0], shareCount: 50 },
+          { ...openingSnapshot().shareholders[0], shareCount: 50 },
+        ],
+      }),
+    ]) {
+      globalThis.fetch = async () => Response.json(openingPage([malformed]));
+      await assert.rejects(
+        loadOpeningSnapshots("session-token", [OPENING_COMPANY_ID]),
+        /inconsistent/u,
+      );
+    }
+    globalThis.fetch = async () => Response.json({
+      items: [],
+      nextCursor: "unexpected",
+      hasMore: false,
+    });
+    await assert.rejects(
+      loadOpeningSnapshots("session-token", [OPENING_COMPANY_ID]),
+      /page is inconsistent/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
 test("ledger query transport follows opaque pages through the generated client", async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.TALLI_BACKEND_URL;
@@ -179,7 +346,7 @@ test("source-aware ledger query fails closed against a source-unaware backend", 
   try {
     await assert.rejects(
       loadLedgerEntriesForArchive("session-token", ["10000000-0000-0000-0000-000000000001"]),
-      (error) => error instanceof LedgerArchiveFactsUnavailableError,
+      /archive facts/iu,
     );
   } finally {
     globalThis.fetch = originalFetch;

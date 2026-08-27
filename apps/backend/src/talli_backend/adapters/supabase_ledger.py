@@ -20,6 +20,12 @@ import psycopg
 from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningShareholderView,
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+    LegacyOpeningSnapshotView,
+)
 from talli_backend.application.ledger_workflow import (
     LedgerApplication,
     LedgerSessionFactory,
@@ -481,6 +487,78 @@ class SupabaseLedgerSession:
                 has_more=bool(rows[0].get("has_more")),
             ),
         )
+
+    async def list_opening_snapshots(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LegacyOpeningSnapshotCursor | None,
+        limit: int,
+    ) -> LegacyOpeningSnapshotPage:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from backend_system.list_opening_snapshots_legacy_v1(%s::uuid[], %s::text, %s::integer, %s::text)",
+            (
+                [str(company_id) for company_id in company_ids],
+                str(cursor) if cursor is not None else None,
+                limit,
+                str(actor_id.subject),
+            ),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("items"), list):
+            raise self._unavailable()
+        try:
+            items = tuple(
+                LegacyOpeningSnapshotView(
+                    setup_id=str(item["setupId"]),
+                    company_id=CompanyId(str(item["companyId"])),
+                    income_year=IncomeYear(int(item["incomeYear"])),
+                    bank_balance=_money(item["bankBalance"]),
+                    share_capital=_money(item["shareCapital"]),
+                    share_count=int(item["shareCount"]),
+                    nominal_value=_money(item["nominalValue"]),
+                    locked_at=_timestamp(item["lockedAt"]),
+                    created_at=_timestamp(item["createdAt"]),
+                    created_by=_actor(item["createdBy"]),
+                    shareholders=tuple(
+                        LegacyOpeningShareholderView(
+                            shareholder_id=str(shareholder["shareholderId"]),
+                            setup_id=str(shareholder["setupId"]),
+                            company_id=CompanyId(str(shareholder["companyId"])),
+                            name=str(shareholder["name"]),
+                            shareholder_kind=shareholder["shareholderKind"],
+                            national_id=(
+                                str(shareholder["nationalId"])
+                                if shareholder.get("nationalId") is not None
+                                else None
+                            ),
+                            org_number=(
+                                str(shareholder["orgNumber"])
+                                if shareholder.get("orgNumber") is not None
+                                else None
+                            ),
+                            share_count=int(shareholder["shareCount"]),
+                        )
+                        for shareholder in item["shareholders"]
+                    ),
+                )
+                for item in rows[0]["items"]
+            )
+            return LegacyOpeningSnapshotPage(
+                items=items,
+                next_cursor=(
+                    LegacyOpeningSnapshotCursor(str(rows[0]["next_cursor"]))
+                    if rows[0].get("next_cursor") is not None
+                    else None
+                ),
+                has_more=bool(rows[0].get("has_more")),
+            )
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
 
     async def list_period_locks(
         self,

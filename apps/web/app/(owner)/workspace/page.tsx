@@ -393,6 +393,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                           .join(", ")}
                       </p>
                       <form action={generateRf1086Preview}>
+                        <input name="companyId" type="hidden" value={setup.company_id} />
                         <input name="setupId" type="hidden" value={setup.id} />
                         <button className="secondaryButton" type="submit">
                           Generer RF-1086

@@ -92,8 +92,9 @@ drop policy if exists "company members can read period locks"
 drop policy if exists "owners can create period locks"
   on ledger.period_locks;
 
--- Other capabilities retain only opaque ledger IDs. No cross-module database
--- constraint or archive trigger is allowed to reach into ledger persistence.
+-- Other capabilities retain only opaque ledger IDs. The one frozen archive
+-- freshness trigger remains attached to the physical relation through the
+-- schema move; it owns no ledger policy and is retired with its capability.
 alter table public.bank_transactions
   drop constraint if exists bank_transactions_matched_entry_id_fkey;
 alter table public.holding_actions
@@ -102,10 +103,51 @@ alter table public.bank_suggestion_acceptances
   drop constraint if exists bank_suggestion_acceptances_ledger_entry_id_fkey;
 alter table public.corporate_decision_finalizations
   drop constraint if exists corporate_decision_finalizations_ledger_entry_id_fkey;
-drop trigger if exists company_archive_track_ledger_entries on ledger.entries;
+
+do $ledger_archive_freshness_barrier$
+declare
+  v_trigger_count integer;
+  v_trigger_valid boolean;
+begin
+  if pg_catalog.to_regprocedure(
+    'public.company_archive_track_source_write_v1()'
+  ) is null then
+    raise exception 'ledger_archive_freshness_function_missing';
+  end if;
+
+  select pg_catalog.count(*), pg_catalog.bool_and(
+    trigger.tgname = 'company_archive_track_ledger_entries'
+    and trigger.tgenabled in ('O', 'A')
+    and trigger.tgtype = 31
+    and trigger.tgnargs = 2
+    and pg_catalog.encode(trigger.tgargs, 'hex')
+      = '7965617200636f6d70616e795f696400'
+  ) into v_trigger_count, v_trigger_valid
+    from pg_catalog.pg_trigger trigger
+    where trigger.tgrelid = 'ledger.entries'::pg_catalog.regclass
+      and trigger.tgfoid = pg_catalog.to_regprocedure(
+        'public.company_archive_track_source_write_v1()'
+      )
+      and not trigger.tgisinternal;
+
+  if v_trigger_count <> 1 or not coalesce(v_trigger_valid, false) then
+    raise exception 'ledger_archive_freshness_trigger_invalid';
+  end if;
+end
+$ledger_archive_freshness_barrier$;
 
 alter table ledger.entries
   drop constraint if exists ledger_entries_setup_id_fkey;
+do $ledger_setup_reference_barrier$
+begin
+  if exists (
+    select 1 from ledger.entries
+    where setup_id is not null and entry_kind <> 'OPENING_BALANCE'
+  ) then
+    raise exception 'ledger_contract_unsupported_legacy_setup_reference';
+  end if;
+end
+$ledger_setup_reference_barrier$;
 alter table ledger.entries drop column setup_id;
 
 -- Opening/shareholder persistence belongs to its frozen target shell. Browser

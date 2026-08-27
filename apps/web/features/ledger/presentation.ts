@@ -1,6 +1,7 @@
 import type {
   LedgerEntryKind,
   LedgerEntryViewWire,
+  LedgerOpeningSnapshotWire,
   LedgerPeriodLockWire,
   LedgerRiskCode,
 } from "@talli/talli-api-client";
@@ -84,6 +85,62 @@ export type LedgerPeriodLockPresentation = {
   locked_by: string;
   locked_at: string;
 };
+
+export type OpeningBalanceSetupPresentation = {
+  id: string;
+  company_id: string;
+  income_year: number;
+  bank_balance: number;
+  share_capital: number;
+  share_count: number;
+  nominal_value: number;
+  locked_at: string;
+  created_by: string;
+};
+
+export type OpeningShareholderPresentation = {
+  id: string;
+  setup_id: string;
+  company_id: string;
+  name: string;
+  shareholder_kind: "norwegian_person" | "norwegian_company";
+  national_id: string | null;
+  org_number: string | null;
+  share_count: number;
+};
+
+export function presentOpeningSnapshots(
+  snapshots: readonly LedgerOpeningSnapshotWire[],
+): {
+  setups: OpeningBalanceSetupPresentation[];
+  shareholders: OpeningShareholderPresentation[];
+} {
+  return {
+    setups: snapshots.map((snapshot) => ({
+      id: snapshot.setupId,
+      company_id: snapshot.companyId,
+      income_year: snapshot.incomeYear,
+      bank_balance: Number(snapshot.bankBalance.amount),
+      share_capital: Number(snapshot.shareCapital.amount),
+      share_count: snapshot.shareCount,
+      nominal_value: Number(snapshot.nominalValue.amount),
+      locked_at: snapshot.lockedAt,
+      created_by: snapshot.createdBy,
+    })),
+    shareholders: snapshots.flatMap((snapshot) => snapshot.shareholders.map(
+      (shareholder) => ({
+        id: shareholder.shareholderId,
+        setup_id: shareholder.setupId,
+        company_id: shareholder.companyId,
+        name: shareholder.name,
+        shareholder_kind: shareholder.shareholderKind,
+        national_id: shareholder.nationalId,
+        org_number: shareholder.orgNumber,
+        share_count: shareholder.shareCount,
+      }),
+    )),
+  };
+}
 
 export function presentLedgerEntries(
   entries: readonly LedgerEntryViewWire[],

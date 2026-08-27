@@ -13,7 +13,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["LedgerPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["LedgerPersistence=>backend-system"],"adapterBindings":["LedgerPersistence=>talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"],"adapterDependencies":["datetime","decimal","talli_backend.application.ledger_session","talli_backend.application.ledger_workflow","talli_backend.modules.ledger.public","talli_backend.modules.ledger.service","talli_backend.shared.kernel"],"ports":["LedgerPersistence"],"publicPackages":["talli_backend.modules.ledger.public"],"routes":["/api/v1/ledger/administrative-costs","/api/v1/ledger/entries","/api/v1/ledger/manual-journals","/api/v1/ledger/period-locks","/api/v1/new-year-starts"],"technicalMigrations":["supabase/migrations/20260827100000_ledger_capability.sql"],"transportDependencies":["datetime","talli_backend.adapters.supabase_ledger","talli_backend.application.ledger_workflow","talli_backend.modules.ledger.public","talli_backend.shared.kernel"],"workflowDependencies":["talli_backend.modules.ledger.public"],"workflowPurposes":["ledger-posting-and-period-control=>Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, and company-year locking through the ledger public package."],"workflows":["ledger-posting-and-period-control"]}
+{"adapterBindingModes":["LedgerPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["LedgerPersistence=>backend-system"],"adapterBindings":["LedgerPersistence=>talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"],"adapterDependencies":["datetime","decimal","talli_backend.application.ledger_session","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.modules.ledger.service","talli_backend.shared.kernel"],"ports":["LedgerPersistence"],"publicPackages":["talli_backend.modules.ledger.public"],"routes":["/api/v1/ledger/administrative-costs","/api/v1/ledger/entries","/api/v1/ledger/manual-journals","/api/v1/ledger/opening-snapshots","/api/v1/ledger/period-locks","/api/v1/new-year-starts"],"technicalMigrations":["supabase/migrations/20260827100000_ledger_capability.sql"],"transportDependencies":["datetime","talli_backend.adapters.supabase_ledger","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.shared.kernel"],"workflowDependencies":["talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public"],"workflowPurposes":["ledger-posting-and-period-control=>Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, the frozen opening-snapshot compatibility read, and company-year locking without changing a future capability contract."],"workflows":["ledger-posting-and-period-control"]}
 -->
 
 <!-- architecture-inventory
@@ -84,13 +84,14 @@ data or filing behavior until #151. The application-layer compatibility adapter
 translates both intents only inside this workflow's active transaction.
 
 The `ledger-posting-and-period-control` workflow serves `/api/v1/ledger/entries`,
-`/api/v1/ledger/period-locks`, `/api/v1/ledger/administrative-costs`,
-and `/api/v1/ledger/manual-journals`.
+`/api/v1/ledger/opening-snapshots`, `/api/v1/ledger/period-locks`,
+`/api/v1/ledger/administrative-costs`, and `/api/v1/ledger/manual-journals`.
 It calls `talli_backend.modules.ledger.public` and injects the
 `LedgerPersistence` port through
 `talli_backend.adapters.supabase_ledger.SupabaseLedgerSession`. Authentication
-and transport parsing remain in the application/system boundary; ledger owns
-posting and lock behavior.
+and transport parsing remain in the application/system boundary. The opening
+read stays in an explicitly named compatibility model outside the frozen future
+capability package; ledger owns only posting and lock behavior.
 
 ## Operational and technical ownership
 

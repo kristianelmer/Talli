@@ -67,10 +67,11 @@
     },
     {
       "name": "ledger-posting-and-period-control",
-      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, and company-year locking through the ledger public package.",
+      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, the frozen opening-snapshot compatibility read, and company-year locking without changing a future capability contract.",
       "publicPackages": ["talli_backend.modules.ledger.public"],
       "routes": [
         "/api/v1/ledger/entries",
+        "/api/v1/ledger/opening-snapshots",
         "/api/v1/ledger/period-locks",
         "/api/v1/ledger/administrative-costs",
         "/api/v1/ledger/manual-journals"
@@ -123,8 +124,8 @@
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "datetime", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.application.ledger_workflow", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
-    "workflows": ["talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
-    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "urllib.error", "urllib.parse", "urllib.request"]
+    "transport": ["__future__", "re", "collections", "datetime", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
+    "workflows": ["talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
+    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "urllib.error", "urllib.parse", "urllib.request"]
   }
 }

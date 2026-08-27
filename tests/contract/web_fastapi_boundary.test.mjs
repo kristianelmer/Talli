@@ -125,6 +125,40 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
   );
 });
 
+test("opening snapshots use the ledger compatibility authenticated read contract", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operation = contract.paths["/api/v1/ledger/opening-snapshots"].get;
+
+  assert.equal(
+    operation.operationId,
+    "ledgerListOpeningSnapshots",
+  );
+  assert.deepEqual(operation.security, [{ bearerAuth: [] }]);
+  const companyIds = operation.parameters.find(
+    (parameter) => parameter.in === "query" && parameter.name === "companyId",
+  );
+  assert.equal(companyIds.required, true);
+  assert.equal(companyIds.schema.minItems, 1);
+  assert.equal(companyIds.schema.maxItems, 100);
+  assert.equal(
+    operation.parameters.find((parameter) => parameter.name === "limit").schema.maximum,
+    100,
+  );
+  assert.equal(
+    operation.parameters.find((parameter) => parameter.name === "cursor")
+      .schema.anyOf.find((candidate) => candidate.type === "string").maxLength,
+    4096,
+  );
+  assert.ok(operation.responses["401"].content["application/problem+json"]);
+
+  const response = contract.components.schemas.LedgerOpeningSnapshotPageWire;
+  assert.deepEqual(response.required, ["items", "nextCursor", "hasMore"]);
+  assert.equal(
+    response.properties.items.items.$ref,
+    "#/components/schemas/LedgerOpeningSnapshotWire",
+  );
+});
+
 test("the tracer contract declares optional request and response correlation headers", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operation = contract.paths["/api/v1/system-boundary/tracer"].get;
@@ -362,6 +396,7 @@ test("the generated client is committed and carries its provenance marker", () =
   assert.match(generatedClient, /ResumeCompanyCancellationRequest/);
   assert.match(generatedClient, /ledgerPostManualJournal/);
   assert.match(generatedClient, /ledgerListEntries/);
+  assert.match(generatedClient, /ledgerListOpeningSnapshots/);
   assert.match(generatedClient, /Idempotency-Key/);
   assert.match(generatedClient, /requestId\?: string/);
   assert.doesNotMatch(generatedClient, /ECONNREFUSED|Forbindelsen virker/);

@@ -294,60 +294,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
           "operation": "recordAdminCost"
         },
         {
@@ -367,37 +313,7 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:ledger_entries",
           "operation": "recordTaxSettlement"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "listOpeningSetups"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "listOpeningSetups"
-        }
+    }
       ]
     },
     {
@@ -1630,12 +1546,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_positions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
           "operation": "GET"
         },
         {

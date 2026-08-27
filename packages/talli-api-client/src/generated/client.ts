@@ -507,6 +507,37 @@ export interface NewYearStartWire {
   shareholders: NewYearShareholderWire[];
 }
 
+export interface LedgerOpeningShareholderWire {
+  companyId: string;
+  name: string;
+  nationalId: string | null;
+  orgNumber: string | null;
+  setupId: string;
+  shareCount: number;
+  shareholderId: string;
+  shareholderKind: "norwegian_person" | "norwegian_company";
+}
+
+export interface LedgerOpeningSnapshotPageWire {
+  hasMore: boolean;
+  items: LedgerOpeningSnapshotWire[];
+  nextCursor: string | null;
+}
+
+export interface LedgerOpeningSnapshotWire {
+  bankBalance: LedgerMoneyWire;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  incomeYear: number;
+  lockedAt: string;
+  nominalValue: LedgerMoneyWire;
+  setupId: string;
+  shareCapital: LedgerMoneyWire;
+  shareCount: number;
+  shareholders: LedgerOpeningShareholderWire[];
+}
+
 export interface LedgerPageWire {
   hasMore: boolean;
   nextCursor: string | null;
@@ -1099,7 +1130,7 @@ function isLedgerManualJournalWire(value: unknown): value is LedgerManualJournal
     hasOnlyProperties(value, ["companyId","incomeYear","lines","memo","warningAccepted"]) &&
     isUuid(value.companyId) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    Array.isArray(value.lines) && value.lines.every((item) => isLedgerLineWire(item)) &&
+    Array.isArray(value.lines) && value.lines.every((item) => isLedgerLineWire(item)) && value.lines.length >= 2 && value.lines.length <= 100 &&
     (typeof value.memo === "string" && value.memo.length >= 1 && value.memo.length <= 500) &&
     typeof value.warningAccepted === "boolean"
   );
@@ -1158,7 +1189,50 @@ function isNewYearStartWire(value: unknown): value is NewYearStartWire {
     isLedgerMoneyWire(value.nominalValue) &&
     isLedgerMoneyWire(value.shareCapital) &&
     (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 2147483647 && value.shareCount > 0) &&
-    Array.isArray(value.shareholders) && value.shareholders.every((item) => isNewYearShareholderWire(item))
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isNewYearShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 100
+  );
+}
+
+function isLedgerOpeningShareholderWire(value: unknown): value is LedgerOpeningShareholderWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","name","nationalId","orgNumber","setupId","shareCount","shareholderId","shareholderKind"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.name === "string" && value.name.length >= 1 && value.name.length <= 255) &&
+    ((typeof value.nationalId === "string" && new RegExp("^\\d{11}$", "u").test(value.nationalId)) || value.nationalId === null) &&
+    ((typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) || value.orgNumber === null) &&
+    isUuid(value.setupId) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0 && value.shareCount <= 2147483647) &&
+    isUuid(value.shareholderId) &&
+    (value.shareholderKind === "norwegian_person" || value.shareholderKind === "norwegian_company")
+  );
+}
+
+function isLedgerOpeningSnapshotPageWire(value: unknown): value is LedgerOpeningSnapshotPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["hasMore","items","nextCursor"]) &&
+    typeof value.hasMore === "boolean" &&
+    Array.isArray(value.items) && value.items.every((item) => isLedgerOpeningSnapshotWire(item)) && value.items.length <= 100 &&
+    (typeof value.nextCursor === "string" || value.nextCursor === null)
+  );
+}
+
+function isLedgerOpeningSnapshotWire(value: unknown): value is LedgerOpeningSnapshotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankBalance","companyId","createdAt","createdBy","incomeYear","lockedAt","nominalValue","setupId","shareCapital","shareCount","shareholders"]) &&
+    isLedgerMoneyWire(value.bankBalance) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isDateTime(value.lockedAt) &&
+    isLedgerMoneyWire(value.nominalValue) &&
+    isUuid(value.setupId) &&
+    isLedgerMoneyWire(value.shareCapital) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 2147483647 && value.shareCount > 0) &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isLedgerOpeningShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 100
   );
 }
 
@@ -1277,6 +1351,12 @@ export interface LedgerListRequest extends TalliRequestOptions {
 
 export interface LedgerEntryListRequest extends LedgerListRequest {
   includeSource?: boolean;
+}
+
+export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -1738,6 +1818,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerListOpeningSnapshots(
+      request: LedgerOpeningSnapshotListRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/opening-snapshots?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
       );
     },
 

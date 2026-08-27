@@ -1,8 +1,8 @@
 export {
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
-  LedgerArchiveFactsUnavailableError,
   loadLedgerPeriodLocks,
+  loadOpeningSnapshots,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
@@ -13,11 +13,14 @@ export {
   presentLedgerEntries,
   presentLedgerEntriesForArchive,
   presentLedgerPeriodLocks,
+  presentOpeningSnapshots,
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   type LedgerEntryPresentation,
   type LedgerEntryArchivePresentation,
   type LedgerPeriodLockPresentation,
+  type OpeningBalanceSetupPresentation,
+  type OpeningShareholderPresentation,
 } from "./presentation.ts";
 export type {
   LedgerAdministrativeCostWire,

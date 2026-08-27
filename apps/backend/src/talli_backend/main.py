@@ -23,6 +23,11 @@ from talli_backend.application.ledger_workflow import (
     LedgerSessionFactory,
     NewYearStartCommand,
 )
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+    LegacyOpeningSnapshotView,
+)
 from talli_backend.modules.company_access.public import (
     AcceptCompanyInvitationRequest,
     AdministerCompanyMembershipRequest,
@@ -251,6 +256,39 @@ class NewYearStartResultWire(TransportModel):
     posted_entry: NewYearOpeningEntryWire
 
 
+class LedgerOpeningShareholderWire(TransportModel):
+    shareholder_id: UUID
+    setup_id: UUID
+    company_id: UUID
+    name: str = Field(min_length=1, max_length=255)
+    shareholder_kind: Literal["norwegian_person", "norwegian_company"]
+    national_id: str | None = Field(pattern=r"^\d{11}$")
+    org_number: str | None = Field(pattern=r"^\d{9}$")
+    share_count: int = Field(ge=0, le=2_147_483_647)
+
+
+class LedgerOpeningSnapshotWire(TransportModel):
+    setup_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    bank_balance: LedgerMoneyWire
+    share_capital: LedgerMoneyWire
+    share_count: int = Field(gt=0, le=2_147_483_647)
+    nominal_value: LedgerMoneyWire
+    locked_at: datetime
+    created_at: datetime
+    created_by: UUID
+    shareholders: list[LedgerOpeningShareholderWire] = Field(
+        min_length=1, max_length=100
+    )
+
+
+class LedgerOpeningSnapshotPageWire(TransportModel):
+    items: list[LedgerOpeningSnapshotWire] = Field(max_length=100)
+    next_cursor: str | None
+    has_more: bool
+
+
 class LedgerRiskFlagWire(TransportModel):
     code: LedgerRiskCode
     account: str
@@ -360,6 +398,36 @@ def _lock_wire(value: PeriodLock) -> LedgerPeriodLockWire:
         locked_by=str(value.locked_by.subject),
         locked_at=value.locked_at.value,
         replayed=value.replayed,
+    )
+
+
+def _opening_snapshot_wire(
+    value: LegacyOpeningSnapshotView,
+) -> LedgerOpeningSnapshotWire:
+    return LedgerOpeningSnapshotWire(
+        setup_id=str(value.setup_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        bank_balance=_money_wire(value.bank_balance),
+        share_capital=_money_wire(value.share_capital),
+        share_count=value.share_count,
+        nominal_value=_money_wire(value.nominal_value),
+        locked_at=value.locked_at.value,
+        created_at=value.created_at.value,
+        created_by=str(value.created_by.subject),
+        shareholders=[
+            LedgerOpeningShareholderWire(
+                shareholder_id=item.shareholder_id,
+                setup_id=str(item.setup_id),
+                company_id=str(item.company_id),
+                name=item.name,
+                shareholder_kind=item.shareholder_kind,
+                national_id=item.national_id,
+                org_number=item.org_number,
+                share_count=item.share_count,
+            )
+            for item in value.shareholders
+        ],
     )
 
 
@@ -1235,6 +1303,54 @@ def create_app(
                     ),
                     has_more=page.page.has_more,
                 ),
+            )
+
+        return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/ledger/opening-snapshots",
+        operation_id="ledgerListOpeningSnapshots",
+        response_model=LedgerOpeningSnapshotPageWire,
+        responses={
+            200: {"description": "Authorized legacy opening-snapshot projection."}
+            | ledger_success
+        }
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_opening_snapshots(
+        request: Request,
+        company_id: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 100,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerOpeningSnapshotPageWire:
+        async def execute() -> LedgerOpeningSnapshotPageWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            snapshots: LegacyOpeningSnapshotPage = await session.list_opening_snapshots(
+                actor_id=session.actor_id,
+                company_ids=ledger_input(
+                    lambda: tuple(CompanyId(str(value)) for value in company_id)
+                ),
+                correlation_id=ledger_correlation(request),
+                cursor=(
+                    ledger_input(lambda: LegacyOpeningSnapshotCursor(cursor))
+                    if cursor
+                    else None
+                ),
+                limit=limit,
+            )
+            return LedgerOpeningSnapshotPageWire(
+                items=[_opening_snapshot_wire(item) for item in snapshots.items],
+                next_cursor=(
+                    str(snapshots.next_cursor)
+                    if snapshots.next_cursor is not None
+                    else None
+                ),
+                has_more=snapshots.has_more,
             )
 
         return await ledger_call(execute)

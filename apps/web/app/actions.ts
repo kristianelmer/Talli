@@ -208,6 +208,9 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
   hasSupabaseEnv,
+  listLedgerEntries,
+  listOpeningSetups,
+  listPeriodLocks,
   type AnnualDataRow,
   type LedgerEntryRow,
 } from "./lib/supabase/server";
@@ -610,18 +613,16 @@ async function loadCorporateLifecycleActionContext(input: {
     if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
       throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
     }
-    const ledgerResult = await input.supabase
-      .from("ledger_entries")
-      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
-      .eq("company_id", decision.company_id)
-      .eq("income_year", currentSource.income_year);
-    if (ledgerResult.error) throw new Error(ledgerResult.error.message);
+    const ledgerResult = await listLedgerEntries([decision.company_id]);
+    if (ledgerResult.error) throw new Error(ledgerResult.error);
     const currentBasis = buildAnnualCloseBasis({
       annualData: currentSource,
       annualAccountsPayload: buildAnnualAccountsPayload({
         incomeYear: currentSource.income_year,
         annualData: currentSource,
-        ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+        ledgerEntries: ledgerResult.entries.filter(
+          (entry) => entry.income_year === currentSource.income_year,
+        ),
       }),
     });
     if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
@@ -1138,27 +1139,24 @@ export async function generateRf1086Preview(formData: FormData) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
 
+  const companyId = formString(formData, "companyId");
   const setupId = formString(formData, "setupId");
-  const { data: setup, error: setupError } = await supabase
-    .from("opening_balance_setups")
-    .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
-    .eq("id", setupId)
-    .single();
-  if (setupError || !setup) {
-    redirect(`/workspace?error=${encodeURIComponent(setupError?.message ?? "Fant ikke åpningsbalanse")}`);
-  }
-
-  const company = await loadAcceptedMembershipCompany(setup.company_id);
+  const company = await loadAcceptedMembershipCompany(companyId);
   if (!company) {
     redirect(`/workspace?error=${encodeURIComponent("Fant ikke selskap")}`);
   }
-
-  const { data: shareholders, error: shareholdersError } = await supabase
-    .from("opening_shareholders")
-    .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
-    .eq("setup_id", setupId);
-  if (shareholdersError || !shareholders) {
-    redirect(`/workspace?error=${encodeURIComponent(shareholdersError?.message ?? "Fant ikke aksjonærer")}`);
+  const openingResult = await listOpeningSetups([company.id]);
+  const setup = openingResult.setups.find((candidate) => (
+    candidate.id === setupId && candidate.company_id === company.id
+  ));
+  if (openingResult.error || !setup) {
+    redirect(`/workspace?error=${encodeURIComponent(openingResult.error ?? "Fant ikke åpningsbalanse")}`);
+  }
+  const shareholders = openingResult.shareholders.filter(
+    (shareholder) => shareholder.setup_id === setup.id,
+  );
+  if (!shareholders.length) {
+    redirect(`/workspace?error=${encodeURIComponent("Fant ikke aksjonærer")}`);
   }
 
   let rendered;
@@ -2171,24 +2169,14 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
 
   const [company, setupResult, annualResult, lockResult] = await Promise.all([
     loadAcceptedMembershipCompany(companyId),
-    supabase
-      .from("opening_balance_setups")
-      .select("id, company_id, income_year")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear)
-      .maybeSingle(),
+    listOpeningSetups([companyId]),
     supabase
       .from("annual_data")
       .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
       .eq("company_id", companyId)
       .lte("income_year", incomeYear)
       .order("income_year", { ascending: false }),
-    supabase
-      .from("period_locks")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear)
-      .maybeSingle(),
+    listPeriodLocks([companyId]),
   ]);
   if (!company || company.entity_type !== "AS") {
     failTo(returnTo, "Fant ikke et støttet AS for beslutningen.");
@@ -2196,11 +2184,14 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
   if (company.role !== "owner") {
     failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette beslutningsutkast.");
   }
-  if (setupResult.error || !setupResult.data) {
+  const setup = setupResult.setups.find(
+    (candidate) => candidate.company_id === companyId && candidate.income_year === incomeYear,
+  );
+  if (setupResult.error || !setup) {
     failTo(returnTo, "Låst aksjonærgrunnlag mangler for beslutningsåret.");
   }
-  if (lockResult.error || lockResult.data) {
-    failTo(returnTo, lockResult.error?.message ?? "Regnskapsåret er låst og kan ikke få et nytt utbytteutkast.");
+  if (lockResult.error || lockResult.locks.some((lock) => lock.income_year === incomeYear)) {
+    failTo(returnTo, lockResult.error ?? "Regnskapsåret er låst og kan ikke få et nytt utbytteutkast.");
   }
   if (annualResult.error) {
     failTo(returnTo, annualResult.error.message);
@@ -2212,27 +2203,18 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
     failTo(returnTo, "Siste godkjente årsregnskap mangler.");
   }
 
-  const [shareholderResult, ledgerResult] = await Promise.all([
-    supabase
-      .from("opening_shareholders")
-      .select("id, setup_id, company_id, name, share_count")
-      .eq("company_id", companyId)
-      .eq("setup_id", setupResult.data.id)
-      .order("id", { ascending: true }),
-    supabase
-      .from("ledger_entries")
-      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
-      .eq("company_id", companyId)
-      .eq("income_year", annualData.income_year),
-  ]);
-  if (shareholderResult.error || !shareholderResult.data?.length) {
-    failTo(returnTo, shareholderResult.error?.message ?? "Aksjonærgrunnlaget mangler.");
+  const ledgerResult = await listLedgerEntries([companyId]);
+  const shareholders = setupResult.shareholders.filter(
+    (shareholder) => shareholder.company_id === companyId && shareholder.setup_id === setup.id,
+  );
+  if (!shareholders.length) {
+    failTo(returnTo, "Aksjonærgrunnlaget mangler.");
   }
   if (ledgerResult.error) {
-    failTo(returnTo, ledgerResult.error.message);
+    failTo(returnTo, ledgerResult.error);
   }
 
-  const persistedShareholders = shareholderResult.data.map((shareholder, order) => ({
+  const persistedShareholders = shareholders.map((shareholder, order) => ({
     id: shareholder.id,
     name: shareholder.name,
     shareCount: Number(shareholder.share_count),
@@ -2243,7 +2225,9 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
     const annualAccountsPayload = buildAnnualAccountsPayload({
       incomeYear: annualData.income_year,
       annualData,
-      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+      ledgerEntries: ledgerResult.entries.filter(
+        (entry) => entry.income_year === annualData.income_year,
+      ),
     });
     const annualBasis = buildOwnerDividendAnnualBasis({ annualData, annualAccountsPayload });
     const boardParticipantIds = formStrings(formData, "boardParticipantId");
@@ -2387,23 +2371,14 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   }
   const [company, setupResult, annualResult, ledgerResult] = await Promise.all([
     loadAcceptedMembershipCompany(companyId),
-    supabase
-      .from("opening_balance_setups")
-      .select("id, company_id, income_year")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear)
-      .maybeSingle(),
+    listOpeningSetups([companyId]),
     supabase
       .from("annual_data")
       .select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at")
       .eq("company_id", companyId)
       .eq("income_year", incomeYear)
       .maybeSingle(),
-    supabase
-      .from("ledger_entries")
-      .select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at")
-      .eq("company_id", companyId)
-      .eq("income_year", incomeYear),
+    listLedgerEntries([companyId]),
   ]);
   if (!company || company.entity_type !== "AS") {
     failTo(returnTo, "Fant ikke et støttet AS for årsbeslutningen.");
@@ -2411,26 +2386,26 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   if (company.role !== "owner") {
     failTo(returnTo, "Bare en eier med akseptert tilgang kan opprette årsbeslutningen.");
   }
-  if (setupResult.error || !setupResult.data) {
+  const setup = setupResult.setups.find(
+    (candidate) => candidate.company_id === companyId && candidate.income_year === incomeYear,
+  );
+  if (setupResult.error || !setup) {
     failTo(returnTo, "Låst aksjonærgrunnlag mangler for regnskapsåret.");
   }
   if (annualResult.error || !annualResult.data) {
     failTo(returnTo, annualResult.error?.message ?? "Fullført årsgrunnlag mangler.");
   }
   if (ledgerResult.error) {
-    failTo(returnTo, ledgerResult.error.message);
+    failTo(returnTo, ledgerResult.error);
   }
 
-  const shareholderResult = await supabase
-    .from("opening_shareholders")
-    .select("id, setup_id, company_id, name, share_count")
-    .eq("company_id", companyId)
-    .eq("setup_id", setupResult.data.id)
-    .order("id", { ascending: true });
-  if (shareholderResult.error || !shareholderResult.data?.length) {
-    failTo(returnTo, shareholderResult.error?.message ?? "Aksjonærgrunnlaget mangler.");
+  const shareholders = setupResult.shareholders.filter(
+    (shareholder) => shareholder.company_id === companyId && shareholder.setup_id === setup.id,
+  );
+  if (!shareholders.length) {
+    failTo(returnTo, "Aksjonærgrunnlaget mangler.");
   }
-  const persistedShareholders = shareholderResult.data.map((shareholder, order) => ({
+  const persistedShareholders = shareholders.map((shareholder, order) => ({
     id: shareholder.id,
     name: shareholder.name,
     shareCount: Number(shareholder.share_count),
@@ -2442,7 +2417,9 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     const annualAccountsPayload = buildAnnualAccountsPayload({
       incomeYear,
       annualData: annualResult.data as AnnualDataRow,
-      ledgerEntries: (ledgerResult.data ?? []) as LedgerEntryRow[],
+      ledgerEntries: ledgerResult.entries.filter(
+        (entry) => entry.income_year === incomeYear,
+      ),
     });
     const annualBasis = buildAnnualCloseBasis({
       annualData: annualResult.data as AnnualDataRow,
@@ -3624,13 +3601,22 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: corporateDocumentEvents, error: corporateDocumentEventsError },
     { data: corporateDecisionFinalizations, error: corporateDecisionFinalizationsError },
   ] = await Promise.all([
-    supabase.from("opening_balance_setups").select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("ledger_entries").select("id, company_id, setup_id, income_year, entry_type, memo, lines, risk_flags, warning_accepted_by, warning_accepted_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    listOpeningSetups([companyId]).then(({ setups, error }) => ({
+      data: setups.filter((setup) => setup.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
+    listLedgerEntries([companyId]).then(({ entries, error }) => ({
+      data: entries.filter((entry) => entry.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("bank_transactions").select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("period_locks").select("id, company_id, income_year, reason, locked_by, locked_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    listPeriodLocks([companyId]).then(({ locks, error }) => ({
+      data: locks.filter((lock) => lock.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
     supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref").eq("company_id", companyId).maybeSingle(),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
