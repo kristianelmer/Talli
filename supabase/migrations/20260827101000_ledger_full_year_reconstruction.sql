@@ -1,6 +1,26 @@
 -- Issue #188 expand: immutable January-to-date reconstruction evidence.
 -- Posting/lock enforcement remains disabled until the #188 contract migration.
 
+begin;
+
+-- The preceding ledger expand transfers schema ownership to the non-login
+-- storage owner and removes the migration principal's temporary membership.
+-- Reacquire only the authority needed by this migration, then revoke it before
+-- commit so no runtime or hosted migration role retains ledger write access.
+do $ledger_reconstruction_migration_authority$
+begin
+  execute pg_catalog.format(
+    'grant ledger_store_owner to %I', current_user
+  );
+  execute pg_catalog.format(
+    'grant create on schema ledger to %I', current_user
+  );
+  -- PostgreSQL checks the target role's explicit schema CREATE authority when
+  -- this non-super migrator transfers the new relations to that role.
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_reconstruction_migration_authority$;
+
 create table ledger.reconstruction_assessments (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete restrict,
@@ -414,3 +434,17 @@ for each row execute function backend_system.prevent_ledger_technical_mutation()
 create trigger reconstruction_evidence_immutable
 before update or delete on ledger.reconstruction_evidence
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+do $ledger_reconstruction_migration_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema ledger from %I', current_user
+  );
+  revoke create on schema ledger from ledger_store_owner;
+  execute pg_catalog.format(
+    'revoke ledger_store_owner from %I', current_user
+  );
+end
+$ledger_reconstruction_migration_authority_revoke$;
+
+commit;

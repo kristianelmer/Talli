@@ -4,6 +4,19 @@
 
 begin;
 
+do $ledger_rollback_migration_authority$
+begin
+  execute pg_catalog.format(
+    'grant ledger_store_owner, ledger_workflow_store_owner, company_archive_projection_executor to %I',
+    current_user
+  );
+  execute pg_catalog.format(
+    'grant create on schema ledger to %I', current_user
+  );
+  grant create on schema public to ledger_store_owner;
+end
+$ledger_rollback_migration_authority$;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:ledger:capability-cutover:v1', 0)
 );
@@ -399,5 +412,18 @@ grant execute on function public.finalize_corporate_decision(jsonb)
   to authenticated, service_role;
 grant execute on function public.record_owner_dividend_payment(jsonb)
   to authenticated, service_role;
+
+do $ledger_rollback_migration_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema ledger from %I', current_user
+  );
+  revoke create on schema public from ledger_store_owner;
+  execute pg_catalog.format(
+    'revoke ledger_store_owner, ledger_workflow_store_owner, company_archive_projection_executor from %I',
+    current_user
+  );
+end
+$ledger_rollback_migration_authority_revoke$;
 
 commit;

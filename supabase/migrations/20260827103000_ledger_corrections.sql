@@ -2,6 +2,16 @@
 -- Accounting selection remains in the ledger module; this coordinator only
 -- reverses stored lines and persists the already-approved replacement.
 
+begin;
+
+do $ledger_corrections_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_corrections_migration_authority$;
+
 alter table backend_system.ledger_command_receipts
   drop constraint if exists ledger_command_receipts_operation_name_check;
 alter table backend_system.ledger_command_receipts
@@ -460,26 +470,24 @@ grant execute on function ledger.correct_entry_v1(
   date, text, text, jsonb
 ) to ledger_executor;
 
-do $ledger_correction_ownership_membership$
-begin
-  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
-end
-$ledger_correction_ownership_membership$;
-
 alter table ledger.entry_corrections owner to ledger_store_owner;
 alter function ledger.correct_entry_v1(
   text, uuid, integer, uuid, text, text, text, jsonb, text, text,
   date, text, text, jsonb
 ) owner to ledger_store_owner;
 
-do $ledger_correction_ownership_membership_revoke$
-begin
-  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
-end
-$ledger_correction_ownership_membership_revoke$;
-
 drop trigger if exists ledger_entry_corrections_immutable
   on ledger.entry_corrections;
 create trigger ledger_entry_corrections_immutable
 before update or delete on ledger.entry_corrections
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+do $ledger_corrections_migration_authority_revoke$
+begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
+  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
+end
+$ledger_corrections_migration_authority_revoke$;
+
+commit;

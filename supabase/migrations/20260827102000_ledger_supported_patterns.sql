@@ -1,6 +1,16 @@
 -- Issue #188 expand: immutable source provenance for supported holding actions.
 -- Accounting translation remains exclusively in the Python ledger module.
 
+begin;
+
+do $ledger_supported_patterns_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_supported_patterns_migration_authority$;
+
 create table if not exists ledger.entry_contexts (
   entry_id uuid primary key references ledger.entries(id) on delete restrict,
   company_id uuid not null references public.companies(id) on delete restrict,
@@ -477,3 +487,13 @@ drop trigger if exists ledger_entry_sources_immutable on ledger.entry_sources;
 create trigger ledger_entry_sources_immutable
 before update or delete on ledger.entry_sources
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+do $ledger_supported_patterns_migration_authority_revoke$
+begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
+  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
+end
+$ledger_supported_patterns_migration_authority_revoke$;
+
+commit;

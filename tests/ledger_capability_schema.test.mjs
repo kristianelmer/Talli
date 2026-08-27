@@ -24,6 +24,30 @@ function functionBody(source, schema, name) {
   return match[0];
 }
 
+function statementPosition(source, pattern, label) {
+  const position = source.search(pattern);
+  assert.notEqual(position, -1, `missing ${label}`);
+  return position;
+}
+
+function assertNoRuntimeMigrationAuthority(source) {
+  const runtimeRoles = "(?:public|anon|authenticated|service_role|ledger_executor|ledger_workflow_executor|talli_ledger_backend)";
+  assert.doesNotMatch(
+    source,
+    new RegExp(
+      `grant\\s+(?:ledger_store_owner|ledger_workflow_store_owner)\\s+to\\s+${runtimeRoles}`,
+      "iu",
+    ),
+  );
+  assert.doesNotMatch(
+    source,
+    new RegExp(
+      `grant\\s+(?:usage\\s*,\\s*)?create\\s+on\\s+schema\\s+(?:ledger|backend_system)(?:\\s*,\\s*(?:ledger|backend_system))*\\s+to\\s+${runtimeRoles}`,
+      "iu",
+    ),
+  );
+}
+
 test("ledger cutover is an atomic expand, contract, and recutover-safe rollback", () => {
   const expand = artifact(expandPath, "expand");
   const coordinators = artifact(coordinatorPath, "writer coordinator expand");
@@ -34,6 +58,167 @@ test("ledger cutover is an atomic expand, contract, and recutover-safe rollback"
   assert.match(contract, /CONTRACT.*ledger/iu);
   assert.match(rollback, /target writer is disabled first/iu);
   assert.doesNotMatch(rollback, /drop table[^;]+(?:ledger|receipt|reconciliation)/iu);
+});
+
+test("expand reacquires locked-schema authority for recutover and revokes it atomically", () => {
+  const source = artifact(expandPath, "expand");
+  const begin = statementPosition(source, /\bbegin\s*;/iu, "expand transaction");
+  const rolesCreated = statementPosition(source, /\$ledger_roles\$\s*;/iu, "ledger role creation");
+  const memberships = statementPosition(
+    source,
+    /grant\s+ledger_store_owner\s*,\s*ledger_workflow_store_owner\s*,\s*company_access_executor\s+to\s+%I['"],\s*current_user/iu,
+    "temporary migration-owner memberships",
+  );
+  const migratorCreate = statementPosition(
+    source,
+    /grant\s+create\s+on\s+schema\s+ledger\s*,\s*backend_system\s+to\s+%I['"],\s*current_user/iu,
+    "temporary migrator CREATE",
+  );
+  const ledgerOwnerCreate = statementPosition(
+    source,
+    /grant\s+usage\s*,\s*create\s+on\s+schema\s+ledger\s*,\s*backend_system\s+to\s+ledger_store_owner/iu,
+    "temporary ledger owner CREATE",
+  );
+  const workflowOwnerCreate = statementPosition(
+    source,
+    /grant\s+create\s+on\s+schema\s+backend_system\s+to\s+ledger_workflow_store_owner/iu,
+    "temporary workflow owner CREATE",
+  );
+  const firstLockedSchemaObject = statementPosition(
+    source,
+    /create\s+table\s+if\s+not\s+exists\s+backend_system\.ledger_migration_runs/iu,
+    "first locked-schema object",
+  );
+  const migratorCreateRevoke = statementPosition(
+    source,
+    /revoke\s+create\s+on\s+schema\s+ledger\s*,\s*backend_system\s+from\s+%I['"],\s*current_user/iu,
+    "migrator CREATE revocation",
+  );
+  const ledgerOwnerCreateRevoke = statementPosition(
+    source,
+    /revoke\s+create\s+on\s+schema\s+ledger\s*,\s*backend_system\s+from\s+ledger_store_owner/iu,
+    "ledger owner CREATE revocation",
+  );
+  const workflowOwnerCreateRevoke = statementPosition(
+    source,
+    /revoke\s+create\s+on\s+schema\s+backend_system\s+from\s+ledger_workflow_store_owner/iu,
+    "workflow owner CREATE revocation",
+  );
+  const membershipsRevoke = statementPosition(
+    source,
+    /revoke\s+ledger_store_owner\s*,\s*ledger_workflow_store_owner\s*,\s*company_access_executor\s+from\s+%I['"],\s*current_user/iu,
+    "migration-owner membership revocations",
+  );
+  const commit = statementPosition(source, /\bcommit\s*;\s*$/iu, "expand commit");
+
+  assert.ok(begin < rolesCreated);
+  assert.ok(rolesCreated < memberships, "recutover authority must follow role creation immediately");
+  assert.ok(memberships < migratorCreate);
+  assert.ok(migratorCreate < ledgerOwnerCreate);
+  assert.ok(ledgerOwnerCreate < workflowOwnerCreate);
+  assert.ok(workflowOwnerCreate < firstLockedSchemaObject);
+  for (const revoke of [
+    migratorCreateRevoke,
+    ledgerOwnerCreateRevoke,
+    workflowOwnerCreateRevoke,
+    membershipsRevoke,
+  ]) {
+    assert.ok(firstLockedSchemaObject < revoke && revoke < commit);
+  }
+  assertNoRuntimeMigrationAuthority(source);
+});
+
+test("contract borrows only ledger ownership and returns it before commit", () => {
+  const source = artifact(contractPath, "contract");
+  const begin = statementPosition(source, /\bbegin\s*;/iu, "contract transaction");
+  const membership = statementPosition(
+    source,
+    /grant\s+ledger_store_owner\s+to\s+%I['"],\s*current_user/iu,
+    "temporary contract ledger ownership",
+  );
+  const firstOwnedMutation = statementPosition(
+    source,
+    /revoke\s+all\s+on\s+ledger\.entries\s*,\s*ledger\.period_locks/iu,
+    "first contract owner mutation",
+  );
+  const lastOwnedMutation = statementPosition(
+    source,
+    /alter\s+table\s+ledger\.entries\s+drop\s+column\s+setup_id/iu,
+    "last contract owner mutation",
+  );
+  const membershipRevoke = statementPosition(
+    source,
+    /revoke\s+ledger_store_owner\s+from\s+%I['"],\s*current_user/iu,
+    "contract ledger ownership revocation",
+  );
+  const commit = statementPosition(source, /\bcommit\s*;\s*$/iu, "contract commit");
+
+  assert.ok(begin < membership);
+  assert.ok(membership < firstOwnedMutation);
+  assert.ok(firstOwnedMutation < lastOwnedMutation);
+  assert.ok(lastOwnedMutation < membershipRevoke);
+  assert.ok(membershipRevoke < commit);
+  assert.doesNotMatch(source, /grant\s+ledger_workflow_store_owner\s+to\s+%I/iu);
+  assert.doesNotMatch(source, /grant\s+(?:usage\s*,\s*)?create\s+on\s+schema\s+(?:ledger|backend_system)/iu);
+  assertNoRuntimeMigrationAuthority(source);
+});
+
+test("rollback borrows only the ownership and schema authority its reversal needs", () => {
+  const source = artifact(rollbackPath, "rollback");
+  const begin = statementPosition(source, /\bbegin\s*;/iu, "rollback transaction");
+  const memberships = statementPosition(
+    source,
+    /grant\s+ledger_store_owner\s*,\s*ledger_workflow_store_owner\s*,\s*company_archive_projection_executor\s+to\s+%I['"],\s*current_user/iu,
+    "temporary rollback owner memberships",
+  );
+  const migratorCreate = statementPosition(
+    source,
+    /grant\s+create\s+on\s+schema\s+ledger\s+to\s+%I['"],\s*current_user/iu,
+    "temporary rollback migrator CREATE",
+  );
+  const legacyOwnerCreate = statementPosition(
+    source,
+    /grant\s+create\s+on\s+schema\s+public\s+to\s+ledger_store_owner/iu,
+    "temporary rollback legacy-owner CREATE",
+  );
+  const firstOwnedMutation = statementPosition(
+    source,
+    /revoke\s+all\s+on\s+function[\s\S]+?backend_system\.prepare_administrative_cost_v1/iu,
+    "first rollback owner mutation",
+  );
+  const lastOwnedMutation = statementPosition(
+    source,
+    /grant\s+execute\s+on\s+function\s+public\.record_owner_dividend_payment/iu,
+    "last rollback owner mutation",
+  );
+  const membershipsRevoke = statementPosition(
+    source,
+    /revoke\s+ledger_store_owner\s*,\s*ledger_workflow_store_owner\s*,\s*company_archive_projection_executor\s+from\s+%I['"],\s*current_user/iu,
+    "rollback owner membership revocations",
+  );
+  const migratorCreateRevoke = statementPosition(
+    source,
+    /revoke\s+create\s+on\s+schema\s+ledger\s+from\s+%I['"],\s*current_user/iu,
+    "rollback migrator CREATE revocation",
+  );
+  const legacyOwnerCreateRevoke = statementPosition(
+    source,
+    /revoke\s+create\s+on\s+schema\s+public\s+from\s+ledger_store_owner/iu,
+    "rollback legacy-owner CREATE revocation",
+  );
+  const commit = statementPosition(source, /\bcommit\s*;\s*$/iu, "rollback commit");
+
+  assert.ok(begin < memberships);
+  assert.ok(memberships < migratorCreate);
+  assert.ok(migratorCreate < legacyOwnerCreate);
+  assert.ok(legacyOwnerCreate < firstOwnedMutation);
+  assert.ok(firstOwnedMutation < lastOwnedMutation);
+  assert.ok(lastOwnedMutation < migratorCreateRevoke);
+  assert.ok(migratorCreateRevoke < legacyOwnerCreateRevoke);
+  assert.ok(legacyOwnerCreateRevoke < membershipsRevoke);
+  assert.ok(membershipsRevoke < commit);
+  assert.doesNotMatch(source, /grant\s+(?:usage\s*,\s*)?create\s+on\s+schema\s+backend_system/iu);
+  assertNoRuntimeMigrationAuthority(source);
 });
 
 test("nine exact writer coordinators are executor-only and never accept ledger lines", () => {

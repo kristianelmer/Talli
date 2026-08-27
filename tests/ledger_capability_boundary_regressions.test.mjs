@@ -80,10 +80,14 @@ test("hosted migration authority and pgcrypto access are explicit and temporary"
   ]) {
     assert.match(expand, new RegExp(signature, "iu"));
   }
-  assert.match(expand, /grant ledger_store_owner to %I/iu);
-  assert.match(expand, /revoke ledger_store_owner from %I/iu);
-  assert.match(expand, /grant ledger_workflow_store_owner to %I/iu);
-  assert.match(expand, /revoke ledger_workflow_store_owner from %I/iu);
+  assert.match(
+    expand,
+    /grant ledger_store_owner, ledger_workflow_store_owner, company_access_executor to %I/iu,
+  );
+  assert.match(
+    expand,
+    /revoke ledger_store_owner, ledger_workflow_store_owner, company_access_executor from %I/iu,
+  );
   assert.match(
     coordinators,
     /grant ledger_store_owner, ledger_workflow_store_owner to %I[\s\S]+revoke ledger_store_owner, ledger_workflow_store_owner from %I/iu,

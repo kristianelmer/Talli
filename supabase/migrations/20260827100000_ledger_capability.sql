@@ -39,6 +39,21 @@ begin
 end
 $ledger_roles$;
 
+-- Recutover may start with both schemas already owned and locked by the
+-- non-login stores. Borrow only the migration authority needed by this
+-- transaction and return it before commit.
+do $ledger_migration_authority$
+begin
+  execute pg_catalog.format(
+    'grant ledger_store_owner, ledger_workflow_store_owner, company_access_executor to %I',
+    current_user
+  );
+  execute pg_catalog.format(
+    'grant create on schema ledger, backend_system to %I', current_user
+  );
+end
+$ledger_migration_authority$;
+
 alter role ledger_store_owner nologin noinherit nobypassrls;
 alter role ledger_executor nologin noinherit nobypassrls;
 alter role talli_ledger_backend nologin noinherit nobypassrls;
@@ -2139,14 +2154,6 @@ grant select, insert on public.ledger_entries, public.period_locks to authentica
 -- Hosted Supabase's migration principal is intentionally not a superuser.
 -- Give only the temporary SET membership needed to transfer ownership, then
 -- revoke it again before this transaction commits.
-do $ledger_store_ownership_membership$
-begin
-  execute pg_catalog.format(
-    'grant ledger_store_owner to %I', current_user
-  );
-end
-$ledger_store_ownership_membership$;
-
 alter table ledger.entries owner to ledger_store_owner;
 alter table ledger.period_locks owner to ledger_store_owner;
 alter table backend_system.ledger_command_receipts owner to ledger_store_owner;
@@ -2154,9 +2161,6 @@ alter table backend_system.ledger_cursor_signing_keys owner to ledger_store_owne
 
 do $ledger_workflow_ownership$
 begin
-  execute pg_catalog.format(
-    'grant ledger_workflow_store_owner to %I', current_user
-  );
   alter table backend_system.ledger_workflow_receipts
     owner to ledger_workflow_store_owner;
   alter function backend_system.claim_ledger_workflow_v1(
@@ -2171,13 +2175,8 @@ begin
   alter function backend_system.complete_ledger_workflow_v1(
     text, text, uuid, jsonb, jsonb, text
   ) owner to ledger_workflow_store_owner;
-  execute pg_catalog.format(
-    'revoke ledger_workflow_store_owner from %I', current_user
-  );
 end
 $ledger_workflow_ownership$;
-
-revoke create on schema backend_system from ledger_workflow_store_owner;
 
 alter function ledger.entry_lines_are_valid_v1(jsonb, boolean)
   owner to ledger_store_owner;
@@ -2272,14 +2271,23 @@ to ledger_workflow_store_owner;
 
 alter schema ledger owner to ledger_store_owner;
 alter schema backend_system owner to ledger_store_owner;
-revoke create on schema ledger, backend_system from ledger_store_owner;
-
-do $ledger_store_ownership_membership_revoke$
+do $ledger_migration_principal_schema_authority_revoke$
 begin
   execute pg_catalog.format(
-    'revoke ledger_store_owner from %I', current_user
+    'revoke create on schema ledger, backend_system from %I', current_user
   );
 end
-$ledger_store_ownership_membership_revoke$;
+$ledger_migration_principal_schema_authority_revoke$;
+revoke create on schema ledger, backend_system from ledger_store_owner;
+revoke create on schema backend_system from ledger_workflow_store_owner;
+
+do $ledger_migration_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke ledger_store_owner, ledger_workflow_store_owner, company_access_executor from %I',
+    current_user
+  );
+end
+$ledger_migration_authority_revoke$;
 
 commit;

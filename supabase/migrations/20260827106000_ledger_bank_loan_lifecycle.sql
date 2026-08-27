@@ -2,6 +2,16 @@
 -- Python owns account selection and journal translation. These wrappers persist
 -- the derived entries and enforce loan identity, chronology, and principal roll-forward.
 
+begin;
+
+do $ledger_bank_loan_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_bank_loan_migration_authority$;
+
 create table if not exists ledger.bank_loan_anchors (
   company_id uuid not null references public.companies(id) on delete restrict,
   loan_reference_id text not null check (
@@ -371,3 +381,13 @@ drop trigger if exists ledger_bank_loan_payment_allocations_immutable
 create trigger ledger_bank_loan_payment_allocations_immutable
 before update or delete on ledger.bank_loan_payment_allocations
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+do $ledger_bank_loan_migration_authority_revoke$
+begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
+  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
+end
+$ledger_bank_loan_migration_authority_revoke$;
+
+commit;

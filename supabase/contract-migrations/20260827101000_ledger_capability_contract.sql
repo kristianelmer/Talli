@@ -4,6 +4,12 @@
 
 begin;
 
+do $ledger_contract_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+end
+$ledger_contract_migration_authority$;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:ledger:capability-cutover:v1', 0)
 );
@@ -192,5 +198,11 @@ drop policy if exists "owners can create opening balance setups"
   on public.opening_balance_setups;
 drop policy if exists "owners can create opening shareholders"
   on public.opening_shareholders;
+
+do $ledger_contract_migration_authority_revoke$
+begin
+  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
+end
+$ledger_contract_migration_authority_revoke$;
 
 commit;

@@ -6,6 +6,24 @@ const migrationPath = new URL(
   "../supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql",
   import.meta.url,
 );
+const hardenedLedgerPath = new URL(
+  "../supabase/migrations/20260827100000_ledger_capability.sql",
+  import.meta.url,
+);
+const rollbackPath = new URL(
+  "../supabase/rollback/20260827101000_ledger_capability_contract.sql",
+  import.meta.url,
+);
+const additiveLedgerMigrationPaths = [
+  "20260827101000_ledger_full_year_reconstruction.sql",
+  "20260827102000_ledger_supported_patterns.sql",
+  "20260827103000_ledger_corrections.sql",
+  "20260827104000_ledger_company_year_close.sql",
+  "20260827105000_ledger_received_dividend_lifecycle.sql",
+  "20260827106000_ledger_bank_loan_lifecycle.sql",
+  "20260827107000_ledger_cash_capital_increase_lifecycle.sql",
+  "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
+].map((name) => new URL(`../supabase/migrations/${name}`, import.meta.url));
 const lifecyclePath = new URL("./ledger_database_runtime.test.mjs", import.meta.url);
 
 function functionBody(source, name) {
@@ -35,6 +53,125 @@ test("reconstruction evidence is immutable, tenant-scoped, and executor-only", (
   assert.match(record, /extensions\.digest\(p_evidence::text, 'sha256'\)/iu);
   assert.match(source, /to ledger_executor/iu);
   assert.doesNotMatch(source, /to authenticated/iu);
+});
+
+test("full-year migration temporarily restores hosted migration authority and re-hardens it", () => {
+  const hardenedLedger = readFileSync(hardenedLedgerPath, "utf8");
+  const source = readFileSync(migrationPath, "utf8");
+  const rollback = readFileSync(rollbackPath, "utf8");
+
+  assert.match(hardenedLedger, /alter schema ledger owner to ledger_store_owner/iu);
+  assert.match(
+    hardenedLedger,
+    /revoke create on schema ledger, backend_system from ledger_store_owner/iu,
+  );
+  assert.match(
+    hardenedLedger,
+    /revoke ledger_store_owner, ledger_workflow_store_owner, company_access_executor from %I['"],\s*current_user/iu,
+  );
+
+  const transaction = source.search(/^begin\s*;/imu);
+  const temporaryMembership = source.search(
+    /grant ledger_store_owner to %I['"], current_user/iu,
+  );
+  const temporaryCreate = source.search(
+    /grant create on schema ledger to %I['"], current_user/iu,
+  );
+  const temporaryOwnerCreate = source.search(
+    /grant create on schema ledger to ledger_store_owner/iu,
+  );
+  const firstLedgerTable = source.search(
+    /create table ledger\.reconstruction_assessments/iu,
+  );
+  const lastLedgerObject = source.search(
+    /create trigger reconstruction_evidence_immutable/iu,
+  );
+  const revokeCreate = source.search(
+    /revoke create on schema ledger from %I['"], current_user/iu,
+  );
+  const revokeOwnerCreate = source.search(
+    /revoke create on schema ledger from ledger_store_owner/iu,
+  );
+  const revokeMembership = source.search(
+    /revoke ledger_store_owner from %I['"], current_user/iu,
+  );
+  const commit = source.search(/commit\s*;\s*$/imu);
+
+  for (const [label, position] of [
+    ["transaction", transaction],
+    ["temporary ledger owner membership", temporaryMembership],
+    ["temporary ledger schema CREATE", temporaryCreate],
+    ["temporary storage-owner schema CREATE", temporaryOwnerCreate],
+    ["first reconstruction table", firstLedgerTable],
+    ["last reconstruction object", lastLedgerObject],
+    ["ledger schema CREATE revocation", revokeCreate],
+    ["storage-owner schema CREATE revocation", revokeOwnerCreate],
+    ["ledger owner membership revocation", revokeMembership],
+    ["transaction commit", commit],
+  ]) {
+    assert.notEqual(position, -1, `missing ${label}`);
+  }
+  assert.ok(transaction < temporaryMembership);
+  assert.ok(temporaryMembership < temporaryCreate);
+  assert.ok(temporaryCreate < temporaryOwnerCreate);
+  assert.ok(temporaryOwnerCreate < firstLedgerTable);
+  assert.ok(firstLedgerTable < lastLedgerObject);
+  assert.ok(lastLedgerObject < revokeCreate);
+  assert.ok(revokeCreate < revokeOwnerCreate);
+  assert.ok(revokeOwnerCreate < revokeMembership);
+  assert.ok(revokeMembership < commit);
+
+  for (const table of ["reconstruction_assessments", "reconstruction_evidence"]) {
+    assert.match(source, new RegExp(`alter table ledger\\.${table} enable row level security`, "iu"));
+    assert.match(source, new RegExp(`alter table ledger\\.${table} force row level security`, "iu"));
+    assert.doesNotMatch(
+      source,
+      new RegExp(
+        `grant[^;]*(?:insert|update|delete)[^;]*on(?: table)? ledger\\.${table}[^;]*to (?:public|anon|authenticated|service_role|ledger_executor|ledger_workflow_executor|talli_ledger_backend)`,
+        "iu",
+      ),
+    );
+  }
+
+  assert.doesNotMatch(
+    rollback,
+    /drop table(?: if exists)? ledger\.(?:reconstruction_assessments|reconstruction_evidence)/iu,
+    "contract rollback must preserve reconstruction evidence for recutover",
+  );
+});
+
+test("every additive ledger migration bounds hosted authority to one transaction", () => {
+  for (const path of additiveLedgerMigrationPaths) {
+    const source = readFileSync(path, "utf8");
+    const transaction = source.search(/^begin\s*;/imu);
+    const membership = source.search(/grant ledger_store_owner to %I['"], current_user/iu);
+    const migratorCreate = source.search(/grant create on schema ledger to %I['"], current_user/iu);
+    const ownerCreate = source.search(/grant create on schema ledger to ledger_store_owner/iu);
+    const revokeMigratorCreate = source.search(/revoke create on schema ledger from %I['"], current_user/iu);
+    const revokeOwnerCreate = source.search(/revoke create on schema ledger from ledger_store_owner/iu);
+    const revokeMembership = source.search(/revoke ledger_store_owner from %I['"], current_user/iu);
+    const commit = source.search(/commit\s*;\s*$/imu);
+
+    for (const [label, position] of [
+      ["transaction", transaction],
+      ["owner membership", membership],
+      ["migrator CREATE", migratorCreate],
+      ["owner CREATE", ownerCreate],
+      ["migrator CREATE revocation", revokeMigratorCreate],
+      ["owner CREATE revocation", revokeOwnerCreate],
+      ["owner membership revocation", revokeMembership],
+      ["commit", commit],
+    ]) {
+      assert.notEqual(position, -1, `${path.pathname}: missing ${label}`);
+    }
+    assert.ok(transaction < membership, path.pathname);
+    assert.ok(membership < migratorCreate, path.pathname);
+    assert.ok(migratorCreate < ownerCreate, path.pathname);
+    assert.ok(ownerCreate < revokeMigratorCreate, path.pathname);
+    assert.ok(revokeMigratorCreate < revokeOwnerCreate, path.pathname);
+    assert.ok(revokeOwnerCreate < revokeMembership, path.pathname);
+    assert.ok(revokeMembership < commit, path.pathname);
+  }
 });
 
 test("database revalidates the exact source-owner evidence topology", () => {

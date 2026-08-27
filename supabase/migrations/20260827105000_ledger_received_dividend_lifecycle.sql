@@ -2,6 +2,16 @@
 -- Python selects the accounting route. These wrappers only persist the
 -- already-derived balanced entry and enforce immutable decision/payment lineage.
 
+begin;
+
+do $ledger_received_dividend_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_received_dividend_migration_authority$;
+
 create table if not exists ledger.received_dividend_decisions (
   decision_entry_id uuid primary key,
   company_id uuid not null references public.companies(id) on delete restrict,
@@ -324,3 +334,13 @@ drop trigger if exists ledger_received_dividend_settlements_immutable
 create trigger ledger_received_dividend_settlements_immutable
 before update or delete on ledger.received_dividend_settlements
 for each row execute function backend_system.prevent_ledger_technical_mutation();
+
+do $ledger_received_dividend_migration_authority_revoke$
+begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
+  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
+end
+$ledger_received_dividend_migration_authority_revoke$;
+
+commit;

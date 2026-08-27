@@ -2,6 +2,16 @@
 -- Source capabilities approve facts. This coordinator validates their structural
 -- contract against the current immutable ledger and records the resulting state.
 
+begin;
+
+do $ledger_company_year_close_migration_authority$
+begin
+  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
+end
+$ledger_company_year_close_migration_authority$;
+
 alter table backend_system.ledger_command_receipts
   drop constraint if exists ledger_command_receipts_operation_name_check;
 alter table backend_system.ledger_command_receipts
@@ -1155,12 +1165,6 @@ grant execute on function
   )
 to ledger_executor;
 
-do $ledger_company_year_close_ownership_membership$
-begin
-  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
-end
-$ledger_company_year_close_ownership_membership$;
-
 alter table ledger.company_year_close_locks owner to ledger_store_owner;
 alter table ledger.company_year_close_assessments owner to ledger_store_owner;
 alter table ledger.company_year_close_evidence owner to ledger_store_owner;
@@ -1190,12 +1194,6 @@ alter function ledger.close_company_year_v1(
   text, text[], text, text
 ) owner to ledger_store_owner;
 
-do $ledger_company_year_close_ownership_membership_revoke$
-begin
-  execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
-end
-$ledger_company_year_close_ownership_membership_revoke$;
-
 drop trigger if exists ledger_company_year_close_locks_immutable
   on ledger.company_year_close_locks;
 create trigger ledger_company_year_close_locks_immutable
@@ -1223,12 +1221,6 @@ for each row execute function backend_system.prevent_ledger_technical_mutation()
 -- Refresh the delegate from whichever canonical post_entry the earlier
 -- recutover migrations installed. The wrapper owns no accounting selection;
 -- it adds only receipt-first statutory-close serialization.
-do $ledger_post_entry_close_ownership_membership$
-begin
-  execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
-end
-$ledger_post_entry_close_ownership_membership$;
-
 do $ledger_refresh_post_entry_close_delegate$
 begin
   if pg_catalog.to_regprocedure(
@@ -1363,8 +1355,13 @@ alter function ledger.post_entry(
   text, uuid, integer, text, text, jsonb, jsonb, boolean,
   text, text, text, text
 ) owner to ledger_store_owner;
-do $ledger_post_entry_close_ownership_membership_revoke$
+
+do $ledger_company_year_close_migration_authority_revoke$
 begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
   execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
 end
-$ledger_post_entry_close_ownership_membership_revoke$;
+$ledger_company_year_close_migration_authority_revoke$;
+
+commit;
