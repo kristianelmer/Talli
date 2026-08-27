@@ -30,6 +30,9 @@ from talli_backend.modules.ledger.public import (
     AdministrativeCostCorrectionFacts,
     BankLoanEvent,
     BankLoanReferenceId,
+    CashCapitalIncreaseFacts,
+    CapitalIncreasePhase,
+    CapitalIncreaseReferenceId,
     BankInterestIncomeFacts,
     CloseCompanyYearCommand,
     CompanyYearCloseEvidence,
@@ -254,6 +257,58 @@ def bank_loan_command(event: BankLoanEvent) -> RecognizeHoldingActionCommand:
                 "20.00" if event is BankLoanEvent.PAYMENT else "0.00"
             ),
             fee=Money.nok("5.00" if event is BankLoanEvent.PAYMENT else "0.00"),
+        ),
+    )
+
+
+def cash_capital_increase_command(
+    phase: CapitalIncreasePhase,
+) -> RecognizeHoldingActionCommand:
+    corroborating_capabilities = {
+        CapitalIncreasePhase.BINDING_SUBSCRIPTION: (
+            LedgerSourceCapability.DOCUMENTS,
+        ),
+        CapitalIncreasePhase.RESTRICTED_PAYMENT: (
+            LedgerSourceCapability.BANKING,
+            LedgerSourceCapability.DOCUMENTS,
+        ),
+        CapitalIncreasePhase.REGISTERED: (
+            LedgerSourceCapability.BANKING,
+            LedgerSourceCapability.DOCUMENTS,
+            LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+        ),
+    }[phase]
+    return RecognizeHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId(f"cash-capital-{phase.value.lower()}"),
+        idempotency_key=IdempotencyKey(f"cash-capital-{phase.value.lower()}-2026"),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            record_id=LedgerSourceRecordId(f"capital:{phase.value.lower()}:1"),
+            revision=2,
+            fact_sha256="d" * 64,
+        ),
+        corroborating_sources=tuple(
+            LedgerFactReference(
+                capability=capability,
+                record_id=LedgerSourceRecordId(
+                    f"{capability.value.lower()}:capital:{phase.value.lower()}:1"
+                ),
+                revision=1,
+                fact_sha256=f"{index + 1:064x}",
+            )
+            for index, capability in enumerate(corroborating_capabilities)
+        ),
+        facts=CashCapitalIncreaseFacts(
+            phase=phase,
+            capital_increase_reference_id=CapitalIncreaseReferenceId(
+                "capital-increase:1"
+            ),
+            nominal_increase=Money.nok("100.00"),
+            share_premium=Money.nok("25.00"),
         ),
     )
 
@@ -785,6 +840,222 @@ def test_bank_loan_adapter_rejects_lifecycle_binding_mismatches_before_sql(
     assert failure.value.code == "LEDGER_INVALID_INPUT"
 
 
+@pytest.mark.parametrize(
+    ("phase", "method_name", "function_name", "lines", "expected_capabilities"),
+    [
+        (
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            "record_cash_capital_increase_subscription",
+            "record_cash_capital_increase_subscription_v1",
+            (
+                LedgerLine("1500", "Receivable", Money.nok("125"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("125")),
+            ),
+            ("CORPORATE_GOVERNANCE", "DOCUMENTS"),
+        ),
+        (
+            CapitalIncreasePhase.RESTRICTED_PAYMENT,
+            "record_cash_capital_increase_restricted_payment",
+            "record_cash_capital_increase_restricted_payment_v1",
+            (
+                LedgerLine("1921", "Restricted", Money.nok("125"), Money.nok("0")),
+                LedgerLine("1500", "Receivable", Money.nok("0"), Money.nok("125")),
+            ),
+            ("CORPORATE_GOVERNANCE", "BANKING", "DOCUMENTS"),
+        ),
+        (
+            CapitalIncreasePhase.REGISTERED,
+            "record_cash_capital_increase_registration",
+            "record_cash_capital_increase_registration_v1",
+            (
+                LedgerLine("2030", "Unregistered", Money.nok("125"), Money.nok("0")),
+                LedgerLine("2000", "Capital", Money.nok("0"), Money.nok("100")),
+                LedgerLine("2020", "Premium", Money.nok("0"), Money.nok("25")),
+                LedgerLine("1920", "Bank", Money.nok("125"), Money.nok("0")),
+                LedgerLine("1921", "Restricted", Money.nok("0"), Money.nok("125")),
+            ),
+            (
+                "CORPORATE_GOVERNANCE",
+                "BANKING",
+                "DOCUMENTS",
+                "SHAREHOLDER_REGISTER_FILING",
+            ),
+        ),
+    ],
+)
+def test_cash_capital_increase_adapter_binds_exact_phase_rpc(
+    phase: CapitalIncreasePhase,
+    method_name: str,
+    function_name: str,
+    lines: tuple[LedgerLine, ...],
+    expected_capabilities: tuple[str, ...],
+) -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000007",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "CAPITAL_INCREASE",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        getattr(session, method_name)(
+            cash_capital_increase_command(phase),
+            capital_increase_reference_id=CapitalIncreaseReferenceId(
+                "capital-increase:1"
+            ),
+            nominal_increase=Money.nok("100.00"),
+            share_premium=Money.nok("25.00"),
+            memo="Cash capital increase",
+            lines=lines,
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.CAPITAL_INCREASE
+    assert f"ledger.{function_name}" in calls[0][0]
+    parameters = calls[0][1]
+    assert parameters[3:6] == (
+        "capital-increase:1",
+        Money.nok("100").amount,
+        Money.nok("25").amount,
+    )
+    assert parameters[13] == "ledger-supported-patterns-2026.1"
+    sources = json.loads(str(parameters[14]))
+    assert tuple(source["capability"] for source in sources) == expected_capabilities
+    assert tuple(source["role"] for source in sources) == (
+        "PRIMARY",
+        *("CORROBORATING" for _ in expected_capabilities[1:]),
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "method_name",
+        "command_phase",
+        "capital_increase_reference_id",
+        "nominal_increase",
+        "share_premium",
+        "lines",
+    ),
+    [
+        (
+            "record_cash_capital_increase_subscription",
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            CapitalIncreaseReferenceId("capital-increase:wrong"),
+            Money.nok("100"),
+            Money.nok("25"),
+            (
+                LedgerLine("1500", "Receivable", Money.nok("125"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("125")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_subscription",
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("99"),
+            Money.nok("25"),
+            (
+                LedgerLine("1500", "Receivable", Money.nok("124"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("124")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_subscription",
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("100"),
+            Money.nok("24"),
+            (
+                LedgerLine("1500", "Receivable", Money.nok("124"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("124")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_subscription",
+            CapitalIncreasePhase.RESTRICTED_PAYMENT,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("100"),
+            Money.nok("25"),
+            (
+                LedgerLine("1500", "Receivable", Money.nok("125"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("125")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_subscription",
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("100"),
+            Money.nok("25"),
+            (
+                LedgerLine("1500", "Receivable", Money.nok("124"), Money.nok("0")),
+                LedgerLine("2030", "Unregistered", Money.nok("0"), Money.nok("125")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_restricted_payment",
+            CapitalIncreasePhase.RESTRICTED_PAYMENT,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("100"),
+            Money.nok("25"),
+            (
+                LedgerLine("1921", "Restricted", Money.nok("124"), Money.nok("0")),
+                LedgerLine("1500", "Receivable", Money.nok("0"), Money.nok("125")),
+            ),
+        ),
+        (
+            "record_cash_capital_increase_registration",
+            CapitalIncreasePhase.REGISTERED,
+            CapitalIncreaseReferenceId("capital-increase:1"),
+            Money.nok("100"),
+            Money.nok("25"),
+            (
+                LedgerLine("2030", "Unregistered", Money.nok("125"), Money.nok("0")),
+                LedgerLine("2000", "Capital", Money.nok("0"), Money.nok("100")),
+                LedgerLine("2020", "Premium", Money.nok("0"), Money.nok("25")),
+            ),
+        ),
+    ],
+)
+def test_cash_capital_increase_adapter_rejects_each_binding_mismatch_before_sql(
+    method_name: str,
+    command_phase: CapitalIncreasePhase,
+    capital_increase_reference_id: CapitalIncreaseReferenceId,
+    nominal_increase: Money,
+    share_premium: Money,
+    lines: tuple[LedgerLine, ...],
+) -> None:
+    session = bound_session()
+
+    async def forbidden_database(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("database must not be called")
+
+    session._database_rows = forbidden_database  # type: ignore[method-assign]
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            getattr(session, method_name)(
+                cash_capital_increase_command(command_phase),
+                capital_increase_reference_id=capital_increase_reference_id,
+                nominal_increase=nominal_increase,
+                share_premium=share_premium,
+                memo="Cash capital increase",
+                lines=lines,
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+
+
 def test_correction_adapter_binds_original_replacement_and_two_sources() -> None:
     session = bound_session()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -1155,6 +1426,26 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
         (
             "ledger_bank_loan_principal_exceeded",
             "LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED",
+        ),
+        (
+            "ledger_cash_capital_increase_phase_invalid",
+            "LEDGER_CASH_CAPITAL_INCREASE_PHASE_INVALID",
+        ),
+        (
+            "ledger_cash_capital_increase_phase_missing",
+            "LEDGER_CASH_CAPITAL_INCREASE_PHASE_MISSING",
+        ),
+        (
+            "ledger_cash_capital_increase_amount_mismatch",
+            "LEDGER_CASH_CAPITAL_INCREASE_AMOUNT_MISMATCH",
+        ),
+        (
+            "ledger_cash_capital_increase_phase_already_recorded",
+            "LEDGER_CASH_CAPITAL_INCREASE_PHASE_ALREADY_RECORDED",
+        ),
+        (
+            "ledger_opening_capital_increase_anchor_missing",
+            "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING",
         ),
         ("ledger_entry_already_corrected", "LEDGER_ENTRY_ALREADY_CORRECTED"),
         ("ledger_opening_already_exists", "LEDGER_OPENING_ALREADY_EXISTS"),

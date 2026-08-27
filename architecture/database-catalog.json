@@ -53,6 +53,7 @@
     { "name": "public.launch_signoffs", "kind": "technical" },
     { "name": "ledger.bank_loan_anchors", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.bank_loan_payment_allocations", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.cash_capital_increase_phases", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.company_year_close_assessments", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.company_year_close_evidence", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.company_year_close_locks", "kind": "capability-business", "owner": "backend:ledger" },

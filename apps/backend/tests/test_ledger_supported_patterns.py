@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from talli_backend.modules.ledger import public as ledger_public
 from talli_backend.modules.ledger.public import (
     ApprovedLossCoverageCapitalReductionFacts,
     ApprovedOneSidedIntercompanyLoanFundingFacts,
@@ -57,6 +58,7 @@ ACTOR_ID = ActorId(
     subject=UserId("20000000-0000-0000-0000-000000000002"),
 )
 LOAN_REFERENCE_ID = BankLoanReferenceId("bank-loan:ordinary-facility:1")
+CAPITAL_INCREASE_REFERENCE_VALUE = "capital-increase:ordinary-cash:1"
 
 
 class PatternPersistenceStub:
@@ -167,6 +169,76 @@ class PatternPersistenceStub:
             replayed=False,
         )
 
+    async def record_cash_capital_increase_subscription(
+        self,
+        command: object,
+        *,
+        capital_increase_reference_id: object,
+        nominal_increase: Money,
+        share_premium: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_cash_capital_increase(
+            "cash_capital_subscription",
+            command,
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
+            **draft,
+        )
+
+    async def record_cash_capital_increase_restricted_payment(
+        self,
+        command: object,
+        *,
+        capital_increase_reference_id: object,
+        nominal_increase: Money,
+        share_premium: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_cash_capital_increase(
+            "cash_capital_restricted_payment",
+            command,
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
+            **draft,
+        )
+
+    async def record_cash_capital_increase_registration(
+        self,
+        command: object,
+        *,
+        capital_increase_reference_id: object,
+        nominal_increase: Money,
+        share_premium: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        return self._record_cash_capital_increase(
+            "cash_capital_registration",
+            command,
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
+            **draft,
+        )
+
+    def _record_cash_capital_increase(
+        self,
+        operation: str,
+        command: object,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        self.calls.append({"operation": operation, "command": command, **draft})
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000009"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.CAPITAL_INCREASE,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
 
 def source(
     capability: LedgerSourceCapability,
@@ -227,6 +299,59 @@ def bank_loan_facts(
     if "loan_reference_id" in OrdinaryBankLoanFacts.__dataclass_fields__:
         fields["loan_reference_id"] = LOAN_REFERENCE_ID
     return OrdinaryBankLoanFacts(**fields)  # type: ignore[arg-type]
+
+
+def capital_increase_reference_id() -> object:
+    reference_type = getattr(
+        ledger_public,
+        "CapitalIncreaseReferenceId",
+        LedgerSourceRecordId,
+    )
+    return reference_type(CAPITAL_INCREASE_REFERENCE_VALUE)
+
+
+def cash_capital_increase_facts(
+    *,
+    phase: CapitalIncreasePhase,
+    nominal_increase: str = "10000.00",
+    share_premium: str = "5000.00",
+) -> CashCapitalIncreaseFacts:
+    fields: dict[str, object] = {
+        "phase": phase,
+        "nominal_increase": Money.nok(nominal_increase),
+        "share_premium": Money.nok(share_premium),
+    }
+    if "capital_increase_reference_id" in CashCapitalIncreaseFacts.__dataclass_fields__:
+        fields["capital_increase_reference_id"] = capital_increase_reference_id()
+    return CashCapitalIncreaseFacts(**fields)  # type: ignore[arg-type]
+
+
+def cash_capital_increase_sources(
+    phase: CapitalIncreasePhase,
+) -> tuple[LedgerFactReference, tuple[LedgerFactReference, ...]]:
+    primary = source(
+        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        f"capital-{phase.value.lower()}-governance",
+    )
+    if phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION:
+        corroborating = (
+            source(LedgerSourceCapability.DOCUMENTS, "capital-subscription-documents"),
+        )
+    elif phase is CapitalIncreasePhase.RESTRICTED_PAYMENT:
+        corroborating = (
+            source(LedgerSourceCapability.BANKING, "capital-restricted-bank"),
+            source(LedgerSourceCapability.DOCUMENTS, "capital-payment-confirmation"),
+        )
+    else:
+        corroborating = (
+            source(LedgerSourceCapability.BANKING, "capital-released-bank"),
+            source(LedgerSourceCapability.DOCUMENTS, "capital-registration-documents"),
+            source(
+                LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                "capital-shareholder-register",
+            ),
+        )
+    return primary, corroborating
 
 
 def posted_lines(persistence: PatternPersistenceStub) -> list[tuple[str, str, str]]:
@@ -819,29 +944,176 @@ def test_approved_intercompany_funding_posts_each_company_perspective(
     assert posted_lines(persistence) == expected
 
 
-def test_registered_cash_capital_reclassifies_nominal_premium_and_bank() -> None:
+def test_cash_capital_increase_has_a_stable_lifecycle_reference() -> None:
+    reference_type = getattr(ledger_public, "CapitalIncreaseReferenceId", None)
+
+    assert reference_type is not None
+    assert "capital_increase_reference_id" in CashCapitalIncreaseFacts.__dataclass_fields__
+    assert str(reference_type(f"  {CAPITAL_INCREASE_REFERENCE_VALUE}  ")) == (
+        CAPITAL_INCREASE_REFERENCE_VALUE
+    )
+    for invalid in ("", "   ", "x" * 256):
+        with pytest.raises(ValueError):
+            reference_type(invalid)
+
+
+@pytest.mark.parametrize(
+    ("phase", "operation", "expected"),
+    [
+        (
+            CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            "cash_capital_subscription",
+            [("1500", "15000.00", "0.00"), ("2030", "0.00", "15000.00")],
+        ),
+        (
+            CapitalIncreasePhase.RESTRICTED_PAYMENT,
+            "cash_capital_restricted_payment",
+            [("1921", "15000.00", "0.00"), ("1500", "0.00", "15000.00")],
+        ),
+        (
+            CapitalIncreasePhase.REGISTERED,
+            "cash_capital_registration",
+            [
+                ("2030", "15000.00", "0.00"),
+                ("2000", "0.00", "10000.00"),
+                ("2020", "0.00", "5000.00"),
+                ("1920", "15000.00", "0.00"),
+                ("1921", "0.00", "15000.00"),
+            ],
+        ),
+    ],
+)
+def test_cash_capital_increase_phases_use_exact_sources_journals_and_lifecycle_ports(
+    phase: CapitalIncreasePhase,
+    operation: str,
+    expected: list[tuple[str, str, str]],
+) -> None:
     persistence = PatternPersistenceStub()
+    primary, corroborating = cash_capital_increase_sources(phase)
 
     asyncio.run(
         LedgerService(persistence).recognize_holding_action(
             command(
-                CashCapitalIncreaseFacts(
+                cash_capital_increase_facts(phase=phase),
+                primary,
+                *corroborating,
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == expected
+    assert persistence.calls[0]["operation"] == operation
+    assert str(persistence.calls[0]["capital_increase_reference_id"]) == (
+        CAPITAL_INCREASE_REFERENCE_VALUE
+    )
+    assert persistence.calls[0]["nominal_increase"] == Money.nok("10000.00")
+    assert persistence.calls[0]["share_premium"] == Money.nok("5000.00")
+
+
+def test_registered_cash_capital_omits_a_zero_share_premium_line() -> None:
+    persistence = PatternPersistenceStub()
+    primary, corroborating = cash_capital_increase_sources(
+        CapitalIncreasePhase.REGISTERED
+    )
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                cash_capital_increase_facts(
                     phase=CapitalIncreasePhase.REGISTERED,
-                    nominal_increase=Money.nok("10000.00"),
-                    share_premium=Money.nok("5000.00"),
+                    share_premium="0.00",
                 ),
-                source(LedgerSourceCapability.CORPORATE_GOVERNANCE, "capital-registration"),
+                primary,
+                *corroborating,
             )
         )
     )
 
     assert posted_lines(persistence) == [
-        ("2030", "15000.00", "0.00"),
+        ("2030", "10000.00", "0.00"),
         ("2000", "0.00", "10000.00"),
-        ("2020", "0.00", "5000.00"),
-        ("1920", "15000.00", "0.00"),
-        ("1921", "0.00", "15000.00"),
+        ("1920", "10000.00", "0.00"),
+        ("1921", "0.00", "10000.00"),
     ]
+
+
+@pytest.mark.parametrize("phase", list(CapitalIncreasePhase))
+def test_cash_capital_increase_rejects_an_incomplete_phase_source_topology(
+    phase: CapitalIncreasePhase,
+) -> None:
+    persistence = PatternPersistenceStub()
+    primary, corroborating = cash_capital_increase_sources(phase)
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    cash_capital_increase_facts(phase=phase),
+                    primary,
+                    *corroborating[:-1],
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+    assert persistence.calls == []
+
+
+def test_cash_capital_increase_rejects_an_unknown_runtime_phase() -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    cash_capital_increase_facts(
+                        phase=cast(CapitalIncreasePhase, "UNSUPPORTED_PHASE")
+                    ),
+                    source(
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        "capital-unsupported-phase",
+                    ),
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
+
+
+@pytest.mark.parametrize(
+    ("nominal_increase", "share_premium"),
+    [
+        ("0.00", "5000.00"),
+        ("-1.00", "5000.00"),
+        ("10000.00", "-1.00"),
+    ],
+)
+def test_cash_capital_increase_rejects_invalid_amounts_before_persistence(
+    nominal_increase: str,
+    share_premium: str,
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    cash_capital_increase_facts(
+                        phase=CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+                        nominal_increase=nominal_increase,
+                        share_premium=share_premium,
+                    ),
+                    source(
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        "capital-invalid-amount",
+                    ),
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
 
 
 def test_decided_loss_coverage_reduction_reclassifies_equity_without_cash() -> None:

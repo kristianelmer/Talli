@@ -43,6 +43,9 @@ from talli_backend.application.ledger_workflow import (
 from talli_backend.modules.ledger.public import (
     BankLoanEvent,
     BankLoanReferenceId,
+    CashCapitalIncreaseFacts,
+    CapitalIncreasePhase,
+    CapitalIncreaseReferenceId,
     CloseCompanyYearCommand,
     CompanyYearCloseAssessment,
     CompanyYearCloseAssessmentId,
@@ -489,6 +492,36 @@ def _map_database_error(message: str) -> LedgerError:
         (
             "ledger_bank_loan_principal_exceeded",
             LedgerError.precondition_failed("LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED"),
+        ),
+        (
+            "ledger_cash_capital_increase_phase_invalid",
+            LedgerError.precondition_failed(
+                "LEDGER_CASH_CAPITAL_INCREASE_PHASE_INVALID"
+            ),
+        ),
+        (
+            "ledger_cash_capital_increase_phase_missing",
+            LedgerError.precondition_failed(
+                "LEDGER_CASH_CAPITAL_INCREASE_PHASE_MISSING"
+            ),
+        ),
+        (
+            "ledger_cash_capital_increase_amount_mismatch",
+            LedgerError.precondition_failed(
+                "LEDGER_CASH_CAPITAL_INCREASE_AMOUNT_MISMATCH"
+            ),
+        ),
+        (
+            "ledger_cash_capital_increase_phase_already_recorded",
+            LedgerError.conflict(
+                "LEDGER_CASH_CAPITAL_INCREASE_PHASE_ALREADY_RECORDED"
+            ),
+        ),
+        (
+            "ledger_opening_capital_increase_anchor_missing",
+            LedgerError.precondition_failed(
+                "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"
+            ),
         ),
         (
             "ledger_received_dividend_already_settled",
@@ -970,6 +1003,136 @@ class SupabaseLedgerSession:
             principal=principal,
             interest=interest,
             fee=fee,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def _record_cash_capital_increase(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        expected_phase: CapitalIncreasePhase,
+        function_name: str,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        facts = command.facts
+        total = nominal_increase.amount + share_premium.amount
+        expected_debit = (
+            total * 2 if expected_phase is CapitalIncreasePhase.REGISTERED else total
+        )
+        if (
+            not isinstance(facts, CashCapitalIncreaseFacts)
+            or facts.phase is not expected_phase
+            or capital_increase_reference_id
+            != facts.capital_increase_reference_id
+            or nominal_increase != facts.nominal_increase
+            or share_premium != facts.share_premium
+            or sum((line.debit.amount for line in lines), Decimal("0.00"))
+            != expected_debit
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        row = await self._one_idempotent_row(
+            f"""
+            select * from ledger.{function_name}(
+              %s::text, %s::uuid, %s::integer, %s::text, %s::numeric,
+              %s::numeric, %s::text, %s::jsonb, %s::text, %s::text,
+              %s::text, %s::text, %s::date, %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(capital_increase_reference_id),
+                nominal_increase.amount,
+                share_premium.amount,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                command.primary_source.capability.value,
+                str(command.primary_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return _posted_entry(row)
+
+    async def record_cash_capital_increase_subscription(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_cash_capital_increase(
+            command,
+            expected_phase=CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+            function_name="record_cash_capital_increase_subscription_v1",
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_cash_capital_increase_restricted_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_cash_capital_increase(
+            command,
+            expected_phase=CapitalIncreasePhase.RESTRICTED_PAYMENT,
+            function_name="record_cash_capital_increase_restricted_payment_v1",
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_cash_capital_increase_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_cash_capital_increase(
+            command,
+            expected_phase=CapitalIncreasePhase.REGISTERED,
+            function_name="record_cash_capital_increase_registration_v1",
+            capital_increase_reference_id=capital_increase_reference_id,
+            nominal_increase=nominal_increase,
+            share_premium=share_premium,
             memo=memo,
             lines=lines,
         )

@@ -642,9 +642,6 @@ class LedgerService:
             else:
                 raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, CashCapitalIncreaseFacts):
-            required_sources = frozenset(
-                {LedgerSourceCapability.CORPORATE_GOVERNANCE}
-            )
             primary_source_capability = LedgerSourceCapability.CORPORATE_GOVERNANCE
             if (
                 facts.nominal_increase.amount <= 0
@@ -657,6 +654,12 @@ class LedgerService:
             )
             entry_kind = LedgerEntryKind.CAPITAL_INCREASE
             if facts.phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION:
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                    }
+                )
                 memo = "Binding cash-capital subscription"
                 lines = (
                     LedgerLine("1500", "Subscription receivable", total, _ZERO),
@@ -665,22 +668,44 @@ class LedgerService:
                     ),
                 )
             elif facts.phase is CapitalIncreasePhase.RESTRICTED_PAYMENT:
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.BANKING,
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                    }
+                )
                 memo = "Cash contribution paid to restricted account"
                 lines = (
                     LedgerLine("1921", "Restricted contribution bank", total, _ZERO),
                     LedgerLine("1500", "Subscription receivable", _ZERO, total),
                 )
-            else:
+            elif facts.phase is CapitalIncreasePhase.REGISTERED:
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.BANKING,
+                        LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                        LedgerSourceCapability.DOCUMENTS,
+                        LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                    }
+                )
                 memo = "Registered cash-capital increase"
                 lines = (
                     LedgerLine("2030", "Unregistered capital increase", total, _ZERO),
                     LedgerLine(
                         "2000", "Registered share capital", _ZERO, facts.nominal_increase
                     ),
-                    LedgerLine("2020", "Share premium", _ZERO, facts.share_premium),
+                )
+                if facts.share_premium.amount > 0:
+                    lines += (
+                        LedgerLine("2020", "Share premium", _ZERO, facts.share_premium),
+                    )
+                lines += (
                     LedgerLine("1920", "Released contribution bank", total, _ZERO),
                     LedgerLine("1921", "Restricted contribution bank", _ZERO, total),
                 )
+            else:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, ApprovedLossCoverageCapitalReductionFacts):
             required_sources = frozenset(
                 {LedgerSourceCapability.CORPORATE_GOVERNANCE}
@@ -832,6 +857,41 @@ class LedgerService:
                 memo=memo,
                 lines=lines,
             )
+        if isinstance(facts, CashCapitalIncreaseFacts):
+            if facts.phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION:
+                return await self._persistence.record_cash_capital_increase_subscription(
+                    command,
+                    capital_increase_reference_id=(
+                        facts.capital_increase_reference_id
+                    ),
+                    nominal_increase=facts.nominal_increase,
+                    share_premium=facts.share_premium,
+                    memo=memo,
+                    lines=lines,
+                )
+            if facts.phase is CapitalIncreasePhase.RESTRICTED_PAYMENT:
+                return await self._persistence.record_cash_capital_increase_restricted_payment(
+                    command,
+                    capital_increase_reference_id=(
+                        facts.capital_increase_reference_id
+                    ),
+                    nominal_increase=facts.nominal_increase,
+                    share_premium=facts.share_premium,
+                    memo=memo,
+                    lines=lines,
+                )
+            if facts.phase is CapitalIncreasePhase.REGISTERED:
+                return await self._persistence.record_cash_capital_increase_registration(
+                    command,
+                    capital_increase_reference_id=(
+                        facts.capital_increase_reference_id
+                    ),
+                    nominal_increase=facts.nominal_increase,
+                    share_premium=facts.share_premium,
+                    memo=memo,
+                    lines=lines,
+                )
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         return await self._persistence.post_entry(
             command,
             entry_kind=entry_kind,

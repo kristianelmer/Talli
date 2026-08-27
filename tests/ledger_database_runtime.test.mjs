@@ -13,6 +13,7 @@ const correctionsPath = "/repo/supabase/migrations/20260827103000_ledger_correct
 const companyYearClosePath = "/repo/supabase/migrations/20260827104000_ledger_company_year_close.sql";
 const receivedDividendPath = "/repo/supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql";
 const bankLoanPath = "/repo/supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql";
+const cashCapitalIncreasePath = "/repo/supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -876,6 +877,105 @@ commit;
 `;
 }
 
+function cashCapitalIncreaseSources(phase, sourceRecordId) {
+  const sources = [{
+    role: "PRIMARY",
+    capability: "CORPORATE_GOVERNANCE",
+    recordId: sourceRecordId,
+    revision: 1,
+    factSha256: "1".repeat(64),
+  }];
+  if (phase !== "BINDING_SUBSCRIPTION") {
+    sources.push({
+      role: "CORROBORATING",
+      capability: "BANKING",
+      recordId: `${sourceRecordId}:bank`,
+      revision: 1,
+      factSha256: "2".repeat(64),
+    });
+  }
+  sources.push({
+    role: "CORROBORATING",
+    capability: "DOCUMENTS",
+    recordId: `${sourceRecordId}:documents`,
+    revision: 1,
+    factSha256: "3".repeat(64),
+  });
+  if (phase === "REGISTERED") {
+    sources.push({
+      role: "CORROBORATING",
+      capability: "SHAREHOLDER_REGISTER_FILING",
+      recordId: `${sourceRecordId}:shareholder-register`,
+      revision: 1,
+      factSha256: "4".repeat(64),
+    });
+  }
+  return sources;
+}
+
+function cashCapitalIncreaseLines(phase, nominalIncreaseNok, sharePremiumNok) {
+  const total = (Number(nominalIncreaseNok) + Number(sharePremiumNok)).toFixed(2);
+  if (phase === "BINDING_SUBSCRIPTION") {
+    return [
+      { account: "1500", description: "Subscription receivable", debit: total, credit: "0.00", currency: "NOK" },
+      { account: "2030", description: "Unregistered capital increase", debit: "0.00", credit: total, currency: "NOK" },
+    ];
+  }
+  if (phase === "RESTRICTED_PAYMENT") {
+    return [
+      { account: "1921", description: "Restricted contribution bank", debit: total, credit: "0.00", currency: "NOK" },
+      { account: "1500", description: "Subscription receivable", debit: "0.00", credit: total, currency: "NOK" },
+    ];
+  }
+  return [
+    { account: "2030", description: "Unregistered capital increase", debit: total, credit: "0.00", currency: "NOK" },
+    { account: "2000", description: "Registered share capital", debit: "0.00", credit: Number(nominalIncreaseNok).toFixed(2), currency: "NOK" },
+    { account: "2020", description: "Share premium", debit: "0.00", credit: Number(sharePremiumNok).toFixed(2), currency: "NOK" },
+    { account: "1920", description: "Released contribution bank", debit: total, credit: "0.00", currency: "NOK" },
+    { account: "1921", description: "Restricted contribution bank", debit: "0.00", credit: total, currency: "NOK" },
+  ];
+}
+
+function cashCapitalIncreaseTransaction({
+  phase,
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey,
+  capitalIncreaseReference = "capital-increase:runtime-1",
+  nominalIncreaseNok = "10000.00",
+  sharePremiumNok = "5000.00",
+  memo,
+  lines = cashCapitalIncreaseLines(phase, nominalIncreaseNok, sharePremiumNok),
+  sourceRecordId,
+  correlationId = sourceRecordId,
+  eventDate,
+  sources = cashCapitalIncreaseSources(phase, sourceRecordId),
+}) {
+  const functionName = {
+    BINDING_SUBSCRIPTION: "record_cash_capital_increase_subscription_v1",
+    RESTRICTED_PAYMENT: "record_cash_capital_increase_restricted_payment_v1",
+    REGISTERED: "record_cash_capital_increase_registration_v1",
+  }[phase];
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(posted)::text
+from ledger.${functionName}(
+  '${sqlQuote(idempotencyKey)}'::text, '${company}'::uuid, ${incomeYear}::integer,
+  '${sqlQuote(capitalIncreaseReference)}'::text,
+  ${numericSql(nominalIncreaseNok)}, ${numericSql(sharePremiumNok)},
+  '${sqlQuote(memo)}'::text, '${sqlQuote(JSON.stringify(lines))}'::jsonb,
+  'CORPORATE_GOVERNANCE'::text, '${sqlQuote(sourceRecordId)}'::text,
+  '${sqlQuote(correlationId)}'::text, '${verifiedSubject}'::text,
+  '${eventDate}'::date, 'ledger-supported-patterns-2026.1'::text,
+  '${sqlQuote(JSON.stringify(sources))}'::jsonb
+) posted;
+commit;
+`;
+}
+
 function correctionCall({
   actorId = ownerId,
   verifiedSubject = actorId,
@@ -1332,6 +1432,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", companyYearClosePath]);
     psql(containerName, ["--file", receivedDividendPath]);
     psql(containerName, ["--file", bankLoanPath]);
+    psql(containerName, ["--file", cashCapitalIncreasePath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -1361,7 +1462,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
             'company_year_close_evidence', 'company_year_close_locks',
             'company_year_close_reporting_outputs',
             'received_dividend_decisions', 'received_dividend_settlements',
-            'bank_loan_anchors', 'bank_loan_payment_allocations'
+            'bank_loan_anchors', 'bank_loan_payment_allocations',
+            'cash_capital_increase_phases'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -1370,7 +1472,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.cash_capital_increase_phases:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -2519,6 +2621,472 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         ));
     `)), "t:f:t:f:f:f");
 
+    const capitalSubscriptionOptions = {
+      phase: "BINDING_SUBSCRIPTION",
+      idempotencyKey: "68000000-0000-4000-8000-000000000001",
+      memo: "Binding cash-capital subscription",
+      sourceRecordId: "cash-capital-increase-subscription-runtime",
+      eventDate: "2026-02-01",
+    };
+    const capitalRestrictedPaymentOptions = {
+      phase: "RESTRICTED_PAYMENT",
+      idempotencyKey: "68000000-0000-4000-8000-000000000002",
+      memo: "Cash contribution paid to restricted account",
+      sourceRecordId: "cash-capital-increase-restricted-payment-runtime",
+      eventDate: "2026-02-10",
+    };
+    const capitalRegistrationOptions = {
+      phase: "REGISTERED",
+      idempotencyKey: "68000000-0000-4000-8000-000000000003",
+      memo: "Registered cash-capital increase",
+      sourceRecordId: "cash-capital-increase-registration-runtime",
+      eventDate: "2026-02-20",
+    };
+    const capitalSubscription = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalSubscriptionOptions),
+    );
+    assert.equal(capitalSubscription.entry_kind, "CAPITAL_INCREASE");
+    assert.equal(capitalSubscription.replayed, false);
+    const capitalSubscriptionReplay = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalSubscriptionOptions),
+    );
+    assert.equal(capitalSubscriptionReplay.ledger_entry_id, capitalSubscription.ledger_entry_id);
+    assert.equal(capitalSubscriptionReplay.replayed, true);
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      nominalIncreaseNok: "11000.00",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+
+    const missingOpeningAnchorCases = [
+      {
+        ...capitalRestrictedPaymentOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000004",
+        capitalIncreaseReference: "capital-increase:missing-subscription",
+        sourceRecordId: "cash-capital-increase-missing-subscription-payment-runtime",
+      },
+      {
+        ...capitalRegistrationOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000005",
+        capitalIncreaseReference: "capital-increase:missing-subscription",
+        sourceRecordId: "cash-capital-increase-missing-subscription-registration-runtime",
+      },
+    ];
+    for (const missingOpeningAnchor of missingOpeningAnchorCases) {
+      assert.match(
+        psqlFailure(
+          containerName,
+          cashCapitalIncreaseTransaction(missingOpeningAnchor),
+        ),
+        exactDatabaseError("ledger_opening_capital_increase_anchor_missing"),
+      );
+    }
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000006",
+      sourceRecordId: "cash-capital-increase-skipped-payment-registration-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_missing"));
+
+    const invalidSourceCases = [
+      {
+        ...capitalSubscriptionOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000007",
+        capitalIncreaseReference: "capital-increase:invalid-subscription-sources",
+        sourceRecordId: "cash-capital-increase-invalid-subscription-sources-runtime",
+        sources: [
+          { role: "PRIMARY", capability: "DOCUMENTS", recordId: "cash-capital-increase-invalid-subscription-sources-runtime", revision: 1, factSha256: "5".repeat(64) },
+          { role: "CORROBORATING", capability: "CORPORATE_GOVERNANCE", recordId: "cash-capital-increase-invalid-subscription-governance-runtime", revision: 1, factSha256: "6".repeat(64) },
+        ],
+      },
+      {
+        ...capitalRestrictedPaymentOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000008",
+        sourceRecordId: "cash-capital-increase-invalid-payment-sources-runtime",
+        sources: cashCapitalIncreaseSources(
+          "RESTRICTED_PAYMENT",
+          "cash-capital-increase-invalid-payment-sources-runtime",
+        ).slice(0, 2),
+      },
+      {
+        ...capitalRegistrationOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000009",
+        sourceRecordId: "cash-capital-increase-invalid-registration-sources-runtime",
+        sources: [
+          ...cashCapitalIncreaseSources(
+            "REGISTERED",
+            "cash-capital-increase-invalid-registration-sources-runtime",
+          ),
+          { role: "CORROBORATING", capability: "DOCUMENTS", recordId: "cash-capital-increase-extra-registration-document-runtime", revision: 1, factSha256: "7".repeat(64) },
+        ],
+      },
+    ];
+    for (const invalidSources of invalidSourceCases) {
+      assert.match(
+        psqlFailure(containerName, cashCapitalIncreaseTransaction(invalidSources)),
+        exactDatabaseError("ledger_cash_capital_increase_phase_invalid"),
+      );
+    }
+
+    const backdatedCapitalPaymentSource = "cash-capital-increase-backdated-payment-runtime";
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000010",
+      sourceRecordId: backdatedCapitalPaymentSource,
+      eventDate: "2026-01-31",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_invalid"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000011",
+      nominalIncreaseNok: "9999.00",
+      sourceRecordId: "cash-capital-increase-payment-amount-mismatch-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_amount_mismatch"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000012",
+      capitalIncreaseReference: "capital-increase:malformed-lines",
+      lines: { unexpected: "object" },
+      sourceRecordId: "cash-capital-increase-malformed-subscription-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_invalid"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000013",
+      capitalIncreaseReference: "capital-increase:mismatched-lines",
+      lines: cashCapitalIncreaseLines("BINDING_SUBSCRIPTION", "12000.00", "5000.00"),
+      sourceRecordId: "cash-capital-increase-mismatched-subscription-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_amount_mismatch"));
+
+    const capitalRestrictedPayment = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalRestrictedPaymentOptions),
+    );
+    assert.equal(capitalRestrictedPayment.entry_kind, "CAPITAL_INCREASE");
+    assert.equal(capitalRestrictedPayment.replayed, false);
+    assert.equal(
+      jsonOutput(
+        containerName,
+        cashCapitalIncreaseTransaction(capitalRestrictedPaymentOptions),
+      ).replayed,
+      true,
+    );
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      sharePremiumNok: "4999.00",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+    const backdatedCapitalRegistrationSource =
+      "cash-capital-increase-backdated-registration-runtime";
+    const backdatedCapitalRegistrationKey =
+      "68000000-0000-4000-8000-000000000026";
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: backdatedCapitalRegistrationKey,
+      sourceRecordId: backdatedCapitalRegistrationSource,
+      eventDate: "2026-02-09",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_invalid"));
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'entries', (select count(*) from ledger.entries entry
+          where entry.source_record_id = '${backdatedCapitalRegistrationSource}'),
+        'contexts', (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id = '${backdatedCapitalRegistrationSource}'),
+        'sources', (select count(*) from ledger.entry_sources source
+          join ledger.entries entry on entry.id = source.entry_id
+          where entry.source_record_id = '${backdatedCapitalRegistrationSource}'),
+        'receipts', (select count(*) from backend_system.ledger_command_receipts receipt
+          where receipt.idempotency_key = '${backdatedCapitalRegistrationKey}')
+      )::text;
+    `), { contexts: 0, entries: 0, receipts: 0, sources: 0 });
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000014",
+      sourceRecordId: "cash-capital-increase-duplicate-payment-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_already_recorded"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000015",
+      sharePremiumNok: "5001.00",
+      sourceRecordId: "cash-capital-increase-registration-amount-mismatch-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_amount_mismatch"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000016",
+      lines: cashCapitalIncreaseLines("REGISTERED", "10001.00", "5000.00"),
+      sourceRecordId: "cash-capital-increase-mismatched-registration-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_amount_mismatch"));
+    const capitalRegistration = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalRegistrationOptions),
+    );
+    assert.equal(capitalRegistration.entry_kind, "CAPITAL_INCREASE");
+    assert.equal(capitalRegistration.replayed, false);
+    assert.equal(
+      jsonOutput(
+        containerName,
+        cashCapitalIncreaseTransaction(capitalRegistrationOptions),
+      ).replayed,
+      true,
+    );
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      eventDate: "2026-02-21",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000017",
+      sourceRecordId: "cash-capital-increase-duplicate-subscription-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_already_recorded"));
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000018",
+      sourceRecordId: "cash-capital-increase-duplicate-registration-runtime",
+    })), exactDatabaseError("ledger_cash_capital_increase_phase_already_recorded"));
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'phase', phase.phase,
+        'incomeYear', phase.income_year,
+        'eventDate', phase.event_date,
+        'nominalIncrease', phase.nominal_increase,
+        'sharePremium', phase.share_premium,
+        'sources', (select pg_catalog.jsonb_agg(source.source_capability order by source.ordinal)
+          from ledger.entry_sources source where source.entry_id = phase.entry_id)
+      ) order by phase.event_date)::text
+      from ledger.cash_capital_increase_phases phase
+      where phase.company_id = '${companyId}'
+        and phase.capital_increase_reference_id = 'capital-increase:runtime-1';
+    `), [
+      { phase: "BINDING_SUBSCRIPTION", incomeYear: 2026, eventDate: "2026-02-01", nominalIncrease: 10000, sharePremium: 5000, sources: ["CORPORATE_GOVERNANCE", "DOCUMENTS"] },
+      { phase: "RESTRICTED_PAYMENT", incomeYear: 2026, eventDate: "2026-02-10", nominalIncrease: 10000, sharePremium: 5000, sources: ["CORPORATE_GOVERNANCE", "BANKING", "DOCUMENTS"] },
+      { phase: "REGISTERED", incomeYear: 2026, eventDate: "2026-02-20", nominalIncrease: 10000, sharePremium: 5000, sources: ["CORPORATE_GOVERNANCE", "BANKING", "DOCUMENTS", "SHAREHOLDER_REGISTER_FILING"] },
+    ]);
+
+    const crossYearCapitalReference = "capital-increase:cross-year-runtime";
+    const crossYearCapitalOptions = [
+      {
+        ...capitalSubscriptionOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000019",
+        capitalIncreaseReference: crossYearCapitalReference,
+        sourceRecordId: "cash-capital-increase-cross-year-subscription-runtime",
+        eventDate: "2026-12-20",
+      },
+      {
+        ...capitalRestrictedPaymentOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000020",
+        capitalIncreaseReference: crossYearCapitalReference,
+        incomeYear: 2027,
+        sourceRecordId: "cash-capital-increase-cross-year-payment-runtime",
+        eventDate: "2027-01-10",
+      },
+      {
+        ...capitalRegistrationOptions,
+        idempotencyKey: "68000000-0000-4000-8000-000000000021",
+        capitalIncreaseReference: crossYearCapitalReference,
+        incomeYear: 2029,
+        sourceRecordId: "cash-capital-increase-cross-year-registration-runtime",
+        eventDate: "2029-01-15",
+      },
+    ];
+    const crossYearCapitalEntries = crossYearCapitalOptions.map((options) =>
+      jsonOutput(containerName, cashCapitalIncreaseTransaction(options)));
+    assert.deepEqual(crossYearCapitalEntries.map((entry) => entry.income_year), [2026, 2027, 2029]);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select pg_catalog.string_agg(
+        phase.phase || ':' || phase.income_year::text,
+        ',' order by phase.event_date
+      )
+      from ledger.cash_capital_increase_phases phase
+      where phase.company_id = '${companyId}'
+        and phase.capital_increase_reference_id = '${crossYearCapitalReference}';
+    `)), "BINDING_SUBSCRIPTION:2026,RESTRICTED_PAYMENT:2027,REGISTERED:2029");
+
+    const crossTenantCapitalSource = "cash-capital-increase-cross-tenant-payment-runtime";
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      actorId: otherOwnerId,
+      company: otherCompanyId,
+      idempotencyKey: "68000000-0000-4000-8000-000000000022",
+      sourceRecordId: crossTenantCapitalSource,
+    })), exactDatabaseError("ledger_opening_capital_increase_anchor_missing"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      ${actorContext(otherOwnerId)}
+      set local role ledger_store_owner;
+      select count(*) from ledger.cash_capital_increase_phases
+      where company_id = '${companyId}';
+      commit;
+    `)), "0");
+
+    const concurrentCapitalReference = "capital-increase:concurrent-runtime";
+    jsonOutput(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000023",
+      capitalIncreaseReference: concurrentCapitalReference,
+      sourceRecordId: "cash-capital-increase-concurrent-subscription-runtime",
+      eventDate: "2026-03-01",
+    }));
+    const concurrentCapitalPaymentOptions = [
+      {
+        applicationName: "cash_capital_payment_first",
+        eventDate: "2027-03-10",
+        idempotencyKey: "68000000-0000-4000-8000-000000000024",
+        incomeYear: 2027,
+        sourceRecordId: "cash-capital-increase-concurrent-payment-first-runtime",
+      },
+      {
+        applicationName: "cash_capital_payment_second",
+        eventDate: "2029-03-10",
+        idempotencyKey: "68000000-0000-4000-8000-000000000025",
+        incomeYear: 2029,
+        sourceRecordId: "cash-capital-increase-concurrent-payment-second-runtime",
+      },
+    ];
+    const concurrentCapitalPaymentTransaction = (options) =>
+      cashCapitalIncreaseTransaction({
+        ...capitalRestrictedPaymentOptions,
+        idempotencyKey: options.idempotencyKey,
+        capitalIncreaseReference: concurrentCapitalReference,
+        incomeYear: options.incomeYear,
+        sourceRecordId: options.sourceRecordId,
+        eventDate: options.eventDate,
+      });
+    const firstConcurrentCapitalPayment = interactivePsql(containerName);
+    firstConcurrentCapitalPayment.child.stdin.write(String.raw`
+      set application_name = '${concurrentCapitalPaymentOptions[0].applicationName}';
+      ${concurrentCapitalPaymentTransaction(concurrentCapitalPaymentOptions[0]).replace(
+        "commit;",
+        "select 'cash_capital_first_payment_uncommitted';",
+      )}
+    `);
+    await waitForOutput(
+      firstConcurrentCapitalPayment,
+      /cash_capital_first_payment_uncommitted/u,
+    );
+    const secondConcurrentCapitalPayment = interactivePsql(containerName);
+    secondConcurrentCapitalPayment.child.stdin.end(String.raw`
+      set application_name = '${concurrentCapitalPaymentOptions[1].applicationName}';
+      ${concurrentCapitalPaymentTransaction(concurrentCapitalPaymentOptions[1])}
+    `);
+    let secondConcurrentCapitalPaymentBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      secondConcurrentCapitalPaymentBlocked = lastOutputLine(psql(
+        containerName,
+        ["-Atq"],
+        String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = 'cash_capital_payment_second'
+            and wait_event_type = 'Lock';
+        `,
+      )) === "1";
+      if (secondConcurrentCapitalPaymentBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      secondConcurrentCapitalPaymentBlocked,
+      true,
+      "second cash-capital phase did not contend on its stable lifecycle reference",
+    );
+    firstConcurrentCapitalPayment.child.stdin.end("commit;\n\\q\n");
+    const concurrentCapitalPaymentResults = await Promise.all([
+      processResult(firstConcurrentCapitalPayment),
+      processResult(secondConcurrentCapitalPayment),
+    ]);
+    assert.equal(concurrentCapitalPaymentResults.filter((result) => result.code === 0).length, 1);
+    const concurrentCapitalPaymentFailures = concurrentCapitalPaymentResults.filter(
+      (result) => result.code !== 0,
+    );
+    assert.equal(concurrentCapitalPaymentFailures.length, 1);
+    assert.match(
+      concurrentCapitalPaymentFailures[0].stderr,
+      exactDatabaseError("ledger_cash_capital_increase_phase_already_recorded"),
+    );
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'entries', (select count(*) from ledger.entries entry
+          where entry.source_record_id in (
+            'cash-capital-increase-concurrent-payment-first-runtime',
+            'cash-capital-increase-concurrent-payment-second-runtime'
+          )),
+        'contexts', (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id in (
+            'cash-capital-increase-concurrent-payment-first-runtime',
+            'cash-capital-increase-concurrent-payment-second-runtime'
+          )),
+        'receipts', (select count(*) from backend_system.ledger_command_receipts receipt
+          where receipt.idempotency_key in (
+            '68000000-0000-4000-8000-000000000024',
+            '68000000-0000-4000-8000-000000000025'
+          )),
+        'phases', (select count(*) from ledger.cash_capital_increase_phases phase
+          where phase.company_id = '${companyId}'
+            and phase.capital_increase_reference_id = '${concurrentCapitalReference}'
+            and phase.phase = 'RESTRICTED_PAYMENT')
+      )::text;
+    `), { contexts: 1, entries: 1, phases: 1, receipts: 1 });
+
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      insert into ledger.cash_capital_increase_phases default values;
+      commit;
+    `), /permission denied/iu);
+    const capitalIncreaseSignature =
+      "(text,uuid,integer,text,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)";
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_subscription_v1${capitalIncreaseSignature}',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_restricted_payment_v1${capitalIncreaseSignature}',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_registration_v1${capitalIncreaseSignature}',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'authenticated',
+          'ledger.record_cash_capital_increase_subscription_v1${capitalIncreaseSignature}',
+          'execute'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.cash_capital_increase_phases', 'insert'
+        ));
+    `)), "t:t:t:f:f");
+    for (const forbiddenRole of [
+      "anon",
+      "authenticated",
+      "service_role",
+      "ledger_workflow_executor",
+      "talli_ledger_backend",
+    ]) {
+      assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select concat_ws(':',
+          pg_catalog.bool_or(pg_catalog.has_function_privilege(
+            '${forbiddenRole}', wrapper.function_name, 'execute'
+          )),
+          pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.cash_capital_increase_phases', 'insert'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.cash_capital_increase_phases', 'update'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.cash_capital_increase_phases', 'delete'
+          ) or pg_catalog.has_table_privilege(
+            '${forbiddenRole}', 'ledger.cash_capital_increase_phases', 'truncate'
+          ))
+        from (values
+          ('ledger.record_cash_capital_increase_subscription_v1${capitalIncreaseSignature}'::regprocedure),
+          ('ledger.record_cash_capital_increase_restricted_payment_v1${capitalIncreaseSignature}'::regprocedure),
+          ('ledger.record_cash_capital_increase_registration_v1${capitalIncreaseSignature}'::regprocedure)
+        ) wrapper(function_name);
+      `)), "f:f", `${forbiddenRole} gained direct capital lifecycle authority`);
+    }
+
     const blockedReconstruction = jsonOutput(
       containerName,
       reconstructionCall({ documentsReady: false }),
@@ -2825,7 +3393,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         'setups', (select count(*) from public.opening_balance_setups
           where company_id = '${companyId}' and income_year = 2029),
         'entries', (select count(*) from ledger.entries
-          where company_id = '${companyId}' and income_year = 2029),
+          where company_id = '${companyId}' and income_year = 2029
+            and entry_kind = 'OPENING_BALANCE'),
         'receipts', (select count(*) from backend_system.ledger_workflow_receipts
           where company_id = '${companyId}'
             and idempotency_key = '73000000-0000-4000-8000-000000000009')
@@ -4220,6 +4789,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.received_dividend_settlements),
         (select count(*) from ledger.bank_loan_anchors),
         (select count(*) from ledger.bank_loan_payment_allocations),
+        (select count(*) from ledger.cash_capital_increase_phases),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries), ''), 'sha256'), 'hex'));
@@ -4263,6 +4833,22 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         revision: 1,
         factSha256: "9".repeat(64),
       }],
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalSubscriptionOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000026",
+      capitalIncreaseReference: "capital-increase:rollback-denied",
+      sourceRecordId: "cash-capital-increase-rollback-subscription-denied",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRestrictedPaymentOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000027",
+      sourceRecordId: "cash-capital-increase-rollback-payment-denied",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, cashCapitalIncreaseTransaction({
+      ...capitalRegistrationOptions,
+      idempotencyKey: "68000000-0000-4000-8000-000000000028",
+      sourceRecordId: "cash-capital-increase-rollback-registration-denied",
     })), /permission denied/iu);
     assert.match(psqlFailure(containerName, correctionTransaction({
       originalEntryId: correctionOriginal.ledger_entry_id,
@@ -4318,8 +4904,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           'ledger_executor',
           'ledger.record_bank_loan_payment_v1(text,uuid,integer,text,numeric,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
           'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_subscription_v1(text,uuid,integer,text,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_restricted_payment_v1(text,uuid,integer,text,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_cash_capital_increase_registration_v1(text,uuid,integer,text,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
         ));
-    `)), "f:f:f:f:f:f:f:f");
+    `)), "f:f:f:f:f:f:f:f:f:f:f");
     assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -4434,6 +5035,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", companyYearClosePath]);
     psql(containerName, ["--file", receivedDividendPath]);
     psql(containerName, ["--file", bankLoanPath]);
+    psql(containerName, ["--file", cashCapitalIncreasePath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -4555,6 +5157,33 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       firstLoanPayment.ledger_entry_id,
     );
     assert.equal(recutoverBankLoanPayment.replayed, true);
+    const recutoverCapitalSubscription = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalSubscriptionOptions),
+    );
+    assert.equal(
+      recutoverCapitalSubscription.ledger_entry_id,
+      capitalSubscription.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalSubscription.replayed, true);
+    const recutoverCapitalRestrictedPayment = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalRestrictedPaymentOptions),
+    );
+    assert.equal(
+      recutoverCapitalRestrictedPayment.ledger_entry_id,
+      capitalRestrictedPayment.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalRestrictedPayment.replayed, true);
+    const recutoverCapitalRegistration = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction(capitalRegistrationOptions),
+    );
+    assert.equal(
+      recutoverCapitalRegistration.ledger_entry_id,
+      capitalRegistration.ledger_entry_id,
+    );
+    assert.equal(recutoverCapitalRegistration.replayed, true);
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -4568,6 +5197,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.received_dividend_settlements),
         (select count(*) from ledger.bank_loan_anchors),
         (select count(*) from ledger.bank_loan_payment_allocations),
+        (select count(*) from ledger.cash_capital_increase_phases),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries where id <> '${malformedLegacyEntryId}'), ''),

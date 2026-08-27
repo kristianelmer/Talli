@@ -144,6 +144,87 @@ test("high-risk equity and group cases preserve the researched semantic distinct
   );
 });
 
+test("cash capital increase phases retain one stable lifecycle reference", () => {
+  const capitalIncrease = fixture.patterns.find(
+    (pattern) => pattern.id === "cash-capital-increase",
+  );
+
+  assert.equal(
+    capitalIncrease.input.capitalIncreaseReferenceId,
+    "capital-increase:1",
+  );
+  assert.deepEqual(capitalIncrease.input.allocations, [
+    {
+      subscriberId: "shareholder:owner-a",
+      shares: "100",
+      acquisitionDate: "2026-05-10",
+      dividendRightsDate: "2026-05-20",
+    },
+  ]);
+  assert.deepEqual(capitalIncrease.input.sourceReferences, {
+    decision: "corporate-governance:capital-increase:1",
+    signedSubscription: "documents:capital-subscription:1",
+    restrictedAccountReceipt: "banking:restricted-contribution:1",
+    contributionConfirmation: "documents:contribution-confirmation:1",
+    registrySubmission: "corporate-governance:registry-submission:1",
+    registryRegistration: "corporate-governance:registry-registration:1",
+    updatedArticles: "documents:articles:registered:1",
+    shareholderRegister: "shareholder-register-filing:capital-increase:1",
+  });
+  const shareCount = BigInt(capitalIncrease.input.newShares);
+  assert.equal(
+    cents(capitalIncrease.input.nominalPerShareNok) * shareCount,
+    cents(capitalIncrease.input.nominalIncreaseNok),
+  );
+  assert.equal(
+    cents(capitalIncrease.input.premiumPerShareNok) * shareCount,
+    cents(capitalIncrease.input.sharePremiumNok),
+  );
+  assert.equal(
+    cents(capitalIncrease.input.issuePricePerShareNok),
+    cents(capitalIncrease.input.nominalPerShareNok)
+      + cents(capitalIncrease.input.premiumPerShareNok),
+  );
+  assert.equal(
+    cents(capitalIncrease.input.inputValuePerShareNok),
+    cents(capitalIncrease.input.issuePricePerShareNok),
+  );
+  assert.equal(
+    cents(capitalIncrease.input.paidInCapitalPerShareNok),
+    cents(capitalIncrease.input.nominalPerShareNok)
+      + cents(capitalIncrease.input.premiumPerShareNok),
+  );
+  assert.equal(
+    cents(capitalIncrease.input.issuePricePerShareNok) * shareCount,
+    cents(capitalIncrease.input.cashContributionNok),
+  );
+  assert.deepEqual(
+    capitalIncrease.journals.map((journal) => journal.phase),
+    ["BINDING_SUBSCRIPTION", "RESTRICTED_PAYMENT", "REGISTERED"],
+  );
+  for (const projection of [
+    "LEDGER",
+    "BANK",
+    "GOVERNANCE",
+    "SHAREHOLDER_REGISTER",
+    "TAX",
+    "ANNUAL_ACCOUNTS",
+    "SAF_T",
+    "ARCHIVE",
+  ]) {
+    assert.ok(
+      capitalIncrease.projections.includes(projection),
+      `cash-capital-increase is missing ${projection}`,
+    );
+  }
+  assert.deepEqual(capitalIncrease.blocks, [
+    "CONTRIBUTION_CONFIRMATION_MISSING",
+    "NON_CASH_CONTRIBUTION",
+    "REGISTRATION_MISMATCH",
+    "OPENING_CAPITAL_INCREASE_ANCHOR_MISSING",
+  ]);
+});
+
 test("ordinary bank-loan phases retain stable agreement and loan linkage", () => {
   const bankLoan = fixture.patterns.find(
     (pattern) => pattern.id === "ordinary-bank-loan",

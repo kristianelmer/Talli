@@ -135,6 +135,22 @@ class BankLoanReferenceId:
         return self.value
 
 
+@dataclass(frozen=True, slots=True)
+class CapitalIncreaseReferenceId:
+    """Ledger-owned stable identity for one cash-capital-increase lifecycle."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("capital-increase reference id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
 class LedgerSourceCapability(StrEnum):
     LEDGER = "LEDGER"
     BANKING = "BANKING"
@@ -378,6 +394,7 @@ class OrdinaryBankLoanFacts:
 @dataclass(frozen=True, slots=True)
 class CashCapitalIncreaseFacts:
     phase: CapitalIncreasePhase
+    capital_increase_reference_id: CapitalIncreaseReferenceId
     nominal_increase: Money
     share_premium: Money
 
@@ -504,6 +521,21 @@ class LedgerErrorCode(StrEnum):
     BANK_LOAN_EVENT_INVALID = "LEDGER_BANK_LOAN_EVENT_INVALID"
     OPENING_LOAN_ANCHOR_MISSING = "LEDGER_OPENING_LOAN_ANCHOR_MISSING"
     BANK_LOAN_PRINCIPAL_EXCEEDED = "LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED"
+    CASH_CAPITAL_INCREASE_PHASE_INVALID = (
+        "LEDGER_CASH_CAPITAL_INCREASE_PHASE_INVALID"
+    )
+    CASH_CAPITAL_INCREASE_PHASE_MISSING = (
+        "LEDGER_CASH_CAPITAL_INCREASE_PHASE_MISSING"
+    )
+    CASH_CAPITAL_INCREASE_AMOUNT_MISMATCH = (
+        "LEDGER_CASH_CAPITAL_INCREASE_AMOUNT_MISMATCH"
+    )
+    CASH_CAPITAL_INCREASE_PHASE_ALREADY_RECORDED = (
+        "LEDGER_CASH_CAPITAL_INCREASE_PHASE_ALREADY_RECORDED"
+    )
+    OPENING_CAPITAL_INCREASE_ANCHOR_MISSING = (
+        "LEDGER_OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"
+    )
     RECEIVED_DIVIDEND_ALREADY_SETTLED = "LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"
     RECEIVED_DIVIDEND_DECISION_INVALID = "LEDGER_RECEIVED_DIVIDEND_DECISION_INVALID"
     SOURCE_CAPABILITY_MISMATCH = "LEDGER_SOURCE_CAPABILITY_MISMATCH"
@@ -1028,6 +1060,39 @@ class LedgerPersistence(Protocol):
         lines: tuple[LedgerLine, ...],
     ) -> PostedLedgerEntry: ...
 
+    async def record_cash_capital_increase_subscription(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_cash_capital_increase_restricted_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_cash_capital_increase_registration(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        capital_increase_reference_id: CapitalIncreaseReferenceId,
+        nominal_increase: Money,
+        share_premium: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
     async def record_received_dividend_decision(
         self,
         command: RecognizeHoldingActionCommand,
@@ -1240,6 +1305,7 @@ __all__ = [
     "BankLoanReferenceId",
     "BankSuggestionRule",
     "CashCapitalIncreaseFacts",
+    "CapitalIncreaseReferenceId",
     "CapitalIncreasePhase",
     "CapitalReductionRecognition",
     "CloseCompanyYearCommand",

@@ -24,6 +24,13 @@ const bankLoanMigrationUrl = new URL(
 const bankLoanMigration = existsSync(bankLoanMigrationUrl)
   ? readFileSync(bankLoanMigrationUrl, "utf8")
   : "";
+const cashCapitalIncreaseMigrationUrl = new URL(
+  "../supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql",
+  import.meta.url,
+);
+const cashCapitalIncreaseMigration = existsSync(cashCapitalIncreaseMigrationUrl)
+  ? readFileSync(cashCapitalIncreaseMigrationUrl, "utf8")
+  : "";
 const lifecycle = readFileSync(new URL(
   "./ledger_database_runtime.test.mjs",
   import.meta.url,
@@ -201,4 +208,150 @@ test("fresh lifecycle covers bank-loan replay, allocation limits, and cutover", 
   assert.match(lifecycle, /bank-loan-disbursement-runtime/u);
   assert.match(lifecycle, /ledger_bank_loan_principal_exceeded/iu);
   assert.match(lifecycle, /bank_loan_payment_2029/u);
+});
+
+test("cash-capital-increase phases are one immutable forced-RLS lifecycle", () => {
+  assert.ok(
+    cashCapitalIncreaseMigration,
+    "missing additive cash-capital-increase lifecycle migration",
+  );
+  assert.equal(
+    (cashCapitalIncreaseMigration.match(
+      /create table if not exists ledger\.cash_capital_increase_phases/giu,
+    ) ?? []).length,
+    1,
+    "cash-capital lifecycle must use one append-only phase table",
+  );
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /alter table ledger\.cash_capital_increase_phases force row level security/iu,
+  );
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /create trigger ledger_cash_capital_increase_phases_immutable/iu,
+  );
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /primary key\s*\(company_id, capital_increase_reference_id, phase\)/iu,
+  );
+  assert.match(cashCapitalIncreaseMigration, /entry_id uuid not null unique/iu);
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /phase text not null[\s\S]+?'BINDING_SUBSCRIPTION'[\s\S]+?'RESTRICTED_PAYMENT'[\s\S]+?'REGISTERED'/iu,
+  );
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /grant select, insert on ledger\.cash_capital_increase_phases\s+to ledger_store_owner/iu,
+  );
+  assert.doesNotMatch(
+    cashCapitalIncreaseMigration,
+    /grant[^;]+(?:insert|update|delete)[^;]+ledger\.cash_capital_increase_phases[^;]+(?:ledger_executor|ledger_workflow_executor|authenticated|anon)/iu,
+  );
+});
+
+test("cash-capital wrappers enforce exact sources without selecting accounting policy", () => {
+  const wrappers = new Map([
+    [
+      "record_cash_capital_increase_subscription_v1",
+      ["CORPORATE_GOVERNANCE", "DOCUMENTS"],
+    ],
+    [
+      "record_cash_capital_increase_restricted_payment_v1",
+      ["BANKING", "CORPORATE_GOVERNANCE", "DOCUMENTS"],
+    ],
+    [
+      "record_cash_capital_increase_registration_v1",
+      [
+        "BANKING",
+        "CORPORATE_GOVERNANCE",
+        "DOCUMENTS",
+        "SHAREHOLDER_REGISTER_FILING",
+      ],
+    ],
+  ]);
+
+  for (const [wrapperName, capabilities] of wrappers) {
+    const wrapper = cashCapitalIncreaseMigration.match(
+      new RegExp(
+        `create or replace function ledger\\.${wrapperName}\\([\\s\\S]+?\\$function\\$\\s*;`,
+        "iu",
+      ),
+    )?.[0];
+    assert.ok(wrapper, `missing ${wrapperName}`);
+    assert.match(wrapper, /from ledger\.post_supported_entry_v1\(/iu);
+    assert.match(
+      wrapper,
+      /p_source_capability is distinct from 'CORPORATE_GOVERNANCE'/iu,
+    );
+    assert.match(
+      wrapper,
+      /p_sources -> 0 ->> 'capability' is distinct from 'CORPORATE_GOVERNANCE'/iu,
+    );
+    const capabilityLiteral = capabilities
+      .map((capability) => `'${capability}'`)
+      .join(",\\s*");
+    assert.match(
+      wrapper,
+      new RegExp(`array\\[\\s*${capabilityLiteral}\\s*\\]::text\\[\\]`, "iu"),
+    );
+    assert.doesNotMatch(wrapper, /'1500'|'1920'|'1921'|'2000'|'2020'|'2030'/u);
+    assert.doesNotMatch(
+      wrapper,
+      /->>\s*'account'|jsonb_extract_path_text\([^;]+account/iu,
+    );
+    assert.doesNotMatch(wrapper, /case\s+when[^;]+account|when\s+'\d{4}'/iu);
+    assert.match(
+      cashCapitalIncreaseMigration,
+      new RegExp(
+        `grant execute on function ledger\\.${wrapperName}\\([\\s\\S]+?\\)\\s+to ledger_executor`,
+        "iu",
+      ),
+    );
+    assert.doesNotMatch(
+      cashCapitalIncreaseMigration,
+      new RegExp(
+        `grant execute on function ledger\\.${wrapperName}\\([\\s\\S]+?\\)\\s+to (?:authenticated|anon|ledger_workflow_executor)`,
+        "iu",
+      ),
+    );
+  }
+
+  assert.match(
+    cashCapitalIncreaseMigration,
+    /pg_advisory_xact_lock[\s\S]+?capital[_:-]increase/iu,
+  );
+  for (const lifecycleControl of [
+    "ledger_cash_capital_increase_phase_invalid",
+    "ledger_cash_capital_increase_phase_missing",
+    "ledger_cash_capital_increase_amount_mismatch",
+    "ledger_cash_capital_increase_phase_already_recorded",
+  ]) {
+    assert.match(
+      cashCapitalIncreaseMigration,
+      new RegExp(lifecycleControl, "iu"),
+      `missing lifecycle control ${lifecycleControl}`,
+    );
+  }
+});
+
+test("fresh lifecycle covers cash-capital rollback revocation and recutover", () => {
+  assert.match(
+    lifecycle,
+    /20260827107000_ledger_cash_capital_increase_lifecycle\.sql/iu,
+  );
+  for (const runtimeEvidence of [
+    "record_cash_capital_increase_subscription_v1",
+    "record_cash_capital_increase_restricted_payment_v1",
+    "record_cash_capital_increase_registration_v1",
+    "cash_capital_increase_phases",
+    "cash-capital-increase-subscription-runtime",
+    "cash-capital-increase-restricted-payment-runtime",
+    "cash-capital-increase-registration-runtime",
+  ]) {
+    assert.match(lifecycle, new RegExp(runtimeEvidence, "iu"));
+  }
+  assert.match(
+    lifecycle,
+    /psql\(containerName, \["--file", rollbackPath\]\);[\s\S]+record_cash_capital_increase_subscription_v1[\s\S]+record_cash_capital_increase_restricted_payment_v1[\s\S]+record_cash_capital_increase_registration_v1[\s\S]+psql\(containerName, \["--file", cashCapitalIncreasePath\]\)/iu,
+  );
 });

@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -13,6 +13,7 @@ durable idempotency, append-only guided corrections, deterministic entry/lock
 query ordering, compatibility period locks, and evidence-bound company-year
 close locks. It owns
 `ledger.bank_loan_anchors`, `ledger.bank_loan_payment_allocations`,
+`ledger.cash_capital_increase_phases`,
 `ledger.company_year_close_assessments`, `ledger.company_year_close_evidence`,
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
@@ -27,7 +28,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827103000_ledger_corrections.sql`, and
 `supabase/migrations/20260827104000_ledger_company_year_close.sql`, and
 `supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`, and
-`supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`.
+`supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`, and
+`supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -81,6 +83,20 @@ disbursement. A payment
 for a loan reconstructed from an earlier year fails closed with
 `OPENING_LOAN_ANCHOR_MISSING` until the opening-rebuild slice can create a
 verified anchor; this increment does not infer opening debt from a payment.
+
+The cash-capital-increase receiver accepts only a stable, ledger-owned
+`CapitalIncreaseReferenceId` and immutable facts already approved by their
+source owners. Binding subscription requires corporate-governance and document
+facts; restricted payment additionally requires banking evidence; registration
+also requires the shareholder-register owner's reconciled fact. Ledger records
+one immutable phase sequence with matching amounts and nondecreasing dates,
+including transitions into a later admitted company-year. It does not decide
+authority, subscriptions, contribution confirmation, registration truth,
+subscriber allocations, share rights, per-share tax attributes, or issue-cost
+treatment, and it exposes no producer or browser writer. An in-flight increase
+from before the reconstructed boundary fails closed with
+`OPENING_CAPITAL_INCREASE_ANCHOR_MISSING` until opening rebuild can supply a
+verified phase anchor.
 
 The capital-reduction receiver accepts only an approval fact emitted by the
 corporate-governance source owner. Ledger validates the accounting amount and
@@ -151,8 +167,8 @@ Purpose-specific query/results are `LedgerQueries`, `CompanyYearCloseAssessment`
 `PostedLedgerEntry`, `CorrectedLedgerEntries`, and `ReconstructionAssessment`.
 Growing collections use an opaque cursor and deterministic
 `(created_at, id)` ordering. Identifiers and values are `LedgerEntryId`,
-`PeriodLockId`, `BankLoanReferenceId`, `LedgerSourceRecordId`, `LedgerEntryKind`,
-`LedgerSourceCapability`,
+`PeriodLockId`, `BankLoanReferenceId`, `CapitalIncreaseReferenceId`,
+`LedgerSourceRecordId`, `LedgerEntryKind`, `LedgerSourceCapability`,
 `LedgerLine`, `LedgerRiskCode`, `LedgerRiskFlag`, and
 `AdministrativeCostBlock`, `AdministrativeCostCategory`, and
 `AdministrativeCostCorrectionScope`. Company-year close values are

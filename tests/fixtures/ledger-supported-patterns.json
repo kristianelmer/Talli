@@ -129,13 +129,37 @@
       "section": "Ordinary cash capital increase",
       "input": {
         "eventId": "golden:capital-increase:1",
+        "capitalIncreaseReferenceId": "capital-increase:1",
         "decisionDate": "2026-05-10",
         "paymentDate": "2026-05-12",
         "registrationDate": "2026-05-20",
         "newShares": "100",
+        "nominalPerShareNok": "100.00",
+        "premiumPerShareNok": "50.00",
+        "issuePricePerShareNok": "150.00",
+        "inputValuePerShareNok": "150.00",
+        "paidInCapitalPerShareNok": "150.00",
         "nominalIncreaseNok": "10000.00",
         "sharePremiumNok": "5000.00",
-        "cashContributionNok": "15000.00"
+        "cashContributionNok": "15000.00",
+        "allocations": [
+          {
+            "subscriberId": "shareholder:owner-a",
+            "shares": "100",
+            "acquisitionDate": "2026-05-10",
+            "dividendRightsDate": "2026-05-20"
+          }
+        ],
+        "sourceReferences": {
+          "decision": "corporate-governance:capital-increase:1",
+          "signedSubscription": "documents:capital-subscription:1",
+          "restrictedAccountReceipt": "banking:restricted-contribution:1",
+          "contributionConfirmation": "documents:contribution-confirmation:1",
+          "registrySubmission": "corporate-governance:registry-submission:1",
+          "registryRegistration": "corporate-governance:registry-registration:1",
+          "updatedArticles": "documents:articles:registered:1",
+          "shareholderRegister": "shareholder-register-filing:capital-increase:1"
+        }
       },
       "journals": [
         {
@@ -166,8 +190,8 @@
           ]
         }
       ],
-      "projections": ["LEDGER", "BANK", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "SAF_T", "ARCHIVE"],
-      "blocks": ["CONTRIBUTION_CONFIRMATION_MISSING", "NON_CASH_CONTRIBUTION", "REGISTRATION_MISMATCH"]
+      "projections": ["LEDGER", "BANK", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["CONTRIBUTION_CONFIRMATION_MISSING", "NON_CASH_CONTRIBUTION", "REGISTRATION_MISMATCH", "OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"]
     },
     {
       "id": "capital-reduction-loss-coverage",
