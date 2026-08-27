@@ -22,6 +22,9 @@ from talli_backend.application.shareholder_register_compatibility import (
     LegacyShareholderRegisterFilingFacade,
 )
 from talli_backend.modules.ledger.public import (
+    AdministrativeCostCategory,
+    BankSuggestionRule,
+    LedgerCommand,
     LedgerCommands,
     LedgerCursor,
     LedgerEntryId,
@@ -34,9 +37,19 @@ from talli_backend.modules.ledger.public import (
     PeriodLock,
     PeriodLockPage,
     PostAdministrativeCostCommand,
+    PostBankSuggestionOutcomeCommand,
+    PostInvestmentDividendCommand,
+    PostInvestmentPurchaseCommand,
+    PostInvestmentSaleCommand,
+    PostOwnerDividendDeclaredCommand,
+    PostOwnerDividendPaymentCommand,
+    PostShareholderLoanCommand,
+    PostTaxSettlementCommand,
     PostedLedgerEntry,
     PostManualJournalCommand,
     PostOpeningBalanceCommand,
+    ShareholderLoanDirection,
+    TaxSettlementKind,
     LockPeriodCommand,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
@@ -53,9 +66,153 @@ from talli_backend.shared.kernel import (
     ErrorCategory,
     IdempotencyKey,
     IncomeYear,
+    LocalDate,
     Money,
     Timestamp,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RecordAdministrativeCostCommand(LedgerCommand):
+    bank_transaction_id: LedgerSourceRecordId
+    category: AdministrativeCostCategory
+    payee: str
+    amount: Money
+    paid_date: LocalDate
+    document_id: LedgerSourceRecordId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RecordInvestmentDividendCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    paying_company_name: str
+    declared_date: LocalDate
+    paid_date: LocalDate
+    gross_amount: Money
+    linked_investment_id: LedgerSourceRecordId | None
+    tax_treatment: str
+    bank_transaction_id: LedgerSourceRecordId | None
+    document_id: LedgerSourceRecordId | None
+    document_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class RecordShareholderLoanCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    loan_date: LocalDate
+    amount: Money
+    direction: ShareholderLoanDirection
+    counterparty_name: str
+    document_status: str
+    interest_modelled: bool
+    related_party_security: bool
+    bank_transaction_id: LedgerSourceRecordId | None
+    document_id: LedgerSourceRecordId | None
+
+
+@dataclass(frozen=True, slots=True)
+class RecordTaxSettlementCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    settlement_date: LocalDate
+    amount: Money
+    settlement_kind: TaxSettlementKind
+    document_status: str
+    bank_transaction_id: LedgerSourceRecordId | None
+    document_id: LedgerSourceRecordId | None
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptBankTransactionSuggestionCommand(LedgerCommand):
+    acceptance_id: LedgerSourceRecordId
+    bank_transaction_id: LedgerSourceRecordId
+    rule: BankSuggestionRule
+    rule_version: str
+
+
+@dataclass(frozen=True, slots=True)
+class RecordInvestmentPurchaseFifoCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    investment_key: str
+    investment_name: str
+    investment_kind: str
+    tax_treatment: str
+    acquisition_date: LocalDate
+    share_count: int
+    purchase_amount: Money
+    org_number: str | None
+    bank_transaction_id: LedgerSourceRecordId | None
+    document_id: LedgerSourceRecordId | None
+    document_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class RecordInvestmentSaleFifoCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    position_id: LedgerSourceRecordId
+    sale_date: LocalDate
+    sold_share_count: int
+    proceeds: Money
+    bank_transaction_id: LedgerSourceRecordId | None
+    document_id: LedgerSourceRecordId | None
+    document_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class FinalizeCorporateDecisionCommand(LedgerCommand):
+    decision_id: LedgerSourceRecordId
+    set_id: LedgerSourceRecordId
+    decision_hash: str
+    finalization_id: LedgerSourceRecordId
+    holding_action_id: LedgerSourceRecordId | None
+    ledger_entry_id: LedgerEntryId | None
+
+
+@dataclass(frozen=True, slots=True)
+class RecordOwnerDividendPaymentCommand(LedgerCommand):
+    decision_id: LedgerSourceRecordId
+    set_id: LedgerSourceRecordId
+    decision_hash: str
+    bank_transaction_id: LedgerSourceRecordId
+    holding_action_id: LedgerSourceRecordId
+    ledger_entry_id: LedgerEntryId
+
+
+@dataclass(frozen=True, slots=True)
+class LedgerWriterResult:
+    posted_entry: PostedLedgerEntry | None
+    result: dict[str, object]
+    replayed: bool
+
+
+def _replayed_writer(
+    payload: dict[str, object],
+    command: LedgerCommand,
+    expected_kind: LedgerEntryKind | None,
+) -> LedgerWriterResult:
+    posted: PostedLedgerEntry | None = None
+    if expected_kind is not None:
+        try:
+            posted = PostedLedgerEntry(
+                entry_id=LedgerEntryId(str(payload["entryId"])),
+                company_id=CompanyId(str(payload["companyId"])),
+                income_year=IncomeYear(int(payload["incomeYear"])),
+                entry_kind=LedgerEntryKind(str(payload["entryKind"])),
+                posted_at=Timestamp(
+                    datetime.fromisoformat(
+                        str(payload["postedAt"]).replace("Z", "+00:00")
+                    )
+                ),
+                replayed=True,
+            )
+        except (KeyError, TypeError, ValueError):
+            raise LedgerError.unavailable() from None
+        if (
+            posted.company_id != command.company_id
+            or posted.income_year != command.income_year
+            or posted.entry_kind is not expected_kind
+        ):
+            raise LedgerError.unavailable()
+    return LedgerWriterResult(posted_entry=posted, result=dict(payload), replayed=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,6 +413,336 @@ class LedgerApplicationSession:
     ) -> PostedLedgerEntry:
         return await self._ledger.post_administrative_cost(command)
 
+    async def record_administrative_cost(
+        self, command: RecordAdministrativeCostCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_administrative_cost(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(
+                    replay, command, LedgerEntryKind.ADMINISTRATIVE_COST
+                )
+            posted = await self._facade_factory(
+                transaction
+            ).post_administrative_cost(
+                PostAdministrativeCostCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    bank_transaction_id=command.bank_transaction_id,
+                    category=command.category,
+                    payee=command.payee,
+                    amount=command.amount,
+                    paid_date=command.paid_date,
+                    document_id=command.document_id,
+                )
+            )
+            result = await transaction.complete_administrative_cost(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(
+                posted_entry=posted,
+                result=result,
+                replayed=False,
+            )
+
+    async def record_investment_dividend(
+        self, command: RecordInvestmentDividendCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_investment_dividend(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(replay, command, LedgerEntryKind.DIVIDEND_RECEIVED)
+            posted = await self._facade_factory(transaction).post_investment_dividend(
+                PostInvestmentDividendCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=command.action_id,
+                    paying_company_name=command.paying_company_name,
+                    gross_amount=command.gross_amount,
+                )
+            )
+            result = await transaction.complete_investment_dividend(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def record_shareholder_loan(
+        self, command: RecordShareholderLoanCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_shareholder_loan(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(replay, command, LedgerEntryKind.SHAREHOLDER_LOAN)
+            posted = await self._facade_factory(transaction).post_shareholder_loan(
+                PostShareholderLoanCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=command.action_id,
+                    counterparty_name=command.counterparty_name,
+                    direction=command.direction,
+                    amount=command.amount,
+                )
+            )
+            result = await transaction.complete_shareholder_loan(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def record_tax_settlement(
+        self, command: RecordTaxSettlementCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_tax_settlement(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(replay, command, LedgerEntryKind.TAX_SETTLEMENT)
+            posted = await self._facade_factory(transaction).post_tax_settlement(
+                PostTaxSettlementCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    settlement_id=command.action_id,
+                    settlement_kind=command.settlement_kind,
+                    amount=command.amount,
+                )
+            )
+            result = await transaction.complete_tax_settlement(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def accept_bank_transaction_suggestion(
+        self, command: AcceptBankTransactionSuggestionCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_bank_transaction_suggestion(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(
+                    replay, command, LedgerEntryKind.BANK_RULE_SUGGESTION
+                )
+            try:
+                amount = Money.nok(str(prepared["amount"]))
+                transaction_text = str(prepared["transactionText"])
+            except (KeyError, TypeError, ValueError):
+                raise LedgerError.unavailable() from None
+            posted = await self._facade_factory(
+                transaction
+            ).post_bank_suggestion_outcome(
+                PostBankSuggestionOutcomeCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    acceptance_id=command.acceptance_id,
+                    rule=command.rule,
+                    amount=amount,
+                    transaction_text=transaction_text,
+                )
+            )
+            result = await transaction.complete_bank_transaction_suggestion(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def record_investment_purchase_fifo(
+        self, command: RecordInvestmentPurchaseFifoCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_investment_purchase_fifo(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(replay, command, LedgerEntryKind.SHARE_PURCHASE)
+            posted = await self._facade_factory(transaction).post_investment_purchase(
+                PostInvestmentPurchaseCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=command.action_id,
+                    investment_name=command.investment_name,
+                    purchase_amount=command.purchase_amount,
+                )
+            )
+            result = await transaction.complete_investment_purchase_fifo(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def record_investment_sale_fifo(
+        self, command: RecordInvestmentSaleFifoCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_investment_sale_fifo(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(replay, command, LedgerEntryKind.SHARE_SALE)
+            try:
+                investment_name = str(prepared["investmentName"])
+                fifo_cost = Money.nok(str(prepared["fifoCostBasisReduction"]))
+            except (KeyError, TypeError, ValueError):
+                raise LedgerError.unavailable() from None
+            posted = await self._facade_factory(transaction).post_investment_sale(
+                PostInvestmentSaleCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=command.action_id,
+                    investment_name=investment_name,
+                    proceeds=command.proceeds,
+                    fifo_cost_basis_reduction=fifo_cost,
+                )
+            )
+            result = await transaction.complete_investment_sale_fifo(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def finalize_corporate_decision(
+        self, command: FinalizeCorporateDecisionCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_corporate_decision_finalization(
+                command
+            )
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                expected = (
+                    LedgerEntryKind.OWNER_DIVIDEND_DECLARED
+                    if replay.get("entryId") is not None
+                    else None
+                )
+                return _replayed_writer(replay, command, expected)
+            posted: PostedLedgerEntry | None = None
+            if prepared.get("decisionKind") == "owner_dividend":
+                if command.ledger_entry_id is None:
+                    raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+                try:
+                    posted = await self._facade_factory(
+                        transaction
+                    ).post_owner_dividend_declared(
+                        PostOwnerDividendDeclaredCommand(
+                            company_id=command.company_id,
+                            actor_id=command.actor_id,
+                            correlation_id=command.correlation_id,
+                            idempotency_key=command.idempotency_key,
+                            income_year=command.income_year,
+                            finalization_id=command.finalization_id,
+                            declared_amount=Money.nok(str(prepared["declaredAmount"])),
+                            declaration_debit_account=str(
+                                prepared["declarationDebitAccount"]
+                            ),
+                            dividend_payable_account=str(
+                                prepared["dividendPayableAccount"]
+                            ),
+                            accounting_policy_version=str(
+                                prepared["accountingPolicyVersion"]
+                            ),
+                            ledger_entry_id=command.ledger_entry_id,
+                        )
+                    )
+                except (KeyError, TypeError, ValueError):
+                    raise LedgerError.unavailable() from None
+            elif prepared.get("decisionKind") != "annual_close":
+                raise LedgerError.unavailable()
+            result = await transaction.complete_corporate_decision_finalization(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
+    async def record_owner_dividend_payment(
+        self, command: RecordOwnerDividendPaymentCommand
+    ) -> LedgerWriterResult:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            prepared = await transaction.prepare_owner_dividend_payment(command)
+            replay = prepared.get("replay")
+            if replay is not None:
+                if not isinstance(replay, dict):
+                    raise LedgerError.unavailable()
+                return _replayed_writer(
+                    replay, command, LedgerEntryKind.OWNER_DIVIDEND_PAYMENT
+                )
+            try:
+                posted = await self._facade_factory(
+                    transaction
+                ).post_owner_dividend_payment(
+                    PostOwnerDividendPaymentCommand(
+                        company_id=command.company_id,
+                        actor_id=command.actor_id,
+                        correlation_id=command.correlation_id,
+                        idempotency_key=command.idempotency_key,
+                        income_year=command.income_year,
+                        payment_event_id=command.holding_action_id,
+                        payment_amount=Money.nok(str(prepared["paymentAmount"])),
+                        dividend_payable_account=str(
+                            prepared["dividendPayableAccount"]
+                        ),
+                        bank_account=str(prepared["bankAccount"]),
+                        accounting_policy_version=str(
+                            prepared["accountingPolicyVersion"]
+                        ),
+                        ledger_entry_id=command.ledger_entry_id,
+                    )
+                )
+            except (KeyError, TypeError, ValueError):
+                raise LedgerError.unavailable() from None
+            result = await transaction.complete_owner_dividend_payment(
+                command, posted, prepared
+            )
+            return LedgerWriterResult(posted, result, False)
+
     async def post_manual_journal(
         self, command: PostManualJournalCommand
     ) -> PostedLedgerEntry:
@@ -340,10 +827,20 @@ class LedgerApplication:
 
 
 __all__ = [
+    "AcceptBankTransactionSuggestionCommand",
+    "FinalizeCorporateDecisionCommand",
     "LedgerApplication",
     "LedgerAuthenticationError",
     "LedgerFacadeFactory",
     "LedgerSessionFactory",
+    "LedgerWriterResult",
     "NewYearStartCommand",
     "NewYearStartResult",
+    "RecordAdministrativeCostCommand",
+    "RecordInvestmentDividendCommand",
+    "RecordInvestmentPurchaseFifoCommand",
+    "RecordInvestmentSaleFifoCommand",
+    "RecordOwnerDividendPaymentCommand",
+    "RecordShareholderLoanCommand",
+    "RecordTaxSettlementCommand",
 ]

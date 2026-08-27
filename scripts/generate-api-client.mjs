@@ -41,6 +41,14 @@ const ledgerOperations = {
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+  postInvestmentDividend: ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
+  postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
+  postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
+  postBankSuggestionOutcome: ["/api/v1/ledger/bank-suggestion-outcomes", "post", "ledgerPostBankSuggestionOutcome"],
+  postInvestmentPurchase: ["/api/v1/ledger/investment-purchases", "post", "ledgerPostInvestmentPurchase"],
+  postInvestmentSale: ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
+  finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
+  postOwnerDividendPayment: ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
@@ -255,11 +263,16 @@ const ledgerSchemas = Object.fromEntries([
   "AdministrativeCostEntryWire",
   "AdministrativeCostCategory",
   "LedgerAdministrativeCostWire",
+  "LedgerBankSuggestionWire",
+  "LedgerCorporateDecisionFinalizationWire",
   "LedgerEntryKind",
   "LedgerEntryPageWire",
   "LedgerEntryViewWire",
   "LedgerLineWire",
   "LedgerLockPeriodWire",
+  "LedgerInvestmentDividendWire",
+  "LedgerInvestmentPurchaseWire",
+  "LedgerInvestmentSaleWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
   "NewYearShareholderWire",
@@ -275,7 +288,12 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerPostedEntryWire",
   "LedgerRiskFlagWire",
   "LedgerRiskCode",
+  "LedgerShareholderLoanWire",
   "LedgerSourceCapability",
+  "LedgerTaxSettlementWire",
+  "LedgerOwnerDividendPaymentWire",
+  "LedgerWriterResultWire",
+  "TaxSettlementKind",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
@@ -471,6 +489,35 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
+  }
+
+  async function executeLedgerWriter(
+    path: string,
+    body: { companyId: string; incomeYear: number },
+    request: TalliMutationOptions,
+    expectedKind: LedgerEntryKind | null,
+  ): Promise<LedgerWriterResultWire> {
+    const result = await executeJson(
+      \`\${baseUrl}\${path}\`,
+      "POST",
+      request,
+      body,
+      isLedgerWriterResultWire,
+    );
+    if (expectedKind === null) {
+      if (result.postedEntry !== null) throw new TalliApiError(502, undefined);
+      return result;
+    }
+    if (
+      result.postedEntry === null
+      || result.postedEntry.companyId !== body.companyId
+      || result.postedEntry.incomeYear !== body.incomeYear
+      || result.postedEntry.entryKind !== expectedKind
+      || result.postedEntry.replayed !== result.replayed
+    ) {
+      throw new TalliApiError(502, undefined);
+    }
+    return result;
   }
 
   return {
@@ -941,6 +988,104 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async ledgerPostInvestmentDividend(
+      body: LedgerInvestmentDividendWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-dividends",
+        body,
+        request,
+        "DIVIDEND_RECEIVED",
+      );
+    },
+
+    async ledgerPostShareholderLoan(
+      body: LedgerShareholderLoanWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/shareholder-loans",
+        body,
+        request,
+        "SHAREHOLDER_LOAN",
+      );
+    },
+
+    async ledgerPostTaxSettlement(
+      body: LedgerTaxSettlementWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/tax-settlements",
+        body,
+        request,
+        "TAX_SETTLEMENT",
+      );
+    },
+
+    async ledgerPostBankSuggestionOutcome(
+      body: LedgerBankSuggestionWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/bank-suggestion-outcomes",
+        body,
+        request,
+        "BANK_RULE_SUGGESTION",
+      );
+    },
+
+    async ledgerPostInvestmentPurchase(
+      body: LedgerInvestmentPurchaseWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-purchases",
+        body,
+        request,
+        "SHARE_PURCHASE",
+      );
+    },
+
+    async ledgerPostInvestmentSale(
+      body: LedgerInvestmentSaleWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-sales",
+        body,
+        request,
+        "SHARE_SALE",
+      );
+    },
+
+    async ledgerFinalizeCorporateDecision(
+      body: LedgerCorporateDecisionFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        body,
+        request,
+        body.ledgerEntryId === undefined || body.ledgerEntryId === null
+          ? null
+          : "OWNER_DIVIDEND_DECLARED",
+      );
+    },
+
+    async ledgerPostOwnerDividendPayment(
+      body: LedgerOwnerDividendPaymentWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/owner-dividends/payments",
+        body,
+        request,
+        "OWNER_DIVIDEND_PAYMENT",
+      );
     },
 
     async ledgerPostManualJournal(

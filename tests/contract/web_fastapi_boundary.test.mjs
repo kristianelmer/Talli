@@ -86,6 +86,14 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
     ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
     ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+    ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
+    ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
+    ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
+    ["/api/v1/ledger/bank-suggestion-outcomes", "post", "ledgerPostBankSuggestionOutcome"],
+    ["/api/v1/ledger/investment-purchases", "post", "ledgerPostInvestmentPurchase"],
+    ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
+    ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
+    ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
     ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
     ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
   ];
@@ -98,14 +106,8 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
 
   for (const path of [
     "/api/v1/ledger/opening-balances",
-    "/api/v1/ledger/bank-suggestion-outcomes",
-    "/api/v1/ledger/investment-purchases",
-    "/api/v1/ledger/investment-sales",
-    "/api/v1/ledger/investment-dividends",
     "/api/v1/ledger/owner-dividends/declared",
-    "/api/v1/ledger/owner-dividends/payments",
-    "/api/v1/ledger/shareholder-loans",
-    "/api/v1/ledger/tax-settlements",
+    "/api/v1/ledger/structured-entries",
   ]) {
     assert.equal(contract.paths[path], undefined);
   }
@@ -122,6 +124,22 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
         && parameter.required === true,
     ),
     true,
+  );
+  for (const schemaName of [
+    "LedgerInvestmentDividendWire",
+    "LedgerShareholderLoanWire",
+    "LedgerTaxSettlementWire",
+    "LedgerBankSuggestionWire",
+    "LedgerInvestmentPurchaseWire",
+    "LedgerInvestmentSaleWire",
+    "LedgerCorporateDecisionFinalizationWire",
+    "LedgerOwnerDividendPaymentWire",
+  ]) {
+    assert.equal(contract.components.schemas[schemaName].properties.lines, undefined);
+  }
+  assert.deepEqual(
+    contract.components.schemas.LedgerWriterResultWire.required,
+    ["postedEntry", "replayed"],
   );
 });
 

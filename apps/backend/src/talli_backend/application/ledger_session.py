@@ -8,6 +8,7 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotPage,
 )
 from talli_backend.modules.ledger.public import LedgerPersistence
+from talli_backend.modules.ledger.public import PostedLedgerEntry
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
@@ -45,6 +46,61 @@ class LedgerWorkflowTransaction(LedgerPersistence, Protocol):
         command: object,
         result: dict[str, object],
     ) -> None: ...
+
+    async def prepare_administrative_cost(
+        self, command: object
+    ) -> dict[str, object]: ...
+
+    async def complete_administrative_cost(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]: ...
+
+    async def prepare_investment_dividend(self, command: object) -> dict[str, object]: ...
+    async def complete_investment_dividend(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_shareholder_loan(self, command: object) -> dict[str, object]: ...
+    async def complete_shareholder_loan(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_tax_settlement(self, command: object) -> dict[str, object]: ...
+    async def complete_tax_settlement(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_bank_transaction_suggestion(
+        self, command: object
+    ) -> dict[str, object]: ...
+    async def complete_bank_transaction_suggestion(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_investment_purchase_fifo(
+        self, command: object
+    ) -> dict[str, object]: ...
+    async def complete_investment_purchase_fifo(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_investment_sale_fifo(self, command: object) -> dict[str, object]: ...
+    async def complete_investment_sale_fifo(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
+    async def prepare_corporate_decision_finalization(
+        self, command: object
+    ) -> dict[str, object]: ...
+    async def complete_corporate_decision_finalization(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry | None,
+        prepared: dict[str, object],
+    ) -> dict[str, object]: ...
+    async def prepare_owner_dividend_payment(
+        self, command: object
+    ) -> dict[str, object]: ...
+    async def complete_owner_dividend_payment(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]: ...
 
 
 class AuthenticatedLedgerSession(LedgerPersistence, Protocol):

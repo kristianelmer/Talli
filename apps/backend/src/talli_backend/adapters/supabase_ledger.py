@@ -27,9 +27,18 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotView,
 )
 from talli_backend.application.ledger_workflow import (
+    AcceptBankTransactionSuggestionCommand,
+    FinalizeCorporateDecisionCommand,
     LedgerApplication,
     LedgerSessionFactory,
     NewYearStartCommand,
+    RecordAdministrativeCostCommand,
+    RecordInvestmentDividendCommand,
+    RecordInvestmentPurchaseFifoCommand,
+    RecordInvestmentSaleFifoCommand,
+    RecordOwnerDividendPaymentCommand,
+    RecordShareholderLoanCommand,
+    RecordTaxSettlementCommand,
 )
 from talli_backend.modules.ledger.public import (
     LedgerCommand,
@@ -150,6 +159,135 @@ def _line_payload(line: LedgerLine) -> dict[str, str]:
 
 def _risk_payload(flag: LedgerRiskFlag) -> dict[str, str]:
     return {"code": flag.code.value, "account": flag.account}
+
+
+def _optional_source(value: LedgerSourceRecordId | None) -> str | None:
+    return str(value) if value is not None else None
+
+
+def _writer_metadata(command: LedgerCommand) -> dict[str, object]:
+    return {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
+
+
+def _writer_payload(command: LedgerCommand) -> dict[str, object]:
+    payload = _writer_metadata(command)
+    if isinstance(command, RecordAdministrativeCostCommand):
+        payload.update(
+            bankTransactionId=str(command.bank_transaction_id),
+            category=command.category.value,
+            payee=command.payee,
+            amount=format(command.amount.amount, "f"),
+            paidDate=command.paid_date.value.isoformat(),
+            documentId=_optional_source(command.document_id),
+        )
+    elif isinstance(command, RecordInvestmentDividendCommand):
+        payload.update(
+            actionId=str(command.action_id),
+            payingCompanyName=command.paying_company_name,
+            declaredDate=command.declared_date.value.isoformat(),
+            paidDate=command.paid_date.value.isoformat(),
+            grossAmount=format(command.gross_amount.amount, "f"),
+            linkedInvestmentId=_optional_source(command.linked_investment_id),
+            taxTreatment=command.tax_treatment,
+            bankTransactionId=_optional_source(command.bank_transaction_id),
+            documentId=_optional_source(command.document_id),
+            documentStatus=command.document_status,
+        )
+    elif isinstance(command, RecordShareholderLoanCommand):
+        direction = {
+            "SHAREHOLDER_TO_COMPANY": "shareholder_to_company",
+            "COMPANY_TO_CORPORATE_SHAREHOLDER": "company_to_corporate_shareholder",
+        }[command.direction.value]
+        payload.update(
+            actionId=str(command.action_id),
+            loanDate=command.loan_date.value.isoformat(),
+            amount=format(command.amount.amount, "f"),
+            direction=direction,
+            counterpartyName=command.counterparty_name,
+            documentStatus=command.document_status,
+            interestModelled=command.interest_modelled,
+            relatedPartySecurity=command.related_party_security,
+            bankTransactionId=_optional_source(command.bank_transaction_id),
+            documentId=_optional_source(command.document_id),
+        )
+    elif isinstance(command, RecordTaxSettlementCommand):
+        payload.update(
+            actionId=str(command.action_id),
+            settlementDate=command.settlement_date.value.isoformat(),
+            amount=format(command.amount.amount, "f"),
+            settlementKind=command.settlement_kind.value,
+            documentStatus=command.document_status,
+            bankTransactionId=_optional_source(command.bank_transaction_id),
+            documentId=_optional_source(command.document_id),
+        )
+    elif isinstance(command, AcceptBankTransactionSuggestionCommand):
+        rule = {
+            "BANK_FEE": "bank_fee",
+            "SYSTEM_SUBSCRIPTION": "system_subscription",
+            "DEPOSIT_INTEREST": "deposit_interest",
+        }[command.rule.value]
+        payload.update(
+            acceptanceId=str(command.acceptance_id),
+            bankTransactionId=str(command.bank_transaction_id),
+            rule=rule,
+            ruleVersion=command.rule_version,
+        )
+    elif isinstance(command, RecordInvestmentPurchaseFifoCommand):
+        payload.update(
+            actionId=str(command.action_id),
+            investmentKey=command.investment_key,
+            investmentName=command.investment_name,
+            investmentKind=command.investment_kind,
+            taxTreatment=command.tax_treatment,
+            acquisitionDate=command.acquisition_date.value.isoformat(),
+            shareCount=command.share_count,
+            purchaseAmount=format(command.purchase_amount.amount, "f"),
+            orgNumber=command.org_number,
+            bankTransactionId=_optional_source(command.bank_transaction_id),
+            documentId=_optional_source(command.document_id),
+            documentStatus=command.document_status,
+        )
+    elif isinstance(command, RecordInvestmentSaleFifoCommand):
+        payload.update(
+            actionId=str(command.action_id),
+            positionId=str(command.position_id),
+            saleDate=command.sale_date.value.isoformat(),
+            soldShareCount=command.sold_share_count,
+            proceeds=format(command.proceeds.amount, "f"),
+            bankTransactionId=_optional_source(command.bank_transaction_id),
+            documentId=_optional_source(command.document_id),
+            documentStatus=command.document_status,
+        )
+    elif isinstance(command, FinalizeCorporateDecisionCommand):
+        payload.update(
+            decisionId=str(command.decision_id),
+            setId=str(command.set_id),
+            decisionHash=command.decision_hash,
+            finalizationId=str(command.finalization_id),
+            holdingActionId=_optional_source(command.holding_action_id),
+            ledgerEntryId=(
+                str(command.ledger_entry_id)
+                if command.ledger_entry_id is not None
+                else None
+            ),
+        )
+    elif isinstance(command, RecordOwnerDividendPaymentCommand):
+        payload.update(
+            decisionId=str(command.decision_id),
+            setId=str(command.set_id),
+            decisionHash=command.decision_hash,
+            bankTransactionId=str(command.bank_transaction_id),
+            holdingActionId=str(command.holding_action_id),
+            ledgerEntryId=str(command.ledger_entry_id),
+        )
+    else:
+        raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+    return payload
 
 
 def _map_database_error(message: str) -> LedgerError:
@@ -382,19 +520,13 @@ class SupabaseLedgerSession:
         warning_accepted: bool,
         source_capability: LedgerSourceCapability,
         source_record_id: LedgerSourceRecordId,
+        requested_entry_id: LedgerEntryId | None = None,
     ) -> PostedLedgerEntry:
         if command.actor_id != self.actor_id:
             raise LedgerError.forbidden()
         lines_payload = [_line_payload(line) for line in lines]
         risks_payload = [_risk_payload(flag) for flag in risk_flags]
-        row = await self._one_idempotent_row(
-            """
-            select * from ledger.post_entry(
-              %s::text, %s::uuid, %s::integer, %s::text, %s::text,
-              %s::jsonb, %s::jsonb, %s::boolean, %s::text, %s::text, %s::text, %s::text
-            )
-            """,
-            (
+        parameters = (
                 str(command.idempotency_key),
                 str(command.company_id),
                 int(command.income_year),
@@ -407,8 +539,28 @@ class SupabaseLedgerSession:
                 str(source_record_id),
                 str(command.correlation_id),
                 str(command.actor_id.subject),
-            ),
         )
+        if requested_entry_id is None:
+            row = await self._one_idempotent_row(
+                """
+                select * from ledger.post_entry(
+                  %s::text, %s::uuid, %s::integer, %s::text, %s::text,
+                  %s::jsonb, %s::jsonb, %s::boolean, %s::text, %s::text, %s::text, %s::text
+                )
+                """,
+                parameters,
+            )
+        else:
+            row = await self._one_idempotent_row(
+                """
+                select * from ledger.post_entry_with_id_v1(
+                  %s::text, %s::uuid, %s::integer, %s::text, %s::text,
+                  %s::jsonb, %s::jsonb, %s::boolean, %s::text, %s::text,
+                  %s::text, %s::text, %s::uuid
+                )
+                """,
+                (*parameters, str(requested_entry_id)),
+            )
         return PostedLedgerEntry(
             entry_id=LedgerEntryId(str(row["ledger_entry_id"])),
             company_id=CompanyId(str(row["company_id"])),
@@ -818,6 +970,259 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
                 json.dumps(result, separators=(",", ":")),
                 str(typed.actor_id.subject),
             ),
+        )
+
+    def _writer_command(self, command: object, expected: type[LedgerCommand]) -> LedgerCommand:
+        if not isinstance(command, expected):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        return command
+
+    async def _prepare_writer(
+        self,
+        query: str,
+        command: LedgerCommand,
+    ) -> dict[str, object]:
+        row = await self._one_idempotent_row(
+            query,
+            (
+                json.dumps(_writer_payload(command), separators=(",", ":")),
+                str(command.actor_id.subject),
+            ),
+        )
+        result = row.get("result")
+        if not isinstance(result, Mapping):
+            raise self._unavailable()
+        return dict(result)
+
+    async def _complete_writer(
+        self,
+        query: str,
+        command: LedgerCommand,
+        posted_entry: PostedLedgerEntry | None,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        if posted_entry is not None and (
+            posted_entry.company_id != command.company_id
+            or posted_entry.income_year != command.income_year
+        ):
+            raise self._unavailable()
+        row = await self._one_idempotent_row(
+            query,
+            (
+                json.dumps(_writer_payload(command), separators=(",", ":")),
+                str(posted_entry.entry_id) if posted_entry is not None else None,
+                json.dumps(prepared, separators=(",", ":")),
+                str(command.actor_id.subject),
+            ),
+        )
+        result = row.get("result")
+        if not isinstance(result, Mapping):
+            raise self._unavailable()
+        return dict(result)
+
+    async def prepare_administrative_cost(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordAdministrativeCostCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_administrative_cost_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_administrative_cost(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordAdministrativeCostCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_administrative_cost_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_investment_dividend(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentDividendCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_investment_dividend_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_investment_dividend(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentDividendCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_investment_dividend_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_shareholder_loan(self, command: object) -> dict[str, object]:
+        typed = self._writer_command(command, RecordShareholderLoanCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_shareholder_loan_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_shareholder_loan(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordShareholderLoanCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_shareholder_loan_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_tax_settlement(self, command: object) -> dict[str, object]:
+        typed = self._writer_command(command, RecordTaxSettlementCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_tax_settlement_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_tax_settlement(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordTaxSettlementCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_tax_settlement_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_bank_transaction_suggestion(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, AcceptBankTransactionSuggestionCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_bank_transaction_suggestion_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_bank_transaction_suggestion(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, AcceptBankTransactionSuggestionCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_bank_transaction_suggestion_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_investment_purchase_fifo(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentPurchaseFifoCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_investment_purchase_fifo_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_investment_purchase_fifo(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentPurchaseFifoCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_investment_purchase_fifo_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_investment_sale_fifo(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentSaleFifoCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_investment_sale_fifo_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_investment_sale_fifo(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordInvestmentSaleFifoCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_investment_sale_fifo_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_corporate_decision_finalization(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, FinalizeCorporateDecisionCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_corporate_decision_finalization_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_corporate_decision_finalization(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry | None,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, FinalizeCorporateDecisionCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_corporate_decision_finalization_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
+        )
+
+    async def prepare_owner_dividend_payment(
+        self, command: object
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordOwnerDividendPaymentCommand)
+        return await self._prepare_writer(
+            "select backend_system.prepare_owner_dividend_payment_v1(%s::jsonb, %s::text) as result",
+            typed,
+        )
+
+    async def complete_owner_dividend_payment(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        typed = self._writer_command(command, RecordOwnerDividendPaymentCommand)
+        return await self._complete_writer(
+            "select backend_system.complete_owner_dividend_payment_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
+            typed,
+            posted_entry,
+            prepared,
         )
 
 

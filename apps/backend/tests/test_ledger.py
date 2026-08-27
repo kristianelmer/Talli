@@ -406,7 +406,7 @@ def test_share_sale_uses_provider_authoritative_fifo_cost_result(
     assert persistence.postings[0]["lines"] == expected
 
 
-def test_owner_dividend_declaration_fails_closed_pending_accounting_approval() -> None:
+def test_owner_dividend_declaration_uses_the_locked_approved_policy_snapshot() -> None:
     persistence = LedgerPersistenceStub()
     command = PostOwnerDividendDeclaredCommand(
         **metadata(),
@@ -414,16 +414,22 @@ def test_owner_dividend_declaration_fails_closed_pending_accounting_approval() -
             "78000000-0000-0000-0000-000000000007"
         ),
         declared_amount=Money.nok("50000"),
+        declaration_debit_account="2050",
+        dividend_payable_account="2800",
+        accounting_policy_version="owner-dividend-v1",
+        ledger_entry_id=ENTRY_ID,
     )
 
-    with pytest.raises(LedgerError) as failure:
-        asyncio.run(LedgerService(persistence).post_owner_dividend_declared(command))
-    assert failure.value.code == "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
-    assert failure.value.category is ErrorCategory.PRECONDITION_FAILED
-    assert persistence.postings == []
+    asyncio.run(LedgerService(persistence).post_owner_dividend_declared(command))
+
+    assert persistence.postings[0]["lines"] == (
+        LedgerLine("2050", "Declared dividend to owners", Money.nok("50000"), Money.nok("0")),
+        LedgerLine("2800", "Dividend payable to owners", Money.nok("0"), Money.nok("50000")),
+    )
+    assert persistence.postings[0]["requested_entry_id"] == ENTRY_ID
 
 
-def test_owner_dividend_payment_fails_closed_pending_accounting_approval() -> None:
+def test_owner_dividend_payment_uses_the_locked_approved_policy_snapshot() -> None:
     persistence = LedgerPersistenceStub()
     command = PostOwnerDividendPaymentCommand(
         **metadata(),
@@ -431,13 +437,19 @@ def test_owner_dividend_payment_fails_closed_pending_accounting_approval() -> No
             "80000000-0000-0000-0000-000000000008"
         ),
         payment_amount=Money.nok("25000"),
+        dividend_payable_account="2800",
+        bank_account="1920",
+        accounting_policy_version="owner-dividend-v1",
+        ledger_entry_id=ENTRY_ID,
     )
 
-    with pytest.raises(LedgerError) as failure:
-        asyncio.run(LedgerService(persistence).post_owner_dividend_payment(command))
-    assert failure.value.code == "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
-    assert failure.value.category is ErrorCategory.PRECONDITION_FAILED
-    assert persistence.postings == []
+    asyncio.run(LedgerService(persistence).post_owner_dividend_payment(command))
+
+    assert persistence.postings[0]["lines"] == (
+        LedgerLine("2800", "Dividend payable cleared", Money.nok("25000"), Money.nok("0")),
+        LedgerLine("1920", "Dividend paid from bank", Money.nok("0"), Money.nok("25000")),
+    )
+    assert persistence.postings[0]["requested_entry_id"] == ENTRY_ID
 
 
 @pytest.mark.parametrize(

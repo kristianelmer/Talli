@@ -121,6 +121,175 @@ class LedgerSessionStub:
             ("complete_workflow", {"operation": operation_name, "result": result})
         )
 
+    async def prepare_administrative_cost(
+        self, command: object
+    ) -> dict[str, object]:
+        self.calls.append(("prepare_administrative_cost", command))
+        return {}
+
+    async def complete_administrative_cost(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        self.calls.append(
+            (
+                "complete_administrative_cost",
+                {
+                    "command": command,
+                    "posted_entry": posted_entry,
+                    "prepared": prepared,
+                },
+            )
+        )
+        return {}
+
+    async def _prepare(
+        self, operation: str, command: object, **facts: object
+    ) -> dict[str, object]:
+        self.calls.append((f"prepare_{operation}", command))
+        return facts
+
+    async def _complete(
+        self,
+        operation: str,
+        command: object,
+        posted_entry: PostedLedgerEntry | None,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        self.calls.append(
+            (
+                f"complete_{operation}",
+                {
+                    "command": command,
+                    "posted_entry": posted_entry,
+                    "prepared": prepared,
+                },
+            )
+        )
+        return {}
+
+    async def prepare_investment_dividend(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare("investment_dividend", command)
+
+    async def complete_investment_dividend(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete(
+            "investment_dividend", command, posted_entry, prepared
+        )
+
+    async def prepare_shareholder_loan(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare("shareholder_loan", command)
+
+    async def complete_shareholder_loan(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete("shareholder_loan", command, posted_entry, prepared)
+
+    async def prepare_tax_settlement(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare("tax_settlement", command)
+
+    async def complete_tax_settlement(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete("tax_settlement", command, posted_entry, prepared)
+
+    async def prepare_bank_transaction_suggestion(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare(
+            "bank_transaction_suggestion",
+            command,
+            amount="125.50",
+            transactionText="Bank fee",
+        )
+
+    async def complete_bank_transaction_suggestion(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete(
+            "bank_transaction_suggestion", command, posted_entry, prepared
+        )
+
+    async def prepare_investment_purchase_fifo(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare("investment_purchase_fifo", command)
+
+    async def complete_investment_purchase_fifo(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete(
+            "investment_purchase_fifo", command, posted_entry, prepared
+        )
+
+    async def prepare_investment_sale_fifo(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare(
+            "investment_sale_fifo",
+            command,
+            investmentName="Example AS",
+            fifoCostBasisReduction="80.00",
+        )
+
+    async def complete_investment_sale_fifo(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete(
+            "investment_sale_fifo", command, posted_entry, prepared
+        )
+
+    async def prepare_corporate_decision_finalization(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare(
+            "corporate_decision_finalization",
+            command,
+            decisionKind="owner_dividend",
+            declaredAmount="100.00",
+            declarationDebitAccount="2050",
+            dividendPayableAccount="2920",
+            accountingPolicyVersion="owner-dividend-v1",
+        )
+
+    async def complete_corporate_decision_finalization(
+        self,
+        command: object,
+        posted_entry: PostedLedgerEntry | None,
+        prepared: dict[str, object],
+    ) -> dict[str, object]:
+        return await self._complete(
+            "corporate_decision_finalization", command, posted_entry, prepared
+        )
+
+    async def prepare_owner_dividend_payment(
+        self, command: object
+    ) -> dict[str, object]:
+        return await self._prepare(
+            "owner_dividend_payment",
+            command,
+            paymentAmount="100.00",
+            dividendPayableAccount="2920",
+            bankAccount="1920",
+            accountingPolicyVersion="owner-dividend-v1",
+        )
+
+    async def complete_owner_dividend_payment(
+        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
+    ) -> dict[str, object]:
+        return await self._complete(
+            "owner_dividend_payment", command, posted_entry, prepared
+        )
+
     async def post_entry(self, command: object, **posting: object) -> PostedLedgerEntry:
         self.calls.append(("post_entry", {"command": command, **posting}))
         return PostedLedgerEntry(
@@ -273,33 +442,223 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerListPeriodLocks",
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
-        "ledgerPostManualJournal",
-        "ledgerStartNewYear",
-        "ledgerListOpeningSnapshots",
-    } <= operations
-    assert not {
         "ledgerPostBankSuggestionOutcome",
         "ledgerPostInvestmentDividend",
         "ledgerPostInvestmentPurchase",
         "ledgerPostInvestmentSale",
-        "ledgerPostOwnerDividendDeclared",
+        "ledgerPostManualJournal",
         "ledgerPostOwnerDividendPayment",
         "ledgerPostShareholderLoan",
-        "ledgerPostStructuredEntry",
         "ledgerPostTaxSettlement",
+        "ledgerFinalizeCorporateDecision",
+        "ledgerStartNewYear",
+        "ledgerListOpeningSnapshots",
+    } <= operations
+    assert not {
+        "ledgerPostOwnerDividendDeclared",
+        "ledgerPostStructuredEntry",
     } & operations
     assert not {
-        "/api/v1/ledger/bank-suggestion-outcomes",
-        "/api/v1/ledger/investment-dividends",
-        "/api/v1/ledger/investment-purchases",
-        "/api/v1/ledger/investment-sales",
         "/api/v1/ledger/owner-dividends/declared",
-        "/api/v1/ledger/owner-dividends/payments",
         "/api/v1/ledger/opening-balances",
-        "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/structured-entries",
-        "/api/v1/ledger/tax-settlements",
     } & client.app.openapi()["paths"].keys()
+
+
+def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> None:
+    operation_id = "70000000-0000-4000-8000-000000000070"
+    bank_id = "70000000-0000-4000-8000-000000000071"
+    document_id = "70000000-0000-4000-8000-000000000072"
+    position_id = "70000000-0000-4000-8000-000000000073"
+    decision_id = "70000000-0000-4000-8000-000000000074"
+    set_id = "70000000-0000-4000-8000-000000000075"
+    holding_action_id = "70000000-0000-4000-8000-000000000076"
+    decision_hash = "a" * 64
+    common = {"companyId": str(COMPANY_ID), "incomeYear": 2026}
+    cases = (
+        (
+            "/api/v1/ledger/investment-dividends",
+            "DIVIDEND_RECEIVED",
+            {
+                **common,
+                "actionId": operation_id,
+                "payingCompanyName": "Example AS",
+                "declaredDate": "2026-04-01",
+                "paidDate": "2026-04-15",
+                "grossAmount": money("125.50"),
+                "linkedInvestmentId": None,
+                "taxTreatment": "fritaksmetoden",
+                "bankTransactionId": bank_id,
+                "documentId": document_id,
+                "documentStatus": "attached",
+            },
+        ),
+        (
+            "/api/v1/ledger/shareholder-loans",
+            "SHAREHOLDER_LOAN",
+            {
+                **common,
+                "actionId": operation_id,
+                "loanDate": "2026-04-15",
+                "amount": money("125.50"),
+                "direction": "shareholder_to_company",
+                "counterpartyName": "Owner",
+                "documentStatus": "attached",
+                "interestModelled": True,
+                "relatedPartySecurity": False,
+                "bankTransactionId": bank_id,
+                "documentId": document_id,
+            },
+        ),
+        (
+            "/api/v1/ledger/tax-settlements",
+            "TAX_SETTLEMENT",
+            {
+                **common,
+                "actionId": operation_id,
+                "settlementDate": "2026-04-15",
+                "amount": money("125.50"),
+                "settlementKind": "payment",
+                "documentStatus": "attached",
+                "bankTransactionId": bank_id,
+                "documentId": document_id,
+            },
+        ),
+        (
+            "/api/v1/ledger/bank-suggestion-outcomes",
+            "BANK_RULE_SUGGESTION",
+            {
+                **common,
+                "acceptanceId": operation_id,
+                "bankTransactionId": bank_id,
+                "rule": "bank_fee",
+                "ruleVersion": "v1",
+            },
+        ),
+        (
+            "/api/v1/ledger/investment-purchases",
+            "SHARE_PURCHASE",
+            {
+                **common,
+                "actionId": operation_id,
+                "investmentKey": "example-as",
+                "investmentName": "Example AS",
+                "investmentKind": "norwegian_private_company",
+                "taxTreatment": "fritaksmetoden",
+                "acquisitionDate": "2026-04-15",
+                "shareCount": 10,
+                "purchaseAmount": money("125.50"),
+                "orgNumber": "123456789",
+                "bankTransactionId": bank_id,
+                "documentId": document_id,
+                "documentStatus": "attached",
+            },
+        ),
+        (
+            "/api/v1/ledger/investment-sales",
+            "SHARE_SALE",
+            {
+                **common,
+                "actionId": operation_id,
+                "positionId": position_id,
+                "saleDate": "2026-04-15",
+                "soldShareCount": 5,
+                "proceeds": money("125.50"),
+                "bankTransactionId": bank_id,
+                "documentId": document_id,
+                "documentStatus": "attached",
+            },
+        ),
+        (
+            "/api/v1/ledger/corporate-decisions/finalizations",
+            "OWNER_DIVIDEND_DECLARED",
+            {
+                **common,
+                "decisionId": decision_id,
+                "setId": set_id,
+                "decisionHash": decision_hash,
+                "finalizationId": operation_id,
+                "holdingActionId": holding_action_id,
+                "ledgerEntryId": str(ENTRY_ID),
+            },
+        ),
+        (
+            "/api/v1/ledger/owner-dividends/payments",
+            "OWNER_DIVIDEND_PAYMENT",
+            {
+                **common,
+                "decisionId": decision_id,
+                "setId": set_id,
+                "decisionHash": decision_hash,
+                "bankTransactionId": bank_id,
+                "holdingActionId": holding_action_id,
+                "ledgerEntryId": str(ENTRY_ID),
+            },
+        ),
+    )
+
+    for path, expected_kind, body in cases:
+        client, session = client_and_session()
+        response = client.post(path, headers=headers(), json=body)
+
+        assert response.status_code == 201, (path, response.text)
+        assert response.json() == {
+            "postedEntry": {
+                "entryId": str(ENTRY_ID),
+                "companyId": str(COMPANY_ID),
+                "incomeYear": 2026,
+                "entryKind": expected_kind,
+                "postedAt": "2026-08-27T10:00:00Z",
+                "replayed": False,
+            },
+            "replayed": False,
+        }
+        posting = next(value for name, value in session.calls if name == "post_entry")
+        assert posting["command"].idempotency_key.value == headers()["Idempotency-Key"]
+        raw_lines = client.post(path, headers=headers(), json={**body, "lines": []})
+        assert raw_lines.status_code == 422, path
+
+
+def test_annual_close_finalization_has_no_synthetic_ledger_entry() -> None:
+    class AnnualCloseSession(LedgerSessionStub):
+        async def prepare_corporate_decision_finalization(
+            self, command: object
+        ) -> dict[str, object]:
+            return await self._prepare(
+                "corporate_decision_finalization",
+                command,
+                decisionKind="annual_close",
+            )
+
+    session = AnnualCloseSession()
+    client = TestClient(create_app(ledger_session_factory=session))
+    body = {
+        "companyId": str(COMPANY_ID),
+        "incomeYear": 2026,
+        "decisionId": "70000000-0000-4000-8000-000000000074",
+        "setId": "70000000-0000-4000-8000-000000000075",
+        "decisionHash": "a" * 64,
+        "finalizationId": "70000000-0000-4000-8000-000000000070",
+    }
+
+    response = client.post(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        headers=headers(),
+        json=body,
+    )
+    incomplete_owner_dividend_ids = client.post(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        headers=headers(),
+        json={
+            **body,
+            "holdingActionId": "70000000-0000-4000-8000-000000000076",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json() == {"postedEntry": None, "replayed": False}
+    assert not any(name == "post_entry" for name, _value in session.calls)
+    assert incomplete_owner_dividend_ids.status_code == 422
 
 
 def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:

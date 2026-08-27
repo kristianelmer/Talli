@@ -281,12 +281,20 @@ class PostInvestmentSaleCommand(LedgerCommand):
 class PostOwnerDividendDeclaredCommand(LedgerCommand):
     finalization_id: LedgerSourceRecordId
     declared_amount: Money
+    declaration_debit_account: str
+    dividend_payable_account: str
+    accounting_policy_version: str
+    ledger_entry_id: LedgerEntryId
 
 
 @dataclass(frozen=True, slots=True)
 class PostOwnerDividendPaymentCommand(LedgerCommand):
     payment_event_id: LedgerSourceRecordId
     payment_amount: Money
+    dividend_payable_account: str
+    bank_account: str
+    accounting_policy_version: str
+    ledger_entry_id: LedgerEntryId
 
 
 @dataclass(frozen=True, slots=True)
@@ -465,6 +473,7 @@ class LedgerPersistence(Protocol):
         warning_accepted: bool,
         source_capability: LedgerSourceCapability,
         source_record_id: LedgerSourceRecordId,
+        requested_entry_id: LedgerEntryId | None = None,
     ) -> PostedLedgerEntry: ...
 
     async def lock_period(self, command: LockPeriodCommand) -> PeriodLock: ...

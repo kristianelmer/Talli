@@ -19,9 +19,19 @@ from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAd
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.application.ledger_workflow import (
+    AcceptBankTransactionSuggestionCommand,
+    FinalizeCorporateDecisionCommand,
     LedgerAuthenticationError,
     LedgerSessionFactory,
+    LedgerWriterResult,
     NewYearStartCommand,
+    RecordAdministrativeCostCommand,
+    RecordInvestmentDividendCommand,
+    RecordInvestmentPurchaseFifoCommand,
+    RecordInvestmentSaleFifoCommand,
+    RecordOwnerDividendPaymentCommand,
+    RecordShareholderLoanCommand,
+    RecordTaxSettlementCommand,
 )
 from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
@@ -75,8 +85,10 @@ from talli_backend.modules.system_boundary.public import (
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    BankSuggestionRule,
     LedgerCursor,
     LedgerEntryPage,
+    LedgerEntryId,
     LedgerEntryKind,
     LedgerEntryView,
     LedgerError,
@@ -88,9 +100,10 @@ from talli_backend.modules.ledger.public import (
     LockPeriodCommand,
     PeriodLock,
     PeriodLockPage,
-    PostAdministrativeCostCommand,
     PostedLedgerEntry,
     PostManualJournalCommand,
+    ShareholderLoanDirection,
+    TaxSettlementKind,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -214,6 +227,113 @@ class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
     document_id: str | None = Field(default=None, min_length=1, max_length=255)
 
 
+class LedgerInvestmentDividendWire(LedgerCompanyYearWire):
+    action_id: UUID
+    paying_company_name: str = Field(min_length=1, max_length=255)
+    declared_date: date
+    paid_date: date
+    gross_amount: LedgerMoneyWire
+    linked_investment_id: UUID | None = None
+    tax_treatment: Literal[
+        "fritaksmetoden", "outside_fritaksmetoden", "needs_accountant"
+    ]
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: Literal[
+        "attached", "missing_accepted_warning", "not_required"
+    ]
+
+
+class LedgerShareholderLoanWire(LedgerCompanyYearWire):
+    action_id: UUID
+    loan_date: date
+    amount: LedgerMoneyWire
+    direction: Literal[
+        "shareholder_to_company", "company_to_corporate_shareholder"
+    ]
+    counterparty_name: str = Field(min_length=1, max_length=255)
+    document_status: Literal[
+        "attached", "missing_accepted_warning", "not_required"
+    ]
+    interest_modelled: bool
+    related_party_security: Literal[False]
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+
+
+class LedgerTaxSettlementWire(LedgerCompanyYearWire):
+    action_id: UUID
+    settlement_date: date
+    amount: LedgerMoneyWire
+    settlement_kind: TaxSettlementKind
+    document_status: Literal[
+        "attached", "missing_accepted_warning", "not_required"
+    ]
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+
+
+class LedgerBankSuggestionWire(LedgerCompanyYearWire):
+    acceptance_id: UUID
+    bank_transaction_id: UUID
+    rule: Literal["bank_fee", "system_subscription", "deposit_interest"]
+    rule_version: str = Field(min_length=1, max_length=64)
+
+
+class LedgerInvestmentPurchaseWire(LedgerCompanyYearWire):
+    action_id: UUID
+    investment_key: str = Field(min_length=1, max_length=255)
+    investment_name: str = Field(min_length=1, max_length=255)
+    investment_kind: Literal["norwegian_private_company"]
+    tax_treatment: Literal["fritaksmetoden"]
+    acquisition_date: date
+    share_count: int = Field(gt=0, le=9_007_199_254_740_991)
+    purchase_amount: LedgerMoneyWire
+    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: Literal[
+        "attached", "missing_accepted_warning", "not_required"
+    ]
+
+
+class LedgerInvestmentSaleWire(LedgerCompanyYearWire):
+    action_id: UUID
+    position_id: UUID
+    sale_date: date
+    sold_share_count: int = Field(gt=0, le=9_007_199_254_740_991)
+    proceeds: LedgerMoneyWire
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: Literal[
+        "attached", "missing_accepted_warning", "not_required"
+    ]
+
+
+class LedgerCorporateDecisionFinalizationWire(LedgerCompanyYearWire):
+    decision_id: UUID
+    set_id: UUID
+    decision_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    finalization_id: UUID
+    holding_action_id: UUID | None = None
+    ledger_entry_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def optional_ids_move_together(self) -> LedgerCorporateDecisionFinalizationWire:
+        if (self.holding_action_id is None) is not (self.ledger_entry_id is None):
+            raise ValueError("owner-dividend identifiers must be complete")
+        return self
+
+
+class LedgerOwnerDividendPaymentWire(LedgerCompanyYearWire):
+    decision_id: UUID
+    set_id: UUID
+    decision_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    bank_transaction_id: UUID
+    holding_action_id: UUID
+    ledger_entry_id: UUID
+
+
 class LedgerManualJournalWire(LedgerCompanyYearWire):
     memo: str = Field(min_length=1, max_length=500)
     lines: list[LedgerLineWire] = Field(min_length=2, max_length=100)
@@ -248,6 +368,11 @@ class AdministrativeCostEntryWire(TransportModel):
     income_year: int = Field(ge=2000, le=2100)
     entry_kind: Literal["ADMINISTRATIVE_COST"]
     posted_at: datetime
+    replayed: bool
+
+
+class LedgerWriterResultWire(TransportModel):
+    posted_entry: LedgerPostedEntryWire | None
     replayed: bool
 
 
@@ -385,6 +510,17 @@ def _posted_wire(value: PostedLedgerEntry) -> LedgerPostedEntryWire:
         income_year=int(value.income_year),
         entry_kind=value.entry_kind,
         posted_at=value.posted_at.value,
+        replayed=value.replayed,
+    )
+
+
+def _writer_wire(value: LedgerWriterResult) -> LedgerWriterResultWire:
+    return LedgerWriterResultWire(
+        posted_entry=(
+            _posted_wire(value.posted_entry)
+            if value.posted_entry is not None
+            else None
+        ),
         replayed=value.replayed,
     )
 
@@ -1259,6 +1395,26 @@ def create_app(
     def ledger_correlation(request: Request) -> CorrelationId:
         return CorrelationId(request.state.request_id)
 
+    def ledger_writer_wire(
+        result: LedgerWriterResult,
+        *,
+        company_id: UUID,
+        income_year: int,
+        expected_kind: LedgerEntryKind | None,
+    ) -> LedgerWriterResultWire:
+        posted = result.posted_entry
+        if expected_kind is None:
+            if posted is not None:
+                raise LedgerError.unavailable()
+        elif (
+            posted is None
+            or str(posted.company_id) != str(company_id)
+            or int(posted.income_year) != income_year
+            or posted.entry_kind is not expected_kind
+        ):
+            raise LedgerError.unavailable()
+        return _writer_wire(result)
+
     @application.get(
         "/api/v1/ledger/entries",
         operation_id="ledgerListEntries",
@@ -1477,7 +1633,7 @@ def create_app(
         async def execute() -> AdministrativeCostEntryWire:
             session = await ledger_application.session(bearer_token(credentials))
             domain_command = ledger_input(
-                lambda: PostAdministrativeCostCommand(
+                lambda: RecordAdministrativeCostCommand(
                     company_id=CompanyId(str(command.company_id)),
                     actor_id=session.actor_id,
                     correlation_id=ledger_correlation(request),
@@ -1495,9 +1651,11 @@ def create_app(
                     ),
                 )
             )
-            result = await session.post_administrative_cost(domain_command)
+            workflow = await session.record_administrative_cost(domain_command)
+            result = workflow.posted_entry
             if (
-                result.company_id != domain_command.company_id
+                result is None
+                or result.company_id != domain_command.company_id
                 or result.income_year != domain_command.income_year
                 or result.entry_kind is not LedgerEntryKind.ADMINISTRATIVE_COST
             ):
@@ -1509,6 +1667,330 @@ def create_app(
                 entry_kind=result.entry_kind.value,
                 posted_at=result.posted_at.value,
                 replayed=result.replayed,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/investment-dividends",
+        operation_id="ledgerPostInvestmentDividend",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Investment dividend recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_investment_dividend(
+        request: Request,
+        command: LedgerInvestmentDividendWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordInvestmentDividendCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                action_id=LedgerSourceRecordId(str(command.action_id)),
+                paying_company_name=command.paying_company_name,
+                declared_date=LocalDate(command.declared_date),
+                paid_date=LocalDate(command.paid_date),
+                gross_amount=command.gross_amount.to_domain(),
+                linked_investment_id=(LedgerSourceRecordId(str(command.linked_investment_id)) if command.linked_investment_id else None),
+                tax_treatment=command.tax_treatment,
+                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+                document_status=command.document_status,
+            ))
+            result = await session.record_investment_dividend(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/shareholder-loans",
+        operation_id="ledgerPostShareholderLoan",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Shareholder loan recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_shareholder_loan(
+        request: Request,
+        command: LedgerShareholderLoanWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        directions = {
+            "shareholder_to_company": ShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
+            "company_to_corporate_shareholder": ShareholderLoanDirection.COMPANY_TO_CORPORATE_SHAREHOLDER,
+        }
+
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordShareholderLoanCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
+                loan_date=LocalDate(command.loan_date), amount=command.amount.to_domain(),
+                direction=directions[command.direction], counterparty_name=command.counterparty_name,
+                document_status=command.document_status, interest_modelled=command.interest_modelled,
+                related_party_security=command.related_party_security,
+                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+            ))
+            result = await session.record_shareholder_loan(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.SHAREHOLDER_LOAN,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/tax-settlements",
+        operation_id="ledgerPostTaxSettlement",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Tax settlement recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_tax_settlement(
+        request: Request,
+        command: LedgerTaxSettlementWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordTaxSettlementCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
+                settlement_date=LocalDate(command.settlement_date), amount=command.amount.to_domain(),
+                settlement_kind=command.settlement_kind, document_status=command.document_status,
+                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+            ))
+            result = await session.record_tax_settlement(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.TAX_SETTLEMENT,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/bank-suggestion-outcomes",
+        operation_id="ledgerPostBankSuggestionOutcome",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Bank suggestion accepted atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_bank_suggestion(
+        request: Request,
+        command: LedgerBankSuggestionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        rules = {
+            "bank_fee": BankSuggestionRule.BANK_FEE,
+            "system_subscription": BankSuggestionRule.SYSTEM_SUBSCRIPTION,
+            "deposit_interest": BankSuggestionRule.DEPOSIT_INTEREST,
+        }
+
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: AcceptBankTransactionSuggestionCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), acceptance_id=LedgerSourceRecordId(str(command.acceptance_id)),
+                bank_transaction_id=LedgerSourceRecordId(str(command.bank_transaction_id)),
+                rule=rules[command.rule], rule_version=command.rule_version,
+            ))
+            result = await session.accept_bank_transaction_suggestion(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.BANK_RULE_SUGGESTION,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/investment-purchases",
+        operation_id="ledgerPostInvestmentPurchase",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Investment purchase recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_investment_purchase(
+        request: Request,
+        command: LedgerInvestmentPurchaseWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordInvestmentPurchaseFifoCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
+                investment_key=command.investment_key, investment_name=command.investment_name,
+                investment_kind=command.investment_kind, tax_treatment=command.tax_treatment,
+                acquisition_date=LocalDate(command.acquisition_date), share_count=command.share_count,
+                purchase_amount=command.purchase_amount.to_domain(), org_number=command.org_number,
+                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+                document_status=command.document_status,
+            ))
+            result = await session.record_investment_purchase_fifo(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.SHARE_PURCHASE,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/investment-sales",
+        operation_id="ledgerPostInvestmentSale",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Investment sale recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_investment_sale(
+        request: Request,
+        command: LedgerInvestmentSaleWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordInvestmentSaleFifoCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
+                position_id=LedgerSourceRecordId(str(command.position_id)), sale_date=LocalDate(command.sale_date),
+                sold_share_count=command.sold_share_count, proceeds=command.proceeds.to_domain(),
+                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+                document_status=command.document_status,
+            ))
+            result = await session.record_investment_sale_fifo(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.SHARE_SALE,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        operation_id="ledgerFinalizeCorporateDecision",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Corporate decision finalized atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def finalize_ledger_corporate_decision(
+        request: Request,
+        command: LedgerCorporateDecisionFinalizationWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: FinalizeCorporateDecisionCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), decision_id=LedgerSourceRecordId(str(command.decision_id)),
+                set_id=LedgerSourceRecordId(str(command.set_id)), decision_hash=command.decision_hash,
+                finalization_id=LedgerSourceRecordId(str(command.finalization_id)),
+                holding_action_id=(LedgerSourceRecordId(str(command.holding_action_id)) if command.holding_action_id else None),
+                ledger_entry_id=(LedgerEntryId(str(command.ledger_entry_id)) if command.ledger_entry_id else None),
+            ))
+            result = await session.finalize_corporate_decision(domain)
+            expected = (
+                LedgerEntryKind.OWNER_DIVIDEND_DECLARED
+                if command.ledger_entry_id is not None
+                else None
+            )
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=expected,
+            )
+
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/ledger/owner-dividends/payments",
+        operation_id="ledgerPostOwnerDividendPayment",
+        response_model=LedgerWriterResultWire,
+        status_code=201,
+        responses={201: {"description": "Owner-dividend payment recorded atomically."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger-workflows"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_ledger_owner_dividend_payment(
+        request: Request,
+        command: LedgerOwnerDividendPaymentWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerWriterResultWire:
+        async def execute() -> LedgerWriterResultWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            domain = ledger_input(lambda: RecordOwnerDividendPaymentCommand(
+                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
+                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year), decision_id=LedgerSourceRecordId(str(command.decision_id)),
+                set_id=LedgerSourceRecordId(str(command.set_id)), decision_hash=command.decision_hash,
+                bank_transaction_id=LedgerSourceRecordId(str(command.bank_transaction_id)),
+                holding_action_id=LedgerSourceRecordId(str(command.holding_action_id)),
+                ledger_entry_id=LedgerEntryId(str(command.ledger_entry_id)),
+            ))
+            result = await session.record_owner_dividend_payment(domain)
+            return ledger_writer_wire(
+                result, company_id=command.company_id, income_year=command.income_year,
+                expected_kind=LedgerEntryKind.OWNER_DIVIDEND_PAYMENT,
             )
 
         return await ledger_call(execute)

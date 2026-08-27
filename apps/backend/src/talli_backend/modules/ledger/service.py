@@ -289,17 +289,71 @@ class LedgerService:
     async def post_owner_dividend_declared(
         self, command: PostOwnerDividendDeclaredCommand
     ) -> PostedLedgerEntry:
-        _ = command
-        raise LedgerError.precondition_failed(
-            "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
+        _positive(command.declared_amount, "LEDGER_INVALID_INPUT")
+        if not command.accounting_policy_version.strip():
+            raise LedgerError.precondition_failed(
+                "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
+            )
+        lines = (
+            LedgerLine(
+                command.declaration_debit_account,
+                "Declared dividend to owners",
+                command.declared_amount,
+                _ZERO,
+            ),
+            LedgerLine(
+                command.dividend_payable_account,
+                "Dividend payable to owners",
+                _ZERO,
+                command.declared_amount,
+            ),
+        )
+        _balanced(lines)
+        return await self._persistence.post_entry(
+            command,
+            entry_kind=LedgerEntryKind.OWNER_DIVIDEND_DECLARED,
+            memo="Declared owner dividend from finalized corporate decision",
+            lines=lines,
+            risk_flags=(),
+            warning_accepted=False,
+            source_capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            source_record_id=command.finalization_id,
+            requested_entry_id=command.ledger_entry_id,
         )
 
     async def post_owner_dividend_payment(
         self, command: PostOwnerDividendPaymentCommand
     ) -> PostedLedgerEntry:
-        _ = command
-        raise LedgerError.precondition_failed(
-            "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
+        _positive(command.payment_amount, "LEDGER_INVALID_INPUT")
+        if not command.accounting_policy_version.strip():
+            raise LedgerError.precondition_failed(
+                "LEDGER_OWNER_DIVIDEND_ACCOUNTING_POLICY_NOT_APPROVED"
+            )
+        lines = (
+            LedgerLine(
+                command.dividend_payable_account,
+                "Dividend payable cleared",
+                command.payment_amount,
+                _ZERO,
+            ),
+            LedgerLine(
+                command.bank_account,
+                "Dividend paid from bank",
+                _ZERO,
+                command.payment_amount,
+            ),
+        )
+        _balanced(lines)
+        return await self._persistence.post_entry(
+            command,
+            entry_kind=LedgerEntryKind.OWNER_DIVIDEND_PAYMENT,
+            memo="Payment of finalized owner dividend payable",
+            lines=lines,
+            risk_flags=(),
+            warning_accepted=False,
+            source_capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            source_record_id=command.payment_event_id,
+            requested_entry_id=command.ledger_entry_id,
         )
 
     async def post_shareholder_loan(

@@ -5,10 +5,15 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from talli_backend.application.ledger_workflow import (
+    AcceptBankTransactionSuggestionCommand,
+    FinalizeCorporateDecisionCommand,
     LedgerApplication,
     NewYearStartCommand,
+    RecordAdministrativeCostCommand,
 )
 from talli_backend.modules.ledger.public import (
+    AdministrativeCostCategory,
+    BankSuggestionRule,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerEntryPage,
@@ -33,10 +38,12 @@ from talli_backend.shared.kernel import (
     CorrelationId,
     IdempotencyKey,
     IncomeYear,
+    LocalDate,
     Money,
     Timestamp,
     UserId,
 )
+from datetime import date
 
 
 COMPANY_ID = CompanyId("10000000-0000-0000-0000-000000000001")
@@ -342,3 +349,177 @@ def test_new_year_start_retries_one_unknown_commit_with_the_same_command() -> No
     assert unknown_session.attempts == 2
     assert transaction.events.count("shareholder-register") == 1
     assert transaction.events.count("claim:new_year_start") == 2
+
+
+def test_administrative_cost_uses_one_transaction_and_python_posting_policy() -> None:
+    class AdministrativeCostTransaction(WorkflowTransactionStub):
+        async def prepare_administrative_cost(
+            self, command: RecordAdministrativeCostCommand
+        ) -> dict[str, object]:
+            self.events.append("prepare:record_administrative_cost")
+            return {"replay": None}
+
+        async def complete_administrative_cost(
+            self,
+            command: RecordAdministrativeCostCommand,
+            posted_entry: PostedLedgerEntry,
+            prepared: dict[str, object],
+        ) -> dict[str, object]:
+            self.events.append("complete:record_administrative_cost")
+            assert prepared == {"replay": None}
+            return {"entryId": str(posted_entry.entry_id), "auditRequired": True}
+
+    transaction = AdministrativeCostTransaction()
+    session = asyncio.run(application(transaction).session("token"))
+    result = asyncio.run(
+        session.record_administrative_cost(
+            RecordAdministrativeCostCommand(
+                company_id=COMPANY_ID,
+                actor_id=ACTOR_ID,
+                correlation_id=CorrelationId("admin-cost-workflow"),
+                idempotency_key=IdempotencyKey(
+                    "51000000-0000-4000-8000-000000000005"
+                ),
+                income_year=IncomeYear(2026),
+                bank_transaction_id=LedgerSourceRecordId(
+                    "61000000-0000-0000-0000-000000000006"
+                ),
+                category=AdministrativeCostCategory.SOFTWARE,
+                payee="Talli AS",
+                amount=Money.nok("1490"),
+                paid_date=LocalDate(date(2026, 8, 27)),
+            )
+        )
+    )
+
+    assert result.posted_entry is not None
+    assert result.result == {"entryId": str(ENTRY_ID), "auditRequired": True}
+    assert result.replayed is False
+    assert transaction.events == [
+        "begin",
+        "prepare:record_administrative_cost",
+        "ledger",
+        "complete:record_administrative_cost",
+        "commit",
+    ]
+    assert transaction.posting is not None
+    assert transaction.posting["entry_kind"] is LedgerEntryKind.ADMINISTRATIVE_COST
+
+
+def test_bank_suggestion_posts_only_the_locked_database_facts() -> None:
+    class BankSuggestionTransaction(WorkflowTransactionStub):
+        async def prepare_bank_transaction_suggestion(
+            self, command: AcceptBankTransactionSuggestionCommand
+        ) -> dict[str, object]:
+            self.events.append("prepare:accept_bank_transaction_suggestion")
+            return {
+                "replay": None,
+                "amount": "89.00",
+                "transactionText": "Årsgebyr",
+            }
+
+        async def complete_bank_transaction_suggestion(
+            self,
+            command: AcceptBankTransactionSuggestionCommand,
+            posted_entry: PostedLedgerEntry,
+            prepared: dict[str, object],
+        ) -> dict[str, object]:
+            self.events.append("complete:accept_bank_transaction_suggestion")
+            assert prepared["transactionText"] == "Årsgebyr"
+            return {"entryId": str(posted_entry.entry_id), "auditRequired": False}
+
+    transaction = BankSuggestionTransaction()
+    session = asyncio.run(application(transaction).session("token"))
+    result = asyncio.run(
+        session.accept_bank_transaction_suggestion(
+            AcceptBankTransactionSuggestionCommand(
+                company_id=COMPANY_ID,
+                actor_id=ACTOR_ID,
+                correlation_id=CorrelationId("bank-suggestion-workflow"),
+                idempotency_key=IdempotencyKey(
+                    "52000000-0000-4000-8000-000000000005"
+                ),
+                income_year=IncomeYear(2026),
+                acceptance_id=LedgerSourceRecordId(
+                    "62000000-0000-0000-0000-000000000006"
+                ),
+                bank_transaction_id=LedgerSourceRecordId(
+                    "63000000-0000-0000-0000-000000000006"
+                ),
+                rule=BankSuggestionRule.BANK_FEE,
+                rule_version="2026-07-13.1",
+            )
+        )
+    )
+
+    assert result.result["auditRequired"] is False
+    assert transaction.events == [
+        "begin",
+        "prepare:accept_bank_transaction_suggestion",
+        "ledger",
+        "complete:accept_bank_transaction_suggestion",
+        "commit",
+    ]
+    assert transaction.posting is not None
+    assert transaction.posting["entry_kind"] is LedgerEntryKind.BANK_RULE_SUGGESTION
+    assert transaction.posting["lines"] == (
+        LedgerLine("7770", "Bankomkostninger", Money.nok("89"), Money.nok("0")),
+        LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("89")),
+    )
+
+
+def test_annual_close_finalization_commits_without_a_ledger_post() -> None:
+    class AnnualCloseTransaction(WorkflowTransactionStub):
+        async def prepare_corporate_decision_finalization(
+            self, command: FinalizeCorporateDecisionCommand
+        ) -> dict[str, object]:
+            self.events.append("prepare:finalize_corporate_decision")
+            return {"replay": None, "decisionKind": "annual_close"}
+
+        async def complete_corporate_decision_finalization(
+            self,
+            command: FinalizeCorporateDecisionCommand,
+            posted_entry: PostedLedgerEntry | None,
+            prepared: dict[str, object],
+        ) -> dict[str, object]:
+            self.events.append("complete:finalize_corporate_decision")
+            assert posted_entry is None
+            assert prepared["decisionKind"] == "annual_close"
+            return {"finalizationId": str(command.finalization_id)}
+
+    transaction = AnnualCloseTransaction()
+    session = asyncio.run(application(transaction).session("token"))
+    result = asyncio.run(
+        session.finalize_corporate_decision(
+            FinalizeCorporateDecisionCommand(
+                company_id=COMPANY_ID,
+                actor_id=ACTOR_ID,
+                correlation_id=CorrelationId("annual-close-finalization"),
+                idempotency_key=IdempotencyKey(
+                    "53000000-0000-4000-8000-000000000005"
+                ),
+                income_year=IncomeYear(2026),
+                decision_id=LedgerSourceRecordId(
+                    "64000000-0000-0000-0000-000000000006"
+                ),
+                set_id=LedgerSourceRecordId(
+                    "65000000-0000-0000-0000-000000000006"
+                ),
+                decision_hash="a" * 64,
+                finalization_id=LedgerSourceRecordId(
+                    "66000000-0000-0000-0000-000000000006"
+                ),
+                holding_action_id=None,
+                ledger_entry_id=None,
+            )
+        )
+    )
+
+    assert result.posted_entry is None
+    assert transaction.events == [
+        "begin",
+        "prepare:finalize_corporate_decision",
+        "complete:finalize_corporate_decision",
+        "commit",
+    ]
+    assert transaction.posting is None

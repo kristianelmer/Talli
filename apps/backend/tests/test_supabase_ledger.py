@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -12,20 +12,28 @@ from talli_backend.adapters.supabase_ledger import (
     LedgerSupabaseConfiguration,
     SupabaseLedgerAdapter,
     SupabaseLedgerSession,
+    SupabaseLedgerWorkflowTransaction,
     _VerifiedActor,
     _map_database_error,
 )
 from talli_backend.application.ledger_session import LedgerAuthenticationError
+from talli_backend.application.ledger_workflow import (
+    RecordAdministrativeCostCommand,
+    RecordInvestmentSaleFifoCommand,
+)
 from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
 )
 from talli_backend.modules.ledger.public import (
+    AdministrativeCostCategory,
+    LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
     LedgerLine,
     LedgerSourceCapability,
     LedgerSourceRecordId,
     PostManualJournalCommand,
+    PostedLedgerEntry,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -34,7 +42,9 @@ from talli_backend.shared.kernel import (
     CorrelationId,
     IdempotencyKey,
     IncomeYear,
+    LocalDate,
     Money,
+    Timestamp,
     UserId,
 )
 
@@ -82,6 +92,15 @@ def bound_session() -> SupabaseLedgerSession:
                 '"role":"authenticated","aal":"aal2"}'
             ),
         ),
+    )
+
+
+def bound_transaction() -> SupabaseLedgerWorkflowTransaction:
+    session = bound_session()
+    return SupabaseLedgerWorkflowTransaction(
+        session._database_url,
+        session._verified,
+        None,  # type: ignore[arg-type]
     )
 
 
@@ -188,6 +207,167 @@ def test_unknown_post_outcome_retries_the_identical_idempotent_rpc_once() -> Non
     assert len(calls) == 2
     assert calls[0] == calls[1]
     assert "ledger.post_entry" in calls[0][0]
+
+
+def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{"result": {"replay": None}}]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        transaction.prepare_administrative_cost(
+            RecordAdministrativeCostCommand(
+                company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+                actor_id=ACTOR_ID,
+                correlation_id=CorrelationId("writer-adapter-admin"),
+                idempotency_key=IdempotencyKey(
+                    "31000000-0000-4000-8000-000000000003"
+                ),
+                income_year=IncomeYear(2026),
+                bank_transaction_id=LedgerSourceRecordId(
+                    "60000000-0000-0000-0000-000000000006"
+                ),
+                category=AdministrativeCostCategory.SOFTWARE,
+                payee="Talli AS",
+                amount=Money.nok("1490"),
+                paid_date=LocalDate(date(2026, 8, 27)),
+            )
+        )
+    )
+
+    assert result == {"replay": None}
+    assert "backend_system.prepare_administrative_cost_v1" in calls[0][0]
+    assert json.loads(str(calls[0][1][0])) == {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "idempotencyKey": "31000000-0000-4000-8000-000000000003",
+        "correlationId": "writer-adapter-admin",
+        "bankTransactionId": "60000000-0000-0000-0000-000000000006",
+        "category": "SOFTWARE",
+        "payee": "Talli AS",
+        "amount": "1490.00",
+        "paidDate": "2026-08-27",
+        "documentId": None,
+    }
+    assert calls[0][1][1] == str(ACTOR_ID.subject)
+
+
+def test_writer_complete_binds_posted_entry_and_locked_fifo_facts() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{"result": {"actionId": "71000000-0000-0000-0000-000000000007"}}]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    sale = RecordInvestmentSaleFifoCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("writer-adapter-sale"),
+        idempotency_key=IdempotencyKey(
+            "32000000-0000-4000-8000-000000000003"
+        ),
+        income_year=IncomeYear(2026),
+        action_id=LedgerSourceRecordId(
+            "71000000-0000-0000-0000-000000000007"
+        ),
+        position_id=LedgerSourceRecordId(
+            "72000000-0000-0000-0000-000000000007"
+        ),
+        sale_date=LocalDate(date(2026, 8, 27)),
+        sold_share_count=10,
+        proceeds=Money.nok("12000"),
+        bank_transaction_id=None,
+        document_id=None,
+        document_status="not_required",
+    )
+    posted = PostedLedgerEntry(
+        entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000004"),
+        company_id=sale.company_id,
+        income_year=sale.income_year,
+        entry_kind=LedgerEntryKind.SHARE_SALE,
+        posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+        replayed=False,
+    )
+    prepared = {
+        "investmentName": "Eksempel AS",
+        "fifoCostBasisReduction": "10000.00",
+        "allocations": [{"lot_id": "73000000-0000-0000-0000-000000000007"}],
+    }
+
+    result = asyncio.run(
+        transaction.complete_investment_sale_fifo(sale, posted, prepared)
+    )
+
+    assert result["actionId"] == str(sale.action_id)
+    assert "backend_system.complete_investment_sale_fifo_v1" in calls[0][0]
+    assert json.loads(str(calls[0][1][0]))["soldShareCount"] == 10
+    assert calls[0][1][1] == str(posted.entry_id)
+    assert json.loads(str(calls[0][1][2])) == prepared
+    assert calls[0][1][3] == str(ACTOR_ID.subject)
+
+
+def test_writer_adapter_fails_closed_on_non_object_database_result() -> None:
+    transaction = bound_transaction()
+
+    async def database_rows(
+        _query: str, _parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        return [{"result": ["not", "an", "object"]}]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            transaction.prepare_administrative_cost(
+                RecordAdministrativeCostCommand(
+                    company_id=CompanyId(
+                        "10000000-0000-0000-0000-000000000001"
+                    ),
+                    actor_id=ACTOR_ID,
+                    correlation_id=CorrelationId("writer-adapter-malformed"),
+                    idempotency_key=IdempotencyKey(
+                        "33000000-0000-4000-8000-000000000003"
+                    ),
+                    income_year=IncomeYear(2026),
+                    bank_transaction_id=LedgerSourceRecordId(
+                        "60000000-0000-0000-0000-000000000006"
+                    ),
+                    category=AdministrativeCostCategory.BANK_FEE,
+                    payee="Bank",
+                    amount=Money.nok("89"),
+                    paid_date=LocalDate(date(2026, 8, 27)),
+                )
+            )
+        )
+    assert failure.value.code == "LEDGER_DEPENDENCY_UNAVAILABLE"
+
+
+def test_transaction_adapter_names_all_nine_exact_prepare_and_complete_routines() -> None:
+    source = Path(__file__).parents[1].joinpath(
+        "src/talli_backend/adapters/supabase_ledger.py"
+    ).read_text(encoding="utf-8")
+    for operation in (
+        "administrative_cost",
+        "investment_dividend",
+        "shareholder_loan",
+        "tax_settlement",
+        "bank_transaction_suggestion",
+        "investment_purchase_fifo",
+        "investment_sale_fifo",
+        "corporate_decision_finalization",
+        "owner_dividend_payment",
+    ):
+        assert f"backend_system.prepare_{operation}_v1" in source
+        assert f"backend_system.complete_{operation}_v1" in source
 
 
 def test_adapter_never_uses_a_service_role_business_path() -> None:

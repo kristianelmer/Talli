@@ -425,6 +425,26 @@ export interface LedgerAdministrativeCostWire {
   payee: string;
 }
 
+export interface LedgerBankSuggestionWire {
+  acceptanceId: string;
+  bankTransactionId: string;
+  companyId: string;
+  incomeYear: number;
+  rule: "bank_fee" | "system_subscription" | "deposit_interest";
+  ruleVersion: string;
+}
+
+export interface LedgerCorporateDecisionFinalizationWire {
+  companyId: string;
+  decisionHash: string;
+  decisionId: string;
+  finalizationId: string;
+  holdingActionId?: string | null;
+  incomeYear: number;
+  ledgerEntryId?: string | null;
+  setId: string;
+}
+
 export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT";
 
 export interface LedgerEntryPageWire {
@@ -460,6 +480,51 @@ export interface LedgerLockPeriodWire {
   companyId: string;
   incomeYear: number;
   reason: string;
+}
+
+export interface LedgerInvestmentDividendWire {
+  actionId: string;
+  bankTransactionId?: string | null;
+  companyId: string;
+  declaredDate: string;
+  documentId?: string | null;
+  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
+  grossAmount: LedgerMoneyWire;
+  incomeYear: number;
+  linkedInvestmentId?: string | null;
+  paidDate: string;
+  payingCompanyName: string;
+  taxTreatment: "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant";
+}
+
+export interface LedgerInvestmentPurchaseWire {
+  acquisitionDate: string;
+  actionId: string;
+  bankTransactionId?: string | null;
+  companyId: string;
+  documentId?: string | null;
+  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
+  incomeYear: number;
+  investmentKey: string;
+  investmentKind: "norwegian_private_company";
+  investmentName: string;
+  orgNumber?: string | null;
+  purchaseAmount: LedgerMoneyWire;
+  shareCount: number;
+  taxTreatment: "fritaksmetoden";
+}
+
+export interface LedgerInvestmentSaleWire {
+  actionId: string;
+  bankTransactionId?: string | null;
+  companyId: string;
+  documentId?: string | null;
+  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
+  incomeYear: number;
+  positionId: string;
+  proceeds: LedgerMoneyWire;
+  saleDate: string;
+  soldShareCount: number;
 }
 
 export interface LedgerManualJournalWire {
@@ -574,7 +639,52 @@ export interface LedgerRiskFlagWire {
 
 export type LedgerRiskCode = "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
 
+export interface LedgerShareholderLoanWire {
+  actionId: string;
+  amount: LedgerMoneyWire;
+  bankTransactionId?: string | null;
+  companyId: string;
+  counterpartyName: string;
+  direction: "shareholder_to_company" | "company_to_corporate_shareholder";
+  documentId?: string | null;
+  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
+  incomeYear: number;
+  interestModelled: boolean;
+  loanDate: string;
+  relatedPartySecurity: false;
+}
+
 export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING";
+
+export interface LedgerTaxSettlementWire {
+  actionId: string;
+  amount: LedgerMoneyWire;
+  bankTransactionId?: string | null;
+  companyId: string;
+  documentId?: string | null;
+  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
+  incomeYear: number;
+  settlementDate: string;
+  settlementKind: TaxSettlementKind;
+}
+
+export interface LedgerOwnerDividendPaymentWire {
+  bankTransactionId: string;
+  companyId: string;
+  decisionHash: string;
+  decisionId: string;
+  holdingActionId: string;
+  incomeYear: number;
+  ledgerEntryId: string;
+  setId: string;
+}
+
+export interface LedgerWriterResultWire {
+  postedEntry: LedgerPostedEntryWire | null;
+  replayed: boolean;
+}
+
+export type TaxSettlementKind = "payable" | "payment" | "refund";
 
 export interface ProblemDetails {
   code: string;
@@ -1067,6 +1177,34 @@ function isLedgerAdministrativeCostWire(value: unknown): value is LedgerAdminist
   );
 }
 
+function isLedgerBankSuggestionWire(value: unknown): value is LedgerBankSuggestionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptanceId","bankTransactionId","companyId","incomeYear","rule","ruleVersion"]) &&
+    isUuid(value.acceptanceId) &&
+    isUuid(value.bankTransactionId) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (value.rule === "bank_fee" || value.rule === "system_subscription" || value.rule === "deposit_interest") &&
+    (typeof value.ruleVersion === "string" && value.ruleVersion.length >= 1 && value.ruleVersion.length <= 64)
+  );
+}
+
+function isLedgerCorporateDecisionFinalizationWire(value: unknown): value is LedgerCorporateDecisionFinalizationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","decisionId","finalizationId","holdingActionId","incomeYear","ledgerEntryId","setId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.decisionId) &&
+    isUuid(value.finalizationId) &&
+    (value.holdingActionId === undefined || (isUuid(value.holdingActionId) || value.holdingActionId === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (value.ledgerEntryId === undefined || (isUuid(value.ledgerEntryId) || value.ledgerEntryId === null)) &&
+    isUuid(value.setId)
+  );
+}
+
 function isLedgerEntryKind(value: unknown): value is LedgerEntryKind {
   return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT";
 }
@@ -1121,6 +1259,63 @@ function isLedgerLockPeriodWire(value: unknown): value is LedgerLockPeriodWire {
     isUuid(value.companyId) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 500)
+  );
+}
+
+function isLedgerInvestmentDividendWire(value: unknown): value is LedgerInvestmentDividendWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","declaredDate","documentId","documentStatus","grossAmount","incomeYear","linkedInvestmentId","paidDate","payingCompanyName","taxTreatment"]) &&
+    isUuid(value.actionId) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    typeof value.declaredDate === "string" &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
+    isLedgerMoneyWire(value.grossAmount) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (value.linkedInvestmentId === undefined || (isUuid(value.linkedInvestmentId) || value.linkedInvestmentId === null)) &&
+    typeof value.paidDate === "string" &&
+    (typeof value.payingCompanyName === "string" && value.payingCompanyName.length >= 1 && value.payingCompanyName.length <= 255) &&
+    (value.taxTreatment === "fritaksmetoden" || value.taxTreatment === "outside_fritaksmetoden" || value.taxTreatment === "needs_accountant")
+  );
+}
+
+function isLedgerInvestmentPurchaseWire(value: unknown): value is LedgerInvestmentPurchaseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acquisitionDate","actionId","bankTransactionId","companyId","documentId","documentStatus","incomeYear","investmentKey","investmentKind","investmentName","orgNumber","purchaseAmount","shareCount","taxTreatment"]) &&
+    typeof value.acquisitionDate === "string" &&
+    isUuid(value.actionId) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.investmentKey === "string" && value.investmentKey.length >= 1 && value.investmentKey.length <= 255) &&
+    value.investmentKind === "norwegian_private_company" &&
+    (typeof value.investmentName === "string" && value.investmentName.length >= 1 && value.investmentName.length <= 255) &&
+    (value.orgNumber === undefined || ((typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) || value.orgNumber === null)) &&
+    isLedgerMoneyWire(value.purchaseAmount) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 9007199254740991 && value.shareCount > 0) &&
+    value.taxTreatment === "fritaksmetoden"
+  );
+}
+
+function isLedgerInvestmentSaleWire(value: unknown): value is LedgerInvestmentSaleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","documentId","documentStatus","incomeYear","positionId","proceeds","saleDate","soldShareCount"]) &&
+    isUuid(value.actionId) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.positionId) &&
+    isLedgerMoneyWire(value.proceeds) &&
+    typeof value.saleDate === "string" &&
+    (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) && value.soldShareCount <= 9007199254740991 && value.soldShareCount > 0)
   );
 }
 
@@ -1294,8 +1489,71 @@ function isLedgerRiskCode(value: unknown): value is LedgerRiskCode {
   return value === "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
 }
 
+function isLedgerShareholderLoanWire(value: unknown): value is LedgerShareholderLoanWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","amount","bankTransactionId","companyId","counterpartyName","direction","documentId","documentStatus","incomeYear","interestModelled","loanDate","relatedPartySecurity"]) &&
+    isUuid(value.actionId) &&
+    isLedgerMoneyWire(value.amount) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    (typeof value.counterpartyName === "string" && value.counterpartyName.length >= 1 && value.counterpartyName.length <= 255) &&
+    (value.direction === "shareholder_to_company" || value.direction === "company_to_corporate_shareholder") &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.interestModelled === "boolean" &&
+    typeof value.loanDate === "string" &&
+    value.relatedPartySecurity === false
+  );
+}
+
 function isLedgerSourceCapability(value: unknown): value is LedgerSourceCapability {
   return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING";
+}
+
+function isLedgerTaxSettlementWire(value: unknown): value is LedgerTaxSettlementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","amount","bankTransactionId","companyId","documentId","documentStatus","incomeYear","settlementDate","settlementKind"]) &&
+    isUuid(value.actionId) &&
+    isLedgerMoneyWire(value.amount) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.settlementDate === "string" &&
+    isTaxSettlementKind(value.settlementKind)
+  );
+}
+
+function isLedgerOwnerDividendPaymentWire(value: unknown): value is LedgerOwnerDividendPaymentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankTransactionId","companyId","decisionHash","decisionId","holdingActionId","incomeYear","ledgerEntryId","setId"]) &&
+    isUuid(value.bankTransactionId) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.decisionId) &&
+    isUuid(value.holdingActionId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.ledgerEntryId) &&
+    isUuid(value.setId)
+  );
+}
+
+function isLedgerWriterResultWire(value: unknown): value is LedgerWriterResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["postedEntry","replayed"]) &&
+    (isLedgerPostedEntryWire(value.postedEntry) || value.postedEntry === null) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isTaxSettlementKind(value: unknown): value is TaxSettlementKind {
+  return value === "payable" || value === "payment" || value === "refund";
 }
 
 function isProblemDetails(value: unknown): value is ProblemDetails {
@@ -1411,6 +1669,35 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
+  }
+
+  async function executeLedgerWriter(
+    path: string,
+    body: { companyId: string; incomeYear: number },
+    request: TalliMutationOptions,
+    expectedKind: LedgerEntryKind | null,
+  ): Promise<LedgerWriterResultWire> {
+    const result = await executeJson(
+      `${baseUrl}${path}`,
+      "POST",
+      request,
+      body,
+      isLedgerWriterResultWire,
+    );
+    if (expectedKind === null) {
+      if (result.postedEntry !== null) throw new TalliApiError(502, undefined);
+      return result;
+    }
+    if (
+      result.postedEntry === null
+      || result.postedEntry.companyId !== body.companyId
+      || result.postedEntry.incomeYear !== body.incomeYear
+      || result.postedEntry.entryKind !== expectedKind
+      || result.postedEntry.replayed !== result.replayed
+    ) {
+      throw new TalliApiError(502, undefined);
+    }
+    return result;
   }
 
   return {
@@ -1881,6 +2168,104 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async ledgerPostInvestmentDividend(
+      body: LedgerInvestmentDividendWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-dividends",
+        body,
+        request,
+        "DIVIDEND_RECEIVED",
+      );
+    },
+
+    async ledgerPostShareholderLoan(
+      body: LedgerShareholderLoanWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/shareholder-loans",
+        body,
+        request,
+        "SHAREHOLDER_LOAN",
+      );
+    },
+
+    async ledgerPostTaxSettlement(
+      body: LedgerTaxSettlementWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/tax-settlements",
+        body,
+        request,
+        "TAX_SETTLEMENT",
+      );
+    },
+
+    async ledgerPostBankSuggestionOutcome(
+      body: LedgerBankSuggestionWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/bank-suggestion-outcomes",
+        body,
+        request,
+        "BANK_RULE_SUGGESTION",
+      );
+    },
+
+    async ledgerPostInvestmentPurchase(
+      body: LedgerInvestmentPurchaseWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-purchases",
+        body,
+        request,
+        "SHARE_PURCHASE",
+      );
+    },
+
+    async ledgerPostInvestmentSale(
+      body: LedgerInvestmentSaleWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/investment-sales",
+        body,
+        request,
+        "SHARE_SALE",
+      );
+    },
+
+    async ledgerFinalizeCorporateDecision(
+      body: LedgerCorporateDecisionFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        body,
+        request,
+        body.ledgerEntryId === undefined || body.ledgerEntryId === null
+          ? null
+          : "OWNER_DIVIDEND_DECLARED",
+      );
+    },
+
+    async ledgerPostOwnerDividendPayment(
+      body: LedgerOwnerDividendPaymentWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/owner-dividends/payments",
+        body,
+        request,
+        "OWNER_DIVIDEND_PAYMENT",
+      );
     },
 
     async ledgerPostManualJournal(
