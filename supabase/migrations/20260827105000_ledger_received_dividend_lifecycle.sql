@@ -208,6 +208,15 @@ begin
     p_sources
   );
 
+  -- Payments can settle a decision in a later company-year, so the canonical
+  -- payment-year lock is not sufficient to serialize this one-time lifecycle.
+  -- An advisory lock preserves immutable forced-RLS decision rows while making
+  -- every contender re-read settlement state after the winner commits.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'ledger:received-dividend-decision:v1:' || p_decision_entry_id::text,
+    0
+  ));
+
   if v_post.replayed then
     if not exists (
       select 1 from ledger.received_dividend_settlements settlement

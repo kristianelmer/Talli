@@ -1684,6 +1684,174 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       paymentEventDate: "2027-01-10",
       paymentYear: 2027,
     });
+
+    const concurrentDecisionSourceRecordId =
+      "received-dividend-concurrent-decision-runtime";
+    const concurrentDecision = jsonOutput(
+      containerName,
+      receivedDividendDecisionTransaction({
+        eventDate: "2026-12-21",
+        idempotencyKey: "66000000-0000-4000-8000-000000000015",
+        sourceRecordId: concurrentDecisionSourceRecordId,
+        sources: [
+          {
+            role: "PRIMARY",
+            capability: "INVESTMENTS",
+            recordId: concurrentDecisionSourceRecordId,
+            revision: 1,
+            factSha256: "6".repeat(64),
+          },
+          {
+            role: "CORROBORATING",
+            capability: "DOCUMENTS",
+            recordId: "received-dividend-concurrent-document-runtime",
+            revision: 1,
+            factSha256: "7".repeat(64),
+          },
+          {
+            role: "CORROBORATING",
+            capability: "COMPANY_TAX_FILING",
+            recordId: "received-dividend-concurrent-tax-runtime",
+            revision: 1,
+            factSha256: "8".repeat(64),
+          },
+        ],
+      }),
+    );
+    const concurrentPaymentOptions = [
+      {
+        applicationName: "received_dividend_payment_2027",
+        eventDate: "2027-01-11",
+        idempotencyKey: "66000000-0000-4000-8000-000000000016",
+        incomeYear: 2027,
+        sourceRecordId: "received-dividend-concurrent-payment-2027-runtime",
+        bankRecordId: "received-dividend-concurrent-bank-2027-runtime",
+        sourceHash: "9".repeat(64),
+        bankHash: "a".repeat(64),
+      },
+      {
+        applicationName: "received_dividend_payment_2029",
+        eventDate: "2029-01-11",
+        idempotencyKey: "66000000-0000-4000-8000-000000000017",
+        incomeYear: 2029,
+        sourceRecordId: "received-dividend-concurrent-payment-2029-runtime",
+        bankRecordId: "received-dividend-concurrent-bank-2029-runtime",
+        sourceHash: "b".repeat(64),
+        bankHash: "c".repeat(64),
+      },
+    ];
+    const concurrentPaymentTransaction = (options) =>
+      receivedDividendPaymentTransaction({
+        decisionEntryId: concurrentDecision.ledger_entry_id,
+        eventDate: options.eventDate,
+        idempotencyKey: options.idempotencyKey,
+        incomeYear: options.incomeYear,
+        sourceRecordId: options.sourceRecordId,
+        sources: [
+          {
+            role: "PRIMARY",
+            capability: "INVESTMENTS",
+            recordId: options.sourceRecordId,
+            revision: 1,
+            factSha256: options.sourceHash,
+          },
+          {
+            role: "CORROBORATING",
+            capability: "BANKING",
+            recordId: options.bankRecordId,
+            revision: 1,
+            factSha256: options.bankHash,
+          },
+        ],
+      });
+    const firstConcurrentPayment = interactivePsql(containerName);
+    firstConcurrentPayment.child.stdin.write(String.raw`
+      set application_name = '${concurrentPaymentOptions[0].applicationName}';
+      ${concurrentPaymentTransaction(concurrentPaymentOptions[0]).replace(
+        "commit;",
+        "select 'received_dividend_first_payment_uncommitted';",
+      )}
+    `);
+    await waitForOutput(
+      firstConcurrentPayment,
+      /received_dividend_first_payment_uncommitted/u,
+    );
+    const secondConcurrentPayment = interactivePsql(containerName);
+    secondConcurrentPayment.child.stdin.end(String.raw`
+      set application_name = '${concurrentPaymentOptions[1].applicationName}';
+      ${concurrentPaymentTransaction(concurrentPaymentOptions[1])}
+    `);
+    let secondConcurrentPaymentBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      secondConcurrentPaymentBlocked = lastOutputLine(psql(
+        containerName,
+        ["-Atq"],
+        String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = 'received_dividend_payment_2029'
+            and wait_event_type = 'Lock';
+        `,
+      )) === "1";
+      if (secondConcurrentPaymentBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      secondConcurrentPaymentBlocked,
+      true,
+      "second cross-year dividend payment did not contend with the first",
+    );
+    firstConcurrentPayment.child.stdin.end("commit;\n\\q\n");
+    const concurrentPaymentResults = await Promise.all([
+      processResult(firstConcurrentPayment),
+      processResult(secondConcurrentPayment),
+    ]);
+    const concurrentPaymentSuccesses = concurrentPaymentResults.filter(
+      (result) => result.code === 0,
+    );
+    const concurrentPaymentFailures = concurrentPaymentResults.filter(
+      (result) => result.code !== 0,
+    );
+    assert.equal(concurrentPaymentSuccesses.length, 1);
+    assert.equal(concurrentPaymentFailures.length, 1);
+    assert.match(
+      concurrentPaymentFailures[0].stderr,
+      /ledger_received_dividend_already_settled/iu,
+    );
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'entries', (select count(*) from ledger.entries entry
+          where entry.source_record_id in (
+            'received-dividend-concurrent-payment-2027-runtime',
+            'received-dividend-concurrent-payment-2029-runtime'
+          )),
+        'contexts', (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id in (
+            'received-dividend-concurrent-payment-2027-runtime',
+            'received-dividend-concurrent-payment-2029-runtime'
+          )),
+        'sources', (select count(*) from ledger.entry_sources source
+          join ledger.entries entry on entry.id = source.entry_id
+          where entry.source_record_id in (
+            'received-dividend-concurrent-payment-2027-runtime',
+            'received-dividend-concurrent-payment-2029-runtime'
+          )),
+        'receipts', (select count(*) from backend_system.ledger_command_receipts receipt
+          where receipt.idempotency_key in (
+            '66000000-0000-4000-8000-000000000016',
+            '66000000-0000-4000-8000-000000000017'
+          )),
+        'settlements', (select count(*)
+          from ledger.received_dividend_settlements settlement
+          where settlement.decision_entry_id = '${concurrentDecision.ledger_entry_id}')
+      )::text;
+    `), {
+      contexts: 1,
+      entries: 1,
+      receipts: 1,
+      settlements: 1,
+      sources: 2,
+    });
     for (const table of ["received_dividend_decisions", "received_dividend_settlements"]) {
       assert.match(psqlFailure(containerName, String.raw`
         begin;
