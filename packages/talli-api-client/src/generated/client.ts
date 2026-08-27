@@ -623,6 +623,19 @@ export interface LedgerPeriodLockWire {
   replayed: boolean;
 }
 
+export interface LedgerReconstructionAssessmentWire {
+  asOf: string;
+  assessmentId: string;
+  companyId: string;
+  evidenceDigest: string;
+  gapCodes: ReconstructionGapCode[];
+  incomeYear: number;
+  recordedAt: string;
+  state: ReconstructionState;
+}
+
+export type ReconstructionGapCode = "PRIOR_CLOSING_MISMATCH" | "BANK_MOVEMENTS_INCOMPLETE" | "BANK_NOT_RECONCILED" | "INVESTMENTS_UNCONFIRMED" | "SHAREHOLDERS_UNCONFIRMED" | "LOANS_UNCONFIRMED" | "EQUITY_UNCONFIRMED" | "TAX_HISTORY_UNCONFIRMED" | "CURRENT_ACTIVITY_INCOMPLETE" | "DOCUMENTS_INCOMPLETE" | "UNSUPPORTED_ACTIVITY_FOUND";
+
 export interface LedgerPostedEntryWire {
   companyId: string;
   entryId: string;
@@ -683,6 +696,8 @@ export interface LedgerWriterResultWire {
   postedEntry: LedgerPostedEntryWire | null;
   replayed: boolean;
 }
+
+export type ReconstructionState = "BLOCKED" | "READY";
 
 export type TaxSettlementKind = "payable" | "payment" | "refund";
 
@@ -1463,6 +1478,25 @@ function isLedgerPeriodLockWire(value: unknown): value is LedgerPeriodLockWire {
   );
 }
 
+function isLedgerReconstructionAssessmentWire(value: unknown): value is LedgerReconstructionAssessmentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["asOf","assessmentId","companyId","evidenceDigest","gapCodes","incomeYear","recordedAt","state"]) &&
+    typeof value.asOf === "string" &&
+    isUuid(value.assessmentId) &&
+    isUuid(value.companyId) &&
+    (typeof value.evidenceDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.evidenceDigest)) &&
+    Array.isArray(value.gapCodes) && value.gapCodes.every((item) => isReconstructionGapCode(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isDateTime(value.recordedAt) &&
+    isReconstructionState(value.state)
+  );
+}
+
+function isReconstructionGapCode(value: unknown): value is ReconstructionGapCode {
+  return value === "PRIOR_CLOSING_MISMATCH" || value === "BANK_MOVEMENTS_INCOMPLETE" || value === "BANK_NOT_RECONCILED" || value === "INVESTMENTS_UNCONFIRMED" || value === "SHAREHOLDERS_UNCONFIRMED" || value === "LOANS_UNCONFIRMED" || value === "EQUITY_UNCONFIRMED" || value === "TAX_HISTORY_UNCONFIRMED" || value === "CURRENT_ACTIVITY_INCOMPLETE" || value === "DOCUMENTS_INCOMPLETE" || value === "UNSUPPORTED_ACTIVITY_FOUND";
+}
+
 function isLedgerPostedEntryWire(value: unknown): value is LedgerPostedEntryWire {
   return (
     isRecord(value) &&
@@ -1552,6 +1586,10 @@ function isLedgerWriterResultWire(value: unknown): value is LedgerWriterResultWi
   );
 }
 
+function isReconstructionState(value: unknown): value is ReconstructionState {
+  return value === "BLOCKED" || value === "READY";
+}
+
 function isTaxSettlementKind(value: unknown): value is TaxSettlementKind {
   return value === "payable" || value === "payment" || value === "refund";
 }
@@ -1615,6 +1653,11 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerReconstructionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -2105,6 +2148,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerGetReconstructionAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerReconstructionAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/reconstruction-assessment?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerReconstructionAssessmentWire,
       );
     },
 

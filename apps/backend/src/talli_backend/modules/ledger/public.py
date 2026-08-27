@@ -159,6 +159,20 @@ class ReconstructionEvidenceIssuer(StrEnum):
     COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
 
 
+class ReconstructionGapCode(StrEnum):
+    PRIOR_CLOSING_MISMATCH = "PRIOR_CLOSING_MISMATCH"
+    BANK_MOVEMENTS_INCOMPLETE = "BANK_MOVEMENTS_INCOMPLETE"
+    BANK_NOT_RECONCILED = "BANK_NOT_RECONCILED"
+    INVESTMENTS_UNCONFIRMED = "INVESTMENTS_UNCONFIRMED"
+    SHAREHOLDERS_UNCONFIRMED = "SHAREHOLDERS_UNCONFIRMED"
+    LOANS_UNCONFIRMED = "LOANS_UNCONFIRMED"
+    EQUITY_UNCONFIRMED = "EQUITY_UNCONFIRMED"
+    TAX_HISTORY_UNCONFIRMED = "TAX_HISTORY_UNCONFIRMED"
+    CURRENT_ACTIVITY_INCOMPLETE = "CURRENT_ACTIVITY_INCOMPLETE"
+    DOCUMENTS_INCOMPLETE = "DOCUMENTS_INCOMPLETE"
+    UNSUPPORTED_ACTIVITY_FOUND = "UNSUPPORTED_ACTIVITY_FOUND"
+
+
 class ReconstructionState(StrEnum):
     BLOCKED = "BLOCKED"
     READY = "READY"
@@ -379,13 +393,13 @@ class ReconstructionEvidence:
     fact_sha256: str
     coverage_from: LocalDate | None = None
     coverage_through: LocalDate | None = None
-    gap_code: str | None = None
+    gap_code: ReconstructionGapCode | None = None
 
     def __post_init__(self) -> None:
         digest = self.fact_sha256.strip().lower()
         if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
-        gap = self.gap_code.strip() if self.gap_code is not None else None
+        gap = self.gap_code
         if self.confirmation is ReconstructionEvidenceStatus.CONFIRMED and gap is not None:
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         if self.confirmation is not ReconstructionEvidenceStatus.CONFIRMED and not gap:
@@ -409,7 +423,7 @@ class ReconstructionAssessment:
     income_year: IncomeYear
     as_of: LocalDate
     state: ReconstructionState
-    gap_codes: tuple[str, ...]
+    gap_codes: tuple[ReconstructionGapCode, ...]
     evidence_digest: str
     recorded_at: Timestamp
     replayed: bool
@@ -581,7 +595,16 @@ class LedgerPersistence(Protocol):
         *,
         evidence: tuple[ReconstructionEvidence, ...],
         state: ReconstructionState,
-        gap_codes: tuple[str, ...],
+        gap_codes: tuple[ReconstructionGapCode, ...],
+    ) -> ReconstructionAssessment: ...
+
+    async def get_reconstruction_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
     ) -> ReconstructionAssessment: ...
 
     async def list_entries(
@@ -673,6 +696,15 @@ class LedgerCommands(Protocol):
 
 
 class LedgerQueries(Protocol):
+    async def get_reconstruction_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionAssessment: ...
+
     async def list_entries(
         self,
         *,
@@ -726,6 +758,7 @@ __all__ = [
     "ReconstructionEvidenceKind",
     "ReconstructionEvidenceIssuer",
     "ReconstructionEvidenceStatus",
+    "ReconstructionGapCode",
     "ReconstructionState",
     "PostInvestmentDividendCommand",
     "PostInvestmentPurchaseCommand",

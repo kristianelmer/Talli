@@ -60,6 +60,12 @@ from talli_backend.modules.ledger.public import (
     PeriodLockId,
     PeriodLockPage,
     PostedLedgerEntry,
+    ReconstructionAssessment,
+    ReconstructionAssessmentId,
+    ReconstructionEvidence,
+    ReconstructionGapCode,
+    ReconstructionState,
+    RecordReconstructionAssessmentCommand,
     ledger_persistence_adapter,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
@@ -73,6 +79,7 @@ from talli_backend.shared.kernel import (
     CompanyId,
     CorrelationId,
     IncomeYear,
+    LocalDate,
     Money,
     Timestamp,
     UserId,
@@ -163,6 +170,50 @@ def _risk_payload(flag: LedgerRiskFlag) -> dict[str, str]:
 
 def _optional_source(value: LedgerSourceRecordId | None) -> str | None:
     return str(value) if value is not None else None
+
+
+def _reconstruction_evidence_payload(
+    evidence: ReconstructionEvidence,
+) -> dict[str, object]:
+    return {
+        "kind": evidence.kind.value,
+        "issuer": evidence.issuer.value,
+        "confirmation": evidence.confirmation.value,
+        "sourceRecordId": str(evidence.source_record_id),
+        "factSha256": evidence.fact_sha256,
+        "coverageFrom": (
+            evidence.coverage_from.value.isoformat()
+            if evidence.coverage_from is not None
+            else None
+        ),
+        "coverageThrough": (
+            evidence.coverage_through.value.isoformat()
+            if evidence.coverage_through is not None
+            else None
+        ),
+        "gapCode": evidence.gap_code.value if evidence.gap_code is not None else None,
+    }
+
+
+def _reconstruction_assessment(row: Mapping[str, object]) -> ReconstructionAssessment:
+    raw_gaps = row.get("gap_codes")
+    if not isinstance(raw_gaps, list):
+        raise ValueError("reconstruction gaps are invalid")
+    return ReconstructionAssessment(
+        assessment_id=ReconstructionAssessmentId(str(row["assessment_id"])),
+        company_id=CompanyId(str(row["company_id"])),
+        income_year=IncomeYear(int(row["income_year"])),
+        as_of=LocalDate(
+            row["as_of"]
+            if isinstance(row["as_of"], date)
+            else date.fromisoformat(str(row["as_of"]))
+        ),
+        state=ReconstructionState(str(row["state"])),
+        gap_codes=tuple(ReconstructionGapCode(str(value)) for value in raw_gaps),
+        evidence_digest=str(row["evidence_digest"]),
+        recorded_at=_timestamp(row["recorded_at"]),
+        replayed=bool(row["replayed"]),
+    )
 
 
 def _writer_metadata(command: LedgerCommand) -> dict[str, object]:
@@ -597,6 +648,65 @@ class SupabaseLedgerSession:
             locked_at=_timestamp(row["locked_at"]),
             replayed=bool(row["replayed"]),
         )
+
+    async def record_reconstruction_assessment(
+        self,
+        command: RecordReconstructionAssessmentCommand,
+        *,
+        evidence: tuple[ReconstructionEvidence, ...],
+        state: ReconstructionState,
+        gap_codes: tuple[ReconstructionGapCode, ...],
+    ) -> ReconstructionAssessment:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.record_reconstruction_assessment(
+              %s::text, %s::uuid, %s::integer, %s::date, %s::jsonb,
+              %s::text, %s::text[], %s::text, %s::text
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                command.as_of.value,
+                json.dumps(
+                    [_reconstruction_evidence_payload(item) for item in evidence],
+                    separators=(",", ":"),
+                ),
+                state.value,
+                [code.value for code in gap_codes],
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+            ),
+        )
+        try:
+            return _reconstruction_assessment(row)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def get_reconstruction_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionAssessment:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from ledger.get_reconstruction_assessment(%s::uuid, %s::integer, %s::text)",
+            (str(company_id), int(income_year), str(actor_id.subject)),
+        )
+        if len(rows) != 1:
+            raise LedgerError.not_found()
+        try:
+            return _reconstruction_assessment(rows[0])
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
 
     async def list_entries(
         self,

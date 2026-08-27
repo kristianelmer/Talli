@@ -35,6 +35,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
+    ReconstructionGapCode,
     ReconstructionState,
     RecordReconstructionAssessmentCommand,
     ShareholderLoanDirection,
@@ -108,6 +109,19 @@ _FULL_YEAR_COVERAGE_EVIDENCE = frozenset(
         ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
     }
 )
+_RECONSTRUCTION_GAP_BY_KIND = {
+    ReconstructionEvidenceKind.PRIOR_CLOSING_OPENING: ReconstructionGapCode.PRIOR_CLOSING_MISMATCH,
+    ReconstructionEvidenceKind.BANK_MOVEMENTS: ReconstructionGapCode.BANK_MOVEMENTS_INCOMPLETE,
+    ReconstructionEvidenceKind.BANK_RECONCILIATION: ReconstructionGapCode.BANK_NOT_RECONCILED,
+    ReconstructionEvidenceKind.INVESTMENTS: ReconstructionGapCode.INVESTMENTS_UNCONFIRMED,
+    ReconstructionEvidenceKind.SHAREHOLDERS: ReconstructionGapCode.SHAREHOLDERS_UNCONFIRMED,
+    ReconstructionEvidenceKind.LOANS: ReconstructionGapCode.LOANS_UNCONFIRMED,
+    ReconstructionEvidenceKind.EQUITY: ReconstructionGapCode.EQUITY_UNCONFIRMED,
+    ReconstructionEvidenceKind.TAX_HISTORY: ReconstructionGapCode.TAX_HISTORY_UNCONFIRMED,
+    ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY: ReconstructionGapCode.CURRENT_ACTIVITY_INCOMPLETE,
+    ReconstructionEvidenceKind.DOCUMENTS: ReconstructionGapCode.DOCUMENTS_INCOMPLETE,
+    ReconstructionEvidenceKind.UNSUPPORTED_ACTIVITY_CHECK: ReconstructionGapCode.UNSUPPORTED_ACTIVITY_FOUND,
+}
 
 
 def _positive(value: Money, code: str) -> None:
@@ -149,6 +163,12 @@ class LedgerService:
             raise LedgerError.precondition_failed(
                 "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
             )
+        if any(
+            item.gap_code is not None
+            and item.gap_code is not _RECONSTRUCTION_GAP_BY_KIND[item.kind]
+            for item in by_requirement.values()
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         year_start = date(int(command.income_year), 1, 1)
         for kind in _FULL_YEAR_COVERAGE_EVIDENCE:
             matching = tuple(
@@ -180,6 +200,21 @@ class LedgerService:
             evidence=evidence,
             state=state,
             gap_codes=gap_codes,
+        )
+
+    async def get_reconstruction_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionAssessment:
+        return await self._persistence.get_reconstruction_assessment(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            correlation_id=correlation_id,
         )
 
     async def post_opening_balance(

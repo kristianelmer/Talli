@@ -3,6 +3,8 @@ import type {
   LedgerEntryViewWire,
   LedgerOpeningSnapshotWire,
   LedgerPeriodLockWire,
+  LedgerReconstructionAssessmentWire,
+  ReconstructionGapCode,
   LedgerRiskCode,
 } from "@talli/talli-api-client";
 import { TalliApiError } from "@talli/talli-api-client";
@@ -32,6 +34,49 @@ const ARCHIVE_ENTRY_TYPES: Record<LedgerEntryKind, string> = {
 const RISK_CODES: Record<LedgerRiskCode, string> = {
   MANUAL_JOURNAL_SENSITIVE_ACCOUNT: "manual_journal_sensitive_account",
 };
+
+const RECONSTRUCTION_GAPS: Record<ReconstructionGapCode, string> = {
+  PRIOR_CLOSING_MISMATCH: "Åpningsbalansen stemmer ikke med forrige års avslutning.",
+  BANK_MOVEMENTS_INCOMPLETE: "Alle bankbevegelser fra 1. januar er ikke dokumentert ennå.",
+  BANK_NOT_RECONCILED: "Bankkontoene er ikke fullt avstemt.",
+  INVESTMENTS_UNCONFIRMED: "Investeringene er ikke fullt bekreftet.",
+  SHAREHOLDERS_UNCONFIRMED: "Aksjonærene er ikke fullt bekreftet.",
+  LOANS_UNCONFIRMED: "Lånene er ikke fullt bekreftet.",
+  EQUITY_UNCONFIRMED: "Egenkapitalen er ikke fullt bekreftet.",
+  TAX_HISTORY_UNCONFIRMED: "Skattehistorikken er ikke fullt bekreftet.",
+  CURRENT_ACTIVITY_INCOMPLETE: "Aktiviteten fra 1. januar er ikke komplett.",
+  DOCUMENTS_INCOMPLETE: "Nødvendige bilag mangler.",
+  UNSUPPORTED_ACTIVITY_FOUND: "Året inneholder aktivitet Talli ikke kan fullføre.",
+};
+
+export type LedgerReconstructionPresentation = {
+  assessment_id: string;
+  company_id: string;
+  income_year: number;
+  as_of: string;
+  ready: boolean;
+  gaps: { code: ReconstructionGapCode; message: string }[];
+  evidence_digest: string;
+  recorded_at: string;
+};
+
+export function presentLedgerReconstruction(
+  assessment: LedgerReconstructionAssessmentWire,
+): LedgerReconstructionPresentation {
+  return {
+    assessment_id: assessment.assessmentId,
+    company_id: assessment.companyId,
+    income_year: assessment.incomeYear,
+    as_of: assessment.asOf,
+    ready: assessment.state === "READY",
+    gaps: assessment.gapCodes.map((code) => ({
+      code,
+      message: RECONSTRUCTION_GAPS[code],
+    })),
+    evidence_digest: assessment.evidenceDigest,
+    recorded_at: assessment.recordedAt,
+  };
+}
 
 export type LedgerEntryPresentation = {
   id: string;

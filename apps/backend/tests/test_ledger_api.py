@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 
@@ -30,6 +30,10 @@ from talli_backend.modules.ledger.public import (
     PeriodLockId,
     PeriodLockPage,
     PostedLedgerEntry,
+    ReconstructionAssessment,
+    ReconstructionAssessmentId,
+    ReconstructionGapCode,
+    ReconstructionState,
 )
 from talli_backend.modules.shareholder_register_filing.public import OpeningSnapshotId
 from talli_backend.shared.kernel import (
@@ -37,6 +41,7 @@ from talli_backend.shared.kernel import (
     ActorKind,
     CompanyId,
     IncomeYear,
+    LocalDate,
     Money,
     Timestamp,
     UserId,
@@ -61,6 +66,19 @@ class LedgerSessionStub:
         self.entry_next_cursor: LedgerCursor | None = LedgerCursor("opaque-next")
         self.opening_snapshots = LegacyOpeningSnapshotPage(
             items=(), next_cursor=None, has_more=False
+        )
+        self.reconstruction_assessment = ReconstructionAssessment(
+            assessment_id=ReconstructionAssessmentId(
+                "41000000-0000-0000-0000-000000000004"
+            ),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            as_of=LocalDate(date(2026, 8, 27)),
+            state=ReconstructionState.BLOCKED,
+            gap_codes=(ReconstructionGapCode.DOCUMENTS_INCOMPLETE,),
+            evidence_digest="a" * 64,
+            recorded_at=NOW,
+            replayed=False,
         )
 
     @property
@@ -329,6 +347,12 @@ class LedgerSessionStub:
             items=(),
             page=LedgerPage(next_cursor=None, has_more=False),
         )
+
+    async def get_reconstruction_assessment(
+        self, **query: object
+    ) -> ReconstructionAssessment:
+        self.calls.append(("get_reconstruction_assessment", query))
+        return self.reconstruction_assessment
 
 
 def client_and_session() -> tuple[TestClient, LedgerSessionStub]:
@@ -1032,6 +1056,34 @@ def test_ledger_queries_are_authenticated_and_cursor_paginated() -> None:
     assert query["actor_id"] == ACTOR_ID
     assert str(query["cursor"]) == "opaque-current"
     assert query["limit"] == 25
+
+
+def test_reconstruction_query_exposes_only_backend_derived_readiness() -> None:
+    client, session = client_and_session()
+
+    response = client.get(
+        f"/api/v1/ledger/reconstruction-assessment?companyId={COMPANY_ID}&incomeYear=2026",
+        headers={
+            "Authorization": "Bearer ledger-token",
+            "X-Request-ID": "ledger-reconstruction-query",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "assessmentId": "41000000-0000-0000-0000-000000000004",
+        "companyId": str(COMPANY_ID),
+        "incomeYear": 2026,
+        "asOf": "2026-08-27",
+        "state": "BLOCKED",
+        "gapCodes": ["DOCUMENTS_INCOMPLETE"],
+        "evidenceDigest": "a" * 64,
+        "recordedAt": "2026-08-27T10:00:00Z",
+    }
+    query = session.calls[0][1]
+    assert query["actor_id"] == ACTOR_ID
+    assert query["company_id"] == COMPANY_ID
+    assert query["income_year"] == IncomeYear(2026)
 
 
 def test_ledger_entry_source_projection_is_opt_in_during_expand() -> None:

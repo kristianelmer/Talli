@@ -1,16 +1,19 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.entries","ledger.period_locks"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.entries","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
 
 `ledger` owns narrow-ledger entries, purpose-specific posting translations,
+immutable full-year reconstruction assessments and source evidence,
 manual-journal warnings, posting invariants,
 durable idempotency, deterministic entry/lock query ordering, and company-year
-period locks. It owns `ledger.entries` and `ledger.period_locks` through
-`supabase/migrations/20260827100000_ledger_capability.sql`.
+period locks. It owns `ledger.entries`, `ledger.period_locks`,
+`ledger.reconstruction_assessments`, and `ledger.reconstruction_evidence`
+through `supabase/migrations/20260827100000_ledger_capability.sql` and
+`supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -38,17 +41,25 @@ The command surface is `LedgerCommands`, `LockPeriodCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,
 `PostOpeningBalanceCommand`, `PostOwnerDividendDeclaredCommand`,
 `PostOwnerDividendPaymentCommand`, `PostShareholderLoanCommand`, and
-`PostTaxSettlementCommand`. Supporting closed values are `BankSuggestionRule`,
+`PostTaxSettlementCommand`. `RecordReconstructionAssessmentCommand` accepts
+only immutable evidence issued by the exact public source capability declared
+for each fact; it is intentionally not exposed as a browser mutation.
+Supporting closed values are `BankSuggestionRule`,
 `LedgerCursor`, `LedgerErrorCode`, `ShareholderLoanDirection`, and
 `TaxSettlementKind`.
 
 Purpose-specific query/results are `LedgerQueries`, `LedgerEntryPage`,
 `LedgerEntryView`, `LedgerPage`, `PeriodLockPage`, `PeriodLock`, and
-`PostedLedgerEntry`. Growing collections use an opaque cursor and deterministic
+`PostedLedgerEntry`, and `ReconstructionAssessment`. Growing collections use an opaque cursor and deterministic
 `(created_at, id)` ordering. Identifiers and values are `LedgerEntryId`,
 `PeriodLockId`, `LedgerSourceRecordId`, `LedgerEntryKind`, `LedgerSourceCapability`,
 `LedgerLine`, `LedgerRiskCode`, `LedgerRiskFlag`, and
 `AdministrativeCostCategory`.
+
+Reconstruction identifiers and closed values are `ReconstructionAssessmentId`,
+`ReconstructionEvidence`, `ReconstructionEvidenceIssuer`,
+`ReconstructionEvidenceKind`, `ReconstructionEvidenceStatus`,
+`ReconstructionGapCode`, and `ReconstructionState`.
 
 Expected failures are `LedgerError` values with capability-prefixed codes and
 shared domain categories. The HTTP boundary alone maps them to RFC 9457 status

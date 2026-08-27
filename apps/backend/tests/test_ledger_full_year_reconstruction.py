@@ -14,6 +14,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
+    ReconstructionGapCode,
     ReconstructionState,
     RecordReconstructionAssessmentCommand,
 )
@@ -169,7 +170,7 @@ def test_unknown_source_fact_records_a_stable_gap_and_blocks_readiness() -> None
         issuer=item.issuer,
         source_record_id=item.source_record_id,
         fact_sha256=item.fact_sha256,
-        gap_code="DOCUMENT_COVERAGE_UNKNOWN",
+        gap_code=ReconstructionGapCode.DOCUMENTS_INCOMPLETE,
     )
 
     result = asyncio.run(
@@ -179,7 +180,9 @@ def test_unknown_source_fact_records_a_stable_gap_and_blocks_readiness() -> None
     )
 
     assert result.state is ReconstructionState.BLOCKED
-    assert persistence.calls[0]["gap_codes"] == ("DOCUMENT_COVERAGE_UNKNOWN",)
+    assert persistence.calls[0]["gap_codes"] == (
+        ReconstructionGapCode.DOCUMENTS_INCOMPLETE,
+    )
 
 
 def test_missing_evidence_kind_fails_closed_without_persistence() -> None:

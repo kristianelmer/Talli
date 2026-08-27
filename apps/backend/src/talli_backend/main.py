@@ -101,6 +101,9 @@ from talli_backend.modules.ledger.public import (
     PeriodLock,
     PeriodLockPage,
     PostedLedgerEntry,
+    ReconstructionAssessment,
+    ReconstructionGapCode,
+    ReconstructionState,
     PostManualJournalCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
@@ -486,6 +489,17 @@ class LedgerPeriodLockPageWire(TransportModel):
     page: LedgerPageWire
 
 
+class LedgerReconstructionAssessmentWire(TransportModel):
+    assessment_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    as_of: date
+    state: ReconstructionState
+    gap_codes: list[ReconstructionGapCode]
+    evidence_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    recorded_at: datetime
+
+
 def _money_wire(value: Money) -> LedgerMoneyWire:
     return LedgerMoneyWire(amount=format(value.amount, "f"), currency=value.currency.value)
 
@@ -511,6 +525,21 @@ def _posted_wire(value: PostedLedgerEntry) -> LedgerPostedEntryWire:
         entry_kind=value.entry_kind,
         posted_at=value.posted_at.value,
         replayed=value.replayed,
+    )
+
+
+def _reconstruction_wire(
+    value: ReconstructionAssessment,
+) -> LedgerReconstructionAssessmentWire:
+    return LedgerReconstructionAssessmentWire(
+        assessment_id=str(value.assessment_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        as_of=value.as_of.value,
+        state=value.state,
+        gap_codes=list(value.gap_codes),
+        evidence_digest=value.evidence_digest,
+        recorded_at=value.recorded_at.value,
     )
 
 
@@ -1414,6 +1443,36 @@ def create_app(
         ):
             raise LedgerError.unavailable()
         return _writer_wire(result)
+
+    @application.get(
+        "/api/v1/ledger/reconstruction-assessment",
+        operation_id="ledgerGetReconstructionAssessment",
+        response_model=LedgerReconstructionAssessmentWire,
+        responses={
+            200: {"description": "Latest immutable reconstruction assessment."}
+            | ledger_success
+        }
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_ledger_reconstruction_assessment(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerReconstructionAssessmentWire:
+        async def execute() -> LedgerReconstructionAssessmentWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            assessment = await session.get_reconstruction_assessment(
+                actor_id=session.actor_id,
+                company_id=CompanyId(str(company_id)),
+                income_year=IncomeYear(income_year),
+                correlation_id=ledger_correlation(request),
+            )
+            return _reconstruction_wire(assessment)
+
+        return await ledger_call(execute)
 
     @application.get(
         "/api/v1/ledger/entries",

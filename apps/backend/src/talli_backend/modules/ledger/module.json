@@ -4,7 +4,7 @@
   "name": "ledger",
   "path": "apps/backend/src/talli_backend/modules/ledger",
   "owner": "backend:ledger",
-  "purpose": "Own Talli's narrow-ledger entries, purpose-specific posting translations, manual-journal warnings, posting invariants, idempotency, query ordering, and company-year period locks.",
+  "purpose": "Own Talli's narrow-ledger entries, purpose-specific posting translations, reconstruction evidence, manual-journal warnings, posting invariants, idempotency, query ordering, and company-year period locks.",
   "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.ledger.public",
   "exports": {
@@ -12,11 +12,11 @@
     "queries": ["LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry", "ReconstructionAssessment"],
     "events": [],
     "errors": ["LedgerError"],
-    "identifiers": ["AdministrativeCostCategory", "BankSuggestionRule", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionState", "ShareholderLoanDirection", "TaxSettlementKind", "ledger_persistence_adapter"]
+    "identifiers": ["AdministrativeCostCategory", "BankSuggestionRule", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionGapCode", "ReconstructionState", "ShareholderLoanDirection", "TaxSettlementKind", "ledger_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["ledger"],
-    "tables": ["ledger.entries", "ledger.period_locks"],
+    "tables": ["ledger.entries", "ledger.period_locks", "ledger.reconstruction_assessments", "ledger.reconstruction_evidence"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260827100000_ledger_capability.sql"

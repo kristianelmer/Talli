@@ -34,6 +34,12 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     PostManualJournalCommand,
     PostedLedgerEntry,
+    ReconstructionEvidence,
+    ReconstructionEvidenceIssuer,
+    ReconstructionEvidenceKind,
+    ReconstructionEvidenceStatus,
+    ReconstructionState,
+    RecordReconstructionAssessmentCommand,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -79,6 +85,54 @@ def command(actor_id: ActorId = ACTOR_ID) -> PostManualJournalCommand:
             LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("100")),
         ),
         warning_accepted=False,
+    )
+
+
+def reconstruction_command() -> RecordReconstructionAssessmentCommand:
+    pairs = (
+        ("PRIOR_CLOSING_OPENING", "LEDGER"),
+        ("BANK_MOVEMENTS", "BANKING"),
+        ("BANK_RECONCILIATION", "BANKING"),
+        ("INVESTMENTS", "INVESTMENTS"),
+        ("SHAREHOLDERS", "SHAREHOLDER_REGISTER_FILING"),
+        ("LOANS", "BANKING"),
+        ("LOANS", "CORPORATE_GOVERNANCE"),
+        ("EQUITY", "CORPORATE_GOVERNANCE"),
+        ("EQUITY", "SHAREHOLDER_REGISTER_FILING"),
+        ("TAX_HISTORY", "COMPANY_TAX_FILING"),
+        ("CURRENT_YEAR_ACTIVITY", "LEDGER"),
+        ("DOCUMENTS", "DOCUMENTS"),
+        ("UNSUPPORTED_ACTIVITY_CHECK", "COMPANY_ACCESS"),
+    )
+    as_of = LocalDate(date(2026, 8, 27))
+    evidence = tuple(
+        ReconstructionEvidence(
+            kind=ReconstructionEvidenceKind(kind),
+            issuer=ReconstructionEvidenceIssuer(issuer),
+            confirmation=ReconstructionEvidenceStatus.CONFIRMED,
+            source_record_id=LedgerSourceRecordId(f"source:{index}"),
+            fact_sha256=f"{index:064x}",
+            coverage_from=(
+                LocalDate(date(2026, 1, 1))
+                if kind in {"BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"}
+                else None
+            ),
+            coverage_through=(
+                as_of
+                if kind in {"BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"}
+                else None
+            ),
+        )
+        for index, (kind, issuer) in enumerate(pairs)
+    )
+    return RecordReconstructionAssessmentCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("ledger-reconstruction-adapter"),
+        idempotency_key=IdempotencyKey("reconstruction-adapter-2026-08-27"),
+        income_year=IncomeYear(2026),
+        as_of=as_of,
+        evidence=evidence,
     )
 
 
@@ -207,6 +261,53 @@ def test_unknown_post_outcome_retries_the_identical_idempotent_rpc_once() -> Non
     assert len(calls) == 2
     assert calls[0] == calls[1]
     assert "ledger.post_entry" in calls[0][0]
+
+
+def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "assessment_id": "40000000-0000-0000-0000-000000000004",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "as_of": date(2026, 8, 27),
+            "state": "READY",
+            "gap_codes": [],
+            "evidence_digest": "a" * 64,
+            "recorded_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    requested = reconstruction_command()
+    result = asyncio.run(
+        session.record_reconstruction_assessment(
+            requested,
+            evidence=requested.evidence,
+            state=ReconstructionState.READY,
+            gap_codes=(),
+        )
+    )
+
+    assert result.state is ReconstructionState.READY
+    assert "ledger.record_reconstruction_assessment" in calls[0][0]
+    payload = json.loads(str(calls[0][1][4]))
+    assert len(payload) == 13
+    assert payload[1] == {
+        "kind": "BANK_MOVEMENTS",
+        "issuer": "BANKING",
+        "confirmation": "CONFIRMED",
+        "sourceRecordId": "source:1",
+        "factSha256": f"{1:064x}",
+        "coverageFrom": "2026-01-01",
+        "coverageThrough": "2026-08-27",
+        "gapCode": None,
+    }
 
 
 def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:

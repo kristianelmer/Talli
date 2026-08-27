@@ -8,6 +8,7 @@ import {
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
   loadLedgerPeriodLocks,
+  loadLedgerReconstructionAssessment,
   loadOpeningSnapshots,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
@@ -17,6 +18,7 @@ import {
   presentLedgerEntries,
   presentLedgerEntriesForArchive,
   presentLedgerPeriodLocks,
+  presentLedgerReconstruction,
   presentOpeningSnapshots,
 } from "../features/ledger/index.ts";
 
@@ -311,6 +313,89 @@ test("ledger query transport follows opaque pages through the generated client",
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
+});
+
+test("reconstruction readiness comes from the generated backend contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const calls = [];
+  globalThis.fetch = async (url, request) => {
+    calls.push({ url: String(url), request });
+    return Response.json({
+      assessmentId: "40000000-0000-0000-0000-000000000004",
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+      asOf: "2026-08-27",
+      state: "BLOCKED",
+      gapCodes: ["BANK_MOVEMENTS_INCOMPLETE", "DOCUMENTS_INCOMPLETE"],
+      evidenceDigest: "a".repeat(64),
+      recordedAt: "2026-08-27T10:00:00Z",
+    });
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    const result = await loadLedgerReconstructionAssessment(
+      "session-token",
+      OPENING_COMPANY_ID,
+      2026,
+      "reconstruction-query-test",
+    );
+
+    assert.equal(result.state, "BLOCKED");
+    assert.match(calls[0].url, /companyId=10000000-0000-0000-0000-000000000001/u);
+    assert.match(calls[0].url, /incomeYear=2026/u);
+    const headers = new Headers(calls[0].request.headers);
+    assert.equal(headers.get("Authorization"), "Bearer session-token");
+    assert.equal(headers.get("X-Request-ID"), "reconstruction-query-test");
+    assert.deepEqual(presentLedgerReconstruction(result), {
+      assessment_id: "40000000-0000-0000-0000-000000000004",
+      company_id: OPENING_COMPANY_ID,
+      income_year: 2026,
+      as_of: "2026-08-27",
+      ready: false,
+      gaps: [
+        {
+          code: "BANK_MOVEMENTS_INCOMPLETE",
+          message: "Alle bankbevegelser fra 1. januar er ikke dokumentert ennå.",
+        },
+        {
+          code: "DOCUMENTS_INCOMPLETE",
+          message: "Nødvendige bilag mangler.",
+        },
+      ],
+      evidence_digest: "a".repeat(64),
+      recorded_at: "2026-08-27T10:00:00Z",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("generated reconstruction decoder rejects unknown gap codes", async () => {
+  const generated = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async () => Response.json({
+      assessmentId: "40000000-0000-0000-0000-000000000004",
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+      asOf: "2026-08-27",
+      state: "BLOCKED",
+      gapCodes: ["OWNER_SUPPLIED_FREE_TEXT"],
+      evidenceDigest: "a".repeat(64),
+      recordedAt: "2026-08-27T10:00:00Z",
+    }),
+  });
+
+  await assert.rejects(
+    generated.ledgerGetReconstructionAssessment({
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+    }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
 });
 
 test("generated ledger query rejects a partial expanded source pair", async () => {

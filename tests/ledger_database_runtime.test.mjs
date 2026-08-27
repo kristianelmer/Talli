@@ -7,6 +7,7 @@ import test from "node:test";
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expandPath = "/repo/supabase/migrations/20260827100000_ledger_capability.sql";
 const coordinatorPath = "/repo/supabase/migrations/20260827100500_ledger_writer_coordinators.sql";
+const reconstructionPath = "/repo/supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -666,6 +667,66 @@ from ledger.lock_period(
 `;
 }
 
+function reconstructionEvidence({ documentsReady = true } = {}) {
+  const pairs = [
+    ["PRIOR_CLOSING_OPENING", "LEDGER"],
+    ["BANK_MOVEMENTS", "BANKING"],
+    ["BANK_RECONCILIATION", "BANKING"],
+    ["INVESTMENTS", "INVESTMENTS"],
+    ["SHAREHOLDERS", "SHAREHOLDER_REGISTER_FILING"],
+    ["LOANS", "BANKING"],
+    ["LOANS", "CORPORATE_GOVERNANCE"],
+    ["EQUITY", "CORPORATE_GOVERNANCE"],
+    ["EQUITY", "SHAREHOLDER_REGISTER_FILING"],
+    ["TAX_HISTORY", "COMPANY_TAX_FILING"],
+    ["CURRENT_YEAR_ACTIVITY", "LEDGER"],
+    ["DOCUMENTS", "DOCUMENTS"],
+    ["UNSUPPORTED_ACTIVITY_CHECK", "COMPANY_ACCESS"],
+  ];
+  return pairs.map(([kind, issuer], index) => ({
+    kind,
+    issuer,
+    confirmation: kind === "DOCUMENTS" && !documentsReady ? "UNKNOWN" : "CONFIRMED",
+    sourceRecordId: `runtime:${issuer.toLowerCase()}:${index}`,
+    factSha256: index.toString(16).padStart(64, "0"),
+    coverageFrom: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
+      ? "2026-01-01"
+      : null,
+    coverageThrough: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
+      ? "2026-08-27"
+      : null,
+    gapCode: kind === "DOCUMENTS" && !documentsReady ? "DOCUMENTS_INCOMPLETE" : null,
+  }));
+}
+
+function reconstructionCall({
+  actorId = ownerId,
+  idempotencyKey = "61000000-0000-4000-8000-000000000001",
+  documentsReady = true,
+} = {}) {
+  const evidence = reconstructionEvidence({ documentsReady });
+  const state = documentsReady ? "READY" : "BLOCKED";
+  const gaps = documentsReady ? "array[]::text[]" : "array['DOCUMENTS_INCOMPLETE']::text[]";
+  return String.raw`
+begin;
+set local role ledger_executor;
+${actorContext(actorId)}
+select row_to_json(assessment)::text
+from ledger.record_reconstruction_assessment(
+  '${idempotencyKey}'::text,
+  '${companyId}'::uuid,
+  2026::integer,
+  '2026-08-27'::date,
+  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  '${state}'::text,
+  ${gaps},
+  'ledger-reconstruction-runtime'::text,
+  '${actorId}'::text
+) assessment;
+commit;
+`;
+}
+
 function listCall({
   actorId,
   companyIds = [companyId],
@@ -829,6 +890,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
 
     psql(containerName, ["--file", expandPath]);
     psql(containerName, ["--file", coordinatorPath]);
+    psql(containerName, ["--file", reconstructionPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -851,7 +913,10 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       from pg_catalog.pg_class class
       join pg_catalog.pg_namespace namespace on namespace.oid = class.relnamespace
       where (namespace.nspname = 'ledger'
-          and class.relname = any(array['entries', 'period_locks']))
+          and class.relname = any(array[
+            'entries', 'period_locks', 'reconstruction_assessments',
+            'reconstruction_evidence'
+          ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
             'ledger_command_receipts', 'ledger_workflow_receipts'
@@ -859,7 +924,74 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+    );
+
+    const blockedReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({ documentsReady: false }),
+    );
+    assert.equal(blockedReconstruction.state, "BLOCKED");
+    assert.deepEqual(blockedReconstruction.gap_codes, ["DOCUMENTS_INCOMPLETE"]);
+    assert.match(blockedReconstruction.evidence_digest, /^[a-f0-9]{64}$/u);
+    assert.equal(
+      jsonOutput(
+        containerName,
+        reconstructionCall({ documentsReady: false }),
+      ).assessment_id,
+      blockedReconstruction.assessment_id,
+    );
+    const readyReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        documentsReady: true,
+        idempotencyKey: "61000000-0000-4000-8000-000000000002",
+      }),
+    );
+    assert.equal(readyReconstruction.state, "READY");
+    assert.deepEqual(readyReconstruction.gap_codes, []);
+    assert.equal(
+      lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        begin;
+        ${actorContext(ownerId)}
+        select state || ':' || pg_catalog.cardinality(gap_codes)::text
+        from ledger.get_reconstruction_assessment(
+          '${companyId}'::uuid, 2026, '${ownerId}'
+        );
+        commit;
+      `)),
+      "READY:0",
+    );
+    assert.match(
+      psqlFailure(containerName, reconstructionCall({ actorId: reviewerId })),
+      /ledger_forbidden/iu,
+    );
+    assert.match(
+      psqlFailure(containerName, reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000002",
+        documentsReady: false,
+      })),
+      /ledger_idempotency_key_reused/iu,
+    );
+    assert.equal(
+      lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select concat_ws(':',
+          pg_catalog.has_function_privilege(
+            'ledger_executor',
+            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+            'execute'
+          ),
+          pg_catalog.has_function_privilege(
+            'authenticated',
+            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+            'execute'
+          ),
+          pg_catalog.has_table_privilege(
+            'ledger_executor', 'ledger.reconstruction_assessments', 'insert'
+          )
+        );
+      `)),
+      "t:f:f",
     );
 
     for (const actorId of [ownerId, reviewerId, readOnlyId]) {

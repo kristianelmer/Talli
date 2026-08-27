@@ -46,6 +46,8 @@ from talli_backend.modules.ledger.public import (
     PostShareholderLoanCommand,
     PostTaxSettlementCommand,
     PostedLedgerEntry,
+    ReconstructionAssessment,
+    RecordReconstructionAssessmentCommand,
     PostManualJournalCommand,
     PostOpeningBalanceCommand,
     ShareholderLoanDirection,
@@ -750,6 +752,26 @@ class LedgerApplicationSession:
 
     async def lock_period(self, command: LockPeriodCommand) -> PeriodLock:
         return await self._ledger.lock_period(command)
+
+    async def record_reconstruction_assessment(
+        self, command: RecordReconstructionAssessmentCommand
+    ) -> ReconstructionAssessment:
+        return await self._ledger.record_reconstruction_assessment(command)
+
+    async def get_reconstruction_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionAssessment:
+        return await self._ledger.get_reconstruction_assessment(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            correlation_id=correlation_id,
+        )
 
     async def list_entries(
         self,

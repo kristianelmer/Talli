@@ -12,6 +12,7 @@ import {
   type LedgerOpeningSnapshotWire,
   type LedgerOwnerDividendPaymentWire,
   type LedgerPeriodLockWire,
+  type LedgerReconstructionAssessmentWire,
   type LedgerShareholderLoanWire,
   type LedgerSourceCapability,
   type LedgerTaxSettlementWire,
@@ -124,6 +125,19 @@ export async function loadLedgerPeriodLocks(
     limit: PAGE_LIMIT,
     ...request(requestId),
   }));
+}
+
+export function loadLedgerReconstructionAssessment(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+  requestId?: string,
+): Promise<LedgerReconstructionAssessmentWire> {
+  return client(accessToken).ledgerGetReconstructionAssessment({
+    companyId,
+    incomeYear,
+    ...request(requestId),
+  });
 }
 
 function companyChunks(companyIds: readonly string[]): string[][] {

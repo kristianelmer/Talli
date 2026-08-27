@@ -37,6 +37,11 @@ const companyAccessOperations = {
 };
 const ledgerOperations = {
   startNewYear: ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
+  getReconstructionAssessment: [
+    "/api/v1/ledger/reconstruction-assessment",
+    "get",
+    "ledgerGetReconstructionAssessment",
+  ],
   listOpeningSnapshots: ["/api/v1/ledger/opening-snapshots", "get", "ledgerListOpeningSnapshots"],
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
@@ -285,6 +290,8 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerPageWire",
   "LedgerPeriodLockPageWire",
   "LedgerPeriodLockWire",
+  "LedgerReconstructionAssessmentWire",
+  "ReconstructionGapCode",
   "LedgerPostedEntryWire",
   "LedgerRiskFlagWire",
   "LedgerRiskCode",
@@ -293,6 +300,7 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerTaxSettlementWire",
   "LedgerOwnerDividendPaymentWire",
   "LedgerWriterResultWire",
+  "ReconstructionState",
   "TaxSettlementKind",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
@@ -435,6 +443,11 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerReconstructionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -925,6 +938,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async ledgerGetReconstructionAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerReconstructionAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/reconstruction-assessment?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerReconstructionAssessmentWire,
       );
     },
 
