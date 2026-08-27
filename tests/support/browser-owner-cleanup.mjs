@@ -62,8 +62,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
   try {
     await database.query("begin");
     transactionStarted = true;
-    // Bypass only immutable fixture guards; transaction scope restores this on
-    // every commit or rollback, and regular source cleanup runs with triggers.
+    // The disposable local fixture's migration principal borrows the private
+    // owners below so forced-RLS rows and immutable/archive triggers can be
+    // removed in one FK-safe unit. Transaction scope restores every change.
     await database.query("set local session_replication_role = replica");
     await database.query(
       "delete from public.company_year_acceptances where company_id = $1",
@@ -91,20 +92,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         );
       end
       $browser_owner_cleanup_authority$`);
-    await database.query("set local role ledger_store_owner");
-    await database.query(
-      "delete from backend_system.ledger_command_receipts where company_id = $1",
-      [companyId],
-    );
-    await database.query("reset role");
-    await database.query("set local role ledger_workflow_store_owner");
-    await database.query(
-      "delete from backend_system.ledger_workflow_receipts where company_id = $1",
-      [companyId],
-    );
-    await database.query("reset role");
-    await database.query("set local role ledger_store_owner");
-    for (const table of [
+    const ledgerTables = [
       "opening_received_dividend_settlements",
       "opening_position_component_sources",
       "opening_position_components",
@@ -112,11 +100,45 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "entry_sources",
       "entry_contexts",
       "entries",
-    ]) {
+    ];
+    await database.query("set local role ledger_store_owner");
+    await database.query(
+      "alter table backend_system.ledger_command_receipts no force row level security",
+    );
+    for (const table of ledgerTables) {
+      await database.query(
+        `alter table ledger.${table} no force row level security`,
+      );
+    }
+    await database.query(
+      "delete from backend_system.ledger_command_receipts where company_id = $1",
+      [companyId],
+    );
+    for (const table of ledgerTables) {
       await database.query(`delete from ledger.${table} where company_id = $1`, [
         companyId,
       ]);
     }
+    await database.query(
+      "alter table backend_system.ledger_command_receipts force row level security",
+    );
+    for (const table of ledgerTables) {
+      await database.query(
+        `alter table ledger.${table} force row level security`,
+      );
+    }
+    await database.query("reset role");
+    await database.query("set local role ledger_workflow_store_owner");
+    await database.query(
+      "alter table backend_system.ledger_workflow_receipts no force row level security",
+    );
+    await database.query(
+      "delete from backend_system.ledger_workflow_receipts where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "alter table backend_system.ledger_workflow_receipts force row level security",
+    );
     await database.query("reset role");
     await database.query(`do $browser_owner_cleanup_authority$
       begin
@@ -139,7 +161,14 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         companyId,
       ]);
     }
-    await database.query("set local session_replication_role = origin");
+    await database.query(
+      `delete from public.production_filing_events
+       where submission_id in (
+         select id from public.production_filing_submissions
+         where company_id = $1
+       )`,
+      [companyId],
+    );
     for (const table of [
       "production_feedback_artifacts",
       "production_filing_submissions",
@@ -169,6 +198,12 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         companyId,
       ]);
     }
+    await database.query("set local session_replication_role = origin");
+    await database.query("alter table public.companies disable trigger user");
+    await database.query("delete from public.companies where id = $1", [
+      companyId,
+    ]);
+    await database.query("alter table public.companies enable trigger user");
     await database.query("commit");
   } catch (error) {
     operationError = error;

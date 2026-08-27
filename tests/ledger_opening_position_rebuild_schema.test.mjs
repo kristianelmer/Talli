@@ -163,6 +163,14 @@ test("contract requires the receiver and rollback revokes it without deleting fa
 test("an already-applied predecessor schema receives the uncapped source upgrade", () => {
   assert.match(
     acceptanceMigration,
+    /grant create on schema ledger to %I/iu,
+  );
+  assert.match(
+    acceptanceMigration,
+    /revoke create on schema ledger from %I/iu,
+  );
+  assert.match(
+    acceptanceMigration,
     /drop constraint if exists entry_sources_ordinal_check/iu,
   );
   assert.match(

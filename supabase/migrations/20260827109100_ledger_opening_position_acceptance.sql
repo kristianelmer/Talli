@@ -10,6 +10,7 @@ begin;
 do $ledger_opening_acceptance_authority$
 begin
   execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
 end
 $ledger_opening_acceptance_authority$;
 
@@ -209,6 +210,7 @@ alter function ledger.post_supported_entry_storage_v1(
 
 do $ledger_opening_acceptance_authority_revoke$
 begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
   execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
 end
 $ledger_opening_acceptance_authority_revoke$;

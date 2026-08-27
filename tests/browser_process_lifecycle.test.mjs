@@ -225,6 +225,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "corporate_document_artifacts",
     "corporate_document_sets",
     "corporate_decisions",
+    "production_filing_events",
     "production_feedback_artifacts",
     "production_filing_submissions",
     "filing_approval_snapshots",
@@ -248,6 +249,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "company_archive_export_receipts",
     "company_archive_export_attempts",
     "company_archive_source_generations",
+    "companies",
   ]);
   assert.ok(calls.includes(
     "delete from backend_system.ledger_command_receipts where company_id = $1",
@@ -261,6 +263,25 @@ test("browser owner cleanup removes tracked sources before company and user", as
   assert.ok(calls.includes(
     "delete from ledger.opening_received_dividend_settlements where company_id = $1",
   ));
+  assert.ok(calls.includes("delete from public.companies where id = $1"));
+  assert.ok(calls.includes("set local role ledger_store_owner"));
+  assert.ok(calls.includes("set local role ledger_workflow_store_owner"));
+  for (const table of [
+    "backend_system.ledger_command_receipts",
+    "backend_system.ledger_workflow_receipts",
+    "ledger.entries",
+  ]) {
+    const disable = calls.indexOf(
+      `alter table ${table} no force row level security`,
+    );
+    const remove = calls.indexOf(
+      `delete from ${table} where company_id = $1`,
+    );
+    const restore = calls.indexOf(
+      `alter table ${table} force row level security`,
+    );
+    assert.ok(disable < remove && remove < restore);
+  }
   assert.ok(
     calls.indexOf("delete from ledger.entry_sources where company_id = $1")
       < calls.indexOf("delete from ledger.entries where company_id = $1"),
@@ -275,8 +296,24 @@ test("browser owner cleanup removes tracked sources before company and user", as
       < restoreTriggerMode,
   );
   assert.ok(
+    calls.indexOf("delete from public.production_feedback_artifacts where company_id = $1")
+      < restoreTriggerMode,
+  );
+  assert.ok(
+    calls.indexOf("delete from public.company_archive_source_generations where company_id = $1")
+      < calls.indexOf("delete from public.companies where id = $1"),
+  );
+  assert.ok(
     restoreTriggerMode
-      < calls.indexOf("delete from public.production_feedback_artifacts where company_id = $1"),
+      < calls.indexOf("alter table public.companies disable trigger user"),
+  );
+  assert.ok(
+    calls.indexOf("alter table public.companies disable trigger user")
+      < calls.indexOf("delete from public.companies where id = $1"),
+  );
+  assert.ok(
+    calls.indexOf("delete from public.companies where id = $1")
+      < calls.indexOf("alter table public.companies enable trigger user"),
   );
   assert.ok(calls.indexOf("commit") < calls.indexOf("delete_company:company-created"));
   assert.deepEqual(calls.slice(-3), [
