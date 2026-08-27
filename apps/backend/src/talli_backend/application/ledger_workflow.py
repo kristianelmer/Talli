@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -32,28 +34,40 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryKind,
     LedgerEntryPage,
     LedgerError,
+    LedgerFactReference,
     LedgerPersistence,
     LedgerQueries,
+    LedgerSourceCapability,
     LedgerSourceRecordId,
+    LockPeriodCommand,
+    OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    OpeningBankLoanComponent,
+    OpeningCapitalIncreaseComponent,
+    OpeningCapitalReductionComponent,
+    OpeningDividendPayableComponent,
+    OpeningDividendReceivableComponent,
+    OpeningInvestmentComponent,
+    OpeningPositionComponent,
+    OpeningPositionMode,
     PeriodLock,
     PeriodLockPage,
     PostAdministrativeCostCommand,
     PostBankSuggestionOutcomeCommand,
+    PostedLedgerEntry,
     PostInvestmentDividendCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
+    PostManualJournalCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
     PostTaxSettlementCommand,
-    PostedLedgerEntry,
+    RebuildCompanyYearOpeningCommand,
     ReconstructionAssessment,
     RecordReconstructionAssessmentCommand,
-    PostManualJournalCommand,
-    PostOpeningBalanceCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
-    LockPeriodCommand,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -230,8 +244,23 @@ class NewYearStartCommand:
     share_count: int
     nominal_value: Money
     shareholders: tuple[OpeningShareholder, ...]
+    opening_mode: OpeningPositionMode = OpeningPositionMode.NEW_COMPANY
+    opening_basis: LedgerFactReference | None = None
+    opening_components: tuple[OpeningPositionComponent, ...] = ()
 
     def __post_init__(self) -> None:
+        if (
+            self.bank_balance.currency != "NOK"
+            or self.share_capital.currency != "NOK"
+            or self.bank_balance.amount < 0
+            or self.share_capital.amount < 0
+        ):
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        if self.opening_mode is OpeningPositionMode.NEW_COMPANY:
+            if self.opening_basis is not None or self.opening_components:
+                raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        elif self.opening_basis is None or not self.opening_components:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
         try:
             _opening_snapshot_command(self)
         except ShareholderRegisterFilingError:
@@ -261,7 +290,7 @@ def _opening_snapshot_command(
 
 
 def _new_year_request(command: NewYearStartCommand) -> dict[str, object]:
-    return {
+    request: dict[str, object] = {
         "companyId": str(command.company_id),
         "incomeYear": int(command.income_year),
         "bankBalance": format(command.bank_balance.amount, "f"),
@@ -279,6 +308,162 @@ def _new_year_request(command: NewYearStartCommand) -> dict[str, object]:
             for shareholder in command.shareholders
         ],
     }
+    if command.opening_mode is OpeningPositionMode.PRIOR_CLOSE_RECONSTRUCTION:
+        opening_basis = command.opening_basis
+        if opening_basis is None:  # narrowed by NewYearStartCommand
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        request.update({
+            "openingMode": command.opening_mode.value,
+            "openingBasis": _fact_reference_request(opening_basis),
+            "openingComponents": [
+                _opening_component_request(component)
+                for component in command.opening_components
+            ],
+        })
+    return request
+
+
+def _fact_reference_request(source: LedgerFactReference) -> dict[str, object]:
+    return {
+        "capability": source.capability.value,
+        "recordId": str(source.record_id),
+        "revision": source.revision,
+        "factSha256": source.fact_sha256,
+    }
+
+
+def _opening_component_request(component: OpeningPositionComponent) -> dict[str, object]:
+    common: dict[str, object] = {
+        "primarySource": _fact_reference_request(component.primary_source),
+        "corroboratingSources": [
+            _fact_reference_request(source)
+            for source in component.corroborating_sources
+        ],
+    }
+    if isinstance(component, OpeningBalanceComponent):
+        return common | {
+            "componentKind": "CLASSIFIED_BALANCE",
+            "category": component.category.value,
+            "referenceId": str(component.reference_id),
+            "amount": format(component.amount.amount, "f"),
+        }
+    if isinstance(component, OpeningBankLoanComponent):
+        return common | {
+            "componentKind": "BANK_LOAN",
+            "loanReferenceId": str(component.loan_reference_id),
+            "maturity": component.maturity.value,
+            "amount": format(component.amount.amount, "f"),
+        }
+    if isinstance(component, OpeningInvestmentComponent):
+        return common | {
+            "componentKind": "INVESTMENT",
+            "investmentReferenceId": str(component.investment_reference_id),
+            "classification": component.classification.value,
+            "amount": format(component.amount.amount, "f"),
+        }
+    if isinstance(component, OpeningCapitalIncreaseComponent):
+        return common | {
+            "componentKind": "CAPITAL_INCREASE",
+            "capitalIncreaseReferenceId": str(component.capital_increase_reference_id),
+            "phase": component.phase.value,
+            "nominalIncrease": format(component.nominal_increase.amount, "f"),
+            "sharePremium": format(component.share_premium.amount, "f"),
+        }
+    if isinstance(component, OpeningCapitalReductionComponent):
+        return common | {
+            "componentKind": "CAPITAL_REDUCTION",
+            "capitalReductionReferenceId": str(component.capital_reduction_reference_id),
+            "recognition": component.recognition.value,
+            "nominalReduction": format(component.nominal_reduction.amount, "f"),
+        }
+    if isinstance(component, OpeningDividendReceivableComponent):
+        component_kind = "DIVIDEND_RECEIVABLE"
+    elif isinstance(component, OpeningDividendPayableComponent):
+        component_kind = "DIVIDEND_PAYABLE"
+    else:
+        raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+    return common | {
+        "componentKind": component_kind,
+        "decisionReferenceId": str(component.decision_reference_id),
+        "amount": format(component.amount.amount, "f"),
+    }
+
+
+def _canonical_sha256(value: object) -> str:
+    payload = json.dumps(
+        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _new_company_opening_command(
+    command: NewYearStartCommand,
+    setup_id: OpeningSnapshotId,
+) -> RebuildCompanyYearOpeningCommand:
+    request = _new_year_request(command)
+    snapshot_record_id = LedgerSourceRecordId(f"opening-setup:{setup_id}")
+    ledger_record_id = LedgerSourceRecordId(
+        f"new-year-start:{command.idempotency_key}"
+    )
+    snapshot_source = LedgerFactReference(
+        capability=LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+        record_id=snapshot_record_id,
+        revision=1,
+        fact_sha256=_canonical_sha256({"setupId": str(setup_id), **request}),
+    )
+    ledger_source = LedgerFactReference(
+        capability=LedgerSourceCapability.LEDGER,
+        record_id=ledger_record_id,
+        revision=1,
+        fact_sha256=_canonical_sha256({
+            "operation": "new_year_start",
+            "idempotencyKey": str(command.idempotency_key),
+            "request": request,
+        }),
+    )
+    components: list[OpeningPositionComponent] = []
+    if command.bank_balance.amount > 0:
+        components.append(OpeningBalanceComponent(
+            category=OpeningBalanceCategory.BANK,
+            reference_id=LedgerSourceRecordId(f"{snapshot_record_id}:bank"),
+            amount=command.bank_balance,
+            primary_source=ledger_source,
+            corroborating_sources=(snapshot_source,),
+        ))
+    if command.share_capital.amount > 0:
+        components.append(OpeningBalanceComponent(
+            category=OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL,
+            reference_id=LedgerSourceRecordId(f"{snapshot_record_id}:share-capital"),
+            amount=command.share_capital,
+            primary_source=snapshot_source,
+            corroborating_sources=(ledger_source,),
+        ))
+    retained = command.bank_balance.amount - command.share_capital.amount
+    if retained != 0:
+        components.append(OpeningBalanceComponent(
+            category=(
+                OpeningBalanceCategory.RETAINED_EARNINGS
+                if retained > 0
+                else OpeningBalanceCategory.UNCOVERED_LOSS
+            ),
+            reference_id=LedgerSourceRecordId(f"{snapshot_record_id}:balancing-equity"),
+            amount=Money.nok(abs(retained)),
+            primary_source=ledger_source,
+            corroborating_sources=(snapshot_source,),
+        ))
+    if not components:
+        raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+    return RebuildCompanyYearOpeningCommand(
+        company_id=command.company_id,
+        actor_id=command.actor_id,
+        correlation_id=command.correlation_id,
+        idempotency_key=command.idempotency_key,
+        income_year=command.income_year,
+        opening_date=LocalDate(date(int(command.income_year), 1, 1)),
+        mode=OpeningPositionMode.NEW_COMPANY,
+        opening_basis=snapshot_source,
+        components=tuple(components),
+    )
 
 
 def _new_year_result_payload(result: NewYearStartResult) -> dict[str, object]:
@@ -346,11 +531,6 @@ class LedgerApplicationSession:
     def actor_id(self) -> ActorId:
         return self._persistence.actor_id
 
-    async def post_opening_balance(
-        self, command: PostOpeningBalanceCommand
-    ) -> PostedLedgerEntry:
-        return await self._ledger.post_opening_balance(command)
-
     async def start_new_year(
         self, command: NewYearStartCommand
     ) -> NewYearStartResult:
@@ -372,11 +552,12 @@ class LedgerApplicationSession:
         self, command: NewYearStartCommand
     ) -> NewYearStartResult:
         operation_name = "new_year_start"
+        request = _new_year_request(command)
         async with self._persistence.transaction() as transaction:
             replay = await transaction.claim_workflow(
                 operation_name=operation_name,
                 command=command,
-                request=_new_year_request(command),
+                request=request,
             )
             if replay is not None:
                 return _replayed_new_year(replay, command)
@@ -386,19 +567,25 @@ class LedgerApplicationSession:
                 command.bank_balance,
             ).record_opening_snapshot(_opening_snapshot_command(command))
             ledger = self._facade_factory(transaction)
-            posted_entry = await ledger.post_opening_balance(
-                PostOpeningBalanceCommand(
+            if command.opening_mode is OpeningPositionMode.NEW_COMPANY:
+                opening_command = _new_company_opening_command(command, setup_id)
+            else:
+                opening_basis = command.opening_basis
+                if opening_basis is None:  # narrowed by NewYearStartCommand
+                    raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+                opening_command = RebuildCompanyYearOpeningCommand(
                     company_id=command.company_id,
                     actor_id=command.actor_id,
                     correlation_id=command.correlation_id,
                     idempotency_key=command.idempotency_key,
                     income_year=command.income_year,
-                    bank_balance=command.bank_balance,
-                    share_capital_snapshot=command.share_capital,
-                    opening_snapshot_id=LedgerSourceRecordId(
-                        f"opening-setup:{setup_id}"
-                    ),
+                    opening_date=LocalDate(date(int(command.income_year), 1, 1)),
+                    mode=command.opening_mode,
+                    opening_basis=opening_basis,
+                    components=command.opening_components,
                 )
+            posted_entry = await ledger.rebuild_company_year_opening(
+                opening_command
             )
             result = NewYearStartResult(
                 setup_id=setup_id,
@@ -407,6 +594,7 @@ class LedgerApplicationSession:
             await transaction.complete_workflow(
                 operation_name=operation_name,
                 command=command,
+                request=request,
                 result=_new_year_result_payload(result),
             )
             return result

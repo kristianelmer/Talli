@@ -38,7 +38,8 @@ begin
     'backend_system.prepare_owner_dividend_payment_v1(jsonb,text)',
     'backend_system.complete_owner_dividend_payment_v1(jsonb,uuid,jsonb,text)',
     'ledger.post_entry_with_id_v1(text,uuid,integer,text,text,jsonb,jsonb,boolean,text,text,text,text,uuid)',
-    'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,jsonb,text,text,text,text,jsonb,jsonb)'
+    'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,text,jsonb,text,text,text,text,jsonb,jsonb)',
+    'ledger.record_received_dividend_payment_by_reference_v1(text,uuid,integer,text,text,jsonb,text,text,text,text,date,text,jsonb)'
   ] loop
     if pg_catalog.to_regprocedure(v_signature) is null then
       raise exception 'ledger_contract_writer_coordinator_missing:%', v_signature;

@@ -9,15 +9,15 @@ from decimal import Decimal
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     AdministrativeCostCorrectionScope,
-    ApprovedOneSidedIntercompanyLoanFundingFacts,
     ApprovedLossCoverageCapitalReductionFacts,
+    ApprovedOneSidedIntercompanyLoanFundingFacts,
     ApprovedOwnerLoanFundingFacts,
     BankInterestIncomeFacts,
     BankLoanEvent,
     BankSuggestionRule,
-    CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalReductionRecognition,
+    CashCapitalIncreaseFacts,
     CloseCompanyYearCommand,
     CompanyTaxAccrualFacts,
     CompanyYearCloseAssessment,
@@ -26,8 +26,9 @@ from talli_backend.modules.ledger.public import (
     CompanyYearCloseGapCode,
     CompanyYearCloseOutputKind,
     CompanyYearCloseState,
-    CorrectHoldingActionCommand,
+    CompiledOpeningPositionComponent,
     CorrectedLedgerEntries,
+    CorrectHoldingActionCommand,
     GroupContributionFacts,
     GroupContributionPerspective,
     GroupContributionRelationship,
@@ -37,6 +38,7 @@ from talli_backend.modules.ledger.public import (
     InvestmentDividendPhase,
     LedgerCursor,
     LedgerEntryKind,
+    LedgerEntryPage,
     LedgerError,
     LedgerLine,
     LedgerPersistence,
@@ -44,39 +46,49 @@ from talli_backend.modules.ledger.public import (
     LedgerRiskFlag,
     LedgerSourceCapability,
     LedgerSourceRecordId,
-    LedgerEntryPage,
     LockPeriodCommand,
     OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    OpeningBankLoanComponent,
+    OpeningCapitalIncreaseComponent,
+    OpeningCapitalReductionComponent,
+    OpeningDividendPayableComponent,
+    OpeningDividendReceivableComponent,
+    OpeningInvestmentComponent,
+    OpeningPositionMode,
     OrdinaryBankLoanFacts,
     PeriodLock,
     PeriodLockPage,
     PostAdministrativeCostCommand,
     PostBankSuggestionOutcomeCommand,
+    PostedLedgerEntry,
     PostInvestmentDividendCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
+    PostManualJournalCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
     PostTaxSettlementCommand,
+    RebuildCompanyYearOpeningCommand,
+    RecognizeHoldingActionCommand,
     ReconstructionAssessment,
-    ReconstructionEvidence,
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
     ReconstructionGapCode,
     ReconstructionState,
-    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
-    RebuildCompanyYearOpeningCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
-    PostedLedgerEntry,
-    PostManualJournalCommand,
-    PostOpeningBalanceCommand,
 )
-from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, Money
-
+from talli_backend.shared.kernel import (
+    ActorId,
+    CompanyId,
+    CorrelationId,
+    IncomeYear,
+    Money,
+)
 
 _ZERO = Money.nok("0.00")
 _SENSITIVE_MANUAL_ACCOUNTS = frozenset(
@@ -115,9 +127,25 @@ _OPENING_BALANCE_RULES = {
         "1921", "Restricted bank balance", True, LedgerSourceCapability.BANKING,
         LedgerSourceCapability.DOCUMENTS,
     ),
-    OpeningBalanceCategory.INVESTMENT: (
-        "1800", "Investment position", True, LedgerSourceCapability.INVESTMENTS,
-        LedgerSourceCapability.DOCUMENTS,
+    OpeningBalanceCategory.SUBSIDIARY_INVESTMENT: (
+        "1300", "Investment in subsidiary", True, LedgerSourceCapability.INVESTMENTS,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.ASSOCIATE_INVESTMENT: (
+        "1310", "Investment in associate", True, LedgerSourceCapability.INVESTMENTS,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.OTHER_LONG_TERM_INVESTMENT: (
+        "1350", "Other long-term investment", True, LedgerSourceCapability.INVESTMENTS,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.CURRENT_LISTED_SHARE_INVESTMENT: (
+        "1810", "Current listed-share investment", True, LedgerSourceCapability.INVESTMENTS,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.CURRENT_FUND_INVESTMENT: (
+        "1815", "Current fund investment", True, LedgerSourceCapability.INVESTMENTS,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
     ),
     OpeningBalanceCategory.SUBSCRIPTION_RECEIVABLE: (
         "1500", "Subscription receivable", True,
@@ -137,6 +165,16 @@ _OPENING_BALANCE_RULES = {
         "1570", "Tax receivable", True,
         LedgerSourceCapability.COMPANY_TAX_FILING,
         LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.ACCRUED_INTEREST_RECEIVABLE: (
+        "1700", "Accrued interest receivable", True,
+        LedgerSourceCapability.BANKING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.DEFERRED_TAX_ASSET: (
+        "1070", "Deferred tax asset", True,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
     ),
     OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL: (
         "2000", "Registered share capital", False,
@@ -165,22 +203,26 @@ _OPENING_BALANCE_RULES = {
     ),
     OpeningBalanceCategory.RETAINED_EARNINGS: (
         "2050", "Retained earnings", False,
-        LedgerSourceCapability.COMPANY_TAX_FILING,
+        LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING,
         LedgerSourceCapability.DOCUMENTS,
     ),
     OpeningBalanceCategory.UNCOVERED_LOSS: (
-        "2050", "Uncovered loss", True,
-        LedgerSourceCapability.COMPANY_TAX_FILING,
+        "2080", "Uncovered loss", True,
+        LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING,
         LedgerSourceCapability.DOCUMENTS,
     ),
     OpeningBalanceCategory.OTHER_EQUITY: (
-        "2080", "Other equity", False,
-        LedgerSourceCapability.COMPANY_TAX_FILING,
+        "2050", "Other equity", False,
+        LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING,
         LedgerSourceCapability.DOCUMENTS,
     ),
-    OpeningBalanceCategory.BANK_LOAN_PAYABLE: (
-        "2220", "Bank loan payable", False, LedgerSourceCapability.BANKING,
-        LedgerSourceCapability.DOCUMENTS,
+    OpeningBalanceCategory.LONG_TERM_BANK_LOAN_PAYABLE: (
+        "2220", "Long-term bank loan payable", False, LedgerSourceCapability.BANKING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.SHORT_TERM_BANK_LOAN_PAYABLE: (
+        "2380", "Short-term bank debt", False, LedgerSourceCapability.BANKING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
     ),
     OpeningBalanceCategory.OWNER_LOAN_PAYABLE: (
         "2255", "Owner loan payable", False,
@@ -194,12 +236,22 @@ _OPENING_BALANCE_RULES = {
     ),
     OpeningBalanceCategory.SUPPLIER_PAYABLE: (
         "2400", "Supplier payable", False, LedgerSourceCapability.DOCUMENTS,
-        LedgerSourceCapability.LEDGER,
+        LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING,
     ),
     OpeningBalanceCategory.CURRENT_TAX_PAYABLE: (
         "2500", "Current tax payable", False,
         LedgerSourceCapability.COMPANY_TAX_FILING,
         LedgerSourceCapability.DOCUMENTS,
+    ),
+    OpeningBalanceCategory.DEFERRED_TAX_LIABILITY: (
+        "2120", "Deferred tax liability", False,
+        LedgerSourceCapability.COMPANY_TAX_FILING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
+    ),
+    OpeningBalanceCategory.ACCRUED_INTEREST_PAYABLE: (
+        "2965", "Accrued interest payable", False,
+        LedgerSourceCapability.BANKING,
+        frozenset({LedgerSourceCapability.DOCUMENTS}),
     ),
     OpeningBalanceCategory.DIVIDEND_PAYABLE: (
         "2800", "Dividend payable", False,
@@ -212,6 +264,257 @@ _OPENING_BALANCE_RULES = {
         LedgerSourceCapability.DOCUMENTS,
     ),
 }
+
+
+def _opening_sources_are_valid(
+    *,
+    primary_source: object,
+    corroborating_sources: tuple[object, ...],
+    expected_primary: LedgerSourceCapability,
+    expected_corroborating: frozenset[LedgerSourceCapability],
+) -> bool:
+    return (
+        getattr(primary_source, "capability", None) is expected_primary
+        and frozenset(
+            getattr(source, "capability", None) for source in corroborating_sources
+        )
+        == expected_corroborating
+        and len(corroborating_sources) == len(expected_corroborating)
+    )
+
+
+def _opening_rule_component(
+    component: object,
+    *,
+    mode: OpeningPositionMode,
+    component_kind: str,
+    category: OpeningBalanceCategory,
+    reference_id: str,
+    lifecycle_phase: str | None = None,
+) -> CompiledOpeningPositionComponent:
+    account, description, is_debit, primary, corroborating = (
+        _OPENING_BALANCE_RULES[category]
+    )
+    if mode is OpeningPositionMode.NEW_COMPANY:
+        new_company_sources = {
+            OpeningBalanceCategory.BANK: (
+                LedgerSourceCapability.LEDGER,
+                frozenset({LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING}),
+            ),
+            OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL: (
+                LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+                frozenset({LedgerSourceCapability.LEDGER}),
+            ),
+            OpeningBalanceCategory.RETAINED_EARNINGS: (
+                LedgerSourceCapability.LEDGER,
+                frozenset({LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING}),
+            ),
+            OpeningBalanceCategory.UNCOVERED_LOSS: (
+                LedgerSourceCapability.LEDGER,
+                frozenset({LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING}),
+            ),
+        }
+        try:
+            primary, expected_corroborating = new_company_sources[category]
+        except KeyError:
+            raise LedgerError.invalid_input(
+                "LEDGER_OPENING_BALANCE_INVALID"
+            ) from None
+    else:
+        expected_corroborating = (
+            corroborating
+            if isinstance(corroborating, frozenset)
+            else frozenset({corroborating})
+        )
+    primary_source = component.primary_source
+    corroborating_sources = component.corroborating_sources
+    if not _opening_sources_are_valid(
+        primary_source=primary_source,
+        corroborating_sources=corroborating_sources,
+        expected_primary=primary,
+        expected_corroborating=expected_corroborating,
+    ):
+        raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
+    return CompiledOpeningPositionComponent(
+        component_kind=component_kind,
+        category=category,
+        reference_id=reference_id,
+        lifecycle_phase=lifecycle_phase,
+        amount=component.amount,
+        nominal_increase=None,
+        share_premium=None,
+        nominal_reduction=None,
+        account=account,
+        description=description,
+        is_debit=is_debit,
+        primary_source=primary_source,
+        corroborating_sources=corroborating_sources,
+    )
+
+
+def _opening_expansion(
+    component: object,
+    *,
+    mode: OpeningPositionMode,
+) -> tuple[CompiledOpeningPositionComponent, ...]:
+    if isinstance(component, OpeningBalanceComponent):
+        return (
+            _opening_rule_component(
+                component,
+                mode=mode,
+                component_kind="CLASSIFIED_BALANCE",
+                category=component.category,
+                reference_id=str(component.reference_id),
+            ),
+        )
+    if isinstance(component, OpeningBankLoanComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        return (
+            _opening_rule_component(
+                component,
+                mode=mode,
+                component_kind="BANK_LOAN",
+                category=component.category,
+                reference_id=str(component.loan_reference_id),
+                lifecycle_phase=component.maturity.value,
+            ),
+        )
+    if isinstance(component, OpeningInvestmentComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        return (
+            _opening_rule_component(
+                component,
+                mode=mode,
+                component_kind="INVESTMENT",
+                category=component.category,
+                reference_id=str(component.investment_reference_id),
+                lifecycle_phase=component.classification.value,
+            ),
+        )
+    if isinstance(component, OpeningDividendReceivableComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        return (
+            _opening_rule_component(
+                component,
+                mode=mode,
+                component_kind="DIVIDEND_RECEIVABLE",
+                category=component.category,
+                reference_id=str(component.decision_reference_id),
+                lifecycle_phase="FINAL_DECISION_UNSETTLED",
+            ),
+        )
+    if isinstance(component, OpeningDividendPayableComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        return (
+            _opening_rule_component(
+                component,
+                mode=mode,
+                component_kind="DIVIDEND_PAYABLE",
+                category=component.category,
+                reference_id=str(component.decision_reference_id),
+                lifecycle_phase="DECLARED_UNPAID",
+            ),
+        )
+    if isinstance(component, OpeningCapitalIncreaseComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        expected_corroborating = (
+            frozenset({LedgerSourceCapability.DOCUMENTS})
+            if component.phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION
+            else frozenset(
+                {LedgerSourceCapability.BANKING, LedgerSourceCapability.DOCUMENTS}
+            )
+        )
+        if not _opening_sources_are_valid(
+            primary_source=component.primary_source,
+            corroborating_sources=component.corroborating_sources,
+            expected_primary=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            expected_corroborating=expected_corroborating,
+        ):
+            raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
+        amount = Money.nok(
+            component.nominal_increase.amount + component.share_premium.amount
+        )
+        debit_category = (
+            OpeningBalanceCategory.SUBSCRIPTION_RECEIVABLE
+            if component.phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION
+            else OpeningBalanceCategory.RESTRICTED_BANK
+        )
+        debit_account, debit_description, _, _, _ = _OPENING_BALANCE_RULES[
+            debit_category
+        ]
+        credit_account, credit_description, _, _, _ = _OPENING_BALANCE_RULES[
+            OpeningBalanceCategory.UNREGISTERED_CAPITAL_INCREASE
+        ]
+        common = {
+            "component_kind": "CAPITAL_INCREASE",
+            "reference_id": str(component.capital_increase_reference_id),
+            "lifecycle_phase": component.phase.value,
+            "amount": amount,
+            "nominal_increase": component.nominal_increase,
+            "share_premium": component.share_premium,
+            "nominal_reduction": None,
+            "primary_source": component.primary_source,
+            "corroborating_sources": component.corroborating_sources,
+        }
+        return (
+            CompiledOpeningPositionComponent(
+                category=debit_category,
+                account=debit_account,
+                description=debit_description,
+                is_debit=True,
+                **common,
+            ),
+            CompiledOpeningPositionComponent(
+                category=OpeningBalanceCategory.UNREGISTERED_CAPITAL_INCREASE,
+                account=credit_account,
+                description=credit_description,
+                is_debit=False,
+                **common,
+            ),
+        )
+    if isinstance(component, OpeningCapitalReductionComponent):
+        if mode is OpeningPositionMode.NEW_COMPANY:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        if not _opening_sources_are_valid(
+            primary_source=component.primary_source,
+            corroborating_sources=component.corroborating_sources,
+            expected_primary=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+            expected_corroborating=frozenset({LedgerSourceCapability.DOCUMENTS}),
+        ):
+            raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
+        common = {
+            "component_kind": "CAPITAL_REDUCTION",
+            "reference_id": str(component.capital_reduction_reference_id),
+            "lifecycle_phase": component.recognition.value,
+            "amount": component.nominal_reduction,
+            "nominal_increase": None,
+            "share_premium": None,
+            "nominal_reduction": component.nominal_reduction,
+            "primary_source": component.primary_source,
+            "corroborating_sources": component.corroborating_sources,
+        }
+        return (
+            CompiledOpeningPositionComponent(
+                category=OpeningBalanceCategory.UNREGISTERED_CAPITAL_REDUCTION,
+                account="2033",
+                description="Unregistered capital reduction",
+                is_debit=True,
+                **common,
+            ),
+            CompiledOpeningPositionComponent(
+                category=OpeningBalanceCategory.UNCOVERED_LOSS,
+                account="2080",
+                description="Loss covered by unregistered capital reduction",
+                is_debit=False,
+                **common,
+            ),
+        )
+    raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
 
 
 def _owner_loan_funding_lines(
@@ -591,7 +894,10 @@ class LedgerService:
             entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
             primary_source_capability = LedgerSourceCapability.INVESTMENTS
             if facts.phase is InvestmentDividendPhase.FINAL_DECISION:
-                if facts.decision_entry_id is not None:
+                if (
+                    facts.decision_entry_id is not None
+                    or facts.decision_reference_id is not None
+                ):
                     raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
                 required_sources = frozenset(
                     {
@@ -610,7 +916,9 @@ class LedgerService:
                     ),
                 )
             elif facts.phase is InvestmentDividendPhase.PAYMENT:
-                if facts.decision_entry_id is None:
+                if (facts.decision_entry_id is None) == (
+                    facts.decision_reference_id is None
+                ):
                     raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
                 required_sources = frozenset(
                     {
@@ -990,12 +1298,14 @@ class LedgerService:
                     memo=memo,
                     lines=lines,
                 )
-            decision_entry_id = facts.decision_entry_id
-            if decision_entry_id is None:  # narrowed above; keep the port call typed.
+            decision_reference = (
+                facts.decision_entry_id or facts.decision_reference_id
+            )
+            if decision_reference is None:  # narrowed above
                 raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
             return await self._persistence.record_received_dividend_payment(
                 command,
-                decision_entry_id=decision_entry_id,
+                decision_reference=decision_reference,
                 memo=memo,
                 lines=lines,
             )
@@ -1172,106 +1482,102 @@ class LedgerService:
     async def rebuild_company_year_opening(
         self, command: RebuildCompanyYearOpeningCommand
     ) -> PostedLedgerEntry:
-        if command.prior_closing_source.capability is not LedgerSourceCapability.LEDGER:
+        expected_basis = (
+            LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING
+            if command.mode is OpeningPositionMode.PRIOR_CLOSE_RECONSTRUCTION
+            else LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
+        )
+        if command.opening_basis.capability is not expected_basis:
             raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
+        expanded = tuple(
+            compiled
+            for component in command.components
+            for compiled in _opening_expansion(component, mode=command.mode)
+        )
+        if command.mode is OpeningPositionMode.NEW_COMPANY:
+            opening_basis_identity = (
+                command.opening_basis.capability,
+                command.opening_basis.record_id,
+                command.opening_basis.revision,
+                command.opening_basis.fact_sha256,
+            )
+            ledger_sources = set()
+            for component in expanded:
+                sources = (
+                    component.primary_source,
+                    *component.corroborating_sources,
+                )
+                source_identities = {
+                    (
+                        source.capability,
+                        source.record_id,
+                        source.revision,
+                        source.fact_sha256,
+                    )
+                    for source in sources
+                }
+                if opening_basis_identity not in source_identities:
+                    raise LedgerError.precondition_failed(
+                        "LEDGER_OPENING_EVIDENCE_INVALID"
+                    )
+                ledger_sources.update(
+                    identity
+                    for identity in source_identities
+                    if identity[0] is LedgerSourceCapability.LEDGER
+                )
+            if len(ledger_sources) != 1:
+                raise LedgerError.precondition_failed(
+                    "LEDGER_OPENING_EVIDENCE_INVALID"
+                )
         components = tuple(
             sorted(
-                command.components,
+                expanded,
                 key=lambda component: (
                     component.category.value,
-                    str(component.reference_id),
+                    component.reference_id,
+                    component.component_kind,
                 ),
             )
         )
         identities = {
-            (component.category, str(component.reference_id))
-            for component in components
+            (component.category, component.reference_id) for component in components
         }
         if len(identities) != len(components):
             raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        lines: list[LedgerLine] = []
+        entry_sources = [command.opening_basis]
         seen_sources = {
             (
-                command.prior_closing_source.capability,
-                command.prior_closing_source.record_id,
-                command.prior_closing_source.revision,
+                command.opening_basis.capability,
+                command.opening_basis.record_id,
+                command.opening_basis.revision,
             )
         }
-        lines: list[LedgerLine] = []
-        entry_sources = [command.prior_closing_source]
         for component in components:
-            account, description, is_debit, primary, corroborating = (
-                _OPENING_BALANCE_RULES[component.category]
-            )
-            if (
-                component.primary_source.capability is not primary
-                or len(component.corroborating_sources) != 1
-                or component.corroborating_sources[0].capability is not corroborating
-            ):
-                raise LedgerError.precondition_failed(
-                    "LEDGER_OPENING_EVIDENCE_INVALID"
-                )
             component_sources = (
                 component.primary_source,
                 *component.corroborating_sources,
             )
             for source in component_sources:
                 identity = (source.capability, source.record_id, source.revision)
-                if identity in seen_sources:
-                    raise LedgerError.invalid_input("LEDGER_OPENING_SOURCE_OVERLAP")
-                seen_sources.add(identity)
-                entry_sources.append(source)
+                if identity not in seen_sources:
+                    seen_sources.add(identity)
+                    entry_sources.append(source)
             lines.append(
                 LedgerLine(
-                    account,
-                    f"{description}: {component.reference_id}",
-                    component.amount if is_debit else _ZERO,
-                    _ZERO if is_debit else component.amount,
+                    component.account,
+                    f"{component.description}: {component.reference_id}",
+                    component.amount if component.is_debit else _ZERO,
+                    _ZERO if component.is_debit else component.amount,
                 )
             )
         canonical_lines = tuple(lines)
         _balanced(canonical_lines)
-        canonical_command = replace(command, components=components)
         return await self._persistence.rebuild_company_year_opening(
-            canonical_command,
+            command,
+            components=components,
             lines=canonical_lines,
             entry_sources=tuple(entry_sources),
-        )
-
-    async def post_opening_balance(
-        self, command: PostOpeningBalanceCommand
-    ) -> PostedLedgerEntry:
-        if command.bank_balance.amount < 0 or command.share_capital_snapshot.amount < 0:
-            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_NEGATIVE")
-        if command.bank_balance.currency != command.share_capital_snapshot.currency:
-            raise LedgerError.invalid_input("LEDGER_CURRENCY_MISMATCH")
-        retained = command.bank_balance.amount - command.share_capital_snapshot.amount
-        retained_debit = Money.nok(str(abs(retained))) if retained < 0 else _ZERO
-        retained_credit = Money.nok(str(retained)) if retained > 0 else _ZERO
-        lines = (
-            LedgerLine("1920", "Bankinnskudd", command.bank_balance, _ZERO),
-            LedgerLine("2000", "Aksjekapital", _ZERO, command.share_capital_snapshot),
-            LedgerLine(
-                "2050",
-                "Annen egenkapital" if retained >= 0 else "Udekket tap",
-                retained_debit,
-                retained_credit,
-            ),
-        )
-        _balanced(lines, permit_zero_line=True)
-        return await self._persistence.post_entry(
-            command,
-            entry_kind=LedgerEntryKind.OPENING_BALANCE,
-            memo="Åpningsbalanse for Talli-start",
-            lines=lines,
-            risk_flags=(),
-            warning_accepted=False,
-            source_capability=(
-                LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
-                if command.opening_snapshot_id is not None
-                else LedgerSourceCapability.LEDGER
-            ),
-            source_record_id=command.opening_snapshot_id
-            or LedgerSourceRecordId(str(command.idempotency_key)),
         )
 
     async def post_administrative_cost(

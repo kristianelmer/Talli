@@ -14,6 +14,7 @@ import {
 } from "./support/browser-owner-cleanup.mjs";
 import {
   allocateLoopbackPort,
+  ownedProcessDiagnostics,
   startOwnedProcess,
   waitForOwnedReadiness,
 } from "./support/owned-process-lifecycle.mjs";
@@ -107,6 +108,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     await database.connect();
     resources.databaseStarted = true;
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
+    const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
     const roleBoundary = await database.query(
       `select rolcanlogin, rolinherit, rolbypassrls,
         pg_catalog.pg_has_role('talli_company_access_backend', 'company_access_executor', 'set') as can_set_executor,
@@ -123,15 +125,26 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     await database.query(
       `alter role talli_company_access_backend login password '${backendDatabasePassword}'`,
     );
+    await database.query(
+      `alter role talli_ledger_backend login password '${ledgerDatabasePassword}'`,
+    );
     resources.cleanupBackendDatabaseRole = async () => {
       await database.query(
         "alter role talli_company_access_backend nologin password null",
+      );
+      await database.query(
+        "alter role talli_ledger_backend nologin password null",
       );
       resources.cleanupBackendDatabaseRole = undefined;
     };
     const backendDatabaseUrl = databaseUrlForBackendRole(
       databaseUrl,
       backendDatabasePassword,
+    );
+    const ledgerDatabaseUrl = databaseUrlForRole(
+      databaseUrl,
+      "talli_ledger_backend",
+      ledgerDatabasePassword,
     );
     const ownerEmail = `onboarding-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
@@ -152,6 +165,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       anonKey,
       brregBaseUrl,
       databaseUrl: backendDatabaseUrl,
+      ledgerDatabaseUrl,
       port: backendPort,
       supabaseUrl,
     });
@@ -358,6 +372,42 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     resources.companyId = created.rows[0].id;
     resources.companyIds.push(resources.companyId);
     assert.equal(await companyAtomicState(database, resources.companyId, resources.ownerId), "1:1:1:1:1:1:1");
+
+    await page.getByLabel("Bankinnskudd (kr)").fill("30000.00");
+    await page.getByLabel("Aksjekapital (kr)").fill("30000.00");
+    await page.getByLabel("Antall aksjer", { exact: true }).fill("100");
+    await page.getByLabel("Pålydende per aksje (kr)").fill("300.00");
+    await page.getByLabel("Navn", { exact: true }).fill("Test Eier");
+    await page.getByLabel("Fødselsnummer (11 sifre)").fill("01010112345");
+    await page.getByLabel("Aksjer", { exact: true }).fill("100");
+    await page.getByRole("button", { name: "Lagre og fortsett" }).click();
+    await page.waitForURL((url) => (
+      url.pathname === "/onboarding" && url.searchParams.get("step") === "bank"
+    ), { timeout: 20_000 });
+    assert.equal(
+      new URL(page.url()).searchParams.get("error"),
+      null,
+      [
+        (await page.locator("body").innerText()).replace(/\s+/gu, " ").trim(),
+        `backend=${ownedProcessDiagnostics(resources.backend)}`,
+        `web=${ownedProcessDiagnostics(resources.server)}`,
+      ].join("\n"),
+    );
+    await page.getByRole("heading", { name: "Importer banktransaksjoner" }).waitFor();
+    await page.reload();
+    await page.getByRole("heading", { name: "Importer banktransaksjoner" }).waitFor();
+    assert.deepEqual(
+      await typedOpeningState(database, resources.companyId, resources.ownerId),
+      {
+        componentCategories: ["BANK", "REGISTERED_SHARE_CAPITAL"],
+        componentKinds: ["CLASSIFIED_BALANCE", "CLASSIFIED_BALANCE"],
+        entryKind: "OPENING_BALANCE",
+        journalAccounts: ["1920", "2000"],
+        openingMode: "NEW_COMPANY",
+        shareholderCount: 1,
+        snapshotCount: 1,
+      },
+    );
 
     // A supported owner can report a material change through company_access.
     // The persisted block remains company-scoped, keeps the read surface open,
@@ -634,6 +684,44 @@ async function companyAtomicState(database, companyId, ownerId) {
   return result.rows[0].state;
 }
 
+async function typedOpeningState(database, companyId, ownerId) {
+  const result = await database.query(
+    `select entry.entry_kind as "entryKind",
+       rebuild.opening_mode as "openingMode",
+       array(
+         select component.component_kind
+         from ledger.opening_position_components component
+         where component.opening_entry_id = entry.id
+         order by component.ordinal
+       ) as "componentKinds",
+       array(
+         select component.category
+         from ledger.opening_position_components component
+         where component.opening_entry_id = entry.id
+         order by component.ordinal
+       ) as "componentCategories",
+       array(
+         select line ->> 'account'
+         from pg_catalog.jsonb_array_elements(entry.lines) with ordinality item(line, ordinal)
+         order by ordinal
+       ) as "journalAccounts",
+       (select count(*)::integer from public.opening_balance_setups setup
+         where setup.company_id = entry.company_id) as "snapshotCount",
+       (select count(*)::integer from public.opening_shareholders shareholder
+         where shareholder.company_id = entry.company_id) as "shareholderCount"
+     from ledger.entries entry
+     join ledger.opening_position_rebuilds rebuild
+       on rebuild.opening_entry_id = entry.id
+      and rebuild.company_id = entry.company_id
+      and rebuild.income_year = entry.income_year
+     where entry.company_id = $1 and entry.created_by = $2
+       and entry.entry_kind = 'OPENING_BALANCE'`,
+    [companyId, ownerId],
+  );
+  assert.equal(result.rows.length, 1);
+  return result.rows[0];
+}
+
 async function companyEligibilityState(database, companyId, ownerId) {
   const result = await database.query(
     `select concat_ws(':',
@@ -726,12 +814,16 @@ function currentTotp(secret, now = Date.now()) {
   return String(code).padStart(6, "0");
 }
 
-function databaseUrlForBackendRole(value, password) {
+function databaseUrlForRole(value, role, password) {
   const url = new URL(value);
   assert.ok(isLoopbackPostgresUrl(value), "backend database fixture escaped loopback");
-  url.username = "talli_company_access_backend";
+  url.username = role;
   url.password = password;
   return url.toString();
+}
+
+function databaseUrlForBackendRole(value, password) {
+  return databaseUrlForRole(value, "talli_company_access_backend", password);
 }
 
 function isLoopbackUrl(value) {
@@ -787,7 +879,7 @@ function createBrregServer({ control, orgNumbers, requests }) {
   });
 }
 
-function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl }) {
+function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl, ledgerDatabaseUrl }) {
   const backendPython =
     process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
   if (!existsSync(backendPython)) throw new Error("backend_python_missing");
@@ -803,6 +895,7 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
       SUPABASE_URL: localSupabaseUrl,
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
+      TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
     },

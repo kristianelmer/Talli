@@ -168,6 +168,22 @@ class CapitalReductionReferenceId:
         return self.value
 
 
+@dataclass(frozen=True, slots=True)
+class DividendDecisionReferenceId:
+    """Stable identity for one declared dividend that remains unsettled."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("dividend-decision reference id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
 class LedgerSourceCapability(StrEnum):
     LEDGER = "LEDGER"
     BANKING = "BANKING"
@@ -175,6 +191,7 @@ class LedgerSourceCapability(StrEnum):
     CORPORATE_GOVERNANCE = "CORPORATE_GOVERNANCE"
     SHAREHOLDER_REGISTER_FILING = "SHAREHOLDER_REGISTER_FILING"
     COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
+    ANNUAL_ACCOUNTS_FILING = "ANNUAL_ACCOUNTS_FILING"
     DOCUMENTS = "DOCUMENTS"
 
 
@@ -297,11 +314,17 @@ class OpeningBalanceCategory(StrEnum):
     CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE = "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE"
     BANK = "BANK"
     RESTRICTED_BANK = "RESTRICTED_BANK"
-    INVESTMENT = "INVESTMENT"
+    SUBSIDIARY_INVESTMENT = "SUBSIDIARY_INVESTMENT"
+    ASSOCIATE_INVESTMENT = "ASSOCIATE_INVESTMENT"
+    OTHER_LONG_TERM_INVESTMENT = "OTHER_LONG_TERM_INVESTMENT"
+    CURRENT_LISTED_SHARE_INVESTMENT = "CURRENT_LISTED_SHARE_INVESTMENT"
+    CURRENT_FUND_INVESTMENT = "CURRENT_FUND_INVESTMENT"
     SUBSCRIPTION_RECEIVABLE = "SUBSCRIPTION_RECEIVABLE"
     DIVIDEND_RECEIVABLE = "DIVIDEND_RECEIVABLE"
     GROUP_CONTRIBUTION_RECEIVABLE = "GROUP_CONTRIBUTION_RECEIVABLE"
     TAX_RECEIVABLE = "TAX_RECEIVABLE"
+    ACCRUED_INTEREST_RECEIVABLE = "ACCRUED_INTEREST_RECEIVABLE"
+    DEFERRED_TAX_ASSET = "DEFERRED_TAX_ASSET"
     REGISTERED_SHARE_CAPITAL = "REGISTERED_SHARE_CAPITAL"
     SHARE_PREMIUM = "SHARE_PREMIUM"
     UNREGISTERED_CAPITAL_INCREASE = "UNREGISTERED_CAPITAL_INCREASE"
@@ -310,13 +333,34 @@ class OpeningBalanceCategory(StrEnum):
     RETAINED_EARNINGS = "RETAINED_EARNINGS"
     UNCOVERED_LOSS = "UNCOVERED_LOSS"
     OTHER_EQUITY = "OTHER_EQUITY"
-    BANK_LOAN_PAYABLE = "BANK_LOAN_PAYABLE"
+    LONG_TERM_BANK_LOAN_PAYABLE = "LONG_TERM_BANK_LOAN_PAYABLE"
+    SHORT_TERM_BANK_LOAN_PAYABLE = "SHORT_TERM_BANK_LOAN_PAYABLE"
     OWNER_LOAN_PAYABLE = "OWNER_LOAN_PAYABLE"
     INTERCOMPANY_LOAN_PAYABLE = "INTERCOMPANY_LOAN_PAYABLE"
     SUPPLIER_PAYABLE = "SUPPLIER_PAYABLE"
     CURRENT_TAX_PAYABLE = "CURRENT_TAX_PAYABLE"
+    DEFERRED_TAX_LIABILITY = "DEFERRED_TAX_LIABILITY"
+    ACCRUED_INTEREST_PAYABLE = "ACCRUED_INTEREST_PAYABLE"
     DIVIDEND_PAYABLE = "DIVIDEND_PAYABLE"
     GROUP_CONTRIBUTION_PAYABLE = "GROUP_CONTRIBUTION_PAYABLE"
+
+
+class OpeningPositionMode(StrEnum):
+    NEW_COMPANY = "NEW_COMPANY"
+    PRIOR_CLOSE_RECONSTRUCTION = "PRIOR_CLOSE_RECONSTRUCTION"
+
+
+class BankLoanMaturity(StrEnum):
+    LONG_TERM = "LONG_TERM"
+    SHORT_TERM = "SHORT_TERM"
+
+
+class InvestmentClassification(StrEnum):
+    SUBSIDIARY = "SUBSIDIARY"
+    ASSOCIATE = "ASSOCIATE"
+    OTHER_LONG_TERM = "OTHER_LONG_TERM"
+    CURRENT_LISTED_SHARE = "CURRENT_LISTED_SHARE"
+    CURRENT_FUND = "CURRENT_FUND"
 
 
 class CompanyYearCloseEvidenceKind(StrEnum):
@@ -406,6 +450,7 @@ class InvestmentDividendFacts:
     phase: InvestmentDividendPhase
     gross_amount: Money
     decision_entry_id: LedgerEntryId | None = None
+    decision_reference_id: DividendDecisionReferenceId | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -666,13 +711,6 @@ class CorrectHoldingActionCommand(LedgerCommand):
 
 
 @dataclass(frozen=True, slots=True)
-class PostOpeningBalanceCommand(LedgerCommand):
-    bank_balance: Money
-    share_capital_snapshot: Money
-    opening_snapshot_id: LedgerSourceRecordId | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class PostAdministrativeCostCommand(LedgerCommand):
     bank_transaction_id: LedgerSourceRecordId
     category: AdministrativeCostCategory
@@ -815,7 +853,7 @@ class RecordReconstructionAssessmentCommand(LedgerCommand):
 
 @dataclass(frozen=True, slots=True)
 class OpeningBalanceComponent:
-    """One source-owned semantic balance in the opening-position increment."""
+    """A non-lifecycle balance whose accounting class is selected by Python."""
 
     category: OpeningBalanceCategory
     reference_id: LedgerSourceRecordId
@@ -824,8 +862,204 @@ class OpeningBalanceComponent:
     corroborating_sources: tuple[LedgerFactReference, ...]
 
     def __post_init__(self) -> None:
-        if self.amount.currency != "NOK" or self.amount.amount <= 0:
+        if self.category in {
+            OpeningBalanceCategory.UNREGISTERED_CAPITAL_INCREASE,
+            OpeningBalanceCategory.UNREGISTERED_CAPITAL_REDUCTION,
+            OpeningBalanceCategory.DIVIDEND_RECEIVABLE,
+            OpeningBalanceCategory.DIVIDEND_PAYABLE,
+            OpeningBalanceCategory.LONG_TERM_BANK_LOAN_PAYABLE,
+            OpeningBalanceCategory.SHORT_TERM_BANK_LOAN_PAYABLE,
+            OpeningBalanceCategory.SUBSIDIARY_INVESTMENT,
+            OpeningBalanceCategory.ASSOCIATE_INVESTMENT,
+            OpeningBalanceCategory.OTHER_LONG_TERM_INVESTMENT,
+            OpeningBalanceCategory.CURRENT_LISTED_SHARE_INVESTMENT,
+            OpeningBalanceCategory.CURRENT_FUND_INVESTMENT,
+        }:
             raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        _validate_opening_amount_and_sources(
+            self.amount, self.primary_source, self.corroborating_sources
+        )
+
+
+def _validate_opening_amount_and_sources(
+    amount: Money,
+    primary_source: LedgerFactReference,
+    corroborating_sources: tuple[LedgerFactReference, ...],
+) -> None:
+    if amount.currency != "NOK" or amount.amount <= 0 or not corroborating_sources:
+        raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+    sources = (primary_source, *corroborating_sources)
+    identities = {
+        (source.capability, str(source.record_id), source.revision) for source in sources
+    }
+    if len(identities) != len(sources):
+        raise LedgerError.invalid_input("LEDGER_OPENING_SOURCE_OVERLAP")
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningBankLoanComponent:
+    loan_reference_id: BankLoanReferenceId
+    maturity: BankLoanMaturity
+    amount: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        _validate_opening_amount_and_sources(
+            self.amount, self.primary_source, self.corroborating_sources
+        )
+
+    @property
+    def category(self) -> OpeningBalanceCategory:
+        return (
+            OpeningBalanceCategory.LONG_TERM_BANK_LOAN_PAYABLE
+            if self.maturity is BankLoanMaturity.LONG_TERM
+            else OpeningBalanceCategory.SHORT_TERM_BANK_LOAN_PAYABLE
+        )
+
+    @property
+    def reference_id(self) -> BankLoanReferenceId:
+        return self.loan_reference_id
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningInvestmentComponent:
+    investment_reference_id: LedgerSourceRecordId
+    classification: InvestmentClassification
+    amount: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        _validate_opening_amount_and_sources(
+            self.amount, self.primary_source, self.corroborating_sources
+        )
+
+    @property
+    def category(self) -> OpeningBalanceCategory:
+        return {
+            InvestmentClassification.SUBSIDIARY: OpeningBalanceCategory.SUBSIDIARY_INVESTMENT,
+            InvestmentClassification.ASSOCIATE: OpeningBalanceCategory.ASSOCIATE_INVESTMENT,
+            InvestmentClassification.OTHER_LONG_TERM: OpeningBalanceCategory.OTHER_LONG_TERM_INVESTMENT,
+            InvestmentClassification.CURRENT_LISTED_SHARE: OpeningBalanceCategory.CURRENT_LISTED_SHARE_INVESTMENT,
+            InvestmentClassification.CURRENT_FUND: OpeningBalanceCategory.CURRENT_FUND_INVESTMENT,
+        }[self.classification]
+
+    @property
+    def reference_id(self) -> LedgerSourceRecordId:
+        return self.investment_reference_id
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningCapitalIncreaseComponent:
+    capital_increase_reference_id: CapitalIncreaseReferenceId
+    phase: CapitalIncreasePhase
+    nominal_increase: Money
+    share_premium: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        if self.phase is CapitalIncreasePhase.REGISTERED:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        if (
+            self.nominal_increase.currency != "NOK"
+            or self.share_premium.currency != "NOK"
+            or self.nominal_increase.amount <= 0
+            or self.share_premium.amount < 0
+        ):
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        _validate_opening_amount_and_sources(
+            Money.nok(self.nominal_increase.amount + self.share_premium.amount),
+            self.primary_source,
+            self.corroborating_sources,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningCapitalReductionComponent:
+    capital_reduction_reference_id: CapitalReductionReferenceId
+    recognition: CapitalReductionRecognition
+    nominal_reduction: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        if self.recognition is not CapitalReductionRecognition.DECIDED_NOT_REGISTERED:
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        _validate_opening_amount_and_sources(
+            self.nominal_reduction, self.primary_source, self.corroborating_sources
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningDividendReceivableComponent:
+    decision_reference_id: DividendDecisionReferenceId
+    amount: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        _validate_opening_amount_and_sources(
+            self.amount, self.primary_source, self.corroborating_sources
+        )
+
+    @property
+    def category(self) -> OpeningBalanceCategory:
+        return OpeningBalanceCategory.DIVIDEND_RECEIVABLE
+
+    @property
+    def reference_id(self) -> DividendDecisionReferenceId:
+        return self.decision_reference_id
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningDividendPayableComponent:
+    decision_reference_id: DividendDecisionReferenceId
+    amount: Money
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+
+    def __post_init__(self) -> None:
+        _validate_opening_amount_and_sources(
+            self.amount, self.primary_source, self.corroborating_sources
+        )
+
+    @property
+    def category(self) -> OpeningBalanceCategory:
+        return OpeningBalanceCategory.DIVIDEND_PAYABLE
+
+    @property
+    def reference_id(self) -> DividendDecisionReferenceId:
+        return self.decision_reference_id
+
+
+type OpeningPositionComponent = (
+    OpeningBalanceComponent
+    | OpeningBankLoanComponent
+    | OpeningInvestmentComponent
+    | OpeningCapitalIncreaseComponent
+    | OpeningCapitalReductionComponent
+    | OpeningDividendReceivableComponent
+    | OpeningDividendPayableComponent
+)
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledOpeningPositionComponent:
+    component_kind: str
+    category: OpeningBalanceCategory
+    reference_id: str
+    lifecycle_phase: str | None
+    amount: Money
+    account: str
+    description: str
+    is_debit: bool
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+    nominal_increase: Money | None = None
+    share_premium: Money | None = None
+    nominal_reduction: Money | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -833,14 +1067,22 @@ class RebuildCompanyYearOpeningCommand(LedgerCommand):
     """Atomically record one classified and evidenced Jan-1 opening increment."""
 
     opening_date: LocalDate
-    prior_closing_source: LedgerFactReference
-    components: tuple[OpeningBalanceComponent, ...]
+    mode: OpeningPositionMode
+    opening_basis: LedgerFactReference
+    components: tuple[OpeningPositionComponent, ...]
 
     def __post_init__(self) -> None:
         if self.opening_date.value != date(int(self.income_year), 1, 1):
             raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
-        if not 2 <= len(self.components) <= 49:
+        if not self.components:
             raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+        expected_basis = (
+            LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING
+            if self.mode is OpeningPositionMode.PRIOR_CLOSE_RECONSTRUCTION
+            else LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
+        )
+        if self.opening_basis.capability is not expected_basis:
+            raise LedgerError.precondition_failed("LEDGER_OPENING_EVIDENCE_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1228,7 +1470,7 @@ class LedgerPersistence(Protocol):
         self,
         command: RecognizeHoldingActionCommand,
         *,
-        decision_entry_id: LedgerEntryId,
+        decision_reference: LedgerEntryId | DividendDecisionReferenceId,
         memo: str,
         lines: tuple[LedgerLine, ...],
     ) -> PostedLedgerEntry: ...
@@ -1271,6 +1513,7 @@ class LedgerPersistence(Protocol):
         self,
         command: RebuildCompanyYearOpeningCommand,
         *,
+        components: tuple[CompiledOpeningPositionComponent, ...],
         lines: tuple[LedgerLine, ...],
         entry_sources: tuple[LedgerFactReference, ...],
     ) -> PostedLedgerEntry: ...
@@ -1331,10 +1574,6 @@ class LedgerCommands(Protocol):
 
     async def recognize_holding_action(
         self, command: RecognizeHoldingActionCommand
-    ) -> PostedLedgerEntry: ...
-
-    async def post_opening_balance(
-        self, command: PostOpeningBalanceCommand
     ) -> PostedLedgerEntry: ...
 
     async def post_administrative_cost(
@@ -1431,19 +1670,21 @@ class LedgerQueries(Protocol):
 __all__ = [
     "AdministrativeCostBlock",
     "AdministrativeCostCategory",
-    "AdministrativeCostCorrectionScope",
     "AdministrativeCostCorrectionFacts",
+    "AdministrativeCostCorrectionScope",
+    "ApprovedLossCoverageCapitalReductionFacts",
     "ApprovedOneSidedIntercompanyLoanFundingFacts",
     "ApprovedOwnerLoanFundingFacts",
     "BankInterestIncomeFacts",
     "BankLoanEvent",
+    "BankLoanMaturity",
     "BankLoanReferenceId",
     "BankSuggestionRule",
-    "CashCapitalIncreaseFacts",
-    "CapitalIncreaseReferenceId",
     "CapitalIncreasePhase",
-    "CapitalReductionReferenceId",
+    "CapitalIncreaseReferenceId",
     "CapitalReductionRecognition",
+    "CapitalReductionReferenceId",
+    "CashCapitalIncreaseFacts",
     "CloseCompanyYearCommand",
     "CompanyTaxAccrualFacts",
     "CompanyYearCloseAssessment",
@@ -1455,13 +1696,16 @@ __all__ = [
     "CompanyYearCloseOutputKind",
     "CompanyYearCloseOutputReference",
     "CompanyYearCloseState",
+    "CompiledOpeningPositionComponent",
     "CorrectHoldingActionCommand",
     "CorrectedLedgerEntries",
+    "DividendDecisionReferenceId",
     "GroupContributionFacts",
     "GroupContributionPerspective",
     "GroupContributionRelationship",
     "IntercompanyLoanPerspective",
     "IntercompanyLoanRelationship",
+    "InvestmentClassification",
     "InvestmentDividendFacts",
     "InvestmentDividendPhase",
     "LedgerCommands",
@@ -1474,46 +1718,52 @@ __all__ = [
     "LedgerErrorCode",
     "LedgerFactReference",
     "LedgerLine",
+    "LedgerPage",
     "LedgerPersistence",
     "LedgerQueries",
     "LedgerRiskCode",
     "LedgerRiskFlag",
     "LedgerSourceCapability",
     "LedgerSourceRecordId",
-    "LedgerPage",
     "LockPeriodCommand",
-    "ApprovedLossCoverageCapitalReductionFacts",
-    "OrdinaryBankLoanFacts",
     "OpeningBalanceCategory",
     "OpeningBalanceComponent",
+    "OpeningBankLoanComponent",
+    "OpeningCapitalIncreaseComponent",
+    "OpeningCapitalReductionComponent",
+    "OpeningDividendPayableComponent",
+    "OpeningDividendReceivableComponent",
+    "OpeningInvestmentComponent",
+    "OpeningPositionComponent",
+    "OpeningPositionMode",
+    "OrdinaryBankLoanFacts",
     "PeriodLock",
     "PeriodLockId",
     "PeriodLockPage",
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
-    "RecordReconstructionAssessmentCommand",
+    "PostInvestmentDividendCommand",
+    "PostInvestmentPurchaseCommand",
+    "PostInvestmentSaleCommand",
+    "PostManualJournalCommand",
+    "PostOwnerDividendDeclaredCommand",
+    "PostOwnerDividendPaymentCommand",
+    "PostShareholderLoanCommand",
+    "PostTaxSettlementCommand",
+    "PostedLedgerEntry",
     "RebuildCompanyYearOpeningCommand",
     "RecognizeHoldingActionCommand",
     "ReconstructionAssessment",
     "ReconstructionAssessmentId",
     "ReconstructionEvidence",
-    "ReconstructionEvidenceKind",
     "ReconstructionEvidenceIssuer",
+    "ReconstructionEvidenceKind",
     "ReconstructionEvidenceStatus",
     "ReconstructionGapCode",
     "ReconstructionState",
-    "PostInvestmentDividendCommand",
-    "PostInvestmentPurchaseCommand",
-    "PostInvestmentSaleCommand",
-    "PostOwnerDividendDeclaredCommand",
-    "PostOwnerDividendPaymentCommand",
-    "PostShareholderLoanCommand",
-    "PostTaxSettlementCommand",
+    "RecordReconstructionAssessmentCommand",
     "ShareholderLoanDirection",
-    "TaxSettlementKind",
     "SupportedHoldingActionFacts",
-    "PostedLedgerEntry",
-    "PostManualJournalCommand",
-    "PostOpeningBalanceCommand",
+    "TaxSettlementKind",
     "ledger_persistence_adapter",
 ]

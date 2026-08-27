@@ -249,7 +249,22 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "company_archive_export_attempts",
     "company_archive_source_generations",
   ]);
+  assert.ok(calls.includes(
+    "delete from backend_system.ledger_command_receipts where company_id = $1",
+  ));
+  assert.ok(calls.includes(
+    "delete from backend_system.ledger_workflow_receipts where company_id = $1",
+  ));
+  assert.ok(calls.includes("delete from ledger.entry_sources where company_id = $1"));
+  assert.ok(calls.includes("delete from ledger.entry_contexts where company_id = $1"));
   assert.ok(calls.includes("delete from ledger.entries where company_id = $1"));
+  assert.ok(calls.includes(
+    "delete from ledger.opening_received_dividend_settlements where company_id = $1",
+  ));
+  assert.ok(
+    calls.indexOf("delete from ledger.entry_sources where company_id = $1")
+      < calls.indexOf("delete from ledger.entries where company_id = $1"),
+  );
   const restoreTriggerMode = calls.indexOf("set local session_replication_role = origin");
   assert.ok(
     calls.indexOf("delete from public.company_eligibility_assessments where company_id = $1")

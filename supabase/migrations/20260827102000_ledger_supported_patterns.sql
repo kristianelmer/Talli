@@ -29,11 +29,12 @@ create table if not exists ledger.entry_sources (
   entry_id uuid not null,
   company_id uuid not null,
   income_year integer not null,
-  ordinal integer not null check (ordinal between 1 and 100),
+  ordinal integer not null check (ordinal >= 1),
   source_role text not null check (source_role in ('PRIMARY', 'CORROBORATING')),
   source_capability text not null check (source_capability in (
     'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
+    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+    'ANNUAL_ACCOUNTS_FILING', 'DOCUMENTS'
   )),
   source_record_id text not null check (
     pg_catalog.btrim(source_record_id) <> ''
@@ -128,7 +129,8 @@ begin
     or pg_catalog.btrim(coalesce(p_correlation_id, '')) = ''
     or p_source_capability not in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+      'ANNUAL_ACCOUNTS_FILING', 'DOCUMENTS'
     )
     or pg_catalog.upper(coalesce(p_entry_kind, '')) not in (
       'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',
@@ -293,12 +295,14 @@ as $function$
 declare
   v_post record;
   v_sources_digest text;
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_has_receipt boolean;
 begin
   if p_event_date is null
     or extract(year from p_event_date)::integer <> p_income_year
     or coalesce(p_rule_version, '') !~ '^ledger-supported-patterns-[0-9]{4}\.[0-9]+$'
     or pg_catalog.jsonb_typeof(p_sources) is distinct from 'array'
-    or pg_catalog.jsonb_array_length(p_sources) not between 1 and 100
+    or pg_catalog.jsonb_array_length(p_sources) < 1
     or p_sources -> 0 ->> 'role' <> 'PRIMARY'
     or p_sources -> 0 ->> 'capability' is distinct from p_source_capability
     or p_sources -> 0 ->> 'recordId' is distinct from p_source_record_id
@@ -310,7 +314,8 @@ begin
         end
         or item ->> 'capability' not in (
           'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-          'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
+          'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+          'ANNUAL_ACCOUNTS_FILING', 'DOCUMENTS'
         )
         or pg_catalog.btrim(coalesce(item ->> 'recordId', '')) = ''
         or pg_catalog.length(item ->> 'recordId') > 255
@@ -332,12 +337,65 @@ begin
   v_sources_digest := pg_catalog.encode(
     extensions.digest(p_sources::text, 'sha256'), 'hex'
   );
-  select * into strict v_post
-  from ledger.post_entry(
-    p_idempotency_key, p_company_id, p_income_year, p_entry_kind, p_memo,
-    p_lines, '[]'::jsonb, false, p_source_capability, p_source_record_id,
-    p_correlation_id, p_verified_subject
-  );
+  if pg_catalog.upper(p_entry_kind) = 'OPENING_BALANCE' then
+    -- OPENING_BALANCE is closed on the public generic writer. The typed
+    -- opening receiver reaches this supported-pattern path instead, while
+    -- preserving the public writer's receipt-first statutory-close ordering.
+    if v_actor_id is not null
+      and p_verified_subject ~ '^[0-9a-fA-F-]{36}$'
+      and v_actor_id is not distinct from p_verified_subject::uuid
+      and p_company_id is not null
+      and p_income_year between 2000 and 2100
+      and coalesce(p_idempotency_key, '') ~ '^[A-Za-z0-9._:-]{16,255}$'
+    then
+      select exists (
+        select 1
+        from backend_system.ledger_command_receipts receipt
+        where receipt.api_major = 'v1'
+          and receipt.actor_id = v_actor_id
+          and receipt.company_id = p_company_id
+          and receipt.operation_name = 'post_entry'
+          and receipt.idempotency_key = p_idempotency_key
+      ) into v_has_receipt;
+
+      if not v_has_receipt then
+        perform ledger.lock_company_year_v1(p_company_id, p_income_year);
+
+        select exists (
+          select 1
+          from backend_system.ledger_command_receipts receipt
+          where receipt.api_major = 'v1'
+            and receipt.actor_id = v_actor_id
+            and receipt.company_id = p_company_id
+            and receipt.operation_name = 'post_entry'
+            and receipt.idempotency_key = p_idempotency_key
+        ) into v_has_receipt;
+
+        if not v_has_receipt and exists (
+          select 1
+          from ledger.company_year_close_locks close_lock
+          where close_lock.company_id = p_company_id
+            and close_lock.income_year = p_income_year
+        ) then
+          raise exception 'ledger_period_locked';
+        end if;
+      end if;
+    end if;
+
+    select * into strict v_post
+    from ledger.post_entry_without_company_year_close_lock_v1(
+      p_idempotency_key, p_company_id, p_income_year, p_entry_kind, p_memo,
+      p_lines, '[]'::jsonb, false, p_source_capability, p_source_record_id,
+      p_correlation_id, p_verified_subject
+    );
+  else
+    select * into strict v_post
+    from ledger.post_entry(
+      p_idempotency_key, p_company_id, p_income_year, p_entry_kind, p_memo,
+      p_lines, '[]'::jsonb, false, p_source_capability, p_source_record_id,
+      p_correlation_id, p_verified_subject
+    );
+  end if;
 
   if v_post.replayed then
     if not exists (

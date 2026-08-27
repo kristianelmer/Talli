@@ -29,7 +29,17 @@ test("public contract accepts only new-year business facts", () => {
     .split("/")
     .at(-1);
   const properties = contract.components.schemas[schemaName].properties;
-  assert.ok(properties.bankBalance);
+  const required = contract.components.schemas[schemaName].required;
+  assert.ok(properties.openingMode);
+  assert.ok(properties.openingBasis);
+  assert.ok(properties.openingComponents);
   assert.ok(properties.shareholders);
+  assert.ok(properties.bankBalance);
+  assert.ok(properties.shareCapital);
+  assert.ok(required.includes("bankBalance"));
+  assert.ok(required.includes("shareCapital"));
+  assert.ok(!required.includes("openingMode"));
+  assert.ok(!required.includes("openingBasis"));
+  assert.ok(!required.includes("openingComponents"));
   assert.equal(properties.lines, undefined);
 });

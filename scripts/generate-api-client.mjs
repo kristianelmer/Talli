@@ -106,12 +106,15 @@ function resolveSchema(schema) {
 
 function schemaType(schema) {
   if (schema?.$ref) return schema.$ref.split("/").at(-1);
-  if (schema?.anyOf) {
-    const values = schema.anyOf.map(schemaType);
+  if (schema?.anyOf || schema?.oneOf) {
+    const values = (schema.anyOf ?? schema.oneOf).map(schemaType);
     return values.join(" | ");
   }
   if (schema?.type === "null") return "null";
-  if (schema?.type === "array") return `${schemaType(schema.items)}[]`;
+  if (schema?.type === "array") {
+    const itemType = schemaType(schema.items);
+    return `${itemType.includes(" | ") ? `(${itemType})` : itemType}[]`;
+  }
   if (schema?.const !== undefined) {
     return JSON.stringify(schema.const);
   }
@@ -156,8 +159,9 @@ function renderGuard(name, schema) {
   const required = new Set(schema.required ?? []);
   const propertyCheck = (propertySchema, value) => {
     if (propertySchema?.$ref) return `is${schemaType(propertySchema)}(${value})`;
-    if (propertySchema?.anyOf) {
-      return `(${propertySchema.anyOf.map((candidate) => propertyCheck(candidate, value)).join(" || ")})`;
+    if (propertySchema?.anyOf || propertySchema?.oneOf) {
+      const alternatives = propertySchema.anyOf ?? propertySchema.oneOf;
+      return `(${alternatives.map((candidate) => propertyCheck(candidate, value)).join(" || ")})`;
     }
     if (propertySchema?.type === "null") return `${value} === null`;
     if (propertySchema?.type === "array") {
@@ -288,6 +292,20 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerInvestmentSaleWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
+  "LedgerFactReferenceWire",
+  "OpeningBalanceCategory",
+  "OpeningPositionMode",
+  "BankLoanMaturity",
+  "InvestmentClassification",
+  "CapitalIncreasePhase",
+  "CapitalReductionRecognition",
+  "OpeningClassifiedBalanceWire",
+  "OpeningBankLoanWire",
+  "OpeningInvestmentWire",
+  "OpeningCapitalIncreaseWire",
+  "OpeningCapitalReductionWire",
+  "OpeningDividendReceivableWire",
+  "OpeningDividendPayableWire",
   "NewYearShareholderWire",
   "NewYearOpeningEntryWire",
   "NewYearStartResultWire",

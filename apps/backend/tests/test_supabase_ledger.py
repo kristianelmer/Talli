@@ -8,45 +8,46 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-
-from talli_backend.modules.ledger import public as ledger_public
-
 from talli_backend.adapters.supabase_ledger import (
     LedgerSupabaseConfiguration,
     SupabaseLedgerAdapter,
     SupabaseLedgerSession,
     SupabaseLedgerWorkflowTransaction,
-    _VerifiedActor,
     _map_database_error,
+    _VerifiedActor,
 )
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.ledger_workflow import (
+    NewYearStartCommand,
     RecordAdministrativeCostCommand,
     RecordInvestmentSaleFifoCommand,
 )
 from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
 )
+from talli_backend.modules.ledger import public as ledger_public
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
-    AdministrativeCostCorrectionScope,
     AdministrativeCostCorrectionFacts,
+    AdministrativeCostCorrectionScope,
     ApprovedLossCoverageCapitalReductionFacts,
+    BankInterestIncomeFacts,
     BankLoanEvent,
+    BankLoanMaturity,
     BankLoanReferenceId,
-    CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalIncreaseReferenceId,
     CapitalReductionRecognition,
-    BankInterestIncomeFacts,
+    CashCapitalIncreaseFacts,
     CloseCompanyYearCommand,
     CompanyYearCloseEvidence,
     CompanyYearCloseEvidenceKind,
-    CompanyYearCloseGapCode,
     CompanyYearCloseOutputKind,
     CompanyYearCloseOutputReference,
     CompanyYearCloseState,
+    CompiledOpeningPositionComponent,
     CorrectHoldingActionCommand,
+    DividendDecisionReferenceId,
     InvestmentDividendFacts,
     InvestmentDividendPhase,
     LedgerEntryId,
@@ -56,21 +57,24 @@ from talli_backend.modules.ledger.public import (
     LedgerLine,
     LedgerSourceCapability,
     LedgerSourceRecordId,
-    OrdinaryBankLoanFacts,
     OpeningBalanceCategory,
     OpeningBalanceComponent,
-    RebuildCompanyYearOpeningCommand,
-    PostManualJournalCommand,
+    OpeningBankLoanComponent,
+    OpeningPositionMode,
+    OrdinaryBankLoanFacts,
     PostedLedgerEntry,
+    PostManualJournalCommand,
+    RebuildCompanyYearOpeningCommand,
+    RecognizeHoldingActionCommand,
     ReconstructionAssessmentId,
     ReconstructionEvidence,
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
     ReconstructionState,
-    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
 )
+from talli_backend.modules.shareholder_register_filing.public import OpeningShareholder
 from talli_backend.shared.kernel import (
     ActorId,
     ActorKind,
@@ -83,7 +87,6 @@ from talli_backend.shared.kernel import (
     Timestamp,
     UserId,
 )
-
 
 ACTOR_ID = ActorId(
     kind=ActorKind.USER,
@@ -184,9 +187,9 @@ def opening_position_command() -> RebuildCompanyYearOpeningCommand:
             fact_sha256="2" * 64,
         ),),
     )
-    loan = OpeningBalanceComponent(
-        category=OpeningBalanceCategory.BANK_LOAN_PAYABLE,
-        reference_id=LedgerSourceRecordId("bank-loan:prior-year:1"),
+    loan = OpeningBankLoanComponent(
+        loan_reference_id=BankLoanReferenceId("bank-loan:prior-year:1"),
+        maturity=BankLoanMaturity.LONG_TERM,
         amount=Money.nok("75000.00"),
         primary_source=LedgerFactReference(
             capability=LedgerSourceCapability.BANKING,
@@ -225,14 +228,68 @@ def opening_position_command() -> RebuildCompanyYearOpeningCommand:
         idempotency_key=IdempotencyKey("opening-position-adapter-2026"),
         income_year=IncomeYear(2026),
         opening_date=LocalDate(date(2026, 1, 1)),
-        prior_closing_source=LedgerFactReference(
-            capability=LedgerSourceCapability.LEDGER,
+        mode=OpeningPositionMode.PRIOR_CLOSE_RECONSTRUCTION,
+        opening_basis=LedgerFactReference(
+            capability=LedgerSourceCapability.ANNUAL_ACCOUNTS_FILING,
             record_id=LedgerSourceRecordId("prior-close:2025"),
             revision=1,
             fact_sha256="0" * 64,
         ),
         components=(bank, loan, capital),
     )
+
+
+def new_year_start_command() -> NewYearStartCommand:
+    opening = opening_position_command()
+    return NewYearStartCommand(
+        company_id=opening.company_id,
+        actor_id=opening.actor_id,
+        correlation_id=opening.correlation_id,
+        idempotency_key=opening.idempotency_key,
+        income_year=opening.income_year,
+        bank_balance=Money.nok("30000.00"),
+        share_capital=Money.nok("30000.00"),
+        opening_mode=opening.mode,
+        opening_basis=opening.opening_basis,
+        opening_components=opening.components,
+        share_count=100,
+        nominal_value=Money.nok("300.00"),
+        shareholders=(OpeningShareholder(
+            name="Owner",
+            shareholder_kind="norwegian_person",
+            national_id="01010112345",
+            org_number=None,
+            share_count=100,
+        ),),
+    )
+
+
+def test_new_year_completion_persists_the_exact_claimed_typed_request() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{"completed": True}]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    request = {
+        "companyId": str(new_year_start_command().company_id),
+        "incomeYear": 2026,
+        "openingMode": "PRIOR_CLOSE_RECONSTRUCTION",
+        "openingComponents": [{"componentKind": "CLASSIFIED_BALANCE"}],
+    }
+    asyncio.run(transaction.complete_workflow(
+        operation_name="new_year_start",
+        command=new_year_start_command(),
+        request=request,
+        result={"entryId": "40000000-0000-0000-0000-000000000007"},
+    ))
+
+    assert "complete_ledger_workflow_v1" in calls[0][0]
+    assert json.loads(str(calls[0][1][3])) == request
 
 
 def supported_pattern_command() -> RecognizeHoldingActionCommand:
@@ -258,6 +315,7 @@ def received_dividend_command(
     phase: InvestmentDividendPhase,
     *,
     decision_entry_id: LedgerEntryId | None = None,
+    decision_reference_id: DividendDecisionReferenceId | None = None,
 ) -> RecognizeHoldingActionCommand:
     decision = phase is InvestmentDividendPhase.FINAL_DECISION
     corroborating_capabilities = (
@@ -300,6 +358,7 @@ def received_dividend_command(
             phase=phase,
             gross_amount=Money.nok("500.00"),
             decision_entry_id=decision_entry_id,
+            decision_reference_id=decision_reference_id,
         ),
     )
 
@@ -752,11 +811,49 @@ def test_opening_position_adapter_binds_atomic_component_rpc() -> None:
     requested = opening_position_command()
     lines = (
         LedgerLine("1920", "Bank balance: bank-account:1", Money.nok("105000"), Money.nok("0")),
-        LedgerLine("2220", "Bank loan payable: bank-loan:prior-year:1", Money.nok("0"), Money.nok("75000")),
+        LedgerLine("2220", "Long-term bank loan payable: bank-loan:prior-year:1", Money.nok("0"), Money.nok("75000")),
         LedgerLine("2000", "Registered share capital: share-capital", Money.nok("0"), Money.nok("30000")),
     )
+    compiled = (
+        CompiledOpeningPositionComponent(
+            component_kind="CLASSIFIED_BALANCE",
+            category=OpeningBalanceCategory.BANK,
+            reference_id="bank-account:1",
+            lifecycle_phase=None,
+            amount=Money.nok("105000"),
+            account="1920",
+            description="Bank balance",
+            is_debit=True,
+            primary_source=requested.components[0].primary_source,
+            corroborating_sources=requested.components[0].corroborating_sources,
+        ),
+        CompiledOpeningPositionComponent(
+            component_kind="BANK_LOAN",
+            category=OpeningBalanceCategory.LONG_TERM_BANK_LOAN_PAYABLE,
+            reference_id="bank-loan:prior-year:1",
+            lifecycle_phase="LONG_TERM",
+            amount=Money.nok("75000"),
+            account="2220",
+            description="Long-term bank loan payable",
+            is_debit=False,
+            primary_source=requested.components[1].primary_source,
+            corroborating_sources=requested.components[1].corroborating_sources,
+        ),
+        CompiledOpeningPositionComponent(
+            component_kind="CLASSIFIED_BALANCE",
+            category=OpeningBalanceCategory.REGISTERED_SHARE_CAPITAL,
+            reference_id="share-capital",
+            lifecycle_phase=None,
+            amount=Money.nok("30000"),
+            account="2000",
+            description="Registered share capital",
+            is_debit=False,
+            primary_source=requested.components[2].primary_source,
+            corroborating_sources=requested.components[2].corroborating_sources,
+        ),
+    )
     entry_sources = (
-        requested.prior_closing_source,
+        requested.opening_basis,
         *(
             source
             for component in requested.components
@@ -766,6 +863,7 @@ def test_opening_position_adapter_binds_atomic_component_rpc() -> None:
     result = asyncio.run(
         session.rebuild_company_year_opening(
             requested,
+            components=compiled,
             lines=lines,
             entry_sources=entry_sources,
         )
@@ -779,12 +877,16 @@ def test_opening_position_adapter_binds_atomic_component_rpc() -> None:
         "10000000-0000-0000-0000-000000000001",
         2026,
         date(2026, 1, 1),
-        "Complete evidenced opening position",
+        "PRIOR_CLOSE_RECONSTRUCTION",
     )
-    components = json.loads(str(parameters[11]))
+    assert parameters[5] == "Complete evidenced opening position"
+    components = json.loads(str(parameters[12]))
     assert [component["category"] for component in components] == [
-        "BANK", "BANK_LOAN_PAYABLE", "REGISTERED_SHARE_CAPITAL"
+        "BANK", "LONG_TERM_BANK_LOAN_PAYABLE", "REGISTERED_SHARE_CAPITAL"
     ]
+    assert components[1]["componentKind"] == "BANK_LOAN"
+    assert components[1]["lifecyclePhase"] == "LONG_TERM"
+    assert components[1]["account"] == "2220"
 
 
 def test_supported_pattern_adapter_binds_rule_event_and_source_provenance() -> None:
@@ -886,7 +988,7 @@ def test_received_dividend_adapter_binds_dedicated_lifecycle_rpc(
         ),
     }
     if decision_entry_id is not None:
-        kwargs["decision_entry_id"] = decision_entry_id
+        kwargs["decision_reference"] = decision_entry_id
 
     result = asyncio.run(getattr(session, method_name)(requested, **kwargs))
 
@@ -900,6 +1002,49 @@ def test_received_dividend_adapter_binds_dedicated_lifecycle_rpc(
     sources = json.loads(str(parameters[source_index]))
     assert sources[0]["capability"] == "INVESTMENTS"
     assert sources[0]["role"] == "PRIMARY"
+
+
+def test_received_dividend_adapter_uses_stable_opening_reference_rpc() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000005",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "DIVIDEND_RECEIVED",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    reference = DividendDecisionReferenceId("dividend:opening:1")
+    requested = received_dividend_command(
+        InvestmentDividendPhase.PAYMENT,
+        decision_reference_id=reference,
+    )
+    result = asyncio.run(session.record_received_dividend_payment(
+        requested,
+        decision_reference=reference,
+        memo="Opening received-dividend settlement",
+        lines=(
+            LedgerLine("1920", "Bank", Money.nok("500"), Money.nok("0")),
+            LedgerLine("1530", "Receivable", Money.nok("0"), Money.nok("500")),
+        ),
+    ))
+
+    assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert "ledger.record_received_dividend_payment_by_reference_v1" in calls[0][0]
+    assert calls[0][1][3] == "dividend:opening:1"
+    assert calls[0][1][11] == "ledger-supported-patterns-2026.1"
+    sources = json.loads(str(calls[0][1][12]))
+    assert [source["capability"] for source in sources] == [
+        "INVESTMENTS", "BANKING"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1853,6 +1998,8 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
             "ledger_opening_capital_reduction_anchor_missing",
             "LEDGER_OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING",
         ),
+        ("ledger_opening_balance_invalid", "LEDGER_OPENING_BALANCE_INVALID"),
+        ("ledger_opening_source_overlap", "LEDGER_OPENING_SOURCE_OVERLAP"),
         ("ledger_entry_already_corrected", "LEDGER_ENTRY_ALREADY_CORRECTED"),
         ("ledger_opening_already_exists", "LEDGER_OPENING_ALREADY_EXISTS"),
     ],

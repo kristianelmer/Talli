@@ -59,6 +59,8 @@ test("supported entries persist immutable event and source provenance", () => {
   assert.match(migration, /fact_sha256 text not null/iu);
   assert.match(migration, /source_revision integer not null/iu);
   assert.match(migration, /ledger_entry_sources_one_primary_uidx/iu);
+  assert.doesNotMatch(migration, /ordinal between 1 and 100/iu);
+  assert.doesNotMatch(migration, /jsonb_array_length\(p_sources\) not between 1 and 100/iu);
 });
 
 test("SQL keeps accounting policy out and delegates to the canonical writer", () => {

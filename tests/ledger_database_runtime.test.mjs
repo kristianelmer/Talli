@@ -16,6 +16,7 @@ const bankLoanPath = "/repo/supabase/migrations/20260827106000_ledger_bank_loan_
 const cashCapitalIncreasePath = "/repo/supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql";
 const lossCoverageCapitalReductionPath = "/repo/supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql";
 const openingPositionRebuildPath = "/repo/supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql";
+const openingPositionAcceptancePath = "/repo/supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -254,6 +255,11 @@ insert into public.company_eligibility_assessments (
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
   timestamptz '2026-01-01 08:00:00+00'
 ), (
+  '70000000-0000-0000-0000-000000000006', '${companyId}', 2031,
+  'supported', true, '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+  timestamptz '2026-01-01 08:00:00+00'
+), (
   '70000000-0000-0000-0000-000000000003', '${companyId}', 2029,
   'supported', true, '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
@@ -281,6 +287,10 @@ insert into public.company_year_admissions (
   '70000000-0000-0000-0000-000000000002', '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 ), (
+  '71000000-0000-0000-0000-000000000006', '${companyId}', 2031,
+  '70000000-0000-0000-0000-000000000006', '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
   '71000000-0000-0000-0000-000000000003', '${companyId}', 2029,
   '70000000-0000-0000-0000-000000000003', '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
@@ -304,6 +314,11 @@ insert into public.company_year_acceptances (
 ), (
   '72000000-0000-0000-0000-000000000002',
   '71000000-0000-0000-0000-000000000002', '${companyId}', 2027,
+  '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '72000000-0000-0000-0000-000000000006',
+  '71000000-0000-0000-0000-000000000006', '${companyId}', 2031,
   '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 ), (
@@ -626,7 +641,7 @@ set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticat
 `;
 }
 
-function newYearRequest(incomeYear = 2027, bankBalance = "45000.00") {
+function newYearRequest(incomeYear = 2027, bankBalance = "30000.00") {
   return {
     companyId,
     incomeYear,
@@ -907,11 +922,16 @@ function openingPositionTransaction({
     { referenceId: "bank-loan:opening-runtime-2", amountNok: "25000.00" },
   ],
   correlationId = "bank-loan-opening-runtime",
+  componentAccountMismatch = false,
+  omitFirstComponentSource = false,
 } = {}) {
   const components = [
     {
+      componentKind: "CLASSIFIED_BALANCE",
       category: "BANK",
       referenceId: "bank-account:opening-runtime",
+      lifecyclePhase: null,
+      account: "1920",
       amountNok: bankBalanceNok,
       balanceSide: "DEBIT",
       sources: [
@@ -920,8 +940,11 @@ function openingPositionTransaction({
       ],
     },
     ...loans.map((loan, index) => ({
-      category: "BANK_LOAN_PAYABLE",
+      componentKind: "BANK_LOAN",
+      category: "LONG_TERM_BANK_LOAN_PAYABLE",
       referenceId: loan.referenceId,
+      lifecyclePhase: "LONG_TERM",
+      account: "2220",
       amountNok: loan.amountNok,
       balanceSide: "CREDIT",
       sources: [
@@ -930,8 +953,11 @@ function openingPositionTransaction({
       ],
     })),
     {
+      componentKind: "CLASSIFIED_BALANCE",
       category: "REGISTERED_SHARE_CAPITAL",
       referenceId: "share-capital:opening-runtime",
+      lifecyclePhase: null,
+      account: "2000",
       amountNok: shareCapitalNok,
       balanceSide: "CREDIT",
       sources: [
@@ -944,21 +970,29 @@ function openingPositionTransaction({
       || left.referenceId.localeCompare(right.referenceId)
   )).map((component, index) => ({ ...component, ordinal: index + 1 }));
   const lines = components.map((component) => ({
-    account: component.category === "BANK"
-      ? "1920"
-      : component.category === "BANK_LOAN_PAYABLE" ? "2220" : "2000",
+    account: component.account,
     description: `${component.category}: ${component.referenceId}`,
     debit: component.balanceSide === "DEBIT" ? component.amountNok : "0.00",
     credit: component.balanceSide === "CREDIT" ? component.amountNok : "0.00",
     currency: "NOK",
   }));
+  if (componentAccountMismatch) components[0].account = "1999";
   const sources = [
-    { role: "PRIMARY", capability: "LEDGER", recordId: `prior-close:${incomeYear - 1}`, revision: 1, factSha256: "0".repeat(64) },
+    { role: "PRIMARY", capability: "ANNUAL_ACCOUNTS_FILING", recordId: `prior-close:${incomeYear - 1}`, revision: 1, factSha256: "0".repeat(64) },
     ...components.flatMap((component) => component.sources.map((source) => ({
       ...source,
       role: "CORROBORATING",
     }))),
   ];
+  if (omitFirstComponentSource) {
+    const omitted = components[0].sources[0];
+    const index = sources.findIndex((source) => (
+      source.capability === omitted.capability
+      && source.recordId === omitted.recordId
+      && source.revision === omitted.revision
+    ));
+    if (index > 0) sources.splice(index, 1);
+  }
   return String.raw`
 begin;
 set local role ledger_executor;
@@ -966,10 +1000,159 @@ ${actorContext(actorId)}
 select row_to_json(opening)::text
 from ledger.rebuild_company_year_opening_v1(
   '${sqlQuote(idempotencyKey)}'::text, '${company}'::uuid, ${incomeYear}::integer,
-  '${anchorDate}'::date, 'Complete evidenced opening position'::text,
-  '${sqlQuote(JSON.stringify(lines))}'::jsonb, 'LEDGER'::text,
+  '${anchorDate}'::date, 'PRIOR_CLOSE_RECONSTRUCTION'::text,
+  'Complete evidenced opening position'::text,
+  '${sqlQuote(JSON.stringify(lines))}'::jsonb, 'ANNUAL_ACCOUNTS_FILING'::text,
   'prior-close:${incomeYear - 1}'::text, '${sqlQuote(correlationId)}'::text,
   '${verifiedSubject}'::text, '${sqlQuote(JSON.stringify(sources))}'::jsonb,
+  '${sqlQuote(JSON.stringify(components))}'::jsonb
+) opening;
+commit;
+`;
+}
+
+function lifecycleOpeningTransaction() {
+  let sourceCounter = 20;
+  const componentSources = (prefix, capabilities = ["DOCUMENTS", "LEDGER"]) =>
+    capabilities.map((capability, index) => ({
+      role: index === 0 ? "PRIMARY" : "CORROBORATING",
+      capability,
+      recordId: `${prefix}:source:${index + 1}`,
+      revision: 1,
+      factSha256: (sourceCounter++).toString(16).padStart(64, "0"),
+    }));
+  const components = [];
+  for (let index = 0; index < 26; index += 1) {
+    components.push({
+      componentKind: "CLASSIFIED_BALANCE",
+      category: "BANK",
+      referenceId: `large-opening:bank:${index + 1}`,
+      lifecyclePhase: null,
+      account: "1920",
+      amountNok: "1.00",
+      balanceSide: "DEBIT",
+      sources: componentSources(`large-opening:bank:${index + 1}`),
+    });
+    components.push({
+      componentKind: "CLASSIFIED_BALANCE",
+      category: "RETAINED_EARNINGS",
+      referenceId: `large-opening:equity:${index + 1}`,
+      lifecyclePhase: null,
+      account: "2050",
+      amountNok: "1.00",
+      balanceSide: "CREDIT",
+      sources: componentSources(`large-opening:equity:${index + 1}`),
+    });
+  }
+  const increaseSources = componentSources(
+    "opening-capital-increase:restricted",
+    ["CORPORATE_GOVERNANCE", "BANKING", "DOCUMENTS"],
+  );
+  for (const [category, account, balanceSide] of [
+    ["RESTRICTED_BANK", "1921", "DEBIT"],
+    ["UNREGISTERED_CAPITAL_INCREASE", "2030", "CREDIT"],
+  ]) components.push({
+    componentKind: "CAPITAL_INCREASE",
+    category,
+    referenceId: "capital-increase:opening-lifecycle",
+    lifecyclePhase: "RESTRICTED_PAYMENT",
+    account,
+    amountNok: "100.00",
+    nominalIncreaseNok: "80.00",
+    sharePremiumNok: "20.00",
+    nominalReductionNok: null,
+    balanceSide,
+    sources: increaseSources,
+  });
+  const reductionSources = componentSources(
+    "opening-capital-reduction:decided",
+    ["CORPORATE_GOVERNANCE", "DOCUMENTS"],
+  );
+  for (const [category, account, balanceSide] of [
+    ["UNREGISTERED_CAPITAL_REDUCTION", "2033", "DEBIT"],
+    ["UNCOVERED_LOSS", "2080", "CREDIT"],
+  ]) components.push({
+    componentKind: "CAPITAL_REDUCTION",
+    category,
+    referenceId: "capital-reduction:opening-lifecycle",
+    lifecyclePhase: "DECIDED_NOT_REGISTERED",
+    account,
+    amountNok: "30.00",
+    nominalIncreaseNok: null,
+    sharePremiumNok: null,
+    nominalReductionNok: "30.00",
+    balanceSide,
+    sources: reductionSources,
+  });
+  components.push({
+    componentKind: "DIVIDEND_RECEIVABLE",
+    category: "DIVIDEND_RECEIVABLE",
+    referenceId: "dividend-receivable:opening-lifecycle",
+    lifecyclePhase: "FINAL_DECISION_UNSETTLED",
+    account: "1530",
+    amountNok: "50.00",
+    balanceSide: "DEBIT",
+    sources: componentSources(
+      "opening-dividend-receivable",
+      ["INVESTMENTS", "DOCUMENTS"],
+    ),
+  });
+  components.push({
+    componentKind: "DIVIDEND_PAYABLE",
+    category: "DIVIDEND_PAYABLE",
+    referenceId: "dividend-payable:opening-lifecycle",
+    lifecyclePhase: "DECLARED_UNPAID",
+    account: "2800",
+    amountNok: "50.00",
+    balanceSide: "CREDIT",
+    sources: componentSources(
+      "opening-dividend-payable",
+      ["CORPORATE_GOVERNANCE", "DOCUMENTS"],
+    ),
+  });
+  components.sort((left, right) => (
+    left.category.localeCompare(right.category)
+      || left.referenceId.localeCompare(right.referenceId)
+  ));
+  components.forEach((component, index) => {
+    component.ordinal = index + 1;
+  });
+  const lines = components.map((component) => ({
+    account: component.account,
+    description: `${component.category}: ${component.referenceId}`,
+    debit: component.balanceSide === "DEBIT" ? component.amountNok : "0.00",
+    credit: component.balanceSide === "CREDIT" ? component.amountNok : "0.00",
+    currency: "NOK",
+  }));
+  const sources = [{
+    role: "PRIMARY",
+    capability: "ANNUAL_ACCOUNTS_FILING",
+    recordId: "prior-close:2027:lifecycle",
+    revision: 1,
+    factSha256: "0".repeat(64),
+  }];
+  const seen = new Set();
+  for (const component of components) {
+    for (const source of component.sources) {
+      const key = `${source.capability}:${source.recordId}:${source.revision}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sources.push({ ...source, role: "CORROBORATING" });
+    }
+  }
+  return String.raw`
+begin;
+${actorContext(ownerId)}
+select row_to_json(opening)::text
+from ledger.rebuild_company_year_opening_v1(
+  '6a000000-0000-4000-8000-000000000028'::text,
+  '${companyId}'::uuid, 2031::integer, '2031-01-01'::date,
+  'PRIOR_CLOSE_RECONSTRUCTION'::text,
+  'Large lifecycle opening position'::text,
+  '${sqlQuote(JSON.stringify(lines))}'::jsonb,
+  'ANNUAL_ACCOUNTS_FILING'::text, 'prior-close:2027:lifecycle'::text,
+  'opening-lifecycle-runtime'::text, '${ownerId}'::text,
+  '${sqlQuote(JSON.stringify(sources))}'::jsonb,
   '${sqlQuote(JSON.stringify(components))}'::jsonb
 ) opening;
 commit;
@@ -1621,6 +1804,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", cashCapitalIncreasePath]);
     psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
     psql(containerName, ["--file", openingPositionRebuildPath]);
+    psql(containerName, ["--file", openingPositionAcceptancePath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -1653,6 +1837,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
             'bank_loan_anchors', 'bank_loan_payment_allocations',
             'opening_position_rebuilds', 'opening_position_components',
             'opening_position_component_sources',
+            'opening_received_dividend_settlements',
             'cash_capital_increase_phases',
             'loss_coverage_capital_reduction_phases'
           ]))
@@ -1663,7 +1848,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.cash_capital_increase_phases:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.loss_coverage_capital_reduction_phases:true:true,ledger.opening_position_component_sources:true:true,ledger.opening_position_components:true:true,ledger.opening_position_rebuilds:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.cash_capital_increase_phases:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.loss_coverage_capital_reduction_phases:true:true,ledger.opening_position_component_sources:true:true,ledger.opening_position_components:true:true,ledger.opening_position_rebuilds:true:true,ledger.opening_received_dividend_settlements:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -3934,8 +4119,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       ],
     }));
     competingDisbursement.child.stdin.end(bankLoanDisbursementTransaction({
-      incomeYear: 2030,
-      eventDate: "2030-03-15",
+      incomeYear: 2029,
+      eventDate: "2029-03-15",
       idempotencyKey: "6a000000-0000-4000-8000-000000000031",
       loanReference: "bank-loan:basis-race-runtime-1",
       sourceRecordId: "bank-loan-basis-race-disbursement",
@@ -3965,10 +4150,20 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
             and loan_reference_id = 'bank-loan:basis-race-runtime-1'),
         (select count(*) from ledger.opening_position_components
           where company_id = '${companyId}' and income_year = 2030
-            and category = 'BANK_LOAN_PAYABLE'
+            and category = 'LONG_TERM_BANK_LOAN_PAYABLE'
             and reference_id = 'bank-loan:basis-race-runtime-1'),
-        (select count(*) from ledger.entries
-          where company_id = '${companyId}' and income_year = 2030),
+        (select count(*) from ledger.entries entry
+          where entry.id in (
+            select anchor.disbursement_entry_id
+            from ledger.bank_loan_anchors anchor
+            where anchor.company_id = '${companyId}'
+              and anchor.loan_reference_id = 'bank-loan:basis-race-runtime-1'
+            union all
+            select component.opening_entry_id
+            from ledger.opening_position_components component
+            where component.company_id = '${companyId}'
+              and component.reference_id = 'bank-loan:basis-race-runtime-1'
+          )),
         (select count(*) from backend_system.ledger_command_receipts
           where company_id = '${companyId}'
             and idempotency_key in (
@@ -3984,6 +4179,120 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       documentsReady: false,
       idempotencyKey: "61000000-0000-4000-8000-000000000090",
     })).ledger_state_digest;
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select * from ledger.post_supported_entry_v1(
+        '6a000000-0000-4000-8000-000000000027', '${companyId}', 2031,
+        'OPENING_BALANCE', 'Generic opening must be rejected',
+        '[{"account":"1920","description":"Bank","debit":"1.00","credit":"0.00","currency":"NOK"},{"account":"2050","description":"Equity","debit":"0.00","credit":"1.00","currency":"NOK"}]'::jsonb,
+        'LEDGER', 'generic-opening-bypass', 'generic-opening-bypass',
+        '${ownerId}', '2031-01-01', 'ledger-supported-patterns-2026.1',
+        '[{"role":"PRIMARY","capability":"LEDGER","recordId":"generic-opening-bypass","revision":1,"factSha256":"${"f".repeat(64)}"}]'::jsonb
+      );
+      commit;
+    `), /ledger_invalid_input/iu);
+    const lifecycleOpening = jsonOutput(
+      containerName,
+      lifecycleOpeningTransaction(),
+    );
+    assert.equal(lifecycleOpening.entry_kind, "OPENING_BALANCE");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.opening_position_components
+          where company_id = '${companyId}' and income_year = 2031),
+        (select count(*) from ledger.entry_sources
+          where entry_id = '${lifecycleOpening.ledger_entry_id}'),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.post_supported_entry_storage_v1(text,uuid,integer,text,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        )
+      );
+    `)), "58:114:f");
+    const openingCapitalRegistration = jsonOutput(
+      containerName,
+      cashCapitalIncreaseTransaction({
+        phase: "REGISTERED",
+        incomeYear: 2031,
+        eventDate: "2031-02-01",
+        idempotencyKey: "6b000000-0000-4000-8000-000000000028",
+        capitalIncreaseReference: "capital-increase:opening-lifecycle",
+        nominalIncreaseNok: "80.00",
+        sharePremiumNok: "20.00",
+        memo: "Register opening capital increase",
+        sourceRecordId: "opening-capital-increase-registration-runtime",
+      }),
+    );
+    assert.equal(openingCapitalRegistration.entry_kind, "CAPITAL_INCREASE");
+    const openingReductionRegistration = jsonOutput(
+      containerName,
+      lossCoverageCapitalReductionTransaction({
+        phase: "REGISTERED",
+        incomeYear: 2031,
+        eventDate: "2031-02-02",
+        idempotencyKey: "6c000000-0000-4000-8000-000000000028",
+        capitalReductionReference: "capital-reduction:opening-lifecycle",
+        nominalReductionNok: "30.00",
+        memo: "Register opening capital reduction",
+        sourceRecordId: "opening-capital-reduction-registration-runtime",
+      }),
+    );
+    assert.equal(openingReductionRegistration.entry_kind, "CAPITAL_REDUCTION");
+    const openingDividendPayment = jsonOutput(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select row_to_json(posted)::text
+      from ledger.record_received_dividend_payment_by_reference_v1(
+        '6d000000-0000-4000-8000-000000000028', '${companyId}', 2031,
+        'dividend-receivable:opening-lifecycle',
+        'Settle opening dividend receivable',
+        '[{"account":"1920","description":"Dividend received","debit":"50.00","credit":"0.00","currency":"NOK"},{"account":"1530","description":"Dividend receivable settled","debit":"0.00","credit":"50.00","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', 'opening-dividend-payment-runtime',
+        'opening-dividend-payment-runtime', '${ownerId}', '2031-02-03',
+        'ledger-supported-patterns-2026.1',
+        '[{"role":"PRIMARY","capability":"INVESTMENTS","recordId":"opening-dividend-payment-runtime","revision":1,"factSha256":"${"a".repeat(64)}"},{"role":"CORROBORATING","capability":"BANKING","recordId":"opening-dividend-bank-runtime","revision":1,"factSha256":"${"b".repeat(64)}"}]'::jsonb
+      ) posted;
+      commit;
+    `);
+    assert.equal(openingDividendPayment.entry_kind, "DIVIDEND_RECEIVED");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.cash_capital_increase_phases
+          where company_id = '${companyId}'
+            and capital_increase_reference_id = 'capital-increase:opening-lifecycle'
+            and phase = 'REGISTERED'),
+        (select count(*) from ledger.loss_coverage_capital_reduction_phases
+          where company_id = '${companyId}'
+            and capital_reduction_reference_id = 'capital-reduction:opening-lifecycle'
+            and phase = 'REGISTERED'),
+        (select count(*) from ledger.opening_received_dividend_settlements
+          where company_id = '${companyId}'
+            and decision_reference_id = 'dividend-receivable:opening-lifecycle')
+      );
+    `)), "1:1:1");
+    assert.match(psqlFailure(containerName, openingPositionTransaction({
+      idempotencyKey: "6a000000-0000-4000-8000-000000000040",
+      componentAccountMismatch: true,
+    })), /ledger_opening_balance_invalid/iu);
+    assert.match(psqlFailure(containerName, openingPositionTransaction({
+      idempotencyKey: "6a000000-0000-4000-8000-000000000041",
+      omitFirstComponentSource: true,
+    })), /ledger_opening_evidence_invalid/iu);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where company_id = '${companyId}' and income_year = 2029
+            and source_record_id = 'prior-close:2028'),
+        (select count(*) from ledger.opening_position_rebuilds
+          where company_id = '${companyId}' and income_year = 2029),
+        (select count(*) from backend_system.ledger_command_receipts
+          where company_id = '${companyId}' and idempotency_key in (
+            '6a000000-0000-4000-8000-000000000040',
+            '6a000000-0000-4000-8000-000000000041'
+          ))
+      );
+    `)), "0:0:0");
     const openingPosition = jsonOutput(
       containerName,
       openingPositionTransaction(),
@@ -4021,12 +4330,12 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         select concat_ws(':',
           pg_catalog.has_function_privilege(
             'ledger_executor',
-            'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,jsonb,text,text,text,text,jsonb,jsonb)',
+            'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,text,jsonb,text,text,text,text,jsonb,jsonb)',
             'execute'
           ),
           pg_catalog.has_function_privilege(
             'authenticated',
-            'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,jsonb,text,text,text,text,jsonb,jsonb)',
+            'ledger.rebuild_company_year_opening_v1(text,uuid,integer,date,text,text,jsonb,text,text,text,text,jsonb,jsonb)',
             'execute'
           ),
           pg_catalog.has_table_privilege(
@@ -4181,12 +4490,54 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     const workflowRequest = newYearRequest();
     const workflowRequestSql = sqlQuote(JSON.stringify(workflowRequest));
     const shareholdersSql = sqlQuote(JSON.stringify(workflowRequest.shareholders));
+    const workflowDocumentSource = {
+      role: "CORROBORATING",
+      capability: "DOCUMENTS",
+      recordId: "new-year:2027:evidence-bundle",
+      revision: 1,
+      factSha256: "7".repeat(64),
+    };
+    const workflowComponents = [
+      {
+        ordinal: 1,
+        componentKind: "CLASSIFIED_BALANCE",
+        category: "BANK",
+        referenceId: "new-year:2027:bank",
+        lifecyclePhase: null,
+        account: "1920",
+        amountNok: "30000.00",
+        balanceSide: "DEBIT",
+        sources: [
+          { ...workflowDocumentSource, role: "PRIMARY", capability: "BANKING", recordId: "new-year:2027:banking-fact" },
+          workflowDocumentSource,
+        ],
+      },
+      {
+        ordinal: 2,
+        componentKind: "CLASSIFIED_BALANCE",
+        category: "REGISTERED_SHARE_CAPITAL",
+        referenceId: "new-year:2027:share-capital",
+        lifecyclePhase: null,
+        account: "2000",
+        amountNok: "30000.00",
+        balanceSide: "CREDIT",
+        sources: [
+          { ...workflowDocumentSource, role: "PRIMARY", capability: "SHAREHOLDER_REGISTER_FILING", recordId: "new-year:2027:registration" },
+          workflowDocumentSource,
+        ],
+      },
+    ];
     const openingLines = [
-      { account: "1920", description: "Bankinnskudd", debit: "45000.00", credit: "0.00", currency: "NOK" },
-      { account: "2000", description: "Aksjekapital", debit: "0.00", credit: "30000.00", currency: "NOK" },
-      { account: "2050", description: "Annen egenkapital", debit: "0.00", credit: "15000.00", currency: "NOK" },
+      { account: "1920", description: "Bank balance: new-year:2027:bank", debit: "30000.00", credit: "0.00", currency: "NOK" },
+      { account: "2000", description: "Registered share capital: new-year:2027:share-capital", debit: "0.00", credit: "30000.00", currency: "NOK" },
     ];
     const openingLinesSql = sqlQuote(JSON.stringify(openingLines));
+    const workflowComponentsSql = sqlQuote(JSON.stringify(workflowComponents));
+    const workflowSourcesSql = sqlQuote(JSON.stringify([
+      { ...workflowDocumentSource, role: "PRIMARY", capability: "SHAREHOLDER_REGISTER_FILING", recordId: "new-year:2027:registration" },
+      { ...workflowDocumentSource, capability: "BANKING", recordId: "new-year:2027:banking-fact" },
+      workflowDocumentSource,
+    ]));
     const workflowKey = "73000000-0000-4000-8000-000000000007";
 
     const aal1Failure = psqlFailure(containerName, String.raw`
@@ -4197,7 +4548,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         '${workflowRequestSql}'::jsonb, '${ownerId}'
       );
       select backend_system.record_opening_snapshot_legacy_v1(
-        '${companyId}', 2027, 45000.00, 30000.00, 100, 300.00,
+        '${companyId}', 2027, 30000.00, 30000.00, 100, 300.00,
         '${shareholdersSql}'::jsonb, '${ownerId}'
       );
       commit;
@@ -4216,14 +4567,15 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         '${workflowRequestSql}'::jsonb, '${ownerId}'
       );
       select backend_system.record_opening_snapshot_legacy_v1(
-        '${companyId}', 2027, 45000.00, 30000.00, 100, 300.00,
+        '${companyId}', 2027, 30000.00, 30000.00, 100, 300.00,
         '${shareholdersSql}'::jsonb, '${ownerId}'
       ) as setup_id \gset
-      select * from ledger.post_entry(
-        '${workflowKey}', '${companyId}', 2027, 'OPENING_BALANCE',
-        'Åpningsbalanse for Talli-start', '${openingLinesSql}'::jsonb,
-        '[]'::jsonb, false, 'SHAREHOLDER_REGISTER_FILING',
-        'opening-setup:' || :'setup_id', 'new-year-runtime', '${ownerId}'
+      select * from ledger.rebuild_company_year_opening_v1(
+        '${workflowKey}', '${companyId}', 2027, date '2027-01-01',
+        'NEW_COMPANY', 'Complete evidenced opening position',
+        '${openingLinesSql}'::jsonb, 'SHAREHOLDER_REGISTER_FILING',
+        'new-year:2027:registration', 'new-year-runtime', '${ownerId}',
+        '${workflowSourcesSql}'::jsonb, '${workflowComponentsSql}'::jsonb
       ) \gset posted_
       select backend_system.complete_ledger_workflow_v1(
         'new_year_start', '${workflowKey}', '${companyId}',
@@ -4274,9 +4626,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         orgNumber: "999999999",
       },
       lines: [
-        { account: "1920", description: "Bankinnskudd", debit: 45000, credit: 0, currency: "NOK" },
-        { account: "2000", description: "Aksjekapital", debit: 0, credit: 30000, currency: "NOK" },
-        { account: "2050", description: "Annen egenkapital", debit: 0, credit: 15000, currency: "NOK" },
+        { account: "1920", description: "Bank balance: new-year:2027:bank", debit: 30000, credit: 0, currency: "NOK" },
+        { account: "2000", description: "Registered share capital: new-year:2027:share-capital", debit: 0, credit: 30000, currency: "NOK" },
       ],
       setups: 1,
       shareholders: 1,
@@ -4335,7 +4686,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         '${companyId}', '${failedRequestSql}'::jsonb, '{}'::jsonb, '${ownerId}'
       );
       commit;
-    `), /ledger_opening_already_exists/iu);
+    `), /ledger_invalid_input/iu);
     assert.deepEqual(jsonOutput(containerName, String.raw`
       select pg_catalog.jsonb_build_object(
         'setups', (select count(*) from public.opening_balance_setups
@@ -5740,6 +6091,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.opening_position_rebuilds),
         (select count(*) from ledger.opening_position_components),
         (select count(*) from ledger.opening_position_component_sources),
+        (select count(*) from ledger.opening_received_dividend_settlements),
         (select count(*) from ledger.cash_capital_increase_phases),
         (select count(*) from ledger.loss_coverage_capital_reduction_phases),
         encode(extensions.digest(coalesce((select string_agg(
@@ -6040,6 +6392,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", cashCapitalIncreasePath]);
     psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
     psql(containerName, ["--file", openingPositionRebuildPath]);
+    psql(containerName, ["--file", openingPositionAcceptancePath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -6241,7 +6594,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     ).replayed, true);
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select count(*) from ledger.loss_coverage_capital_reduction_phases;
-    `)), "6");
+    `)), "7");
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -6258,6 +6611,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.opening_position_rebuilds),
         (select count(*) from ledger.opening_position_components),
         (select count(*) from ledger.opening_position_component_sources),
+        (select count(*) from ledger.opening_received_dividend_settlements),
         (select count(*) from ledger.cash_capital_increase_phases),
         (select count(*) from ledger.loss_coverage_capital_reduction_phases),
         encode(extensions.digest(coalesce((select string_agg(

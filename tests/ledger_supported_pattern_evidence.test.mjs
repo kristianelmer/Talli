@@ -104,6 +104,153 @@ test("every golden economic journal is balanced in exact NOK cents", () => {
   }
 });
 
+test("opening golden case is typed, classification-complete, and source-bound", () => {
+  const opening = fixture.patterns.find((pattern) => pattern.id === "opening-rebuild");
+  const lines = opening.journals[0].lines;
+  const expectedAccounts = {
+    ACCRUED_INTEREST_PAYABLE: "2965",
+    ACCRUED_INTEREST_RECEIVABLE: "1700",
+    ASSOCIATE_INVESTMENT: "1310",
+    BANK: "1920",
+    CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE: "1370",
+    CURRENT_FUND_INVESTMENT: "1815",
+    CURRENT_LISTED_SHARE_INVESTMENT: "1810",
+    CURRENT_TAX_PAYABLE: "2500",
+    DEFERRED_TAX_ASSET: "1070",
+    DEFERRED_TAX_LIABILITY: "2120",
+    DIVIDEND_PAYABLE: "2800",
+    DIVIDEND_RECEIVABLE: "1530",
+    GROUP_COMPANY_LOAN_RECEIVABLE: "1325",
+    GROUP_CONTRIBUTION_PAYABLE: "2960",
+    GROUP_CONTRIBUTION_RECEIVABLE: "1560",
+    INTERCOMPANY_LOAN_PAYABLE: "2260",
+    LONG_TERM_BANK_LOAN_PAYABLE: "2220",
+    OTHER_EQUITY: "2050",
+    OTHER_LONG_TERM_INVESTMENT: "1350",
+    OTHER_PAID_IN_EQUITY: "2035",
+    OWNER_LOAN_PAYABLE: "2255",
+    REGISTERED_SHARE_CAPITAL: "2000",
+    RESTRICTED_BANK: "1921",
+    RETAINED_EARNINGS: "2050",
+    SHARE_PREMIUM: "2020",
+    SHORT_TERM_BANK_LOAN_PAYABLE: "2380",
+    SUBSCRIPTION_RECEIVABLE: "1500",
+    SUBSIDIARY_INVESTMENT: "1300",
+    SUBSIDIARY_LOAN_RECEIVABLE: "1320",
+    SUPPLIER_PAYABLE: "2400",
+    TAX_RECEIVABLE: "1570",
+    UNCOVERED_LOSS: "2080",
+    UNREGISTERED_CAPITAL_INCREASE: "2030",
+    UNREGISTERED_CAPITAL_REDUCTION: "2033",
+  };
+
+  assert.equal(opening.input.mode, "PRIOR_CLOSE_RECONSTRUCTION");
+  assert.equal(opening.input.openingBasis, "annual-accounts");
+  assert.deepEqual(
+    new Set(lines.map((line) => line.category)),
+    new Set(Object.keys(expectedAccounts)),
+  );
+  assert.equal(lines.length, 36);
+  for (const line of lines) {
+    assert.equal(line.postingAccount, expectedAccounts[line.category]);
+    assert.match(line.referenceId, /^[a-z][a-z0-9:-]+$/u);
+    assert.ok("lifecyclePhase" in line);
+  }
+
+  assert.deepEqual(
+    new Set(opening.input.components.map((component) => component.componentKind)),
+    new Set([
+      "CLASSIFIED_BALANCE",
+      "BANK_LOAN",
+      "INVESTMENT",
+      "CAPITAL_INCREASE",
+      "CAPITAL_REDUCTION",
+      "DIVIDEND_RECEIVABLE",
+      "DIVIDEND_PAYABLE",
+    ]),
+  );
+  assert.deepEqual(
+    new Set(lines.map((line) => line.lifecyclePhase).filter(Boolean)),
+    new Set([
+      "ASSOCIATE",
+      "BINDING_SUBSCRIPTION",
+      "CURRENT_FUND",
+      "CURRENT_LISTED_SHARE",
+      "DECIDED_NOT_REGISTERED",
+      "DECLARED_UNPAID",
+      "FINAL_DECISION_UNSETTLED",
+      "LONG_TERM",
+      "OTHER_LONG_TERM",
+      "RESTRICTED_PAYMENT",
+      "SHORT_TERM",
+      "SUBSIDIARY",
+    ]),
+  );
+
+  for (const source of Object.values(opening.input.sources)) {
+    assert.match(source.recordId, /^[a-z][a-z0-9:-]+$/u);
+    assert.ok(Number.isInteger(source.revision) && source.revision > 0);
+    assert.match(source.factSha256, /^[0-9a-f]{64}$/u);
+  }
+  for (const component of opening.input.components) {
+    assert.ok(opening.input.sources[component.primarySource]);
+    assert.ok(component.corroboratingSources.length > 0);
+    assert.equal(new Set([
+      component.primarySource,
+      ...component.corroboratingSources,
+    ]).size, 1 + component.corroboratingSources.length);
+    for (const sourceKey of component.corroboratingSources) {
+      assert.ok(opening.input.sources[sourceKey]);
+    }
+  }
+});
+
+test("opening golden case declares cross-output projection parity", () => {
+  const opening = fixture.patterns.find((pattern) => pattern.id === "opening-rebuild");
+  const facts = opening.projectionFacts;
+
+  assert.deepEqual(new Set(Object.keys(facts)), new Set(opening.projections));
+  assert.equal(facts.LEDGER.compiledLineCount, opening.journals[0].lines.length);
+  assert.equal(
+    facts.LEDGER.distinctCategoryCount,
+    new Set(opening.journals[0].lines.map((line) => line.category)).size,
+  );
+  assert.deepEqual(facts.BANK.postingAccounts, ["1920", "1921"]);
+  assert.deepEqual(facts.INVESTMENTS.classifications, [
+    "SUBSIDIARY",
+    "ASSOCIATE",
+    "OTHER_LONG_TERM",
+    "CURRENT_LISTED_SHARE",
+    "CURRENT_FUND",
+  ]);
+  assert.deepEqual(new Set(facts.TAX.categories), new Set([
+    "TAX_RECEIVABLE",
+    "CURRENT_TAX_PAYABLE",
+    "DEFERRED_TAX_ASSET",
+    "DEFERRED_TAX_LIABILITY",
+  ]));
+  assert.equal(facts.SAF_T.restrictedBankPostingAccount, "1921");
+  assert.equal(facts.SAF_T.restrictedBankStandardAccount, "1920");
+  assert.equal(facts.SAF_T.allLinesHavePostingAccount, true);
+  assert.deepEqual(
+    new Set(facts.ARCHIVE.sourceKeys),
+    new Set(Object.keys(opening.input.sources)),
+  );
+  assert.equal(facts.ARCHIVE.immutableHashesRequired, true);
+  for (const blocker of [
+    "OPENING_BASIS_MISSING",
+    "OPENING_EVIDENCE_SOURCE_MISMATCH",
+    "OPENING_SOURCE_OVERLAP",
+    "DUPLICATE_COMPONENT_IDENTITY",
+    "UNSUPPORTED_OPENING_CLASSIFICATION",
+    "UNBALANCED_OPENING",
+    "OPENING_LOAN_REFERENCE_COLLISION",
+    "OPENING_LIFECYCLE_ANCHOR_INCOMPLETE",
+  ]) {
+    assert.ok(opening.blocks.includes(blocker));
+  }
+});
+
 test("non-ledger ownership changes and locks cannot fabricate economic journals", () => {
   for (const id of ["direct-owner-share-transfer", "period-close"]) {
     const pattern = fixture.patterns.find((candidate) => candidate.id === id);

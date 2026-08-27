@@ -27,6 +27,7 @@ const recutoverMigrations = [
   "20260827107000_ledger_cash_capital_increase_lifecycle.sql",
   "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
   "20260827109000_ledger_opening_position_rebuild.sql",
+  "20260827109100_ledger_opening_position_acceptance.sql",
 ].map((name) =>
   readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8"),
 );
@@ -194,6 +195,7 @@ async function assertAuthorityClosed(database, baseline, phase) {
       ('ledger', 'opening_position_component_sources'),
       ('ledger', 'opening_position_components'),
       ('ledger', 'opening_position_rebuilds'),
+      ('ledger', 'opening_received_dividend_settlements'),
       ('ledger', 'reconstruction_evidence'),
       ('public', 'ledger_entries')
     )
@@ -239,6 +241,12 @@ async function assertAuthorityClosed(database, baseline, phase) {
     },
     {
       relation: "ledger.opening_position_rebuilds",
+      owner: "ledger_store_owner",
+      relrowsecurity: true,
+      relforcerowsecurity: true,
+    },
+    {
+      relation: "ledger.opening_received_dividend_settlements",
       owner: "ledger_store_owner",
       relrowsecurity: true,
       relforcerowsecurity: true,

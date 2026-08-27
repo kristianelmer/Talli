@@ -137,6 +137,32 @@
         "title": "AdministrativeCostEntryWire",
         "type": "object"
       },
+      "BankLoanMaturity": {
+        "enum": [
+          "LONG_TERM",
+          "SHORT_TERM"
+        ],
+        "title": "BankLoanMaturity",
+        "type": "string"
+      },
+      "CapitalIncreasePhase": {
+        "enum": [
+          "BINDING_SUBSCRIPTION",
+          "RESTRICTED_PAYMENT",
+          "REGISTERED"
+        ],
+        "title": "CapitalIncreasePhase",
+        "type": "string"
+      },
+      "CapitalReductionRecognition": {
+        "enum": [
+          "DECIDED_NOT_REGISTERED",
+          "REGISTERED",
+          "FIRST_RECOGNIZED_AFTER_REGISTRATION"
+        ],
+        "title": "CapitalReductionRecognition",
+        "type": "string"
+      },
       "CompanyAccessRecord": {
         "additionalProperties": false,
         "properties": {
@@ -1872,6 +1898,17 @@
         "title": "FinalizeCompanyDeletionRequest",
         "type": "object"
       },
+      "InvestmentClassification": {
+        "enum": [
+          "SUBSIDIARY",
+          "ASSOCIATE",
+          "OTHER_LONG_TERM",
+          "CURRENT_LISTED_SHARE",
+          "CURRENT_FUND"
+        ],
+        "title": "InvestmentClassification",
+        "type": "string"
+      },
       "InvitationLookup": {
         "properties": {
           "companyName": {
@@ -2467,6 +2504,38 @@
           "postedAt"
         ],
         "title": "LedgerEntryViewWire",
+        "type": "object"
+      },
+      "LedgerFactReferenceWire": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/LedgerSourceCapability"
+          },
+          "factSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Factsha256",
+            "type": "string"
+          },
+          "recordId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Recordid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "capability",
+          "recordId",
+          "revision",
+          "factSha256"
+        ],
+        "title": "LedgerFactReferenceWire",
         "type": "object"
       },
       "LedgerInvestmentDividendWire": {
@@ -3471,6 +3540,7 @@
           "CORPORATE_GOVERNANCE",
           "SHAREHOLDER_REGISTER_FILING",
           "COMPANY_TAX_FILING",
+          "ANNUAL_ACCOUNTS_FILING",
           "DOCUMENTS"
         ],
         "title": "LedgerSourceCapability",
@@ -3714,6 +3784,68 @@
           "nominalValue": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
+          "openingBasis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "openingComponents": {
+            "anyOf": [
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "BANK_LOAN": "#/components/schemas/OpeningBankLoanWire",
+                      "CAPITAL_INCREASE": "#/components/schemas/OpeningCapitalIncreaseWire",
+                      "CAPITAL_REDUCTION": "#/components/schemas/OpeningCapitalReductionWire",
+                      "CLASSIFIED_BALANCE": "#/components/schemas/OpeningClassifiedBalanceWire",
+                      "DIVIDEND_PAYABLE": "#/components/schemas/OpeningDividendPayableWire",
+                      "DIVIDEND_RECEIVABLE": "#/components/schemas/OpeningDividendReceivableWire",
+                      "INVESTMENT": "#/components/schemas/OpeningInvestmentWire"
+                    },
+                    "propertyName": "componentKind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OpeningClassifiedBalanceWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningBankLoanWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningInvestmentWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningCapitalIncreaseWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningCapitalReductionWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningDividendReceivableWire"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpeningDividendPayableWire"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openingcomponents"
+          },
+          "openingMode": {
+            "$ref": "#/components/schemas/OpeningPositionMode",
+            "default": "NEW_COMPANY"
+          },
           "shareCapital": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
@@ -3744,6 +3876,351 @@
         ],
         "title": "NewYearStartWire",
         "type": "object"
+      },
+      "OpeningBalanceCategory": {
+        "enum": [
+          "SUBSIDIARY_LOAN_RECEIVABLE",
+          "GROUP_COMPANY_LOAN_RECEIVABLE",
+          "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE",
+          "BANK",
+          "RESTRICTED_BANK",
+          "SUBSIDIARY_INVESTMENT",
+          "ASSOCIATE_INVESTMENT",
+          "OTHER_LONG_TERM_INVESTMENT",
+          "CURRENT_LISTED_SHARE_INVESTMENT",
+          "CURRENT_FUND_INVESTMENT",
+          "SUBSCRIPTION_RECEIVABLE",
+          "DIVIDEND_RECEIVABLE",
+          "GROUP_CONTRIBUTION_RECEIVABLE",
+          "TAX_RECEIVABLE",
+          "ACCRUED_INTEREST_RECEIVABLE",
+          "DEFERRED_TAX_ASSET",
+          "REGISTERED_SHARE_CAPITAL",
+          "SHARE_PREMIUM",
+          "UNREGISTERED_CAPITAL_INCREASE",
+          "UNREGISTERED_CAPITAL_REDUCTION",
+          "OTHER_PAID_IN_EQUITY",
+          "RETAINED_EARNINGS",
+          "UNCOVERED_LOSS",
+          "OTHER_EQUITY",
+          "LONG_TERM_BANK_LOAN_PAYABLE",
+          "SHORT_TERM_BANK_LOAN_PAYABLE",
+          "OWNER_LOAN_PAYABLE",
+          "INTERCOMPANY_LOAN_PAYABLE",
+          "SUPPLIER_PAYABLE",
+          "CURRENT_TAX_PAYABLE",
+          "DEFERRED_TAX_LIABILITY",
+          "ACCRUED_INTEREST_PAYABLE",
+          "DIVIDEND_PAYABLE",
+          "GROUP_CONTRIBUTION_PAYABLE"
+        ],
+        "title": "OpeningBalanceCategory",
+        "type": "string"
+      },
+      "OpeningBankLoanWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "componentKind": {
+            "const": "BANK_LOAN",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "loanReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Loanreferenceid",
+            "type": "string"
+          },
+          "maturity": {
+            "$ref": "#/components/schemas/BankLoanMaturity"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "componentKind",
+          "loanReferenceId",
+          "maturity",
+          "amount"
+        ],
+        "title": "OpeningBankLoanWire",
+        "type": "object"
+      },
+      "OpeningCapitalIncreaseWire": {
+        "additionalProperties": false,
+        "properties": {
+          "capitalIncreaseReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Capitalincreasereferenceid",
+            "type": "string"
+          },
+          "componentKind": {
+            "const": "CAPITAL_INCREASE",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "nominalIncrease": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/CapitalIncreasePhase"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          },
+          "sharePremium": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "componentKind",
+          "capitalIncreaseReferenceId",
+          "phase",
+          "nominalIncrease",
+          "sharePremium"
+        ],
+        "title": "OpeningCapitalIncreaseWire",
+        "type": "object"
+      },
+      "OpeningCapitalReductionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "capitalReductionReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Capitalreductionreferenceid",
+            "type": "string"
+          },
+          "componentKind": {
+            "const": "CAPITAL_REDUCTION",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "nominalReduction": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          },
+          "recognition": {
+            "$ref": "#/components/schemas/CapitalReductionRecognition"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "componentKind",
+          "capitalReductionReferenceId",
+          "recognition",
+          "nominalReduction"
+        ],
+        "title": "OpeningCapitalReductionWire",
+        "type": "object"
+      },
+      "OpeningClassifiedBalanceWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "category": {
+            "$ref": "#/components/schemas/OpeningBalanceCategory"
+          },
+          "componentKind": {
+            "const": "CLASSIFIED_BALANCE",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          },
+          "referenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Referenceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "componentKind",
+          "category",
+          "referenceId",
+          "amount"
+        ],
+        "title": "OpeningClassifiedBalanceWire",
+        "type": "object"
+      },
+      "OpeningDividendPayableWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "componentKind": {
+            "const": "DIVIDEND_PAYABLE",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "decisionReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Decisionreferenceid",
+            "type": "string"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "decisionReferenceId",
+          "amount",
+          "componentKind"
+        ],
+        "title": "OpeningDividendPayableWire",
+        "type": "object"
+      },
+      "OpeningDividendReceivableWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "componentKind": {
+            "const": "DIVIDEND_RECEIVABLE",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "decisionReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Decisionreferenceid",
+            "type": "string"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "decisionReferenceId",
+          "amount",
+          "componentKind"
+        ],
+        "title": "OpeningDividendReceivableWire",
+        "type": "object"
+      },
+      "OpeningInvestmentWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/InvestmentClassification"
+          },
+          "componentKind": {
+            "const": "INVESTMENT",
+            "title": "Componentkind",
+            "type": "string"
+          },
+          "corroboratingSources": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerFactReferenceWire"
+            },
+            "minItems": 1,
+            "title": "Corroboratingsources",
+            "type": "array"
+          },
+          "investmentReferenceId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Investmentreferenceid",
+            "type": "string"
+          },
+          "primarySource": {
+            "$ref": "#/components/schemas/LedgerFactReferenceWire"
+          }
+        },
+        "required": [
+          "primarySource",
+          "corroboratingSources",
+          "componentKind",
+          "investmentReferenceId",
+          "classification",
+          "amount"
+        ],
+        "title": "OpeningInvestmentWire",
+        "type": "object"
+      },
+      "OpeningPositionMode": {
+        "enum": [
+          "NEW_COMPANY",
+          "PRIOR_CLOSE_RECONSTRUCTION"
+        ],
+        "title": "OpeningPositionMode",
+        "type": "string"
       },
       "OperatorCompanyRecord": {
         "additionalProperties": false,

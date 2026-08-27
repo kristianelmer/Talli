@@ -51,13 +51,6 @@ from talli_backend.modules.company_access.public import (
     CompanyCancellationResponse,
     CompanyContextResponse,
     CompanyDeletionReviewResponse,
-    CompanyYearAdmissionRequest,
-    CompanyYearAdmissionResponse,
-    CompanyYearEligibilityRecheckRequest,
-    CompanyYearEligibilityStateResponse,
-    EligibilityDecisionResponse,
-    EligibilityDefinitiveRequest,
-    EligibilityPrecheckRequest,
     CompanyInvitationCommandRequest,
     CompanyInvitationListResponse,
     CompanyInvitationResponse,
@@ -66,7 +59,14 @@ from talli_backend.modules.company_access.public import (
     CompanyOnboardingRequest,
     CompanyOnboardingResponse,
     CompanyRegistryGateway,
+    CompanyYearAdmissionRequest,
+    CompanyYearAdmissionResponse,
+    CompanyYearEligibilityRecheckRequest,
+    CompanyYearEligibilityStateResponse,
     CreateCompanyInvitationRequest,
+    EligibilityDecisionResponse,
+    EligibilityDefinitiveRequest,
+    EligibilityPrecheckRequest,
     FinalizeCompanyDeletionRequest,
     InvitationLookup,
     InvitationSideEffectCompletion,
@@ -78,42 +78,60 @@ from talli_backend.modules.company_access.public import (
     ResumeCompanyCancellationRequest,
     ReviewCompanyDeletionRequest,
 )
-from talli_backend.modules.system_boundary.public import (
-    SYSTEM_BOUNDARY_AVAILABLE,
-    SystemBoundaryTransport,
-    adapter_for,
-)
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    BankLoanMaturity,
+    BankLoanReferenceId,
     BankSuggestionRule,
+    CapitalIncreasePhase,
+    CapitalIncreaseReferenceId,
+    CapitalReductionRecognition,
+    CapitalReductionReferenceId,
     CompanyYearCloseAssessment,
     CompanyYearCloseGapCode,
     CompanyYearCloseState,
+    DividendDecisionReferenceId,
+    InvestmentClassification,
     LedgerCursor,
-    LedgerEntryPage,
     LedgerEntryId,
     LedgerEntryKind,
+    LedgerEntryPage,
     LedgerEntryView,
     LedgerError,
+    LedgerFactReference,
     LedgerLine,
-    LedgerRiskFlag,
     LedgerRiskCode,
+    LedgerRiskFlag,
     LedgerSourceCapability,
     LedgerSourceRecordId,
     LockPeriodCommand,
+    OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    OpeningBankLoanComponent,
+    OpeningCapitalIncreaseComponent,
+    OpeningCapitalReductionComponent,
+    OpeningDividendPayableComponent,
+    OpeningDividendReceivableComponent,
+    OpeningInvestmentComponent,
+    OpeningPositionMode,
     PeriodLock,
     PeriodLockPage,
     PostedLedgerEntry,
+    PostManualJournalCommand,
     ReconstructionAssessment,
     ReconstructionGapCode,
     ReconstructionState,
-    PostManualJournalCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
     ShareholderRegisterFilingError,
+)
+from talli_backend.modules.system_boundary.public import (
+    SYSTEM_BOUNDARY_AVAILABLE,
+    SystemBoundaryTransport,
+    adapter_for,
 )
 from talli_backend.shared.kernel import (
     CompanyId,
@@ -216,12 +234,190 @@ class NewYearShareholderWire(StrictTransportModel):
     share_count: int = Field(ge=0, le=2_147_483_647)
 
 
+class LedgerFactReferenceWire(StrictTransportModel):
+    capability: LedgerSourceCapability
+    record_id: str = Field(min_length=1, max_length=255)
+    revision: int = Field(ge=1)
+    fact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    def to_domain(self) -> LedgerFactReference:
+        return LedgerFactReference(
+            capability=self.capability,
+            record_id=LedgerSourceRecordId(self.record_id),
+            revision=self.revision,
+            fact_sha256=self.fact_sha256,
+        )
+
+
+class OpeningComponentWire(StrictTransportModel):
+    primary_source: LedgerFactReferenceWire
+    corroborating_sources: list[LedgerFactReferenceWire] = Field(min_length=1)
+
+    def sources(self) -> tuple[LedgerFactReference, tuple[LedgerFactReference, ...]]:
+        return (
+            self.primary_source.to_domain(),
+            tuple(source.to_domain() for source in self.corroborating_sources),
+        )
+
+
+class OpeningClassifiedBalanceWire(OpeningComponentWire):
+    component_kind: Literal["CLASSIFIED_BALANCE"]
+    category: OpeningBalanceCategory
+    reference_id: str = Field(min_length=1, max_length=255)
+    amount: LedgerMoneyWire
+
+    def to_domain(self) -> OpeningBalanceComponent:
+        primary, corroborating = self.sources()
+        return OpeningBalanceComponent(
+            category=self.category,
+            reference_id=LedgerSourceRecordId(self.reference_id),
+            amount=self.amount.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningBankLoanWire(OpeningComponentWire):
+    component_kind: Literal["BANK_LOAN"]
+    loan_reference_id: str = Field(min_length=1, max_length=255)
+    maturity: BankLoanMaturity
+    amount: LedgerMoneyWire
+
+    def to_domain(self) -> OpeningBankLoanComponent:
+        primary, corroborating = self.sources()
+        return OpeningBankLoanComponent(
+            loan_reference_id=BankLoanReferenceId(self.loan_reference_id),
+            maturity=self.maturity,
+            amount=self.amount.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningInvestmentWire(OpeningComponentWire):
+    component_kind: Literal["INVESTMENT"]
+    investment_reference_id: str = Field(min_length=1, max_length=255)
+    classification: InvestmentClassification
+    amount: LedgerMoneyWire
+
+    def to_domain(self) -> OpeningInvestmentComponent:
+        primary, corroborating = self.sources()
+        return OpeningInvestmentComponent(
+            investment_reference_id=LedgerSourceRecordId(
+                self.investment_reference_id
+            ),
+            classification=self.classification,
+            amount=self.amount.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningCapitalIncreaseWire(OpeningComponentWire):
+    component_kind: Literal["CAPITAL_INCREASE"]
+    capital_increase_reference_id: str = Field(min_length=1, max_length=255)
+    phase: CapitalIncreasePhase
+    nominal_increase: LedgerMoneyWire
+    share_premium: LedgerMoneyWire
+
+    def to_domain(self) -> OpeningCapitalIncreaseComponent:
+        primary, corroborating = self.sources()
+        return OpeningCapitalIncreaseComponent(
+            capital_increase_reference_id=CapitalIncreaseReferenceId(
+                self.capital_increase_reference_id
+            ),
+            phase=self.phase,
+            nominal_increase=self.nominal_increase.to_domain(),
+            share_premium=self.share_premium.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningCapitalReductionWire(OpeningComponentWire):
+    component_kind: Literal["CAPITAL_REDUCTION"]
+    capital_reduction_reference_id: str = Field(min_length=1, max_length=255)
+    recognition: CapitalReductionRecognition
+    nominal_reduction: LedgerMoneyWire
+
+    def to_domain(self) -> OpeningCapitalReductionComponent:
+        primary, corroborating = self.sources()
+        return OpeningCapitalReductionComponent(
+            capital_reduction_reference_id=CapitalReductionReferenceId(
+                self.capital_reduction_reference_id
+            ),
+            recognition=self.recognition,
+            nominal_reduction=self.nominal_reduction.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningDividendWire(OpeningComponentWire):
+    decision_reference_id: str = Field(min_length=1, max_length=255)
+    amount: LedgerMoneyWire
+
+
+class OpeningDividendReceivableWire(OpeningDividendWire):
+    component_kind: Literal["DIVIDEND_RECEIVABLE"]
+
+    def to_domain(self) -> OpeningDividendReceivableComponent:
+        primary, corroborating = self.sources()
+        return OpeningDividendReceivableComponent(
+            decision_reference_id=DividendDecisionReferenceId(
+                self.decision_reference_id
+            ),
+            amount=self.amount.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+class OpeningDividendPayableWire(OpeningDividendWire):
+    component_kind: Literal["DIVIDEND_PAYABLE"]
+
+    def to_domain(self) -> OpeningDividendPayableComponent:
+        primary, corroborating = self.sources()
+        return OpeningDividendPayableComponent(
+            decision_reference_id=DividendDecisionReferenceId(
+                self.decision_reference_id
+            ),
+            amount=self.amount.to_domain(),
+            primary_source=primary,
+            corroborating_sources=corroborating,
+        )
+
+
+OpeningPositionComponentWire = Annotated[
+    OpeningClassifiedBalanceWire
+    | OpeningBankLoanWire
+    | OpeningInvestmentWire
+    | OpeningCapitalIncreaseWire
+    | OpeningCapitalReductionWire
+    | OpeningDividendReceivableWire
+    | OpeningDividendPayableWire,
+    Field(discriminator="component_kind"),
+]
+
+
 class NewYearStartWire(LedgerCompanyYearWire):
     bank_balance: LedgerMoneyWire
     share_capital: LedgerMoneyWire
     share_count: int = Field(gt=0, le=2_147_483_647)
     nominal_value: LedgerMoneyWire
     shareholders: list[NewYearShareholderWire] = Field(min_length=1, max_length=100)
+    opening_mode: OpeningPositionMode = OpeningPositionMode.NEW_COMPANY
+    opening_basis: LedgerFactReferenceWire | None = None
+    opening_components: list[OpeningPositionComponentWire] | None = None
+
+    @model_validator(mode="after")
+    def opening_fields_match_mode(self) -> NewYearStartWire:
+        if self.opening_mode is OpeningPositionMode.NEW_COMPANY:
+            if self.opening_basis is not None or self.opening_components is not None:
+                raise ValueError("new-company opening facts are backend-owned")
+        elif self.opening_basis is None or not self.opening_components:
+            raise ValueError("prior-close opening facts are required")
+        return self
 
 
 class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
@@ -1726,6 +1922,16 @@ def create_app(
                             share_count=shareholder.share_count,
                         )
                         for shareholder in command.shareholders
+                    ),
+                    opening_mode=command.opening_mode,
+                    opening_basis=(
+                        command.opening_basis.to_domain()
+                        if command.opening_basis is not None
+                        else None
+                    ),
+                    opening_components=tuple(
+                        component.to_domain()
+                        for component in (command.opening_components or ())
                     ),
                 )
             )

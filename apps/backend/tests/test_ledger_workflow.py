@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from talli_backend.application.ledger_workflow import (
     AcceptBankTransactionSuggestionCommand,
@@ -18,10 +18,14 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryKind,
     LedgerEntryPage,
     LedgerError,
+    LedgerFactReference,
     LedgerLine,
     LedgerPage,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    OpeningBalanceCategory,
+    OpeningBalanceComponent,
+    OpeningPositionMode,
     PeriodLockPage,
     PostedLedgerEntry,
 )
@@ -43,8 +47,6 @@ from talli_backend.shared.kernel import (
     Timestamp,
     UserId,
 )
-from datetime import date
-
 
 COMPANY_ID = CompanyId("10000000-0000-0000-0000-000000000001")
 ACTOR_ID = ActorId(
@@ -86,6 +88,7 @@ class WorkflowTransactionStub:
         self.replay = replay
         self.events: list[str] = []
         self.posting: dict[str, object] | None = None
+        self.claim_request: dict[str, object] | None = None
 
     @property
     def actor_id(self) -> ActorId:
@@ -105,6 +108,11 @@ class WorkflowTransactionStub:
                 "shareCount": 30000,
             }
         ]
+        assert request["bankBalance"] == "30000.00"
+        assert request["shareCapital"] == "30000.00"
+        assert "openingMode" not in request
+        assert "openingComponents" not in request
+        self.claim_request = request
         return self.replay
 
     async def record_legacy_opening_snapshot(
@@ -123,9 +131,11 @@ class WorkflowTransactionStub:
         *,
         operation_name: str,
         command: object,
+        request: dict[str, object],
         result: dict[str, object],
     ) -> None:
         self.events.append(f"complete:{operation_name}")
+        assert request is self.claim_request
         assert result["entryId"] == str(ENTRY_ID)
         assert result["setupId"] == str(SETUP_ID)
 
@@ -137,6 +147,20 @@ class WorkflowTransactionStub:
             company_id=COMPANY_ID,
             income_year=IncomeYear(2026),
             entry_kind=posting["entry_kind"],
+            posted_at=NOW,
+            replayed=False,
+        )
+
+    async def rebuild_company_year_opening(
+        self, command: object, **posting: object
+    ) -> PostedLedgerEntry:
+        self.events.append("ledger")
+        self.posting = posting
+        return PostedLedgerEntry(
+            entry_id=ENTRY_ID,
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.OPENING_BALANCE,
             posted_at=NOW,
             replayed=False,
         )
@@ -216,18 +240,19 @@ def test_new_year_start_uses_one_transaction_and_ledger_owned_posting_policy() -
         "commit",
     ]
     assert transaction.posting is not None
-    assert transaction.posting["entry_kind"] is LedgerEntryKind.OPENING_BALANCE
-    assert (
-        transaction.posting["source_capability"]
-        is LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
-    )
-    assert transaction.posting["source_record_id"] == LedgerSourceRecordId(
-        f"opening-setup:{SETUP_ID}"
-    )
     assert transaction.posting["lines"] == (
-        LedgerLine("1920", "Bankinnskudd", Money.nok("30000"), Money.nok("0")),
-        LedgerLine("2000", "Aksjekapital", Money.nok("0"), Money.nok("30000")),
-        LedgerLine("2050", "Annen egenkapital", Money.nok("0"), Money.nok("0")),
+        LedgerLine(
+            "1920",
+            f"Bank balance: opening-setup:{SETUP_ID}:bank",
+            Money.nok("30000"),
+            Money.nok("0"),
+        ),
+        LedgerLine(
+            "2000",
+            f"Registered share capital: opening-setup:{SETUP_ID}:share-capital",
+            Money.nok("0"),
+            Money.nok("30000"),
+        ),
     )
 
 
@@ -287,11 +312,13 @@ def test_new_year_start_rolls_back_every_effect_when_a_later_step_fails() -> Non
             *,
             operation_name: str,
             command: object,
+            request: dict[str, object],
             result: dict[str, object],
         ) -> None:
             await super().complete_workflow(
                 operation_name=operation_name,
                 command=command,
+                request=request,
                 result=result,
             )
             raise RuntimeError("receipt unavailable")

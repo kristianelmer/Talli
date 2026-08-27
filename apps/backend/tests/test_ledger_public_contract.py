@@ -97,20 +97,14 @@ def test_ledger_public_commands_are_owned_intents_not_generic_source_postings() 
 
 
 def test_opening_balance_contract_does_not_own_shareholder_records() -> None:
-    from talli_backend.modules.ledger.public import (
-        LedgerSourceCapability,
-        PostOpeningBalanceCommand,
-    )
+    from talli_backend.modules.ledger import public
+    from talli_backend.modules.ledger.public import LedgerSourceCapability
 
-    fields = set(PostOpeningBalanceCommand.__dataclass_fields__)
-    assert "opening_snapshot_id" in fields
+    assert not hasattr(public, "PostOpeningBalanceCommand")
     assert (
         LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING.value
         == "SHAREHOLDER_REGISTER_FILING"
     )
-    assert "shareholders" not in fields
-    assert "share_count" not in fields
-    assert "nominal_value" not in fields
 
 
 def test_ledger_errors_use_domain_categories_not_http_statuses() -> None:

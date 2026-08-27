@@ -10,7 +10,7 @@ import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -20,12 +20,6 @@ import psycopg
 from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningShareholderView,
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-    LegacyOpeningSnapshotView,
-)
 from talli_backend.application.ledger_workflow import (
     AcceptBankTransactionSuggestionCommand,
     FinalizeCorporateDecisionCommand,
@@ -40,15 +34,21 @@ from talli_backend.application.ledger_workflow import (
     RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
 )
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningShareholderView,
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+    LegacyOpeningSnapshotView,
+)
 from talli_backend.modules.ledger.public import (
     ApprovedLossCoverageCapitalReductionFacts,
     BankLoanEvent,
     BankLoanReferenceId,
-    CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalIncreaseReferenceId,
     CapitalReductionRecognition,
     CapitalReductionReferenceId,
+    CashCapitalIncreaseFacts,
     CloseCompanyYearCommand,
     CompanyYearCloseAssessment,
     CompanyYearCloseAssessmentId,
@@ -56,8 +56,10 @@ from talli_backend.modules.ledger.public import (
     CompanyYearCloseGapCode,
     CompanyYearCloseLockId,
     CompanyYearCloseState,
-    CorrectHoldingActionCommand,
+    CompiledOpeningPositionComponent,
     CorrectedLedgerEntries,
+    CorrectHoldingActionCommand,
+    DividendDecisionReferenceId,
     InvestmentDividendFacts,
     LedgerCommand,
     LedgerCursor,
@@ -68,33 +70,33 @@ from talli_backend.modules.ledger.public import (
     LedgerError,
     LedgerFactReference,
     LedgerLine,
+    LedgerPage,
     LedgerPersistence,
     LedgerRiskCode,
     LedgerRiskFlag,
     LedgerSourceCapability,
     LedgerSourceRecordId,
-    LedgerPage,
     LockPeriodCommand,
     OrdinaryBankLoanFacts,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
     PostedLedgerEntry,
+    RebuildCompanyYearOpeningCommand,
+    RecognizeHoldingActionCommand,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
     ReconstructionEvidence,
     ReconstructionGapCode,
     ReconstructionState,
-    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
-    RebuildCompanyYearOpeningCommand,
     ledger_persistence_adapter,
 )
+from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
 )
-from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import (
     ActorId,
     ActorKind,
@@ -575,7 +577,7 @@ def _map_database_error(message: str) -> LedgerError:
         ),
         (
             "ledger_opening_balance_invalid",
-            LedgerError.precondition_failed("LEDGER_OPENING_BALANCE_INVALID"),
+            LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID"),
         ),
         (
             "ledger_opening_evidence_invalid",
@@ -583,7 +585,7 @@ def _map_database_error(message: str) -> LedgerError:
         ),
         (
             "ledger_opening_source_overlap",
-            LedgerError.precondition_failed("LEDGER_OPENING_SOURCE_OVERLAP"),
+            LedgerError.invalid_input("LEDGER_OPENING_SOURCE_OVERLAP"),
         ),
         (
             "ledger_entry_already_corrected",
@@ -725,22 +727,21 @@ class SupabaseLedgerSession:
                 self._database_url,
                 connect_timeout=5,
                 row_factory=dict_row,
-            ) as connection:
-                async with connection.transaction():
-                    await connection.execute("set local role ledger_workflow_executor")
-                    await connection.execute(
-                        "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
-                        (str(self.actor_id.subject),),
-                    )
-                    await connection.execute(
-                        "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
-                        (self._verified.claims_json,),
-                    )
-                    yield SupabaseLedgerWorkflowTransaction(
-                        self._database_url,
-                        self._verified,
-                        connection,
-                    )
+            ) as connection, connection.transaction():
+                await connection.execute("set local role ledger_workflow_executor")
+                await connection.execute(
+                    "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
+                    (str(self.actor_id.subject),),
+                )
+                await connection.execute(
+                    "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
+                    (self._verified.claims_json,),
+                )
+                yield SupabaseLedgerWorkflowTransaction(
+                    self._database_url,
+                    self._verified,
+                    connection,
+                )
         except LedgerError:
             raise
         except psycopg.OperationalError:
@@ -1322,16 +1323,59 @@ class SupabaseLedgerSession:
         self,
         command: RecognizeHoldingActionCommand,
         *,
-        decision_entry_id: LedgerEntryId,
+        decision_reference: LedgerEntryId | DividendDecisionReferenceId,
         memo: str,
         lines: tuple[LedgerLine, ...],
     ) -> PostedLedgerEntry:
-        return await self._record_received_dividend(
-            command,
-            decision_entry_id=decision_entry_id,
-            memo=memo,
-            lines=lines,
+        if isinstance(decision_reference, LedgerEntryId):
+            return await self._record_received_dividend(
+                command,
+                decision_entry_id=decision_reference,
+                memo=memo,
+                lines=lines,
+            )
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        facts = command.facts
+        if not isinstance(facts, InvestmentDividendFacts):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
         )
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.record_received_dividend_payment_by_reference_v1(
+              %s::text, %s::uuid, %s::integer, %s::text, %s::text, %s::jsonb,
+              %s::text, %s::text, %s::text, %s::text, %s::date,
+              %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(decision_reference),
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                command.primary_source.capability.value,
+                str(command.primary_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        try:
+            return _posted_entry(row)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
 
     async def correct_entry(
         self,
@@ -1543,22 +1587,30 @@ class SupabaseLedgerSession:
         self,
         command: RebuildCompanyYearOpeningCommand,
         *,
+        components: tuple[CompiledOpeningPositionComponent, ...],
         lines: tuple[LedgerLine, ...],
         entry_sources: tuple[LedgerFactReference, ...],
     ) -> PostedLedgerEntry:
         if command.actor_id != self.actor_id:
             raise LedgerError.forbidden()
-        expected_sources = (
-            command.prior_closing_source,
-            *(
-                source
-                for component in command.components
-                for source in (
-                    component.primary_source,
-                    *component.corroborating_sources,
-                )
-            ),
-        )
+        expected_sources_list = [command.opening_basis]
+        seen_sources = {
+            (
+                command.opening_basis.capability,
+                command.opening_basis.record_id,
+                command.opening_basis.revision,
+            )
+        }
+        for component in components:
+            for source in (
+                component.primary_source,
+                *component.corroborating_sources,
+            ):
+                identity = (source.capability, source.record_id, source.revision)
+                if identity not in seen_sources:
+                    seen_sources.add(identity)
+                    expected_sources_list.append(source)
+        expected_sources = tuple(expected_sources_list)
         if entry_sources != expected_sources:
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         source_payload = tuple(
@@ -1568,12 +1620,28 @@ class SupabaseLedgerSession:
         component_payload = tuple(
             {
                 "ordinal": index,
+                "componentKind": component.component_kind,
                 "category": component.category.value,
-                "referenceId": str(component.reference_id),
+                "referenceId": component.reference_id,
+                "lifecyclePhase": component.lifecycle_phase,
                 "amountNok": format(component.amount.amount, "f"),
-                "balanceSide": (
-                    "DEBIT" if lines[index - 1].debit.amount > 0 else "CREDIT"
+                "nominalIncreaseNok": (
+                    format(component.nominal_increase.amount, "f")
+                    if component.nominal_increase is not None
+                    else None
                 ),
+                "sharePremiumNok": (
+                    format(component.share_premium.amount, "f")
+                    if component.share_premium is not None
+                    else None
+                ),
+                "nominalReductionNok": (
+                    format(component.nominal_reduction.amount, "f")
+                    if component.nominal_reduction is not None
+                    else None
+                ),
+                "account": component.account,
+                "balanceSide": "DEBIT" if component.is_debit else "CREDIT",
                 "sources": [
                     _fact_reference_payload(component.primary_source, primary=True),
                     *(
@@ -1582,12 +1650,12 @@ class SupabaseLedgerSession:
                     ),
                 ],
             }
-            for index, component in enumerate(command.components, start=1)
+            for index, component in enumerate(components, start=1)
         )
         row = await self._one_idempotent_row(
             """
             select * from ledger.rebuild_company_year_opening_v1(
-              %s::text, %s::uuid, %s::integer, %s::date, %s::text,
+              %s::text, %s::uuid, %s::integer, %s::date, %s::text, %s::text,
               %s::jsonb, %s::text, %s::text, %s::text, %s::text,
               %s::jsonb, %s::jsonb
             )
@@ -1597,10 +1665,11 @@ class SupabaseLedgerSession:
                 str(command.company_id),
                 int(command.income_year),
                 command.opening_date.value,
+                command.mode.value,
                 "Complete evidenced opening position",
                 json.dumps([_line_payload(line) for line in lines], separators=(",", ":")),
-                command.prior_closing_source.capability.value,
-                str(command.prior_closing_source.record_id),
+                command.opening_basis.capability.value,
+                str(command.opening_basis.record_id),
                 str(command.correlation_id),
                 str(command.actor_id.subject),
                 json.dumps(source_payload, separators=(",", ":")),
@@ -1995,27 +2064,10 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
         *,
         operation_name: str,
         command: object,
+        request: dict[str, object],
         result: dict[str, object],
     ) -> None:
         typed = self._new_year_command(command)
-        request = {
-            "companyId": str(typed.company_id),
-            "incomeYear": int(typed.income_year),
-            "bankBalance": format(typed.bank_balance.amount, "f"),
-            "shareCapital": format(typed.share_capital.amount, "f"),
-            "shareCount": typed.share_count,
-            "nominalValue": format(typed.nominal_value.amount, "f"),
-            "shareholders": [
-                {
-                    "name": shareholder.name,
-                    "shareholderKind": shareholder.shareholder_kind,
-                    "nationalId": shareholder.national_id,
-                    "orgNumber": shareholder.org_number,
-                    "shareCount": shareholder.share_count,
-                }
-                for shareholder in typed.shareholders
-            ],
-        }
         await self._one_idempotent_row(
             """
             select backend_system.complete_ledger_workflow_v1(

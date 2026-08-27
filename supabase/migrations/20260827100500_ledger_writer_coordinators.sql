@@ -730,7 +730,8 @@ begin
     or pg_catalog.btrim(coalesce(p_correlation_id, '')) = ''
     or p_source_capability not in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+      'ANNUAL_ACCOUNTS_FILING'
     )
     or pg_catalog.upper(coalesce(p_entry_kind, '')) not in (
       'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',

@@ -7,8 +7,7 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
     LegacyOpeningSnapshotPage,
 )
-from talli_backend.modules.ledger.public import LedgerPersistence
-from talli_backend.modules.ledger.public import PostedLedgerEntry
+from talli_backend.modules.ledger.public import LedgerPersistence, PostedLedgerEntry
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
@@ -44,6 +43,7 @@ class LedgerWorkflowTransaction(LedgerPersistence, Protocol):
         *,
         operation_name: str,
         command: object,
+        request: dict[str, object],
         result: dict[str, object],
     ) -> None: ...
 

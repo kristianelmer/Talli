@@ -1272,6 +1272,10 @@ begin
     raise exception 'ledger_cutover_inactive';
   end if;
 
+  if pg_catalog.upper(coalesce(p_entry_kind, '')) = 'OPENING_BALANCE' then
+    raise exception 'ledger_invalid_input';
+  end if;
+
   -- Preserve the canonical delegate's validation/error ordering when the
   -- receipt scope itself cannot be resolved safely.
   if v_actor_id is null

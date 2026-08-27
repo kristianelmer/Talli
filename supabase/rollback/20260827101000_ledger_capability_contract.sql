@@ -68,6 +68,10 @@ revoke all on function ledger.post_supported_entry_v1(
   text, uuid, integer, text, text, jsonb, text, text, text, text,
   date, text, jsonb
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.post_supported_entry_storage_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.correct_entry_v1(
   text, uuid, integer, uuid, text, text, text, jsonb, text, text,
   date, text, text, jsonb
@@ -85,6 +89,16 @@ revoke all on function ledger.record_received_dividend_decision_v1(
 revoke all on function ledger.record_received_dividend_payment_v1(
   text, uuid, integer, uuid, text, jsonb, text, text, text, text,
   date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_received_dividend_payment_by_reference_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.cash_capital_increase_phase_basis_v1(
+  uuid, text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.loss_coverage_capital_reduction_basis_v1(
+  uuid, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.record_bank_loan_disbursement_v1(
   text, uuid, integer, text, numeric, text, jsonb, text, text, text,
@@ -122,8 +136,9 @@ revoke all on function ledger.lock_period(
   text, uuid, integer, text, text, text
 ) from ledger_executor, talli_ledger_backend;
 revoke all on function ledger.rebuild_company_year_opening_v1(
-  text, uuid, integer, date, text, jsonb, text, text, text, text, jsonb, jsonb
-) from ledger_executor, talli_ledger_backend;
+  text, uuid, integer, date, text, text, jsonb,
+  text, text, text, text, jsonb, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.list_entries(uuid[], text, integer, text)
   from ledger_executor, talli_ledger_backend;
 revoke all on function ledger.list_period_locks(uuid[], text, integer, text)

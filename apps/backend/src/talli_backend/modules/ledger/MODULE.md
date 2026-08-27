@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -17,6 +17,7 @@ close locks. It owns
 `ledger.loss_coverage_capital_reduction_phases`,
 `ledger.opening_position_rebuilds`, `ledger.opening_position_components`,
 `ledger.opening_position_component_sources`,
+`ledger.opening_received_dividend_settlements`,
 `ledger.company_year_close_assessments`, `ledger.company_year_close_evidence`,
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
@@ -34,7 +35,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`, and
 `supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`, and
 `supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`, and
-`supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`.
+`supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`, and
+`supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -73,7 +75,8 @@ pattern, or rule version.
 The received-dividend receiver recognizes the final investee decision as a
 receivable and income, then settles that exact decision from the bank payment.
 The decision requires investments, documents, and company-tax facts; payment
-requires investments and banking facts plus the immutable decision entry ID.
+requires investments and banking facts plus either the immutable decision entry
+ID or the stable `DividendDecisionReferenceId` persisted by opening rebuild.
 The serialized persistence path permits one settlement per decision, including
 a later admitted company-year, and rejects payments before the decision plus
 cross-company, amount-mismatched, or replay-inconsistent linkage.
@@ -85,18 +88,24 @@ remain separate capability correlations. Payments link to that anchor, may
 span later admitted company-years, and atomically reject chronology errors,
 inconsistent replays, and cumulative principal above the original
 disbursement. `RebuildCompanyYearOpeningCommand` is an account-free,
-backend-only opening-position receiver increment. It currently maps a closed
-subset of semantic asset, liability, and equity components; each carries a
-stable reference, positive NOK amount, and exact primary and corroborating
-facts. Ledger derives one balanced journal without a suspense or
-retained-earnings plug, then persistence atomically records the journal,
-component facts, and provenance. Repeatable bank-loan components can become an
-immutable principal basis for current-year payments without fabricating a
-prior-year disbursement. This increment is not yet the authoritative new-year
-producer and does not yet reconstruct lifecycle-specific phase anchors,
-accrued-interest balances, deferred-tax balances, or every supported investment
-classification. Final reconstruction readiness remains fail closed until the
-opening model, current-year activity, and reconciliation are complete.
+backend-only opening-position receiver. Its closed model covers all supported
+semantic asset, liability, and equity classifications plus typed bank-loan,
+investment, capital-increase, capital-reduction, and dividend lifecycle facts.
+Each component carries a stable reference, positive NOK amount, and exact
+primary and corroborating facts. Ledger derives one balanced journal without a
+suspense or retained-earnings plug, then persistence atomically records the
+journal, opening mode, component/lifecycle facts, and provenance. Repeatable
+bank-loan components become an immutable principal basis for current-year
+payments without fabricating a prior-year disbursement. Verified opening capital
+phases become the immutable basis for their next registration transition, and an
+opening dividend receivable can be settled once by its stable decision reference.
+The mode-aware new-year workflow is the sole authoritative producer:
+`NEW_COMPANY` preserves the deployed bank/share request shape and derives
+evidence only after the actual shareholder snapshot exists, while
+`PRIOR_CLOSE_RECONSTRUCTION` requires an annual-accounts basis and explicit
+typed components. Final reconstruction readiness remains fail closed until
+the separately serialized current-year activity and reconciliation stages are
+complete.
 
 The cash-capital-increase receiver accepts only a stable, ledger-owned
 `CapitalIncreaseReferenceId` and immutable facts already approved by their
@@ -108,9 +117,9 @@ including transitions into a later admitted company-year. It does not decide
 authority, subscriptions, contribution confirmation, registration truth,
 subscriber allocations, share rights, per-share tax attributes, or issue-cost
 treatment, and it exposes no producer or browser writer. An in-flight increase
-from before the reconstructed boundary fails closed with
-`OPENING_CAPITAL_INCREASE_ANCHOR_MISSING` until opening rebuild can supply a
-verified phase anchor.
+from before the reconstructed boundary may continue only from the exact verified
+phase and amounts supplied by opening rebuild; otherwise it fails closed with
+`OPENING_CAPITAL_INCREASE_ANCHOR_MISSING`.
 
 The loss-coverage capital-reduction receiver binds one stable, ledger-owned
 `CapitalReductionReferenceId` to either a decided-not-registered entry followed
@@ -118,8 +127,9 @@ by its exact registration reclassification, or one direct first recognition
 after registration. Decision facts require corporate governance and documents;
 registered facts also require the shareholder-register owner. The append-only
 phase record enforces amount continuity, nondecreasing dates, exclusive paths,
-replay, and cross-year serialization. A linked registration without a verified
-decision anchor fails closed with `OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING`.
+replay, and cross-year serialization. Opening rebuild can supply the verified
+unregistered-decision anchor; without one, linked registration fails closed with
+`OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING`.
 Ledger does not decide minimum capital, loss sufficiency, owner value transfer,
 filing timeliness, shareholder changes, the three-year dividend restriction, or
 paid-in-capital reconciliation; those facts remain with their owning
@@ -171,14 +181,24 @@ The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,
 `PostInvestmentDividendCommand`, `PostInvestmentPurchaseCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,
-`PostOpeningBalanceCommand`, `PostOwnerDividendDeclaredCommand`,
-`PostOwnerDividendPaymentCommand`, `PostShareholderLoanCommand`, and
-`PostTaxSettlementCommand`, and `RebuildCompanyYearOpeningCommand`.
+`PostOwnerDividendDeclaredCommand`, `PostOwnerDividendPaymentCommand`,
+`PostShareholderLoanCommand`, `PostTaxSettlementCommand`, and the sole opening
+writer `RebuildCompanyYearOpeningCommand`.
 `RecordReconstructionAssessmentCommand` accepts
 only immutable evidence issued by the exact public source capability declared
 for each fact; it is intentionally not exposed as a browser mutation. The
-opening-position command is likewise backend-only and cannot accept accounts,
-debit/credit choices, or lines.
+opening-position command is exposed through the mode-aware new-year intent; it
+accepts typed balances and lifecycle facts but never accounts, debit/credit
+choices, or lines. Python alone compiles those facts into the atomic opening
+journal and the database persists the compiled classification and provenance.
+Its closed opening vocabulary is `OpeningPositionMode`,
+`OpeningBalanceCategory`, `BankLoanMaturity`, `InvestmentClassification`,
+`OpeningBalanceComponent`, `OpeningBankLoanComponent`,
+`OpeningInvestmentComponent`, `OpeningCapitalIncreaseComponent`,
+`OpeningCapitalReductionComponent`, `OpeningDividendReceivableComponent`,
+`OpeningDividendPayableComponent`, and their `OpeningPositionComponent` union.
+`CompiledOpeningPositionComponent` is the private-to-persistence accounting
+decision produced from that public vocabulary.
 Supporting closed values are `BankSuggestionRule`,
 `LedgerCursor`, `LedgerErrorCode`, `ShareholderLoanDirection`, and
 `TaxSettlementKind`.
@@ -227,13 +247,13 @@ identity, request fingerprint, permanent posting idempotency, period-lock
 preconditions, and exact replay are enforced transactionally. Browser and
 service-role writes are removed by the staged contract artifact.
 
-## Frozen #139 behavior
+## Historical #139 baseline superseded by #188
 
-The stage preserves the production TypeScript baseline: opening balance emits
-accounts 1920/2000/2050 including a zero-valued 2050 line; manual-journal warnings
-cover 1370, 1800, 2000, 2050, 2255, 2800, 8070, and 8090; administrative categories
-map to 7770, 6705, 6420, 7790, 6720, and 7795. Expanded reconstruction and
-mass-market ledger behavior belongs to #188, not this cutover.
+The #188 opening receiver supersedes the legacy three-line opening translation.
+Only the typed Python opening compiler may select opening accounts and lines;
+the generic supported-entry wrapper rejects `OPENING_BALANCE`, and the typed
+opening coordinator alone can call the private storage delegate. Manual-journal
+warnings and administrative-category mappings retain their frozen #139 behavior.
 
 The expand migration exposes security-invoker views over the same physical
 relations for deployment-order overlap. The contract artifact removes those

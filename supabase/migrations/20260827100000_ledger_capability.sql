@@ -418,7 +418,8 @@ alter table ledger.entries
   add constraint ledger_entries_source_capability_check check (
     source_capability in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+      'ANNUAL_ACCOUNTS_FILING', 'DOCUMENTS'
     )
   );
 
@@ -1429,7 +1430,8 @@ begin
     or pg_catalog.btrim(coalesce(p_correlation_id, '')) = ''
     or p_source_capability not in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+      'ANNUAL_ACCOUNTS_FILING'
     )
     or pg_catalog.upper(coalesce(p_entry_kind, '')) not in (
       'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',
@@ -1439,6 +1441,7 @@ begin
       'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
       'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION', 'INTERCOMPANY_LOAN'
     )
+    or pg_catalog.upper(coalesce(p_entry_kind, '')) = 'OPENING_BALANCE'
     or pg_catalog.jsonb_typeof(p_risk_flags) is distinct from 'array'
     or not ledger.entry_lines_are_valid_v1(p_lines, false)
   then

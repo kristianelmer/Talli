@@ -78,6 +78,18 @@ test("ledger errors keep the frozen plain-Norwegian guidance", () => {
     "Åpningsbalansen er allerede registrert for dette året.",
   );
   assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_OPENING_BALANCE_INVALID")),
+    "Åpningsbalansen må være komplett og balansere.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_OPENING_EVIDENCE_INVALID")),
+    "Dokumentasjonen for åpningsbalansen er ikke komplett.",
+  );
+  assert.equal(
+    ledgerActionErrorMessage(problem("LEDGER_OPENING_SOURCE_OVERLAP")),
+    "Samme kilde kan ikke brukes flere ganger i én åpningspost.",
+  );
+  assert.equal(
     ledgerActionErrorMessage(problem("SHAREHOLDER_REGISTER_FILING_INVALID_INPUT")),
     "Kontroller aksjetall og aksjonæropplysninger.",
   );

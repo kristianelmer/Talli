@@ -5,8 +5,6 @@ from dataclasses import replace
 from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
-
-from talli_backend.main import create_app
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningShareholderView,
@@ -14,6 +12,7 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotPage,
     LegacyOpeningSnapshotView,
 )
+from talli_backend.main import create_app
 from talli_backend.modules.ledger.public import (
     CompanyYearCloseAssessment,
     CompanyYearCloseAssessmentId,
@@ -50,7 +49,6 @@ from talli_backend.shared.kernel import (
     Timestamp,
     UserId,
 )
-
 
 COMPANY_ID = CompanyId("10000000-0000-0000-0000-000000000001")
 ACTOR_ID = ActorId(
@@ -127,7 +125,6 @@ class LedgerSessionStub:
         self.calls.append(
             ("claim_workflow", {"operation": operation_name, "request": request})
         )
-        return None
 
     async def record_legacy_opening_snapshot(
         self, command: object, *, ledger_bank_balance: object
@@ -159,10 +156,14 @@ class LedgerSessionStub:
         *,
         operation_name: str,
         command: object,
+        request: dict[str, object],
         result: dict[str, object],
     ) -> None:
         self.calls.append(
-            ("complete_workflow", {"operation": operation_name, "result": result})
+            (
+                "complete_workflow",
+                {"operation": operation_name, "request": request, "result": result},
+            )
         )
 
     async def prepare_administrative_cost(
@@ -341,6 +342,21 @@ class LedgerSessionStub:
             company_id=COMPANY_ID,
             income_year=IncomeYear(2026),
             entry_kind=posting["entry_kind"],
+            posted_at=NOW,
+            replayed=False,
+        )
+
+    async def rebuild_company_year_opening(
+        self, command: object, **posting: object
+    ) -> PostedLedgerEntry:
+        self.calls.append(
+            ("rebuild_company_year_opening", {"command": command, **posting})
+        )
+        return PostedLedgerEntry(
+            entry_id=ENTRY_ID,
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.OPENING_BALANCE,
             posted_at=NOW,
             replayed=False,
         )
@@ -796,7 +812,7 @@ def test_new_year_start_exposes_business_facts_without_raw_ledger_lines() -> Non
     body = {
         "companyId": str(COMPANY_ID),
         "incomeYear": 2026,
-        "bankBalance": money("45000.00"),
+        "bankBalance": money("30000.00"),
         "shareCapital": money("30000.00"),
         "shareCount": 100,
         "nominalValue": money("300.00"),
@@ -827,11 +843,14 @@ def test_new_year_start_exposes_business_facts_without_raw_ledger_lines() -> Non
             "replayed": False,
         },
     }
-    posting = next(value for name, value in session.calls if name == "post_entry")
-    assert posting["source_record_id"] == LedgerSourceRecordId(
-        f"opening-setup:{SETUP_ID}"
+    posting = next(
+        value for name, value in session.calls
+        if name == "rebuild_company_year_opening"
     )
-    assert [line.account for line in posting["lines"]] == ["1920", "2000", "2050"]
+    assert [line.account for line in posting["lines"]] == ["1920", "2000"]
+    assert [component.component_kind for component in posting["components"]] == [
+        "CLASSIFIED_BALANCE", "CLASSIFIED_BALANCE"
+    ]
 
     raw_lines = client.post(
         "/api/v1/new-year-starts",

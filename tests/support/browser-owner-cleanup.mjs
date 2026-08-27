@@ -81,6 +81,53 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "delete from public.customer_agreement_acceptances where company_id = $1",
       [companyId],
     );
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'grant ledger_store_owner to %I', current_user
+        );
+        execute pg_catalog.format(
+          'grant ledger_workflow_store_owner to %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
+    await database.query("set local role ledger_store_owner");
+    await database.query(
+      "delete from backend_system.ledger_command_receipts where company_id = $1",
+      [companyId],
+    );
+    await database.query("reset role");
+    await database.query("set local role ledger_workflow_store_owner");
+    await database.query(
+      "delete from backend_system.ledger_workflow_receipts where company_id = $1",
+      [companyId],
+    );
+    await database.query("reset role");
+    await database.query("set local role ledger_store_owner");
+    for (const table of [
+      "opening_received_dividend_settlements",
+      "opening_position_component_sources",
+      "opening_position_components",
+      "opening_position_rebuilds",
+      "entry_sources",
+      "entry_contexts",
+      "entries",
+    ]) {
+      await database.query(`delete from ledger.${table} where company_id = $1`, [
+        companyId,
+      ]);
+    }
+    await database.query("reset role");
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke ledger_store_owner from %I', current_user
+        );
+        execute pg_catalog.format(
+          'revoke ledger_workflow_store_owner from %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
     for (const table of [
       "corporate_document_events",
       "corporate_decision_finalizations",
@@ -121,11 +168,6 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       await database.query(`delete from public.${table} where company_id = $1`, [
         companyId,
       ]);
-      if (table === "filing_previews") {
-        await database.query("delete from ledger.entries where company_id = $1", [
-          companyId,
-        ]);
-      }
     }
     await database.query("commit");
   } catch (error) {

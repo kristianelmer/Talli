@@ -94,14 +94,14 @@ class PatternPersistenceStub:
         self,
         command: object,
         *,
-        decision_entry_id: LedgerEntryId,
+        decision_reference: object,
         **draft: object,
     ) -> PostedLedgerEntry:
         self.calls.append(
             {
                 "operation": "dividend_payment",
                 "command": command,
-                "decision_entry_id": decision_entry_id,
+                "decision_reference": decision_reference,
                 **draft,
             }
         )
@@ -541,7 +541,7 @@ def test_investment_dividend_payment_clears_the_linked_decision_receivable() -> 
     assert result.entry_id == LedgerEntryId("40000000-0000-0000-0000-000000000006")
     assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
     assert persistence.calls[0]["operation"] == "dividend_payment"
-    assert persistence.calls[0]["decision_entry_id"] == decision_entry_id
+    assert persistence.calls[0]["decision_reference"] == decision_entry_id
     assert posted_lines(persistence) == [
         ("1920", "5000.00", "0.00"),
         ("1530", "0.00", "5000.00"),

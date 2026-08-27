@@ -131,7 +131,7 @@ export interface EligibilityPublicFacts {
 }
 
 export interface EligibilityQuestion {
-  answerOptions?: "yes" | "no" | "unknown"[];
+  answerOptions?: ("yes" | "no" | "unknown")[];
   code: string;
   prompt: string;
 }
@@ -560,6 +560,87 @@ export interface LedgerMoneyWire {
   currency: "NOK";
 }
 
+export interface LedgerFactReferenceWire {
+  capability: LedgerSourceCapability;
+  factSha256: string;
+  recordId: string;
+  revision: number;
+}
+
+export type OpeningBalanceCategory = "SUBSIDIARY_LOAN_RECEIVABLE" | "GROUP_COMPANY_LOAN_RECEIVABLE" | "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE" | "BANK" | "RESTRICTED_BANK" | "SUBSIDIARY_INVESTMENT" | "ASSOCIATE_INVESTMENT" | "OTHER_LONG_TERM_INVESTMENT" | "CURRENT_LISTED_SHARE_INVESTMENT" | "CURRENT_FUND_INVESTMENT" | "SUBSCRIPTION_RECEIVABLE" | "DIVIDEND_RECEIVABLE" | "GROUP_CONTRIBUTION_RECEIVABLE" | "TAX_RECEIVABLE" | "ACCRUED_INTEREST_RECEIVABLE" | "DEFERRED_TAX_ASSET" | "REGISTERED_SHARE_CAPITAL" | "SHARE_PREMIUM" | "UNREGISTERED_CAPITAL_INCREASE" | "UNREGISTERED_CAPITAL_REDUCTION" | "OTHER_PAID_IN_EQUITY" | "RETAINED_EARNINGS" | "UNCOVERED_LOSS" | "OTHER_EQUITY" | "LONG_TERM_BANK_LOAN_PAYABLE" | "SHORT_TERM_BANK_LOAN_PAYABLE" | "OWNER_LOAN_PAYABLE" | "INTERCOMPANY_LOAN_PAYABLE" | "SUPPLIER_PAYABLE" | "CURRENT_TAX_PAYABLE" | "DEFERRED_TAX_LIABILITY" | "ACCRUED_INTEREST_PAYABLE" | "DIVIDEND_PAYABLE" | "GROUP_CONTRIBUTION_PAYABLE";
+
+export type OpeningPositionMode = "NEW_COMPANY" | "PRIOR_CLOSE_RECONSTRUCTION";
+
+export type BankLoanMaturity = "LONG_TERM" | "SHORT_TERM";
+
+export type InvestmentClassification = "SUBSIDIARY" | "ASSOCIATE" | "OTHER_LONG_TERM" | "CURRENT_LISTED_SHARE" | "CURRENT_FUND";
+
+export type CapitalIncreasePhase = "BINDING_SUBSCRIPTION" | "RESTRICTED_PAYMENT" | "REGISTERED";
+
+export type CapitalReductionRecognition = "DECIDED_NOT_REGISTERED" | "REGISTERED" | "FIRST_RECOGNIZED_AFTER_REGISTRATION";
+
+export interface OpeningClassifiedBalanceWire {
+  amount: LedgerMoneyWire;
+  category: OpeningBalanceCategory;
+  componentKind: "CLASSIFIED_BALANCE";
+  corroboratingSources: LedgerFactReferenceWire[];
+  primarySource: LedgerFactReferenceWire;
+  referenceId: string;
+}
+
+export interface OpeningBankLoanWire {
+  amount: LedgerMoneyWire;
+  componentKind: "BANK_LOAN";
+  corroboratingSources: LedgerFactReferenceWire[];
+  loanReferenceId: string;
+  maturity: BankLoanMaturity;
+  primarySource: LedgerFactReferenceWire;
+}
+
+export interface OpeningInvestmentWire {
+  amount: LedgerMoneyWire;
+  classification: InvestmentClassification;
+  componentKind: "INVESTMENT";
+  corroboratingSources: LedgerFactReferenceWire[];
+  investmentReferenceId: string;
+  primarySource: LedgerFactReferenceWire;
+}
+
+export interface OpeningCapitalIncreaseWire {
+  capitalIncreaseReferenceId: string;
+  componentKind: "CAPITAL_INCREASE";
+  corroboratingSources: LedgerFactReferenceWire[];
+  nominalIncrease: LedgerMoneyWire;
+  phase: CapitalIncreasePhase;
+  primarySource: LedgerFactReferenceWire;
+  sharePremium: LedgerMoneyWire;
+}
+
+export interface OpeningCapitalReductionWire {
+  capitalReductionReferenceId: string;
+  componentKind: "CAPITAL_REDUCTION";
+  corroboratingSources: LedgerFactReferenceWire[];
+  nominalReduction: LedgerMoneyWire;
+  primarySource: LedgerFactReferenceWire;
+  recognition: CapitalReductionRecognition;
+}
+
+export interface OpeningDividendReceivableWire {
+  amount: LedgerMoneyWire;
+  componentKind: "DIVIDEND_RECEIVABLE";
+  corroboratingSources: LedgerFactReferenceWire[];
+  decisionReferenceId: string;
+  primarySource: LedgerFactReferenceWire;
+}
+
+export interface OpeningDividendPayableWire {
+  amount: LedgerMoneyWire;
+  componentKind: "DIVIDEND_PAYABLE";
+  corroboratingSources: LedgerFactReferenceWire[];
+  decisionReferenceId: string;
+  primarySource: LedgerFactReferenceWire;
+}
+
 export interface NewYearShareholderWire {
   name: string;
   nationalId?: string | null;
@@ -587,6 +668,9 @@ export interface NewYearStartWire {
   companyId: string;
   incomeYear: number;
   nominalValue: LedgerMoneyWire;
+  openingBasis?: LedgerFactReferenceWire | null;
+  openingComponents?: (OpeningClassifiedBalanceWire | OpeningBankLoanWire | OpeningInvestmentWire | OpeningCapitalIncreaseWire | OpeningCapitalReductionWire | OpeningDividendReceivableWire | OpeningDividendPayableWire)[] | null;
+  openingMode?: OpeningPositionMode;
   shareCapital: LedgerMoneyWire;
   shareCount: number;
   shareholders: NewYearShareholderWire[];
@@ -688,7 +772,7 @@ export interface LedgerShareholderLoanWire {
   relatedPartySecurity: false;
 }
 
-export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING" | "DOCUMENTS";
+export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING" | "ANNUAL_ACCOUNTS_FILING" | "DOCUMENTS";
 
 export interface LedgerTaxSettlementWire {
   actionId: string;
@@ -1404,6 +1488,131 @@ function isLedgerMoneyWire(value: unknown): value is LedgerMoneyWire {
   );
 }
 
+function isLedgerFactReferenceWire(value: unknown): value is LedgerFactReferenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capability","factSha256","recordId","revision"]) &&
+    isLedgerSourceCapability(value.capability) &&
+    (typeof value.factSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.factSha256)) &&
+    (typeof value.recordId === "string" && value.recordId.length >= 1 && value.recordId.length <= 255) &&
+    (typeof value.revision === "number" && Number.isInteger(value.revision) && value.revision >= 1)
+  );
+}
+
+function isOpeningBalanceCategory(value: unknown): value is OpeningBalanceCategory {
+  return value === "SUBSIDIARY_LOAN_RECEIVABLE" || value === "GROUP_COMPANY_LOAN_RECEIVABLE" || value === "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE" || value === "BANK" || value === "RESTRICTED_BANK" || value === "SUBSIDIARY_INVESTMENT" || value === "ASSOCIATE_INVESTMENT" || value === "OTHER_LONG_TERM_INVESTMENT" || value === "CURRENT_LISTED_SHARE_INVESTMENT" || value === "CURRENT_FUND_INVESTMENT" || value === "SUBSCRIPTION_RECEIVABLE" || value === "DIVIDEND_RECEIVABLE" || value === "GROUP_CONTRIBUTION_RECEIVABLE" || value === "TAX_RECEIVABLE" || value === "ACCRUED_INTEREST_RECEIVABLE" || value === "DEFERRED_TAX_ASSET" || value === "REGISTERED_SHARE_CAPITAL" || value === "SHARE_PREMIUM" || value === "UNREGISTERED_CAPITAL_INCREASE" || value === "UNREGISTERED_CAPITAL_REDUCTION" || value === "OTHER_PAID_IN_EQUITY" || value === "RETAINED_EARNINGS" || value === "UNCOVERED_LOSS" || value === "OTHER_EQUITY" || value === "LONG_TERM_BANK_LOAN_PAYABLE" || value === "SHORT_TERM_BANK_LOAN_PAYABLE" || value === "OWNER_LOAN_PAYABLE" || value === "INTERCOMPANY_LOAN_PAYABLE" || value === "SUPPLIER_PAYABLE" || value === "CURRENT_TAX_PAYABLE" || value === "DEFERRED_TAX_LIABILITY" || value === "ACCRUED_INTEREST_PAYABLE" || value === "DIVIDEND_PAYABLE" || value === "GROUP_CONTRIBUTION_PAYABLE";
+}
+
+function isOpeningPositionMode(value: unknown): value is OpeningPositionMode {
+  return value === "NEW_COMPANY" || value === "PRIOR_CLOSE_RECONSTRUCTION";
+}
+
+function isBankLoanMaturity(value: unknown): value is BankLoanMaturity {
+  return value === "LONG_TERM" || value === "SHORT_TERM";
+}
+
+function isInvestmentClassification(value: unknown): value is InvestmentClassification {
+  return value === "SUBSIDIARY" || value === "ASSOCIATE" || value === "OTHER_LONG_TERM" || value === "CURRENT_LISTED_SHARE" || value === "CURRENT_FUND";
+}
+
+function isCapitalIncreasePhase(value: unknown): value is CapitalIncreasePhase {
+  return value === "BINDING_SUBSCRIPTION" || value === "RESTRICTED_PAYMENT" || value === "REGISTERED";
+}
+
+function isCapitalReductionRecognition(value: unknown): value is CapitalReductionRecognition {
+  return value === "DECIDED_NOT_REGISTERED" || value === "REGISTERED" || value === "FIRST_RECOGNIZED_AFTER_REGISTRATION";
+}
+
+function isOpeningClassifiedBalanceWire(value: unknown): value is OpeningClassifiedBalanceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","category","componentKind","corroboratingSources","primarySource","referenceId"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    isOpeningBalanceCategory(value.category) &&
+    value.componentKind === "CLASSIFIED_BALANCE" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    isLedgerFactReferenceWire(value.primarySource) &&
+    (typeof value.referenceId === "string" && value.referenceId.length >= 1 && value.referenceId.length <= 255)
+  );
+}
+
+function isOpeningBankLoanWire(value: unknown): value is OpeningBankLoanWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","componentKind","corroboratingSources","loanReferenceId","maturity","primarySource"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    value.componentKind === "BANK_LOAN" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    (typeof value.loanReferenceId === "string" && value.loanReferenceId.length >= 1 && value.loanReferenceId.length <= 255) &&
+    isBankLoanMaturity(value.maturity) &&
+    isLedgerFactReferenceWire(value.primarySource)
+  );
+}
+
+function isOpeningInvestmentWire(value: unknown): value is OpeningInvestmentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","classification","componentKind","corroboratingSources","investmentReferenceId","primarySource"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    isInvestmentClassification(value.classification) &&
+    value.componentKind === "INVESTMENT" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    (typeof value.investmentReferenceId === "string" && value.investmentReferenceId.length >= 1 && value.investmentReferenceId.length <= 255) &&
+    isLedgerFactReferenceWire(value.primarySource)
+  );
+}
+
+function isOpeningCapitalIncreaseWire(value: unknown): value is OpeningCapitalIncreaseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capitalIncreaseReferenceId","componentKind","corroboratingSources","nominalIncrease","phase","primarySource","sharePremium"]) &&
+    (typeof value.capitalIncreaseReferenceId === "string" && value.capitalIncreaseReferenceId.length >= 1 && value.capitalIncreaseReferenceId.length <= 255) &&
+    value.componentKind === "CAPITAL_INCREASE" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    isLedgerMoneyWire(value.nominalIncrease) &&
+    isCapitalIncreasePhase(value.phase) &&
+    isLedgerFactReferenceWire(value.primarySource) &&
+    isLedgerMoneyWire(value.sharePremium)
+  );
+}
+
+function isOpeningCapitalReductionWire(value: unknown): value is OpeningCapitalReductionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capitalReductionReferenceId","componentKind","corroboratingSources","nominalReduction","primarySource","recognition"]) &&
+    (typeof value.capitalReductionReferenceId === "string" && value.capitalReductionReferenceId.length >= 1 && value.capitalReductionReferenceId.length <= 255) &&
+    value.componentKind === "CAPITAL_REDUCTION" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    isLedgerMoneyWire(value.nominalReduction) &&
+    isLedgerFactReferenceWire(value.primarySource) &&
+    isCapitalReductionRecognition(value.recognition)
+  );
+}
+
+function isOpeningDividendReceivableWire(value: unknown): value is OpeningDividendReceivableWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","componentKind","corroboratingSources","decisionReferenceId","primarySource"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    value.componentKind === "DIVIDEND_RECEIVABLE" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    (typeof value.decisionReferenceId === "string" && value.decisionReferenceId.length >= 1 && value.decisionReferenceId.length <= 255) &&
+    isLedgerFactReferenceWire(value.primarySource)
+  );
+}
+
+function isOpeningDividendPayableWire(value: unknown): value is OpeningDividendPayableWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","componentKind","corroboratingSources","decisionReferenceId","primarySource"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    value.componentKind === "DIVIDEND_PAYABLE" &&
+    Array.isArray(value.corroboratingSources) && value.corroboratingSources.every((item) => isLedgerFactReferenceWire(item)) && value.corroboratingSources.length >= 1 &&
+    (typeof value.decisionReferenceId === "string" && value.decisionReferenceId.length >= 1 && value.decisionReferenceId.length <= 255) &&
+    isLedgerFactReferenceWire(value.primarySource)
+  );
+}
+
 function isNewYearShareholderWire(value: unknown): value is NewYearShareholderWire {
   return (
     isRecord(value) &&
@@ -1441,11 +1650,14 @@ function isNewYearStartResultWire(value: unknown): value is NewYearStartResultWi
 function isNewYearStartWire(value: unknown): value is NewYearStartWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["bankBalance","companyId","incomeYear","nominalValue","shareCapital","shareCount","shareholders"]) &&
+    hasOnlyProperties(value, ["bankBalance","companyId","incomeYear","nominalValue","openingBasis","openingComponents","openingMode","shareCapital","shareCount","shareholders"]) &&
     isLedgerMoneyWire(value.bankBalance) &&
     isUuid(value.companyId) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     isLedgerMoneyWire(value.nominalValue) &&
+    (value.openingBasis === undefined || (isLedgerFactReferenceWire(value.openingBasis) || value.openingBasis === null)) &&
+    (value.openingComponents === undefined || (Array.isArray(value.openingComponents) && value.openingComponents.every((item) => (isOpeningClassifiedBalanceWire(item) || isOpeningBankLoanWire(item) || isOpeningInvestmentWire(item) || isOpeningCapitalIncreaseWire(item) || isOpeningCapitalReductionWire(item) || isOpeningDividendReceivableWire(item) || isOpeningDividendPayableWire(item))) || value.openingComponents === null)) &&
+    (value.openingMode === undefined || isOpeningPositionMode(value.openingMode)) &&
     isLedgerMoneyWire(value.shareCapital) &&
     (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 2147483647 && value.shareCount > 0) &&
     Array.isArray(value.shareholders) && value.shareholders.every((item) => isNewYearShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 100
@@ -1593,7 +1805,7 @@ function isLedgerShareholderLoanWire(value: unknown): value is LedgerShareholder
 }
 
 function isLedgerSourceCapability(value: unknown): value is LedgerSourceCapability {
-  return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING" || value === "DOCUMENTS";
+  return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING" || value === "ANNUAL_ACCOUNTS_FILING" || value === "DOCUMENTS";
 }
 
 function isLedgerTaxSettlementWire(value: unknown): value is LedgerTaxSettlementWire {

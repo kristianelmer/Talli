@@ -4,7 +4,6 @@ import asyncio
 from datetime import UTC, date, datetime
 
 import pytest
-
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     BankSuggestionRule,
@@ -20,14 +19,13 @@ from talli_backend.modules.ledger.public import (
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
+    PostAdministrativeCostCommand,
     PostBankSuggestionOutcomeCommand,
+    PostedLedgerEntry,
     PostInvestmentDividendCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
-    PostAdministrativeCostCommand,
-    PostedLedgerEntry,
     PostManualJournalCommand,
-    PostOpeningBalanceCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
@@ -49,7 +47,6 @@ from talli_backend.shared.kernel import (
     Timestamp,
     UserId,
 )
-
 
 COMPANY_ID = CompanyId("10000000-0000-0000-0000-000000000001")
 ACTOR_ID = ActorId(
@@ -104,61 +101,6 @@ class LedgerPersistenceStub:
 
     async def list_period_locks(self, **_query: object) -> PeriodLockPage:
         return PeriodLockPage(items=(), page=LedgerPage(next_cursor=None, has_more=False))
-
-
-def test_opening_balance_preserves_the_frozen_typescript_posting() -> None:
-    persistence = LedgerPersistenceStub()
-    command = PostOpeningBalanceCommand(
-        **metadata(),
-        bank_balance=Money.nok("30000.00"),
-        share_capital_snapshot=Money.nok("30000.00"),
-    )
-
-    result = asyncio.run(LedgerService(persistence).post_opening_balance(command))
-
-    assert result.entry_id == ENTRY_ID
-    assert persistence.postings[0]["entry_kind"] is LedgerEntryKind.OPENING_BALANCE
-    assert persistence.postings[0]["lines"] == (
-        LedgerLine("1920", "Bankinnskudd", Money.nok("30000"), Money.nok("0")),
-        LedgerLine("2000", "Aksjekapital", Money.nok("0"), Money.nok("30000")),
-        LedgerLine("2050", "Annen egenkapital", Money.nok("0"), Money.nok("0")),
-    )
-
-
-def test_opening_balance_keeps_the_legacy_uncovered_loss_shape() -> None:
-    persistence = LedgerPersistenceStub()
-    command = PostOpeningBalanceCommand(
-        **metadata(),
-        bank_balance=Money.nok("20000"),
-        share_capital_snapshot=Money.nok("30000"),
-    )
-
-    asyncio.run(LedgerService(persistence).post_opening_balance(command))
-
-    assert persistence.postings[0]["lines"][-1] == LedgerLine(
-        "2050", "Udekket tap", Money.nok("10000"), Money.nok("0")
-    )
-
-
-def test_opening_balance_can_correlate_to_shareholder_register_snapshot() -> None:
-    persistence = LedgerPersistenceStub()
-    opening_snapshot_id = LedgerSourceRecordId(
-        "61000000-0000-0000-0000-000000000006"
-    )
-    command = PostOpeningBalanceCommand(
-        **metadata(),
-        bank_balance=Money.nok("30000"),
-        share_capital_snapshot=Money.nok("30000"),
-        opening_snapshot_id=opening_snapshot_id,
-    )
-
-    asyncio.run(LedgerService(persistence).post_opening_balance(command))
-
-    assert (
-        persistence.postings[0]["source_capability"]
-        is LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING
-    )
-    assert persistence.postings[0]["source_record_id"] == opening_snapshot_id
 
 
 def test_manual_journal_enforces_balance_and_exact_sensitive_account_set() -> None:

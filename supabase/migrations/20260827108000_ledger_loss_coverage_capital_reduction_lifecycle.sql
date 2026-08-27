@@ -53,6 +53,24 @@ with check (
   )
 );
 
+create or replace function ledger.loss_coverage_capital_reduction_basis_v1(
+  p_company_id uuid,
+  p_capital_reduction_reference_id text
+)
+returns table (event_date date, nominal_reduction numeric)
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select phase_record.event_date, phase_record.nominal_reduction
+  from ledger.loss_coverage_capital_reduction_phases phase_record
+  where phase_record.company_id = p_company_id
+    and phase_record.capital_reduction_reference_id =
+      pg_catalog.btrim(p_capital_reduction_reference_id)
+    and phase_record.phase = 'DECIDED_NOT_REGISTERED';
+$function$;
+
 create or replace function ledger.record_loss_coverage_capital_reduction_decision_v1(
   p_idempotency_key text,
   p_company_id uuid,
@@ -148,6 +166,10 @@ begin
       where phase_record.company_id = p_company_id
         and phase_record.capital_reduction_reference_id =
           pg_catalog.btrim(p_capital_reduction_reference_id)
+    ) or exists (
+      select 1 from ledger.loss_coverage_capital_reduction_basis_v1(
+        p_company_id, p_capital_reduction_reference_id
+      )
     ) then
       raise exception 'ledger_loss_coverage_capital_reduction_phase_already_recorded';
     end if;
@@ -199,7 +221,7 @@ declare
   v_post record;
   v_capabilities text[];
   v_journal_debit numeric;
-  v_decision ledger.loss_coverage_capital_reduction_phases%rowtype;
+  v_decision record;
 begin
   if pg_catalog.jsonb_typeof(p_sources) is distinct from 'array' then
     raise exception 'ledger_loss_coverage_capital_reduction_phase_invalid';
@@ -259,12 +281,10 @@ begin
       raise exception 'ledger_idempotency_key_reused';
     end if;
   else
-    select phase_record.* into v_decision
-    from ledger.loss_coverage_capital_reduction_phases phase_record
-    where phase_record.company_id = p_company_id
-      and phase_record.capital_reduction_reference_id =
-        pg_catalog.btrim(p_capital_reduction_reference_id)
-      and phase_record.phase = 'DECIDED_NOT_REGISTERED';
+    select basis.* into v_decision
+    from ledger.loss_coverage_capital_reduction_basis_v1(
+      p_company_id, p_capital_reduction_reference_id
+    ) basis;
     if not found then
       if exists (
         select 1 from ledger.loss_coverage_capital_reduction_phases phase_record
@@ -427,6 +447,10 @@ from public, anon, authenticated, service_role, ledger_executor,
   ledger_workflow_executor, talli_ledger_backend;
 grant select, insert on ledger.loss_coverage_capital_reduction_phases
 to ledger_store_owner;
+revoke all on function ledger.loss_coverage_capital_reduction_basis_v1(
+  uuid, text
+) from public, anon, authenticated, service_role, ledger_executor,
+  ledger_workflow_executor;
 
 revoke all on function ledger.record_loss_coverage_capital_reduction_decision_v1(
   text, uuid, integer, text, numeric, text, jsonb, text, text, text,
@@ -458,6 +482,8 @@ grant execute on function ledger.record_loss_coverage_capital_reduction_direct_r
 ) to ledger_executor;
 
 alter table ledger.loss_coverage_capital_reduction_phases owner to ledger_store_owner;
+alter function ledger.loss_coverage_capital_reduction_basis_v1(uuid, text)
+  owner to ledger_store_owner;
 alter function ledger.record_loss_coverage_capital_reduction_decision_v1(
   text, uuid, integer, text, numeric, text, jsonb, text, text, text,
   text, date, text, jsonb

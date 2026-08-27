@@ -905,6 +905,15 @@ export async function createOpeningBalanceSetup(formData: FormData) {
   try {
     await startNewYear(accessToken, command, operationId, operationId);
   } catch (error) {
+    const ledgerFailure = error as {
+      status?: unknown;
+      problem?: { code?: unknown };
+    };
+    console.error("Opening-position workflow failed.", {
+      operationId,
+      status: ledgerFailure.status,
+      errorCode: ledgerFailure.problem?.code,
+    });
     const separator = returnTo.includes("?") ? "&" : "?";
     const continuation = ledgerOutcomeMayBeUnknown(error)
       ? `&newYearOperationId=${encodeURIComponent(operationId)}`

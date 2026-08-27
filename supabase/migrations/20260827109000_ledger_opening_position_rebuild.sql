@@ -17,11 +17,15 @@ create table if not exists ledger.opening_position_rebuilds (
   company_id uuid not null references public.companies(id) on delete restrict,
   income_year integer not null check (income_year between 2000 and 2100),
   opening_date date not null,
+  opening_mode text not null check (
+    opening_mode in ('NEW_COMPANY', 'PRIOR_CLOSE_RECONSTRUCTION')
+  ),
   components_digest text not null check (components_digest ~ '^[0-9a-f]{64}$'),
   correlation_id text not null check (correlation_id ~ '^[A-Za-z0-9._:-]{1,80}$'),
   recorded_by uuid not null references auth.users(id) on delete restrict,
   recorded_at timestamptz not null default pg_catalog.statement_timestamp(),
   unique (company_id, income_year),
+  unique (opening_entry_id, company_id, income_year),
   foreign key (opening_entry_id, company_id, income_year)
     references ledger.entries(id, company_id, income_year) on delete restrict,
   check (opening_date = pg_catalog.make_date(income_year, 1, 1))
@@ -31,43 +35,106 @@ create table if not exists ledger.opening_position_components (
   opening_entry_id uuid not null,
   company_id uuid not null,
   income_year integer not null,
-  ordinal integer not null check (ordinal between 1 and 49),
+  ordinal integer not null check (ordinal >= 1),
+  component_kind text not null check (component_kind in (
+    'CLASSIFIED_BALANCE', 'BANK_LOAN', 'INVESTMENT',
+    'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
+    'DIVIDEND_RECEIVABLE', 'DIVIDEND_PAYABLE'
+  )),
   category text not null check (category in (
     'SUBSIDIARY_LOAN_RECEIVABLE', 'GROUP_COMPANY_LOAN_RECEIVABLE',
     'CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE',
-    'BANK', 'RESTRICTED_BANK', 'INVESTMENT', 'SUBSCRIPTION_RECEIVABLE',
+    'BANK', 'RESTRICTED_BANK',
+    'SUBSIDIARY_INVESTMENT', 'ASSOCIATE_INVESTMENT',
+    'OTHER_LONG_TERM_INVESTMENT', 'CURRENT_LISTED_SHARE_INVESTMENT',
+    'CURRENT_FUND_INVESTMENT', 'SUBSCRIPTION_RECEIVABLE',
     'DIVIDEND_RECEIVABLE', 'GROUP_CONTRIBUTION_RECEIVABLE', 'TAX_RECEIVABLE',
+    'ACCRUED_INTEREST_RECEIVABLE', 'DEFERRED_TAX_ASSET',
     'REGISTERED_SHARE_CAPITAL', 'SHARE_PREMIUM',
     'UNREGISTERED_CAPITAL_INCREASE', 'UNREGISTERED_CAPITAL_REDUCTION',
     'OTHER_PAID_IN_EQUITY', 'RETAINED_EARNINGS', 'UNCOVERED_LOSS',
     'OTHER_EQUITY',
-    'BANK_LOAN_PAYABLE', 'OWNER_LOAN_PAYABLE',
+    'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE',
+    'OWNER_LOAN_PAYABLE',
     'INTERCOMPANY_LOAN_PAYABLE', 'SUPPLIER_PAYABLE', 'CURRENT_TAX_PAYABLE',
+    'DEFERRED_TAX_LIABILITY', 'ACCRUED_INTEREST_PAYABLE',
     'DIVIDEND_PAYABLE', 'GROUP_CONTRIBUTION_PAYABLE'
   )),
   reference_id text not null check (
     pg_catalog.btrim(reference_id) <> ''
     and pg_catalog.length(reference_id) <= 255
   ),
+  lifecycle_phase text check (
+    lifecycle_phase is null or (
+      pg_catalog.btrim(lifecycle_phase) <> ''
+      and pg_catalog.length(lifecycle_phase) <= 80
+    )
+  ),
+  account text not null check (account ~ '^[0-9]{4}$'),
   amount_nok numeric(18, 2) not null check (amount_nok > 0),
+  nominal_increase_nok numeric(18, 2),
+  share_premium_nok numeric(18, 2),
+  nominal_reduction_nok numeric(18, 2),
   balance_side text not null check (balance_side in ('DEBIT', 'CREDIT')),
   primary key (opening_entry_id, ordinal),
   unique (company_id, income_year, category, reference_id),
-  foreign key (opening_entry_id)
-    references ledger.opening_position_rebuilds(opening_entry_id)
-    on delete restrict
+  unique (opening_entry_id, ordinal, company_id, income_year),
+  foreign key (opening_entry_id, company_id, income_year)
+    references ledger.opening_position_rebuilds(
+      opening_entry_id, company_id, income_year
+    )
+    on delete restrict,
+  check (
+    (
+      component_kind = 'CAPITAL_INCREASE'
+      and nominal_increase_nok > 0
+      and share_premium_nok >= 0
+      and nominal_reduction_nok is null
+    ) or (
+      component_kind = 'CAPITAL_REDUCTION'
+      and nominal_increase_nok is null
+      and share_premium_nok is null
+      and nominal_reduction_nok > 0
+    ) or (
+      component_kind not in ('CAPITAL_INCREASE', 'CAPITAL_REDUCTION')
+      and nominal_increase_nok is null
+      and share_premium_nok is null
+      and nominal_reduction_nok is null
+    )
+  )
 );
+
+create unique index if not exists opening_position_components_bank_loan_reference_key
+on ledger.opening_position_components (company_id, reference_id)
+where category in (
+  'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE'
+);
+
+create unique index if not exists opening_position_components_capital_increase_reference_key
+on ledger.opening_position_components (company_id, reference_id)
+where component_kind = 'CAPITAL_INCREASE'
+  and category = 'UNREGISTERED_CAPITAL_INCREASE';
+
+create unique index if not exists opening_position_components_capital_reduction_reference_key
+on ledger.opening_position_components (company_id, reference_id)
+where component_kind = 'CAPITAL_REDUCTION'
+  and category = 'UNREGISTERED_CAPITAL_REDUCTION';
+
+create unique index if not exists opening_position_components_dividend_reference_key
+on ledger.opening_position_components (company_id, component_kind, reference_id)
+where component_kind in ('DIVIDEND_RECEIVABLE', 'DIVIDEND_PAYABLE');
 
 create table if not exists ledger.opening_position_component_sources (
   opening_entry_id uuid not null,
   component_ordinal integer not null,
   company_id uuid not null,
   income_year integer not null,
-  source_ordinal integer not null check (source_ordinal in (1, 2)),
+  source_ordinal integer not null check (source_ordinal >= 1),
   source_role text not null check (source_role in ('PRIMARY', 'CORROBORATING')),
   source_capability text not null check (source_capability in (
     'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
+    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING',
+    'ANNUAL_ACCOUNTS_FILING', 'DOCUMENTS'
   )),
   source_record_id text not null check (
     pg_catalog.btrim(source_record_id) <> ''
@@ -77,11 +144,43 @@ create table if not exists ledger.opening_position_component_sources (
   fact_sha256 text not null check (fact_sha256 ~ '^[0-9a-f]{64}$'),
   primary key (opening_entry_id, component_ordinal, source_ordinal),
   unique (
-    company_id, income_year, source_capability, source_record_id, source_revision
+    opening_entry_id, component_ordinal,
+    source_capability, source_record_id, source_revision
   ),
-  foreign key (opening_entry_id, component_ordinal)
-    references ledger.opening_position_components(opening_entry_id, ordinal)
+  foreign key (
+    opening_entry_id, component_ordinal, company_id, income_year
+  ) references ledger.opening_position_components(
+    opening_entry_id, ordinal, company_id, income_year
+  )
     on delete restrict
+);
+
+create table if not exists ledger.opening_received_dividend_settlements (
+  company_id uuid not null references public.companies(id) on delete restrict,
+  decision_reference_id text not null check (
+    pg_catalog.btrim(decision_reference_id) <> ''
+    and pg_catalog.length(decision_reference_id) <= 255
+  ),
+  opening_entry_id uuid not null,
+  opening_component_ordinal integer not null,
+  opening_income_year integer not null check (
+    opening_income_year between 2000 and 2100
+  ),
+  payment_entry_id uuid not null unique,
+  payment_income_year integer not null check (
+    payment_income_year between 2000 and 2100
+  ),
+  recorded_at timestamptz not null default pg_catalog.statement_timestamp(),
+  primary key (company_id, decision_reference_id),
+  foreign key (
+    opening_entry_id, opening_component_ordinal, company_id,
+    opening_income_year
+  ) references ledger.opening_position_components(
+    opening_entry_id, ordinal, company_id, income_year
+  ) on delete restrict,
+  foreign key (payment_entry_id, company_id, payment_income_year)
+    references ledger.entries(id, company_id, income_year) on delete restrict,
+  check (payment_income_year >= opening_income_year)
 );
 
 alter table ledger.opening_position_rebuilds enable row level security;
@@ -90,6 +189,8 @@ alter table ledger.opening_position_components enable row level security;
 alter table ledger.opening_position_components force row level security;
 alter table ledger.opening_position_component_sources enable row level security;
 alter table ledger.opening_position_component_sources force row level security;
+alter table ledger.opening_received_dividend_settlements enable row level security;
+alter table ledger.opening_received_dividend_settlements force row level security;
 
 drop policy if exists "ledger store reads opening position rebuilds"
   on ledger.opening_position_rebuilds;
@@ -127,12 +228,84 @@ drop policy if exists "ledger store records opening position component sources"
 create policy "ledger store records opening position component sources"
 on ledger.opening_position_component_sources for insert to ledger_store_owner
 with check (public.company_access_is_accepted_owner_v1(company_id));
+drop policy if exists "ledger store reads opening dividend settlements"
+  on ledger.opening_received_dividend_settlements;
+create policy "ledger store reads opening dividend settlements"
+on ledger.opening_received_dividend_settlements for select to ledger_store_owner
+using (public.company_access_is_accepted_member_v1(company_id));
+drop policy if exists "ledger store records opening dividend settlements"
+  on ledger.opening_received_dividend_settlements;
+create policy "ledger store records opening dividend settlements"
+on ledger.opening_received_dividend_settlements for insert to ledger_store_owner
+with check (
+  public.company_access_is_accepted_owner_v1(company_id)
+  and public.company_access_company_year_allows_consequential_v1(
+    company_id, payment_income_year
+  )
+);
+
+-- Keep the supported-entry storage coordinator private. Public callers retain
+-- the stable supported-entry name, but that wrapper rejects OPENING_BALANCE;
+-- only this typed receiver may reach the private storage coordinator.
+do $ledger_opening_private_supported_entry$
+begin
+  if pg_catalog.to_regprocedure(
+    'ledger.post_supported_entry_storage_v1(text,uuid,integer,text,text,jsonb,text,text,text,text,date,text,jsonb)'
+  ) is null then
+    alter function ledger.post_supported_entry_v1(
+      text, uuid, integer, text, text, jsonb, text, text, text, text,
+      date, text, jsonb
+    ) rename to post_supported_entry_storage_v1;
+  end if;
+end
+$ledger_opening_private_supported_entry$;
+
+create or replace function ledger.post_supported_entry_v1(
+  p_idempotency_key text,
+  p_company_id uuid,
+  p_income_year integer,
+  p_entry_kind text,
+  p_memo text,
+  p_lines jsonb,
+  p_source_capability text,
+  p_source_record_id text,
+  p_correlation_id text,
+  p_verified_subject text,
+  p_event_date date,
+  p_rule_version text,
+  p_sources jsonb
+)
+returns table (
+  ledger_entry_id uuid,
+  company_id uuid,
+  income_year integer,
+  entry_kind text,
+  posted_at timestamptz,
+  replayed boolean
+)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if pg_catalog.upper(coalesce(p_entry_kind, '')) = 'OPENING_BALANCE' then
+    raise exception 'ledger_invalid_input';
+  end if;
+  return query select *
+  from ledger.post_supported_entry_storage_v1(
+    p_idempotency_key, p_company_id, p_income_year, p_entry_kind, p_memo,
+    p_lines, p_source_capability, p_source_record_id, p_correlation_id,
+    p_verified_subject, p_event_date, p_rule_version, p_sources
+  );
+end;
+$function$;
 
 create or replace function ledger.rebuild_company_year_opening_v1(
   p_idempotency_key text,
   p_company_id uuid,
   p_income_year integer,
   p_opening_date date,
+  p_opening_mode text,
   p_memo text,
   p_lines jsonb,
   p_source_capability text,
@@ -159,8 +332,6 @@ declare
   v_post record;
   v_component_digest text;
   v_component_count integer;
-  v_expected_primary text;
-  v_expected_corroborating text;
   v_component jsonb;
 begin
   if v_actor_id is null
@@ -173,13 +344,13 @@ begin
   if p_company_id is null
     or p_income_year not between 2000 and 2100
     or p_opening_date is distinct from pg_catalog.make_date(p_income_year, 1, 1)
-    or p_source_capability is distinct from 'LEDGER'
+    or p_opening_mode not in ('NEW_COMPANY', 'PRIOR_CLOSE_RECONSTRUCTION')
+    or pg_catalog.btrim(coalesce(p_source_capability, '')) = ''
     or pg_catalog.btrim(coalesce(p_source_record_id, '')) = ''
     or pg_catalog.jsonb_typeof(p_components) is distinct from 'array'
-    or pg_catalog.jsonb_array_length(p_components) not between 2 and 49
+    or pg_catalog.jsonb_array_length(p_components) < 1
     or pg_catalog.jsonb_typeof(p_sources) is distinct from 'array'
-    or pg_catalog.jsonb_array_length(p_sources)
-      is distinct from 1 + (2 * pg_catalog.jsonb_array_length(p_components))
+    or pg_catalog.jsonb_array_length(p_sources) < 2
     or not ledger.entry_lines_are_valid_v1(p_lines, false)
     or pg_catalog.jsonb_array_length(p_lines)
       is distinct from pg_catalog.jsonb_array_length(p_components)
@@ -188,7 +359,7 @@ begin
   end if;
 
   if p_sources -> 0 ->> 'role' is distinct from 'PRIMARY'
-    or p_sources -> 0 ->> 'capability' is distinct from 'LEDGER'
+    or p_sources -> 0 ->> 'capability' is distinct from p_source_capability
     or p_sources -> 0 ->> 'recordId' is distinct from p_source_record_id
   then
     raise exception 'ledger_opening_evidence_invalid';
@@ -198,68 +369,69 @@ begin
     select item
     from pg_catalog.jsonb_array_elements(p_components) component(item)
   loop
-    v_expected_primary := case v_component ->> 'category'
-      when 'SUBSIDIARY_LOAN_RECEIVABLE' then 'CORPORATE_GOVERNANCE'
-      when 'GROUP_COMPANY_LOAN_RECEIVABLE' then 'CORPORATE_GOVERNANCE'
-      when 'CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE' then 'CORPORATE_GOVERNANCE'
-      when 'BANK' then 'BANKING'
-      when 'RESTRICTED_BANK' then 'BANKING'
-      when 'INVESTMENT' then 'INVESTMENTS'
-      when 'SUBSCRIPTION_RECEIVABLE' then 'CORPORATE_GOVERNANCE'
-      when 'DIVIDEND_RECEIVABLE' then 'INVESTMENTS'
-      when 'GROUP_CONTRIBUTION_RECEIVABLE' then 'CORPORATE_GOVERNANCE'
-      when 'TAX_RECEIVABLE' then 'COMPANY_TAX_FILING'
-      when 'REGISTERED_SHARE_CAPITAL' then 'SHAREHOLDER_REGISTER_FILING'
-      when 'SHARE_PREMIUM' then 'SHAREHOLDER_REGISTER_FILING'
-      when 'UNREGISTERED_CAPITAL_INCREASE' then 'CORPORATE_GOVERNANCE'
-      when 'UNREGISTERED_CAPITAL_REDUCTION' then 'CORPORATE_GOVERNANCE'
-      when 'OTHER_PAID_IN_EQUITY' then 'CORPORATE_GOVERNANCE'
-      when 'RETAINED_EARNINGS' then 'COMPANY_TAX_FILING'
-      when 'UNCOVERED_LOSS' then 'COMPANY_TAX_FILING'
-      when 'OTHER_EQUITY' then 'COMPANY_TAX_FILING'
-      when 'BANK_LOAN_PAYABLE' then 'BANKING'
-      when 'OWNER_LOAN_PAYABLE' then 'CORPORATE_GOVERNANCE'
-      when 'INTERCOMPANY_LOAN_PAYABLE' then 'CORPORATE_GOVERNANCE'
-      when 'SUPPLIER_PAYABLE' then 'DOCUMENTS'
-      when 'CURRENT_TAX_PAYABLE' then 'COMPANY_TAX_FILING'
-      when 'DIVIDEND_PAYABLE' then 'CORPORATE_GOVERNANCE'
-      when 'GROUP_CONTRIBUTION_PAYABLE' then 'CORPORATE_GOVERNANCE'
-      else null
-    end;
-    v_expected_corroborating := case
-      when v_component ->> 'category' = 'SUPPLIER_PAYABLE' then 'LEDGER'
-      else 'DOCUMENTS'
-    end;
-    if v_expected_primary is null
-      or coalesce(v_component ->> 'ordinal', '') !~ '^[1-9][0-9]*$'
-      or (v_component ->> 'ordinal')::integer not between 1 and 49
+    if coalesce(v_component ->> 'ordinal', '') !~ '^[1-9][0-9]*$'
+      or v_component ->> 'componentKind' not in (
+        'CLASSIFIED_BALANCE', 'BANK_LOAN', 'INVESTMENT',
+        'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
+        'DIVIDEND_RECEIVABLE', 'DIVIDEND_PAYABLE'
+      )
+      or pg_catalog.btrim(coalesce(v_component ->> 'category', '')) = ''
       or pg_catalog.btrim(coalesce(v_component ->> 'referenceId', '')) = ''
       or pg_catalog.length(v_component ->> 'referenceId') > 255
+      or (
+        v_component ->> 'lifecyclePhase' is not null
+        and (
+          pg_catalog.btrim(v_component ->> 'lifecyclePhase') = ''
+          or pg_catalog.length(v_component ->> 'lifecyclePhase') > 80
+        )
+      )
+      or coalesce(v_component ->> 'account', '') !~ '^[0-9]{4}$'
       or coalesce(v_component ->> 'amountNok', '')
         !~ '^[0-9]+([.][0-9]{1,2})?$'
       or (v_component ->> 'amountNok')::numeric <= 0
-      or (v_component ->> 'balanceSide') is distinct from (case
-        when v_component ->> 'category' in (
-          'BANK', 'RESTRICTED_BANK', 'INVESTMENT',
-          'SUBSIDIARY_LOAN_RECEIVABLE', 'GROUP_COMPANY_LOAN_RECEIVABLE',
-          'CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE',
-          'SUBSCRIPTION_RECEIVABLE', 'DIVIDEND_RECEIVABLE',
-          'GROUP_CONTRIBUTION_RECEIVABLE', 'TAX_RECEIVABLE',
-          'UNREGISTERED_CAPITAL_REDUCTION', 'UNCOVERED_LOSS'
-        ) then 'DEBIT' else 'CREDIT' end)
+      or (
+        v_component ->> 'componentKind' = 'CAPITAL_INCREASE'
+        and (
+          coalesce(v_component ->> 'nominalIncreaseNok', '')
+            !~ '^[0-9]+([.][0-9]{1,2})?$'
+          or (v_component ->> 'nominalIncreaseNok')::numeric <= 0
+          or coalesce(v_component ->> 'sharePremiumNok', '')
+            !~ '^[0-9]+([.][0-9]{1,2})?$'
+          or (v_component ->> 'sharePremiumNok')::numeric < 0
+          or v_component ->> 'nominalReductionNok' is not null
+        )
+      )
+      or (
+        v_component ->> 'componentKind' = 'CAPITAL_REDUCTION'
+        and (
+          coalesce(v_component ->> 'nominalReductionNok', '')
+            !~ '^[0-9]+([.][0-9]{1,2})?$'
+          or (v_component ->> 'nominalReductionNok')::numeric <= 0
+          or v_component ->> 'nominalIncreaseNok' is not null
+          or v_component ->> 'sharePremiumNok' is not null
+        )
+      )
+      or (
+        v_component ->> 'componentKind' not in (
+          'CAPITAL_INCREASE', 'CAPITAL_REDUCTION'
+        )
+        and (
+          v_component ->> 'nominalIncreaseNok' is not null
+          or v_component ->> 'sharePremiumNok' is not null
+          or v_component ->> 'nominalReductionNok' is not null
+        )
+      )
+      or v_component ->> 'balanceSide' not in ('DEBIT', 'CREDIT')
       or pg_catalog.jsonb_typeof(v_component -> 'sources') is distinct from 'array'
-      or pg_catalog.jsonb_array_length(v_component -> 'sources') <> 2
+      or pg_catalog.jsonb_array_length(v_component -> 'sources') < 2
       or v_component -> 'sources' -> 0 ->> 'role' is distinct from 'PRIMARY'
-      or v_component -> 'sources' -> 0 ->> 'capability'
-        is distinct from v_expected_primary
-      or v_component -> 'sources' -> 1 ->> 'role'
-        is distinct from 'CORROBORATING'
-      or v_component -> 'sources' -> 1 ->> 'capability'
-        is distinct from v_expected_corroborating
       or exists (
         select 1
-        from pg_catalog.jsonb_array_elements(v_component -> 'sources') source(item)
-        where pg_catalog.btrim(coalesce(item ->> 'recordId', '')) = ''
+        from pg_catalog.jsonb_array_elements(v_component -> 'sources')
+          with ordinality source(item, ordinal)
+        where (ordinal > 1 and item ->> 'role' is distinct from 'CORROBORATING')
+          or pg_catalog.btrim(coalesce(item ->> 'capability', '')) = ''
+          or pg_catalog.btrim(coalesce(item ->> 'recordId', '')) = ''
           or pg_catalog.length(item ->> 'recordId') > 255
           or coalesce(item ->> 'revision', '') !~ '^[1-9][0-9]*$'
           or coalesce(item ->> 'factSha256', '') !~ '^[0-9a-f]{64}$'
@@ -292,24 +464,8 @@ begin
       group by (item ->> 'ordinal')::integer
       having pg_catalog.count(*) > 1
     )
-    or exists (
-      select 1
-      from pg_catalog.jsonb_array_elements(p_components) component(item),
-        lateral pg_catalog.jsonb_array_elements(item -> 'sources') source(source_item)
-      where source_item ->> 'capability' = p_sources -> 0 ->> 'capability'
-        and source_item ->> 'recordId' = p_sources -> 0 ->> 'recordId'
-        and source_item ->> 'revision' = p_sources -> 0 ->> 'revision'
-    )
-    or exists (
-      select 1
-      from pg_catalog.jsonb_array_elements(p_components) component(item),
-        lateral pg_catalog.jsonb_array_elements(item -> 'sources') source(source_item)
-      group by source_item ->> 'capability', source_item ->> 'recordId',
-        source_item ->> 'revision'
-      having pg_catalog.count(*) > 1
-    )
   then
-    raise exception 'ledger_opening_source_overlap';
+    raise exception 'ledger_opening_balance_invalid';
   end if;
 
   if exists (
@@ -319,8 +475,7 @@ begin
       component_source(source_item)
     where not exists (
       select 1 from pg_catalog.jsonb_array_elements(p_sources) entry_source(entry_item)
-      where entry_item ->> 'role' = 'CORROBORATING'
-        and entry_item ->> 'capability' = source_item ->> 'capability'
+      where entry_item ->> 'capability' = source_item ->> 'capability'
         and entry_item ->> 'recordId' = source_item ->> 'recordId'
         and entry_item ->> 'revision' = source_item ->> 'revision'
         and entry_item ->> 'factSha256' = source_item ->> 'factSha256'
@@ -338,7 +493,8 @@ begin
         with ordinality line_item(line, ordinal)
       where ordinal = (item ->> 'ordinal')::integer
     ) matched on true
-    where case item ->> 'balanceSide'
+    where matched.line ->> 'account' is distinct from item ->> 'account'
+      or case item ->> 'balanceSide'
       when 'DEBIT' then
         (matched.line ->> 'debit')::numeric
           is distinct from (item ->> 'amountNok')::numeric
@@ -358,7 +514,7 @@ begin
   );
 
   select * into strict v_post
-  from ledger.post_supported_entry_v1(
+  from ledger.post_supported_entry_storage_v1(
     p_idempotency_key, p_company_id, p_income_year, 'OPENING_BALANCE',
     p_memo, p_lines, p_source_capability, p_source_record_id,
     p_correlation_id, p_verified_subject, p_opening_date,
@@ -372,6 +528,7 @@ begin
         and rebuild.company_id = p_company_id
         and rebuild.income_year = p_income_year
         and rebuild.opening_date = p_opening_date
+        and rebuild.opening_mode = p_opening_mode
         and rebuild.components_digest = v_component_digest
         and rebuild.correlation_id = p_correlation_id
     ) then
@@ -385,7 +542,9 @@ begin
   for v_component in
     select item
     from pg_catalog.jsonb_array_elements(p_components) component(item)
-    where item ->> 'category' = 'BANK_LOAN_PAYABLE'
+    where item ->> 'category' in (
+      'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE'
+    )
     order by item ->> 'referenceId'
   loop
     perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
@@ -404,19 +563,27 @@ begin
   end loop;
 
   insert into ledger.opening_position_rebuilds (
-    opening_entry_id, company_id, income_year, opening_date,
+    opening_entry_id, company_id, income_year, opening_date, opening_mode,
     components_digest, correlation_id, recorded_by, recorded_at
   ) values (
     v_post.ledger_entry_id, p_company_id, p_income_year, p_opening_date,
-    v_component_digest, p_correlation_id, v_actor_id, v_post.posted_at
+    p_opening_mode, v_component_digest, p_correlation_id, v_actor_id,
+    v_post.posted_at
   );
   insert into ledger.opening_position_components (
-    opening_entry_id, company_id, income_year, ordinal, category,
-    reference_id, amount_nok, balance_side
+    opening_entry_id, company_id, income_year, ordinal, component_kind,
+    category, reference_id, lifecycle_phase, account, amount_nok,
+    nominal_increase_nok, share_premium_nok, nominal_reduction_nok,
+    balance_side
   )
   select v_post.ledger_entry_id, p_company_id, p_income_year,
-    (item ->> 'ordinal')::integer, item ->> 'category',
-    pg_catalog.btrim(item ->> 'referenceId'), (item ->> 'amountNok')::numeric,
+    (item ->> 'ordinal')::integer, item ->> 'componentKind',
+    item ->> 'category', pg_catalog.btrim(item ->> 'referenceId'),
+    item ->> 'lifecyclePhase', item ->> 'account',
+    (item ->> 'amountNok')::numeric,
+    (item ->> 'nominalIncreaseNok')::numeric,
+    (item ->> 'sharePremiumNok')::numeric,
+    (item ->> 'nominalReductionNok')::numeric,
     item ->> 'balanceSide'
   from pg_catalog.jsonb_array_elements(p_components) component(item);
   insert into ledger.opening_position_component_sources (
@@ -435,6 +602,208 @@ begin
 
   return query select v_post.ledger_entry_id, v_post.company_id,
     v_post.income_year, v_post.entry_kind, v_post.posted_at, false;
+end;
+$function$;
+
+create or replace function ledger.cash_capital_increase_phase_basis_v1(
+  p_company_id uuid,
+  p_capital_increase_reference_id text,
+  p_phase text
+)
+returns table (
+  event_date date,
+  nominal_increase numeric,
+  share_premium numeric
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select phase_record.event_date, phase_record.nominal_increase,
+    phase_record.share_premium
+  from ledger.cash_capital_increase_phases phase_record
+  where phase_record.company_id = p_company_id
+    and phase_record.capital_increase_reference_id =
+      pg_catalog.btrim(p_capital_increase_reference_id)
+    and phase_record.phase = p_phase
+  union all
+  select rebuild.opening_date, component.nominal_increase_nok,
+    component.share_premium_nok
+  from ledger.opening_position_components component
+  join ledger.opening_position_rebuilds rebuild
+    on rebuild.opening_entry_id = component.opening_entry_id
+  where component.company_id = p_company_id
+    and component.component_kind = 'CAPITAL_INCREASE'
+    and component.category = 'UNREGISTERED_CAPITAL_INCREASE'
+    and component.reference_id = pg_catalog.btrim(
+      p_capital_increase_reference_id
+    )
+    and (
+      (p_phase = 'BINDING_SUBSCRIPTION' and component.lifecycle_phase in (
+        'BINDING_SUBSCRIPTION', 'RESTRICTED_PAYMENT'
+      ))
+      or (
+        p_phase = 'RESTRICTED_PAYMENT'
+        and component.lifecycle_phase = 'RESTRICTED_PAYMENT'
+      )
+    );
+$function$;
+
+create or replace function ledger.loss_coverage_capital_reduction_basis_v1(
+  p_company_id uuid,
+  p_capital_reduction_reference_id text
+)
+returns table (event_date date, nominal_reduction numeric)
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select phase_record.event_date, phase_record.nominal_reduction
+  from ledger.loss_coverage_capital_reduction_phases phase_record
+  where phase_record.company_id = p_company_id
+    and phase_record.capital_reduction_reference_id =
+      pg_catalog.btrim(p_capital_reduction_reference_id)
+    and phase_record.phase = 'DECIDED_NOT_REGISTERED'
+  union all
+  select rebuild.opening_date, component.nominal_reduction_nok
+  from ledger.opening_position_components component
+  join ledger.opening_position_rebuilds rebuild
+    on rebuild.opening_entry_id = component.opening_entry_id
+  where component.company_id = p_company_id
+    and component.component_kind = 'CAPITAL_REDUCTION'
+    and component.category = 'UNREGISTERED_CAPITAL_REDUCTION'
+    and component.lifecycle_phase = 'DECIDED_NOT_REGISTERED'
+    and component.reference_id = pg_catalog.btrim(
+      p_capital_reduction_reference_id
+    );
+$function$;
+
+create or replace function ledger.record_received_dividend_payment_by_reference_v1(
+  p_idempotency_key text,
+  p_company_id uuid,
+  p_income_year integer,
+  p_decision_reference_id text,
+  p_memo text,
+  p_lines jsonb,
+  p_source_capability text,
+  p_source_record_id text,
+  p_correlation_id text,
+  p_verified_subject text,
+  p_event_date date,
+  p_rule_version text,
+  p_sources jsonb
+)
+returns table (
+  ledger_entry_id uuid,
+  company_id uuid,
+  income_year integer,
+  entry_kind text,
+  posted_at timestamptz,
+  replayed boolean
+)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_post record;
+  v_capabilities text[];
+  v_opening_entry_id uuid;
+  v_opening_component_ordinal integer;
+  v_opening_income_year integer;
+  v_opening_date date;
+  v_decision_total numeric;
+  v_payment_total numeric;
+begin
+  if pg_catalog.jsonb_typeof(p_sources) is distinct from 'array' then
+    raise exception 'ledger_invalid_input';
+  end if;
+  select pg_catalog.array_agg(item ->> 'capability' order by item ->> 'capability')
+  into v_capabilities
+  from pg_catalog.jsonb_array_elements(p_sources) source(item);
+  if pg_catalog.btrim(coalesce(p_decision_reference_id, '')) = ''
+    or pg_catalog.length(p_decision_reference_id) > 255
+    or p_source_capability is distinct from 'INVESTMENTS'
+    or p_sources -> 0 ->> 'capability' is distinct from 'INVESTMENTS'
+    or v_capabilities is distinct from array['BANKING', 'INVESTMENTS']::text[]
+  then
+    raise exception 'ledger_source_capability_mismatch';
+  end if;
+
+  select * into strict v_post
+  from ledger.post_supported_entry_v1(
+    p_idempotency_key, p_company_id, p_income_year, 'DIVIDEND_RECEIVED',
+    p_memo, p_lines, p_source_capability, p_source_record_id,
+    p_correlation_id, p_verified_subject, p_event_date, p_rule_version,
+    p_sources
+  );
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'ledger:received-dividend-reference:v1:' || p_company_id::text || ':'
+      || pg_catalog.btrim(p_decision_reference_id), 0
+  ));
+
+  if v_post.replayed then
+    if not exists (
+      select 1 from ledger.opening_received_dividend_settlements settlement
+      where settlement.company_id = p_company_id
+        and settlement.decision_reference_id =
+          pg_catalog.btrim(p_decision_reference_id)
+        and settlement.payment_entry_id = v_post.ledger_entry_id
+        and settlement.payment_income_year = p_income_year
+    ) then
+      raise exception 'ledger_idempotency_key_reused';
+    end if;
+  else
+    select component.opening_entry_id, component.ordinal,
+      component.income_year, rebuild.opening_date, component.amount_nok
+    into v_opening_entry_id, v_opening_component_ordinal,
+      v_opening_income_year, v_opening_date, v_decision_total
+    from ledger.opening_position_components component
+    join ledger.opening_position_rebuilds rebuild
+      on rebuild.opening_entry_id = component.opening_entry_id
+      and rebuild.company_id = component.company_id
+      and rebuild.income_year = component.income_year
+    where component.company_id = p_company_id
+      and component.component_kind = 'DIVIDEND_RECEIVABLE'
+      and component.category = 'DIVIDEND_RECEIVABLE'
+      and component.reference_id = pg_catalog.btrim(p_decision_reference_id);
+    if not found or p_event_date < v_opening_date then
+      raise exception 'ledger_received_dividend_decision_invalid';
+    end if;
+    if exists (
+      select 1 from ledger.opening_received_dividend_settlements settlement
+      where settlement.company_id = p_company_id
+        and settlement.decision_reference_id =
+          pg_catalog.btrim(p_decision_reference_id)
+    ) then
+      raise exception 'ledger_received_dividend_already_settled';
+    end if;
+    select coalesce(pg_catalog.sum((line ->> 'debit')::numeric), 0)
+    into v_payment_total
+    from pg_catalog.jsonb_array_elements(
+      ledger.normalize_lines_v1(p_lines)
+    ) source(line);
+    if v_decision_total <= 0
+      or v_decision_total is distinct from v_payment_total
+    then
+      raise exception 'ledger_received_dividend_decision_invalid';
+    end if;
+    insert into ledger.opening_received_dividend_settlements (
+      company_id, decision_reference_id, opening_entry_id,
+      opening_component_ordinal, opening_income_year, payment_entry_id,
+      payment_income_year
+    ) values (
+      p_company_id, pg_catalog.btrim(p_decision_reference_id),
+      v_opening_entry_id, v_opening_component_ordinal,
+      v_opening_income_year, v_post.ledger_entry_id, p_income_year
+    );
+  end if;
+
+  return query select v_post.ledger_entry_id, v_post.company_id,
+    v_post.income_year, v_post.entry_kind, v_post.posted_at, v_post.replayed;
 end;
 $function$;
 
@@ -461,7 +830,9 @@ as $function$
   join ledger.opening_position_rebuilds rebuild
     on rebuild.opening_entry_id = component.opening_entry_id
   where component.company_id = p_company_id
-    and component.category = 'BANK_LOAN_PAYABLE'
+    and component.category in (
+      'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE'
+    )
     and component.reference_id = pg_catalog.btrim(p_loan_reference_id);
 $function$;
 
@@ -477,13 +848,17 @@ begin
   if tg_table_name = 'bank_loan_anchors' and exists (
     select 1 from ledger.opening_position_components component
     where component.company_id = (v_new ->> 'company_id')::uuid
-      and component.category = 'BANK_LOAN_PAYABLE'
+      and component.category in (
+        'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE'
+      )
       and component.reference_id = v_new ->> 'loan_reference_id'
   ) then
     raise exception 'ledger_bank_loan_already_exists';
   end if;
   if tg_table_name = 'opening_position_components'
-    and v_new ->> 'category' = 'BANK_LOAN_PAYABLE'
+    and v_new ->> 'category' in (
+      'LONG_TERM_BANK_LOAN_PAYABLE', 'SHORT_TERM_BANK_LOAN_PAYABLE'
+    )
     and exists (
       select 1 from ledger.bank_loan_anchors anchor
       where anchor.company_id = (v_new ->> 'company_id')::uuid
@@ -656,6 +1031,8 @@ as $function$
         from ledger.received_dividend_decisions d where d.company_id = p_company_id and d.income_year = p_income_year), '[]'::jsonb),
       'receivedDividendSettlements', coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(s) order by s.payment_entry_id)
         from ledger.received_dividend_settlements s where s.company_id = p_company_id and s.payment_income_year = p_income_year), '[]'::jsonb),
+      'openingReceivedDividendSettlements', coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(s) order by s.payment_entry_id)
+        from ledger.opening_received_dividend_settlements s where s.company_id = p_company_id and s.payment_income_year = p_income_year), '[]'::jsonb),
       'capitalIncreasePhases', coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(p) order by p.entry_id)
         from ledger.cash_capital_increase_phases p where p.company_id = p_company_id and p.income_year = p_income_year), '[]'::jsonb),
       'capitalReductionPhases', coalesce((select pg_catalog.jsonb_agg(pg_catalog.to_jsonb(p) order by p.entry_id)
@@ -665,16 +1042,41 @@ as $function$
 $function$;
 
 revoke all on ledger.opening_position_rebuilds,
-  ledger.opening_position_components, ledger.opening_position_component_sources
+  ledger.opening_position_components, ledger.opening_position_component_sources,
+  ledger.opening_received_dividend_settlements
 from public, anon, authenticated, ledger_executor, ledger_workflow_executor;
 grant select, insert on ledger.opening_position_rebuilds,
-  ledger.opening_position_components, ledger.opening_position_component_sources
+  ledger.opening_position_components, ledger.opening_position_component_sources,
+  ledger.opening_received_dividend_settlements
 to ledger_store_owner;
 revoke all on function ledger.rebuild_company_year_opening_v1(
-  text, uuid, integer, date, text, jsonb, text, text, text, text, jsonb, jsonb
+  text, uuid, integer, date, text, text, jsonb,
+  text, text, text, text, jsonb, jsonb
 ) from public, anon, authenticated, service_role, ledger_workflow_executor;
 grant execute on function ledger.rebuild_company_year_opening_v1(
-  text, uuid, integer, date, text, jsonb, text, text, text, text, jsonb, jsonb
+  text, uuid, integer, date, text, text, jsonb,
+  text, text, text, text, jsonb, jsonb
+) to ledger_executor, ledger_workflow_executor;
+revoke all on function ledger.post_supported_entry_storage_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from public, anon, authenticated, service_role, ledger_executor,
+  ledger_workflow_executor;
+revoke all on function ledger.post_supported_entry_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from public, anon, authenticated, service_role, ledger_workflow_executor;
+grant execute on function ledger.post_supported_entry_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) to ledger_executor;
+revoke all on function ledger.record_received_dividend_payment_by_reference_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from public, anon, authenticated, service_role, ledger_workflow_executor;
+grant execute on function ledger.record_received_dividend_payment_by_reference_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
 ) to ledger_executor;
 revoke all on function ledger.bank_loan_principal_basis_v1(uuid, text)
 from public, anon, authenticated, service_role, ledger_executor,
@@ -692,8 +1094,22 @@ from public, anon, authenticated, service_role, ledger_executor,
 alter table ledger.opening_position_rebuilds owner to ledger_store_owner;
 alter table ledger.opening_position_components owner to ledger_store_owner;
 alter table ledger.opening_position_component_sources owner to ledger_store_owner;
+alter table ledger.opening_received_dividend_settlements owner to ledger_store_owner;
 alter function ledger.rebuild_company_year_opening_v1(
-  text, uuid, integer, date, text, jsonb, text, text, text, text, jsonb, jsonb
+  text, uuid, integer, date, text, text, jsonb,
+  text, text, text, text, jsonb, jsonb
+) owner to ledger_store_owner;
+alter function ledger.post_supported_entry_storage_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) owner to ledger_store_owner;
+alter function ledger.post_supported_entry_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) owner to ledger_store_owner;
+alter function ledger.record_received_dividend_payment_by_reference_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
 ) owner to ledger_store_owner;
 alter function ledger.bank_loan_principal_basis_v1(uuid, text)
   owner to ledger_store_owner;
@@ -718,6 +1134,11 @@ drop trigger if exists ledger_opening_position_component_sources_immutable
   on ledger.opening_position_component_sources;
 create trigger ledger_opening_position_component_sources_immutable
 before update or delete on ledger.opening_position_component_sources
+for each row execute function backend_system.prevent_ledger_technical_mutation();
+drop trigger if exists ledger_opening_received_dividend_settlements_immutable
+  on ledger.opening_received_dividend_settlements;
+create trigger ledger_opening_received_dividend_settlements_immutable
+before update or delete on ledger.opening_received_dividend_settlements
 for each row execute function backend_system.prevent_ledger_technical_mutation();
 
 do $ledger_opening_position_migration_authority_revoke$
