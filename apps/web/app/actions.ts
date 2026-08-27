@@ -1010,13 +1010,27 @@ export async function lockCompanyYear(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(ledgerActionErrorMessage(error))}${retry}`);
   }
 
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "filing",
-    action: "period_locked",
-    message: `Inntektsår ${incomeYear} låst: ${reason}.`,
-  });
+  try {
+    const frozenAuditStore = createInvitationSideEffectStore(supabase);
+    await persistLedgerAudit({
+      async insertAudit(row) {
+        const { error } = await supabase.from("audit_events").insert(row);
+        return { error };
+      },
+      findAudit: frozenAuditStore.findAudit,
+    }, {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "filing",
+      action: "period_locked",
+      message: `Inntektsår ${incomeYear} låst: ${reason}.`,
+    });
+  } catch {
+    redirect(
+      `/workspace?error=${encodeURIComponent("Inntektsåret ble låst, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.")}&lockOperationId=${encodeURIComponent(operationId)}`,
+    );
+  }
 
   revalidatePath("/");
   redirect("/workspace");
@@ -5272,13 +5286,27 @@ export async function postManualJournal(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(ledgerActionErrorMessage(error))}${retry}`);
   }
 
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "ledger",
-    action: "manual_journal_posted",
-    message: `Manuell journal postert for ${incomeYear}.`,
-  });
+  try {
+    const frozenAuditStore = createInvitationSideEffectStore(supabase);
+    await persistLedgerAudit({
+      async insertAudit(row) {
+        const { error } = await supabase.from("audit_events").insert(row);
+        return { error };
+      },
+      findAudit: frozenAuditStore.findAudit,
+    }, {
+      operationId,
+      companyId,
+      actorId: user.id,
+      category: "ledger",
+      action: "manual_journal_posted",
+      message: `Manuell journal postert for ${incomeYear}.`,
+    });
+  } catch {
+    redirect(
+      `/workspace?error=${encodeURIComponent("Den manuelle journalen ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.")}&manualOperationId=${encodeURIComponent(operationId)}`,
+    );
+  }
 
   revalidatePath("/");
   redirect("/workspace");

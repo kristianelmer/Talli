@@ -310,6 +310,28 @@ test("opening setup action has no direct business persistence or duplicate posti
   assert.doesNotMatch(form, /useMemo|capitalOk|sharesOk|shareholdersOk|canSubmit/u);
 });
 
+test("manual journals and period locks reconcile their frozen audit continuation", () => {
+  const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+  const lockStart = actions.indexOf("export async function lockCompanyYear");
+  const lockEnd = actions.indexOf("export async function queueDeadlineReminders", lockStart);
+  const lockBody = actions.slice(lockStart, lockEnd);
+  const manualStart = actions.indexOf("export async function postManualJournal");
+  const manualEnd = actions.indexOf("/*\n * The TypeScript manual-journal validator", manualStart);
+  const manualBody = actions.slice(manualStart, manualEnd);
+
+  for (const [body, continuation] of [
+    [lockBody, "lockOperationId"],
+    [manualBody, "manualOperationId"],
+  ]) {
+    assert.match(body, /persistLedgerAudit\(/u);
+    assert.match(body, /createInvitationSideEffectStore\(supabase\)/u);
+    assert.match(body, /\.from\("audit_events"\)\.insert\(row\)/u);
+    assert.match(body, new RegExp(continuation, "u"));
+    assert.match(body, /kontrollsporet kunne ikke bekreftes/u);
+    assert.doesNotMatch(body, /await supabase\.from\("audit_events"\)\.insert\(\{/u);
+  }
+});
+
 test("ledger presentation maps generated facts without recreating posting policy", () => {
   const [presented] = presentLedgerEntries([entry()]);
   assert.equal(presented.entry_type, "manual_journal");
