@@ -115,6 +115,17 @@ security definer
 set search_path = ''
 as $function$
 begin
+  if tg_op = 'INSERT'
+    and pg_catalog.lower(pg_catalog.btrim(new.entry_type)) = 'correction_reversal'
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
+  if tg_op = 'UPDATE'
+    and pg_catalog.lower(pg_catalog.btrim(new.entry_type)) = 'correction_reversal'
+    and pg_catalog.lower(pg_catalog.btrim(old.entry_type)) <> 'correction_reversal'
+  then
+    raise exception 'ledger_invalid_input';
+  end if;
   if not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;

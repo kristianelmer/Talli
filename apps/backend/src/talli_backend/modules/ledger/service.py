@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    AdministrativeCostCorrectionScope,
     ApprovedOneSidedIntercompanyLoanFundingFacts,
     ApprovedLossCoverageCapitalReductionFacts,
     ApprovedOwnerLoanFundingFacts,
@@ -17,6 +18,8 @@ from talli_backend.modules.ledger.public import (
     CapitalIncreasePhase,
     CapitalReductionRecognition,
     CompanyTaxAccrualFacts,
+    CorrectHoldingActionCommand,
+    CorrectedLedgerEntries,
     GroupContributionFacts,
     GroupContributionPerspective,
     GroupContributionRelationship,
@@ -96,6 +99,20 @@ def _owner_loan_funding_lines(
         LedgerLine("1920", received_description, amount, _ZERO),
         LedgerLine("2255", payable_description, _ZERO, amount),
     )
+
+
+def _administrative_cost_lines(
+    category: AdministrativeCostCategory,
+    amount: Money,
+    *,
+    description: str,
+) -> tuple[LedgerLine, LedgerLine]:
+    return (
+        LedgerLine(_ADMINISTRATIVE_COST_ACCOUNTS[category], description, amount, _ZERO),
+        LedgerLine("1920", "Paid from bank", _ZERO, amount),
+    )
+
+
 _BANK_SUGGESTION_LINES = {
     BankSuggestionRule.BANK_FEE: ("7770", "Bankomkostninger", False),
     BankSuggestionRule.SYSTEM_SUBSCRIPTION: ("6700", "Fremmede tjenester", False),
@@ -187,6 +204,64 @@ def _balanced(lines: tuple[LedgerLine, ...], *, permit_zero_line: bool = False) 
 class LedgerService:
     def __init__(self, persistence: LedgerPersistence) -> None:
         self._persistence = persistence
+
+    async def correct_holding_action(
+        self, command: CorrectHoldingActionCommand
+    ) -> CorrectedLedgerEntries:
+        if command.event_date.value.year != int(command.income_year):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if command.primary_source.capability is not LedgerSourceCapability.DOCUMENTS or {
+            source.capability for source in command.corroborating_sources
+        } != {LedgerSourceCapability.BANKING}:
+            raise LedgerError.precondition_failed("LEDGER_SOURCE_CAPABILITY_MISMATCH")
+        replacement = command.replacement
+        _positive(replacement.amount, "LEDGER_ADMINISTRATIVE_COST_NOT_POSITIVE")
+        if (
+            not replacement.supplier_name.strip()
+            or len(replacement.supplier_name) > 255
+            or any(
+                not value.strip() or len(value) > 500
+                for value in (
+                    replacement.description,
+                    replacement.business_purpose,
+                )
+            )
+        ):
+            raise LedgerError.precondition_failed(
+                "LEDGER_ADMINISTRATIVE_COST_EVIDENCE_INCOMPLETE"
+            )
+        if (
+            replacement.delivery_date.value.year != int(command.income_year)
+            or replacement.document_date.value > command.event_date.value
+            or replacement.delivery_date.value > command.event_date.value
+            or not replacement.payment_confirmed
+        ):
+            raise LedgerError.precondition_failed(
+                "LEDGER_ADMINISTRATIVE_COST_EVIDENCE_INCOMPLETE"
+            )
+        if replacement.correction_scope is not (
+            AdministrativeCostCorrectionScope.CURRENT_COMPANY_YEAR
+        ):
+            raise LedgerError.precondition_failed(
+                "LEDGER_PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED"
+            )
+        if replacement.blocks:
+            raise LedgerError.precondition_failed(
+                "LEDGER_ADMINISTRATIVE_COST_UNSUPPORTED"
+            )
+        lines = _administrative_cost_lines(
+            replacement.category,
+            replacement.amount,
+            description=(
+                f"Corrected administrative cost: {replacement.supplier_name.strip()}"
+            ),
+        )
+        return await self._persistence.correct_entry(
+            command,
+            entry_kind=LedgerEntryKind.ADMINISTRATIVE_COST,
+            memo=command.reason,
+            lines=lines,
+        )
 
     async def recognize_holding_action(
         self, command: RecognizeHoldingActionCommand
@@ -626,14 +701,10 @@ class LedgerService:
         if not payee:
             raise LedgerError.invalid_input("LEDGER_PAYEE_REQUIRED")
         document = f" (document {command.document_id})" if command.document_id else ""
-        lines = (
-            LedgerLine(
-                _ADMINISTRATIVE_COST_ACCOUNTS[command.category],
-                f"Admin cost: {payee}",
-                command.amount,
-                _ZERO,
-            ),
-            LedgerLine("1920", "Paid from bank", _ZERO, command.amount),
+        lines = _administrative_cost_lines(
+            command.category,
+            command.amount,
+            description=f"Admin cost: {payee}",
         )
         return await self._persistence.post_entry(
             command,

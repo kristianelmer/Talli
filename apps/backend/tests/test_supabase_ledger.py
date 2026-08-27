@@ -26,7 +26,10 @@ from talli_backend.application.opening_snapshot_compatibility import (
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    AdministrativeCostCorrectionScope,
+    AdministrativeCostCorrectionFacts,
     BankInterestIncomeFacts,
+    CorrectHoldingActionCommand,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
@@ -155,6 +158,47 @@ def supported_pattern_command() -> RecognizeHoldingActionCommand:
         ),
         corroborating_sources=(),
         facts=BankInterestIncomeFacts(amount=Money.nok("500.00")),
+    )
+
+
+def correction_command() -> CorrectHoldingActionCommand:
+    return CorrectHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("guided-correction-adapter"),
+        idempotency_key=IdempotencyKey("guided-correction-adapter-0001"),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        original_entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000004"),
+        reason="Wrong documented business category",
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.DOCUMENTS,
+            record_id=LedgerSourceRecordId("correction-document:1"),
+            revision=1,
+            fact_sha256="c" * 64,
+        ),
+        corroborating_sources=(
+            LedgerFactReference(
+                capability=LedgerSourceCapability.BANKING,
+                record_id=LedgerSourceRecordId("correction-bank-match:1"),
+                revision=2,
+                fact_sha256="d" * 64,
+            ),
+        ),
+        replacement=AdministrativeCostCorrectionFacts(
+            category=AdministrativeCostCategory.LEGAL_ADVISORY,
+            supplier_name="Advokat AS",
+            document_date=LocalDate(date(2026, 8, 20)),
+            delivery_date=LocalDate(date(2026, 8, 19)),
+            description="Legal advice for the holding company",
+            business_purpose="Documented corporate legal advice",
+            amount=Money.nok("1250.00"),
+            payment_confirmed=True,
+            correction_scope=(
+                AdministrativeCostCorrectionScope.CURRENT_COMPANY_YEAR
+            ),
+            blocks=(),
+        ),
     )
 
 
@@ -380,6 +424,54 @@ def test_supported_pattern_adapter_binds_rule_event_and_source_provenance() -> N
     }]
 
 
+def test_correction_adapter_binds_original_replacement_and_two_sources() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "reversal_entry_id": "40000000-0000-0000-0000-000000000005",
+            "replacement_entry_id": "40000000-0000-0000-0000-000000000006",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "corrected_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        session.correct_entry(
+            correction_command(),
+            entry_kind=LedgerEntryKind.ADMINISTRATIVE_COST,
+            memo="Wrong documented business category",
+            lines=(
+                LedgerLine(
+                    "6720",
+                    "Corrected administrative cost",
+                    Money.nok("1250"),
+                    Money.nok("0"),
+                ),
+                LedgerLine(
+                    "1920", "Paid from bank", Money.nok("0"), Money.nok("1250")
+                ),
+            ),
+        )
+    )
+
+    assert str(result.reversal_entry_id) == "40000000-0000-0000-0000-000000000005"
+    assert "ledger.correct_entry_v1" in calls[0][0]
+    assert calls[0][1][3] == "40000000-0000-0000-0000-000000000004"
+    assert calls[0][1][5] == "ADMINISTRATIVE_COST"
+    assert calls[0][1][11] == "CURRENT_COMPANY_YEAR"
+    assert [source["capability"] for source in json.loads(str(calls[0][1][13]))] == [
+        "DOCUMENTS",
+        "BANKING",
+    ]
+
+
 def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:
     transaction = bound_transaction()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -557,6 +649,15 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
     ("marker", "code"),
     [
         ("ledger_company_year_not_admitted", "LEDGER_COMPANY_YEAR_NOT_ADMITTED"),
+        (
+            "ledger_correction_original_kind_unsupported",
+            "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED",
+        ),
+        (
+            "ledger_prior_year_correction_policy_unresolved",
+            "LEDGER_PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED",
+        ),
+        ("ledger_entry_already_corrected", "LEDGER_ENTRY_ALREADY_CORRECTED"),
         ("ledger_opening_already_exists", "LEDGER_OPENING_ALREADY_EXISTS"),
     ],
 )
@@ -631,6 +732,37 @@ def test_entry_projection_keeps_the_exact_warning_acceptance_timestamp() -> None
     partial_payload.pop("createdAt")
     with pytest.raises(ValueError, match="source identity"):
         bound_session()._entry_view(partial_payload)
+
+
+def test_entry_projection_recognizes_technical_correction_reversal() -> None:
+    entry = bound_session()._entry_view({
+        "entryId": "40000000-0000-0000-0000-000000000005",
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "entryKind": "CORRECTION_REVERSAL",
+        "memo": "Full reversal: documented category was wrong",
+        "lines": [
+            {
+                "account": "7795",
+                "description": "Administration cost",
+                "debit": "0.00",
+                "credit": "500.00",
+                "currency": "NOK",
+            },
+            {
+                "account": "1920",
+                "description": "Bank",
+                "debit": "500.00",
+                "credit": "0.00",
+                "currency": "NOK",
+            },
+        ],
+        "riskFlags": [],
+        "postedBy": str(ACTOR_ID.subject),
+        "postedAt": "2026-08-27T10:00:00Z",
+    })
+
+    assert entry.entry_kind is LedgerEntryKind.CORRECTION_REVERSAL
 
 
 def opening_snapshot_payload() -> dict[str, object]:

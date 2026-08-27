@@ -23,7 +23,7 @@ create table if not exists ledger.entry_sources (
   source_role text not null check (source_role in ('PRIMARY', 'CORROBORATING')),
   source_capability text not null check (source_capability in (
     'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+    'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
   )),
   source_record_id text not null check (
     pg_catalog.btrim(source_record_id) <> ''
@@ -399,7 +399,7 @@ begin
     'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
     'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
     'CAPITAL_REDUCTION', 'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION',
-    'INTERCOMPANY_LOAN'
+    'INTERCOMPANY_LOAN', 'CORRECTION_REVERSAL'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;

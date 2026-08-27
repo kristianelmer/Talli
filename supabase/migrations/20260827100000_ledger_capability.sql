@@ -311,7 +311,8 @@ where not ledger.entry_lines_are_valid_v1(entry.lines, true)
     'dividend_to_owner_payment', 'owner_dividend_payment',
     'share_purchase', 'share_sale', 'shareholder_loan', 'tax_settlement',
     'bank_interest', 'bank_loan', 'capital_increase', 'capital_reduction',
-    'company_tax_accrual', 'group_contribution', 'intercompany_loan'
+    'company_tax_accrual', 'group_contribution', 'intercompany_loan',
+    'correction_reversal'
   )
 on conflict (run_id, source_table, source_id) do nothing;
 
@@ -353,6 +354,7 @@ set lines = ledger.normalize_lines_v1(lines),
       when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
       when 'group_contribution' then 'GROUP_CONTRIBUTION'
       when 'intercompany_loan' then 'INTERCOMPANY_LOAN'
+      when 'correction_reversal' then 'CORRECTION_REVERSAL'
     end,
     source_capability = coalesce(
       source_capability,
@@ -401,7 +403,7 @@ alter table ledger.entries
   add constraint ledger_entries_source_capability_check check (
     source_capability in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
     )
   );
 
@@ -444,6 +446,7 @@ begin
     when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
     when 'group_contribution' then 'GROUP_CONTRIBUTION'
     when 'intercompany_loan' then 'INTERCOMPANY_LOAN'
+    when 'correction_reversal' then 'CORRECTION_REVERSAL'
     else pg_catalog.upper(pg_catalog.btrim(new.entry_kind))
   end;
   if new.entry_kind not in (
@@ -452,7 +455,8 @@ begin
     'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
     'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
     'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE', 'CAPITAL_REDUCTION',
-    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION', 'INTERCOMPANY_LOAN'
+    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION', 'INTERCOMPANY_LOAN',
+    'CORRECTION_REVERSAL'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;

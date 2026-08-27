@@ -100,6 +100,7 @@ class LedgerSourceCapability(StrEnum):
     CORPORATE_GOVERNANCE = "CORPORATE_GOVERNANCE"
     SHAREHOLDER_REGISTER_FILING = "SHAREHOLDER_REGISTER_FILING"
     COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
+    DOCUMENTS = "DOCUMENTS"
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +126,27 @@ class AdministrativeCostCategory(StrEnum):
     PUBLIC_FEE = "PUBLIC_FEE"
     LEGAL_ADVISORY = "LEGAL_ADVISORY"
     OTHER_ADMIN_COST = "OTHER_ADMIN_COST"
+
+
+class AdministrativeCostBlock(StrEnum):
+    VAT_BEARING_DOCUMENT = "VAT_BEARING_DOCUMENT"
+    PAYROLL = "PAYROLL"
+    CUSTOMER_INVOICING = "CUSTOMER_INVOICING"
+    INVENTORY_PROPERTY_OR_OPERATING_PURCHASE = (
+        "INVENTORY_PROPERTY_OR_OPERATING_PURCHASE"
+    )
+    PRIVATE_OR_MIXED_PURPOSE = "PRIVATE_OR_MIXED_PURPOSE"
+    CAPITALIZABLE_COST = "CAPITALIZABLE_COST"
+    SHARE_ACQUISITION_OR_REALIZATION_COST = (
+        "SHARE_ACQUISITION_OR_REALIZATION_COST"
+    )
+    FOREIGN_CURRENCY = "FOREIGN_CURRENCY"
+    TAX_CLASSIFICATION_AMBIGUOUS = "TAX_CLASSIFICATION_AMBIGUOUS"
+
+
+class AdministrativeCostCorrectionScope(StrEnum):
+    CURRENT_COMPANY_YEAR = "CURRENT_COMPANY_YEAR"
+    PRIOR_YEAR_ERROR = "PRIOR_YEAR_ERROR"
 
 
 class BankSuggestionRule(StrEnum):
@@ -237,6 +259,20 @@ class BankInterestIncomeFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class AdministrativeCostCorrectionFacts:
+    category: AdministrativeCostCategory
+    supplier_name: str
+    document_date: LocalDate
+    delivery_date: LocalDate
+    description: str
+    business_purpose: str
+    amount: Money
+    payment_confirmed: bool
+    correction_scope: AdministrativeCostCorrectionScope
+    blocks: tuple[AdministrativeCostBlock, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class CompanyTaxAccrualFacts:
     current_tax: Money
     deferred_tax_increase: Money
@@ -317,6 +353,7 @@ class LedgerEntryKind(StrEnum):
     COMPANY_TAX_ACCRUAL = "COMPANY_TAX_ACCRUAL"
     GROUP_CONTRIBUTION = "GROUP_CONTRIBUTION"
     INTERCOMPANY_LOAN = "INTERCOMPANY_LOAN"
+    CORRECTION_REVERSAL = "CORRECTION_REVERSAL"
 
 
 class LedgerRiskCode(StrEnum):
@@ -326,12 +363,20 @@ class LedgerRiskCode(StrEnum):
 class LedgerErrorCode(StrEnum):
     ACCOUNT_INVALID = "LEDGER_ACCOUNT_INVALID"
     ADMINISTRATIVE_COST_NOT_POSITIVE = "LEDGER_ADMINISTRATIVE_COST_NOT_POSITIVE"
+    ADMINISTRATIVE_COST_EVIDENCE_INCOMPLETE = (
+        "LEDGER_ADMINISTRATIVE_COST_EVIDENCE_INCOMPLETE"
+    )
+    ADMINISTRATIVE_COST_UNSUPPORTED = "LEDGER_ADMINISTRATIVE_COST_UNSUPPORTED"
     AMOUNT_NEGATIVE = "LEDGER_AMOUNT_NEGATIVE"
     COMPANY_SCOPE_INVALID = "LEDGER_COMPANY_SCOPE_INVALID"
     COMPANY_YEAR_NOT_ADMITTED = "LEDGER_COMPANY_YEAR_NOT_ADMITTED"
+    CORRECTION_ORIGINAL_KIND_UNSUPPORTED = (
+        "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED"
+    )
     CURRENCY_MISMATCH = "LEDGER_CURRENCY_MISMATCH"
     DEPENDENCY_UNAVAILABLE = "LEDGER_DEPENDENCY_UNAVAILABLE"
     DESCRIPTION_REQUIRED = "LEDGER_DESCRIPTION_REQUIRED"
+    ENTRY_ALREADY_CORRECTED = "LEDGER_ENTRY_ALREADY_CORRECTED"
     ENTRY_REQUIRES_TWO_LINES = "LEDGER_ENTRY_REQUIRES_TWO_LINES"
     ENTRY_UNBALANCED = "LEDGER_ENTRY_UNBALANCED"
     FORBIDDEN = "LEDGER_FORBIDDEN"
@@ -352,6 +397,9 @@ class LedgerErrorCode(StrEnum):
     PAGE_LIMIT_INVALID = "LEDGER_PAGE_LIMIT_INVALID"
     PAYEE_REQUIRED = "LEDGER_PAYEE_REQUIRED"
     PERIOD_LOCKED = "LEDGER_PERIOD_LOCKED"
+    PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED = (
+        "LEDGER_PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED"
+    )
     WARNING_ACCEPTANCE_REQUIRED = "LEDGER_WARNING_ACCEPTANCE_REQUIRED"
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
@@ -402,6 +450,22 @@ class RecognizeHoldingActionCommand(LedgerCommand):
     primary_source: LedgerFactReference
     corroborating_sources: tuple[LedgerFactReference, ...]
     facts: SupportedHoldingActionFacts
+
+
+@dataclass(frozen=True, slots=True)
+class CorrectHoldingActionCommand(LedgerCommand):
+    event_date: LocalDate
+    original_entry_id: LedgerEntryId
+    reason: str
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+    replacement: AdministrativeCostCorrectionFacts
+
+    def __post_init__(self) -> None:
+        reason = self.reason.strip()
+        if not reason or len(reason) > 500:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "reason", reason)
 
 
 @dataclass(frozen=True, slots=True)
@@ -598,6 +662,16 @@ class PostedLedgerEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class CorrectedLedgerEntries:
+    reversal_entry_id: LedgerEntryId
+    replacement_entry_id: LedgerEntryId
+    company_id: CompanyId
+    income_year: IncomeYear
+    corrected_at: Timestamp
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PeriodLock:
     period_lock_id: PeriodLockId
     company_id: CompanyId
@@ -709,6 +783,15 @@ class LedgerError(DomainError):
 
 
 class LedgerPersistence(Protocol):
+    async def correct_entry(
+        self,
+        command: CorrectHoldingActionCommand,
+        *,
+        entry_kind: LedgerEntryKind,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> CorrectedLedgerEntries: ...
+
     async def post_entry(
         self,
         command: LedgerCommand,
@@ -780,6 +863,10 @@ def ledger_persistence_adapter(
 
 
 class LedgerCommands(Protocol):
+    async def correct_holding_action(
+        self, command: CorrectHoldingActionCommand
+    ) -> CorrectedLedgerEntries: ...
+
     async def recognize_holding_action(
         self, command: RecognizeHoldingActionCommand
     ) -> PostedLedgerEntry: ...
@@ -867,7 +954,10 @@ class LedgerQueries(Protocol):
 
 
 __all__ = [
+    "AdministrativeCostBlock",
     "AdministrativeCostCategory",
+    "AdministrativeCostCorrectionScope",
+    "AdministrativeCostCorrectionFacts",
     "ApprovedOneSidedIntercompanyLoanFundingFacts",
     "ApprovedOwnerLoanFundingFacts",
     "BankInterestIncomeFacts",
@@ -877,6 +967,8 @@ __all__ = [
     "CapitalIncreasePhase",
     "CapitalReductionRecognition",
     "CompanyTaxAccrualFacts",
+    "CorrectHoldingActionCommand",
+    "CorrectedLedgerEntries",
     "GroupContributionFacts",
     "GroupContributionPerspective",
     "GroupContributionRelationship",

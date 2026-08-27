@@ -41,6 +41,8 @@ from talli_backend.application.ledger_workflow import (
     RecordTaxSettlementCommand,
 )
 from talli_backend.modules.ledger.public import (
+    CorrectHoldingActionCommand,
+    CorrectedLedgerEntries,
     LedgerCommand,
     LedgerCursor,
     LedgerEntryId,
@@ -366,12 +368,28 @@ def _map_database_error(message: str) -> LedgerError:
             LedgerError.precondition_failed("LEDGER_PERIOD_LOCKED"),
         ),
         (
+            "ledger_prior_year_correction_policy_unresolved",
+            LedgerError.precondition_failed(
+                "LEDGER_PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED"
+            ),
+        ),
+        (
             "ledger_company_year_not_admitted",
             LedgerError.precondition_failed("LEDGER_COMPANY_YEAR_NOT_ADMITTED"),
         ),
         (
             "ledger_opening_already_exists",
             LedgerError.conflict("LEDGER_OPENING_ALREADY_EXISTS"),
+        ),
+        (
+            "ledger_entry_already_corrected",
+            LedgerError.conflict("LEDGER_ENTRY_ALREADY_CORRECTED"),
+        ),
+        (
+            "ledger_correction_original_kind_unsupported",
+            LedgerError.precondition_failed(
+                "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED"
+            ),
         ),
         (
             "ledger_idempotency_key_reused",
@@ -575,6 +593,59 @@ class SupabaseLedgerSession:
             if attempt == 1:
                 break
         raise self._unavailable()
+
+    async def correct_entry(
+        self,
+        command: CorrectHoldingActionCommand,
+        *,
+        entry_kind: LedgerEntryKind,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> CorrectedLedgerEntries:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.correct_entry_v1(
+              %s::text, %s::uuid, %s::integer, %s::uuid, %s::text,
+              %s::text, %s::text, %s::jsonb, %s::text, %s::text,
+              %s::date, %s::text, %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(command.original_entry_id),
+                command.reason,
+                entry_kind.value,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                command.replacement.correction_scope.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return CorrectedLedgerEntries(
+            reversal_entry_id=LedgerEntryId(str(row["reversal_entry_id"])),
+            replacement_entry_id=LedgerEntryId(str(row["replacement_entry_id"])),
+            company_id=CompanyId(str(row["company_id"])),
+            income_year=IncomeYear(int(row["income_year"])),
+            corrected_at=_timestamp(row["corrected_at"]),
+            replayed=bool(row["replayed"]),
+        )
 
     async def post_entry(
         self,

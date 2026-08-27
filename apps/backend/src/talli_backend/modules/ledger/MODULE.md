@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.entries","ledger.entry_contexts","ledger.entry_sources","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -9,13 +9,15 @@
 `ledger` owns narrow-ledger entries, purpose-specific posting translations,
 immutable full-year reconstruction assessments and source evidence,
 manual-journal warnings, posting invariants,
-durable idempotency, deterministic entry/lock query ordering, and company-year
-period locks. It owns `ledger.entries`, `ledger.entry_contexts`,
-`ledger.entry_sources`, `ledger.period_locks`,
+durable idempotency, append-only guided corrections, deterministic entry/lock
+query ordering, and company-year period locks. It owns `ledger.entries`,
+`ledger.entry_contexts`, `ledger.entry_corrections`, `ledger.entry_sources`,
+`ledger.period_locks`,
 `ledger.reconstruction_assessments`, and `ledger.reconstruction_evidence`
 through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`, and
-`supabase/migrations/20260827102000_ledger_supported_patterns.sql`.
+`supabase/migrations/20260827102000_ledger_supported_patterns.sql`, and
+`supabase/migrations/20260827103000_ledger_corrections.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -70,7 +72,21 @@ remain fail-closed pending an atomic two-company coordinator. Parent-to-
 subsidiary receivables use account 1320, other same-group receivables use 1325,
 and group-company liabilities use 2260.
 
-The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`, `LockPeriodCommand`,
+`CorrectHoldingActionCommand` accepts an immutable original entry identifier,
+reason, document-primary correction fact, banking corroboration, and a closed
+`AdministrativeCostCorrectionFacts` replacement. It never accepts accounts or
+lines. The replacement carries supplier, document and delivery dates,
+description, business purpose, confirmed payment, a current-company-year scope,
+and the closed `AdministrativeCostBlock` set. Missing evidence, any unsupported
+cost characteristic, and `AdministrativeCostCorrectionScope.PRIOR_YEAR_ERROR`
+fail before persistence. Ledger derives the
+replacement; persistence atomically derives the exact full reversal from the
+immutable original and appends the linked pair. Exact retries return the same
+pair. The linked correction path may operate after period lock, while ordinary
+posting remains locked.
+
+The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`,
+`CorrectHoldingActionCommand`, `LockPeriodCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,
 `PostInvestmentDividendCommand`, `PostInvestmentPurchaseCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,
@@ -85,11 +101,13 @@ Supporting closed values are `BankSuggestionRule`,
 
 Purpose-specific query/results are `LedgerQueries`, `LedgerEntryPage`,
 `LedgerEntryView`, `LedgerPage`, `PeriodLockPage`, `PeriodLock`, and
-`PostedLedgerEntry`, and `ReconstructionAssessment`. Growing collections use an opaque cursor and deterministic
+`PostedLedgerEntry`, `CorrectedLedgerEntries`, and `ReconstructionAssessment`.
+Growing collections use an opaque cursor and deterministic
 `(created_at, id)` ordering. Identifiers and values are `LedgerEntryId`,
 `PeriodLockId`, `LedgerSourceRecordId`, `LedgerEntryKind`, `LedgerSourceCapability`,
 `LedgerLine`, `LedgerRiskCode`, `LedgerRiskFlag`, and
-`AdministrativeCostCategory`.
+`AdministrativeCostBlock`, `AdministrativeCostCategory`, and
+`AdministrativeCostCorrectionScope`.
 
 Reconstruction identifiers and closed values are `ReconstructionAssessmentId`,
 `ReconstructionEvidence`, `ReconstructionEvidenceIssuer`,

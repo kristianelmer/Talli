@@ -9,6 +9,7 @@ const expandPath = "/repo/supabase/migrations/20260827100000_ledger_capability.s
 const coordinatorPath = "/repo/supabase/migrations/20260827100500_ledger_writer_coordinators.sql";
 const reconstructionPath = "/repo/supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql";
 const supportedPatternsPath = "/repo/supabase/migrations/20260827102000_ledger_supported_patterns.sql";
+const correctionsPath = "/repo/supabase/migrations/20260827103000_ledger_corrections.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -646,6 +647,56 @@ commit;
 `;
 }
 
+function correctionCall({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  originalEntryId,
+  idempotencyKey = "63000000-0000-4000-8000-000000000001",
+  reason = "Documented category was wrong",
+  replacementKind = "ADMINISTRATIVE_COST",
+  replacementMemo = "Corrected legal advisory cost",
+  replacementLines = [
+    { account: "6720", description: "Legal advisory", debit: "500.00", credit: "0.00", currency: "NOK" },
+    { account: "1920", description: "Bank", debit: "0.00", credit: "500.00", currency: "NOK" },
+  ],
+  correlationId = "ledger-correction-runtime",
+  correctionScope = "CURRENT_COMPANY_YEAR",
+  sources = [
+    { role: "PRIMARY", capability: "DOCUMENTS", recordId: "correction:document:1", revision: 1, factSha256: "b".repeat(64) },
+    { role: "CORROBORATING", capability: "BANKING", recordId: "correction:bank:1", revision: 1, factSha256: "c".repeat(64) },
+  ],
+} = {}) {
+  return String.raw`
+select row_to_json(corrected)::text
+from ledger.correct_entry_v1(
+  '${sqlQuote(idempotencyKey)}'::text,
+  '${companyId}'::uuid,
+  2026::integer,
+  '${originalEntryId}'::uuid,
+  '${sqlQuote(reason)}'::text,
+  '${replacementKind}'::text,
+  '${sqlQuote(replacementMemo)}'::text,
+  '${sqlQuote(JSON.stringify(replacementLines))}'::jsonb,
+  '${sqlQuote(correlationId)}'::text,
+  '${verifiedSubject}'::text,
+  '2026-08-27'::date,
+  '${correctionScope}'::text,
+  'ledger-supported-patterns-2026.1'::text,
+  '${sqlQuote(JSON.stringify(sources))}'::jsonb
+) corrected;
+`;
+}
+
+function correctionTransaction(options = {}) {
+  const actorId = options.actorId ?? ownerId;
+  return String.raw`
+begin;
+${actorContext(actorId)}
+${correctionCall(options)}
+commit;
+`;
+}
+
 function lockCall({
   actorId = ownerId,
   verifiedSubject = actorId,
@@ -893,6 +944,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", coordinatorPath]);
     psql(containerName, ["--file", reconstructionPath]);
     psql(containerName, ["--file", supportedPatternsPath]);
+    psql(containerName, ["--file", correctionsPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -917,7 +969,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       where (namespace.nspname = 'ledger'
           and class.relname = any(array[
             'entries', 'period_locks', 'reconstruction_assessments',
-            'reconstruction_evidence', 'entry_contexts', 'entry_sources'
+            'reconstruction_evidence', 'entry_contexts', 'entry_sources',
+            'entry_corrections'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -926,7 +979,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -958,6 +1011,19 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(supportedPosting.entry_kind, "BANK_INTEREST");
     assert.equal(supportedPosting.replayed, false);
     assert.equal(jsonOutput(containerName, supportedCall()).replayed, true);
+    const correctionOriginal = jsonOutput(containerName, postTransaction({
+      idempotencyKey: "50000000-0000-4000-8000-000000000032",
+      entryKind: "ADMINISTRATIVE_COST",
+      memo: "Original administration cost",
+      lines: [
+        { account: "7795", description: "Administration cost", debit: "500.00", credit: "0.00", currency: "NOK" },
+        { account: "1920", description: "Bank", debit: "0.00", credit: "500.00", currency: "NOK" },
+      ],
+      sourceCapability: "BANKING",
+      sourceRecordId: "correction-original:admin-cost",
+      correlationId: "correction-original-runtime",
+    }));
+    assert.equal(correctionOriginal.entry_kind, "ADMINISTRATIVE_COST");
     const capitalReductionLines = JSON.stringify([
       { account: "2033", description: "Unregistered capital reduction", debit: "20000.00", credit: "0.00", currency: "NOK" },
       { account: "2080", description: "Uncovered loss", debit: "0.00", credit: "20000.00", currency: "NOK" },
@@ -2026,6 +2092,102 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       sourceRecordId: "manual:after-lock",
     })), /ledger_period_locked/iu);
 
+    const missingCorrectionId = "40000000-0000-0000-0000-000000000099";
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: missingCorrectionId,
+      idempotencyKey: "63000000-0000-4000-8000-000000000002",
+    })), /ledger_not_found/iu);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      actorId: reviewerId,
+      originalEntryId: correctionOriginal.ledger_entry_id,
+      idempotencyKey: "63000000-0000-4000-8000-000000000003",
+    })), /ledger_forbidden/iu);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: supportedPosting.ledger_entry_id,
+      idempotencyKey: "63000000-0000-4000-8000-000000000005",
+    })), /ledger_correction_original_kind_unsupported/iu);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+      idempotencyKey: "63000000-0000-4000-8000-000000000006",
+      correctionScope: "PRIOR_YEAR_ERROR",
+    })), /ledger_prior_year_correction_policy_unresolved/iu);
+
+    const correction = jsonOutput(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+    }));
+    assert.equal(correction.company_id, companyId);
+    assert.equal(correction.income_year, 2026);
+    assert.equal(correction.replayed, false);
+    assert.notEqual(correction.reversal_entry_id, correctionOriginal.ledger_entry_id);
+    assert.notEqual(correction.replacement_entry_id, correctionOriginal.ledger_entry_id);
+    const correctionReplay = jsonOutput(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+    }));
+    assert.equal(correctionReplay.reversal_entry_id, correction.reversal_entry_id);
+    assert.equal(correctionReplay.replacement_entry_id, correction.replacement_entry_id);
+    assert.equal(correctionReplay.replayed, true);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+      reason: "Changed retry reason",
+    })), /ledger_idempotency_key_reused/iu);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+      idempotencyKey: "63000000-0000-4000-8000-000000000004",
+    })), /ledger_entry_already_corrected/iu);
+
+    const correctionEvidence = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        original.entry_kind,
+        reversal.entry_kind,
+        replacement.entry_kind,
+        (reversal.lines -> 0 ->> 'debit')::numeric,
+        (reversal.lines -> 0 ->> 'credit')::numeric,
+        (reversal.lines -> 1 ->> 'debit')::numeric,
+        (reversal.lines -> 1 ->> 'credit')::numeric,
+        reversal_source.source_capability,
+        reversal_source.source_record_id,
+        replacement_primary.source_capability,
+        replacement_bank.source_capability,
+        correction.reason)
+      from ledger.entry_corrections correction
+      join ledger.entries original on original.id = correction.original_entry_id
+      join ledger.entries reversal on reversal.id = correction.reversal_entry_id
+      join ledger.entries replacement on replacement.id = correction.replacement_entry_id
+      join ledger.entry_sources reversal_source
+        on reversal_source.entry_id = reversal.id and reversal_source.ordinal = 1
+      join ledger.entry_sources replacement_primary
+        on replacement_primary.entry_id = replacement.id and replacement_primary.ordinal = 1
+      join ledger.entry_sources replacement_bank
+        on replacement_bank.entry_id = replacement.id and replacement_bank.ordinal = 2
+      where correction.original_entry_id = '${correctionOriginal.ledger_entry_id}';
+    `));
+    assert.equal(
+      correctionEvidence,
+      `ADMINISTRATIVE_COST:CORRECTION_REVERSAL:ADMINISTRATIVE_COST:0.00:500.00:500.00:0.00:LEDGER:${correctionOriginal.ledger_entry_id}:DOCUMENTS:BANKING:Documented category was wrong`,
+    );
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      set local role ledger_executor;
+      insert into ledger.entry_corrections (
+        original_entry_id, reversal_entry_id, replacement_entry_id,
+        company_id, income_year, reason, corrected_by
+      ) values (
+        '${correctionOriginal.ledger_entry_id}', '${correction.reversal_entry_id}',
+        '${correction.replacement_entry_id}', '${companyId}', 2026,
+        'forbidden direct write', '${ownerId}'
+      );
+      commit;
+    `), /permission denied/iu);
+    const reviewerEntries = jsonOutput(containerName, listCall({
+      actorId: reviewerId,
+      resource: "entries",
+      limit: 100,
+    }));
+    const visibleCorrectionIds = new Set(reviewerEntries.items.map((entry) => entry.entryId));
+    assert.equal(visibleCorrectionIds.has(correctionOriginal.ledger_entry_id), true);
+    assert.equal(visibleCorrectionIds.has(correction.reversal_entry_id), true);
+    assert.equal(visibleCorrectionIds.has(correction.replacement_entry_id), true);
+
     const periodLocks = jsonOutput(containerName, listCall({
       actorId: reviewerId,
       resource: "period_locks",
@@ -2044,6 +2206,9 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
 
     psql(containerName, ["--file", rollbackPath]);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+    })), /ledger_cutover_inactive/iu);
     assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -2084,6 +2249,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         has_table_privilege('service_role', 'public.ledger_entries', 'insert'));
     `));
     assert.equal(overlapPrivileges, "t:t:t:f");
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      set local role authenticated;
+      set local request.jwt.claim.sub = '${ownerId}';
+      insert into public.ledger_entries (
+        id, company_id, income_year, entry_type, memo, lines, risk_flags,
+        posted_at, created_by, created_at
+      ) values (
+        '64000000-0000-4000-8000-000000000001', '${companyId}', 2028,
+        'correction_reversal', 'Forged rollback reversal',
+        '[{"account":"7795","description":"Cost","debit":"0.00","credit":"25.00","currency":"NOK"},
+          {"account":"1920","description":"Bank","debit":"25.00","credit":"0.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, timestamptz '2028-03-01 09:00:00+00', '${ownerId}',
+        timestamptz '2028-03-01 09:00:00+00'
+      );
+      commit;
+    `), /ledger_invalid_input/iu);
 
     const rollbackGenerationBeforeInsert = Number(lastOutputLine(psql(
       containerName,
@@ -2120,6 +2302,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", expandPath]);
     psql(containerName, ["--file", coordinatorPath]);
     psql(containerName, ["--file", supportedPatternsPath]);
+    psql(containerName, ["--file", correctionsPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -2167,6 +2350,12 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       select count(*) from backend_system.ledger_command_receipts
       where idempotency_key = '50000000-0000-4000-8000-000000000001';
     `)), "1");
+    const recutoverCorrectionReplay = jsonOutput(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+    }));
+    assert.equal(recutoverCorrectionReplay.reversal_entry_id, correction.reversal_entry_id);
+    assert.equal(recutoverCorrectionReplay.replacement_entry_id, correction.replacement_entry_id);
+    assert.equal(recutoverCorrectionReplay.replayed, true);
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
