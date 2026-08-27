@@ -874,9 +874,11 @@ function generatedClientDeepImport(source, path, analysis) {
 
 function pythonInspection(root, paths, errors) {
   if (!paths.length) return new Map();
+  const virtualenvPython = join(root, "apps/backend/.venv/bin/python");
+  const pythonCommand = existsSync(virtualenvPython) ? virtualenvPython : "python3";
   const result = spawnSync(
-    "uv",
-    ["run", "--project", join(root, "apps/backend"), "python", PYTHON_IMPORTS_SCRIPT],
+    pythonCommand,
+    [PYTHON_IMPORTS_SCRIPT],
     {
       cwd: root,
       encoding: "utf8",
@@ -1797,6 +1799,13 @@ export function validateCompatibilityRegistry(path, {
   }
   const ledgerRelocationStage = currentCapability === LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability
     && registry.migration?.currentIssue === LEDGER_ATOMIC_COORDINATOR_RELOCATION.issue;
+  const ledgerRelocationCompleted = exitedCapabilities.has(
+    LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability,
+  ) && completedStages.some((stage) => (
+    stage.capability === LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability
+    && stage.removalIssues?.includes(LEDGER_ATOMIC_COORDINATOR_RELOCATION.issue)
+  ));
+  const ledgerRelocationAuthorized = ledgerRelocationStage || ledgerRelocationCompleted;
   const ledgerRelocationOperationKeys = new Set(
     [...LEDGER_ATOMIC_COORDINATOR_RELOCATION.operations].map((operation) => (
       compatibilityOperationKey(LEDGER_ATOMIC_COORDINATOR_RELOCATION.path, operation)
@@ -1823,7 +1832,7 @@ export function validateCompatibilityRegistry(path, {
       )
     ));
     if (!attemptedApprovedRelocation) continue;
-    if (!ledgerRelocationStage) {
+    if (!ledgerRelocationAuthorized) {
       errors.push(
         `${operationLabel(operationKey)} atomic coordinator relocation is authorized only for ledger #139`,
       );
@@ -1926,6 +1935,9 @@ export function validateCompatibilityRegistry(path, {
           && LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
             ledgerRelocationScopeKey(record.id, scope),
           );
+        if (atomicLedgerRelocation && ledgerRelocationCompleted) {
+          completedDeletionOwner = LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability;
+        }
         const authorizedResourceOwners = new Set([
           currentCapability,
           ...exitedCapabilities,

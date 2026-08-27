@@ -675,11 +675,27 @@ test("ledger #139 may relocate only the owner-approved atomic coordinator scopes
     baselinePath,
     expectedBaselineDigest: "TEST_BASELINE_DIGEST",
     currentSource: () => "export const atomicCoordinatorRelocated = true;\n",
+    sourceAtGateRevision: () => "export const atomicCoordinatorRelocated = true;\n",
   };
   const ledgerMigration = structuredClone(registry.migration);
 
   try {
     assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    const successorMigration = compatibilityFixture({
+      records: [],
+      currentCapability: "banking",
+      currentIssue: "#140",
+    }).migration;
+    successorMigration.order = structuredClone(registry.migration.order);
+    registry.migration = successorMigration;
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.deepEqual(
+      validateCompatibilityRegistry(registryPath, options),
+      [],
+      "the completed #139 gates must preserve the exact approved relocation after stage advance",
+    );
+    registry.migration = structuredClone(ledgerMigration);
 
     registry.records = [{
       ...structuredClone(facades.find((facade) => facade.id === "compat-banking-persistence")),
