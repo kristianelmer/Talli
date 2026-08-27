@@ -118,7 +118,7 @@ begin
     or pg_catalog.btrim(coalesce(p_correlation_id, '')) = ''
     or p_source_capability not in (
       'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+      'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
     )
     or pg_catalog.upper(coalesce(p_entry_kind, '')) not in (
       'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',
@@ -300,7 +300,7 @@ begin
         end
         or item ->> 'capability' not in (
           'LEDGER', 'BANKING', 'INVESTMENTS', 'CORPORATE_GOVERNANCE',
-          'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING'
+          'COMPANY_TAX_FILING', 'SHAREHOLDER_REGISTER_FILING', 'DOCUMENTS'
         )
         or pg_catalog.btrim(coalesce(item ->> 'recordId', '')) = ''
         or pg_catalog.length(item ->> 'recordId') > 255

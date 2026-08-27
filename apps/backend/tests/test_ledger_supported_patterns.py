@@ -20,6 +20,8 @@ from talli_backend.modules.ledger.public import (
     GroupContributionRelationship,
     IntercompanyLoanPerspective,
     IntercompanyLoanRelationship,
+    InvestmentDividendFacts,
+    InvestmentDividendPhase,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
@@ -64,6 +66,43 @@ class PatternPersistenceStub:
             company_id=COMPANY_ID,
             income_year=IncomeYear(2026),
             entry_kind=draft["entry_kind"],
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
+    async def record_received_dividend_decision(
+        self, command: object, **draft: object
+    ) -> PostedLedgerEntry:
+        self.calls.append({"operation": "dividend_decision", "command": command, **draft})
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000005"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
+    async def record_received_dividend_payment(
+        self,
+        command: object,
+        *,
+        decision_entry_id: LedgerEntryId,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        self.calls.append(
+            {
+                "operation": "dividend_payment",
+                "command": command,
+                "decision_entry_id": decision_entry_id,
+                **draft,
+            }
+        )
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000006"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
             posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
             replayed=False,
         )
@@ -136,6 +175,217 @@ def test_bank_interest_is_selected_from_banking_facts_and_balanced() -> None:
         ("1920", "500.00", "0.00"),
         ("8050", "0.00", "500.00"),
     ]
+
+
+def test_investment_dividend_final_decision_recognizes_receivable_before_cash() -> None:
+    persistence = PatternPersistenceStub()
+
+    result = asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                InvestmentDividendFacts(
+                    phase=InvestmentDividendPhase.FINAL_DECISION,
+                    gross_amount=Money.nok("5000.00"),
+                    decision_entry_id=None,
+                ),
+                source(LedgerSourceCapability.INVESTMENTS, "dividend-decision"),
+                source(LedgerSourceCapability.DOCUMENTS, "dividend-decision-document"),
+                source(
+                    LedgerSourceCapability.COMPANY_TAX_FILING,
+                    "dividend-decision-tax",
+                ),
+            )
+        )
+    )
+
+    assert result.entry_id == LedgerEntryId("40000000-0000-0000-0000-000000000005")
+    assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert persistence.calls[0]["operation"] == "dividend_decision"
+    assert posted_lines(persistence) == [
+        ("1530", "5000.00", "0.00"),
+        ("8070", "0.00", "5000.00"),
+    ]
+
+
+def test_investment_dividend_payment_clears_the_linked_decision_receivable() -> None:
+    persistence = PatternPersistenceStub()
+    decision_entry_id = LedgerEntryId("40000000-0000-0000-0000-000000000005")
+
+    result = asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                InvestmentDividendFacts(
+                    phase=InvestmentDividendPhase.PAYMENT,
+                    gross_amount=Money.nok("5000.00"),
+                    decision_entry_id=decision_entry_id,
+                ),
+                source(LedgerSourceCapability.INVESTMENTS, "dividend-payment"),
+                source(LedgerSourceCapability.BANKING, "dividend-payment-bank"),
+            )
+        )
+    )
+
+    assert result.entry_id == LedgerEntryId("40000000-0000-0000-0000-000000000006")
+    assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert persistence.calls[0]["operation"] == "dividend_payment"
+    assert persistence.calls[0]["decision_entry_id"] == decision_entry_id
+    assert posted_lines(persistence) == [
+        ("1920", "5000.00", "0.00"),
+        ("1530", "0.00", "5000.00"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("facts", "primary", "corroborating"),
+    [
+        (
+            InvestmentDividendFacts(
+                phase=InvestmentDividendPhase.FINAL_DECISION,
+                gross_amount=Money.nok("5000.00"),
+                decision_entry_id=None,
+            ),
+            source(LedgerSourceCapability.INVESTMENTS, "decision-missing-tax"),
+            (source(LedgerSourceCapability.DOCUMENTS, "decision-document"),),
+        ),
+        (
+            InvestmentDividendFacts(
+                phase=InvestmentDividendPhase.FINAL_DECISION,
+                gross_amount=Money.nok("5000.00"),
+                decision_entry_id=None,
+            ),
+            source(LedgerSourceCapability.DOCUMENTS, "decision-wrong-primary"),
+            (
+                source(LedgerSourceCapability.INVESTMENTS, "decision-investments"),
+                source(LedgerSourceCapability.COMPANY_TAX_FILING, "decision-tax"),
+            ),
+        ),
+        (
+            InvestmentDividendFacts(
+                phase=InvestmentDividendPhase.PAYMENT,
+                gross_amount=Money.nok("5000.00"),
+                decision_entry_id=LedgerEntryId(
+                    "40000000-0000-0000-0000-000000000005"
+                ),
+            ),
+            source(LedgerSourceCapability.INVESTMENTS, "payment-missing-bank"),
+            (),
+        ),
+        (
+            InvestmentDividendFacts(
+                phase=InvestmentDividendPhase.PAYMENT,
+                gross_amount=Money.nok("5000.00"),
+                decision_entry_id=LedgerEntryId(
+                    "40000000-0000-0000-0000-000000000005"
+                ),
+            ),
+            source(LedgerSourceCapability.INVESTMENTS, "payment-extra-document"),
+            (
+                source(LedgerSourceCapability.BANKING, "payment-bank"),
+                source(LedgerSourceCapability.DOCUMENTS, "payment-document"),
+            ),
+        ),
+    ],
+)
+def test_investment_dividend_requires_the_exact_phase_source_topology(
+    facts: InvestmentDividendFacts,
+    primary: LedgerFactReference,
+    corroborating: tuple[LedgerFactReference, ...],
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(facts, primary, *corroborating)
+            )
+        )
+
+    assert failure.value.code == "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+    assert persistence.calls == []
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [
+        InvestmentDividendFacts(
+            phase=InvestmentDividendPhase.FINAL_DECISION,
+            gross_amount=Money.nok("5000.00"),
+            decision_entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000005"),
+        ),
+        InvestmentDividendFacts(
+            phase=InvestmentDividendPhase.PAYMENT,
+            gross_amount=Money.nok("5000.00"),
+            decision_entry_id=None,
+        ),
+    ],
+)
+def test_investment_dividend_phase_requires_valid_decision_linkage(
+    facts: InvestmentDividendFacts,
+) -> None:
+    persistence = PatternPersistenceStub()
+    corroborating = (
+        (
+            source(LedgerSourceCapability.DOCUMENTS, "linkage-document"),
+            source(LedgerSourceCapability.COMPANY_TAX_FILING, "linkage-tax"),
+        )
+        if facts.phase is InvestmentDividendPhase.FINAL_DECISION
+        else (source(LedgerSourceCapability.BANKING, "linkage-bank"),)
+    )
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    facts,
+                    source(LedgerSourceCapability.INVESTMENTS, "invalid-linkage"),
+                    *corroborating,
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [InvestmentDividendPhase.FINAL_DECISION, InvestmentDividendPhase.PAYMENT],
+)
+def test_investment_dividend_requires_a_positive_amount(
+    phase: InvestmentDividendPhase,
+) -> None:
+    persistence = PatternPersistenceStub()
+    facts = InvestmentDividendFacts(
+        phase=phase,
+        gross_amount=Money.nok("0.00"),
+        decision_entry_id=(
+            None
+            if phase is InvestmentDividendPhase.FINAL_DECISION
+            else LedgerEntryId("40000000-0000-0000-0000-000000000005")
+        ),
+    )
+    corroborating = (
+        (
+            source(LedgerSourceCapability.DOCUMENTS, "amount-document"),
+            source(LedgerSourceCapability.COMPANY_TAX_FILING, "amount-tax"),
+        )
+        if phase is InvestmentDividendPhase.FINAL_DECISION
+        else (source(LedgerSourceCapability.BANKING, "amount-bank"),)
+    )
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    facts,
+                    source(LedgerSourceCapability.INVESTMENTS, "zero-dividend"),
+                    *corroborating,
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
 
 
 def test_tax_accrual_keeps_current_and_deferred_tax_distinct() -> None:
@@ -444,5 +694,6 @@ def test_fact_variants_never_accept_accounts_lines_or_rule_selection() -> None:
         ApprovedLossCoverageCapitalReductionFacts,
         ApprovedOwnerLoanFundingFacts,
         GroupContributionFacts,
+        InvestmentDividendFacts,
     ):
         assert not (set(facts.__dataclass_fields__) & forbidden)

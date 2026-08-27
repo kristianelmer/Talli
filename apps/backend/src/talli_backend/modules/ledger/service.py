@@ -33,6 +33,8 @@ from talli_backend.modules.ledger.public import (
     GroupContributionRelationship,
     IntercompanyLoanPerspective,
     IntercompanyLoanRelationship,
+    InvestmentDividendFacts,
+    InvestmentDividendPhase,
     LedgerCursor,
     LedgerEntryKind,
     LedgerError,
@@ -460,6 +462,45 @@ class LedgerService:
                 LedgerLine("1920", "Bank interest received", facts.amount, _ZERO),
                 LedgerLine("8050", "Bank interest income", _ZERO, facts.amount),
             )
+        elif isinstance(facts, InvestmentDividendFacts):
+            _positive(facts.gross_amount, "LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            if facts.phase is InvestmentDividendPhase.FINAL_DECISION:
+                if facts.decision_entry_id is not None:
+                    raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.INVESTMENTS,
+                        LedgerSourceCapability.DOCUMENTS,
+                        LedgerSourceCapability.COMPANY_TAX_FILING,
+                    }
+                )
+                memo = "Final investment-dividend decision recognized"
+                lines = (
+                    LedgerLine(
+                        "1530", "Dividend receivable", facts.gross_amount, _ZERO
+                    ),
+                    LedgerLine(
+                        "8070", "Dividend income", _ZERO, facts.gross_amount
+                    ),
+                )
+            else:
+                if facts.decision_entry_id is None:
+                    raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+                required_sources = frozenset(
+                    {
+                        LedgerSourceCapability.INVESTMENTS,
+                        LedgerSourceCapability.BANKING,
+                    }
+                )
+                memo = "Investment-dividend receivable settled"
+                lines = (
+                    LedgerLine("1920", "Dividend received", facts.gross_amount, _ZERO),
+                    LedgerLine(
+                        "1530", "Dividend receivable settled", _ZERO, facts.gross_amount
+                    ),
+                )
         elif isinstance(facts, ApprovedOwnerLoanFundingFacts):
             required_sources = frozenset(
                 {
@@ -745,6 +786,22 @@ class LedgerService:
                 "LEDGER_SOURCE_CAPABILITY_MISMATCH"
             )
         _balanced(lines)
+        if isinstance(facts, InvestmentDividendFacts):
+            if facts.phase is InvestmentDividendPhase.FINAL_DECISION:
+                return await self._persistence.record_received_dividend_decision(
+                    command,
+                    memo=memo,
+                    lines=lines,
+                )
+            decision_entry_id = facts.decision_entry_id
+            if decision_entry_id is None:  # narrowed above; keep the port call typed.
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            return await self._persistence.record_received_dividend_payment(
+                command,
+                decision_entry_id=decision_entry_id,
+                memo=memo,
+                lines=lines,
+            )
         return await self._persistence.post_entry(
             command,
             entry_kind=entry_kind,

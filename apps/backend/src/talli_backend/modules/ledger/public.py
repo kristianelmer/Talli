@@ -281,6 +281,11 @@ class BankLoanEvent(StrEnum):
     PAYMENT = "PAYMENT"
 
 
+class InvestmentDividendPhase(StrEnum):
+    FINAL_DECISION = "FINAL_DECISION"
+    PAYMENT = "PAYMENT"
+
+
 class CapitalIncreasePhase(StrEnum):
     BINDING_SUBSCRIPTION = "BINDING_SUBSCRIPTION"
     RESTRICTED_PAYMENT = "RESTRICTED_PAYMENT"
@@ -316,6 +321,13 @@ class GroupContributionPerspective(StrEnum):
 @dataclass(frozen=True, slots=True)
 class BankInterestIncomeFacts:
     amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentDividendFacts:
+    phase: InvestmentDividendPhase
+    gross_amount: Money
+    decision_entry_id: LedgerEntryId | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,6 +401,7 @@ SupportedHoldingActionFacts: TypeAlias = (
     | CashCapitalIncreaseFacts
     | CompanyTaxAccrualFacts
     | GroupContributionFacts
+    | InvestmentDividendFacts
     | ApprovedLossCoverageCapitalReductionFacts
     | OrdinaryBankLoanFacts
 )
@@ -470,6 +483,8 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    RECEIVED_DIVIDEND_ALREADY_SETTLED = "LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"
+    RECEIVED_DIVIDEND_DECISION_INVALID = "LEDGER_RECEIVED_DIVIDEND_DECISION_INVALID"
     SOURCE_CAPABILITY_MISMATCH = "LEDGER_SOURCE_CAPABILITY_MISMATCH"
 
 
@@ -970,6 +985,23 @@ class LedgerPersistence(Protocol):
         gap_codes: tuple[CompanyYearCloseGapCode, ...],
     ) -> CompanyYearCloseAssessment: ...
 
+    async def record_received_dividend_decision(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_received_dividend_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        decision_entry_id: LedgerEntryId,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
     async def correct_entry(
         self,
         command: CorrectHoldingActionCommand,
@@ -1184,6 +1216,8 @@ __all__ = [
     "GroupContributionRelationship",
     "IntercompanyLoanPerspective",
     "IntercompanyLoanRelationship",
+    "InvestmentDividendFacts",
+    "InvestmentDividendPhase",
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",

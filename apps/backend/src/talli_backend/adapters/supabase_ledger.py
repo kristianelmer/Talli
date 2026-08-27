@@ -50,6 +50,7 @@ from talli_backend.modules.ledger.public import (
     CompanyYearCloseState,
     CorrectHoldingActionCommand,
     CorrectedLedgerEntries,
+    InvestmentDividendFacts,
     LedgerCommand,
     LedgerCursor,
     LedgerEntryId,
@@ -304,6 +305,17 @@ def _company_year_close_assessment(
     )
 
 
+def _posted_entry(row: Mapping[str, object]) -> PostedLedgerEntry:
+    return PostedLedgerEntry(
+        entry_id=LedgerEntryId(str(row["ledger_entry_id"])),
+        company_id=CompanyId(str(row["company_id"])),
+        income_year=IncomeYear(int(row["income_year"])),
+        entry_kind=LedgerEntryKind(str(row["entry_kind"])),
+        posted_at=_timestamp(row["posted_at"]),
+        replayed=bool(row["replayed"]),
+    )
+
+
 def _writer_metadata(command: LedgerCommand) -> dict[str, object]:
     return {
         "companyId": str(command.company_id),
@@ -458,6 +470,20 @@ def _map_database_error(message: str) -> LedgerError:
             LedgerError.precondition_failed(
                 "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
             ),
+        ),
+        (
+            "ledger_received_dividend_already_settled",
+            LedgerError.conflict("LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"),
+        ),
+        (
+            "ledger_received_dividend_decision_invalid",
+            LedgerError.precondition_failed(
+                "LEDGER_RECEIVED_DIVIDEND_DECISION_INVALID"
+            ),
+        ),
+        (
+            "ledger_source_capability_mismatch",
+            LedgerError.precondition_failed("LEDGER_SOURCE_CAPABILITY_MISMATCH"),
         ),
         (
             "ledger_opening_already_exists",
@@ -757,6 +783,92 @@ class SupabaseLedgerSession:
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 
+    async def _record_received_dividend(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        decision_entry_id: LedgerEntryId | None,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        facts = command.facts
+        if not isinstance(facts, InvestmentDividendFacts):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        function_name = (
+            "record_received_dividend_decision_v1"
+            if decision_entry_id is None
+            else "record_received_dividend_payment_v1"
+        )
+        decision_argument = (
+            () if decision_entry_id is None else (str(decision_entry_id),)
+        )
+        decision_placeholder = "" if decision_entry_id is None else "%s::uuid, "
+        row = await self._one_idempotent_row(
+            f"""
+            select * from ledger.{function_name}(
+              %s::text, %s::uuid, %s::integer, {decision_placeholder}%s::text, %s::jsonb,
+              %s::text, %s::text, %s::text, %s::text, %s::date,
+              %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                *decision_argument,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                command.primary_source.capability.value,
+                str(command.primary_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return _posted_entry(row)
+
+    async def record_received_dividend_decision(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_received_dividend(
+            command,
+            decision_entry_id=None,
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_received_dividend_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        decision_entry_id: LedgerEntryId,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_received_dividend(
+            command,
+            decision_entry_id=decision_entry_id,
+            memo=memo,
+            lines=lines,
+        )
+
     async def correct_entry(
         self,
         command: CorrectHoldingActionCommand,
@@ -896,14 +1008,7 @@ class SupabaseLedgerSession:
                 """,
                 (*parameters, str(requested_entry_id)),
             )
-        return PostedLedgerEntry(
-            entry_id=LedgerEntryId(str(row["ledger_entry_id"])),
-            company_id=CompanyId(str(row["company_id"])),
-            income_year=IncomeYear(int(row["income_year"])),
-            entry_kind=LedgerEntryKind(str(row["entry_kind"])),
-            posted_at=_timestamp(row["posted_at"]),
-            replayed=bool(row["replayed"]),
-        )
+        return _posted_entry(row)
 
     async def lock_period(self, command: LockPeriodCommand) -> PeriodLock:
         if command.actor_id != self.actor_id:

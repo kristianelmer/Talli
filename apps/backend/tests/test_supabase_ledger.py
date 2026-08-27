@@ -37,6 +37,8 @@ from talli_backend.modules.ledger.public import (
     CompanyYearCloseOutputReference,
     CompanyYearCloseState,
     CorrectHoldingActionCommand,
+    InvestmentDividendFacts,
+    InvestmentDividendPhase,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
@@ -166,6 +168,56 @@ def supported_pattern_command() -> RecognizeHoldingActionCommand:
         ),
         corroborating_sources=(),
         facts=BankInterestIncomeFacts(amount=Money.nok("500.00")),
+    )
+
+
+def received_dividend_command(
+    phase: InvestmentDividendPhase,
+    *,
+    decision_entry_id: LedgerEntryId | None = None,
+) -> RecognizeHoldingActionCommand:
+    decision = phase is InvestmentDividendPhase.FINAL_DECISION
+    corroborating_capabilities = (
+        (
+            LedgerSourceCapability.DOCUMENTS,
+            LedgerSourceCapability.COMPANY_TAX_FILING,
+        )
+        if decision
+        else (LedgerSourceCapability.BANKING,)
+    )
+    return RecognizeHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId(f"received-dividend-{phase.value.lower()}"),
+        idempotency_key=IdempotencyKey(
+            f"received-dividend-{phase.value.lower()}-2026"
+        ),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.INVESTMENTS,
+            record_id=LedgerSourceRecordId(
+                f"investment-dividend:{phase.value.lower()}:1"
+            ),
+            revision=2,
+            fact_sha256="d" * 64,
+        ),
+        corroborating_sources=tuple(
+            LedgerFactReference(
+                capability=capability,
+                record_id=LedgerSourceRecordId(
+                    f"{capability.value.lower()}:dividend:1"
+                ),
+                revision=1,
+                fact_sha256=f"{index + 1:064x}",
+            )
+            for index, capability in enumerate(corroborating_capabilities)
+        ),
+        facts=InvestmentDividendFacts(
+            phase=phase,
+            gross_amount=Money.nok("500.00"),
+            decision_entry_id=decision_entry_id,
+        ),
     )
 
 
@@ -490,6 +542,73 @@ def test_supported_pattern_adapter_binds_rule_event_and_source_provenance() -> N
         "revision": 2,
         "factSha256": "a" * 64,
     }]
+
+
+@pytest.mark.parametrize(
+    ("phase", "method_name", "function_name", "decision_entry_id"),
+    [
+        (
+            InvestmentDividendPhase.FINAL_DECISION,
+            "record_received_dividend_decision",
+            "record_received_dividend_decision_v1",
+            None,
+        ),
+        (
+            InvestmentDividendPhase.PAYMENT,
+            "record_received_dividend_payment",
+            "record_received_dividend_payment_v1",
+            LedgerEntryId("40000000-0000-0000-0000-000000000004"),
+        ),
+    ],
+)
+def test_received_dividend_adapter_binds_dedicated_lifecycle_rpc(
+    phase: InvestmentDividendPhase,
+    method_name: str,
+    function_name: str,
+    decision_entry_id: LedgerEntryId | None,
+) -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000005",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "DIVIDEND_RECEIVED",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    requested = received_dividend_command(
+        phase, decision_entry_id=decision_entry_id
+    )
+    kwargs: dict[str, object] = {
+        "memo": "Received-dividend lifecycle",
+        "lines": (
+            LedgerLine("1530", "Debit", Money.nok("500"), Money.nok("0")),
+            LedgerLine("8070", "Credit", Money.nok("0"), Money.nok("500")),
+        ),
+    }
+    if decision_entry_id is not None:
+        kwargs["decision_entry_id"] = decision_entry_id
+
+    result = asyncio.run(getattr(session, method_name)(requested, **kwargs))
+
+    assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert f"ledger.{function_name}" in calls[0][0]
+    parameters = calls[0][1]
+    source_index = 12 if decision_entry_id is not None else 11
+    if decision_entry_id is not None:
+        assert parameters[3] == str(decision_entry_id)
+    assert parameters[source_index - 1] == "ledger-supported-patterns-2026.1"
+    sources = json.loads(str(parameters[source_index]))
+    assert sources[0]["capability"] == "INVESTMENTS"
+    assert sources[0]["role"] == "PRIMARY"
 
 
 def test_correction_adapter_binds_original_replacement_and_two_sources() -> None:

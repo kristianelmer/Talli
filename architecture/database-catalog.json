@@ -59,6 +59,8 @@
     { "name": "ledger.entry_contexts", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.entry_corrections", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.entry_sources", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.received_dividend_decisions", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.received_dividend_settlements", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_assessments", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_evidence", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "public.notification_outbox", "kind": "technical" },

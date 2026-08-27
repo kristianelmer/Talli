@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -18,12 +18,14 @@ close locks. It owns
 `ledger.entries`,
 `ledger.entry_contexts`, `ledger.entry_corrections`, `ledger.entry_sources`,
 `ledger.period_locks`,
+`ledger.received_dividend_decisions`, `ledger.received_dividend_settlements`,
 `ledger.reconstruction_assessments`, and `ledger.reconstruction_evidence`
 through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`, and
 `supabase/migrations/20260827102000_ledger_supported_patterns.sql`, and
 `supabase/migrations/20260827103000_ledger_corrections.sql`, and
-`supabase/migrations/20260827104000_ledger_company_year_close.sql`.
+`supabase/migrations/20260827104000_ledger_company_year_close.sql`, and
+`supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -48,16 +50,24 @@ accounting review approves an immutable policy version.
 The mass-market interface begins with `RecognizeHoldingActionCommand`, which
 accepts a closed `SupportedHoldingActionFacts` variant and immutable
 `LedgerFactReference` values. The initial variants are
-`BankInterestIncomeFacts`, `CompanyTaxAccrualFacts`,
+`BankInterestIncomeFacts`, `InvestmentDividendFacts`, `CompanyTaxAccrualFacts`,
 `OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
 `ApprovedLossCoverageCapitalReductionFacts`, `ApprovedOwnerLoanFundingFacts`,
 `ApprovedOneSidedIntercompanyLoanFundingFacts`, and `GroupContributionFacts`; their
-closed phase and relationship values are `BankLoanEvent`,
+closed phase and relationship values are `BankLoanEvent`, `InvestmentDividendPhase`,
 `CapitalIncreasePhase`, `CapitalReductionRecognition`,
 `IntercompanyLoanPerspective`, `IntercompanyLoanRelationship`,
 `GroupContributionRelationship`, and
 `GroupContributionPerspective`. Callers cannot select an account, line,
 pattern, or rule version.
+
+The received-dividend receiver recognizes the final investee decision as a
+receivable and income, then settles that exact decision from the bank payment.
+The decision requires investments, documents, and company-tax facts; payment
+requires investments and banking facts plus the immutable decision entry ID.
+The company-year serialized persistence path permits one settlement per
+decision and rejects cross-company, cross-year, amount-mismatched, or replay-
+inconsistent linkage.
 
 The capital-reduction receiver accepts only an approval fact emitted by the
 corporate-governance source owner. Ledger validates the accounting amount and
