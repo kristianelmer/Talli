@@ -3,6 +3,7 @@
 set -euo pipefail
 
 started_here=0
+isolated_workdir="$(mktemp -d "${TMPDIR:-/tmp}/talli-supabase-local.XXXXXX")"
 next_env_path="apps/web/next-env.d.ts"
 next_env_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-next-env.XXXXXX")"
 tsconfig_path="apps/web/tsconfig.json"
@@ -31,8 +32,10 @@ cleanup() {
     cleanup_status=1
   fi
   if [[ "$started_here" == "1" ]]; then
-    npm exec -- supabase stop --no-backup >/dev/null || cleanup_status=1
+    npm exec -- supabase stop --workdir "$isolated_workdir" --no-backup >/dev/null \
+      || cleanup_status=1
   fi
+  rm -rf -- "$isolated_workdir" || cleanup_status=1
 
   if [[ "$command_status" != "0" ]]; then
     exit "$command_status"
@@ -43,35 +46,31 @@ cleanup() {
 
 trap 'cleanup "$?"' EXIT
 
-if ! npm exec -- supabase status --output env >/dev/null 2>&1; then
-  # Supabase prints its shared local development keys on stdout. They are not
-  # production secrets, but suppress them so CI and agent logs stay credential-free.
-  npm exec -- supabase start \
-    --exclude studio,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,edge-runtime,realtime \
-    >/dev/null
-  started_here=1
-fi
+node scripts/prepare-isolated-supabase-workdir.mjs "$isolated_workdir"
+# Supabase prints its isolated local development keys on stdout. They are not
+# production secrets, but suppress them so CI and agent logs stay credential-free.
+npm exec -- supabase start --workdir "$isolated_workdir" \
+  --exclude studio,imgproxy,mailpit,logflare,vector,supavisor,postgres-meta,edge-runtime,realtime \
+  >/dev/null
+started_here=1
 
-eval "$(npm exec -- supabase status --output env)"
+eval "$(npm exec -- supabase status --workdir "$isolated_workdir" --output env)"
+local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
+local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
 
-# `supabase start` can reuse an existing local volume without applying migration
-# files added since that volume was created. Apply only pending automatic-runner
-# migrations so browser evidence always exercises the repository's current schema.
-npm exec -- supabase migration up --local --include-all >/dev/null
-
-npm run test:supabase-advisors
+TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
 npm run test:ledger-database-lifecycle
 
 SUPABASE_URL="$API_URL" \
-SUPABASE_ANON_KEY="$ANON_KEY" \
-SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:supabase
 
 NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
-NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_URL="$API_URL" \
-SUPABASE_ANON_KEY="$ANON_KEY" \
-SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-owner

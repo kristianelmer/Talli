@@ -61,17 +61,22 @@ function createHarnessWorkspace(mode) {
   const binDirectory = join(directory, "bin");
   const snapshotDirectory = join(directory, "snapshots");
   mkdirSync(dirname(nextEnvPath), { recursive: true });
+  mkdirSync(join(directory, "scripts"));
   mkdirSync(binDirectory);
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
   writeFileSync(tsconfigPath, "original config\n");
+  writeFileSync(
+    join(directory, "scripts/prepare-isolated-supabase-workdir.mjs"),
+    "// Test fixture: the npm shim owns the isolated Supabase lifecycle.\n",
+  );
   const npmPath = join(binDirectory, "npm");
   writeFileSync(
     npmPath,
     `#!/usr/bin/env bash
 set -euo pipefail
-if [[ "$*" == "exec -- supabase status --output env" ]]; then
-  printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'ANON_KEY=local-anon' 'SERVICE_ROLE_KEY=local-service' 'DB_URL=postgresql://127.0.0.1/local'
+if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
+  printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=local-anon' 'SECRET_KEY=local-service' 'DB_URL=postgresql://127.0.0.1/local'
   exit 0
 fi
 if [[ "$*" == "run test:browser-owner" ]]; then
@@ -196,6 +201,11 @@ test("database isolation runs the complete ledger contract lifecycle", () => {
     packageJson.scripts["test:ledger-database-lifecycle"],
     "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_database_runtime.test.mjs",
   );
+  assert.match(databaseHarness, /prepare-isolated-supabase-workdir\.mjs/u);
+  assert.match(databaseHarness, /supabase start --workdir "\$isolated_workdir"/u);
+  assert.match(databaseHarness, /PUBLISHABLE_KEY:-\$ANON_KEY/u);
+  assert.match(databaseHarness, /SECRET_KEY:-\$SERVICE_ROLE_KEY/u);
+  assert.doesNotMatch(databaseHarness, /supabase migration up --local/u);
 });
 
 test("local immutable gate rejects tracked, staged, and untracked drift", () => {
