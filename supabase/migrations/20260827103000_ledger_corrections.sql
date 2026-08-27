@@ -7,7 +7,8 @@ alter table backend_system.ledger_command_receipts
 alter table backend_system.ledger_command_receipts
   add constraint ledger_command_receipts_operation_name_check check (
     operation_name in (
-      'post_entry', 'lock_period', 'record_reconstruction', 'correct_entry'
+      'post_entry', 'lock_period', 'record_reconstruction', 'correct_entry',
+      'close_company_year'
     )
   );
 
@@ -300,6 +301,9 @@ begin
       (v_receipt.result ->> 'corrected_at')::timestamptz,
       true;
     return;
+  end if;
+  if p_income_year is distinct from extract(year from current_date)::integer then
+    raise exception 'ledger_prior_year_correction_policy_unresolved';
   end if;
 
   perform ledger.lock_company_year_v1(p_company_id, p_income_year);

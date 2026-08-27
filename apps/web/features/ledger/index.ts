@@ -2,6 +2,7 @@ export {
   finalizeLedgerCorporateDecision,
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
+  loadLedgerCompanyYearCloseAssessment,
   loadLedgerPeriodLocks,
   loadLedgerReconstructionAssessment,
   loadOpeningSnapshots,
@@ -21,6 +22,7 @@ export type { LedgerEntryArchiveWire } from "./transport.ts";
 export {
   presentLedgerEntries,
   presentLedgerEntriesForArchive,
+  presentLedgerCompanyYearClose,
   presentLedgerPeriodLocks,
   presentLedgerReconstruction,
   presentOpeningSnapshots,
@@ -28,6 +30,7 @@ export {
   ledgerOutcomeMayBeUnknown,
   type LedgerEntryPresentation,
   type LedgerEntryArchivePresentation,
+  type LedgerCompanyYearClosePresentation,
   type LedgerPeriodLockPresentation,
   type LedgerReconstructionPresentation,
   type OpeningBalanceSetupPresentation,

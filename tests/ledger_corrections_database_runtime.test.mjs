@@ -30,6 +30,14 @@ test("correction API has the canonical immutable reversal contract", () => {
     correctionFunction,
     /ledger_prior_year_correction_policy_unresolved/iu,
   );
+  assert.match(
+    correctionFunction,
+    /p_income_year is distinct from extract\(year from current_date\)::integer[\s\S]+ledger_prior_year_correction_policy_unresolved/iu,
+  );
+  assert.match(
+    correctionFunction,
+    /if found then[\s\S]+true;[\s\S]+return;[\s\S]+end if;[\s\S]+p_income_year is distinct from extract\(year from current_date\)::integer/iu,
+  );
   assert.match(correctionFunction, /operation_name = 'correct_entry'/u);
   assert.doesNotMatch(correctionFunction, /ledger\.post_entry\(/iu);
   assert.doesNotMatch(correctionFunction, /ledger_period_locked/iu);
@@ -64,7 +72,7 @@ test("fresh database lifecycle exercises correction and recutover", () => {
   for (const evidence of [
     "ledger.correct_entry_v1",
     "ledger_entry_already_corrected",
-    "ledger_cutover_inactive",
+    "permission denied",
     "entry_corrections",
   ]) {
     assert.match(lifecycle, new RegExp(evidence, "u"));

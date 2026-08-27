@@ -1832,8 +1832,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 18);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 188);
+  assert.equal(registry.records.length, 15);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 164);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1854,7 +1854,10 @@ test("the immutable frozen inventory remains exact while the active registry is 
       .filter((id) => !registry.records.some((record) => record.id === id))),
     new Set([
       "compat-company-onboarding-persistence",
+      "compat-ledger-persistence",
       "compat-owner-dividend-persistence",
+      "compat-shareholder-loan-persistence",
+      "compat-tax-settlement-persistence",
     ]),
   );
 });
@@ -1979,8 +1982,9 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const primary = compatibility.records.find((entry) => entry.removalIssue === "#139");
-  const secondary = compatibility.records.find((entry) => entry.removalIssue === "#140");
+  const [primary, secondary] = compatibility.records;
+  assert.ok(primary);
+  assert.ok(secondary);
   const duplicateScope = {
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
@@ -1994,7 +1998,10 @@ test("compatibility scopes cannot overlap across future tickets", () => {
   try {
     assert.match(
       checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n"),
-      /duplicate compatibility scope.*#139.*#140/u,
+      new RegExp(
+        `duplicate compatibility scope.*${primary.removalIssue}.*${secondary.removalIssue}`,
+        "u",
+      ),
     );
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -2008,11 +2015,12 @@ test("compatibility registry is complete in both directions", () => {
   }
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-  const ledger = compatibility.records.find((entry) => entry.removalIssue === "#139");
-  const missingScope = ledger.scopes[0];
+  const activeRecord = compatibility.records[0];
+  assert.ok(activeRecord);
+  const missingScope = activeRecord.scopes[0];
   assert.ok(missingScope);
-  ledger.scopes = ledger.scopes.filter((scope) => scope !== missingScope);
-  ledger.scopes.push({
+  activeRecord.scopes = activeRecord.scopes.filter((scope) => scope !== missingScope);
+  activeRecord.scopes.push({
     path: "apps/web/app/actions.ts",
     rule: "direct-web-business-persistence",
     resource: "table:companies",

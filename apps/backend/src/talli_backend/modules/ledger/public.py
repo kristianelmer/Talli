@@ -66,6 +66,32 @@ class ReconstructionAssessmentId:
 
 
 @dataclass(frozen=True, slots=True)
+class CompanyYearCloseAssessmentId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "value", _opaque_uuid(self.value, "company-year close assessment id")
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyYearCloseLockId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "value", _opaque_uuid(self.value, "company-year close lock id")
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class LedgerCursor:
     value: str
 
@@ -214,6 +240,40 @@ class ReconstructionGapCode(StrEnum):
 class ReconstructionState(StrEnum):
     BLOCKED = "BLOCKED"
     READY = "READY"
+
+
+class CompanyYearCloseEvidenceKind(StrEnum):
+    BANK_ROWS_RESOLVED = "BANK_ROWS_RESOLVED"
+    MATERIAL_BALANCES_DOCUMENTED = "MATERIAL_BALANCES_DOCUMENTED"
+    REPORTING_RECONCILED = "REPORTING_RECONCILED"
+
+
+class CompanyYearCloseOutputKind(StrEnum):
+    INVESTMENTS = "INVESTMENTS"
+    CORPORATE_GOVERNANCE = "CORPORATE_GOVERNANCE"
+    SHAREHOLDER_REGISTER_FILING = "SHAREHOLDER_REGISTER_FILING"
+    COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
+    ANNUAL_ACCOUNTS_FILING = "ANNUAL_ACCOUNTS_FILING"
+    SAF_T = "SAF_T"
+    COMPANY_ARCHIVE = "COMPANY_ARCHIVE"
+
+
+class CompanyYearCloseGapCode(StrEnum):
+    SOURCE_INCOMPLETE = "SOURCE_INCOMPLETE"
+    JOURNAL_UNBALANCED = "JOURNAL_UNBALANCED"
+    DUPLICATE_POSTING_FOUND = "DUPLICATE_POSTING_FOUND"
+    UNSUPPORTED_TRANSACTION = "UNSUPPORTED_TRANSACTION"
+    BANK_NOT_RECONCILED = "BANK_NOT_RECONCILED"
+    UNRESOLVED_BANK_ROW = "UNRESOLVED_BANK_ROW"
+    MATERIAL_BALANCE_UNDOCUMENTED = "MATERIAL_BALANCE_UNDOCUMENTED"
+    REPORTING_NOT_RECONCILED = "REPORTING_NOT_RECONCILED"
+    CHECK_EVIDENCE_INCOMPLETE = "CHECK_EVIDENCE_INCOMPLETE"
+    PERIOD_END_UNSUPPORTED = "PERIOD_END_UNSUPPORTED"
+
+
+class CompanyYearCloseState(StrEnum):
+    BLOCKED = "BLOCKED"
+    CLOSED = "CLOSED"
 
 
 class BankLoanEvent(StrEnum):
@@ -370,6 +430,12 @@ class LedgerErrorCode(StrEnum):
     AMOUNT_NEGATIVE = "LEDGER_AMOUNT_NEGATIVE"
     COMPANY_SCOPE_INVALID = "LEDGER_COMPANY_SCOPE_INVALID"
     COMPANY_YEAR_NOT_ADMITTED = "LEDGER_COMPANY_YEAR_NOT_ADMITTED"
+    COMPANY_YEAR_CLOSE_EVIDENCE_INVALID = (
+        "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+    )
+    COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE = (
+        "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
+    )
     CORRECTION_ORIGINAL_KIND_UNSUPPORTED = (
         "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED"
     )
@@ -625,8 +691,64 @@ class ReconstructionAssessment:
     state: ReconstructionState
     gap_codes: tuple[ReconstructionGapCode, ...]
     evidence_digest: str
+    ledger_state_digest: str | None
     recorded_at: Timestamp
     replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyYearCloseOutputReference:
+    kind: CompanyYearCloseOutputKind
+    source_record_id: LedgerSourceRecordId
+    revision: int
+    fact_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        if self.revision < 1 or len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "fact_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyYearCloseEvidence:
+    kind: CompanyYearCloseEvidenceKind
+    issuer: LedgerSourceCapability
+    source_record_id: LedgerSourceRecordId
+    revision: int
+    fact_sha256: str
+    ledger_state_digest: str
+    coverage_through: LocalDate
+    confirmation: ReconstructionEvidenceStatus
+    gap_code: CompanyYearCloseGapCode | None = None
+    outputs: tuple[CompanyYearCloseOutputReference, ...] = ()
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        state_digest = self.ledger_state_digest.strip().lower()
+        if (
+            self.revision < 1
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or len(state_digest) != 64
+            or any(
+                character not in "0123456789abcdef" for character in state_digest
+            )
+            or len(self.outputs) > len(CompanyYearCloseOutputKind)
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if (
+            self.confirmation is ReconstructionEvidenceStatus.CONFIRMED
+            and self.gap_code is not None
+        ) or (
+            self.confirmation is not ReconstructionEvidenceStatus.CONFIRMED
+            and self.gap_code is None
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "fact_sha256", digest)
+        object.__setattr__(self, "ledger_state_digest", state_digest)
 
 
 @dataclass(frozen=True, slots=True)
@@ -649,6 +771,29 @@ class LockPeriodCommand(LedgerCommand):
     def __post_init__(self) -> None:
         if not self.reason.strip() or len(self.reason) > 500:
             raise LedgerError.invalid_input("LEDGER_LOCK_REASON_REQUIRED")
+
+
+@dataclass(frozen=True, slots=True)
+class CloseCompanyYearCommand(LedgerCommand):
+    period_end: LocalDate
+    reason: str
+    reconstruction_assessment_id: ReconstructionAssessmentId
+    reconstruction_evidence_digest: str
+    evidence: tuple[CompanyYearCloseEvidence, ...]
+
+    def __post_init__(self) -> None:
+        reason = self.reason.strip()
+        digest = self.reconstruction_evidence_digest.strip().lower()
+        if not reason or len(reason) > 500:
+            raise LedgerError.invalid_input("LEDGER_LOCK_REASON_REQUIRED")
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if len(self.evidence) > 100:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "reason", reason)
+        object.__setattr__(self, "reconstruction_evidence_digest", digest)
 
 
 @dataclass(frozen=True, slots=True)
@@ -679,6 +824,23 @@ class PeriodLock:
     reason: str
     locked_by: ActorId
     locked_at: Timestamp
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyYearCloseAssessment:
+    assessment_id: CompanyYearCloseAssessmentId
+    close_lock_id: CompanyYearCloseLockId | None
+    reconstruction_assessment_id: ReconstructionAssessmentId
+    company_id: CompanyId
+    income_year: IncomeYear
+    period_end: LocalDate
+    state: CompanyYearCloseState
+    gap_codes: tuple[CompanyYearCloseGapCode, ...]
+    evidence_digest: str
+    ledger_state_digest: str
+    recorded_at: Timestamp
+    is_current: bool
     replayed: bool
 
 
@@ -783,6 +945,31 @@ class LedgerError(DomainError):
 
 
 class LedgerPersistence(Protocol):
+    async def get_company_year_close_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> CompanyYearCloseAssessment: ...
+
+    async def get_company_year_close_replay(
+        self,
+        command: CloseCompanyYearCommand,
+        *,
+        evidence: tuple[CompanyYearCloseEvidence, ...],
+    ) -> CompanyYearCloseAssessment | None: ...
+
+    async def record_company_year_close(
+        self,
+        command: CloseCompanyYearCommand,
+        *,
+        evidence: tuple[CompanyYearCloseEvidence, ...],
+        state: CompanyYearCloseState,
+        gap_codes: tuple[CompanyYearCloseGapCode, ...],
+    ) -> CompanyYearCloseAssessment: ...
+
     async def correct_entry(
         self,
         command: CorrectHoldingActionCommand,
@@ -863,6 +1050,10 @@ def ledger_persistence_adapter(
 
 
 class LedgerCommands(Protocol):
+    async def close_company_year(
+        self, command: CloseCompanyYearCommand
+    ) -> CompanyYearCloseAssessment: ...
+
     async def correct_holding_action(
         self, command: CorrectHoldingActionCommand
     ) -> CorrectedLedgerEntries: ...
@@ -923,6 +1114,15 @@ class LedgerCommands(Protocol):
 
 
 class LedgerQueries(Protocol):
+    async def get_company_year_close_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> CompanyYearCloseAssessment: ...
+
     async def get_reconstruction_assessment(
         self,
         *,
@@ -966,7 +1166,17 @@ __all__ = [
     "CashCapitalIncreaseFacts",
     "CapitalIncreasePhase",
     "CapitalReductionRecognition",
+    "CloseCompanyYearCommand",
     "CompanyTaxAccrualFacts",
+    "CompanyYearCloseAssessment",
+    "CompanyYearCloseAssessmentId",
+    "CompanyYearCloseEvidence",
+    "CompanyYearCloseEvidenceKind",
+    "CompanyYearCloseGapCode",
+    "CompanyYearCloseLockId",
+    "CompanyYearCloseOutputKind",
+    "CompanyYearCloseOutputReference",
+    "CompanyYearCloseState",
     "CorrectHoldingActionCommand",
     "CorrectedLedgerEntries",
     "GroupContributionFacts",

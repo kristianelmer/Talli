@@ -1,13 +1,14 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostBankSuggestionOutcome","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostBankSuggestionOutcome","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
 
-This feature carries ledger-owned commands, reconstruction readiness, and cursor queries through the
-committed generated client. It maps generated response facts into the expiring
+This feature carries ledger-owned commands, reconstruction readiness,
+company-year close status, and cursor queries through the committed generated
+client. It maps generated response facts into the expiring
 snake-case presentation shape used by owner screens, but it does not validate
 balance, choose accounts, construct postings, decide warnings, or authorize a
 company action.
@@ -29,8 +30,11 @@ converted to numbers only for the frozen display/calculation consumers; no
 posting decision is reconstructed.
 
 The reconstruction query renders the backend-owned closed readiness state and
-gap codes. The browser cannot submit or self-attest reconstruction evidence;
-only the future owning capabilities may issue those immutable facts.
+gap codes together with the authoritative ledger-state digest. The close query
+distinguishes a current close from a stale or blocked assessment and preserves
+its immutable trace identifiers. The browser cannot submit or self-attest
+reconstruction or close evidence; only the owning capabilities may issue those
+immutable facts.
 
 Direct Supabase access to `ledger_entries`, `period_locks`, or ledger RPCs,
 handwritten business DTOs, generated-client deep imports, and direct business

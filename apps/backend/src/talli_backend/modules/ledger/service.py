@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -17,7 +18,14 @@ from talli_backend.modules.ledger.public import (
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
     CapitalReductionRecognition,
+    CloseCompanyYearCommand,
     CompanyTaxAccrualFacts,
+    CompanyYearCloseAssessment,
+    CompanyYearCloseEvidence,
+    CompanyYearCloseEvidenceKind,
+    CompanyYearCloseGapCode,
+    CompanyYearCloseOutputKind,
+    CompanyYearCloseState,
     CorrectHoldingActionCommand,
     CorrectedLedgerEntries,
     GroupContributionFacts,
@@ -163,6 +171,23 @@ _FULL_YEAR_COVERAGE_EVIDENCE = frozenset(
         ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
     }
 )
+_COMPANY_YEAR_CLOSE_REQUIREMENTS = (
+    (
+        CompanyYearCloseEvidenceKind.BANK_ROWS_RESOLVED,
+        LedgerSourceCapability.BANKING,
+        CompanyYearCloseGapCode.UNRESOLVED_BANK_ROW,
+    ),
+    (
+        CompanyYearCloseEvidenceKind.MATERIAL_BALANCES_DOCUMENTED,
+        LedgerSourceCapability.DOCUMENTS,
+        CompanyYearCloseGapCode.MATERIAL_BALANCE_UNDOCUMENTED,
+    ),
+    (
+        CompanyYearCloseEvidenceKind.REPORTING_RECONCILED,
+        LedgerSourceCapability.LEDGER,
+        CompanyYearCloseGapCode.REPORTING_NOT_RECONCILED,
+    ),
+)
 _RECONSTRUCTION_GAP_BY_KIND = {
     ReconstructionEvidenceKind.PRIOR_CLOSING_OPENING: ReconstructionGapCode.PRIOR_CLOSING_MISMATCH,
     ReconstructionEvidenceKind.BANK_MOVEMENTS: ReconstructionGapCode.BANK_MOVEMENTS_INCOMPLETE,
@@ -204,6 +229,149 @@ def _balanced(lines: tuple[LedgerLine, ...], *, permit_zero_line: bool = False) 
 class LedgerService:
     def __init__(self, persistence: LedgerPersistence) -> None:
         self._persistence = persistence
+
+    async def get_company_year_close_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> CompanyYearCloseAssessment:
+        return await self._persistence.get_company_year_close_assessment(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            correlation_id=correlation_id,
+        )
+
+    async def close_company_year(
+        self, command: CloseCompanyYearCommand
+    ) -> CompanyYearCloseAssessment:
+        if command.period_end.value.year != int(command.income_year):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        expected = {
+            (kind, issuer): gap
+            for kind, issuer, gap in _COMPANY_YEAR_CLOSE_REQUIREMENTS
+        }
+        by_requirement: dict[
+            tuple[CompanyYearCloseEvidenceKind, LedgerSourceCapability],
+            CompanyYearCloseEvidence,
+        ] = {}
+        for item in command.evidence:
+            key = (item.kind, item.issuer)
+            if key not in expected or key in by_requirement:
+                raise LedgerError.precondition_failed(
+                    "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+                )
+            by_requirement[key] = item
+
+        canonical_evidence: list[CompanyYearCloseEvidence] = []
+        for kind, issuer, expected_gap in _COMPANY_YEAR_CLOSE_REQUIREMENTS:
+            item = by_requirement.get((kind, issuer))
+            if item is None:
+                continue
+            if item.confirmation is ReconstructionEvidenceStatus.CONFIRMED:
+                expected_outputs = (
+                    set(CompanyYearCloseOutputKind)
+                    if kind is CompanyYearCloseEvidenceKind.REPORTING_RECONCILED
+                    else set()
+                )
+            else:
+                expected_outputs = set()
+            output_kinds = [output.kind for output in item.outputs]
+            if len(output_kinds) != len(set(output_kinds)) or set(
+                output_kinds
+            ) != expected_outputs:
+                raise LedgerError.precondition_failed(
+                    "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+                )
+            canonical_evidence.append(
+                replace(
+                    item,
+                    outputs=tuple(
+                        sorted(item.outputs, key=lambda output: output.kind.value)
+                    ),
+                )
+            )
+            if (
+                item.confirmation is not ReconstructionEvidenceStatus.CONFIRMED
+                and item.gap_code is not expected_gap
+            ):
+                raise LedgerError.precondition_failed(
+                    "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+                )
+
+        if len({item.ledger_state_digest for item in canonical_evidence}) > 1:
+            raise LedgerError.precondition_failed(
+                "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+            )
+
+        canonical = tuple(canonical_evidence)
+        replay = await self._persistence.get_company_year_close_replay(
+            command,
+            evidence=canonical,
+        )
+        if replay is not None:
+            return replay
+
+        current = await self._persistence.get_reconstruction_assessment(
+            actor_id=command.actor_id,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            correlation_id=command.correlation_id,
+        )
+        if (
+            current.assessment_id != command.reconstruction_assessment_id
+            or current.evidence_digest != command.reconstruction_evidence_digest
+            or current.as_of != command.period_end
+            or current.ledger_state_digest is None
+            or any(
+                item.ledger_state_digest != current.ledger_state_digest
+                for item in canonical
+            )
+        ):
+            raise LedgerError.precondition_failed(
+                "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
+            )
+
+        gaps: list[CompanyYearCloseGapCode] = []
+        if (command.period_end.value.month, command.period_end.value.day) != (12, 31):
+            gaps.append(CompanyYearCloseGapCode.PERIOD_END_UNSUPPORTED)
+        if current.state is not ReconstructionState.READY:
+            gaps.append(CompanyYearCloseGapCode.SOURCE_INCOMPLETE)
+            if ReconstructionGapCode.BANK_NOT_RECONCILED in current.gap_codes:
+                gaps.append(CompanyYearCloseGapCode.BANK_NOT_RECONCILED)
+            if ReconstructionGapCode.UNSUPPORTED_ACTIVITY_FOUND in current.gap_codes:
+                gaps.append(CompanyYearCloseGapCode.UNSUPPORTED_TRANSACTION)
+        if len(by_requirement) != len(expected):
+            gaps.append(CompanyYearCloseGapCode.CHECK_EVIDENCE_INCOMPLETE)
+
+        for item in canonical:
+            if item.coverage_through != command.period_end:
+                if CompanyYearCloseGapCode.CHECK_EVIDENCE_INCOMPLETE not in gaps:
+                    gaps.append(CompanyYearCloseGapCode.CHECK_EVIDENCE_INCOMPLETE)
+            if item.confirmation is not ReconstructionEvidenceStatus.CONFIRMED:
+                gap = item.gap_code
+                if gap is None:
+                    raise LedgerError.precondition_failed(
+                        "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+                    )
+                if gap not in gaps:
+                    gaps.append(gap)
+
+        gap_codes = tuple(dict.fromkeys(gaps))
+        state = (
+            CompanyYearCloseState.CLOSED
+            if not gap_codes
+            else CompanyYearCloseState.BLOCKED
+        )
+        return await self._persistence.record_company_year_close(
+            command,
+            evidence=canonical,
+            state=state,
+            gap_codes=gap_codes,
+        )
 
     async def correct_holding_action(
         self, command: CorrectHoldingActionCommand

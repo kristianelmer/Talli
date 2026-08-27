@@ -51,6 +51,21 @@ revoke all on function ledger.post_entry(
   text, uuid, integer, text, text, jsonb, jsonb, boolean,
   text, text, text, text
 ) from ledger_executor, talli_ledger_backend;
+revoke all on function ledger.post_supported_entry_v1(
+  text, uuid, integer, text, text, jsonb, text, text, text, text,
+  date, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.correct_entry_v1(
+  text, uuid, integer, uuid, text, text, text, jsonb, text, text,
+  date, text, text, jsonb
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_reconstruction_assessment(
+  text, uuid, integer, date, jsonb, text, text[], text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.close_company_year_v1(
+  text, uuid, integer, date, text, uuid, text, jsonb,
+  text, text[], text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.lock_period(
   text, uuid, integer, text, text, text
 ) from ledger_executor, talli_ledger_backend;
@@ -114,6 +129,11 @@ language plpgsql
 security definer
 set search_path = ''
 as $function$
+declare
+  v_company_year_closed boolean := false;
+  v_legacy_actor_id text := nullif(
+    pg_catalog.current_setting('request.jwt.claim.sub', true), ''
+  );
 begin
   if tg_op = 'INSERT'
     and pg_catalog.lower(pg_catalog.btrim(new.entry_type)) = 'correction_reversal'
@@ -125,6 +145,28 @@ begin
     and pg_catalog.lower(pg_catalog.btrim(old.entry_type)) <> 'correction_reversal'
   then
     raise exception 'ledger_invalid_input';
+  end if;
+  if pg_catalog.to_regclass('ledger.company_year_close_locks') is not null then
+    -- The restored predecessor authorizes with Supabase auth.uid(), while the
+    -- preserved target evidence uses the verified-actor RLS helper. Bridge the
+    -- already-authenticated legacy subject transaction-locally for this guard.
+    if nullif(
+      pg_catalog.current_setting('talli.verified_actor_id', true), ''
+    ) is null and v_legacy_actor_id is not null then
+      perform pg_catalog.set_config(
+        'talli.verified_actor_id', v_legacy_actor_id, true
+      );
+    end if;
+    execute
+      'select exists (
+        select 1 from ledger.company_year_close_locks close_lock
+        where close_lock.company_id = $1 and close_lock.income_year = $2
+      )'
+    into v_company_year_closed
+    using new.company_id, new.income_year;
+  end if;
+  if v_company_year_closed then
+    raise exception 'ledger_period_locked';
   end if;
   if not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';

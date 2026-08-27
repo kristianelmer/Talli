@@ -37,6 +37,11 @@ const companyAccessOperations = {
 };
 const ledgerOperations = {
   startNewYear: ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
+  getCompanyYearCloseAssessment: [
+    "/api/v1/ledger/company-year-close-assessment",
+    "get",
+    "ledgerGetCompanyYearCloseAssessment",
+  ],
   getReconstructionAssessment: [
     "/api/v1/ledger/reconstruction-assessment",
     "get",
@@ -267,9 +272,12 @@ const additionalSchemas = Object.fromEntries([
 const ledgerSchemas = Object.fromEntries([
   "AdministrativeCostEntryWire",
   "AdministrativeCostCategory",
+  "CompanyYearCloseGapCode",
+  "CompanyYearCloseState",
   "LedgerAdministrativeCostWire",
   "LedgerBankSuggestionWire",
   "LedgerCorporateDecisionFinalizationWire",
+  "LedgerCompanyYearCloseAssessmentWire",
   "LedgerEntryKind",
   "LedgerEntryPageWire",
   "LedgerEntryViewWire",
@@ -954,6 +962,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerReconstructionAssessmentWire,
+      );
+    },
+
+    async ledgerGetCompanyYearCloseAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerCompanyYearCloseAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/company-year-close-assessment?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerCompanyYearCloseAssessmentWire,
       );
     },
 

@@ -62,6 +62,7 @@ class ReconstructionPersistenceStub:
             state=result["state"],
             gap_codes=result["gap_codes"],
             evidence_digest="a" * 64,
+            ledger_state_digest="b" * 64,
             recorded_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
             replayed=False,
         )

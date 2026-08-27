@@ -10,6 +10,7 @@ const coordinatorPath = "/repo/supabase/migrations/20260827100500_ledger_writer_
 const reconstructionPath = "/repo/supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql";
 const supportedPatternsPath = "/repo/supabase/migrations/20260827102000_ledger_supported_patterns.sql";
 const correctionsPath = "/repo/supabase/migrations/20260827103000_ledger_corrections.sql";
+const companyYearClosePath = "/repo/supabase/migrations/20260827104000_ledger_company_year_close.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -252,6 +253,11 @@ insert into public.company_eligibility_assessments (
   'supported', true, '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
   timestamptz '2026-01-01 08:00:00+00'
+), (
+  '70000000-0000-0000-0000-000000000004', '${otherCompanyId}', 2026,
+  'supported', true, '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+  timestamptz '2026-01-01 08:00:00+00'
 );
 insert into public.company_year_admissions (
   id, company_id, accounting_year, eligibility_assessment_id,
@@ -267,6 +273,10 @@ insert into public.company_year_admissions (
 ), (
   '71000000-0000-0000-0000-000000000003', '${companyId}', 2029,
   '70000000-0000-0000-0000-000000000003', '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '71000000-0000-0000-0000-000000000004', '${otherCompanyId}', 2026,
+  '70000000-0000-0000-0000-000000000004', '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 );
 insert into public.company_year_acceptances (
@@ -285,6 +295,11 @@ insert into public.company_year_acceptances (
 ), (
   '72000000-0000-0000-0000-000000000003',
   '71000000-0000-0000-0000-000000000003', '${companyId}', 2029,
+  '2026.1',
+  '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
+), (
+  '72000000-0000-0000-0000-000000000004',
+  '71000000-0000-0000-0000-000000000004', '${otherCompanyId}', 2026,
   '2026.1',
   '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de'
 );
@@ -650,6 +665,7 @@ commit;
 function correctionCall({
   actorId = ownerId,
   verifiedSubject = actorId,
+  company = companyId,
   originalEntryId,
   idempotencyKey = "63000000-0000-4000-8000-000000000001",
   reason = "Documented category was wrong",
@@ -660,6 +676,8 @@ function correctionCall({
     { account: "1920", description: "Bank", debit: "0.00", credit: "500.00", currency: "NOK" },
   ],
   correlationId = "ledger-correction-runtime",
+  incomeYear = 2026,
+  eventDate = "2026-08-27",
   correctionScope = "CURRENT_COMPANY_YEAR",
   sources = [
     { role: "PRIMARY", capability: "DOCUMENTS", recordId: "correction:document:1", revision: 1, factSha256: "b".repeat(64) },
@@ -670,8 +688,8 @@ function correctionCall({
 select row_to_json(corrected)::text
 from ledger.correct_entry_v1(
   '${sqlQuote(idempotencyKey)}'::text,
-  '${companyId}'::uuid,
-  2026::integer,
+  '${company}'::uuid,
+  ${incomeYear}::integer,
   '${originalEntryId}'::uuid,
   '${sqlQuote(reason)}'::text,
   '${replacementKind}'::text,
@@ -679,7 +697,7 @@ from ledger.correct_entry_v1(
   '${sqlQuote(JSON.stringify(replacementLines))}'::jsonb,
   '${sqlQuote(correlationId)}'::text,
   '${verifiedSubject}'::text,
-  '2026-08-27'::date,
+  '${eventDate}'::date,
   '${correctionScope}'::text,
   'ledger-supported-patterns-2026.1'::text,
   '${sqlQuote(JSON.stringify(sources))}'::jsonb
@@ -719,7 +737,11 @@ from ledger.lock_period(
 `;
 }
 
-function reconstructionEvidence({ documentsReady = true } = {}) {
+function reconstructionEvidence({
+  documentsReady = true,
+  asOf = "2026-08-27",
+  incomeYear = Number(asOf.slice(0, 4)),
+} = {}) {
   const pairs = [
     ["PRIOR_CLOSING_OPENING", "LEDGER"],
     ["BANK_MOVEMENTS", "BANKING"],
@@ -742,10 +764,10 @@ function reconstructionEvidence({ documentsReady = true } = {}) {
     sourceRecordId: `runtime:${issuer.toLowerCase()}:${index}`,
     factSha256: index.toString(16).padStart(64, "0"),
     coverageFrom: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
-      ? "2026-01-01"
+      ? `${incomeYear}-01-01`
       : null,
     coverageThrough: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
-      ? "2026-08-27"
+      ? asOf
       : null,
     gapCode: kind === "DOCUMENTS" && !documentsReady ? "DOCUMENTS_INCOMPLETE" : null,
   }));
@@ -753,10 +775,13 @@ function reconstructionEvidence({ documentsReady = true } = {}) {
 
 function reconstructionCall({
   actorId = ownerId,
+  company = companyId,
+  incomeYear = 2026,
   idempotencyKey = "61000000-0000-4000-8000-000000000001",
   documentsReady = true,
+  asOf = "2026-08-27",
 } = {}) {
-  const evidence = reconstructionEvidence({ documentsReady });
+  const evidence = reconstructionEvidence({ documentsReady, asOf, incomeYear });
   const state = documentsReady ? "READY" : "BLOCKED";
   const gaps = documentsReady ? "array[]::text[]" : "array['DOCUMENTS_INCOMPLETE']::text[]";
   return String.raw`
@@ -766,14 +791,159 @@ ${actorContext(actorId)}
 select row_to_json(assessment)::text
 from ledger.record_reconstruction_assessment(
   '${idempotencyKey}'::text,
-  '${companyId}'::uuid,
-  2026::integer,
-  '2026-08-27'::date,
+  '${company}'::uuid,
+  ${incomeYear}::integer,
+  '${asOf}'::date,
   '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
   '${state}'::text,
   ${gaps},
   'ledger-reconstruction-runtime'::text,
   '${actorId}'::text
+) assessment;
+commit;
+`;
+}
+
+function companyYearCloseEvidence({
+  periodEnd = "2026-12-31",
+  ledgerStateDigest,
+  statuses = {},
+  omit = [],
+  revision = 1,
+} = {}) {
+  const outputKinds = [
+    "INVESTMENTS",
+    "CORPORATE_GOVERNANCE",
+    "SHAREHOLDER_REGISTER_FILING",
+    "COMPANY_TAX_FILING",
+    "ANNUAL_ACCOUNTS_FILING",
+    "SAF_T",
+    "COMPANY_ARCHIVE",
+  ];
+  const pairs = [
+    ["BANK_ROWS_RESOLVED", "BANKING", "UNRESOLVED_BANK_ROW"],
+    ["MATERIAL_BALANCES_DOCUMENTED", "DOCUMENTS", "MATERIAL_BALANCE_UNDOCUMENTED"],
+    ["REPORTING_RECONCILED", "LEDGER", "REPORTING_NOT_RECONCILED"],
+  ];
+  return pairs.filter(([kind]) => !omit.includes(kind)).map(([
+    kind, issuer, gapCode,
+  ], index) => {
+    const status = statuses[kind] ?? "CONFIRMED";
+    return {
+      kind,
+      issuer,
+      status,
+      sourceRecordId: `close:${issuer.toLowerCase()}:${index}`,
+      revision,
+      factSha256: (index + 10).toString(16).padStart(64, "0"),
+      ledgerStateDigest,
+      coverageThrough: periodEnd,
+      gapCode: status === "CONFIRMED" ? null : gapCode,
+      outputs: kind === "REPORTING_RECONCILED" && status === "CONFIRMED"
+        ? outputKinds.map((outputKind, outputIndex) => ({
+            kind: outputKind,
+            sourceRecordId: `close-output:${outputKind.toLowerCase()}:${revision}`,
+            revision,
+            factSha256: (outputIndex + 20 + revision).toString(16).padStart(64, "0"),
+          }))
+        : [],
+    };
+  });
+}
+
+function companyYearCloseCall({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey = "65000000-0000-4000-8000-000000000001",
+  periodEnd = "2026-12-31",
+  reason = "Evidence-complete company-year close",
+  reconstructionAssessmentId,
+  reconstructionDigest,
+  reconstructionLedgerStateDigest,
+  evidence = companyYearCloseEvidence({
+    periodEnd,
+    ledgerStateDigest: reconstructionLedgerStateDigest,
+  }),
+  derivedState = "CLOSED",
+  gapCodes = [],
+  correlationId = "ledger-company-year-close-runtime",
+} = {}) {
+  const gapsSql = gapCodes.length === 0
+    ? "array[]::text[]"
+    : `array[${gapCodes.map((gap) => `'${sqlQuote(gap)}'`).join(",")}]::text[]`;
+  return String.raw`
+select row_to_json(closed)::text
+from ledger.close_company_year_v1(
+  '${sqlQuote(idempotencyKey)}'::text,
+  '${company}'::uuid,
+  ${incomeYear}::integer,
+  '${periodEnd}'::date,
+  '${sqlQuote(reason)}'::text,
+  '${reconstructionAssessmentId}'::uuid,
+  '${reconstructionDigest}'::text,
+  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  '${derivedState}'::text,
+  ${gapsSql},
+  '${sqlQuote(correlationId)}'::text,
+  '${verifiedSubject}'::text
+) closed;
+`;
+}
+
+function companyYearCloseTransaction(options = {}) {
+  const actorId = options.actorId ?? ownerId;
+  return String.raw`
+begin;
+${actorContext(actorId)}
+${companyYearCloseCall(options)}
+commit;
+`;
+}
+
+function companyYearCloseReplayTransaction({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  idempotencyKey = "65000000-0000-4000-8000-000000000001",
+  periodEnd = "2026-12-31",
+  reason = "Evidence-complete company-year close",
+  reconstructionAssessmentId,
+  reconstructionDigest,
+  reconstructionLedgerStateDigest,
+  evidence = companyYearCloseEvidence({
+    periodEnd,
+    ledgerStateDigest: reconstructionLedgerStateDigest,
+  }),
+  correlationId = "ledger-company-year-close-runtime",
+} = {}) {
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(close_replay)::text
+from ledger.get_company_year_close_replay_v1(
+  '${sqlQuote(idempotencyKey)}'::text,
+  '${companyId}'::uuid,
+  2026::integer,
+  '${periodEnd}'::date,
+  '${sqlQuote(reason)}'::text,
+  '${reconstructionAssessmentId}'::uuid,
+  '${reconstructionDigest}'::text,
+  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  '${sqlQuote(correlationId)}'::text,
+  '${verifiedSubject}'::text
+) close_replay;
+commit;
+`;
+}
+
+function latestCompanyYearCloseTransaction({ actorId = ownerId } = {}) {
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(assessment)::text
+from ledger.get_company_year_close_assessment_v1(
+  '${companyId}'::uuid, 2026::integer, '${actorId}'::text
 ) assessment;
 commit;
 `;
@@ -945,6 +1115,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", reconstructionPath]);
     psql(containerName, ["--file", supportedPatternsPath]);
     psql(containerName, ["--file", correctionsPath]);
+    psql(containerName, ["--file", companyYearClosePath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -970,7 +1141,9 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           and class.relname = any(array[
             'entries', 'period_locks', 'reconstruction_assessments',
             'reconstruction_evidence', 'entry_contexts', 'entry_sources',
-            'entry_corrections'
+            'entry_corrections', 'company_year_close_assessments',
+            'company_year_close_evidence', 'company_year_close_locks',
+            'company_year_close_reporting_outputs'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -979,7 +1152,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -1131,6 +1304,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(blockedReconstruction.state, "BLOCKED");
     assert.deepEqual(blockedReconstruction.gap_codes, ["DOCUMENTS_INCOMPLETE"]);
     assert.match(blockedReconstruction.evidence_digest, /^[a-f0-9]{64}$/u);
+    assert.match(blockedReconstruction.ledger_state_digest, /^[a-f0-9]{64}$/u);
     assert.equal(
       jsonOutput(
         containerName,
@@ -2092,6 +2266,452 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       sourceRecordId: "manual:after-lock",
     })), /ledger_period_locked/iu);
 
+    const lockCountBeforeBlockedClose = lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      "select count(*) from ledger.period_locks;",
+    ));
+    const closeReadyReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000008",
+      }),
+    );
+    const incompleteCloseEvidence = companyYearCloseEvidence({
+      periodEnd: "2026-08-27",
+      ledgerStateDigest: closeReadyReconstruction.ledger_state_digest,
+      omit: ["MATERIAL_BALANCES_DOCUMENTED"],
+    });
+    const blockedClose = jsonOutput(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000002",
+      periodEnd: "2026-08-27",
+      reconstructionAssessmentId: closeReadyReconstruction.assessment_id,
+      reconstructionDigest: closeReadyReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest:
+        closeReadyReconstruction.ledger_state_digest,
+      evidence: incompleteCloseEvidence,
+      derivedState: "BLOCKED",
+      gapCodes: ["PERIOD_END_UNSUPPORTED", "CHECK_EVIDENCE_INCOMPLETE"],
+    }));
+    assert.equal(blockedClose.state, "BLOCKED");
+    assert.equal(blockedClose.close_lock_id, null);
+    assert.deepEqual(
+      blockedClose.gap_codes,
+      ["CHECK_EVIDENCE_INCOMPLETE", "PERIOD_END_UNSUPPORTED"],
+    );
+    assert.equal(lastOutputLine(psql(
+      containerName,
+      ["-Atq"],
+      "select count(*) from ledger.period_locks;",
+    )), lockCountBeforeBlockedClose);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.company_year_close_assessments
+          where id = '${blockedClose.assessment_id}'),
+        (select count(*) from ledger.company_year_close_evidence
+          where assessment_id = '${blockedClose.assessment_id}'));
+    `)), "1:2");
+
+    const blockedYearEndReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000009",
+        documentsReady: false,
+        asOf: "2026-12-31",
+      }),
+    );
+    const reconstructionBlockedClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000008",
+        reconstructionAssessmentId: blockedYearEndReconstruction.assessment_id,
+        reconstructionDigest: blockedYearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest:
+          blockedYearEndReconstruction.ledger_state_digest,
+        derivedState: "BLOCKED",
+        gapCodes: ["SOURCE_INCOMPLETE"],
+      }),
+    );
+    assert.equal(reconstructionBlockedClose.close_lock_id, null);
+    assert.deepEqual(reconstructionBlockedClose.gap_codes, ["SOURCE_INCOMPLETE"]);
+    assert.equal(
+      reconstructionBlockedClose.gap_codes.includes("DOCUMENTS_INCOMPLETE"),
+      false,
+    );
+
+    const yearEndReconstruction = jsonOutput(containerName, reconstructionCall({
+      idempotencyKey: "61000000-0000-4000-8000-000000000010",
+      asOf: "2026-12-31",
+    }));
+    assert.equal(yearEndReconstruction.state, "READY");
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000003",
+      reconstructionAssessmentId: readyReconstruction.assessment_id,
+      reconstructionDigest: readyReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: readyReconstruction.ledger_state_digest,
+    })), /ledger_company_year_close_reconstruction_stale/iu);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000004",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: "f".repeat(64),
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    })), /ledger_company_year_close_reconstruction_stale/iu);
+
+    const unresolvedBankClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000009",
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+        evidence: companyYearCloseEvidence({
+          ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+          statuses: { BANK_ROWS_RESOLVED: "GAP" },
+        }),
+        derivedState: "BLOCKED",
+        gapCodes: ["UNRESOLVED_BANK_ROW"],
+      }),
+    );
+    assert.equal(unresolvedBankClose.close_lock_id, null);
+    assert.deepEqual(unresolvedBankClose.gap_codes, ["UNRESOLVED_BANK_ROW"]);
+
+    const reportingGapClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000015",
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+        evidence: companyYearCloseEvidence({
+          ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+          statuses: { REPORTING_RECONCILED: "GAP" },
+        }),
+        derivedState: "BLOCKED",
+        gapCodes: ["REPORTING_NOT_RECONCILED"],
+      }),
+    );
+    assert.equal(reportingGapClose.close_lock_id, null);
+    assert.deepEqual(reportingGapClose.gap_codes, ["REPORTING_NOT_RECONCILED"]);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from ledger.company_year_close_reporting_outputs
+      where assessment_id = '${reportingGapClose.assessment_id}';
+    `)), "0");
+
+    const partialCoverageEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    });
+    partialCoverageEvidence[0].coverageThrough = "2026-12-30";
+    const partialCoverageClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000011",
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+        evidence: partialCoverageEvidence,
+        derivedState: "BLOCKED",
+        gapCodes: ["CHECK_EVIDENCE_INCOMPLETE"],
+      }),
+    );
+    assert.equal(partialCoverageClose.close_lock_id, null);
+    assert.deepEqual(
+      partialCoverageClose.gap_codes,
+      ["CHECK_EVIDENCE_INCOMPLETE"],
+    );
+    const invalidDateEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    });
+    invalidDateEvidence[0].coverageThrough = "2026-02-30";
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000012",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      evidence: invalidDateEvidence,
+      derivedState: "BLOCKED",
+      gapCodes: ["CHECK_EVIDENCE_INCOMPLETE"],
+    })), /ledger_company_year_close_evidence_invalid/iu);
+    const wrongStateDigestEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    });
+    wrongStateDigestEvidence[0].ledgerStateDigest = "e".repeat(64);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000016",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      evidence: wrongStateDigestEvidence,
+    })), /ledger_company_year_close_evidence_invalid/iu);
+    const missingOutputEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    });
+    missingOutputEvidence[2].outputs.pop();
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000017",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      evidence: missingOutputEvidence,
+    })), /ledger_company_year_close_evidence_invalid/iu);
+
+    assert.equal(psql(containerName, ["-Atq"],
+      companyYearCloseReplayTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000099",
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      })).trim(), "");
+
+    const closedCompanyYear = jsonOutput(containerName, companyYearCloseTransaction({
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    }));
+    assert.equal(closedCompanyYear.state, "CLOSED");
+    assert.deepEqual(closedCompanyYear.gap_codes, []);
+    assert.notEqual(closedCompanyYear.close_lock_id, lockReplay.period_lock_id);
+    assert.ok(closedCompanyYear.close_lock_id);
+    assert.equal(
+      closedCompanyYear.reconstruction_assessment_id,
+      yearEndReconstruction.assessment_id,
+    );
+    assert.match(closedCompanyYear.evidence_digest, /^[a-f0-9]{64}$/u);
+    assert.match(closedCompanyYear.ledger_state_digest, /^[a-f0-9]{64}$/u);
+    assert.equal(closedCompanyYear.is_current, true);
+    assert.equal(closedCompanyYear.replayed, false);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.company_year_close_locks),
+        (select count(*) from ledger.company_year_close_reporting_outputs
+          where assessment_id = '${closedCompanyYear.assessment_id}'),
+        (select bool_and(
+          evidence.ledger_state_digest = '${closedCompanyYear.ledger_state_digest}'
+        ) from ledger.company_year_close_evidence evidence
+          where evidence.assessment_id = '${closedCompanyYear.assessment_id}'),
+        (select string_agg(output.kind, ',' order by output.ordinal)
+          from ledger.company_year_close_reporting_outputs output
+          where output.assessment_id = '${closedCompanyYear.assessment_id}'));
+    `)), "1:7:t:INVESTMENTS,CORPORATE_GOVERNANCE,SHAREHOLDER_REGISTER_FILING,COMPANY_TAX_FILING,ANNUAL_ACCOUNTS_FILING,SAF_T,COMPANY_ARCHIVE");
+    const closedCompanyYearReplay = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      }),
+    );
+    assert.equal(closedCompanyYearReplay.assessment_id, closedCompanyYear.assessment_id);
+    assert.equal(closedCompanyYearReplay.replayed, true);
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      update public.company_memberships
+      set role = 'reviewer'
+      where company_id = '${companyId}' and user_id = '${ownerId}';
+      ${actorContext(ownerId)}
+      select * from ledger.get_company_year_close_replay_v1(
+        '65000000-0000-4000-8000-000000000001',
+        '${companyId}', 2026, date '2026-12-31',
+        'Evidence-complete company-year close',
+        '${yearEndReconstruction.assessment_id}',
+        '${yearEndReconstruction.evidence_digest}',
+        '${sqlQuote(JSON.stringify(companyYearCloseEvidence({
+          ledgerStateDigest: yearEndReconstruction.ledger_state_digest,
+        })))}'::jsonb,
+        'ledger-company-year-close-runtime', '${ownerId}'
+      );
+      commit;
+    `), /ledger_forbidden/iu);
+    assert.match(psqlFailure(containerName, companyYearCloseReplayTransaction({
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      correlationId: "changed-replay-correlation",
+    })), /ledger_idempotency_key_reused/iu);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      reason: "Changed close reason on reused key",
+    })), /ledger_idempotency_key_reused/iu);
+
+    const statutoryPostOptions = {
+      actorId: otherOwnerId,
+      company: otherCompanyId,
+      incomeYear: 2026,
+      idempotencyKey: "50000000-0000-4000-8000-000000000071",
+      entryKind: "ADMINISTRATIVE_COST",
+      memo: "Pre-close other-company cost",
+      lines: [
+        { account: "7795", description: "Administration cost", debit: "75.00", credit: "0.00", currency: "NOK" },
+        { account: "1920", description: "Bank", debit: "0.00", credit: "75.00", currency: "NOK" },
+      ],
+      sourceCapability: "BANKING",
+      sourceRecordId: "statutory-close:pre-close-cost",
+      correlationId: "statutory-close-pre-close-post",
+    };
+    const preCloseStatutoryPost = jsonOutput(
+      containerName,
+      postTransaction(statutoryPostOptions),
+    );
+    const statutoryReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        actorId: otherOwnerId,
+        company: otherCompanyId,
+        idempotencyKey: "61000000-0000-4000-8000-000000000071",
+        asOf: "2026-12-31",
+      }),
+    );
+    const freshPostAfterClose = {
+      ...statutoryPostOptions,
+      idempotencyKey: "50000000-0000-4000-8000-000000000072",
+      memo: "Forbidden post-close cost",
+      sourceRecordId: "statutory-close:forbidden-cost",
+      correlationId: "statutory-close-forbidden-post",
+    };
+    const statutoryCloseSession = interactivePsql(containerName);
+    statutoryCloseSession.child.stdin.write(String.raw`
+      set application_name = 'ledger_statutory_close';
+      begin;
+      ${actorContext(otherOwnerId)}
+      ${companyYearCloseCall({
+        actorId: otherOwnerId,
+        company: otherCompanyId,
+        idempotencyKey: "65000000-0000-4000-8000-000000000071",
+        reconstructionAssessmentId: statutoryReconstruction.assessment_id,
+        reconstructionDigest: statutoryReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: statutoryReconstruction.ledger_state_digest,
+        correlationId: "statutory-close-other-company",
+      })}
+      select 'statutory_close_holds_company_year_lock';
+    `);
+    await waitForOutput(
+      statutoryCloseSession,
+      /statutory_close_holds_company_year_lock/u,
+    );
+    const racedPostSession = interactivePsql(containerName);
+    racedPostSession.child.stdin.end(String.raw`
+      set application_name = 'ledger_post_during_statutory_close';
+      ${postTransaction(freshPostAfterClose)}
+    `);
+    let racedPostBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      racedPostBlocked = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select count(*) from pg_catalog.pg_stat_activity
+        where application_name = 'ledger_post_during_statutory_close'
+          and wait_event_type = 'Lock' and wait_event = 'advisory';
+      `)) === "1";
+      if (racedPostBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      racedPostBlocked,
+      true,
+      "ordinary post did not serialize behind statutory close",
+    );
+    statutoryCloseSession.child.stdin.end("commit;\n\\q\n");
+    const statutoryCloseResult = await processResult(statutoryCloseSession);
+    assert.equal(statutoryCloseResult.code, 0, statutoryCloseResult.stderr);
+    const statutoryClose = JSON.parse(
+      statutoryCloseResult.stdout.split("\n").find((line) => (
+        line.startsWith('{"assessment_id"')
+      )),
+    );
+    const racedPostResult = await processResult(racedPostSession);
+    assert.notEqual(racedPostResult.code, 0);
+    assert.match(racedPostResult.stderr, /ledger_period_locked/iu);
+    assert.equal(statutoryClose.state, "CLOSED");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from ledger.period_locks
+      where company_id = '${otherCompanyId}' and income_year = 2026;
+    `)), "0");
+    const postReplayAfterStatutoryClose = jsonOutput(
+      containerName,
+      postTransaction(statutoryPostOptions),
+    );
+    assert.equal(
+      postReplayAfterStatutoryClose.ledger_entry_id,
+      preCloseStatutoryPost.ledger_entry_id,
+    );
+    assert.equal(postReplayAfterStatutoryClose.replayed, true);
+
+    const supportedPostAfterStatutoryClose = String.raw`
+      begin;
+      ${actorContext(otherOwnerId)}
+      select * from ledger.post_supported_entry_v1(
+        '62000000-0000-4000-8000-000000000072', '${otherCompanyId}', 2026,
+        'BANK_INTEREST', 'Forbidden post-close bank interest',
+        '[{"account":"1920","description":"Bank","debit":"25.00","credit":"0.00","currency":"NOK"},
+          {"account":"8050","description":"Interest","debit":"0.00","credit":"25.00","currency":"NOK"}]'::jsonb,
+        'BANKING', 'statutory-close:forbidden-interest',
+        'statutory-close-forbidden-supported', '${otherOwnerId}',
+        '2026-12-31', 'ledger-supported-patterns-2026.1',
+        '[{"role":"PRIMARY","capability":"BANKING","recordId":"statutory-close:forbidden-interest","revision":1,"factSha256":"${"d".repeat(64)}"}]'::jsonb
+      );
+      commit;
+    `;
+    assert.match(
+      psqlFailure(containerName, supportedPostAfterStatutoryClose),
+      /ledger_period_locked/iu,
+    );
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where company_id = '${otherCompanyId}'
+            and source_record_id in (
+              'statutory-close:forbidden-cost',
+              'statutory-close:forbidden-interest'
+            )),
+        (select count(*) from backend_system.ledger_command_receipts
+          where company_id = '${otherCompanyId}'
+            and idempotency_key in (
+              '50000000-0000-4000-8000-000000000072',
+              '62000000-0000-4000-8000-000000000072'
+            )));
+    `)), "0:0");
+
+    const linkedCorrectionAfterStatutoryClose = jsonOutput(
+      containerName,
+      correctionTransaction({
+        actorId: otherOwnerId,
+        company: otherCompanyId,
+        originalEntryId: preCloseStatutoryPost.ledger_entry_id,
+        idempotencyKey: "63000000-0000-4000-8000-000000000071",
+        correlationId: "statutory-close-linked-correction",
+        sources: [
+          { role: "PRIMARY", capability: "DOCUMENTS", recordId: "statutory-close:correction-document", revision: 1, factSha256: "e".repeat(64) },
+          { role: "CORROBORATING", capability: "BANKING", recordId: "statutory-close:correction-bank", revision: 1, factSha256: "f".repeat(64) },
+        ],
+      }),
+    );
+    assert.equal(linkedCorrectionAfterStatutoryClose.company_id, otherCompanyId);
+    assert.equal(linkedCorrectionAfterStatutoryClose.replayed, false);
+
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      actorId: reviewerId,
+      idempotencyKey: "65000000-0000-4000-8000-000000000005",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    })), /ledger_forbidden/iu);
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      set local role ledger_executor;
+      insert into ledger.company_year_close_assessments (
+        company_id, income_year, period_end, reason,
+        reconstruction_assessment_id, reconstruction_digest, state, gap_codes,
+        evidence_digest, ledger_state_digest, correlation_id, recorded_by
+      ) values (
+        '${companyId}', 2026, date '2026-12-31', 'Forged close',
+        '${yearEndReconstruction.assessment_id}',
+        '${yearEndReconstruction.evidence_digest}', 'BLOCKED',
+        array['SOURCE_INCOMPLETE']::text[], '${"1".repeat(64)}',
+        '${"2".repeat(64)}', 'forged-close', '${ownerId}'
+      );
+      commit;
+    `), /permission denied/iu);
+    const staleCloseDigest = closedCompanyYear.ledger_state_digest;
+
     const missingCorrectionId = "40000000-0000-0000-0000-000000000099";
     assert.match(psqlFailure(containerName, correctionTransaction({
       originalEntryId: missingCorrectionId,
@@ -2110,6 +2730,12 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       originalEntryId: correctionOriginal.ledger_entry_id,
       idempotencyKey: "63000000-0000-4000-8000-000000000006",
       correctionScope: "PRIOR_YEAR_ERROR",
+    })), /ledger_prior_year_correction_policy_unresolved/iu);
+    assert.match(psqlFailure(containerName, correctionTransaction({
+      originalEntryId: correctionOriginal.ledger_entry_id,
+      idempotencyKey: "63000000-0000-4000-8000-000000000007",
+      incomeYear: 2025,
+      eventDate: "2025-08-27",
     })), /ledger_prior_year_correction_policy_unresolved/iu);
 
     const correction = jsonOutput(containerName, correctionTransaction({
@@ -2134,6 +2760,170 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       originalEntryId: correctionOriginal.ledger_entry_id,
       idempotencyKey: "63000000-0000-4000-8000-000000000004",
     })), /ledger_entry_already_corrected/iu);
+
+    const closeReplayBeforeFreshness = jsonOutput(
+      containerName,
+      companyYearCloseReplayTransaction({
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      }),
+    );
+    assert.equal(closeReplayBeforeFreshness.assessment_id, closedCompanyYear.assessment_id);
+    assert.equal(closeReplayBeforeFreshness.ledger_state_digest, staleCloseDigest);
+    assert.equal(closeReplayBeforeFreshness.is_current, false);
+    assert.equal(closeReplayBeforeFreshness.replayed, true);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000006",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      correlationId: "ledger-company-year-reclose-runtime",
+    })), /ledger_company_year_close_reconstruction_stale/iu);
+
+    const refreshedYearEndReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000011",
+        asOf: "2026-12-31",
+      }),
+    );
+    assert.notEqual(
+      refreshedYearEndReconstruction.ledger_state_digest,
+      yearEndReconstruction.ledger_state_digest,
+    );
+    const refreshedCloseEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: refreshedYearEndReconstruction.ledger_state_digest,
+      revision: 2,
+    });
+    const reclosedCompanyYear = jsonOutput(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000006",
+      reconstructionAssessmentId: refreshedYearEndReconstruction.assessment_id,
+      reconstructionDigest: refreshedYearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest:
+        refreshedYearEndReconstruction.ledger_state_digest,
+      evidence: refreshedCloseEvidence,
+      correlationId: "ledger-company-year-reclose-runtime",
+    }));
+    assert.equal(reclosedCompanyYear.state, "CLOSED");
+    assert.equal(reclosedCompanyYear.close_lock_id, closedCompanyYear.close_lock_id);
+    assert.notEqual(reclosedCompanyYear.assessment_id, closedCompanyYear.assessment_id);
+    assert.notEqual(reclosedCompanyYear.ledger_state_digest, staleCloseDigest);
+    const historicalCloseReplay = jsonOutput(
+      containerName,
+      companyYearCloseReplayTransaction({
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      }),
+    );
+    assert.equal(historicalCloseReplay.assessment_id, closedCompanyYear.assessment_id);
+    assert.equal(historicalCloseReplay.ledger_state_digest, staleCloseDigest);
+    assert.equal(historicalCloseReplay.is_current, false);
+    assert.equal(historicalCloseReplay.replayed, true);
+    const latestCloseAssessment = jsonOutput(
+      containerName,
+      latestCompanyYearCloseTransaction(),
+    );
+    assert.equal(latestCloseAssessment.assessment_id, reclosedCompanyYear.assessment_id);
+    assert.equal(latestCloseAssessment.reconstruction_assessment_id,
+      refreshedYearEndReconstruction.assessment_id);
+    assert.equal(latestCloseAssessment.is_current, true);
+
+    const journalDefenseEntryId = "40000000-0000-0000-0000-000000000088";
+    psql(containerName, [], String.raw`
+      alter table ledger.entries disable trigger ledger_entries_enforce_boundary;
+      insert into ledger.entries (
+        id, company_id, income_year, entry_kind, memo, lines, risk_flags,
+        warning_accepted_by, warning_accepted_at, posted_at, created_by,
+        created_at, source_capability, source_record_id, correlation_id
+      ) select
+        '${journalDefenseEntryId}', company_id, income_year, 'MANUAL_JOURNAL',
+        'Defense-in-depth unbalanced fixture',
+        '[{"account":"7795","description":"Cost","debit":"25.00","credit":"0.00","currency":"NOK"},
+          {"account":"1920","description":"Bank","debit":"0.00","credit":"20.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, null, null, pg_catalog.statement_timestamp(),
+        '${ownerId}', pg_catalog.statement_timestamp(), 'LEDGER',
+        'defense:journal-unbalanced', 'defense-journal-unbalanced'
+      from ledger.entries where id = '${correctionOriginal.ledger_entry_id}';
+      alter table ledger.entries enable trigger ledger_entries_enforce_boundary;
+    `);
+    const journalDefenseReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000012",
+        asOf: "2026-12-31",
+      }),
+    );
+    const journalUnbalancedClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000013",
+        reconstructionAssessmentId: journalDefenseReconstruction.assessment_id,
+        reconstructionDigest: journalDefenseReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest:
+          journalDefenseReconstruction.ledger_state_digest,
+        evidence: companyYearCloseEvidence({
+          ledgerStateDigest: journalDefenseReconstruction.ledger_state_digest,
+          revision: 3,
+        }),
+      }),
+    );
+    assert.equal(journalUnbalancedClose.state, "BLOCKED");
+    assert.deepEqual(journalUnbalancedClose.gap_codes, ["JOURNAL_UNBALANCED"]);
+    assert.equal(journalUnbalancedClose.close_lock_id, null);
+    psql(containerName, [], String.raw`
+      delete from ledger.entries where id = '${journalDefenseEntryId}';
+    `);
+
+    const duplicateDefenseEntryId = "40000000-0000-0000-0000-000000000089";
+    psql(containerName, [], String.raw`
+      drop index ledger.ledger_entries_source_capability_record_uidx;
+      insert into ledger.entries (
+        id, company_id, income_year, entry_kind, memo, lines, risk_flags,
+        warning_accepted_by, warning_accepted_at, posted_at, created_by,
+        created_at, source_capability, source_record_id, correlation_id
+      ) select
+        '${duplicateDefenseEntryId}', company_id, income_year, entry_kind,
+        'Defense-in-depth duplicate fixture', lines, risk_flags,
+        warning_accepted_by, warning_accepted_at,
+        pg_catalog.statement_timestamp(), '${ownerId}',
+        pg_catalog.statement_timestamp(), source_capability, source_record_id,
+        'defense-duplicate-posting'
+      from ledger.entries where id = '${correctionOriginal.ledger_entry_id}';
+    `);
+    const duplicateDefenseReconstruction = jsonOutput(
+      containerName,
+      reconstructionCall({
+        idempotencyKey: "61000000-0000-4000-8000-000000000013",
+        asOf: "2026-12-31",
+      }),
+    );
+    const duplicatePostingClose = jsonOutput(
+      containerName,
+      companyYearCloseTransaction({
+        idempotencyKey: "65000000-0000-4000-8000-000000000014",
+        reconstructionAssessmentId: duplicateDefenseReconstruction.assessment_id,
+        reconstructionDigest: duplicateDefenseReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest:
+          duplicateDefenseReconstruction.ledger_state_digest,
+        evidence: companyYearCloseEvidence({
+          ledgerStateDigest: duplicateDefenseReconstruction.ledger_state_digest,
+          revision: 4,
+        }),
+      }),
+    );
+    assert.equal(duplicatePostingClose.state, "BLOCKED");
+    assert.deepEqual(duplicatePostingClose.gap_codes, ["DUPLICATE_POSTING_FOUND"]);
+    assert.equal(duplicatePostingClose.close_lock_id, null);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from ledger.company_year_close_locks;
+    `)), "2");
+    psql(containerName, [], String.raw`
+      delete from ledger.entries where id = '${duplicateDefenseEntryId}';
+      create unique index ledger_entries_source_capability_record_uidx
+        on ledger.entries(company_id, source_capability, source_record_id);
+    `);
 
     const correctionEvidence = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -2200,6 +2990,10 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       select concat_ws(':',
         (select count(*) from ledger.entries),
         (select count(*) from ledger.period_locks),
+        (select count(*) from ledger.company_year_close_assessments),
+        (select count(*) from ledger.company_year_close_evidence),
+        (select count(*) from ledger.company_year_close_locks),
+        (select count(*) from ledger.company_year_close_reporting_outputs),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries), ''), 'sha256'), 'hex'));
@@ -2208,7 +3002,40 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", rollbackPath]);
     assert.match(psqlFailure(containerName, correctionTransaction({
       originalEntryId: correctionOriginal.ledger_entry_id,
-    })), /ledger_cutover_inactive/iu);
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000007",
+      reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+      reconstructionDigest: yearEndReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, reconstructionCall({
+      idempotencyKey: "61000000-0000-4000-8000-000000000099",
+      asOf: "2026-12-31",
+    })), /permission denied/iu);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.post_supported_entry_v1(text,uuid,integer,text,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.correct_entry_v1(text,uuid,integer,uuid,text,text,text,jsonb,text,text,date,text,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.close_company_year_v1(text,uuid,integer,date,text,uuid,text,jsonb,text,text[],text,text)',
+          'execute'
+        ));
+    `)), "f:f:f:f");
     assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -2249,6 +3076,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         has_table_privilege('service_role', 'public.ledger_entries', 'insert'));
     `));
     assert.equal(overlapPrivileges, "t:t:t:f");
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      set local role authenticated;
+      set local request.jwt.claim.sub = '${otherOwnerId}';
+      insert into public.ledger_entries (
+        id, company_id, income_year, entry_type, memo, lines, risk_flags,
+        posted_at, created_by, created_at
+      ) values (
+        '64000000-0000-4000-8000-000000000071', '${otherCompanyId}', 2026,
+        'manual_journal', 'Forbidden rollback-window post-close write',
+        '[{"account":"7795","description":"Cost","debit":"25.00","credit":"0.00","currency":"NOK"},
+          {"account":"1920","description":"Bank","debit":"0.00","credit":"25.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, timestamptz '2026-12-31 23:00:00+00', '${otherOwnerId}',
+        timestamptz '2026-12-31 23:00:00+00'
+      );
+      commit;
+    `), /ledger_period_locked/iu);
     assert.match(psqlFailure(containerName, String.raw`
       begin;
       set local role authenticated;
@@ -2303,6 +3147,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", coordinatorPath]);
     psql(containerName, ["--file", supportedPatternsPath]);
     psql(containerName, ["--file", correctionsPath]);
+    psql(containerName, ["--file", companyYearClosePath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -2356,11 +3201,27 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(recutoverCorrectionReplay.reversal_entry_id, correction.reversal_entry_id);
     assert.equal(recutoverCorrectionReplay.replacement_entry_id, correction.replacement_entry_id);
     assert.equal(recutoverCorrectionReplay.replayed, true);
+    const recutoverCloseReplay = jsonOutput(
+      containerName,
+      companyYearCloseReplayTransaction({
+        reconstructionAssessmentId: yearEndReconstruction.assessment_id,
+        reconstructionDigest: yearEndReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: yearEndReconstruction.ledger_state_digest,
+      }),
+    );
+    assert.equal(recutoverCloseReplay.assessment_id, closedCompanyYear.assessment_id);
+    assert.equal(recutoverCloseReplay.ledger_state_digest, staleCloseDigest);
+    assert.equal(recutoverCloseReplay.is_current, false);
+    assert.equal(recutoverCloseReplay.replayed, true);
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         (select count(*) from ledger.entries) - 1,
         (select count(*) from ledger.period_locks),
+        (select count(*) from ledger.company_year_close_assessments),
+        (select count(*) from ledger.company_year_close_evidence),
+        (select count(*) from ledger.company_year_close_locks),
+        (select count(*) from ledger.company_year_close_reporting_outputs),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries where id <> '${malformedLegacyEntryId}'), ''),

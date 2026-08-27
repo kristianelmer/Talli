@@ -3,6 +3,7 @@ import {
   type LedgerAdministrativeCostWire,
   type LedgerBankSuggestionWire,
   type LedgerCorporateDecisionFinalizationWire,
+  type LedgerCompanyYearCloseAssessmentWire,
   type LedgerEntryViewWire,
   type LedgerInvestmentDividendWire,
   type LedgerInvestmentPurchaseWire,
@@ -134,6 +135,19 @@ export function loadLedgerReconstructionAssessment(
   requestId?: string,
 ): Promise<LedgerReconstructionAssessmentWire> {
   return client(accessToken).ledgerGetReconstructionAssessment({
+    companyId,
+    incomeYear,
+    ...request(requestId),
+  });
+}
+
+export function loadLedgerCompanyYearCloseAssessment(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+  requestId?: string,
+): Promise<LedgerCompanyYearCloseAssessmentWire> {
+  return client(accessToken).ledgerGetCompanyYearCloseAssessment({
     companyId,
     incomeYear,
     ...request(requestId),

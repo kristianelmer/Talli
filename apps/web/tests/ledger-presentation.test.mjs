@@ -8,6 +8,7 @@ import {
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
   loadLedgerPeriodLocks,
+  loadLedgerCompanyYearCloseAssessment,
   loadLedgerReconstructionAssessment,
   loadOpeningSnapshots,
   postLedgerAdministrativeCost,
@@ -18,6 +19,7 @@ import {
   presentLedgerEntries,
   presentLedgerEntriesForArchive,
   presentLedgerPeriodLocks,
+  presentLedgerCompanyYearClose,
   presentLedgerReconstruction,
   presentOpeningSnapshots,
 } from "../features/ledger/index.ts";
@@ -329,6 +331,7 @@ test("reconstruction readiness comes from the generated backend contract", async
       state: "BLOCKED",
       gapCodes: ["BANK_MOVEMENTS_INCOMPLETE", "DOCUMENTS_INCOMPLETE"],
       evidenceDigest: "a".repeat(64),
+      ledgerStateDigest: "d".repeat(64),
       recordedAt: "2026-08-27T10:00:00Z",
     });
   };
@@ -354,6 +357,7 @@ test("reconstruction readiness comes from the generated backend contract", async
       income_year: 2026,
       as_of: "2026-08-27",
       ready: false,
+      refresh_message: null,
       gaps: [
         {
           code: "BANK_MOVEMENTS_INCOMPLETE",
@@ -365,6 +369,7 @@ test("reconstruction readiness comes from the generated backend contract", async
         },
       ],
       evidence_digest: "a".repeat(64),
+      ledger_state_digest: "d".repeat(64),
       recorded_at: "2026-08-27T10:00:00Z",
     });
   } finally {
@@ -372,6 +377,117 @@ test("reconstruction readiness comes from the generated backend contract", async
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
     else process.env.TALLI_BACKEND_URL = originalUrl;
   }
+});
+
+test("current company-year close comes from the generated read-only backend contract", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const calls = [];
+  globalThis.fetch = async (url, request) => {
+    calls.push({ url: String(url), request });
+    return Response.json({
+      assessmentId: "42000000-0000-0000-0000-000000000004",
+      closeLockId: "43000000-0000-0000-0000-000000000004",
+      reconstructionAssessmentId: "41000000-0000-0000-0000-000000000004",
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+      periodEnd: "2026-12-31",
+      state: "CLOSED",
+      gapCodes: [],
+      evidenceDigest: "b".repeat(64),
+      ledgerStateDigest: "c".repeat(64),
+      recordedAt: "2026-08-27T10:00:00Z",
+      replayed: false,
+      isCurrent: true,
+    });
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+
+  try {
+    const result = await loadLedgerCompanyYearCloseAssessment(
+      "session-token",
+      OPENING_COMPANY_ID,
+      2026,
+      "company-year-close-query-test",
+    );
+
+    assert.match(calls[0].url, /company-year-close-assessment/u);
+    assert.match(calls[0].url, /companyId=10000000-0000-0000-0000-000000000001/u);
+    assert.match(calls[0].url, /incomeYear=2026/u);
+    const headers = new Headers(calls[0].request.headers);
+    assert.equal(headers.get("Authorization"), "Bearer session-token");
+    assert.equal(headers.get("X-Request-ID"), "company-year-close-query-test");
+    assert.deepEqual(presentLedgerCompanyYearClose(result), {
+      assessment_id: "42000000-0000-0000-0000-000000000004",
+      close_lock_id: "43000000-0000-0000-0000-000000000004",
+      reconstruction_assessment_id: "41000000-0000-0000-0000-000000000004",
+      company_id: OPENING_COMPANY_ID,
+      income_year: 2026,
+      period_end: "2026-12-31",
+      status: "closed_current",
+      title: "Året er avsluttet",
+      message: "Avslutningen bygger på siste bokførte versjon.",
+      gaps: [],
+      evidence_digest: "b".repeat(64),
+      ledger_state_digest: "c".repeat(64),
+      recorded_at: "2026-08-27T10:00:00Z",
+      replayed: false,
+      is_current: true,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("company-year close presentation distinguishes stale and blocked assessments", () => {
+  const current = {
+    assessmentId: "42000000-0000-0000-0000-000000000004",
+    closeLockId: "43000000-0000-0000-0000-000000000004",
+    reconstructionAssessmentId: "41000000-0000-0000-0000-000000000004",
+    companyId: OPENING_COMPANY_ID,
+    incomeYear: 2026,
+    periodEnd: "2026-12-31",
+    state: "CLOSED",
+    gapCodes: [],
+    evidenceDigest: "b".repeat(64),
+    ledgerStateDigest: "c".repeat(64),
+    recordedAt: "2026-08-27T10:00:00Z",
+    replayed: false,
+    isCurrent: true,
+  };
+
+  const stale = presentLedgerCompanyYearClose({ ...current, isCurrent: false });
+  assert.equal(stale.status, "closed_stale");
+  assert.equal(stale.title, "Året må avsluttes på nytt");
+  assert.equal(
+    stale.message,
+    "Kontrollgrunnlaget er ikke lenger det nyeste. Oppdater kontrollene og avslutt året på nytt.",
+  );
+  assert.equal(stale.close_lock_id, current.closeLockId);
+  assert.equal(stale.is_current, false);
+
+  const blocked = presentLedgerCompanyYearClose({
+    ...current,
+    closeLockId: null,
+    state: "BLOCKED",
+    gapCodes: ["SOURCE_INCOMPLETE", "BANK_NOT_RECONCILED"],
+    isCurrent: false,
+  });
+  assert.equal(blocked.status, "blocked");
+  assert.equal(blocked.title, "Året kan ikke avsluttes ennå");
+  assert.equal(blocked.message, "Fullfør kontrollene før året avsluttes.");
+  assert.deepEqual(blocked.gaps, [
+    {
+      code: "SOURCE_INCOMPLETE",
+      message: "Kildegrunnlaget for året er ikke komplett.",
+    },
+    {
+      code: "BANK_NOT_RECONCILED",
+      message: "Bankkontoene er ikke fullt avstemt.",
+    },
+  ]);
 });
 
 test("generated reconstruction decoder rejects unknown gap codes", async () => {
@@ -385,12 +501,82 @@ test("generated reconstruction decoder rejects unknown gap codes", async () => {
       state: "BLOCKED",
       gapCodes: ["OWNER_SUPPLIED_FREE_TEXT"],
       evidenceDigest: "a".repeat(64),
+      ledgerStateDigest: "d".repeat(64),
       recordedAt: "2026-08-27T10:00:00Z",
     }),
   });
 
   await assert.rejects(
     generated.ledgerGetReconstructionAssessment({
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+    }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
+});
+
+test("generated reconstruction decoder preserves historical null and rejects malformed digests", async () => {
+  const response = {
+    assessmentId: "40000000-0000-0000-0000-000000000004",
+    companyId: OPENING_COMPANY_ID,
+    incomeYear: 2026,
+    asOf: "2026-08-27",
+    state: "READY",
+    gapCodes: [],
+    evidenceDigest: "a".repeat(64),
+    ledgerStateDigest: null,
+    recordedAt: "2026-08-27T10:00:00Z",
+  };
+  const generated = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async () => Response.json(response),
+  });
+
+  const historical = await generated.ledgerGetReconstructionAssessment({
+    companyId: OPENING_COMPANY_ID,
+    incomeYear: 2026,
+  });
+  const historicalPresentation = presentLedgerReconstruction(historical);
+  assert.equal(historicalPresentation.ledger_state_digest, null);
+  assert.equal(historicalPresentation.ready, false);
+  assert.equal(
+    historicalPresentation.refresh_message,
+    "Oppdater årsgrunnlaget før du avslutter året.",
+  );
+
+  response.ledgerStateDigest = "not-authoritative";
+
+  await assert.rejects(
+    generated.ledgerGetReconstructionAssessment({
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+    }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
+});
+
+test("generated company-year close decoder rejects unknown gap codes", async () => {
+  const generated = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async () => Response.json({
+      assessmentId: "42000000-0000-0000-0000-000000000004",
+      closeLockId: null,
+      reconstructionAssessmentId: "41000000-0000-0000-0000-000000000004",
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+      periodEnd: "2026-12-31",
+      state: "BLOCKED",
+      gapCodes: ["OWNER_SUPPLIED_FREE_TEXT"],
+      evidenceDigest: "b".repeat(64),
+      ledgerStateDigest: "c".repeat(64),
+      recordedAt: "2026-08-27T10:00:00Z",
+      replayed: false,
+      isCurrent: false,
+    }),
+  });
+
+  await assert.rejects(
+    generated.ledgerGetCompanyYearCloseAssessment({
       companyId: OPENING_COMPANY_ID,
       incomeYear: 2026,
     }),
@@ -748,6 +934,22 @@ test("ledger presentation maps generated facts without recreating posting policy
     message: "Manuell journal berører filing-sensitiv konto 1800.",
   });
   assert.equal(presented.warning_accepted_at, "2026-08-27T09:59:58Z");
+
+  for (const [entryKind, entryType] of [
+    ["BANK_INTEREST", "bank_interest"],
+    ["BANK_LOAN", "bank_loan"],
+    ["CAPITAL_INCREASE", "capital_increase"],
+    ["CAPITAL_REDUCTION", "capital_reduction"],
+    ["COMPANY_TAX_ACCRUAL", "company_tax_accrual"],
+    ["CORRECTION_REVERSAL", "correction_reversal"],
+    ["GROUP_CONTRIBUTION", "group_contribution"],
+    ["INTERCOMPANY_LOAN", "intercompany_loan"],
+  ]) {
+    assert.equal(
+      presentLedgerEntries([entry({ entryKind })])[0].entry_type,
+      entryType,
+    );
+  }
 
   assert.deepEqual(presentLedgerPeriodLocks([{
     companyId: "10000000-0000-0000-0000-000000000001",

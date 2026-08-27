@@ -86,6 +86,9 @@ from talli_backend.modules.system_boundary.public import (
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     BankSuggestionRule,
+    CompanyYearCloseAssessment,
+    CompanyYearCloseGapCode,
+    CompanyYearCloseState,
     LedgerCursor,
     LedgerEntryPage,
     LedgerEntryId,
@@ -497,7 +500,24 @@ class LedgerReconstructionAssessmentWire(TransportModel):
     state: ReconstructionState
     gap_codes: list[ReconstructionGapCode]
     evidence_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    ledger_state_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
     recorded_at: datetime
+
+
+class LedgerCompanyYearCloseAssessmentWire(TransportModel):
+    assessment_id: UUID
+    close_lock_id: UUID | None
+    reconstruction_assessment_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    period_end: date
+    state: CompanyYearCloseState
+    gap_codes: list[CompanyYearCloseGapCode]
+    evidence_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    ledger_state_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    recorded_at: datetime
+    replayed: bool
+    is_current: bool
 
 
 def _money_wire(value: Money) -> LedgerMoneyWire:
@@ -539,7 +559,30 @@ def _reconstruction_wire(
         state=value.state,
         gap_codes=list(value.gap_codes),
         evidence_digest=value.evidence_digest,
+        ledger_state_digest=value.ledger_state_digest,
         recorded_at=value.recorded_at.value,
+    )
+
+
+def _company_year_close_wire(
+    value: CompanyYearCloseAssessment,
+) -> LedgerCompanyYearCloseAssessmentWire:
+    return LedgerCompanyYearCloseAssessmentWire(
+        assessment_id=str(value.assessment_id),
+        close_lock_id=(
+            str(value.close_lock_id) if value.close_lock_id is not None else None
+        ),
+        reconstruction_assessment_id=str(value.reconstruction_assessment_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        period_end=value.period_end.value,
+        state=value.state,
+        gap_codes=list(value.gap_codes),
+        evidence_digest=value.evidence_digest,
+        ledger_state_digest=value.ledger_state_digest,
+        recorded_at=value.recorded_at.value,
+        replayed=value.replayed,
+        is_current=value.is_current,
     )
 
 
@@ -1471,6 +1514,36 @@ def create_app(
                 correlation_id=ledger_correlation(request),
             )
             return _reconstruction_wire(assessment)
+
+        return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/ledger/company-year-close-assessment",
+        operation_id="ledgerGetCompanyYearCloseAssessment",
+        response_model=LedgerCompanyYearCloseAssessmentWire,
+        responses={
+            200: {"description": "Latest immutable company-year close assessment."}
+            | ledger_success
+        }
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_ledger_company_year_close_assessment(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerCompanyYearCloseAssessmentWire:
+        async def execute() -> LedgerCompanyYearCloseAssessmentWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            assessment = await session.get_company_year_close_assessment(
+                actor_id=session.actor_id,
+                company_id=CompanyId(str(company_id)),
+                income_year=IncomeYear(income_year),
+                correlation_id=ledger_correlation(request),
+            )
+            return _company_year_close_wire(assessment)
 
         return await ledger_call(execute)
 

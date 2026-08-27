@@ -1305,6 +1305,30 @@
         "title": "CompanyYearAdmissionResponse",
         "type": "object"
       },
+      "CompanyYearCloseGapCode": {
+        "enum": [
+          "SOURCE_INCOMPLETE",
+          "JOURNAL_UNBALANCED",
+          "DUPLICATE_POSTING_FOUND",
+          "UNSUPPORTED_TRANSACTION",
+          "BANK_NOT_RECONCILED",
+          "UNRESOLVED_BANK_ROW",
+          "MATERIAL_BALANCE_UNDOCUMENTED",
+          "REPORTING_NOT_RECONCILED",
+          "CHECK_EVIDENCE_INCOMPLETE",
+          "PERIOD_END_UNSUPPORTED"
+        ],
+        "title": "CompanyYearCloseGapCode",
+        "type": "string"
+      },
+      "CompanyYearCloseState": {
+        "enum": [
+          "BLOCKED",
+          "CLOSED"
+        ],
+        "title": "CompanyYearCloseState",
+        "type": "string"
+      },
       "CompanyYearEligibilityRecheckRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2125,6 +2149,98 @@
         "title": "LedgerBankSuggestionWire",
         "type": "object"
       },
+      "LedgerCompanyYearCloseAssessmentWire": {
+        "properties": {
+          "assessmentId": {
+            "format": "uuid",
+            "title": "Assessmentid",
+            "type": "string"
+          },
+          "closeLockId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closelockid"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "evidenceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Evidencedigest",
+            "type": "string"
+          },
+          "gapCodes": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyYearCloseGapCode"
+            },
+            "title": "Gapcodes",
+            "type": "array"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "isCurrent": {
+            "title": "Iscurrent",
+            "type": "boolean"
+          },
+          "ledgerStateDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Ledgerstatedigest",
+            "type": "string"
+          },
+          "periodEnd": {
+            "format": "date",
+            "title": "Periodend",
+            "type": "string"
+          },
+          "reconstructionAssessmentId": {
+            "format": "uuid",
+            "title": "Reconstructionassessmentid",
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/CompanyYearCloseState"
+          }
+        },
+        "required": [
+          "assessmentId",
+          "closeLockId",
+          "reconstructionAssessmentId",
+          "companyId",
+          "incomeYear",
+          "periodEnd",
+          "state",
+          "gapCodes",
+          "evidenceDigest",
+          "ledgerStateDigest",
+          "recordedAt",
+          "replayed",
+          "isCurrent"
+        ],
+        "title": "LedgerCompanyYearCloseAssessmentWire",
+        "type": "object"
+      },
       "LedgerCorporateDecisionFinalizationWire": {
         "additionalProperties": false,
         "properties": {
@@ -2207,7 +2323,15 @@
           "SHARE_PURCHASE",
           "SHARE_SALE",
           "SHAREHOLDER_LOAN",
-          "TAX_SETTLEMENT"
+          "TAX_SETTLEMENT",
+          "BANK_INTEREST",
+          "BANK_LOAN",
+          "CAPITAL_INCREASE",
+          "CAPITAL_REDUCTION",
+          "COMPANY_TAX_ACCRUAL",
+          "GROUP_CONTRIBUTION",
+          "INTERCOMPANY_LOAN",
+          "CORRECTION_REVERSAL"
         ],
         "title": "LedgerEntryKind",
         "type": "string"
@@ -3181,6 +3305,18 @@
             "title": "Incomeyear",
             "type": "integer"
           },
+          "ledgerStateDigest": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledgerstatedigest"
+          },
           "recordedAt": {
             "format": "date-time",
             "title": "Recordedat",
@@ -3198,6 +3334,7 @@
           "state",
           "gapCodes",
           "evidenceDigest",
+          "ledgerStateDigest",
           "recordedAt"
         ],
         "title": "LedgerReconstructionAssessmentWire",
@@ -3333,7 +3470,8 @@
           "INVESTMENTS",
           "CORPORATE_GOVERNANCE",
           "SHAREHOLDER_REGISTER_FILING",
-          "COMPANY_TAX_FILING"
+          "COMPANY_TAX_FILING",
+          "DOCUMENTS"
         ],
         "title": "LedgerSourceCapability",
         "type": "string"
@@ -14396,6 +14534,478 @@
         "summary": "Record Ledger Bank Suggestion",
         "tags": [
           "ledger-workflows"
+        ]
+      }
+    },
+    "/api/v1/ledger/company-year-close-assessment": {
+      "get": {
+        "operationId": "ledgerGetCompanyYearCloseAssessment",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerCompanyYearCloseAssessmentWire"
+                }
+              }
+            },
+            "description": "Latest immutable company-year close assessment.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get Ledger Company Year Close Assessment",
+        "tags": [
+          "ledger"
         ]
       }
     },

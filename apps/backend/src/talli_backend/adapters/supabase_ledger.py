@@ -41,6 +41,13 @@ from talli_backend.application.ledger_workflow import (
     RecordTaxSettlementCommand,
 )
 from talli_backend.modules.ledger.public import (
+    CloseCompanyYearCommand,
+    CompanyYearCloseAssessment,
+    CompanyYearCloseAssessmentId,
+    CompanyYearCloseEvidence,
+    CompanyYearCloseGapCode,
+    CompanyYearCloseLockId,
+    CompanyYearCloseState,
     CorrectHoldingActionCommand,
     CorrectedLedgerEntries,
     LedgerCommand,
@@ -217,6 +224,7 @@ def _reconstruction_assessment(row: Mapping[str, object]) -> ReconstructionAsses
     raw_gaps = row.get("gap_codes")
     if not isinstance(raw_gaps, list):
         raise ValueError("reconstruction gaps are invalid")
+    ledger_state_digest = row.get("ledger_state_digest")
     return ReconstructionAssessment(
         assessment_id=ReconstructionAssessmentId(str(row["assessment_id"])),
         company_id=CompanyId(str(row["company_id"])),
@@ -229,7 +237,69 @@ def _reconstruction_assessment(row: Mapping[str, object]) -> ReconstructionAsses
         state=ReconstructionState(str(row["state"])),
         gap_codes=tuple(ReconstructionGapCode(str(value)) for value in raw_gaps),
         evidence_digest=str(row["evidence_digest"]),
+        ledger_state_digest=(
+            str(ledger_state_digest) if ledger_state_digest is not None else None
+        ),
         recorded_at=_timestamp(row["recorded_at"]),
+        replayed=bool(row["replayed"]),
+    )
+
+
+def _company_year_close_evidence_payload(
+    evidence: CompanyYearCloseEvidence,
+) -> dict[str, object]:
+    return {
+        "kind": evidence.kind.value,
+        "issuer": evidence.issuer.value,
+        "status": evidence.confirmation.value,
+        "sourceRecordId": str(evidence.source_record_id),
+        "revision": evidence.revision,
+        "factSha256": evidence.fact_sha256,
+        "ledgerStateDigest": evidence.ledger_state_digest,
+        "coverageThrough": evidence.coverage_through.value.isoformat(),
+        "gapCode": evidence.gap_code.value if evidence.gap_code is not None else None,
+        "outputs": [
+            {
+                "kind": output.kind.value,
+                "sourceRecordId": str(output.source_record_id),
+                "revision": output.revision,
+                "factSha256": output.fact_sha256,
+            }
+            for output in evidence.outputs
+        ],
+    }
+
+
+def _company_year_close_assessment(
+    row: Mapping[str, object],
+) -> CompanyYearCloseAssessment:
+    raw_gaps = row.get("gap_codes")
+    if not isinstance(raw_gaps, list):
+        raise ValueError("company-year close gaps are invalid")
+    close_lock_id = row.get("close_lock_id")
+    return CompanyYearCloseAssessment(
+        assessment_id=CompanyYearCloseAssessmentId(str(row["assessment_id"])),
+        close_lock_id=(
+            CompanyYearCloseLockId(str(close_lock_id))
+            if close_lock_id is not None
+            else None
+        ),
+        reconstruction_assessment_id=ReconstructionAssessmentId(
+            str(row["reconstruction_assessment_id"])
+        ),
+        company_id=CompanyId(str(row["company_id"])),
+        income_year=IncomeYear(int(row["income_year"])),
+        period_end=LocalDate(
+            row["period_end"]
+            if isinstance(row["period_end"], date)
+            else date.fromisoformat(str(row["period_end"]))
+        ),
+        state=CompanyYearCloseState(str(row["state"])),
+        gap_codes=tuple(CompanyYearCloseGapCode(str(value)) for value in raw_gaps),
+        evidence_digest=str(row["evidence_digest"]),
+        ledger_state_digest=str(row["ledger_state_digest"]),
+        recorded_at=_timestamp(row["recorded_at"]),
+        is_current=bool(row["is_current"]),
         replayed=bool(row["replayed"]),
     )
 
@@ -376,6 +446,18 @@ def _map_database_error(message: str) -> LedgerError:
         (
             "ledger_company_year_not_admitted",
             LedgerError.precondition_failed("LEDGER_COMPANY_YEAR_NOT_ADMITTED"),
+        ),
+        (
+            "ledger_company_year_close_evidence_invalid",
+            LedgerError.precondition_failed(
+                "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID"
+            ),
+        ),
+        (
+            "ledger_company_year_close_reconstruction_stale",
+            LedgerError.precondition_failed(
+                "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
+            ),
         ),
         (
             "ledger_opening_already_exists",
@@ -593,6 +675,87 @@ class SupabaseLedgerSession:
             if attempt == 1:
                 break
         raise self._unavailable()
+
+    async def get_company_year_close_replay(
+        self,
+        command: CloseCompanyYearCommand,
+        *,
+        evidence: tuple[CompanyYearCloseEvidence, ...],
+    ) -> CompanyYearCloseAssessment | None:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        rows = await self._database_rows(
+            """
+            select * from ledger.get_company_year_close_replay_v1(
+              %s::text, %s::uuid, %s::integer, %s::date, %s::text,
+              %s::uuid, %s::text, %s::jsonb, %s::text, %s::text
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                command.period_end.value,
+                command.reason,
+                str(command.reconstruction_assessment_id),
+                command.reconstruction_evidence_digest,
+                json.dumps(
+                    [_company_year_close_evidence_payload(item) for item in evidence],
+                    separators=(",", ":"),
+                ),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+            ),
+        )
+        if not rows:
+            return None
+        if len(rows) != 1:
+            raise self._unavailable()
+        try:
+            return _company_year_close_assessment(rows[0])
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def record_company_year_close(
+        self,
+        command: CloseCompanyYearCommand,
+        *,
+        evidence: tuple[CompanyYearCloseEvidence, ...],
+        state: CompanyYearCloseState,
+        gap_codes: tuple[CompanyYearCloseGapCode, ...],
+    ) -> CompanyYearCloseAssessment:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.close_company_year_v1(
+              %s::text, %s::uuid, %s::integer, %s::date, %s::text,
+              %s::uuid, %s::text, %s::jsonb, %s::text, %s::text[],
+              %s::text, %s::text
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                command.period_end.value,
+                command.reason,
+                str(command.reconstruction_assessment_id),
+                command.reconstruction_evidence_digest,
+                json.dumps(
+                    [_company_year_close_evidence_payload(item) for item in evidence],
+                    separators=(",", ":"),
+                ),
+                state.value,
+                [code.value for code in gap_codes],
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+            ),
+        )
+        try:
+            return _company_year_close_assessment(row)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
 
     async def correct_entry(
         self,
@@ -826,6 +989,30 @@ class SupabaseLedgerSession:
             raise LedgerError.not_found()
         try:
             return _reconstruction_assessment(rows[0])
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def get_company_year_close_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> CompanyYearCloseAssessment:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from ledger.get_company_year_close_assessment_v1(%s::uuid, %s::integer, %s::text)",
+            (str(company_id), int(income_year), str(actor_id.subject)),
+        )
+        if not rows:
+            raise LedgerError.not_found()
+        if len(rows) != 1:
+            raise self._unavailable()
+        try:
+            return _company_year_close_assessment(rows[0])
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 

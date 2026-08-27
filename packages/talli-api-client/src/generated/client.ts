@@ -414,6 +414,10 @@ export interface AdministrativeCostEntryWire {
 
 export type AdministrativeCostCategory = "BANK_FEE" | "ACCOUNTING_FEE" | "SOFTWARE" | "PUBLIC_FEE" | "LEGAL_ADVISORY" | "OTHER_ADMIN_COST";
 
+export type CompanyYearCloseGapCode = "SOURCE_INCOMPLETE" | "JOURNAL_UNBALANCED" | "DUPLICATE_POSTING_FOUND" | "UNSUPPORTED_TRANSACTION" | "BANK_NOT_RECONCILED" | "UNRESOLVED_BANK_ROW" | "MATERIAL_BALANCE_UNDOCUMENTED" | "REPORTING_NOT_RECONCILED" | "CHECK_EVIDENCE_INCOMPLETE" | "PERIOD_END_UNSUPPORTED";
+
+export type CompanyYearCloseState = "BLOCKED" | "CLOSED";
+
 export interface LedgerAdministrativeCostWire {
   amount: LedgerMoneyWire;
   bankTransactionId: string;
@@ -445,7 +449,23 @@ export interface LedgerCorporateDecisionFinalizationWire {
   setId: string;
 }
 
-export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT";
+export interface LedgerCompanyYearCloseAssessmentWire {
+  assessmentId: string;
+  closeLockId: string | null;
+  companyId: string;
+  evidenceDigest: string;
+  gapCodes: CompanyYearCloseGapCode[];
+  incomeYear: number;
+  isCurrent: boolean;
+  ledgerStateDigest: string;
+  periodEnd: string;
+  reconstructionAssessmentId: string;
+  recordedAt: string;
+  replayed: boolean;
+  state: CompanyYearCloseState;
+}
+
+export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT" | "BANK_INTEREST" | "BANK_LOAN" | "CAPITAL_INCREASE" | "CAPITAL_REDUCTION" | "COMPANY_TAX_ACCRUAL" | "GROUP_CONTRIBUTION" | "INTERCOMPANY_LOAN" | "CORRECTION_REVERSAL";
 
 export interface LedgerEntryPageWire {
   items: LedgerEntryViewWire[];
@@ -630,6 +650,7 @@ export interface LedgerReconstructionAssessmentWire {
   evidenceDigest: string;
   gapCodes: ReconstructionGapCode[];
   incomeYear: number;
+  ledgerStateDigest: string | null;
   recordedAt: string;
   state: ReconstructionState;
 }
@@ -667,7 +688,7 @@ export interface LedgerShareholderLoanWire {
   relatedPartySecurity: false;
 }
 
-export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING";
+export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING" | "DOCUMENTS";
 
 export interface LedgerTaxSettlementWire {
   actionId: string;
@@ -1177,6 +1198,14 @@ function isAdministrativeCostCategory(value: unknown): value is AdministrativeCo
   return value === "BANK_FEE" || value === "ACCOUNTING_FEE" || value === "SOFTWARE" || value === "PUBLIC_FEE" || value === "LEGAL_ADVISORY" || value === "OTHER_ADMIN_COST";
 }
 
+function isCompanyYearCloseGapCode(value: unknown): value is CompanyYearCloseGapCode {
+  return value === "SOURCE_INCOMPLETE" || value === "JOURNAL_UNBALANCED" || value === "DUPLICATE_POSTING_FOUND" || value === "UNSUPPORTED_TRANSACTION" || value === "BANK_NOT_RECONCILED" || value === "UNRESOLVED_BANK_ROW" || value === "MATERIAL_BALANCE_UNDOCUMENTED" || value === "REPORTING_NOT_RECONCILED" || value === "CHECK_EVIDENCE_INCOMPLETE" || value === "PERIOD_END_UNSUPPORTED";
+}
+
+function isCompanyYearCloseState(value: unknown): value is CompanyYearCloseState {
+  return value === "BLOCKED" || value === "CLOSED";
+}
+
 function isLedgerAdministrativeCostWire(value: unknown): value is LedgerAdministrativeCostWire {
   return (
     isRecord(value) &&
@@ -1220,8 +1249,28 @@ function isLedgerCorporateDecisionFinalizationWire(value: unknown): value is Led
   );
 }
 
+function isLedgerCompanyYearCloseAssessmentWire(value: unknown): value is LedgerCompanyYearCloseAssessmentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["assessmentId","closeLockId","companyId","evidenceDigest","gapCodes","incomeYear","isCurrent","ledgerStateDigest","periodEnd","reconstructionAssessmentId","recordedAt","replayed","state"]) &&
+    isUuid(value.assessmentId) &&
+    (isUuid(value.closeLockId) || value.closeLockId === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.evidenceDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.evidenceDigest)) &&
+    Array.isArray(value.gapCodes) && value.gapCodes.every((item) => isCompanyYearCloseGapCode(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.isCurrent === "boolean" &&
+    (typeof value.ledgerStateDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.ledgerStateDigest)) &&
+    typeof value.periodEnd === "string" &&
+    isUuid(value.reconstructionAssessmentId) &&
+    isDateTime(value.recordedAt) &&
+    typeof value.replayed === "boolean" &&
+    isCompanyYearCloseState(value.state)
+  );
+}
+
 function isLedgerEntryKind(value: unknown): value is LedgerEntryKind {
-  return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT";
+  return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT" || value === "BANK_INTEREST" || value === "BANK_LOAN" || value === "CAPITAL_INCREASE" || value === "CAPITAL_REDUCTION" || value === "COMPANY_TAX_ACCRUAL" || value === "GROUP_CONTRIBUTION" || value === "INTERCOMPANY_LOAN" || value === "CORRECTION_REVERSAL";
 }
 
 function isLedgerEntryPageWire(value: unknown): value is LedgerEntryPageWire {
@@ -1481,13 +1530,14 @@ function isLedgerPeriodLockWire(value: unknown): value is LedgerPeriodLockWire {
 function isLedgerReconstructionAssessmentWire(value: unknown): value is LedgerReconstructionAssessmentWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["asOf","assessmentId","companyId","evidenceDigest","gapCodes","incomeYear","recordedAt","state"]) &&
+    hasOnlyProperties(value, ["asOf","assessmentId","companyId","evidenceDigest","gapCodes","incomeYear","ledgerStateDigest","recordedAt","state"]) &&
     typeof value.asOf === "string" &&
     isUuid(value.assessmentId) &&
     isUuid(value.companyId) &&
     (typeof value.evidenceDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.evidenceDigest)) &&
     Array.isArray(value.gapCodes) && value.gapCodes.every((item) => isReconstructionGapCode(item)) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    ((typeof value.ledgerStateDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.ledgerStateDigest)) || value.ledgerStateDigest === null) &&
     isDateTime(value.recordedAt) &&
     isReconstructionState(value.state)
   );
@@ -1543,7 +1593,7 @@ function isLedgerShareholderLoanWire(value: unknown): value is LedgerShareholder
 }
 
 function isLedgerSourceCapability(value: unknown): value is LedgerSourceCapability {
-  return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING";
+  return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING" || value === "DOCUMENTS";
 }
 
 function isLedgerTaxSettlementWire(value: unknown): value is LedgerTaxSettlementWire {
@@ -2164,6 +2214,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerReconstructionAssessmentWire,
+      );
+    },
+
+    async ledgerGetCompanyYearCloseAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerCompanyYearCloseAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/company-year-close-assessment?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerCompanyYearCloseAssessmentWire,
       );
     },
 

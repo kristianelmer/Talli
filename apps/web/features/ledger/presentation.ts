@@ -1,4 +1,6 @@
 import type {
+  CompanyYearCloseGapCode,
+  LedgerCompanyYearCloseAssessmentWire,
   LedgerEntryKind,
   LedgerEntryViewWire,
   LedgerOpeningSnapshotWire,
@@ -13,8 +15,16 @@ import type { LedgerEntryArchiveWire } from "./transport.ts";
 
 const ENTRY_TYPES: Record<LedgerEntryKind, string> = {
   ADMINISTRATIVE_COST: "admin_cost",
+  BANK_INTEREST: "bank_interest",
+  BANK_LOAN: "bank_loan",
   BANK_RULE_SUGGESTION: "bank_rule_suggestion",
+  CAPITAL_INCREASE: "capital_increase",
+  CAPITAL_REDUCTION: "capital_reduction",
+  COMPANY_TAX_ACCRUAL: "company_tax_accrual",
+  CORRECTION_REVERSAL: "correction_reversal",
   DIVIDEND_RECEIVED: "dividend_received",
+  GROUP_CONTRIBUTION: "group_contribution",
+  INTERCOMPANY_LOAN: "intercompany_loan",
   MANUAL_JOURNAL: "manual_journal",
   OPENING_BALANCE: "opening_balance",
   OWNER_DIVIDEND_DECLARED: "owner_dividend_declared",
@@ -49,32 +59,111 @@ const RECONSTRUCTION_GAPS: Record<ReconstructionGapCode, string> = {
   UNSUPPORTED_ACTIVITY_FOUND: "Året inneholder aktivitet Talli ikke kan fullføre.",
 };
 
+const COMPANY_YEAR_CLOSE_GAPS: Record<CompanyYearCloseGapCode, string> = {
+  SOURCE_INCOMPLETE: "Kildegrunnlaget for året er ikke komplett.",
+  JOURNAL_UNBALANCED: "En eller flere posteringer går ikke i balanse.",
+  DUPLICATE_POSTING_FOUND: "En postering ser ut til å være registrert flere ganger.",
+  UNSUPPORTED_TRANSACTION: "Året inneholder en transaksjon Talli ikke støtter.",
+  BANK_NOT_RECONCILED: "Bankkontoene er ikke fullt avstemt.",
+  UNRESOLVED_BANK_ROW: "En bankbevegelse er ikke avklart.",
+  MATERIAL_BALANCE_UNDOCUMENTED: "En vesentlig saldo mangler dokumentasjon.",
+  REPORTING_NOT_RECONCILED: "Rapportene stemmer ikke med hovedboken.",
+  CHECK_EVIDENCE_INCOMPLETE: "Dokumentasjonen for avslutningskontrollene er ikke komplett.",
+  PERIOD_END_UNSUPPORTED: "Denne perioden kan ikke avsluttes ennå.",
+};
+
 export type LedgerReconstructionPresentation = {
   assessment_id: string;
   company_id: string;
   income_year: number;
   as_of: string;
   ready: boolean;
+  refresh_message: string | null;
   gaps: { code: ReconstructionGapCode; message: string }[];
   evidence_digest: string;
+  ledger_state_digest: string | null;
   recorded_at: string;
 };
 
 export function presentLedgerReconstruction(
   assessment: LedgerReconstructionAssessmentWire,
 ): LedgerReconstructionPresentation {
+  const isBoundToLedgerState = assessment.ledgerStateDigest !== null;
   return {
     assessment_id: assessment.assessmentId,
     company_id: assessment.companyId,
     income_year: assessment.incomeYear,
     as_of: assessment.asOf,
-    ready: assessment.state === "READY",
+    ready: assessment.state === "READY" && isBoundToLedgerState,
+    refresh_message: isBoundToLedgerState
+      ? null
+      : "Oppdater årsgrunnlaget før du avslutter året.",
     gaps: assessment.gapCodes.map((code) => ({
       code,
       message: RECONSTRUCTION_GAPS[code],
     })),
     evidence_digest: assessment.evidenceDigest,
+    ledger_state_digest: assessment.ledgerStateDigest,
     recorded_at: assessment.recordedAt,
+  };
+}
+
+export type LedgerCompanyYearClosePresentation = {
+  assessment_id: string;
+  close_lock_id: string | null;
+  reconstruction_assessment_id: string;
+  company_id: string;
+  income_year: number;
+  period_end: string;
+  status: "closed_current" | "closed_stale" | "blocked";
+  title: string;
+  message: string;
+  gaps: { code: CompanyYearCloseGapCode; message: string }[];
+  evidence_digest: string;
+  ledger_state_digest: string;
+  recorded_at: string;
+  replayed: boolean;
+  is_current: boolean;
+};
+
+export function presentLedgerCompanyYearClose(
+  assessment: LedgerCompanyYearCloseAssessmentWire,
+): LedgerCompanyYearClosePresentation {
+  const presentation = assessment.state === "BLOCKED"
+    ? {
+        status: "blocked" as const,
+        title: "Året kan ikke avsluttes ennå",
+        message: "Fullfør kontrollene før året avsluttes.",
+      }
+    : assessment.isCurrent
+      ? {
+          status: "closed_current" as const,
+          title: "Året er avsluttet",
+          message: "Avslutningen bygger på siste bokførte versjon.",
+        }
+      : {
+          status: "closed_stale" as const,
+          title: "Året må avsluttes på nytt",
+          message: "Kontrollgrunnlaget er ikke lenger det nyeste. Oppdater kontrollene og avslutt året på nytt.",
+        };
+
+  return {
+    assessment_id: assessment.assessmentId,
+    close_lock_id: assessment.closeLockId,
+    reconstruction_assessment_id: assessment.reconstructionAssessmentId,
+    company_id: assessment.companyId,
+    income_year: assessment.incomeYear,
+    period_end: assessment.periodEnd,
+    ...presentation,
+    gaps: assessment.gapCodes.map((code) => ({
+      code,
+      message: COMPANY_YEAR_CLOSE_GAPS[code],
+    })),
+    evidence_digest: assessment.evidenceDigest,
+    ledger_state_digest: assessment.ledgerStateDigest,
+    recorded_at: assessment.recordedAt,
+    replayed: assessment.replayed,
+    is_current: assessment.isCurrent,
   };
 }
 

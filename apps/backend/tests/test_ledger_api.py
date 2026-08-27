@@ -15,6 +15,10 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotView,
 )
 from talli_backend.modules.ledger.public import (
+    CompanyYearCloseAssessment,
+    CompanyYearCloseAssessmentId,
+    CompanyYearCloseLockId,
+    CompanyYearCloseState,
     LedgerCursor,
     LedgerEntryId,
     LedgerEntryKind,
@@ -77,8 +81,30 @@ class LedgerSessionStub:
             state=ReconstructionState.BLOCKED,
             gap_codes=(ReconstructionGapCode.DOCUMENTS_INCOMPLETE,),
             evidence_digest="a" * 64,
+            ledger_state_digest="d" * 64,
             recorded_at=NOW,
             replayed=False,
+        )
+        self.company_year_close_assessment = CompanyYearCloseAssessment(
+            assessment_id=CompanyYearCloseAssessmentId(
+                "42000000-0000-0000-0000-000000000004"
+            ),
+            close_lock_id=CompanyYearCloseLockId(
+                "43000000-0000-0000-0000-000000000004"
+            ),
+            reconstruction_assessment_id=ReconstructionAssessmentId(
+                "41000000-0000-0000-0000-000000000004"
+            ),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            period_end=LocalDate(date(2026, 12, 31)),
+            state=CompanyYearCloseState.CLOSED,
+            gap_codes=(),
+            evidence_digest="b" * 64,
+            ledger_state_digest="c" * 64,
+            recorded_at=NOW,
+            replayed=False,
+            is_current=True,
         )
 
     @property
@@ -353,6 +379,12 @@ class LedgerSessionStub:
     ) -> ReconstructionAssessment:
         self.calls.append(("get_reconstruction_assessment", query))
         return self.reconstruction_assessment
+
+    async def get_company_year_close_assessment(
+        self, **query: object
+    ) -> CompanyYearCloseAssessment:
+        self.calls.append(("get_company_year_close_assessment", query))
+        return self.company_year_close_assessment
 
 
 def client_and_session() -> tuple[TestClient, LedgerSessionStub]:
@@ -1078,9 +1110,61 @@ def test_reconstruction_query_exposes_only_backend_derived_readiness() -> None:
         "state": "BLOCKED",
         "gapCodes": ["DOCUMENTS_INCOMPLETE"],
         "evidenceDigest": "a" * 64,
+        "ledgerStateDigest": "d" * 64,
         "recordedAt": "2026-08-27T10:00:00Z",
     }
     query = session.calls[0][1]
+    assert query["actor_id"] == ACTOR_ID
+    assert query["company_id"] == COMPANY_ID
+    assert query["income_year"] == IncomeYear(2026)
+
+
+def test_historical_reconstruction_exposes_missing_ledger_state_digest_as_null() -> None:
+    client, session = client_and_session()
+    session.reconstruction_assessment = replace(
+        session.reconstruction_assessment,
+        ledger_state_digest=None,
+    )
+
+    response = client.get(
+        f"/api/v1/ledger/reconstruction-assessment?companyId={COMPANY_ID}&incomeYear=2026",
+        headers={"Authorization": "Bearer ledger-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ledgerStateDigest"] is None
+
+
+def test_company_year_close_query_exposes_current_backend_assessment() -> None:
+    client, session = client_and_session()
+
+    response = client.get(
+        f"/api/v1/ledger/company-year-close-assessment?companyId={COMPANY_ID}&incomeYear=2026",
+        headers={
+            "Authorization": "Bearer ledger-token",
+            "X-Request-ID": "ledger-company-year-close-query",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "assessmentId": "42000000-0000-0000-0000-000000000004",
+        "closeLockId": "43000000-0000-0000-0000-000000000004",
+        "reconstructionAssessmentId": "41000000-0000-0000-0000-000000000004",
+        "companyId": str(COMPANY_ID),
+        "incomeYear": 2026,
+        "periodEnd": "2026-12-31",
+        "state": "CLOSED",
+        "gapCodes": [],
+        "evidenceDigest": "b" * 64,
+        "ledgerStateDigest": "c" * 64,
+        "recordedAt": "2026-08-27T10:00:00Z",
+        "replayed": False,
+        "isCurrent": True,
+    }
+    assert session.tokens == ["ledger-token"]
+    operation, query = session.calls[0]
+    assert operation == "get_company_year_close_assessment"
     assert query["actor_id"] == ACTOR_ID
     assert query["company_id"] == COMPANY_ID
     assert query["income_year"] == IncomeYear(2026)

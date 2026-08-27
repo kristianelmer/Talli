@@ -29,6 +29,13 @@ from talli_backend.modules.ledger.public import (
     AdministrativeCostCorrectionScope,
     AdministrativeCostCorrectionFacts,
     BankInterestIncomeFacts,
+    CloseCompanyYearCommand,
+    CompanyYearCloseEvidence,
+    CompanyYearCloseEvidenceKind,
+    CompanyYearCloseGapCode,
+    CompanyYearCloseOutputKind,
+    CompanyYearCloseOutputReference,
+    CompanyYearCloseState,
     CorrectHoldingActionCommand,
     LedgerEntryId,
     LedgerEntryKind,
@@ -39,6 +46,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     PostManualJournalCommand,
     PostedLedgerEntry,
+    ReconstructionAssessmentId,
     ReconstructionEvidence,
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
@@ -198,6 +206,66 @@ def correction_command() -> CorrectHoldingActionCommand:
                 AdministrativeCostCorrectionScope.CURRENT_COMPANY_YEAR
             ),
             blocks=(),
+        ),
+    )
+
+
+def close_company_year_command() -> CloseCompanyYearCommand:
+    outputs = tuple(
+        CompanyYearCloseOutputReference(
+            kind=kind,
+            source_record_id=LedgerSourceRecordId(
+                f"close-output:{kind.value.lower()}"
+            ),
+            revision=1,
+            fact_sha256=kind.value.encode().hex().ljust(64, "0")[:64],
+        )
+        for kind in CompanyYearCloseOutputKind
+    )
+    return CloseCompanyYearCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("company-year-close-adapter"),
+        idempotency_key=IdempotencyKey("company-year-close-adapter-0001"),
+        income_year=IncomeYear(2026),
+        period_end=LocalDate(date(2026, 12, 31)),
+        reason="Documented company-year close",
+        reconstruction_assessment_id=ReconstructionAssessmentId(
+            "70000000-0000-0000-0000-000000000007"
+        ),
+        reconstruction_evidence_digest="a" * 64,
+        evidence=(
+            CompanyYearCloseEvidence(
+                kind=CompanyYearCloseEvidenceKind.BANK_ROWS_RESOLVED,
+                issuer=LedgerSourceCapability.BANKING,
+                source_record_id=LedgerSourceRecordId("close:bank-rows"),
+                revision=1,
+                fact_sha256="b" * 64,
+                ledger_state_digest="d" * 64,
+                coverage_through=LocalDate(date(2026, 12, 31)),
+                confirmation=ReconstructionEvidenceStatus.CONFIRMED,
+            ),
+            CompanyYearCloseEvidence(
+                kind=CompanyYearCloseEvidenceKind.MATERIAL_BALANCES_DOCUMENTED,
+                issuer=LedgerSourceCapability.DOCUMENTS,
+                source_record_id=LedgerSourceRecordId("close:material-balances"),
+                revision=1,
+                fact_sha256="c" * 64,
+                ledger_state_digest="d" * 64,
+                coverage_through=LocalDate(date(2026, 12, 31)),
+                confirmation=ReconstructionEvidenceStatus.CONFIRMED,
+            ),
+            CompanyYearCloseEvidence(
+                kind=CompanyYearCloseEvidenceKind.REPORTING_RECONCILED,
+                issuer=LedgerSourceCapability.LEDGER,
+                source_record_id=LedgerSourceRecordId("close:reporting"),
+                revision=1,
+                fact_sha256="e" * 64,
+                ledger_state_digest="d" * 64,
+                coverage_through=LocalDate(date(2026, 12, 31)),
+                confirmation=ReconstructionEvidenceStatus.CONFIRMED,
+                outputs=outputs,
+            ),
         ),
     )
 
@@ -472,6 +540,126 @@ def test_correction_adapter_binds_original_replacement_and_two_sources() -> None
     ]
 
 
+def test_company_year_close_adapter_binds_derived_state_and_evidence() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "assessment_id": "71000000-0000-0000-0000-000000000007",
+            "close_lock_id": "50000000-0000-0000-0000-000000000005",
+            "reconstruction_assessment_id": (
+                "70000000-0000-0000-0000-000000000007"
+            ),
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "period_end": date(2026, 12, 31),
+            "state": "CLOSED",
+            "gap_codes": [],
+            "evidence_digest": "c" * 64,
+            "ledger_state_digest": "d" * 64,
+            "recorded_at": datetime(2026, 12, 31, 22, tzinfo=UTC),
+            "is_current": True,
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        session.record_company_year_close(
+            close_company_year_command(),
+            evidence=close_company_year_command().evidence,
+            state=CompanyYearCloseState.CLOSED,
+            gap_codes=(),
+        )
+    )
+
+    assert result.state is CompanyYearCloseState.CLOSED
+    assert "ledger.close_company_year_v1" in calls[0][0]
+    assert calls[0][1][3] == date(2026, 12, 31)
+    assert calls[0][1][8] == "CLOSED"
+    evidence_payload = json.loads(str(calls[0][1][7]))
+    assert evidence_payload[0]["issuer"] == "BANKING"
+    assert evidence_payload[0]["ledgerStateDigest"] == "d" * 64
+    assert [output["kind"] for output in evidence_payload[2]["outputs"]] == [
+        kind.value for kind in CompanyYearCloseOutputKind
+    ]
+
+
+def test_company_year_close_adapter_checks_the_permanent_replay_first() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return []
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        session.get_company_year_close_replay(
+            close_company_year_command(),
+            evidence=close_company_year_command().evidence,
+        )
+    )
+
+    assert result is None
+    assert "ledger.get_company_year_close_replay_v1" in calls[0][0]
+    assert calls[0][1][8] == "company-year-close-adapter"
+
+
+def test_company_year_close_adapter_reads_the_latest_assessment() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "assessment_id": "71000000-0000-0000-0000-000000000007",
+            "close_lock_id": "50000000-0000-0000-0000-000000000005",
+            "reconstruction_assessment_id": (
+                "70000000-0000-0000-0000-000000000007"
+            ),
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "period_end": date(2026, 12, 31),
+            "state": "CLOSED",
+            "gap_codes": [],
+            "evidence_digest": "c" * 64,
+            "ledger_state_digest": "d" * 64,
+            "recorded_at": datetime(2026, 12, 31, 22, tzinfo=UTC),
+            "is_current": False,
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        session.get_company_year_close_assessment(
+            actor_id=ACTOR_ID,
+            company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+            income_year=IncomeYear(2026),
+            correlation_id=CorrelationId("company-year-close-query"),
+        )
+    )
+
+    assert result.state is CompanyYearCloseState.CLOSED
+    assert result.is_current is False
+    assert str(result.reconstruction_assessment_id) == (
+        "70000000-0000-0000-0000-000000000007"
+    )
+    assert "ledger.get_company_year_close_assessment_v1" in calls[0][0]
+    assert calls[0][1] == (
+        "10000000-0000-0000-0000-000000000001",
+        2026,
+        "20000000-0000-0000-0000-000000000002",
+    )
+
+
 def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:
     transaction = bound_transaction()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -649,6 +837,14 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
     ("marker", "code"),
     [
         ("ledger_company_year_not_admitted", "LEDGER_COMPANY_YEAR_NOT_ADMITTED"),
+        (
+            "ledger_company_year_close_evidence_invalid",
+            "LEDGER_COMPANY_YEAR_CLOSE_EVIDENCE_INVALID",
+        ),
+        (
+            "ledger_company_year_close_reconstruction_stale",
+            "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE",
+        ),
         (
             "ledger_correction_original_kind_unsupported",
             "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED",

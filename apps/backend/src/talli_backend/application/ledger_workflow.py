@@ -24,6 +24,7 @@ from talli_backend.application.shareholder_register_compatibility import (
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     BankSuggestionRule,
+    CompanyYearCloseAssessment,
     LedgerCommand,
     LedgerCommands,
     LedgerCursor,
@@ -767,6 +768,21 @@ class LedgerApplicationSession:
         correlation_id: CorrelationId,
     ) -> ReconstructionAssessment:
         return await self._ledger.get_reconstruction_assessment(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            correlation_id=correlation_id,
+        )
+
+    async def get_company_year_close_assessment(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> CompanyYearCloseAssessment:
+        return await self._ledger.get_company_year_close_assessment(
             actor_id=actor_id,
             company_id=company_id,
             income_year=income_year,
