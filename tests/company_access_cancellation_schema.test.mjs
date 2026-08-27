@@ -74,7 +74,13 @@ test("archive route and generation triggers share one complete source inventory"
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
   assert.match(route, /loadAcceptedMembershipCompany\(companyId\)/u);
-  const logicalRouteSources = new Set([...routeTables, "companies"]);
+  const logicalRouteSources = new Set([
+    ...routeTables,
+    "companies",
+    // Ledger is now loaded through its generated capability query instead of
+    // a direct Supabase `.from("ledger_entries")` call.
+    "ledger_entries",
+  ]);
   assert.deepEqual([...logicalRouteSources].sort(), [...declared.keys()].sort());
   const triggerInventory = new Map(
     [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]

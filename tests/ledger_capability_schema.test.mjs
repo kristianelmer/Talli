@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const expandPath = new URL("../supabase/migrations/20260827100000_ledger_capability.sql", import.meta.url);
+const coordinatorPath = new URL("../supabase/migrations/20260827100500_ledger_writer_coordinators.sql", import.meta.url);
 const contractPath = new URL("../supabase/contract-migrations/20260827101000_ledger_capability_contract.sql", import.meta.url);
 const rollbackPath = new URL("../supabase/rollback/20260827101000_ledger_capability_contract.sql", import.meta.url);
 
@@ -25,12 +26,81 @@ function functionBody(source, schema, name) {
 
 test("ledger cutover is an atomic expand, contract, and recutover-safe rollback", () => {
   const expand = artifact(expandPath, "expand");
+  const coordinators = artifact(coordinatorPath, "writer coordinator expand");
   const contract = artifact(contractPath, "contract");
   const rollback = artifact(rollbackPath, "rollback");
   assert.match(expand, /EXPAND\/MIGRATE.*ledger/iu);
+  assert.match(coordinators, /EXPAND\/MIGRATE.*nine remaining ledger writers/iu);
   assert.match(contract, /CONTRACT.*ledger/iu);
   assert.match(rollback, /target writer is disabled first/iu);
   assert.doesNotMatch(rollback, /drop table[^;]+(?:ledger|receipt|reconciliation)/iu);
+});
+
+test("nine exact writer coordinators are executor-only and never accept ledger lines", () => {
+  const source = artifact(coordinatorPath, "writer coordinator expand");
+  const operations = [
+    "administrative_cost",
+    "investment_dividend",
+    "shareholder_loan",
+    "tax_settlement",
+    "bank_transaction_suggestion",
+    "investment_purchase_fifo",
+    "investment_sale_fifo",
+    "corporate_decision_finalization",
+    "owner_dividend_payment",
+  ];
+  for (const operation of operations) {
+    const prepare = functionBody(source, "backend_system", `prepare_${operation}_v1`);
+    const complete = functionBody(source, "backend_system", `complete_${operation}_v1`);
+    assert.match(prepare, /p_verified_subject/iu);
+    assert.match(prepare, /claim_ledger_writer_v1/iu);
+    assert.doesNotMatch(prepare, /insert into ledger\.entries|insert into public\.ledger_entries/iu);
+    assert.match(complete, /p_verified_subject/iu);
+    assert.doesNotMatch(complete, /insert into ledger\.entries|insert into public\.ledger_entries/iu);
+    assert.match(
+      source,
+      new RegExp(`grant execute on function[\\s\\S]+backend_system\\.prepare_${operation}_v1\\(jsonb, text\\)[\\s\\S]+to ledger_workflow_executor`, "iu"),
+    );
+    assert.match(
+      source,
+      new RegExp(`grant execute on function[\\s\\S]+backend_system\\.complete_${operation}_v1\\(jsonb, uuid, jsonb, text\\)[\\s\\S]+to ledger_workflow_executor`, "iu"),
+    );
+  }
+  assert.match(source, /ledger\.post_entry_with_id_v1/iu);
+  assert.match(source, /from public, anon, authenticated, service_role, ledger_executor/iu);
+});
+
+test("audit placement preserves active continuations and future atomic audits", () => {
+  const source = artifact(coordinatorPath, "writer coordinator expand");
+  for (const operation of [
+    "administrative_cost",
+    "investment_dividend",
+    "shareholder_loan",
+    "tax_settlement",
+  ]) {
+    const complete = functionBody(source, "backend_system", `complete_${operation}_v1`);
+    assert.doesNotMatch(complete, /insert into public\.audit_events/iu);
+    assert.match(complete, /'auditRequired', true/iu);
+  }
+  for (const operation of [
+    "bank_transaction_suggestion",
+    "investment_purchase_fifo",
+    "investment_sale_fifo",
+    "corporate_decision_finalization",
+    "owner_dividend_payment",
+  ]) {
+    const complete = functionBody(source, "backend_system", `complete_${operation}_v1`);
+    assert.match(complete, /insert into public\.audit_events/iu);
+    assert.match(complete, /'auditRequired', false/iu);
+  }
+  const annual = functionBody(
+    source,
+    "backend_system",
+    "complete_corporate_decision_finalization_v1",
+  );
+  assert.match(annual, /p_entry_id is null/iu);
+  assert.match(annual, /annual_close_adopted/iu);
+  assert.doesNotMatch(annual, /ledger\.post_entry/iu);
 });
 
 test("one physical ledger store has a non-bypass owner and execute-only runtime", () => {

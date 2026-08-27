@@ -10,6 +10,30 @@ select pg_catalog.pg_advisory_xact_lock(
 
 -- Exactly one writer: disable every target entry point before exposing legacy.
 revoke all on function
+  backend_system.prepare_administrative_cost_v1(jsonb, text),
+  backend_system.complete_administrative_cost_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_investment_dividend_v1(jsonb, text),
+  backend_system.complete_investment_dividend_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_shareholder_loan_v1(jsonb, text),
+  backend_system.complete_shareholder_loan_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_tax_settlement_v1(jsonb, text),
+  backend_system.complete_tax_settlement_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_bank_transaction_suggestion_v1(jsonb, text),
+  backend_system.complete_bank_transaction_suggestion_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_investment_purchase_fifo_v1(jsonb, text),
+  backend_system.complete_investment_purchase_fifo_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_investment_sale_fifo_v1(jsonb, text),
+  backend_system.complete_investment_sale_fifo_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_corporate_decision_finalization_v1(jsonb, text),
+  backend_system.complete_corporate_decision_finalization_v1(jsonb, uuid, jsonb, text),
+  backend_system.prepare_owner_dividend_payment_v1(jsonb, text),
+  backend_system.complete_owner_dividend_payment_v1(jsonb, uuid, jsonb, text),
+  ledger.post_entry_with_id_v1(
+    text, uuid, integer, text, text, jsonb, jsonb, boolean,
+    text, text, text, text, uuid
+  )
+from ledger_workflow_executor, talli_ledger_backend;
+revoke all on function
   backend_system.claim_ledger_workflow_v1(text, text, uuid, jsonb, text),
   backend_system.record_opening_snapshot_legacy_v1(
     uuid, integer, numeric, numeric, integer, numeric, jsonb, text
@@ -57,6 +81,25 @@ alter table ledger.entries
   add constraint ledger_entries_setup_id_fkey
   foreign key (setup_id) references public.opening_balance_setups(id)
   on delete restrict;
+
+-- Restore the predecessor value vocabulary together with its table shape. The
+-- next expand deterministically normalizes these values back to capability
+-- vocabulary, so rollback and recutover remain lossless.
+update ledger.entries
+set entry_kind = case entry_kind
+  when 'OPENING_BALANCE' then 'opening_balance'
+  when 'ADMINISTRATIVE_COST' then 'admin_cost'
+  when 'MANUAL_JOURNAL' then 'manual_journal'
+  when 'BANK_RULE_SUGGESTION' then 'bank_rule_suggestion'
+  when 'DIVIDEND_RECEIVED' then 'dividend_received'
+  when 'OWNER_DIVIDEND_DECLARED' then 'dividend_to_owner_declared'
+  when 'OWNER_DIVIDEND_PAYMENT' then 'dividend_to_owner_payment'
+  when 'SHARE_PURCHASE' then 'share_purchase'
+  when 'SHARE_SALE' then 'share_sale'
+  when 'SHAREHOLDER_LOAN' then 'shareholder_loan'
+  when 'TAX_SETTLEMENT' then 'tax_settlement'
+  else pg_catalog.lower(entry_kind)
+end;
 
 alter table ledger.entries rename column entry_kind to entry_type;
 alter table ledger.entries rename to ledger_entries;

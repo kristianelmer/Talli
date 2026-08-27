@@ -46,10 +46,18 @@ alter role ledger_workflow_store_owner nologin noinherit nobypassrls;
 alter role ledger_workflow_executor nologin noinherit nobypassrls;
 grant ledger_executor to talli_ledger_backend with inherit false, set true;
 grant ledger_workflow_executor to talli_ledger_backend with inherit false, set true;
-grant usage, create on schema ledger to ledger_store_owner;
+grant usage, create on schema ledger, backend_system to ledger_store_owner;
+grant usage on schema extensions to ledger_store_owner,
+  ledger_workflow_store_owner;
+grant execute on function
+  extensions.digest(text, text),
+  extensions.hmac(text, text, text),
+  extensions.gen_random_bytes(integer)
+to ledger_store_owner, ledger_workflow_store_owner;
 grant usage on schema ledger to ledger_executor;
 grant usage on schema backend_system to ledger_executor,
   ledger_workflow_store_owner, ledger_workflow_executor;
+grant create on schema backend_system to ledger_workflow_store_owner;
 grant usage on schema ledger to ledger_workflow_executor;
 
 create table if not exists backend_system.ledger_migration_runs (
@@ -116,7 +124,7 @@ select
   'ledger_entries',
   entry.id,
   pg_catalog.to_jsonb(entry),
-  pg_catalog.encode(public.digest(pg_catalog.to_jsonb(entry)::text, 'sha256'), 'hex')
+  pg_catalog.encode(extensions.digest(pg_catalog.to_jsonb(entry)::text, 'sha256'), 'hex')
 from public.ledger_entries entry
 union all
 select
@@ -125,7 +133,7 @@ select
   period_lock.id,
   pg_catalog.to_jsonb(period_lock),
   pg_catalog.encode(
-    public.digest(pg_catalog.to_jsonb(period_lock)::text, 'sha256'), 'hex'
+    extensions.digest(pg_catalog.to_jsonb(period_lock)::text, 'sha256'), 'hex'
   )
 from public.period_locks period_lock;
 
@@ -190,7 +198,7 @@ create table if not exists backend_system.ledger_cursor_signing_keys (
   created_at timestamptz not null default statement_timestamp()
 );
 insert into backend_system.ledger_cursor_signing_keys (secret)
-select public.gen_random_bytes(32)
+select extensions.gen_random_bytes(32)
 where not exists (
   select 1 from backend_system.ledger_cursor_signing_keys
 );
@@ -293,7 +301,7 @@ select
   entry.id,
   'LEDGER_LINES_INVALID',
   pg_catalog.to_jsonb(entry),
-  pg_catalog.encode(public.digest(pg_catalog.to_jsonb(entry)::text, 'sha256'), 'hex')
+  pg_catalog.encode(extensions.digest(pg_catalog.to_jsonb(entry)::text, 'sha256'), 'hex')
 from ledger.entries entry
 where not ledger.entry_lines_are_valid_v1(entry.lines, true)
   or pg_catalog.lower(entry.entry_kind) not in (
@@ -314,7 +322,7 @@ where exists (
     )::uuid
     and quarantine.source_table = 'ledger_entries'
     and quarantine.source_id = entry.id
-    and quarantine.payload_sha256 = pg_catalog.encode(public.digest(
+    and quarantine.payload_sha256 = pg_catalog.encode(extensions.digest(
       pg_catalog.to_jsonb(entry)::text, 'sha256'
     ), 'hex')
 );
@@ -482,7 +490,7 @@ begin
     'ledger_entries', 'period_locks'
   ]
   loop
-    select count(*), pg_catalog.encode(public.digest(coalesce(
+    select count(*), pg_catalog.encode(extensions.digest(coalesce(
       pg_catalog.string_agg(
         source.source_id::text || '|' || source.payload_sha256,
         E'\n' order by source.source_id
@@ -493,7 +501,7 @@ begin
     where source.run_id = v_run_id and source.source_table = v_source;
 
     if v_source = 'ledger_entries' then
-      select count(*), pg_catalog.encode(public.digest(coalesce(
+      select count(*), pg_catalog.encode(extensions.digest(coalesce(
         pg_catalog.string_agg(
           id::text || '|' || pg_catalog.to_jsonb(entry)::text,
           E'\n' order by id
@@ -502,7 +510,7 @@ begin
       into v_accepted, v_accepted_hash
       from ledger.entries entry;
     else
-      select count(*), pg_catalog.encode(public.digest(coalesce(
+      select count(*), pg_catalog.encode(extensions.digest(coalesce(
         pg_catalog.string_agg(
           id::text || '|' || pg_catalog.to_jsonb(period_lock)::text,
           E'\n' order by id
@@ -512,7 +520,7 @@ begin
       from ledger.period_locks period_lock;
     end if;
 
-    select count(*), pg_catalog.encode(public.digest(coalesce(
+    select count(*), pg_catalog.encode(extensions.digest(coalesce(
       pg_catalog.string_agg(
         source.source_id::text || '|' || source.payload_sha256,
         E'\n' order by source.source_id
@@ -854,7 +862,7 @@ begin
   end if;
 
   v_fingerprint := pg_catalog.encode(
-    public.digest(p_request::text, 'sha256'), 'hex'
+    extensions.digest(p_request::text, 'sha256'), 'hex'
   );
   if not pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended(
     'ledger-workflow:v1:' || v_actor_id::text || ':' || p_company_id::text
@@ -1078,7 +1086,7 @@ begin
   ) into v_companies
   from pg_catalog.unnest(p_company_ids) company_id;
   v_company_hash := pg_catalog.encode(
-    public.digest(v_companies, 'sha256'), 'hex'
+    extensions.digest(v_companies, 'sha256'), 'hex'
   );
 
   if p_cursor is not null then
@@ -1100,7 +1108,7 @@ begin
       v_key_id := (v_payload ->> 'kid')::uuid;
       v_issued_at := (v_payload ->> 'issuedAt')::timestamptz;
       if ledger.cursor_secret_v1(v_key_id) is null
-        or v_signature <> pg_catalog.encode(public.hmac(
+        or v_signature <> pg_catalog.encode(extensions.hmac(
           v_encoded, ledger.cursor_secret_v1(v_key_id), 'sha256'
         ), 'hex')
         or v_issued_at < pg_catalog.statement_timestamp() - interval '7 days'
@@ -1291,7 +1299,7 @@ begin
     raise exception 'ledger_invalid_input';
   end if;
   v_fingerprint := pg_catalog.encode(
-    public.digest(p_request::text, 'sha256'), 'hex'
+    extensions.digest(p_request::text, 'sha256'), 'hex'
   );
   insert into backend_system.ledger_workflow_receipts (
     api_major, actor_id, company_id, operation_name, idempotency_key,
@@ -1391,7 +1399,7 @@ begin
     raise exception 'ledger_forbidden';
   end if;
 
-  v_computed_fingerprint := pg_catalog.encode(public.digest(
+  v_computed_fingerprint := pg_catalog.encode(extensions.digest(
     pg_catalog.jsonb_build_object(
       'companyId', p_company_id,
       'incomeYear', p_income_year,
@@ -1555,7 +1563,7 @@ begin
     raise exception 'ledger_forbidden';
   end if;
 
-  v_computed_fingerprint := pg_catalog.encode(public.digest(
+  v_computed_fingerprint := pg_catalog.encode(extensions.digest(
     pg_catalog.jsonb_build_object(
       'companyId', p_company_id,
       'incomeYear', p_income_year,
@@ -1684,7 +1692,7 @@ begin
     'resource', p_resource,
     'kid', v_key_id,
     'issuedAt', pg_catalog.statement_timestamp(),
-    'companies', pg_catalog.encode(public.digest(v_companies, 'sha256'), 'hex'),
+    'companies', pg_catalog.encode(extensions.digest(v_companies, 'sha256'), 'hex'),
     'createdAt', p_created_at,
     'id', p_id
   )::text;
@@ -1694,7 +1702,7 @@ begin
       E'\n', ''
     ), '+/', '-_'
   );
-  v_signature := pg_catalog.encode(public.hmac(
+  v_signature := pg_catalog.encode(extensions.hmac(
     v_encoded, ledger.cursor_secret_v1(v_key_id), 'sha256'
   ), 'hex');
   return v_encoded || '.' || v_signature;
@@ -1742,7 +1750,7 @@ begin
   end if;
   select coalesce(pg_catalog.string_agg(company_id::text, ',' order by company_id), '')
   into v_companies from pg_catalog.unnest(p_company_ids) company_id;
-  v_company_hash := pg_catalog.encode(public.digest(v_companies, 'sha256'), 'hex');
+  v_company_hash := pg_catalog.encode(extensions.digest(v_companies, 'sha256'), 'hex');
 
   if p_cursor is not null then
     begin
@@ -1760,7 +1768,7 @@ begin
       v_key_id := (v_payload ->> 'kid')::uuid;
       v_issued_at := (v_payload ->> 'issuedAt')::timestamptz;
       if ledger.cursor_secret_v1(v_key_id) is null
-        or v_signature <> pg_catalog.encode(public.hmac(
+        or v_signature <> pg_catalog.encode(extensions.hmac(
           v_encoded, ledger.cursor_secret_v1(v_key_id), 'sha256'
         ), 'hex')
         or v_issued_at < pg_catalog.statement_timestamp() - interval '7 days'
@@ -1880,7 +1888,7 @@ begin
   end if;
   select coalesce(pg_catalog.string_agg(company_id::text, ',' order by company_id), '')
   into v_companies from pg_catalog.unnest(p_company_ids) company_id;
-  v_company_hash := pg_catalog.encode(public.digest(v_companies, 'sha256'), 'hex');
+  v_company_hash := pg_catalog.encode(extensions.digest(v_companies, 'sha256'), 'hex');
 
   if p_cursor is not null then
     begin
@@ -1898,7 +1906,7 @@ begin
       v_key_id := (v_payload ->> 'kid')::uuid;
       v_issued_at := (v_payload ->> 'issuedAt')::timestamptz;
       if ledger.cursor_secret_v1(v_key_id) is null
-        or v_signature <> pg_catalog.encode(public.hmac(
+        or v_signature <> pg_catalog.encode(extensions.hmac(
           v_encoded, ledger.cursor_secret_v1(v_key_id), 'sha256'
         ), 'hex')
         or v_issued_at < pg_catalog.statement_timestamp() - interval '7 days'
@@ -1981,9 +1989,29 @@ select
   company_id,
   setup_id,
   income_year,
-  entry_kind as entry_type,
+  case entry_kind
+    when 'OPENING_BALANCE' then 'opening_balance'
+    when 'ADMINISTRATIVE_COST' then 'admin_cost'
+    when 'MANUAL_JOURNAL' then 'manual_journal'
+    when 'BANK_RULE_SUGGESTION' then 'bank_rule_suggestion'
+    when 'DIVIDEND_RECEIVED' then 'dividend_received'
+    when 'OWNER_DIVIDEND_DECLARED' then 'dividend_to_owner_declared'
+    when 'OWNER_DIVIDEND_PAYMENT' then 'dividend_to_owner_payment'
+    when 'SHARE_PURCHASE' then 'share_purchase'
+    when 'SHARE_SALE' then 'share_sale'
+    when 'SHAREHOLDER_LOAN' then 'shareholder_loan'
+    when 'TAX_SETTLEMENT' then 'tax_settlement'
+    else pg_catalog.lower(entry_kind)
+  end as entry_type,
   memo,
-  lines,
+  coalesce(
+    (
+      select pg_catalog.jsonb_agg(line.item - 'currency' order by line.ordinality)
+      from pg_catalog.jsonb_array_elements(entries.lines)
+        with ordinality as line(item, ordinality)
+    ),
+    '[]'::jsonb
+  ) as lines,
   risk_flags,
   warning_accepted_by,
   warning_accepted_at,
@@ -1991,6 +2019,74 @@ select
   created_by,
   created_at
 from ledger.entries;
+
+-- The value projection above deliberately freezes the predecessor vocabulary,
+-- so the compatibility view needs an explicit insert path. The invoker performs
+-- the underlying insert and therefore remains subject to ledger.entries RLS.
+create or replace function public.ledger_entries_legacy_insert_v1()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+declare
+  v_entry_kind text;
+begin
+  insert into ledger.entries (
+    id, company_id, setup_id, income_year, entry_kind, memo, lines, risk_flags,
+    warning_accepted_by, warning_accepted_at, posted_at, created_by, created_at
+  ) values (
+    coalesce(new.id, pg_catalog.gen_random_uuid()),
+    new.company_id,
+    new.setup_id,
+    new.income_year,
+    new.entry_type,
+    new.memo,
+    new.lines,
+    coalesce(new.risk_flags, '[]'::jsonb),
+    new.warning_accepted_by,
+    new.warning_accepted_at,
+    coalesce(new.posted_at, pg_catalog.statement_timestamp()),
+    new.created_by,
+    coalesce(new.created_at, pg_catalog.statement_timestamp())
+  )
+  returning
+    id, company_id, setup_id, income_year, entry_kind, memo, lines, risk_flags,
+    warning_accepted_by, warning_accepted_at, posted_at, created_by, created_at
+  into
+    new.id, new.company_id, new.setup_id, new.income_year, v_entry_kind,
+    new.memo, new.lines, new.risk_flags, new.warning_accepted_by,
+    new.warning_accepted_at, new.posted_at, new.created_by, new.created_at;
+
+  new.entry_type := case v_entry_kind
+    when 'OPENING_BALANCE' then 'opening_balance'
+    when 'ADMINISTRATIVE_COST' then 'admin_cost'
+    when 'MANUAL_JOURNAL' then 'manual_journal'
+    when 'BANK_RULE_SUGGESTION' then 'bank_rule_suggestion'
+    when 'DIVIDEND_RECEIVED' then 'dividend_received'
+    when 'OWNER_DIVIDEND_DECLARED' then 'dividend_to_owner_declared'
+    when 'OWNER_DIVIDEND_PAYMENT' then 'dividend_to_owner_payment'
+    when 'SHARE_PURCHASE' then 'share_purchase'
+    when 'SHARE_SALE' then 'share_sale'
+    when 'SHAREHOLDER_LOAN' then 'shareholder_loan'
+    when 'TAX_SETTLEMENT' then 'tax_settlement'
+    else pg_catalog.lower(v_entry_kind)
+  end;
+  select coalesce(
+    pg_catalog.jsonb_agg(line.item - 'currency' order by line.ordinality),
+    '[]'::jsonb
+  )
+  into new.lines
+  from pg_catalog.jsonb_array_elements(new.lines)
+    with ordinality as line(item, ordinality);
+  return new;
+end;
+$function$;
+
+drop trigger if exists ledger_entries_legacy_insert
+  on public.ledger_entries;
+create trigger ledger_entries_legacy_insert
+instead of insert on public.ledger_entries
+for each row execute function public.ledger_entries_legacy_insert_v1();
 
 create or replace view public.period_locks
 with (security_invoker = true)
@@ -2001,6 +2097,17 @@ from ledger.period_locks;
 grant usage on schema ledger to authenticated;
 grant select, insert on ledger.entries, ledger.period_locks to authenticated;
 grant select, insert on public.ledger_entries, public.period_locks to authenticated;
+
+-- Hosted Supabase's migration principal is intentionally not a superuser.
+-- Give only the temporary SET membership needed to transfer ownership, then
+-- revoke it again before this transaction commits.
+do $ledger_store_ownership_membership$
+begin
+  execute pg_catalog.format(
+    'grant ledger_store_owner to %I', current_user
+  );
+end
+$ledger_store_ownership_membership$;
 
 alter table ledger.entries owner to ledger_store_owner;
 alter table ledger.period_locks owner to ledger_store_owner;
@@ -2031,6 +2138,8 @@ begin
   );
 end
 $ledger_workflow_ownership$;
+
+revoke create on schema backend_system from ledger_workflow_store_owner;
 
 alter function ledger.entry_lines_are_valid_v1(jsonb, boolean)
   owner to ledger_store_owner;
@@ -2126,5 +2235,13 @@ to ledger_workflow_store_owner;
 alter schema ledger owner to ledger_store_owner;
 alter schema backend_system owner to ledger_store_owner;
 revoke create on schema ledger, backend_system from ledger_store_owner;
+
+do $ledger_store_ownership_membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke ledger_store_owner from %I', current_user
+  );
+end
+$ledger_store_ownership_membership_revoke$;
 
 commit;

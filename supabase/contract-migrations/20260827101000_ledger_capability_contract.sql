@@ -8,6 +8,38 @@ select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:ledger:capability-cutover:v1', 0)
 );
 
+do $ledger_writer_coordinator_barrier$
+declare
+  v_signature text;
+begin
+  foreach v_signature in array array[
+    'backend_system.prepare_administrative_cost_v1(jsonb,text)',
+    'backend_system.complete_administrative_cost_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_investment_dividend_v1(jsonb,text)',
+    'backend_system.complete_investment_dividend_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_shareholder_loan_v1(jsonb,text)',
+    'backend_system.complete_shareholder_loan_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_tax_settlement_v1(jsonb,text)',
+    'backend_system.complete_tax_settlement_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_bank_transaction_suggestion_v1(jsonb,text)',
+    'backend_system.complete_bank_transaction_suggestion_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_investment_purchase_fifo_v1(jsonb,text)',
+    'backend_system.complete_investment_purchase_fifo_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_investment_sale_fifo_v1(jsonb,text)',
+    'backend_system.complete_investment_sale_fifo_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_corporate_decision_finalization_v1(jsonb,text)',
+    'backend_system.complete_corporate_decision_finalization_v1(jsonb,uuid,jsonb,text)',
+    'backend_system.prepare_owner_dividend_payment_v1(jsonb,text)',
+    'backend_system.complete_owner_dividend_payment_v1(jsonb,uuid,jsonb,text)',
+    'ledger.post_entry_with_id_v1(text,uuid,integer,text,text,jsonb,jsonb,boolean,text,text,text,text,uuid)'
+  ] loop
+    if pg_catalog.to_regprocedure(v_signature) is null then
+      raise exception 'ledger_contract_writer_coordinator_missing:%', v_signature;
+    end if;
+  end loop;
+end
+$ledger_writer_coordinator_barrier$;
+
 do $ledger_contract_reconciliation$
 declare
   v_latest_run_id uuid;

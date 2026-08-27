@@ -6,6 +6,10 @@ const expand = readFileSync(new URL(
   "../supabase/migrations/20260827100000_ledger_capability.sql",
   import.meta.url,
 ), "utf8");
+const coordinators = readFileSync(new URL(
+  "../supabase/migrations/20260827100500_ledger_writer_coordinators.sql",
+  import.meta.url,
+), "utf8");
 const contract = readFileSync(new URL(
   "../supabase/contract-migrations/20260827101000_ledger_capability_contract.sql",
   import.meta.url,
@@ -67,6 +71,38 @@ test("technical receipts and cursor keys are immutable and non-forgeable", () =>
   assert.doesNotMatch(expand, /current_database\(\)[^;]+ledger_executor/iu);
 });
 
+test("hosted migration authority and pgcrypto access are explicit and temporary", () => {
+  assert.match(expand, /grant usage on schema extensions to ledger_store_owner,\s*ledger_workflow_store_owner/iu);
+  for (const signature of [
+    "extensions\\.digest\\(text, text\\)",
+    "extensions\\.hmac\\(text, text, text\\)",
+    "extensions\\.gen_random_bytes\\(integer\\)",
+  ]) {
+    assert.match(expand, new RegExp(signature, "iu"));
+  }
+  assert.match(expand, /grant ledger_store_owner to %I/iu);
+  assert.match(expand, /revoke ledger_store_owner from %I/iu);
+  assert.match(expand, /grant ledger_workflow_store_owner to %I/iu);
+  assert.match(expand, /revoke ledger_workflow_store_owner from %I/iu);
+  assert.match(
+    coordinators,
+    /grant ledger_store_owner, ledger_workflow_store_owner to %I[\s\S]+revoke ledger_store_owner, ledger_workflow_store_owner from %I/iu,
+  );
+});
+
+test("mixed-version facade preserves predecessor values and RLS-enforced inserts", () => {
+  assert.match(expand, /create or replace view public\.ledger_entries[\s\S]+when 'ADMINISTRATIVE_COST' then 'admin_cost'/iu);
+  assert.match(expand, /line\.item - 'currency'/iu);
+  const legacyInsert = expand.match(
+    /create or replace function public\.ledger_entries_legacy_insert_v1\(\)[\s\S]+?\$function\$\s*;/iu,
+  )?.[0];
+  assert.ok(legacyInsert);
+  assert.doesNotMatch(legacyInsert, /security definer/iu);
+  assert.match(legacyInsert, /insert into ledger\.entries/iu);
+  assert.match(expand, /instead of insert on public\.ledger_entries/iu);
+  assert.match(rollback, /when 'ADMINISTRATIVE_COST' then 'admin_cost'/iu);
+});
+
 test("the backend executor cannot bypass the intent facade with direct table DML", () => {
   assert.doesNotMatch(expand, /grant[^;]+(?:insert|update|delete)[^;]+ledger\.(?:entries|period_locks)[^;]+ledger_executor/iu);
   assert.doesNotMatch(expand, /policy[^;]+for insert to ledger_executor/iu);
@@ -78,6 +114,9 @@ test("future capability SQL is not rewritten into a generic ledger dispatcher", 
   assert.doesNotMatch(expand, /ledger_legacy_posting_bridge/iu);
   assert.doesNotMatch(expand, /ledger_post_entry\s*\(\s*p_operation/iu);
   assert.doesNotMatch(expand, /replace\([^;]+public\.ledger_entries/iu);
+  assert.doesNotMatch(coordinators, /pg_get_functiondef|ledger_legacy_posting_bridge/iu);
+  assert.doesNotMatch(coordinators, /insert into public\.ledger_entries/iu);
+  assert.doesNotMatch(coordinators, /prepare_ledger_(?:writer|operation)|complete_ledger_(?:writer|operation)\s*\(\s*p_operation/iu);
 });
 
 test("contract removes browser posting RPCs and rollback disables target before restoring legacy", () => {
@@ -98,4 +137,9 @@ test("contract removes browser posting RPCs and rollback disables target before 
   const restoreLegacyAt = rollback.search(/set schema public|create view public\.ledger_entries/iu);
   assert.ok(disableTargetAt >= 0, "rollback must revoke the target executor");
   assert.ok(restoreLegacyAt > disableTargetAt, "rollback must disable target before restoring legacy");
+  const revokeCoordinatorAt = rollback.search(
+    /revoke all on function\s+backend_system\.prepare_administrative_cost_v1/iu,
+  );
+  assert.ok(revokeCoordinatorAt >= 0 && revokeCoordinatorAt < restoreLegacyAt);
+  assert.match(contract, /ledger_writer_coordinator_barrier/iu);
 });

@@ -6,6 +6,7 @@ import test from "node:test";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expandPath = "/repo/supabase/migrations/20260827100000_ledger_capability.sql";
+const coordinatorPath = "/repo/supabase/migrations/20260827100500_ledger_writer_coordinators.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -38,6 +39,9 @@ const bootstrapSql = String.raw`
 create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
+create schema extensions;
+create extension pgcrypto with schema extensions;
+grant usage on schema extensions to public;
 create schema auth;
 create table auth.users (id uuid primary key, email text);
 create or replace function auth.uid() returns uuid language sql stable as $$
@@ -745,6 +749,30 @@ function assertLegacyRoutinesDisabled(containerName) {
   }
 }
 
+function writerCoordinatorPrivileges(containerName) {
+  return lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+    select concat_ws(':',
+      pg_catalog.has_function_privilege(
+        'ledger_workflow_executor',
+        'backend_system.prepare_administrative_cost_v1(jsonb,text)', 'execute'
+      ),
+      pg_catalog.has_function_privilege(
+        'authenticated',
+        'backend_system.prepare_administrative_cost_v1(jsonb,text)', 'execute'
+      ),
+      pg_catalog.has_function_privilege(
+        'ledger_workflow_executor',
+        'backend_system.complete_bank_transaction_suggestion_v1(jsonb,uuid,jsonb,text)',
+        'execute'
+      ),
+      pg_catalog.has_function_privilege(
+        'authenticated',
+        'backend_system.complete_bank_transaction_suggestion_v1(jsonb,uuid,jsonb,text)',
+        'execute'
+      ));
+  `));
+}
+
 function archiveTriggerState(containerName, relation) {
   return lastOutputLine(psql(containerName, ["-Atq"], String.raw`
     select concat_ws(':', count(*), coalesce(bool_and(
@@ -800,6 +828,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, [], archiveFreshnessFixtureSql);
 
     psql(containerName, ["--file", expandPath]);
+    psql(containerName, ["--file", coordinatorPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -1078,6 +1107,196 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       )::text;
     `), { entries: 0, receipts: 0, setups: 0 });
 
+    const adminBankId = "81000000-0000-0000-0000-000000000001";
+    const failedAdminBankId = "81000000-0000-0000-0000-000000000002";
+    const suggestionBankId = "81000000-0000-0000-0000-000000000003";
+    psql(containerName, [], String.raw`
+      insert into public.bank_transactions (
+        id, company_id, income_year, transaction_date, text, amount,
+        source_hash, created_by
+      ) values
+        ('${adminBankId}', '${companyId}', 2026, date '2026-03-01',
+          'Talli annual fee', -1490.00, 'runtime-admin-cost', '${ownerId}'),
+        ('${failedAdminBankId}', '${companyId}', 2026, date '2026-03-02',
+          'Talli failed fee', -1490.00, 'runtime-admin-cost-failure', '${ownerId}'),
+        ('${suggestionBankId}', '${companyId}', 2026, date '2026-03-03',
+          'Årsgebyr', -89.00, 'runtime-bank-suggestion', '${ownerId}');
+    `);
+
+    const adminRequest = {
+      companyId,
+      incomeYear: 2026,
+      idempotencyKey: "82000000-0000-4000-8000-000000000001",
+      correlationId: "runtime-admin-coordinator",
+      bankTransactionId: adminBankId,
+      category: "SOFTWARE",
+      payee: "Talli AS",
+      amount: "1490.00",
+      paidDate: "2026-03-01",
+      documentId: null,
+    };
+    const adminRequestSql = sqlQuote(JSON.stringify(adminRequest));
+    const adminLinesSql = sqlQuote(JSON.stringify([
+      { account: "6420", description: "Admin cost: Talli AS", debit: "1490.00", credit: "0.00", currency: "NOK" },
+      { account: "1920", description: "Paid from bank", debit: "0.00", credit: "1490.00", currency: "NOK" },
+    ]));
+    const adminResult = jsonOutput(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_administrative_cost_v1(
+        '${adminRequestSql}'::jsonb, '${ownerId}'
+      ) as prepared \gset
+      select * from ledger.post_entry(
+        '${adminRequest.idempotencyKey}', '${companyId}', 2026,
+        'ADMINISTRATIVE_COST', 'Admin cost paid to Talli AS on 2026-03-01',
+        '${adminLinesSql}'::jsonb, '[]'::jsonb, false, 'BANKING',
+        '${adminBankId}', '${adminRequest.correlationId}', '${ownerId}'
+      ) \gset admin_
+      select backend_system.complete_administrative_cost_v1(
+        '${adminRequestSql}'::jsonb, :'admin_ledger_entry_id'::uuid,
+        :'prepared'::jsonb, '${ownerId}'
+      )::text;
+      commit;
+    `);
+    assert.equal(adminResult.entryKind, "ADMINISTRATIVE_COST");
+    assert.equal(adminResult.auditRequired, true);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries where id = '${adminResult.entryId}'),
+        (select count(*) from public.bank_transactions
+          where id = '${adminBankId}' and matched_entry_id = '${adminResult.entryId}'),
+        (select count(*) from backend_system.ledger_workflow_receipts
+          where operation_name = 'record_administrative_cost'
+            and idempotency_key = '${adminRequest.idempotencyKey}'),
+        (select count(*) from public.audit_events
+          where action = 'admin_cost_posted_and_matched'));
+    `)), "1:1:1:0");
+    const adminReplay = jsonOutput(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_administrative_cost_v1(
+        '${adminRequestSql}'::jsonb, '${ownerId}'
+      )::text;
+      commit;
+    `);
+    assert.equal(adminReplay.replay.entryId, adminResult.entryId);
+    assert.equal(adminReplay.replay.auditRequired, true);
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_administrative_cost_v1(
+        '${sqlQuote(JSON.stringify({ ...adminRequest, amount: "1491.00" }))}'::jsonb,
+        '${ownerId}'
+      );
+      commit;
+    `), /ledger_idempotency_key_reused/iu);
+
+    const failedAdminRequest = {
+      ...adminRequest,
+      idempotencyKey: "82000000-0000-4000-8000-000000000002",
+      correlationId: "runtime-admin-coordinator-failure",
+      bankTransactionId: failedAdminBankId,
+      paidDate: "2026-03-02",
+    };
+    const failedAdminRequestSql = sqlQuote(JSON.stringify(failedAdminRequest));
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_administrative_cost_v1(
+        '${failedAdminRequestSql}'::jsonb, '${ownerId}'
+      ) as prepared \gset
+      select * from ledger.post_entry(
+        '${failedAdminRequest.idempotencyKey}', '${companyId}', 2026,
+        'ADMINISTRATIVE_COST', 'Admin cost paid to Talli AS on 2026-03-02',
+        '${adminLinesSql}'::jsonb, '[]'::jsonb, false, 'BANKING',
+        '${failedAdminBankId}', '${failedAdminRequest.correlationId}', '${ownerId}'
+      );
+      select backend_system.complete_administrative_cost_v1(
+        '${failedAdminRequestSql}'::jsonb, '${adminResult.entryId}'::uuid,
+        :'prepared'::jsonb, '${ownerId}'
+      );
+      commit;
+    `), /ledger_dependency_unavailable/iu);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id = '${failedAdminBankId}'),
+        (select count(*) from public.bank_transactions
+          where id = '${failedAdminBankId}' and matched_entry_id is not null),
+        (select count(*) from backend_system.ledger_workflow_receipts
+          where idempotency_key = '${failedAdminRequest.idempotencyKey}'));
+    `)), "0:0:0");
+
+    const suggestionRequest = {
+      companyId,
+      incomeYear: 2026,
+      idempotencyKey: "82000000-0000-4000-8000-000000000003",
+      correlationId: "runtime-suggestion-coordinator",
+      acceptanceId: "83000000-0000-0000-0000-000000000003",
+      bankTransactionId: suggestionBankId,
+      rule: "bank_fee",
+      ruleVersion: "2026-07-13.1",
+    };
+    const suggestionRequestSql = sqlQuote(JSON.stringify(suggestionRequest));
+    const suggestionLinesSql = sqlQuote(JSON.stringify([
+      { account: "7770", description: "Bankomkostninger", debit: "89.00", credit: "0.00", currency: "NOK" },
+      { account: "1920", description: "Bank", debit: "0.00", credit: "89.00", currency: "NOK" },
+    ]));
+    const suggestionResult = jsonOutput(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_bank_transaction_suggestion_v1(
+        '${suggestionRequestSql}'::jsonb, '${ownerId}'
+      ) as prepared \gset
+      select * from ledger.post_entry(
+        '${suggestionRequest.idempotencyKey}', '${companyId}', 2026,
+        'BANK_RULE_SUGGESTION', 'Godkjent bankforslag: Årsgebyr',
+        '${suggestionLinesSql}'::jsonb, '[]'::jsonb, false, 'BANKING',
+        '${suggestionRequest.acceptanceId}', '${suggestionRequest.correlationId}',
+        '${ownerId}'
+      ) \gset suggestion_
+      select backend_system.complete_bank_transaction_suggestion_v1(
+        '${suggestionRequestSql}'::jsonb, :'suggestion_ledger_entry_id'::uuid,
+        :'prepared'::jsonb, '${ownerId}'
+      )::text;
+      commit;
+    `);
+    assert.equal(suggestionResult.entryKind, "BANK_RULE_SUGGESTION");
+    assert.equal(suggestionResult.auditRequired, false);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from public.bank_suggestion_acceptances
+          where id = '${suggestionRequest.acceptanceId}'
+            and ledger_entry_id = '${suggestionResult.entryId}'),
+        (select count(*) from public.audit_events
+          where action = 'bank_suggestion_accepted'),
+        (select count(*) from backend_system.ledger_workflow_receipts
+          where operation_name = 'accept_bank_transaction_suggestion'
+            and idempotency_key = '${suggestionRequest.idempotencyKey}'));
+    `)), "1:1:1");
+    const suggestionReplay = jsonOutput(containerName, String.raw`
+      begin;
+      ${workflowActorContext(ownerId)}
+      select backend_system.prepare_bank_transaction_suggestion_v1(
+        '${suggestionRequestSql}'::jsonb, '${ownerId}'
+      )::text;
+      commit;
+    `);
+    assert.equal(suggestionReplay.replay.entryId, suggestionResult.entryId);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select count(*) from public.audit_events where action = 'bank_suggestion_accepted';
+    `)), "1");
+
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      set local role authenticated;
+      set local talli.verified_actor_id = '${ownerId}';
+      select backend_system.prepare_administrative_cost_v1(
+        '${adminRequestSql}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `), /permission denied/iu);
+
     assert.match(psqlFailure(containerName, String.raw`
       begin;
       ${workflowActorContext(ownerId)}
@@ -1252,6 +1471,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `), /permission denied/iu);
 
     assertLegacyRoutinesDisabled(containerName);
+    assert.equal(writerCoordinatorPrivileges(containerName), "t:f:t:f");
 
     assert.equal(archiveTriggerState(containerName, "ledger.entries"), "1:t");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
@@ -1556,11 +1776,23 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.entries),
         (select count(*) from ledger.period_locks),
         (select count(*) from backend_system.ledger_command_receipts),
-        encode(digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
+        encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries), ''), 'sha256'), 'hex'));
     `));
 
     psql(containerName, ["--file", rollbackPath]);
+    assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        pg_catalog.has_function_privilege(
+          'authenticated', 'public.accept_bank_transaction_suggestion(uuid,text,text)',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'authenticated', 'public.record_share_sale_fifo(uuid,uuid,integer,uuid,date,bigint,numeric,uuid,uuid,text)',
+          'execute'
+        ));
+    `)), "t:t");
     const rollbackOpeningProjection = jsonOutput(
       containerName,
       openingSnapshotCall({ actorId: readOnlyId }),
@@ -1577,6 +1809,10 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       select setup_id from public.ledger_entries
       where id = '${overlapOpeningEntryId}';
     `)), overlapOpeningSetupId);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select pg_catalog.bool_and(entry_type = pg_catalog.lower(entry_type))
+      from public.ledger_entries;
+    `)), "t");
     const overlapPrivileges = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
         has_table_privilege('authenticated', 'public.ledger_entries', 'insert'),
@@ -1619,6 +1855,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `))), rollbackGenerationBeforeInsert + 1);
 
     psql(containerName, ["--file", expandPath]);
+    psql(containerName, ["--file", coordinatorPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -1630,6 +1867,10 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       select source_record_id from ledger.entries
       where id = '${overlapOpeningEntryId}';
     `)), `opening-setup:${overlapOpeningSetupId}`);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select pg_catalog.bool_and(entry_kind = pg_catalog.upper(entry_kind))
+      from ledger.entries;
+    `)), "t");
 
     const recutoverWrites = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -1653,6 +1894,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       select count(*) from backend_system.ledger_migration_reconciliations;
     `))) >= 4);
     assertLegacyRoutinesDisabled(containerName);
+    assert.equal(writerCoordinatorPrivileges(containerName), "t:f:t:f");
 
     const recutoverReplay = jsonOutput(containerName, postTransaction());
     assert.equal(recutoverReplay.ledger_entry_id, firstPost.ledger_entry_id);
@@ -1667,7 +1909,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.entries) - 1,
         (select count(*) from ledger.period_locks),
         (select count(*) from backend_system.ledger_command_receipts),
-        encode(digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
+        encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries where id <> '${malformedLegacyEntryId}'), ''),
           'sha256'), 'hex'));
     `));
