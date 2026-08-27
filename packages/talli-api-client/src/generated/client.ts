@@ -731,6 +731,8 @@ export interface LedgerReconstructionAssessmentWire {
   asOf: string;
   assessmentId: string;
   companyId: string;
+  economicFactCount: number | null;
+  economicFactsDigest: string | null;
   evidenceDigest: string;
   gapCodes: ReconstructionGapCode[];
   incomeYear: number;
@@ -1742,10 +1744,12 @@ function isLedgerPeriodLockWire(value: unknown): value is LedgerPeriodLockWire {
 function isLedgerReconstructionAssessmentWire(value: unknown): value is LedgerReconstructionAssessmentWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["asOf","assessmentId","companyId","evidenceDigest","gapCodes","incomeYear","ledgerStateDigest","recordedAt","state"]) &&
+    hasOnlyProperties(value, ["asOf","assessmentId","companyId","economicFactCount","economicFactsDigest","evidenceDigest","gapCodes","incomeYear","ledgerStateDigest","recordedAt","state"]) &&
     typeof value.asOf === "string" &&
     isUuid(value.assessmentId) &&
     isUuid(value.companyId) &&
+    ((typeof value.economicFactCount === "number" && Number.isInteger(value.economicFactCount) && value.economicFactCount >= 0) || value.economicFactCount === null) &&
+    ((typeof value.economicFactsDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.economicFactsDigest)) || value.economicFactsDigest === null) &&
     (typeof value.evidenceDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.evidenceDigest)) &&
     Array.isArray(value.gapCodes) && value.gapCodes.every((item) => isReconstructionGapCode(item)) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&

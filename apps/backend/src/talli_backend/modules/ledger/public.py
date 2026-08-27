@@ -195,6 +195,11 @@ class LedgerSourceCapability(StrEnum):
     DOCUMENTS = "DOCUMENTS"
 
 
+class LedgerFactRole(StrEnum):
+    PRIMARY = "PRIMARY"
+    CORROBORATING = "CORROBORATING"
+
+
 @dataclass(frozen=True, slots=True)
 class LedgerFactReference:
     capability: LedgerSourceCapability
@@ -612,6 +617,9 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    RECONSTRUCTION_ECONOMIC_FACTS_INVALID = (
+        "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
+    )
     RECONSTRUCTION_STALE = "LEDGER_RECONSTRUCTION_STALE"
     BANK_LOAN_ALREADY_EXISTS = "LEDGER_BANK_LOAN_ALREADY_EXISTS"
     BANK_LOAN_EVENT_INVALID = "LEDGER_BANK_LOAN_EVENT_INVALID"
@@ -849,6 +857,7 @@ class ReconstructionEvidence:
 class RecordReconstructionAssessmentCommand(LedgerCommand):
     as_of: LocalDate
     evidence: tuple[ReconstructionEvidence, ...]
+    economic_fact_entry_ids: tuple[LedgerEntryId, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1097,6 +1106,105 @@ class ReconstructionAssessment:
     ledger_state_digest: str | None
     recorded_at: Timestamp
     replayed: bool
+    economic_facts_digest: str | None = None
+    economic_fact_count: int | None = None
+
+    def __post_init__(self) -> None:
+        digest = self.economic_facts_digest
+        count = self.economic_fact_count
+        if (digest is None) is not (count is None) or (
+            digest is not None
+            and (
+                len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+                or count is None
+                or count < 0
+            )
+        ):
+            raise ValueError("reconstruction economic fact binding is invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEconomicFactCandidates:
+    company_id: CompanyId
+    income_year: IncomeYear
+    as_of: LocalDate
+    entry_ids: tuple[LedgerEntryId, ...]
+    facts_digest: str
+
+    def __post_init__(self) -> None:
+        digest = self.facts_digest.strip().lower()
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ) or len({entry_id.value for entry_id in self.entry_ids}) != len(
+            self.entry_ids
+        ):
+            raise ValueError("reconstruction economic facts are invalid")
+        object.__setattr__(self, "facts_digest", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEconomicFactSource:
+    role: LedgerFactRole
+    capability: LedgerSourceCapability
+    record_id: LedgerSourceRecordId
+    revision: int | None
+    fact_sha256: str | None
+
+    def __post_init__(self) -> None:
+        if (self.revision is None) is not (self.fact_sha256 is None):
+            raise ValueError("economic fact source binding is invalid")
+        if self.revision is not None and (
+            self.revision < 1
+            or self.fact_sha256 is None
+            or len(self.fact_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.fact_sha256
+            )
+        ):
+            raise ValueError("economic fact source binding is invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEconomicFactCorrection:
+    original_entry_id: LedgerEntryId
+    reversal_entry_id: LedgerEntryId
+    replacement_entry_id: LedgerEntryId
+    reason: str
+    corrected_by: ActorId
+    corrected_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEconomicFact:
+    entry_id: LedgerEntryId
+    event_date: LocalDate
+    entry_kind: LedgerEntryKind
+    memo: str
+    lines: tuple[LedgerLine, ...]
+    correlation_id: CorrelationId
+    rule_version: str | None
+    sources: tuple[ReconstructionEconomicFactSource, ...]
+    corrections: tuple[ReconstructionEconomicFactCorrection, ...]
+    posted_by: ActorId
+    posted_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEconomicFactSnapshot:
+    assessment_id: ReconstructionAssessmentId
+    company_id: CompanyId
+    income_year: IncomeYear
+    as_of: LocalDate
+    facts_digest: str
+    facts: tuple[ReconstructionEconomicFact, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.facts_digest) != 64 or any(
+            character not in "0123456789abcdef" for character in self.facts_digest
+        ):
+            raise ValueError("reconstruction economic fact snapshot is invalid")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1509,6 +1617,24 @@ class LedgerPersistence(Protocol):
         gap_codes: tuple[ReconstructionGapCode, ...],
     ) -> ReconstructionAssessment: ...
 
+    async def get_reconstruction_economic_fact_candidates(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        as_of: LocalDate,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactCandidates: ...
+
+    async def get_reconstruction_economic_facts(
+        self,
+        *,
+        actor_id: ActorId,
+        assessment_id: ReconstructionAssessmentId,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactSnapshot: ...
+
     async def rebuild_company_year_opening(
         self,
         command: RebuildCompanyYearOpeningCommand,
@@ -1628,6 +1754,24 @@ class LedgerCommands(Protocol):
 
 
 class LedgerQueries(Protocol):
+    async def get_reconstruction_economic_facts(
+        self,
+        *,
+        actor_id: ActorId,
+        assessment_id: ReconstructionAssessmentId,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactSnapshot: ...
+
+    async def get_reconstruction_economic_fact_candidates(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        as_of: LocalDate,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactCandidates: ...
+
     async def get_company_year_close_assessment(
         self,
         *,
@@ -1717,6 +1861,7 @@ __all__ = [
     "LedgerError",
     "LedgerErrorCode",
     "LedgerFactReference",
+    "LedgerFactRole",
     "LedgerLine",
     "LedgerPage",
     "LedgerPersistence",
@@ -1755,6 +1900,11 @@ __all__ = [
     "RecognizeHoldingActionCommand",
     "ReconstructionAssessment",
     "ReconstructionAssessmentId",
+    "ReconstructionEconomicFactCandidates",
+    "ReconstructionEconomicFact",
+    "ReconstructionEconomicFactCorrection",
+    "ReconstructionEconomicFactSnapshot",
+    "ReconstructionEconomicFactSource",
     "ReconstructionEvidence",
     "ReconstructionEvidenceIssuer",
     "ReconstructionEvidenceKind",

@@ -65,6 +65,9 @@ from talli_backend.modules.ledger.public import (
     PostTaxSettlementCommand,
     RebuildCompanyYearOpeningCommand,
     ReconstructionAssessment,
+    ReconstructionAssessmentId,
+    ReconstructionEconomicFactCandidates,
+    ReconstructionEconomicFactSnapshot,
     RecordReconstructionAssessmentCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
@@ -946,6 +949,36 @@ class LedgerApplicationSession:
         self, command: RecordReconstructionAssessmentCommand
     ) -> ReconstructionAssessment:
         return await self._ledger.record_reconstruction_assessment(command)
+
+    async def get_reconstruction_economic_fact_candidates(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        as_of: LocalDate,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactCandidates:
+        return await self._ledger.get_reconstruction_economic_fact_candidates(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            as_of=as_of,
+            correlation_id=correlation_id,
+        )
+
+    async def get_reconstruction_economic_facts(
+        self,
+        *,
+        actor_id: ActorId,
+        assessment_id: ReconstructionAssessmentId,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactSnapshot:
+        return await self._ledger.get_reconstruction_economic_facts(
+            actor_id=actor_id,
+            assessment_id=assessment_id,
+            correlation_id=correlation_id,
+        )
 
     async def get_reconstruction_assessment(
         self,

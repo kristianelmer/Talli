@@ -697,6 +697,8 @@ class LedgerReconstructionAssessmentWire(TransportModel):
     gap_codes: list[ReconstructionGapCode]
     evidence_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     ledger_state_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
+    economic_facts_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
+    economic_fact_count: int | None = Field(ge=0)
     recorded_at: datetime
 
 
@@ -756,6 +758,8 @@ def _reconstruction_wire(
         gap_codes=list(value.gap_codes),
         evidence_digest=value.evidence_digest,
         ledger_state_digest=value.ledger_state_digest,
+        economic_facts_digest=value.economic_facts_digest,
+        economic_fact_count=value.economic_fact_count,
         recorded_at=value.recorded_at.value,
     )
 

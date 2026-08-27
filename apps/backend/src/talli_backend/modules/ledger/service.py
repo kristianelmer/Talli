@@ -73,6 +73,9 @@ from talli_backend.modules.ledger.public import (
     RebuildCompanyYearOpeningCommand,
     RecognizeHoldingActionCommand,
     ReconstructionAssessment,
+    ReconstructionAssessmentId,
+    ReconstructionEconomicFactCandidates,
+    ReconstructionEconomicFactSnapshot,
     ReconstructionEvidenceIssuer,
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
@@ -87,6 +90,7 @@ from talli_backend.shared.kernel import (
     CompanyId,
     CorrelationId,
     IncomeYear,
+    LocalDate,
     Money,
 )
 
@@ -671,6 +675,38 @@ class LedgerService:
             actor_id=actor_id,
             company_id=company_id,
             income_year=income_year,
+            correlation_id=correlation_id,
+        )
+
+    async def get_reconstruction_economic_fact_candidates(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        as_of: LocalDate,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactCandidates:
+        if as_of.value.year != int(income_year):
+            raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
+        return await self._persistence.get_reconstruction_economic_fact_candidates(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            as_of=as_of,
+            correlation_id=correlation_id,
+        )
+
+    async def get_reconstruction_economic_facts(
+        self,
+        *,
+        actor_id: ActorId,
+        assessment_id: ReconstructionAssessmentId,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactSnapshot:
+        return await self._persistence.get_reconstruction_economic_facts(
+            actor_id=actor_id,
+            assessment_id=assessment_id,
             correlation_id=correlation_id,
         )
 
@@ -1418,6 +1454,15 @@ class LedgerService:
     ) -> ReconstructionAssessment:
         if command.as_of.value.year != int(command.income_year):
             raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
+        economic_fact_ids = tuple(
+            sorted(command.economic_fact_entry_ids, key=lambda entry_id: entry_id.value)
+        )
+        if len({entry_id.value for entry_id in economic_fact_ids}) != len(
+            economic_fact_ids
+        ):
+            raise LedgerError.invalid_input(
+                "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
+            )
         by_requirement = {(item.kind, item.issuer): item for item in command.evidence}
         if len(by_requirement) != len(command.evidence):
             raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE")
@@ -1458,7 +1503,7 @@ class LedgerService:
         )
         state = ReconstructionState.BLOCKED if gap_codes else ReconstructionState.READY
         return await self._persistence.record_reconstruction_assessment(
-            command,
+            replace(command, economic_fact_entry_ids=economic_fact_ids),
             evidence=evidence,
             state=state,
             gap_codes=gap_codes,

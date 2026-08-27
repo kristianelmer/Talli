@@ -24,7 +24,13 @@ const additiveLedgerMigrationPaths = [
   "20260827107000_ledger_cash_capital_increase_lifecycle.sql",
   "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql",
   "20260827109000_ledger_opening_position_rebuild.sql",
+  "20260827109200_ledger_reconstruction_economic_facts.sql",
 ].map((name) => new URL(`../supabase/migrations/${name}`, import.meta.url));
+
+const economicFactsPath = new URL(
+  "../supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql",
+  import.meta.url,
+);
 const lifecyclePath = new URL("./ledger_database_runtime.test.mjs", import.meta.url);
 
 function functionBody(source, name) {
@@ -199,6 +205,31 @@ test("database revalidates the exact source-owner evidence topology", () => {
   assert.match(source, /CURRENT_YEAR_ACTIVITY[\s\S]+p_as_of/iu);
   assert.match(source, /DOCUMENTS_INCOMPLETE/iu);
   assert.match(source, /UNSUPPORTED_ACTIVITY_FOUND/iu);
+});
+
+test("reconstruction readiness binds the complete canonical economic-fact set", () => {
+  const source = readFileSync(economicFactsPath, "utf8");
+  for (const table of [
+    "reconstruction_economic_fact_sets",
+    "reconstruction_economic_facts",
+  ]) {
+    assert.match(source, new RegExp(`alter table ledger\\.${table} force row level security`, "iu"));
+    assert.match(source, new RegExp(`create trigger ${table}_immutable`, "iu"));
+  }
+  const record = functionBody(source, "record_reconstruction_assessment");
+  assert.match(record, /p_economic_fact_entry_ids uuid\[\]/iu);
+  assert.match(record, /ledger_reconstruction_economic_facts_invalid/iu);
+  assert.match(record, /coalesce\(context\.event_date, entry\.posted_at::date\)[\s\S]+between[\s\S]+make_date\(p_income_year, 1, 1\)[\s\S]+p_as_of/iu);
+  assert.match(record, /source\.source_role = 'PRIMARY'/iu);
+  assert.match(
+    record,
+    /record_reconstruction_assessment_without_state_digest_v1[\s\S]+select coalesce\(pg_catalog\.array_agg\(entry\.id/iu,
+  );
+  assert.match(source, /coalesce\(context\.event_date, entry\.posted_at::date\)/iu);
+  assert.match(source, /get_reconstruction_economic_facts_v1/iu);
+  assert.match(source, /get_reconstruction_assessment_with_economic_facts_v1/iu);
+  assert.match(source, /economic_facts_digest/iu);
+  assert.doesNotMatch(source, /jsonb_array_length\(p_economic_fact_entry_ids\)/iu);
 });
 
 test("fresh database rehearsal executes reconstruction replay, RLS, and gap cases", () => {

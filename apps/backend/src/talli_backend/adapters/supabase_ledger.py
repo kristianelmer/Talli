@@ -69,6 +69,7 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryView,
     LedgerError,
     LedgerFactReference,
+    LedgerFactRole,
     LedgerLine,
     LedgerPage,
     LedgerPersistence,
@@ -86,6 +87,11 @@ from talli_backend.modules.ledger.public import (
     RecognizeHoldingActionCommand,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
+    ReconstructionEconomicFactCandidates,
+    ReconstructionEconomicFact,
+    ReconstructionEconomicFactCorrection,
+    ReconstructionEconomicFactSnapshot,
+    ReconstructionEconomicFactSource,
     ReconstructionEvidence,
     ReconstructionGapCode,
     ReconstructionState,
@@ -255,6 +261,16 @@ def _reconstruction_assessment(row: Mapping[str, object]) -> ReconstructionAsses
         ),
         recorded_at=_timestamp(row["recorded_at"]),
         replayed=bool(row["replayed"]),
+        economic_facts_digest=(
+            str(row["economic_facts_digest"])
+            if row.get("economic_facts_digest") is not None
+            else None
+        ),
+        economic_fact_count=(
+            int(row["economic_fact_count"])
+            if row.get("economic_fact_count") is not None
+            else None
+        ),
     )
 
 
@@ -486,6 +502,12 @@ def _map_database_error(message: str) -> LedgerError:
         (
             "ledger_reconstruction_stale",
             LedgerError.precondition_failed("LEDGER_RECONSTRUCTION_STALE"),
+        ),
+        (
+            "ledger_reconstruction_economic_facts_invalid",
+            LedgerError.invalid_input(
+                "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
+            ),
         ),
         (
             "ledger_bank_loan_already_exists",
@@ -1559,7 +1581,7 @@ class SupabaseLedgerSession:
         row = await self._one_idempotent_row(
             """
             select * from ledger.record_reconstruction_assessment(
-              %s::text, %s::uuid, %s::integer, %s::date, %s::jsonb,
+              %s::text, %s::uuid, %s::integer, %s::date, %s::jsonb, %s::uuid[],
               %s::text, %s::text[], %s::text, %s::text
             )
             """,
@@ -1572,6 +1594,7 @@ class SupabaseLedgerSession:
                     [_reconstruction_evidence_payload(item) for item in evidence],
                     separators=(",", ":"),
                 ),
+                [entry_id.value for entry_id in command.economic_fact_entry_ids],
                 state.value,
                 [code.value for code in gap_codes],
                 str(command.correlation_id),
@@ -1693,13 +1716,93 @@ class SupabaseLedgerSession:
             raise LedgerError.forbidden()
         _ = correlation_id
         rows = await self._database_rows(
-            "select * from ledger.get_reconstruction_assessment(%s::uuid, %s::integer, %s::text)",
+            "select * from ledger.get_reconstruction_assessment_with_economic_facts_v1(%s::uuid, %s::integer, %s::text)",
             (str(company_id), int(income_year), str(actor_id.subject)),
         )
         if len(rows) != 1:
             raise LedgerError.not_found()
         try:
             return _reconstruction_assessment(rows[0])
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def get_reconstruction_economic_fact_candidates(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        as_of: LocalDate,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactCandidates:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from ledger.get_company_year_economic_fact_candidates_v1(%s::uuid, %s::integer, %s::date, %s::text)",
+            (
+                str(company_id),
+                int(income_year),
+                as_of.value,
+                str(actor_id.subject),
+            ),
+        )
+        if len(rows) != 1:
+            raise LedgerError.not_found()
+        row = rows[0]
+        try:
+            raw_ids = row["entry_ids"]
+            if not isinstance(raw_ids, list):
+                raise ValueError
+            entry_ids = tuple(LedgerEntryId(str(value)) for value in raw_ids)
+            if int(row["fact_count"]) != len(entry_ids):
+                raise ValueError
+            return ReconstructionEconomicFactCandidates(
+                company_id=company_id,
+                income_year=income_year,
+                as_of=as_of,
+                entry_ids=entry_ids,
+                facts_digest=str(row["facts_digest"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def get_reconstruction_economic_facts(
+        self,
+        *,
+        actor_id: ActorId,
+        assessment_id: ReconstructionAssessmentId,
+        correlation_id: CorrelationId,
+    ) -> ReconstructionEconomicFactSnapshot:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from ledger.get_reconstruction_economic_facts_v1(%s::uuid, %s::text)",
+            (str(assessment_id), str(actor_id.subject)),
+        )
+        if len(rows) != 1:
+            raise LedgerError.not_found()
+        row = rows[0]
+        try:
+            raw_facts = row["facts"]
+            if not isinstance(raw_facts, list):
+                raise ValueError
+            facts = tuple(self._reconstruction_economic_fact(fact) for fact in raw_facts)
+            if int(row["fact_count"]) != len(facts):
+                raise ValueError
+            return ReconstructionEconomicFactSnapshot(
+                assessment_id=ReconstructionAssessmentId(str(row["assessment_id"])),
+                company_id=CompanyId(str(row["company_id"])),
+                income_year=IncomeYear(int(row["income_year"])),
+                as_of=LocalDate(
+                    row["as_of"]
+                    if isinstance(row["as_of"], date)
+                    else date.fromisoformat(str(row["as_of"]))
+                ),
+                facts_digest=str(row["facts_digest"]),
+                facts=facts,
+            )
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 
@@ -1931,6 +2034,78 @@ class SupabaseLedgerSession:
             risk_flags=risks,
             warning_accepted_by=_actor(warning_actor) if warning_actor else None,
             warning_accepted_at=_timestamp(warning_at) if warning_at else None,
+            posted_by=_actor(value["postedBy"]),
+            posted_at=_timestamp(value["postedAt"]),
+        )
+
+    def _reconstruction_economic_fact(
+        self, value: object
+    ) -> ReconstructionEconomicFact:
+        if not isinstance(value, Mapping):
+            raise ValueError("invalid economic fact")
+        raw_lines = value["lines"]
+        raw_sources = value["sources"]
+        raw_corrections = value["corrections"]
+        if not all(
+            isinstance(items, list)
+            for items in (raw_lines, raw_sources, raw_corrections)
+        ) or not all(
+            isinstance(item, Mapping)
+            for items in (raw_lines, raw_sources, raw_corrections)
+            for item in items
+        ):
+            raise ValueError("invalid economic fact payload")
+        lines = tuple(
+            LedgerLine(
+                account=str(line["account"]),
+                description=str(line["description"]),
+                debit=_money(line["debit"], line.get("currency", "NOK")),
+                credit=_money(line["credit"], line.get("currency", "NOK")),
+            )
+            for line in raw_lines
+        )
+        sources = tuple(
+            ReconstructionEconomicFactSource(
+                role=LedgerFactRole(str(source["role"])),
+                capability=LedgerSourceCapability(str(source["capability"])),
+                record_id=LedgerSourceRecordId(str(source["recordId"])),
+                revision=(
+                    int(source["revision"])
+                    if source.get("revision") is not None
+                    else None
+                ),
+                fact_sha256=(
+                    str(source["factSha256"])
+                    if source.get("factSha256") is not None
+                    else None
+                ),
+            )
+            for source in raw_sources
+        )
+        corrections = tuple(
+            ReconstructionEconomicFactCorrection(
+                original_entry_id=LedgerEntryId(str(correction["originalEntryId"])),
+                reversal_entry_id=LedgerEntryId(str(correction["reversalEntryId"])),
+                replacement_entry_id=LedgerEntryId(
+                    str(correction["replacementEntryId"])
+                ),
+                reason=str(correction["reason"]),
+                corrected_by=_actor(correction["correctedBy"]),
+                corrected_at=_timestamp(correction["correctedAt"]),
+            )
+            for correction in raw_corrections
+        )
+        rule_version = value.get("ruleVersion")
+        return ReconstructionEconomicFact(
+            entry_id=LedgerEntryId(str(value["entryId"])),
+            event_date=LocalDate(date.fromisoformat(str(value["eventDate"]))),
+            entry_kind=LedgerEntryKind(str(value["entryKind"])),
+            memo=str(value["memo"]),
+            lines=lines,
+            correlation_id=CorrelationId(str(value["correlationId"])),
+            rule_version=str(rule_version) if rule_version is not None else None,
+            sources=sources,
+            corrections=corrections,
             posted_by=_actor(value["postedBy"]),
             posted_at=_timestamp(value["postedAt"]),
         )

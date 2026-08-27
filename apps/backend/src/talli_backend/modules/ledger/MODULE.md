@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -25,7 +25,8 @@ close locks. It owns
 `ledger.entry_contexts`, `ledger.entry_corrections`, `ledger.entry_sources`,
 `ledger.period_locks`,
 `ledger.received_dividend_decisions`, `ledger.received_dividend_settlements`,
-`ledger.reconstruction_assessments`, and `ledger.reconstruction_evidence`
+`ledger.reconstruction_assessments`, `ledger.reconstruction_economic_fact_sets`,
+`ledger.reconstruction_economic_facts`, and `ledger.reconstruction_evidence`
 through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`, and
 `supabase/migrations/20260827102000_ledger_supported_patterns.sql`, and
@@ -36,7 +37,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827107000_ledger_cash_capital_increase_lifecycle.sql`, and
 `supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql`, and
 `supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`, and
-`supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql`.
+`supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql`, and
+`supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -103,9 +105,9 @@ The mode-aware new-year workflow is the sole authoritative producer:
 `NEW_COMPANY` preserves the deployed bank/share request shape and derives
 evidence only after the actual shareholder snapshot exists, while
 `PRIOR_CLOSE_RECONSTRUCTION` requires an annual-accounts basis and explicit
-typed components. Final reconstruction readiness remains fail closed until
-the separately serialized current-year activity and reconciliation stages are
-complete.
+typed components. Product readiness remains fail closed until a source-owning
+workflow supplies complete January-to-as-of evidence and the remaining
+cross-capability and cross-output reconciliation stages are complete.
 
 The cash-capital-increase receiver accepts only a stable, ledger-owned
 `CapitalIncreaseReferenceId` and immutable facts already approved by their
@@ -186,7 +188,8 @@ The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`,
 writer `RebuildCompanyYearOpeningCommand`.
 `RecordReconstructionAssessmentCommand` accepts
 only immutable evidence issued by the exact public source capability declared
-for each fact; it is intentionally not exposed as a browser mutation. The
+for each fact plus the candidate query's exact economic-fact entry set; it is
+intentionally not exposed as a browser mutation. The
 opening-position command is exposed through the mode-aware new-year intent; it
 accepts typed balances and lifecycle facts but never accounts, debit/credit
 choices, or lines. Python alone compiles those facts into the atomic opening
@@ -206,7 +209,9 @@ Supporting closed values are `BankSuggestionRule`,
 Purpose-specific query/results are `LedgerQueries`, `CompanyYearCloseAssessment`,
 `LedgerEntryPage`,
 `LedgerEntryView`, `LedgerPage`, `PeriodLockPage`, `PeriodLock`, and
-`PostedLedgerEntry`, `CorrectedLedgerEntries`, and `ReconstructionAssessment`.
+`PostedLedgerEntry`, `CorrectedLedgerEntries`, `ReconstructionAssessment`, and
+`ReconstructionEconomicFactCandidates` and
+`ReconstructionEconomicFactSnapshot`.
 Growing collections use an opaque cursor and deterministic
 `(created_at, id)` ordering. Identifiers and values are `LedgerEntryId`,
 `PeriodLockId`, `BankLoanReferenceId`, `CapitalIncreaseReferenceId`,
@@ -220,12 +225,18 @@ Growing collections use an opaque cursor and deterministic
 `CompanyYearCloseOutputReference`, and `CompanyYearCloseState`.
 
 Reconstruction identifiers and closed values are `ReconstructionAssessmentId`,
+`ReconstructionEconomicFact`, `ReconstructionEconomicFactCorrection`,
+`ReconstructionEconomicFactSource`, `LedgerFactRole`,
 `ReconstructionEvidence`, `ReconstructionEvidenceIssuer`,
 `ReconstructionEvidenceKind`, `ReconstructionEvidenceStatus`,
 `ReconstructionGapCode`, and `ReconstructionState`.
 Every new reconstruction assessment records the deterministic ledger-state
-digest returned by its read contract. A historical assessment without that
-binding cannot authorize company-year close and must be reconstructed again.
+digest returned by its read contract. Before recording, the member-scoped
+economic-fact candidate query returns every persisted entry from January 1
+through the cutoff. The recording transaction independently requires that
+exact uncapped set, stores its canonical facts as an immutable snapshot, and
+binds their digest to the assessment. A historical assessment without those
+bindings cannot authorize company-year close and must be reconstructed again.
 
 Expected failures are `LedgerError` values with capability-prefixed codes and
 shared domain categories. The HTTP boundary alone maps them to RFC 9457 status

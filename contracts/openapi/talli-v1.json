@@ -3356,6 +3356,30 @@
             "title": "Companyid",
             "type": "string"
           },
+          "economicFactCount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Economicfactcount"
+          },
+          "economicFactsDigest": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Economicfactsdigest"
+          },
           "evidenceDigest": {
             "pattern": "^[a-f0-9]{64}$",
             "title": "Evidencedigest",
@@ -3404,6 +3428,8 @@
           "gapCodes",
           "evidenceDigest",
           "ledgerStateDigest",
+          "economicFactsDigest",
+          "economicFactCount",
           "recordedAt"
         ],
         "title": "LedgerReconstructionAssessmentWire",

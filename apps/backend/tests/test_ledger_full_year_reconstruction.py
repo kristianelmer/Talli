@@ -127,6 +127,10 @@ def command(evidence: tuple[ReconstructionEvidence, ...]) -> RecordReconstructio
         income_year=INCOME_YEAR,
         as_of=AS_OF,
         evidence=evidence,
+        economic_fact_entry_ids=(
+            LedgerEntryId("50000000-0000-0000-0000-000000000006"),
+            LedgerEntryId("50000000-0000-0000-0000-000000000005"),
+        ),
     )
 
 
@@ -198,6 +202,13 @@ def test_complete_january_to_date_evidence_is_canonicalized_and_ready() -> None:
 
     assert result.state is ReconstructionState.READY
     assert persistence.calls[0]["gap_codes"] == ()
+    assert tuple(
+        str(entry_id)
+        for entry_id in persistence.calls[0]["command"].economic_fact_entry_ids
+    ) == (
+        "50000000-0000-0000-0000-000000000005",
+        "50000000-0000-0000-0000-000000000006",
+    )
     canonical = persistence.calls[0]["evidence"]
     assert len(canonical) == 13
     assert [item.issuer for item in canonical if item.kind is ReconstructionEvidenceKind.LOANS] == [
@@ -248,6 +259,21 @@ def test_missing_evidence_kind_fails_closed_without_persistence() -> None:
 
     assert failure.value.code == "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     assert failure.value.category is ErrorCategory.PRECONDITION_FAILED
+    assert persistence.calls == []
+
+
+def test_duplicate_economic_fact_entry_fails_closed_without_persistence() -> None:
+    persistence = ReconstructionPersistenceStub()
+    duplicate_id = LedgerEntryId("50000000-0000-0000-0000-000000000005")
+    invalid = replace(
+        command(complete_evidence()),
+        economic_fact_entry_ids=(duplicate_id, duplicate_id),
+    )
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(LedgerService(persistence).record_reconstruction_assessment(invalid))
+
+    assert failure.value.code == "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
     assert persistence.calls == []
 
 

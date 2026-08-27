@@ -55,7 +55,14 @@
       ["COMPANY_ACCESS", "UNSUPPORTED_ACTIVITY_CHECK"]
     ],
     "unknownMaterialFactBlocks": true,
-    "canonicalEvidenceOrder": true
+    "canonicalEvidenceOrder": true,
+    "economicFactSet": {
+      "coverage": "every persisted ledger entry from January 1 through as-of",
+      "uncapped": true,
+      "candidateQueryIsMemberScoped": true,
+      "recordingRevalidatesExactEntrySet": true,
+      "immutableSnapshotDigest": true
+    }
   },
   "supportedHoldingActionRules": {
     "version": "ledger-supported-patterns-2026.1",

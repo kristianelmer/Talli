@@ -17,6 +17,7 @@ const cashCapitalIncreasePath = "/repo/supabase/migrations/20260827107000_ledger
 const lossCoverageCapitalReductionPath = "/repo/supabase/migrations/20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql";
 const openingPositionRebuildPath = "/repo/supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql";
 const openingPositionAcceptancePath = "/repo/supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql";
+const reconstructionEconomicFactsPath = "/repo/supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -1463,10 +1464,17 @@ function reconstructionCall({
   idempotencyKey = "61000000-0000-4000-8000-000000000001",
   documentsReady = true,
   asOf = "2026-08-27",
+  economicFactEntryIdsSql,
 } = {}) {
   const evidence = reconstructionEvidence({ documentsReady, asOf, incomeYear });
   const state = documentsReady ? "READY" : "BLOCKED";
   const gaps = documentsReady ? "array[]::text[]" : "array['DOCUMENTS_INCOMPLETE']::text[]";
+  const factEntryIds = economicFactEntryIdsSql ?? String.raw`(
+    select candidate.entry_ids
+    from ledger.get_company_year_economic_fact_candidates_v1(
+      '${company}'::uuid, ${incomeYear}, '${asOf}'::date, '${actorId}'
+    ) candidate
+  )`;
   return String.raw`
 begin;
 set local role ledger_executor;
@@ -1478,6 +1486,7 @@ from ledger.record_reconstruction_assessment(
   ${incomeYear}::integer,
   '${asOf}'::date,
   '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  ${factEntryIds}::uuid[],
   '${state}'::text,
   ${gaps},
   'ledger-reconstruction-runtime'::text,
@@ -1805,6 +1814,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
     psql(containerName, ["--file", openingPositionRebuildPath]);
     psql(containerName, ["--file", openingPositionAcceptancePath]);
+    psql(containerName, ["--file", reconstructionEconomicFactsPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -4063,6 +4073,38 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     );
     assert.equal(readyReconstruction.state, "READY");
     assert.deepEqual(readyReconstruction.gap_codes, []);
+    assert.match(readyReconstruction.economic_facts_digest, /^[a-f0-9]{64}$/u);
+    assert.ok(readyReconstruction.economic_fact_count > 0);
+    const economicFacts = jsonOutput(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select row_to_json(snapshot)::text
+      from ledger.get_reconstruction_economic_facts_v1(
+        '${readyReconstruction.assessment_id}'::uuid, '${ownerId}'
+      ) snapshot;
+      commit;
+    `);
+    assert.equal(economicFacts.facts_digest, readyReconstruction.economic_facts_digest);
+    assert.equal(economicFacts.fact_count, readyReconstruction.economic_fact_count);
+    assert.equal(economicFacts.facts.length, readyReconstruction.economic_fact_count);
+    const latestReconstruction = jsonOutput(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      select row_to_json(assessment)::text
+      from ledger.get_reconstruction_assessment_with_economic_facts_v1(
+        '${companyId}'::uuid, 2026, '${ownerId}'
+      ) assessment;
+      commit;
+    `);
+    assert.equal(
+      latestReconstruction.economic_facts_digest,
+      readyReconstruction.economic_facts_digest,
+    );
+    assert.equal(latestReconstruction.economic_fact_count, readyReconstruction.economic_fact_count);
+    assert.match(psqlFailure(containerName, reconstructionCall({
+      idempotencyKey: "61000000-0000-4000-8000-000000000003",
+      economicFactEntryIdsSql: "array[]",
+    })), /ledger_reconstruction_economic_facts_invalid/iu);
     assert.equal(
       lastOutputLine(psql(containerName, ["-Atq"], String.raw`
         begin;
@@ -4091,12 +4133,12 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         select concat_ws(':',
           pg_catalog.has_function_privilege(
             'ledger_executor',
-            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,uuid[],text,text[],text,text)',
             'execute'
           ),
           pg_catalog.has_function_privilege(
             'authenticated',
-            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+            'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,uuid[],text,text[],text,text)',
             'execute'
           ),
           pg_catalog.has_table_privilege(
@@ -6216,7 +6258,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         ),
         has_function_privilege(
           'ledger_executor',
-          'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,text,text[],text,text)',
+          'ledger.record_reconstruction_assessment(text,uuid,integer,date,jsonb,uuid[],text,text[],text,text)',
           'execute'
         ),
         has_function_privilege(
@@ -6393,6 +6435,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", lossCoverageCapitalReductionPath]);
     psql(containerName, ["--file", openingPositionRebuildPath]);
     psql(containerName, ["--file", openingPositionAcceptancePath]);
+    psql(containerName, ["--file", reconstructionEconomicFactsPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))

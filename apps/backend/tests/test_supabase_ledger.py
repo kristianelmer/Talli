@@ -166,6 +166,9 @@ def reconstruction_command() -> RecordReconstructionAssessmentCommand:
         income_year=IncomeYear(2026),
         as_of=as_of,
         evidence=evidence,
+        economic_fact_entry_ids=(
+            LedgerEntryId("50000000-0000-0000-0000-000000000005"),
+        ),
     )
 
 
@@ -788,6 +791,99 @@ def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result
         "coverageThrough": "2026-08-27",
         "gapCode": None,
     }
+    assert calls[0][1][5] == ["50000000-0000-0000-0000-000000000005"]
+
+
+def test_reconstruction_candidate_query_is_member_scoped_and_typed() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "entry_ids": [
+                "50000000-0000-0000-0000-000000000005",
+                "50000000-0000-0000-0000-000000000006",
+            ],
+            "facts_digest": "e" * 64,
+            "fact_count": 2,
+            "facts": [],
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(session.get_reconstruction_economic_fact_candidates(
+        actor_id=ACTOR_ID,
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        income_year=IncomeYear(2026),
+        as_of=LocalDate(date(2026, 8, 27)),
+        correlation_id=CorrelationId("reconstruction-candidates-adapter"),
+    ))
+
+    assert tuple(str(entry_id) for entry_id in result.entry_ids) == (
+        "50000000-0000-0000-0000-000000000005",
+        "50000000-0000-0000-0000-000000000006",
+    )
+    assert result.facts_digest == "e" * 64
+    assert "get_company_year_economic_fact_candidates_v1" in calls[0][0]
+
+
+def test_reconstruction_economic_fact_snapshot_decodes_canonical_fact() -> None:
+    session = bound_session()
+    fact: dict[str, object] = {
+        "entryId": "50000000-0000-0000-0000-000000000005",
+        "eventDate": "2026-01-01",
+        "entryKind": "OPENING_BALANCE",
+        "memo": "Complete evidenced opening position",
+        "lines": [
+            {"account": "1920", "description": "Bank", "debit": "1.00", "credit": "0.00", "currency": "NOK"},
+            {"account": "2050", "description": "Equity", "debit": "0.00", "credit": "1.00", "currency": "NOK"},
+        ],
+        "correlationId": "opening-position-snapshot",
+        "ruleVersion": "ledger-supported-patterns-2026.1",
+        "sources": [{
+            "role": "PRIMARY",
+            "capability": "ANNUAL_ACCOUNTS_FILING",
+            "recordId": "prior-close:2025",
+            "revision": 1,
+            "factSha256": "a" * 64,
+        }],
+        "corrections": [],
+        "postedBy": str(ACTOR_ID.subject),
+        "postedAt": "2026-08-27T10:00:00+00:00",
+    }
+
+    async def database_rows(
+        _query: str, _parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        return [{
+            "assessment_id": "40000000-0000-0000-0000-000000000004",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "as_of": date(2026, 8, 27),
+            "facts_digest": "f" * 64,
+            "fact_count": 1,
+            "facts": [fact],
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    snapshot = asyncio.run(session.get_reconstruction_economic_facts(
+        actor_id=ACTOR_ID,
+        assessment_id=ReconstructionAssessmentId(
+            "40000000-0000-0000-0000-000000000004"
+        ),
+        correlation_id=CorrelationId("economic-fact-snapshot-adapter"),
+    ))
+
+    assert snapshot.facts_digest == "f" * 64
+    assert snapshot.facts[0].entry_kind is LedgerEntryKind.OPENING_BALANCE
+    assert snapshot.facts[0].sources[0].revision == 1
+
+    malformed_fact = dict(fact)
+    malformed_fact["sources"] = [*fact["sources"], "silently-dropped-source"]
+    with pytest.raises(ValueError):
+        session._reconstruction_economic_fact(malformed_fact)
 
 
 def test_opening_position_adapter_binds_atomic_component_rpc() -> None:

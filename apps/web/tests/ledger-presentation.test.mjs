@@ -344,6 +344,8 @@ test("reconstruction readiness comes from the generated backend contract", async
       gapCodes: ["BANK_MOVEMENTS_INCOMPLETE", "DOCUMENTS_INCOMPLETE"],
       evidenceDigest: "a".repeat(64),
       ledgerStateDigest: "d".repeat(64),
+      economicFactsDigest: "e".repeat(64),
+      economicFactCount: 4,
       recordedAt: "2026-08-27T10:00:00Z",
     });
   };
@@ -514,6 +516,8 @@ test("generated reconstruction decoder rejects unknown gap codes", async () => {
       gapCodes: ["OWNER_SUPPLIED_FREE_TEXT"],
       evidenceDigest: "a".repeat(64),
       ledgerStateDigest: "d".repeat(64),
+      economicFactsDigest: "e".repeat(64),
+      economicFactCount: 4,
       recordedAt: "2026-08-27T10:00:00Z",
     }),
   });
@@ -527,7 +531,7 @@ test("generated reconstruction decoder rejects unknown gap codes", async () => {
   );
 });
 
-test("generated reconstruction decoder preserves historical null and rejects malformed digests", async () => {
+test("generated reconstruction decoder preserves historical null and rejects partial bindings", async () => {
   const response = {
     assessmentId: "40000000-0000-0000-0000-000000000004",
     companyId: OPENING_COMPANY_ID,
@@ -537,6 +541,8 @@ test("generated reconstruction decoder preserves historical null and rejects mal
     gapCodes: [],
     evidenceDigest: "a".repeat(64),
     ledgerStateDigest: null,
+    economicFactsDigest: null,
+    economicFactCount: null,
     recordedAt: "2026-08-27T10:00:00Z",
   };
   const generated = createTalliApiClient({
@@ -557,6 +563,17 @@ test("generated reconstruction decoder preserves historical null and rejects mal
   );
 
   response.ledgerStateDigest = "not-authoritative";
+
+  await assert.rejects(
+    generated.ledgerGetReconstructionAssessment({
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+    }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
+
+  response.ledgerStateDigest = null;
+  delete response.economicFactCount;
 
   await assert.rejects(
     generated.ledgerGetReconstructionAssessment({
