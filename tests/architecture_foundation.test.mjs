@@ -560,6 +560,186 @@ test("resource-owner deletion-only shrink may change only the affected operation
   }
 });
 
+test("ledger #139 may relocate only the owner-approved atomic coordinator scopes", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-ledger-coordinator-relocation-"));
+  const actionPath = "apps/web/app/actions.ts";
+  const scope = (resource, operation) => ({
+    path: actionPath,
+    rule: "direct-web-business-persistence",
+    resource,
+    operation,
+  });
+  const facades = [
+    legacyFacade({
+      id: "compat-ledger-persistence",
+      capability: "ledger",
+      removalIssue: "#139",
+      scopes: [
+        scope("table:ledger_entries", "recordAdminCost"),
+        scope("table:ledger_entries", "recordDividendReceived"),
+        scope("table:ledger_entries", "recordShareholderLoan"),
+        scope("table:ledger_entries", "recordTaxSettlement"),
+      ],
+    }),
+    legacyFacade({
+      id: "compat-banking-persistence",
+      capability: "banking",
+      removalIssue: "#140",
+      scopes: [
+        scope("table:bank_transactions", "recordAdminCost"),
+        scope("table:bank_transactions", "recordDividendReceived"),
+        scope("table:bank_transactions", "recordShareholderLoan"),
+        scope("table:bank_transactions", "recordTaxSettlement"),
+        scope("rpc:accept_bank_transaction_suggestion", "acceptBankTransactionSuggestion"),
+        scope("table:bank_transactions", "acceptBankTransactionSuggestion"),
+      ],
+    }),
+    legacyFacade({
+      id: "compat-investment-purchase-persistence",
+      capability: "investments",
+      removalIssue: "#141",
+      scopes: [scope("rpc:record_share_purchase_fifo", "recordSharePurchase")],
+    }),
+    legacyFacade({
+      id: "compat-investment-sale-persistence",
+      capability: "investments",
+      removalIssue: "#142",
+      scopes: [
+        scope("rpc:record_share_sale_fifo", "recordShareSale"),
+        scope("table:investment_lots", "recordShareSale"),
+        scope("table:investment_positions", "recordShareSale"),
+      ],
+    }),
+    legacyFacade({
+      id: "compat-investment-stage-exit-persistence",
+      capability: "investments",
+      removalIssue: "#143",
+      scopes: [scope("table:holding_actions", "recordDividendReceived")],
+    }),
+    legacyFacade({
+      id: "compat-shareholder-loan-persistence",
+      capability: "corporate_governance",
+      removalIssue: "#145",
+      scopes: [scope("table:holding_actions", "recordShareholderLoan")],
+    }),
+    legacyFacade({
+      id: "compat-tax-settlement-persistence",
+      capability: "company_tax_filing",
+      removalIssue: "#146",
+      scopes: [scope("table:holding_actions", "recordTaxSettlement")],
+    }),
+    legacyFacade({
+      id: "compat-documents-persistence",
+      capability: "documents",
+      removalIssue: "#147",
+      scopes: [
+        scope("table:documents", "recordDividendReceived"),
+        scope("table:documents", "recordShareholderLoan"),
+        scope("table:documents", "recordTaxSettlement"),
+      ],
+    }),
+    legacyFacade({
+      id: "compat-audit-persistence",
+      capability: "audit",
+      removalIssue: "#155",
+      scopes: [
+        scope("table:audit_events", "recordAdminCost"),
+        scope("table:audit_events", "recordDividendReceived"),
+        scope("table:audit_events", "recordShareholderLoan"),
+        scope("table:audit_events", "recordTaxSettlement"),
+      ],
+    }),
+  ];
+  const registry = compatibilityFixture({
+    records: [],
+    currentCapability: "ledger",
+    currentIssue: "#139",
+  });
+  registry.migration.order = [
+    { capability: "company_access", removalIssues: ["#138"] },
+    { capability: "ledger", removalIssues: ["#139"] },
+    { capability: "banking", removalIssues: ["#140"] },
+    { capability: "investments", removalIssues: ["#141", "#142", "#143"] },
+    { capability: "documents", removalIssues: ["#147"] },
+    { capability: "corporate_governance", removalIssues: ["#144", "#145", "#148"] },
+    { capability: "company_tax_filing", removalIssues: ["#146", "#152"] },
+    { capability: "audit", removalIssues: ["#155"] },
+  ];
+  const baseline = compatibilityBaseline(facades);
+  const { registryPath, baselinePath } = writeCompatibilityFixture(
+    temporaryRoot,
+    registry,
+    baseline,
+  );
+  const options = {
+    baselinePath,
+    expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    currentSource: () => "export const atomicCoordinatorRelocated = true;\n",
+  };
+  const ledgerMigration = structuredClone(registry.migration);
+
+  try {
+    assert.deepEqual(validateCompatibilityRegistry(registryPath, options), []);
+
+    registry.records = [{
+      ...structuredClone(facades.find((facade) => facade.id === "compat-banking-persistence")),
+      scopes: [scope("table:bank_transactions", "recordAdminCost")],
+    }];
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /recordAdminCost.*must remove every frozen scope together/u,
+    );
+
+    registry.records = [];
+    registry.migration.currentCapability = "company_access";
+    registry.migration.currentIssue = "#138";
+    registry.migration.exitedCapabilities = [];
+    registry.migration.completedStages = [];
+    writeFileSync(registryPath, JSON.stringify(registry));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /atomic coordinator relocation is authorized only for ledger #139/u,
+    );
+
+    registry.migration = structuredClone(ledgerMigration);
+    const auditBaseline = baseline.records.find(
+      (facade) => facade.id === "compat-audit-persistence",
+    );
+    auditBaseline.scopes.push(scope("table:unexpected_future_state", "recordAdminCost"));
+    writeFileSync(registryPath, JSON.stringify(registry));
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /recordAdminCost.*outside the owner-approved scope whitelist/u,
+    );
+
+    auditBaseline.scopes.pop();
+    auditBaseline.scopes.push({
+      ...scope("table:audit_events", "recordAdminCost"),
+      rule: "direct-business-fetch",
+    });
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /recordAdminCost.*outside the owner-approved scope whitelist/u,
+    );
+
+    auditBaseline.scopes.pop();
+    const bankingBaseline = baseline.records.find(
+      (facade) => facade.id === "compat-banking-persistence",
+    );
+    bankingBaseline.scopes.push(scope("table:bank_transactions", "unapprovedPosting"));
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    assert.match(
+      validateCompatibilityRegistry(registryPath, options).join("\n"),
+      /future frozen scope resource table:bank_transactions is not owned by active or exited capability/u,
+    );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("pending foundation recovery blocks facade and migration changes", () => {
   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-foundation-recovery-"));
   const current = legacyFacade();

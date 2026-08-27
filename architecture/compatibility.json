@@ -120,7 +120,7 @@
     ],
     "currentCapability": "ledger",
     "currentIssue": "#139",
-    "status": "active",
+    "status": "exit-review",
     "exitedCapabilities": [
       "company_access"
     ],
@@ -277,46 +277,6 @@
       ]
     },
     {
-      "id": "compat-ledger-persistence",
-      "kind": "legacy-facade",
-      "capability": "ledger",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#139",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:ledger",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove narrow-ledger and opening-balance persistence in #139.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordTaxSettlement"
-    }
-      ]
-    },
-    {
       "id": "compat-banking-persistence",
       "kind": "legacy-facade",
       "capability": "banking",
@@ -333,44 +293,8 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "rpc:accept_bank_transaction_suggestion",
-          "operation": "acceptBankTransactionSuggestion"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "acceptBankTransactionSuggestion"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:bank_transactions",
           "operation": "importBankCsv"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordTaxSettlement"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -407,12 +331,6 @@
       "removalCondition": "Remove share-purchase and acquisition-lot persistence in #141.",
       "scopes": [
         {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:record_share_purchase_fifo",
-          "operation": "recordSharePurchase"
-        },
-        {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lots",
@@ -441,24 +359,6 @@
       "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142.",
       "scopes": [
         {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:record_share_sale_fifo",
-          "operation": "recordShareSale"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lots",
-          "operation": "recordShareSale"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_positions",
-          "operation": "recordShareSale"
-        },
-        {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:investment_lot_allocations",
@@ -481,60 +381,10 @@
       "removalCondition": "Remove received-dividend and shared holding-action reads in #143.",
       "scopes": [
         {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordDividendReceived"
-        },
-        {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
           "operation": "listHoldingActions"
-        }
-      ]
-    },
-    {
-      "id": "compat-shareholder-loan-persistence",
-      "kind": "legacy-facade",
-      "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#145",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove shareholder-loan holding-action persistence in #145.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordShareholderLoan"
-        }
-      ]
-    },
-    {
-      "id": "compat-tax-settlement-persistence",
-      "kind": "legacy-facade",
-      "capability": "company_tax_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#146",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:company_tax_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove tax-settlement holding-action persistence in #146.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordTaxSettlement"
         }
       ]
     },
@@ -552,24 +402,6 @@
       "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordTaxSettlement"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1310,12 +1142,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "recordAnnualAccountsTt02Evidence"
         },
         {
@@ -1323,24 +1149,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "recordAuthorityTestEvidence"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordTaxSettlement"
         },
         {
           "path": "apps/web/app/actions.ts",

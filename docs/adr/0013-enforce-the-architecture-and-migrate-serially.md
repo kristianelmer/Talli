@@ -97,12 +97,59 @@ Characterization, generated-contract, database/RLS, browser, rollback/recutover,
 and two immutable customer-ready gates must prove the cutover. Any affected
 resource without exact catalog ownership fails closed and remains frozen.
 
+## 2026-08-27 amendment: ledger-stage atomic coordinator relocation
+
+Issue #139 established that the last ledger writers cannot preserve both one
+authoritative posting result and the frozen future-capability effects when the
+browser commits those effects in separate requests. Kristian therefore approved
+the narrow amendment and audit option A in
+[#139 comment 5434908084](https://github.com/kristianelmer/Talli/issues/139#issuecomment-5434908084).
+
+This authorization applies only while `ledger` and #139 are the active migration
+stage. It covers exactly the four legacy web operations `recordAdminCost`,
+`recordDividendReceived`, `recordShareholderLoan`, and `recordTaxSettlement`, plus
+the five future posting routines `accept_bank_transaction_suggestion`,
+`record_share_purchase_fifo`, `record_share_sale_fifo`,
+`finalize_corporate_decision`, and `record_owner_dividend_payment`. Their
+coordination may move from the browser or predecessor SQL entry point into named
+backend-system workflows so the ledger write and the frozen future-owned business
+writes share one request-bound Postgres transaction. The ledger posting must go
+through the ledger public contract. Compatibility implementations may retain only
+the already-characterized future behavior; they do not migrate the future
+capability or create a second implementation.
+
+For the seven registered web operations involved in this relocation
+(`recordAdminCost`, `recordDividendReceived`, `recordShareholderLoan`,
+`recordTaxSettlement`, `acceptBankTransactionSuggestion`, `recordSharePurchase`,
+and `recordShareSale`), every frozen scope belonging to one operation must be
+deleted together with current-source proof. The checker authorizes only the exact
+record, resource, path, rule, and operation tuples frozen for this decision. It
+does not authorize a generic future-facade shrink, a new resource, or a partial
+relocation. The immutable compatibility baseline does not change.
+
+Option A preserves the already-characterized idempotent after-commit audit
+continuations: a committed business result is not repeated, audit identity is
+deterministic, an exact immutable audit row is reconciled on retry, and audit
+failure cannot be reported as success. This does not reclassify an audit write
+that already occurs inside one of the five frozen future SQL routines as an
+after-commit continuation. Its existing placement and outcomes remain frozen.
+Moving any audit persistence into or out of a transaction is not authorized by
+this amendment.
+
+No policy, schema, provider, public contract, capability scope,
+statutory result, error, idempotency, retry, or risk-response expansion is
+permitted. Characterization, generated-contract, database/RLS, browser,
+rollback/recutover, deterministic dependency, and two immutable complete-gate
+passes must prove the relocation before #139 exits.
+
 ## Canonical decision inputs
 
 - Repository prototype and manifest format: issue #130 and commit `1c38dc6d`.
 - Enforcement and acceptance suite: issue #131.
 - Serialized roadmap and exit criteria: issue #132.
 - Final approval and frozen pointer index: issue #133.
+- Ledger atomic-coordinator relocation and option A: issue #139 comment
+  `5434908084`.
 
 ## Consequences
 

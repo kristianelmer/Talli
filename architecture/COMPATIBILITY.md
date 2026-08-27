@@ -36,6 +36,39 @@ browser evidence owned by the active migration ticket prove that separately.
 Legacy facades have no date-based expiry. Their hard expiry is the capability
 stage named by their removal issue.
 
+## Ledger #139 atomic-coordinator relocation
+
+The owner decision in
+[#139 comment 5434908084](https://github.com/kristianelmer/Talli/issues/139#issuecomment-5434908084)
+adds one deletion-only exception to the resource-owner rule above. It is active
+only when `ledger` / #139 is the current migration stage. It covers the four web
+operations `recordAdminCost`, `recordDividendReceived`,
+`recordShareholderLoan`, and `recordTaxSettlement`, and the five future posting
+routines `accept_bank_transaction_suggestion`, `record_share_purchase_fifo`,
+`record_share_sale_fifo`, `finalize_corporate_decision`, and
+`record_owner_dividend_payment`.
+
+The checker pins the 24 registered scopes for the seven affected web operations
+to their exact frozen record, path, rule, resource, and operation. A relocation
+attempt must delete every frozen scope for that operation together. A partial
+deletion, a different stage or issue, a new operation or resource, a changed
+retained occurrence, or any tuple outside the whitelist fails closed. The
+baseline file and digest remain immutable. `finalizeCorporateDecision` and
+`recordOwnerDividendPayment` had no registered baseline scopes; their two named
+SQL routines are nevertheless inside the owner-approved implementation and
+contract-test boundary and may not remain browser-callable after cutover.
+
+The relocated code may only coordinate the frozen future-owned writes and the
+ledger public contract in one request-bound Postgres transaction. It may not
+move future policy or ownership. Option A preserves only the audit continuations
+already characterized as idempotent and after-commit; retry reconciles the exact
+immutable audit row without repeating a committed business transaction, and an
+audit failure cannot be reported as success. Audit already inside a frozen
+future routine stays in its existing transaction. This exception does not move
+audit persistence into or out of a transaction and does not broaden policy,
+schema, provider, contract, capability, error, idempotency, retry, or
+risk-response behavior.
+
 ## Active-stage debt
 
 An `active-stage-debt` is new, bounded debt created only by the active migration

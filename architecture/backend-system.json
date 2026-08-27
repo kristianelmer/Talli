@@ -67,13 +67,21 @@
     },
     {
       "name": "ledger-posting-and-period-control",
-      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, deterministic cursor queries, the frozen opening-snapshot compatibility read, and company-year locking without changing a future capability contract.",
+      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and company-year locking without changing a future capability contract.",
       "publicPackages": ["talli_backend.modules.ledger.public"],
       "routes": [
         "/api/v1/ledger/entries",
         "/api/v1/ledger/opening-snapshots",
         "/api/v1/ledger/period-locks",
         "/api/v1/ledger/administrative-costs",
+        "/api/v1/ledger/investment-dividends",
+        "/api/v1/ledger/shareholder-loans",
+        "/api/v1/ledger/tax-settlements",
+        "/api/v1/ledger/bank-suggestion-outcomes",
+        "/api/v1/ledger/investment-purchases",
+        "/api/v1/ledger/investment-sales",
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        "/api/v1/ledger/owner-dividends/payments",
         "/api/v1/ledger/manual-journals"
       ]
     }
@@ -87,7 +95,7 @@
   "technicalOwnership": {
     "schemas": ["backend_system", "public"],
     "tables": ["backend_system.ledger_command_receipts", "backend_system.ledger_cursor_signing_keys", "backend_system.ledger_migration_quarantine", "backend_system.ledger_migration_reconciliations", "backend_system.ledger_migration_runs", "backend_system.ledger_migration_source_rows", "backend_system.ledger_workflow_receipts", "public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql"],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {

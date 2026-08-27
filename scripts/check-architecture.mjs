@@ -55,6 +55,47 @@ const COMPLETE_GATE_CHECKS = new Set([
   "database-isolation",
   "whitespace",
 ]);
+const LEDGER_ATOMIC_COORDINATOR_RELOCATION = Object.freeze({
+  capability: "ledger",
+  issue: "#139",
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  operations: new Set([
+    "recordAdminCost",
+    "recordDividendReceived",
+    "recordShareholderLoan",
+    "recordTaxSettlement",
+    "acceptBankTransactionSuggestion",
+    "recordSharePurchase",
+    "recordShareSale",
+  ]),
+  scopes: new Set([
+    "compat-ledger-persistence\0table:ledger_entries\0recordAdminCost",
+    "compat-ledger-persistence\0table:ledger_entries\0recordDividendReceived",
+    "compat-ledger-persistence\0table:ledger_entries\0recordShareholderLoan",
+    "compat-ledger-persistence\0table:ledger_entries\0recordTaxSettlement",
+    "compat-banking-persistence\0table:bank_transactions\0recordAdminCost",
+    "compat-banking-persistence\0table:bank_transactions\0recordDividendReceived",
+    "compat-banking-persistence\0table:bank_transactions\0recordShareholderLoan",
+    "compat-banking-persistence\0table:bank_transactions\0recordTaxSettlement",
+    "compat-banking-persistence\0rpc:accept_bank_transaction_suggestion\0acceptBankTransactionSuggestion",
+    "compat-banking-persistence\0table:bank_transactions\0acceptBankTransactionSuggestion",
+    "compat-investment-purchase-persistence\0rpc:record_share_purchase_fifo\0recordSharePurchase",
+    "compat-investment-sale-persistence\0rpc:record_share_sale_fifo\0recordShareSale",
+    "compat-investment-sale-persistence\0table:investment_lots\0recordShareSale",
+    "compat-investment-sale-persistence\0table:investment_positions\0recordShareSale",
+    "compat-investment-stage-exit-persistence\0table:holding_actions\0recordDividendReceived",
+    "compat-shareholder-loan-persistence\0table:holding_actions\0recordShareholderLoan",
+    "compat-tax-settlement-persistence\0table:holding_actions\0recordTaxSettlement",
+    "compat-documents-persistence\0table:documents\0recordDividendReceived",
+    "compat-documents-persistence\0table:documents\0recordShareholderLoan",
+    "compat-documents-persistence\0table:documents\0recordTaxSettlement",
+    "compat-audit-persistence\0table:audit_events\0recordAdminCost",
+    "compat-audit-persistence\0table:audit_events\0recordDividendReceived",
+    "compat-audit-persistence\0table:audit_events\0recordShareholderLoan",
+    "compat-audit-persistence\0table:audit_events\0recordTaxSettlement",
+  ]),
+});
 
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
@@ -1754,6 +1795,56 @@ export function validateCompatibilityRegistry(path, {
     operationScopes.push(removed);
     removedScopesByOperation.set(operationKey, operationScopes);
   }
+  const ledgerRelocationStage = currentCapability === LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability
+    && registry.migration?.currentIssue === LEDGER_ATOMIC_COORDINATOR_RELOCATION.issue;
+  const ledgerRelocationOperationKeys = new Set(
+    [...LEDGER_ATOMIC_COORDINATOR_RELOCATION.operations].map((operation) => (
+      compatibilityOperationKey(LEDGER_ATOMIC_COORDINATOR_RELOCATION.path, operation)
+    )),
+  );
+  const atomicLedgerRelocationOperations = new Set();
+  for (const [operationKey, removedScopes] of removedScopesByOperation) {
+    if (!ledgerRelocationOperationKeys.has(operationKey)) continue;
+    const frozenOperationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const approvedFrozenScopes = frozenOperationScopes.every((scope) => {
+      const owner = frozenScopeOwners.get(compatibilityScopeKey(
+        scope.path,
+        scope.rule,
+        scope.resource,
+        scope.operation,
+      ));
+      return owner && LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+        ledgerRelocationScopeKey(owner.record.id, scope),
+      );
+    });
+    const attemptedApprovedRelocation = removedScopes.some(({ record, scope }) => (
+      LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+        ledgerRelocationScopeKey(record.id, scope),
+      )
+    ));
+    if (!attemptedApprovedRelocation) continue;
+    if (!ledgerRelocationStage) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation is authorized only for ledger #139`,
+      );
+      continue;
+    }
+    if (!approvedFrozenScopes) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation is outside the owner-approved scope whitelist`,
+      );
+      continue;
+    }
+    if (frozenOperationScopes.some((scope) => activeLegacyScopeKeys.has(
+      compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation),
+    ))) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation must remove every frozen scope together`,
+      );
+      continue;
+    }
+    atomicLedgerRelocationOperations.add(operationKey);
+  }
   const currentOperationAnalyses = new Map();
   const currentOperationAnalysis = (scope) => {
     const operationKey = compatibilityOperationKey(scope.path, scope.operation);
@@ -1831,11 +1922,15 @@ export function validateCompatibilityRegistry(path, {
           completedDeletionOwner = record.capability;
         }
       } else if (currentStageIndex !== undefined && recordStageIndex > currentStageIndex) {
+        const atomicLedgerRelocation = atomicLedgerRelocationOperations.has(operationKey)
+          && LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+            ledgerRelocationScopeKey(record.id, scope),
+          );
         const authorizedResourceOwners = new Set([
           currentCapability,
           ...exitedCapabilities,
         ].map((capability) => `backend:${capability}`));
-        if (!authorizedResourceOwners.has(scopeResourceOwner)) {
+        if (!atomicLedgerRelocation && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
           );
@@ -2119,6 +2214,14 @@ function compatibilityScopeKey(path, rule, resource, operation) {
 
 function compatibilityOperationKey(path, operation) {
   return [path, operation].join("\u0000");
+}
+
+function ledgerRelocationScopeKey(recordId, scope) {
+  if (scope.path !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.path
+    || scope.rule !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.rule) {
+    return undefined;
+  }
+  return [recordId, scope.resource, scope.operation].join("\u0000");
 }
 
 function operationLabel(operationKey) {
