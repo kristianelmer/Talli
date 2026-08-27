@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 from talli_backend.modules.ledger.public import (
@@ -29,6 +30,13 @@ from talli_backend.modules.ledger.public import (
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
     PostTaxSettlementCommand,
+    ReconstructionAssessment,
+    ReconstructionEvidence,
+    ReconstructionEvidenceIssuer,
+    ReconstructionEvidenceKind,
+    ReconstructionEvidenceStatus,
+    ReconstructionState,
+    RecordReconstructionAssessmentCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
     PostedLedgerEntry,
@@ -55,6 +63,51 @@ _BANK_SUGGESTION_LINES = {
     BankSuggestionRule.SYSTEM_SUBSCRIPTION: ("6700", "Fremmede tjenester", False),
     BankSuggestionRule.DEPOSIT_INTEREST: ("8050", "Annen renteinntekt", True),
 }
+_RECONSTRUCTION_EVIDENCE_REQUIREMENTS = (
+    (ReconstructionEvidenceKind.PRIOR_CLOSING_OPENING, ReconstructionEvidenceIssuer.LEDGER),
+    (ReconstructionEvidenceKind.BANK_MOVEMENTS, ReconstructionEvidenceIssuer.BANKING),
+    (ReconstructionEvidenceKind.BANK_RECONCILIATION, ReconstructionEvidenceIssuer.BANKING),
+    (ReconstructionEvidenceKind.INVESTMENTS, ReconstructionEvidenceIssuer.INVESTMENTS),
+    (
+        ReconstructionEvidenceKind.SHAREHOLDERS,
+        ReconstructionEvidenceIssuer.SHAREHOLDER_REGISTER_FILING,
+    ),
+    (
+        ReconstructionEvidenceKind.LOANS,
+        ReconstructionEvidenceIssuer.BANKING,
+    ),
+    (
+        ReconstructionEvidenceKind.LOANS,
+        ReconstructionEvidenceIssuer.CORPORATE_GOVERNANCE,
+    ),
+    (
+        ReconstructionEvidenceKind.EQUITY,
+        ReconstructionEvidenceIssuer.CORPORATE_GOVERNANCE,
+    ),
+    (
+        ReconstructionEvidenceKind.EQUITY,
+        ReconstructionEvidenceIssuer.SHAREHOLDER_REGISTER_FILING,
+    ),
+    (
+        ReconstructionEvidenceKind.TAX_HISTORY,
+        ReconstructionEvidenceIssuer.COMPANY_TAX_FILING,
+    ),
+    (
+        ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
+        ReconstructionEvidenceIssuer.LEDGER,
+    ),
+    (ReconstructionEvidenceKind.DOCUMENTS, ReconstructionEvidenceIssuer.DOCUMENTS),
+    (
+        ReconstructionEvidenceKind.UNSUPPORTED_ACTIVITY_CHECK,
+        ReconstructionEvidenceIssuer.COMPANY_ACCESS,
+    ),
+)
+_FULL_YEAR_COVERAGE_EVIDENCE = frozenset(
+    {
+        ReconstructionEvidenceKind.BANK_MOVEMENTS,
+        ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
+    }
+)
 
 
 def _positive(value: Money, code: str) -> None:
@@ -83,6 +136,51 @@ def _balanced(lines: tuple[LedgerLine, ...], *, permit_zero_line: bool = False) 
 class LedgerService:
     def __init__(self, persistence: LedgerPersistence) -> None:
         self._persistence = persistence
+
+    async def record_reconstruction_assessment(
+        self, command: RecordReconstructionAssessmentCommand
+    ) -> ReconstructionAssessment:
+        if command.as_of.value.year != int(command.income_year):
+            raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
+        by_requirement = {(item.kind, item.issuer): item for item in command.evidence}
+        if len(by_requirement) != len(command.evidence):
+            raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE")
+        if set(by_requirement) != set(_RECONSTRUCTION_EVIDENCE_REQUIREMENTS):
+            raise LedgerError.precondition_failed(
+                "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
+            )
+        year_start = date(int(command.income_year), 1, 1)
+        for kind in _FULL_YEAR_COVERAGE_EVIDENCE:
+            matching = tuple(
+                item for item in by_requirement.values() if item.kind is kind
+            )
+            if any(
+                item.coverage_from is None
+                or item.coverage_through is None
+                or item.coverage_from.value != year_start
+                or item.coverage_through.value != command.as_of.value
+                for item in matching
+            ):
+                raise LedgerError.precondition_failed(
+                    "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+                )
+        evidence = tuple(
+            by_requirement[requirement]
+            for requirement in _RECONSTRUCTION_EVIDENCE_REQUIREMENTS
+        )
+        gap_codes = tuple(
+            item.gap_code
+            for item in evidence
+            if item.confirmation is not ReconstructionEvidenceStatus.CONFIRMED
+            and item.gap_code is not None
+        )
+        state = ReconstructionState.BLOCKED if gap_codes else ReconstructionState.READY
+        return await self._persistence.record_reconstruction_assessment(
+            command,
+            evidence=evidence,
+            state=state,
+            gap_codes=gap_codes,
+        )
 
     async def post_opening_balance(
         self, command: PostOpeningBalanceCommand

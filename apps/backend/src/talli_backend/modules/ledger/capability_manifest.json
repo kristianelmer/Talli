@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0",
   "manifestId": "narrow-ledger",
-  "boundaryVersion": "2026.1",
-  "changeKind": "legacy-behavior-freeze",
-  "decisionReferences": ["#124", "#125", "#126", "#127", "#132", "#139"],
+  "boundaryVersion": "2026.2",
+  "changeKind": "approved-supported-pattern-expansion",
+  "decisionReferences": ["#124", "#125", "#126", "#127", "#132", "#139", "#172", "#188"],
   "money": {"currency": "NOK", "decimalPlaces": 2},
   "openingBalance": {
     "memo": "Åpningsbalanse for Talli-start",
@@ -22,5 +22,39 @@
     "PUBLIC_FEE": "7790",
     "LEGAL_ADVISORY": "6720",
     "OTHER_ADMIN_COST": "7795"
+  },
+  "currentYearReconstruction": {
+    "startsOn": "January 1",
+    "requiredEvidenceKinds": [
+      "PRIOR_CLOSING_OPENING",
+      "BANK_MOVEMENTS",
+      "BANK_RECONCILIATION",
+      "INVESTMENTS",
+      "SHAREHOLDERS",
+      "LOANS",
+      "EQUITY",
+      "TAX_HISTORY",
+      "CURRENT_YEAR_ACTIVITY",
+      "DOCUMENTS",
+      "UNSUPPORTED_ACTIVITY_CHECK"
+    ],
+    "fullCoverageKinds": ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"],
+    "requiredIssuerKindPairs": [
+      ["LEDGER", "PRIOR_CLOSING_OPENING"],
+      ["BANKING", "BANK_MOVEMENTS"],
+      ["BANKING", "BANK_RECONCILIATION"],
+      ["INVESTMENTS", "INVESTMENTS"],
+      ["SHAREHOLDER_REGISTER_FILING", "SHAREHOLDERS"],
+      ["BANKING", "LOANS"],
+      ["CORPORATE_GOVERNANCE", "LOANS"],
+      ["CORPORATE_GOVERNANCE", "EQUITY"],
+      ["SHAREHOLDER_REGISTER_FILING", "EQUITY"],
+      ["COMPANY_TAX_FILING", "TAX_HISTORY"],
+      ["LEDGER", "CURRENT_YEAR_ACTIVITY"],
+      ["DOCUMENTS", "DOCUMENTS"],
+      ["COMPANY_ACCESS", "UNSUPPORTED_ACTIVITY_CHECK"]
+    ],
+    "unknownMaterialFactBlocks": true,
+    "canonicalEvidenceOrder": true
   }
 }

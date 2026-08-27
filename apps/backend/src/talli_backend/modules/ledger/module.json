@@ -8,11 +8,11 @@
   "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.ledger.public",
   "exports": {
-    "commands": ["LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentDividendCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOpeningBalanceCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand"],
-    "queries": ["LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry"],
+    "commands": ["LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentDividendCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOpeningBalanceCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RecordReconstructionAssessmentCommand"],
+    "queries": ["LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry", "ReconstructionAssessment"],
     "events": [],
     "errors": ["LedgerError"],
-    "identifiers": ["AdministrativeCostCategory", "BankSuggestionRule", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "PeriodLockId", "ShareholderLoanDirection", "TaxSettlementKind", "ledger_persistence_adapter"]
+    "identifiers": ["AdministrativeCostCategory", "BankSuggestionRule", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionState", "ShareholderLoanDirection", "TaxSettlementKind", "ledger_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["ledger"],

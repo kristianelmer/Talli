@@ -53,6 +53,19 @@ class PeriodLockId:
 
 
 @dataclass(frozen=True, slots=True)
+class ReconstructionAssessmentId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "value", _opaque_uuid(self.value, "reconstruction assessment id")
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class LedgerCursor:
     value: str
 
@@ -115,6 +128,42 @@ class TaxSettlementKind(StrEnum):
     REFUND = "refund"
 
 
+class ReconstructionEvidenceKind(StrEnum):
+    PRIOR_CLOSING_OPENING = "PRIOR_CLOSING_OPENING"
+    BANK_MOVEMENTS = "BANK_MOVEMENTS"
+    BANK_RECONCILIATION = "BANK_RECONCILIATION"
+    INVESTMENTS = "INVESTMENTS"
+    SHAREHOLDERS = "SHAREHOLDERS"
+    LOANS = "LOANS"
+    EQUITY = "EQUITY"
+    TAX_HISTORY = "TAX_HISTORY"
+    CURRENT_YEAR_ACTIVITY = "CURRENT_YEAR_ACTIVITY"
+    DOCUMENTS = "DOCUMENTS"
+    UNSUPPORTED_ACTIVITY_CHECK = "UNSUPPORTED_ACTIVITY_CHECK"
+
+
+class ReconstructionEvidenceStatus(StrEnum):
+    CONFIRMED = "CONFIRMED"
+    GAP = "GAP"
+    UNKNOWN = "UNKNOWN"
+
+
+class ReconstructionEvidenceIssuer(StrEnum):
+    COMPANY_ACCESS = "COMPANY_ACCESS"
+    LEDGER = "LEDGER"
+    BANKING = "BANKING"
+    INVESTMENTS = "INVESTMENTS"
+    DOCUMENTS = "DOCUMENTS"
+    CORPORATE_GOVERNANCE = "CORPORATE_GOVERNANCE"
+    SHAREHOLDER_REGISTER_FILING = "SHAREHOLDER_REGISTER_FILING"
+    COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
+
+
+class ReconstructionState(StrEnum):
+    BLOCKED = "BLOCKED"
+    READY = "READY"
+
+
 class LedgerEntryKind(StrEnum):
     OPENING_BALANCE = "OPENING_BALANCE"
     ADMINISTRATIVE_COST = "ADMINISTRATIVE_COST"
@@ -163,6 +212,9 @@ class LedgerErrorCode(StrEnum):
     PAYEE_REQUIRED = "LEDGER_PAYEE_REQUIRED"
     PERIOD_LOCKED = "LEDGER_PERIOD_LOCKED"
     WARNING_ACCEPTANCE_REQUIRED = "LEDGER_WARNING_ACCEPTANCE_REQUIRED"
+    RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
+    RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
+    RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,6 +368,51 @@ class PostTaxSettlementCommand(LedgerCommand):
     settlement_id: LedgerSourceRecordId
     settlement_kind: TaxSettlementKind
     amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionEvidence:
+    kind: ReconstructionEvidenceKind
+    confirmation: ReconstructionEvidenceStatus
+    issuer: ReconstructionEvidenceIssuer
+    source_record_id: LedgerSourceRecordId
+    fact_sha256: str
+    coverage_from: LocalDate | None = None
+    coverage_through: LocalDate | None = None
+    gap_code: str | None = None
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        gap = self.gap_code.strip() if self.gap_code is not None else None
+        if self.confirmation is ReconstructionEvidenceStatus.CONFIRMED and gap is not None:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if self.confirmation is not ReconstructionEvidenceStatus.CONFIRMED and not gap:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if (self.coverage_from is None) is not (self.coverage_through is None):
+            raise LedgerError.invalid_input("LEDGER_RECONSTRUCTION_COVERAGE_INVALID")
+        object.__setattr__(self, "fact_sha256", digest)
+        object.__setattr__(self, "gap_code", gap)
+
+
+@dataclass(frozen=True, slots=True)
+class RecordReconstructionAssessmentCommand(LedgerCommand):
+    as_of: LocalDate
+    evidence: tuple[ReconstructionEvidence, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionAssessment:
+    assessment_id: ReconstructionAssessmentId
+    company_id: CompanyId
+    income_year: IncomeYear
+    as_of: LocalDate
+    state: ReconstructionState
+    gap_codes: tuple[str, ...]
+    evidence_digest: str
+    recorded_at: Timestamp
+    replayed: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -478,6 +575,15 @@ class LedgerPersistence(Protocol):
 
     async def lock_period(self, command: LockPeriodCommand) -> PeriodLock: ...
 
+    async def record_reconstruction_assessment(
+        self,
+        command: RecordReconstructionAssessmentCommand,
+        *,
+        evidence: tuple[ReconstructionEvidence, ...],
+        state: ReconstructionState,
+        gap_codes: tuple[str, ...],
+    ) -> ReconstructionAssessment: ...
+
     async def list_entries(
         self,
         *,
@@ -555,6 +661,10 @@ class LedgerCommands(Protocol):
         self, command: PostTaxSettlementCommand
     ) -> PostedLedgerEntry: ...
 
+    async def record_reconstruction_assessment(
+        self, command: RecordReconstructionAssessmentCommand
+    ) -> ReconstructionAssessment: ...
+
     async def post_manual_journal(
         self, command: PostManualJournalCommand
     ) -> PostedLedgerEntry: ...
@@ -609,6 +719,14 @@ __all__ = [
     "PeriodLockPage",
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
+    "RecordReconstructionAssessmentCommand",
+    "ReconstructionAssessment",
+    "ReconstructionAssessmentId",
+    "ReconstructionEvidence",
+    "ReconstructionEvidenceKind",
+    "ReconstructionEvidenceIssuer",
+    "ReconstructionEvidenceStatus",
+    "ReconstructionState",
     "PostInvestmentDividendCommand",
     "PostInvestmentPurchaseCommand",
     "PostInvestmentSaleCommand",
