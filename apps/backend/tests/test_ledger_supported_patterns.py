@@ -288,11 +288,11 @@ def test_registered_cash_capital_reclassifies_nominal_premium_and_bank() -> None
     )
 
     assert posted_lines(persistence) == [
-        ("2005", "15000.00", "0.00"),
+        ("2030", "15000.00", "0.00"),
         ("2000", "0.00", "10000.00"),
         ("2020", "0.00", "5000.00"),
         ("1920", "15000.00", "0.00"),
-        ("1950", "0.00", "15000.00"),
+        ("1921", "0.00", "15000.00"),
     ]
 
 
@@ -312,7 +312,7 @@ def test_decided_loss_coverage_reduction_reclassifies_equity_without_cash() -> N
     )
 
     assert posted_lines(persistence) == [
-        ("2006", "20000.00", "0.00"),
+        ("2033", "20000.00", "0.00"),
         ("2080", "0.00", "20000.00"),
     ]
 
@@ -379,7 +379,7 @@ def test_first_seen_registered_reduction_posts_directly_against_loss() -> None:
         (
             GroupContributionRelationship.SISTER_TO_SISTER,
             GroupContributionPerspective.RECIPIENT,
-            [("1560", "7800.00", "0.00"), ("2030", "0.00", "7800.00")],
+            [("1560", "7800.00", "0.00"), ("2035", "0.00", "7800.00")],
         ),
     ],
 )

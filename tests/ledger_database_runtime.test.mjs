@@ -959,7 +959,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(supportedPosting.replayed, false);
     assert.equal(jsonOutput(containerName, supportedCall()).replayed, true);
     const capitalReductionLines = JSON.stringify([
-      { account: "2006", description: "Unregistered capital reduction", debit: "20000.00", credit: "0.00", currency: "NOK" },
+      { account: "2033", description: "Unregistered capital reduction", debit: "20000.00", credit: "0.00", currency: "NOK" },
       { account: "2080", description: "Uncovered loss", debit: "0.00", credit: "20000.00", currency: "NOK" },
     ]);
     const capitalReductionSources = JSON.stringify([{

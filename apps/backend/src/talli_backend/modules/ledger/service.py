@@ -368,25 +368,25 @@ class LedgerService:
                 lines = (
                     LedgerLine("1500", "Subscription receivable", total, _ZERO),
                     LedgerLine(
-                        "2005", "Unregistered capital increase", _ZERO, total
+                        "2030", "Unregistered capital increase", _ZERO, total
                     ),
                 )
             elif facts.phase is CapitalIncreasePhase.RESTRICTED_PAYMENT:
                 memo = "Cash contribution paid to restricted account"
                 lines = (
-                    LedgerLine("1950", "Restricted contribution bank", total, _ZERO),
+                    LedgerLine("1921", "Restricted contribution bank", total, _ZERO),
                     LedgerLine("1500", "Subscription receivable", _ZERO, total),
                 )
             else:
                 memo = "Registered cash-capital increase"
                 lines = (
-                    LedgerLine("2005", "Unregistered capital increase", total, _ZERO),
+                    LedgerLine("2030", "Unregistered capital increase", total, _ZERO),
                     LedgerLine(
                         "2000", "Registered share capital", _ZERO, facts.nominal_increase
                     ),
                     LedgerLine("2020", "Share premium", _ZERO, facts.share_premium),
                     LedgerLine("1920", "Released contribution bank", total, _ZERO),
-                    LedgerLine("1950", "Restricted contribution bank", _ZERO, total),
+                    LedgerLine("1921", "Restricted contribution bank", _ZERO, total),
                 )
         elif isinstance(facts, ApprovedLossCoverageCapitalReductionFacts):
             required_sources = frozenset(
@@ -402,7 +402,7 @@ class LedgerService:
                 memo = "Loss-coverage capital reduction decided, not registered"
                 lines = (
                     LedgerLine(
-                        "2006",
+                        "2033",
                         "Unregistered capital reduction",
                         facts.nominal_reduction,
                         _ZERO,
@@ -479,7 +479,7 @@ class LedgerService:
                     "8075"
                     if facts.relationship
                     is GroupContributionRelationship.SUBSIDIARY_TO_PARENT
-                    else "2030"
+                    else "2035"
                 )
                 credit_description = (
                     "Income from subsidiary"
