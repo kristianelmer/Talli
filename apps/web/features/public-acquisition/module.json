@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "public-acquisition",
+  "path": "apps/web/features/public-acquisition",
+  "owner": "web:public-acquisition",
+  "purpose": "Present the truthful free-recruitment homepage and approved annual offer without enabling checkout or claiming live production capabilities.",
+  "documentation": "apps/web/features/public-acquisition/MODULE.md",
+  "publicEntryPoint": "@/features/public-acquisition",
+  "publicImportPaths": ["@/features/public-acquisition", "apps/web/features/public-acquisition", "apps/web/features/public-acquisition/index.ts"],
+  "ownedRoutes": ["/"],
+  "apiOperations": [],
+  "dependencies": [],
+  "allowedImports": [],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Eligibility policy, company-year admission, billing, checkout, or provider activation",
+    "Live capability or launch-clearance decisions",
+    "Analytics persistence, personal data, company data, or financial data"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/public-acquisition.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

@@ -1,136 +1,133 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { publicRecruitmentOffer as c } from "../features/public-acquisition";
 import { LinkButton } from "./components/ui";
-import { ownerCopy } from "./lib/copy";
-import { getCurrentUser } from "./lib/supabase/server";
-
-const c = ownerCopy.home;
-const betaInterestHref = "mailto:post@talli.no?subject=Betatilgang%20til%20Talli";
+import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: c.metaTitle,
-  description: c.metaDescription,
+  title: c.metadata.title,
+  description: c.metadata.description,
 };
 
-export default async function Home() {
-  const user = await getCurrentUser();
-  const primaryHref = user ? "/dashboard" : betaInterestHref;
-  const primaryLabel = user ? c.nav.toApp : c.hero.primaryCta;
-
+export default function Home() {
   return (
-    <div className="lpPage">
-      <header className="lpHeader">
-        <div className="lpHeaderInner">
-          <div className="appBrand">
-            <span className="appBrandMark" aria-hidden="true" />
-            <span>{ownerCopy.brand}</span>
-          </div>
-          <div className="lpHeaderActions">
-            {user ? (
-              <LinkButton href="/dashboard" variant="primary">
-                {c.nav.toApp}
-              </LinkButton>
-            ) : (
-              <>
-                <LinkButton href="/login" variant="ghost">
-                  {c.nav.signIn}
-                </LinkButton>
-                <LinkButton href={betaInterestHref} variant="primary">
-                  {c.nav.signUp}
-                </LinkButton>
-              </>
-            )}
-          </div>
-        </div>
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <Link className={styles.brand} href="/" aria-label="Talli forside">
+          <span className={styles.brandMark} aria-hidden="true" />
+          {c.brand}
+        </Link>
+        <Link className={styles.signIn} href="/login">Logg inn</Link>
       </header>
 
-      <main className="lpMain">
-        <section className="lpHero">
-          <p className="lpEyebrow">{c.hero.eyebrow}</p>
-          <h1 className="lpTitle">{c.hero.title}</h1>
-          <p className="lpLede">{c.hero.lede}</p>
-          <div className="lpCtaRow">
-            <LinkButton href={primaryHref} variant="primary" size="lg">
-              {primaryLabel}
+      <main className={styles.main}>
+        <section className={styles.hero} aria-labelledby="home-title">
+          <p className={styles.mode}>{c.recruitmentNotice}</p>
+          <p className={styles.eyebrow}>{c.eyebrow}</p>
+          <h1 className={styles.title} id="home-title">{c.title}</h1>
+          <p className={styles.lede}>{c.supportingLine}</p>
+          <div className={styles.primaryAction}>
+            <LinkButton href={c.primaryAction.href} variant="primary" size="lg">
+              {c.primaryAction.label}
             </LinkButton>
-            {!user ? (
-              <LinkButton href="/login" variant="secondary" size="lg">
-                {c.hero.secondaryCta}
-              </LinkButton>
-            ) : null}
           </div>
-          <p className="lpReassure">{c.hero.reassurance}</p>
         </section>
 
-        <section className="lpSection" aria-labelledby="lp-features">
-          <h2 className="lpSectionTitle" id="lp-features">
-            {c.features.title}
-          </h2>
-          <div className="lpFeatures">
-            {c.features.items.map((item) => (
-              <article key={item.title} className="lpCard">
-                <h3 className="lpCardTitle">{item.title}</h3>
-                <p className="lpCardBody">{item.body}</p>
+        <section className={styles.section} aria-labelledby="included-title">
+          <h2 className={styles.sectionTitle} id="included-title">{c.includedTitle}</h2>
+          <div className={styles.cards}>
+            {c.filings.map((filing) => (
+              <article className={styles.card} key={filing}>
+                <h3>{filing}</h3>
               </article>
             ))}
           </div>
+          <p className={styles.lede}>{c.reconstruction}</p>
+          <details className={styles.promiseDetails}>
+            <summary>Se hele det versjonerte selskapsårsløftet</summary>
+            <ul>
+              {c.includedCapabilityClaims.map((claim) => (
+                <li key={claim}>{claim}</li>
+              ))}
+            </ul>
+          </details>
         </section>
 
-        <section className="lpSection" aria-labelledby="lp-steps">
-          <h2 className="lpSectionTitle" id="lp-steps">
-            {c.steps.title}
-          </h2>
-          <ol className="lpSteps">
-            {c.steps.items.map((item, i) => (
-              <li key={item.title} className="lpStep">
-                <span className="lpStepNum" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <h3 className="lpStepTitle">{item.title}</h3>
-                <p className="lpStepBody">{item.body}</p>
+        <section className={styles.scopeCard} aria-labelledby="scope-title">
+          <h2 id="scope-title">{c.scope.title}</h2>
+          <p>{c.scope.supported}</p>
+          <p>{c.scope.blocked}</p>
+          <p>{c.scope.nextStep}</p>
+        </section>
+
+        <section className={styles.section} aria-labelledby="steps-title">
+          <h2 className={styles.sectionTitle} id="steps-title">Slik fungerer gratissjekken</h2>
+          <ol className={styles.steps}>
+            {c.steps.map((step, index) => (
+              <li className={styles.step} key={step.title}>
+                <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
               </li>
             ))}
           </ol>
         </section>
 
-        <section className="lpScope">
-          <h2 className="lpScopeTitle">{c.scope.title}</h2>
-          <p className="lpScopeBody">{c.scope.body}</p>
-          <div className="lpDisclosures">
-            {c.disclosures.map((disclosure) => (
-              <p key={disclosure} className="lpScopeBody">
-                {disclosure}
-              </p>
+        <section className={styles.priceGrid} aria-labelledby="price-title">
+          <article className={styles.priceCard}>
+            <h2 id="price-title">{c.priceTitle}</h2>
+            <p className={styles.priceLine}>{c.priceLine}</p>
+            <p className={styles.restriction}>{c.priceRestriction}</p>
+          </article>
+          <article className={styles.priceCard}>
+            <h2>{c.refundTitle}</h2>
+            <p>{c.refundPromise}</p>
+          </article>
+        </section>
+
+        <section className={styles.trust} aria-labelledby="proof-title">
+          <h2 className={styles.sectionTitle} id="proof-title">{c.proofTitle}</h2>
+          <p>{c.proofBody}</p>
+          <nav className={styles.trustLinks} aria-label="Dokumentasjon og vilkår">
+            {c.proofLinks.map((link) => (
+              <Link href={link.href} key={link.href}>{link.label}</Link>
+            ))}
+          </nav>
+          <p>{c.operator}</p>
+          <p>{c.nonAffiliation}</p>
+        </section>
+
+        <section className={styles.section} aria-labelledby="faq-title">
+          <h2 className={styles.sectionTitle} id="faq-title">{c.faqTitle}</h2>
+          <div className={styles.faqList}>
+            {c.faq.map((item) => (
+              <details className={styles.faqItem} key={item.question}>
+                <summary>{item.question}</summary>
+                <p>{item.answer}</p>
+              </details>
             ))}
           </div>
         </section>
 
-        <section className="lpClosing">
-          <h2 className="lpClosingTitle">{c.closing.title}</h2>
-          <p className="lpClosingBody">{c.closing.body}</p>
-          <LinkButton href={primaryHref} variant="secondary" size="lg">
-            {user ? c.nav.toApp : c.closing.cta}
+        <section className={styles.finalAction} aria-labelledby="final-action-title">
+          <h2 id="final-action-title">{c.finalTitle}</h2>
+          <p>{c.finalBody}</p>
+          <LinkButton href={c.primaryAction.href} variant="secondary" size="lg">
+            {c.primaryAction.label}
           </LinkButton>
         </section>
       </main>
 
-      <footer className="lpFooter">
-        <div className="lpFooterInner">
-          <div className="appBrand">
-            <span className="appBrandMark" aria-hidden="true" />
-            <span>{ownerCopy.brand}</span>
-          </div>
-          <nav className="lpFooterLinks" aria-label="Footer">
-            <Link href="/vilkar">{ownerCopy.auth.termsLink}</Link>
-            <Link href="/personvern">{ownerCopy.auth.privacyLink}</Link>
-            {user ? (
-              <Link href="/dashboard">{c.nav.toApp}</Link>
-            ) : (
-              <Link href="/login">{c.nav.signIn}</Link>
-            )}
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <nav className={styles.footerLinks} aria-label="Juridisk og kontakt">
+            <Link href="/vilkar">Vilkår</Link>
+            <Link href="/personvern">Personvern</Link>
+            <Link href="/databehandleravtale">Databehandleravtale</Link>
           </nav>
-          <span>{c.footer.rights}</span>
+          <p className={styles.footerNote}>{c.nonAffiliation}</p>
+          <span>© 2026 Talli</span>
         </div>
       </footer>
     </div>
