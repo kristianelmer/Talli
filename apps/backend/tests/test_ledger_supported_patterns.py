@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import MISSING
 from datetime import UTC, date, datetime
 from typing import cast
 
@@ -11,6 +12,7 @@ from talli_backend.modules.ledger.public import (
     ApprovedOneSidedIntercompanyLoanFundingFacts,
     ApprovedOwnerLoanFundingFacts,
     BankInterestIncomeFacts,
+    BankLoanReferenceId,
     BankLoanEvent,
     CashCapitalIncreaseFacts,
     CapitalIncreasePhase,
@@ -54,6 +56,7 @@ ACTOR_ID = ActorId(
     kind=ActorKind.USER,
     subject=UserId("20000000-0000-0000-0000-000000000002"),
 )
+LOAN_REFERENCE_ID = BankLoanReferenceId("bank-loan:ordinary-facility:1")
 
 
 class PatternPersistenceStub:
@@ -108,6 +111,62 @@ class PatternPersistenceStub:
             replayed=False,
         )
 
+    async def record_bank_loan_disbursement(
+        self,
+        command: object,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        self.calls.append(
+            {
+                "operation": "bank_loan_disbursement",
+                "command": command,
+                "loan_reference_id": loan_reference_id,
+                "principal": principal,
+                **draft,
+            }
+        )
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000007"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.BANK_LOAN,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
+    async def record_bank_loan_payment(
+        self,
+        command: object,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        interest: Money,
+        fee: Money,
+        **draft: object,
+    ) -> PostedLedgerEntry:
+        self.calls.append(
+            {
+                "operation": "bank_loan_payment",
+                "command": command,
+                "loan_reference_id": loan_reference_id,
+                "principal": principal,
+                "interest": interest,
+                "fee": fee,
+                **draft,
+            }
+        )
+        return PostedLedgerEntry(
+            entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000008"),
+            company_id=COMPANY_ID,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.BANK_LOAN,
+            posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
+            replayed=False,
+        )
+
 
 def source(
     capability: LedgerSourceCapability,
@@ -150,6 +209,24 @@ def capital_reduction_facts(
         recognition=recognition,
         nominal_reduction=nominal_reduction,
     )
+
+
+def bank_loan_facts(
+    *,
+    event: BankLoanEvent,
+    principal: str,
+    interest: str = "0.00",
+    fee: str = "0.00",
+) -> OrdinaryBankLoanFacts:
+    fields: dict[str, object] = {
+        "event": event,
+        "principal": Money.nok(principal),
+        "interest": Money.nok(interest),
+        "fee": Money.nok(fee),
+    }
+    if "loan_reference_id" in OrdinaryBankLoanFacts.__dataclass_fields__:
+        fields["loan_reference_id"] = LOAN_REFERENCE_ID
+    return OrdinaryBankLoanFacts(**fields)  # type: ignore[arg-type]
 
 
 def posted_lines(persistence: PatternPersistenceStub) -> list[tuple[str, str, str]]:
@@ -443,29 +520,218 @@ def test_tax_accrual_keeps_current_and_deferred_tax_distinct() -> None:
     ]
 
 
-def test_bank_loan_payment_separates_principal_interest_and_fee() -> None:
+def test_bank_loan_public_facts_use_a_required_cross_year_stable_reference() -> None:
+    fields = OrdinaryBankLoanFacts.__dataclass_fields__
+
+    assert set(fields) == {
+        "event",
+        "loan_reference_id",
+        "principal",
+        "interest",
+        "fee",
+    }
+    assert fields["loan_reference_id"].default is MISSING
+
+
+def test_bank_loan_disbursement_posts_principal_through_its_lifecycle_port() -> None:
     persistence = PatternPersistenceStub()
 
-    asyncio.run(
+    result = asyncio.run(
         LedgerService(persistence).recognize_holding_action(
             command(
-                OrdinaryBankLoanFacts(
-                    event=BankLoanEvent.PAYMENT,
-                    principal=Money.nok("10000.00"),
-                    interest=Money.nok("2000.00"),
-                    fee=Money.nok("100.00"),
+                bank_loan_facts(
+                    event=BankLoanEvent.DISBURSEMENT,
+                    principal="50000.00",
                 ),
-                source(LedgerSourceCapability.BANKING, "bank-loan-payment"),
+                source(LedgerSourceCapability.BANKING, "bank-loan-disbursement"),
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-agreement"),
             )
         )
     )
 
+    assert result.entry_kind is LedgerEntryKind.BANK_LOAN
+    assert persistence.calls[0]["operation"] == "bank_loan_disbursement"
+    assert persistence.calls[0]["loan_reference_id"] == LOAN_REFERENCE_ID
+    assert persistence.calls[0]["principal"] == Money.nok("50000.00")
+    assert posted_lines(persistence) == [
+        ("1920", "50000.00", "0.00"),
+        ("2220", "0.00", "50000.00"),
+    ]
+
+
+def test_bank_loan_payment_separates_allocation_through_its_lifecycle_port() -> None:
+    persistence = PatternPersistenceStub()
+
+    result = asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                bank_loan_facts(
+                    event=BankLoanEvent.PAYMENT,
+                    principal="10000.00",
+                    interest="2000.00",
+                    fee="100.00",
+                ),
+                source(LedgerSourceCapability.BANKING, "bank-loan-payment"),
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-statement"),
+            )
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.BANK_LOAN
+    assert persistence.calls[0]["operation"] == "bank_loan_payment"
+    assert persistence.calls[0]["loan_reference_id"] == LOAN_REFERENCE_ID
+    assert persistence.calls[0]["principal"] == Money.nok("10000.00")
+    assert persistence.calls[0]["interest"] == Money.nok("2000.00")
+    assert persistence.calls[0]["fee"] == Money.nok("100.00")
     assert posted_lines(persistence) == [
         ("2220", "10000.00", "0.00"),
         ("8150", "2000.00", "0.00"),
         ("7770", "100.00", "0.00"),
         ("1920", "0.00", "12100.00"),
     ]
+
+
+def test_bank_loan_payment_omits_zero_allocation_lines() -> None:
+    persistence = PatternPersistenceStub()
+
+    asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                bank_loan_facts(
+                    event=BankLoanEvent.PAYMENT,
+                    principal="0.00",
+                    interest="200.00",
+                    fee="0.00",
+                ),
+                source(LedgerSourceCapability.BANKING, "bank-loan-interest-payment"),
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-interest-statement"),
+            )
+        )
+    )
+
+    assert posted_lines(persistence) == [
+        ("8150", "200.00", "0.00"),
+        ("1920", "0.00", "200.00"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("facts", "primary", "corroborating"),
+    [
+        (
+            bank_loan_facts(event=BankLoanEvent.DISBURSEMENT, principal="50000.00"),
+            source(LedgerSourceCapability.BANKING, "bank-loan-missing-document"),
+            (),
+        ),
+        (
+            bank_loan_facts(event=BankLoanEvent.PAYMENT, principal="1000.00"),
+            source(LedgerSourceCapability.DOCUMENTS, "bank-loan-wrong-primary"),
+            (source(LedgerSourceCapability.BANKING, "bank-loan-bank-corroboration"),),
+        ),
+        (
+            bank_loan_facts(event=BankLoanEvent.PAYMENT, principal="1000.00"),
+            source(LedgerSourceCapability.BANKING, "bank-loan-extra-source"),
+            (
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-document"),
+                source(LedgerSourceCapability.CORPORATE_GOVERNANCE, "bank-loan-extra"),
+            ),
+        ),
+        (
+            bank_loan_facts(event=BankLoanEvent.DISBURSEMENT, principal="50000.00"),
+            source(LedgerSourceCapability.BANKING, "bank-loan-duplicate-document"),
+            (
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-document-one"),
+                source(LedgerSourceCapability.DOCUMENTS, "bank-loan-document-two"),
+            ),
+        ),
+    ],
+)
+def test_bank_loan_requires_exact_banking_primary_and_document_corroboration(
+    facts: OrdinaryBankLoanFacts,
+    primary: LedgerFactReference,
+    corroborating: tuple[LedgerFactReference, ...],
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(facts, primary, *corroborating)
+            )
+        )
+
+    assert failure.value.code == "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+    assert persistence.calls == []
+
+
+def test_bank_loan_rejects_runtime_invalid_phase_without_persistence() -> None:
+    persistence = PatternPersistenceStub()
+    facts = bank_loan_facts(
+        event=cast(BankLoanEvent, "UNSUPPORTED"),
+        principal="1000.00",
+    )
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    facts,
+                    source(LedgerSourceCapability.BANKING, "bank-loan-invalid-phase"),
+                    source(LedgerSourceCapability.DOCUMENTS, "bank-loan-invalid-document"),
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [
+        bank_loan_facts(event=BankLoanEvent.DISBURSEMENT, principal="0.00"),
+        bank_loan_facts(
+            event=BankLoanEvent.DISBURSEMENT,
+            principal="50000.00",
+            interest="1.00",
+        ),
+        bank_loan_facts(
+            event=BankLoanEvent.DISBURSEMENT,
+            principal="50000.00",
+            fee="1.00",
+        ),
+        bank_loan_facts(event=BankLoanEvent.PAYMENT, principal="-1.00"),
+        bank_loan_facts(
+            event=BankLoanEvent.PAYMENT,
+            principal="0.00",
+            interest="-1.00",
+        ),
+        bank_loan_facts(
+            event=BankLoanEvent.PAYMENT,
+            principal="0.00",
+            fee="-1.00",
+        ),
+        bank_loan_facts(event=BankLoanEvent.PAYMENT, principal="0.00"),
+    ],
+)
+def test_bank_loan_rejects_invalid_numeric_allocations_before_persistence(
+    facts: OrdinaryBankLoanFacts,
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    facts,
+                    source(LedgerSourceCapability.BANKING, "bank-loan-invalid-amount"),
+                    source(LedgerSourceCapability.DOCUMENTS, "bank-loan-invalid-evidence"),
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
 
 
 def test_approved_owner_loan_funding_posts_bank_against_owner_debt() -> None:

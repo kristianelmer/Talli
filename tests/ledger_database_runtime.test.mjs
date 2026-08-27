@@ -12,6 +12,7 @@ const supportedPatternsPath = "/repo/supabase/migrations/20260827102000_ledger_s
 const correctionsPath = "/repo/supabase/migrations/20260827103000_ledger_corrections.sql";
 const companyYearClosePath = "/repo/supabase/migrations/20260827104000_ledger_company_year_close.sql";
 const receivedDividendPath = "/repo/supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql";
+const bankLoanPath = "/repo/supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -546,6 +547,10 @@ function psqlFailure(containerName, input) {
   return `${result.stdout}\n${result.stderr}`;
 }
 
+function exactDatabaseError(errorCode) {
+  return new RegExp(`ERROR:\\s+${errorCode}(?:\\r?\\n|$)`, "u");
+}
+
 function lastOutputLine(output) {
   const lines = output.split("\n").map((line) => line.trim()).filter(Boolean);
   assert.ok(lines.length > 0, `expected query output, received ${JSON.stringify(output)}`);
@@ -558,6 +563,10 @@ function jsonOutput(containerName, input) {
 
 function sqlQuote(value) {
   return String(value).replaceAll("'", "''");
+}
+
+function numericSql(value) {
+  return value === null ? "null::numeric" : `'${sqlQuote(value)}'::numeric`;
 }
 
 function actorContext(actorId) {
@@ -731,6 +740,137 @@ from ledger.record_received_dividend_payment_v1(
   '${sqlQuote(correlationId)}'::text, '${verifiedSubject}'::text,
   '${eventDate}'::date, 'ledger-supported-patterns-2026.1'::text,
   '${sqlQuote(JSON.stringify(sources))}'::jsonb
+) posted;
+commit;
+`;
+}
+
+function bankLoanDisbursementTransaction({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey = "67000000-0000-4000-8000-000000000001",
+  loanReference = "bank-loan:runtime-1",
+  principalNok = "100000.00",
+  memo = "Ordinary NOK bank-loan disbursement",
+  lines = [
+    { account: "1920", description: "Bank-loan proceeds", debit: "100000.00", credit: "0.00", currency: "NOK" },
+    { account: "2220", description: "Bank-loan principal", debit: "0.00", credit: "100000.00", currency: "NOK" },
+  ],
+  sourceRecordId = "bank-loan-disbursement-runtime",
+  correlationId = "bank-loan-disbursement-runtime",
+  eventDate = "2026-03-15",
+  sources = [
+    { role: "PRIMARY", capability: "BANKING", recordId: "bank-loan-disbursement-runtime", revision: 1, factSha256: "d".repeat(64) },
+  ],
+} = {}) {
+  const persistedSources = sources.length === 1
+    ? [...sources, {
+        role: "CORROBORATING",
+        capability: "DOCUMENTS",
+        recordId: `${sourceRecordId}:document`,
+        revision: 1,
+        factSha256: "a".repeat(64),
+      }]
+    : sources;
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(posted)::text
+from ledger.record_bank_loan_disbursement_v1(
+  '${sqlQuote(idempotencyKey)}'::text, '${company}'::uuid, ${incomeYear}::integer,
+  '${sqlQuote(loanReference)}'::text, ${numericSql(principalNok)},
+  '${sqlQuote(memo)}'::text, '${sqlQuote(JSON.stringify(lines))}'::jsonb,
+  'BANKING'::text, '${sqlQuote(sourceRecordId)}'::text,
+  '${sqlQuote(correlationId)}'::text, '${verifiedSubject}'::text,
+  '${eventDate}'::date, 'ledger-supported-patterns-2026.1'::text,
+  '${sqlQuote(JSON.stringify(persistedSources))}'::jsonb
+) posted;
+commit;
+`;
+}
+
+function bankLoanPaymentLines({ principalNok, interestNok, feeNok }) {
+  const lines = [];
+  if (Number(principalNok) > 0) {
+    lines.push({
+      account: "2220",
+      description: "Bank-loan principal paid",
+      debit: Number(principalNok).toFixed(2),
+      credit: "0.00",
+      currency: "NOK",
+    });
+  }
+  if (Number(interestNok) > 0) {
+    lines.push({
+      account: "8150",
+      description: "Bank-loan interest",
+      debit: Number(interestNok).toFixed(2),
+      credit: "0.00",
+      currency: "NOK",
+    });
+  }
+  if (Number(feeNok) > 0) {
+    lines.push({
+      account: "7770",
+      description: "Bank-loan fee",
+      debit: Number(feeNok).toFixed(2),
+      credit: "0.00",
+      currency: "NOK",
+    });
+  }
+  lines.push({
+    account: "1920",
+    description: "Paid from bank",
+    debit: "0.00",
+    credit: (Number(principalNok) + Number(interestNok) + Number(feeNok)).toFixed(2),
+    currency: "NOK",
+  });
+  return lines;
+}
+
+function bankLoanPaymentTransaction({
+  actorId = ownerId,
+  verifiedSubject = actorId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey = "67000000-0000-4000-8000-000000000002",
+  loanReference = "bank-loan:runtime-1",
+  principalNok = "25000.00",
+  interestNok = "1000.00",
+  feeNok = "0.00",
+  memo = "Allocated ordinary NOK bank-loan payment",
+  lines = bankLoanPaymentLines({ principalNok, interestNok, feeNok }),
+  sourceRecordId = "bank-loan-payment-runtime",
+  correlationId = "bank-loan-payment-runtime",
+  eventDate = "2026-06-15",
+  sources = [
+    { role: "PRIMARY", capability: "BANKING", recordId: "bank-loan-payment-runtime", revision: 1, factSha256: "e".repeat(64) },
+  ],
+} = {}) {
+  const persistedSources = sources.length === 1
+    ? [...sources, {
+        role: "CORROBORATING",
+        capability: "DOCUMENTS",
+        recordId: `${sourceRecordId}:document`,
+        revision: 1,
+        factSha256: "b".repeat(64),
+      }]
+    : sources;
+  return String.raw`
+begin;
+${actorContext(actorId)}
+select row_to_json(posted)::text
+from ledger.record_bank_loan_payment_v1(
+  '${sqlQuote(idempotencyKey)}'::text, '${company}'::uuid, ${incomeYear}::integer,
+  '${sqlQuote(loanReference)}'::text, ${numericSql(principalNok)},
+  ${numericSql(interestNok)}, ${numericSql(feeNok)},
+  '${sqlQuote(memo)}'::text, '${sqlQuote(JSON.stringify(lines))}'::jsonb,
+  'BANKING'::text, '${sqlQuote(sourceRecordId)}'::text,
+  '${sqlQuote(correlationId)}'::text, '${verifiedSubject}'::text,
+  '${eventDate}'::date, 'ledger-supported-patterns-2026.1'::text,
+  '${sqlQuote(JSON.stringify(persistedSources))}'::jsonb
 ) posted;
 commit;
 `;
@@ -1191,6 +1331,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", correctionsPath]);
     psql(containerName, ["--file", companyYearClosePath]);
     psql(containerName, ["--file", receivedDividendPath]);
+    psql(containerName, ["--file", bankLoanPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -1219,7 +1360,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
             'entry_corrections', 'company_year_close_assessments',
             'company_year_close_evidence', 'company_year_close_locks',
             'company_year_close_reporting_outputs',
-            'received_dividend_decisions', 'received_dividend_settlements'
+            'received_dividend_decisions', 'received_dividend_settlements',
+            'bank_loan_anchors', 'bank_loan_payment_allocations'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -1228,7 +1370,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.bank_loan_anchors:true:true,ledger.bank_loan_payment_allocations:true:true,ledger.company_year_close_assessments:true:true,ledger.company_year_close_evidence:true:true,ledger.company_year_close_locks:true:true,ledger.company_year_close_reporting_outputs:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_corrections:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.received_dividend_decisions:true:true,ledger.received_dividend_settlements:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
 
     const supportedSources = JSON.stringify([{
@@ -1860,6 +2002,522 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         commit;
       `), /permission denied/iu);
     }
+
+    const bankLoanDisbursementOptions = {
+      idempotencyKey: "67000000-0000-4000-8000-000000000001",
+      loanReference: "bank-loan:runtime-1",
+      sourceRecordId: "bank-loan-disbursement-runtime",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-disbursement-runtime",
+        revision: 1,
+        factSha256: "d".repeat(64),
+      }],
+    };
+    const bankLoanDisbursement = jsonOutput(
+      containerName,
+      bankLoanDisbursementTransaction(bankLoanDisbursementOptions),
+    );
+    assert.equal(bankLoanDisbursement.entry_kind, "BANK_LOAN");
+    assert.equal(bankLoanDisbursement.replayed, false);
+    const bankLoanDisbursementReplay = jsonOutput(
+      containerName,
+      bankLoanDisbursementTransaction(bankLoanDisbursementOptions),
+    );
+    assert.equal(
+      bankLoanDisbursementReplay.ledger_entry_id,
+      bankLoanDisbursement.ledger_entry_id,
+    );
+    assert.equal(bankLoanDisbursementReplay.replayed, true);
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      ...bankLoanDisbursementOptions,
+      loanReference: "bank-loan:changed-retry",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000020",
+      loanReference: "bank-loan:null-principal",
+      principalNok: null,
+      sourceRecordId: "bank-loan-null-disbursement-principal-runtime",
+      correlationId: "bank-loan-null-disbursement-principal-runtime",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-null-disbursement-principal-runtime",
+        revision: 1,
+        factSha256: "c".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    const mismatchedDisbursementSource = "bank-loan-mismatched-disbursement-runtime";
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000024",
+      loanReference: "bank-loan:mismatched-disbursement",
+      principalNok: "50000.00",
+      sourceRecordId: mismatchedDisbursementSource,
+      correlationId: mismatchedDisbursementSource,
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id = '${mismatchedDisbursementSource}'),
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = '67000000-0000-4000-8000-000000000024'),
+        (select count(*) from ledger.bank_loan_anchors
+          where loan_reference_id = 'bank-loan:mismatched-disbursement'));
+    `)), "0:0:0");
+    const malformedDisbursementSource = "bank-loan-malformed-disbursement-runtime";
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000026",
+      loanReference: "bank-loan:malformed-disbursement",
+      lines: { unexpected: "object" },
+      sourceRecordId: malformedDisbursementSource,
+      correlationId: malformedDisbursementSource,
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':', anchor.loan_reference_id, anchor.principal_disbursed,
+        anchor.disbursement_income_year, context.event_date)
+      from ledger.bank_loan_anchors anchor
+      join ledger.entry_contexts context
+        on context.entry_id = anchor.disbursement_entry_id
+        and context.company_id = anchor.company_id
+        and context.income_year = anchor.disbursement_income_year
+      where anchor.disbursement_entry_id = '${bankLoanDisbursement.ledger_entry_id}';
+    `)), "bank-loan:runtime-1:100000.00:2026:2026-03-15");
+
+    const duplicateLoanSource = "bank-loan-duplicate-disbursement-runtime";
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000003",
+      loanReference: bankLoanDisbursementOptions.loanReference,
+      sourceRecordId: duplicateLoanSource,
+      correlationId: duplicateLoanSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: duplicateLoanSource,
+        revision: 1,
+        factSha256: "f".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_bank_loan_already_exists"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id = '${duplicateLoanSource}'),
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = '67000000-0000-4000-8000-000000000003'));
+    `)), "0:0");
+
+    const missingLoanPaymentSource = "bank-loan-missing-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000004",
+      loanReference: "bank-loan:missing",
+      sourceRecordId: missingLoanPaymentSource,
+      correlationId: missingLoanPaymentSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: missingLoanPaymentSource,
+        revision: 1,
+        factSha256: "0".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_opening_loan_anchor_missing"));
+    const openingLoanPaymentSource = "bank-loan-opening-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000005",
+      loanReference: "opening-bank-loan:legacy-1",
+      sourceRecordId: openingLoanPaymentSource,
+      correlationId: openingLoanPaymentSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: openingLoanPaymentSource,
+        revision: 1,
+        factSha256: "1".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_opening_loan_anchor_missing"));
+    const crossCompanyPaymentSource = "bank-loan-cross-company-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      actorId: otherOwnerId,
+      company: otherCompanyId,
+      idempotencyKey: "67000000-0000-4000-8000-000000000006",
+      loanReference: bankLoanDisbursementOptions.loanReference,
+      sourceRecordId: crossCompanyPaymentSource,
+      correlationId: crossCompanyPaymentSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: crossCompanyPaymentSource,
+        revision: 1,
+        factSha256: "2".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_opening_loan_anchor_missing"));
+    const backdatedLoanPaymentSource = "bank-loan-backdated-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      eventDate: "2026-03-14",
+      idempotencyKey: "67000000-0000-4000-8000-000000000007",
+      sourceRecordId: backdatedLoanPaymentSource,
+      correlationId: backdatedLoanPaymentSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: backdatedLoanPaymentSource,
+        revision: 1,
+        factSha256: "3".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    for (const [suffix, idempotencyKey, allocations] of [
+      ["principal", "67000000-0000-4000-8000-000000000021", {
+        principalNok: null,
+        interestNok: "1000.00",
+        feeNok: "0.00",
+      }],
+      ["interest", "67000000-0000-4000-8000-000000000022", {
+        principalNok: "1000.00",
+        interestNok: null,
+        feeNok: "0.00",
+      }],
+      ["fee", "67000000-0000-4000-8000-000000000023", {
+        principalNok: "1000.00",
+        interestNok: "0.00",
+        feeNok: null,
+      }],
+    ]) {
+      const sourceRecordId = `bank-loan-null-payment-${suffix}-runtime`;
+      assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+        ...allocations,
+        idempotencyKey,
+        sourceRecordId,
+        correlationId: sourceRecordId,
+        sources: [{
+          role: "PRIMARY",
+          capability: "BANKING",
+          recordId: sourceRecordId,
+          revision: 1,
+          factSha256: "d".repeat(64),
+        }],
+      })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    }
+    const mismatchedPaymentSource = "bank-loan-mismatched-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000025",
+      principalNok: "1000.00",
+      interestNok: "0.00",
+      feeNok: "0.00",
+      lines: bankLoanPaymentLines({
+        principalNok: "2000.00",
+        interestNok: "0.00",
+        feeNok: "0.00",
+      }),
+      sourceRecordId: mismatchedPaymentSource,
+      correlationId: mismatchedPaymentSource,
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id = '${mismatchedPaymentSource}'),
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = '67000000-0000-4000-8000-000000000025'),
+        (select count(*) from ledger.bank_loan_payment_allocations allocation
+          join ledger.entries entry on entry.id = allocation.payment_entry_id
+          where entry.source_record_id = '${mismatchedPaymentSource}'));
+    `)), "0:0:0");
+    const malformedPaymentSource = "bank-loan-malformed-payment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000027",
+      lines: [
+        { account: "2220", description: "Principal", debit: "not-a-number", credit: "0.00", currency: "NOK" },
+        { account: "1920", description: "Bank", debit: "0.00", credit: "26000.00", currency: "NOK" },
+      ],
+      sourceRecordId: malformedPaymentSource,
+      correlationId: malformedPaymentSource,
+    })), exactDatabaseError("ledger_bank_loan_event_invalid"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id in (
+            '${malformedDisbursementSource}', '${malformedPaymentSource}'
+          )),
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key in (
+            '67000000-0000-4000-8000-000000000026',
+            '67000000-0000-4000-8000-000000000027'
+          )));
+    `)), "0:0");
+
+    const firstLoanPaymentOptions = {
+      idempotencyKey: "67000000-0000-4000-8000-000000000002",
+      principalNok: "25000.00",
+      interestNok: "1000.00",
+      feeNok: "0.00",
+      sourceRecordId: "bank-loan-payment-runtime",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-payment-runtime",
+        revision: 1,
+        factSha256: "e".repeat(64),
+      }],
+    };
+    const firstLoanPayment = jsonOutput(
+      containerName,
+      bankLoanPaymentTransaction(firstLoanPaymentOptions),
+    );
+    assert.equal(firstLoanPayment.entry_kind, "BANK_LOAN");
+    assert.equal(firstLoanPayment.replayed, false);
+    const firstLoanPaymentReplay = jsonOutput(
+      containerName,
+      bankLoanPaymentTransaction(firstLoanPaymentOptions),
+    );
+    assert.equal(firstLoanPaymentReplay.ledger_entry_id, firstLoanPayment.ledger_entry_id);
+    assert.equal(firstLoanPaymentReplay.replayed, true);
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      ...firstLoanPaymentOptions,
+      principalNok: "24000.00",
+    })), exactDatabaseError("ledger_idempotency_key_reused"));
+
+    const secondLoanPaymentOptions = {
+      eventDate: "2027-02-15",
+      idempotencyKey: "67000000-0000-4000-8000-000000000008",
+      incomeYear: 2027,
+      principalNok: "20000.00",
+      interestNok: "800.00",
+      feeNok: "200.00",
+      sourceRecordId: "bank-loan-payment-2027-runtime",
+      correlationId: "bank-loan-payment-2027-runtime",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-payment-2027-runtime",
+        revision: 1,
+        factSha256: "4".repeat(64),
+      }],
+    };
+    const secondLoanPayment = jsonOutput(
+      containerName,
+      bankLoanPaymentTransaction(secondLoanPaymentOptions),
+    );
+    assert.equal(secondLoanPayment.income_year, 2027);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':', count(*), sum(allocation.principal_paid),
+        sum(allocation.interest_paid), sum(allocation.fee_paid),
+        min(allocation.payment_income_year), max(allocation.payment_income_year))
+      from ledger.bank_loan_payment_allocations allocation
+      join ledger.bank_loan_anchors anchor
+        on anchor.company_id = allocation.company_id
+        and anchor.loan_reference_id = allocation.loan_reference_id
+      where anchor.company_id = '${companyId}'
+        and anchor.loan_reference_id = '${bankLoanDisbursementOptions.loanReference}';
+    `)), "2:45000.00:1800.00:200.00:2026:2027");
+
+    const overpaymentSource = "bank-loan-overpayment-runtime";
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      eventDate: "2027-03-15",
+      idempotencyKey: "67000000-0000-4000-8000-000000000009",
+      incomeYear: 2027,
+      principalNok: "56000.00",
+      interestNok: "0.00",
+      sourceRecordId: overpaymentSource,
+      correlationId: overpaymentSource,
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: overpaymentSource,
+        revision: 1,
+        factSha256: "5".repeat(64),
+      }],
+    })), exactDatabaseError("ledger_bank_loan_principal_exceeded"));
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entries
+          where source_record_id = '${overpaymentSource}'),
+        (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id = '${overpaymentSource}'),
+        (select count(*) from ledger.entry_sources source
+          join ledger.entries entry on entry.id = source.entry_id
+          where entry.source_record_id = '${overpaymentSource}'),
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = '67000000-0000-4000-8000-000000000009'),
+        (select count(*) from ledger.bank_loan_payment_allocations
+          where payment_entry_id in (select id from ledger.entries
+            where source_record_id = '${overpaymentSource}')));
+    `)), "0:0:0:0:0");
+
+    const concurrentLoanPaymentOptions = [
+      {
+        applicationName: "bank_loan_payment_2027",
+        eventDate: "2027-04-15",
+        idempotencyKey: "67000000-0000-4000-8000-000000000010",
+        incomeYear: 2027,
+        sourceRecordId: "bank-loan-concurrent-payment-2027-runtime",
+        sourceHash: "6".repeat(64),
+      },
+      {
+        applicationName: "bank_loan_payment_2029",
+        eventDate: "2029-04-15",
+        idempotencyKey: "67000000-0000-4000-8000-000000000011",
+        incomeYear: 2029,
+        sourceRecordId: "bank-loan-concurrent-payment-2029-runtime",
+        sourceHash: "7".repeat(64),
+      },
+    ];
+    const concurrentLoanPaymentTransaction = (options) =>
+      bankLoanPaymentTransaction({
+        eventDate: options.eventDate,
+        idempotencyKey: options.idempotencyKey,
+        incomeYear: options.incomeYear,
+        principalNok: "40000.00",
+        interestNok: "500.00",
+        sourceRecordId: options.sourceRecordId,
+        correlationId: options.sourceRecordId,
+        sources: [{
+          role: "PRIMARY",
+          capability: "BANKING",
+          recordId: options.sourceRecordId,
+          revision: 1,
+          factSha256: options.sourceHash,
+        }],
+      });
+    const firstConcurrentLoanPayment = interactivePsql(containerName);
+    firstConcurrentLoanPayment.child.stdin.write(String.raw`
+      set application_name = '${concurrentLoanPaymentOptions[0].applicationName}';
+      ${concurrentLoanPaymentTransaction(concurrentLoanPaymentOptions[0]).replace(
+        "commit;",
+        "select 'bank_loan_first_payment_uncommitted';",
+      )}
+    `);
+    await waitForOutput(
+      firstConcurrentLoanPayment,
+      /bank_loan_first_payment_uncommitted/u,
+    );
+    const secondConcurrentLoanPayment = interactivePsql(containerName);
+    secondConcurrentLoanPayment.child.stdin.end(String.raw`
+      set application_name = '${concurrentLoanPaymentOptions[1].applicationName}';
+      ${concurrentLoanPaymentTransaction(concurrentLoanPaymentOptions[1])}
+    `);
+    let secondConcurrentLoanPaymentBlocked = false;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      secondConcurrentLoanPaymentBlocked = lastOutputLine(psql(
+        containerName,
+        ["-Atq"],
+        String.raw`
+          select count(*) from pg_catalog.pg_stat_activity
+          where application_name = 'bank_loan_payment_2029'
+            and wait_event_type = 'Lock';
+        `,
+      )) === "1";
+      if (secondConcurrentLoanPaymentBlocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.equal(
+      secondConcurrentLoanPaymentBlocked,
+      true,
+      "second cross-year bank-loan payment did not contend on its loan anchor",
+    );
+    firstConcurrentLoanPayment.child.stdin.end("commit;\n\\q\n");
+    const concurrentLoanPaymentResults = await Promise.all([
+      processResult(firstConcurrentLoanPayment),
+      processResult(secondConcurrentLoanPayment),
+    ]);
+    const concurrentLoanPaymentSuccesses = concurrentLoanPaymentResults.filter(
+      (result) => result.code === 0,
+    );
+    const concurrentLoanPaymentFailures = concurrentLoanPaymentResults.filter(
+      (result) => result.code !== 0,
+    );
+    assert.equal(concurrentLoanPaymentSuccesses.length, 1);
+    assert.equal(concurrentLoanPaymentFailures.length, 1);
+    assert.match(
+      concurrentLoanPaymentFailures[0].stderr,
+      exactDatabaseError("ledger_bank_loan_principal_exceeded"),
+    );
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'entries', (select count(*) from ledger.entries entry
+          where entry.source_record_id in (
+            'bank-loan-concurrent-payment-2027-runtime',
+            'bank-loan-concurrent-payment-2029-runtime'
+          )),
+        'contexts', (select count(*) from ledger.entry_contexts context
+          join ledger.entries entry on entry.id = context.entry_id
+          where entry.source_record_id in (
+            'bank-loan-concurrent-payment-2027-runtime',
+            'bank-loan-concurrent-payment-2029-runtime'
+          )),
+        'sources', (select count(*) from ledger.entry_sources source
+          join ledger.entries entry on entry.id = source.entry_id
+          where entry.source_record_id in (
+            'bank-loan-concurrent-payment-2027-runtime',
+            'bank-loan-concurrent-payment-2029-runtime'
+          )),
+        'receipts', (select count(*) from backend_system.ledger_command_receipts receipt
+          where receipt.idempotency_key in (
+            '67000000-0000-4000-8000-000000000010',
+            '67000000-0000-4000-8000-000000000011'
+          )),
+        'allocations', (select count(*)
+          from ledger.bank_loan_payment_allocations allocation
+          where allocation.payment_entry_id in (select id from ledger.entries
+            where source_record_id in (
+              'bank-loan-concurrent-payment-2027-runtime',
+              'bank-loan-concurrent-payment-2029-runtime'
+            )))
+      )::text;
+    `), {
+      allocations: 1,
+      contexts: 1,
+      entries: 1,
+      receipts: 1,
+      sources: 2,
+    });
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':', count(*), sum(allocation.principal_paid),
+        sum(allocation.interest_paid), sum(allocation.fee_paid),
+        min(allocation.payment_income_year), max(allocation.payment_income_year))
+      from ledger.bank_loan_payment_allocations allocation
+      join ledger.bank_loan_anchors anchor
+        on anchor.company_id = allocation.company_id
+        and anchor.loan_reference_id = allocation.loan_reference_id
+      where anchor.company_id = '${companyId}'
+        and anchor.loan_reference_id = '${bankLoanDisbursementOptions.loanReference}';
+    `)), "3:85000.00:2300.00:200.00:2026:2027");
+
+    for (const table of ["bank_loan_anchors", "bank_loan_payment_allocations"]) {
+      assert.match(psqlFailure(containerName, String.raw`
+        begin;
+        ${actorContext(ownerId)}
+        insert into ledger.${table} default values;
+        commit;
+      `), /permission denied/iu);
+    }
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_bank_loan_disbursement_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'authenticated',
+          'ledger.record_bank_loan_disbursement_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'ledger_executor',
+          'ledger.record_bank_loan_payment_v1(text,uuid,integer,text,numeric,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        pg_catalog.has_function_privilege(
+          'authenticated',
+          'ledger.record_bank_loan_payment_v1(text,uuid,integer,text,numeric,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.bank_loan_anchors', 'insert'
+        ),
+        pg_catalog.has_table_privilege(
+          'ledger_executor', 'ledger.bank_loan_payment_allocations', 'insert'
+        ));
+    `)), "t:f:t:f:f:f");
 
     const blockedReconstruction = jsonOutput(
       containerName,
@@ -3560,6 +4218,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.company_year_close_reporting_outputs),
         (select count(*) from ledger.received_dividend_decisions),
         (select count(*) from ledger.received_dividend_settlements),
+        (select count(*) from ledger.bank_loan_anchors),
+        (select count(*) from ledger.bank_loan_payment_allocations),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries), ''), 'sha256'), 'hex'));
@@ -3578,6 +4238,31 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.match(psqlFailure(containerName, receivedDividendPaymentTransaction({
       decisionEntryId: receivedDividendDecision.ledger_entry_id,
       idempotencyKey: "66000000-0000-4000-8000-000000000011",
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, bankLoanDisbursementTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000012",
+      loanReference: "bank-loan:rollback-denied",
+      sourceRecordId: "bank-loan-rollback-disbursement-denied",
+      correlationId: "bank-loan-rollback-disbursement-denied",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-rollback-disbursement-denied",
+        revision: 1,
+        factSha256: "8".repeat(64),
+      }],
+    })), /permission denied/iu);
+    assert.match(psqlFailure(containerName, bankLoanPaymentTransaction({
+      idempotencyKey: "67000000-0000-4000-8000-000000000013",
+      sourceRecordId: "bank-loan-rollback-payment-denied",
+      correlationId: "bank-loan-rollback-payment-denied",
+      sources: [{
+        role: "PRIMARY",
+        capability: "BANKING",
+        recordId: "bank-loan-rollback-payment-denied",
+        revision: 1,
+        factSha256: "9".repeat(64),
+      }],
     })), /permission denied/iu);
     assert.match(psqlFailure(containerName, correctionTransaction({
       originalEntryId: correctionOriginal.ledger_entry_id,
@@ -3623,8 +4308,18 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
           'ledger_executor',
           'ledger.record_received_dividend_payment_v1(text,uuid,integer,uuid,text,jsonb,text,text,text,text,date,text,jsonb)',
           'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_bank_loan_disbursement_v1(text,uuid,integer,text,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
+        ),
+        has_function_privilege(
+          'ledger_executor',
+          'ledger.record_bank_loan_payment_v1(text,uuid,integer,text,numeric,numeric,numeric,text,jsonb,text,text,text,text,date,text,jsonb)',
+          'execute'
         ));
-    `)), "f:f:f:f:f:f");
+    `)), "f:f:f:f:f:f:f:f");
     assert.equal(writerCoordinatorPrivileges(containerName), "f:f:f:f");
     assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -3738,6 +4433,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", correctionsPath]);
     psql(containerName, ["--file", companyYearClosePath]);
     psql(containerName, ["--file", receivedDividendPath]);
+    psql(containerName, ["--file", bankLoanPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))
@@ -3841,6 +4537,24 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       yearBoundaryPayment.ledger_entry_id,
     );
     assert.equal(recutoverYearBoundaryPayment.replayed, true);
+    const recutoverBankLoanDisbursement = jsonOutput(
+      containerName,
+      bankLoanDisbursementTransaction(bankLoanDisbursementOptions),
+    );
+    assert.equal(
+      recutoverBankLoanDisbursement.ledger_entry_id,
+      bankLoanDisbursement.ledger_entry_id,
+    );
+    assert.equal(recutoverBankLoanDisbursement.replayed, true);
+    const recutoverBankLoanPayment = jsonOutput(
+      containerName,
+      bankLoanPaymentTransaction(firstLoanPaymentOptions),
+    );
+    assert.equal(
+      recutoverBankLoanPayment.ledger_entry_id,
+      firstLoanPayment.ledger_entry_id,
+    );
+    assert.equal(recutoverBankLoanPayment.replayed, true);
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',
@@ -3852,6 +4566,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         (select count(*) from ledger.company_year_close_reporting_outputs),
         (select count(*) from ledger.received_dividend_decisions),
         (select count(*) from ledger.received_dividend_settlements),
+        (select count(*) from ledger.bank_loan_anchors),
+        (select count(*) from ledger.bank_loan_payment_allocations),
         (select count(*) from backend_system.ledger_command_receipts),
         encode(extensions.digest(coalesce((select string_agg(id::text || '|' || lines::text, E'\n' order by id)
           from ledger.entries where id <> '${malformedLegacyEntryId}'), ''),

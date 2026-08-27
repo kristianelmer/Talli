@@ -17,6 +17,13 @@ const receivedDividendMigrationUrl = new URL(
 const receivedDividendMigration = existsSync(receivedDividendMigrationUrl)
   ? readFileSync(receivedDividendMigrationUrl, "utf8")
   : "";
+const bankLoanMigrationUrl = new URL(
+  "../supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql",
+  import.meta.url,
+);
+const bankLoanMigration = existsSync(bankLoanMigrationUrl)
+  ? readFileSync(bankLoanMigrationUrl, "utf8")
+  : "";
 const lifecycle = readFileSync(new URL(
   "./ledger_database_runtime.test.mjs",
   import.meta.url,
@@ -131,4 +138,67 @@ test("fresh lifecycle covers received-dividend replay, failure atomicity, and cu
   assert.match(lifecycle, /received_dividend_settlements/iu);
   assert.match(lifecycle, /received-dividend-decision-runtime/u);
   assert.match(lifecycle, /received-dividend-payment-runtime/u);
+});
+
+test("bank-loan lifecycle state is immutable, forced-RLS, and executor-only", () => {
+  assert.ok(bankLoanMigration, "missing additive bank-loan lifecycle migration");
+  for (const table of ["bank_loan_anchors", "bank_loan_payment_allocations"]) {
+    assert.match(
+      bankLoanMigration,
+      new RegExp(`alter table ledger\\.${table} force row level security`, "iu"),
+    );
+    assert.match(
+      bankLoanMigration,
+      new RegExp(`create trigger ledger_${table}_immutable`, "iu"),
+    );
+    assert.doesNotMatch(
+      bankLoanMigration,
+      new RegExp(`grant[^;]+(?:insert|update|delete)[^;]+ledger\\.${table}[^;]+ledger_executor`, "iu"),
+    );
+  }
+  assert.match(bankLoanMigration, /primary key\s*\(company_id, loan_reference_id\)/iu);
+  assert.match(bankLoanMigration, /disbursement_entry_id uuid not null unique/iu);
+  assert.match(bankLoanMigration, /payment_entry_id uuid primary key/iu);
+  assert.match(bankLoanMigration, /principal_disbursed numeric[^\n]+not null/iu);
+  assert.match(bankLoanMigration, /principal_paid numeric[^\n]+not null/iu);
+  assert.match(bankLoanMigration, /interest_paid numeric[^\n]+not null/iu);
+  assert.match(bankLoanMigration, /fee_paid numeric[^\n]+not null/iu);
+});
+
+test("bank-loan wrappers persist derived entries without selecting accounting policy", () => {
+  for (const wrapperName of [
+    "record_bank_loan_disbursement_v1",
+    "record_bank_loan_payment_v1",
+  ]) {
+    const wrapper = bankLoanMigration.match(
+      new RegExp(
+        `create or replace function ledger\\.${wrapperName}\\([\\s\\S]+?\\$function\\$\\s*;`,
+        "iu",
+      ),
+    )?.[0];
+    assert.ok(wrapper, `missing ${wrapperName}`);
+    assert.match(wrapper, /from ledger\.post_supported_entry_v1\(/iu);
+    assert.doesNotMatch(wrapper, /'1920'|'2220'|'8150'|'7770'/u);
+    assert.doesNotMatch(wrapper, /->>\s*'account'|jsonb_extract_path_text\([^;]+account/iu);
+    assert.doesNotMatch(wrapper, /case\s+when[^;]+account|when\s+'\d{4}'/iu);
+  }
+  assert.match(
+    bankLoanMigration,
+    /record_bank_loan_disbursement_v1\(\s*p_idempotency_key text,\s*p_company_id uuid,\s*p_income_year integer,\s*p_loan_reference_id text,\s*p_principal numeric/iu,
+  );
+  assert.match(
+    bankLoanMigration,
+    /record_bank_loan_payment_v1\(\s*p_idempotency_key text,\s*p_company_id uuid,\s*p_income_year integer,\s*p_loan_reference_id text,\s*p_principal numeric,\s*p_interest numeric,\s*p_fee numeric/iu,
+  );
+});
+
+test("fresh lifecycle covers bank-loan replay, allocation limits, and cutover", () => {
+  assert.match(lifecycle, /20260827106000_ledger_bank_loan_lifecycle\.sql/iu);
+  assert.match(lifecycle, /record_bank_loan_disbursement_v1/iu);
+  assert.match(lifecycle, /record_bank_loan_payment_v1/iu);
+  assert.match(lifecycle, /bank_loan_anchors/iu);
+  assert.match(lifecycle, /bank_loan_payment_allocations/iu);
+  assert.match(lifecycle, /bank-loan-disbursement-runtime/u);
+  assert.match(lifecycle, /ledger_bank_loan_principal_exceeded/iu);
+  assert.match(lifecycle, /bank_loan_payment_2029/u);
 });

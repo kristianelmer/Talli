@@ -41,6 +41,8 @@ from talli_backend.application.ledger_workflow import (
     RecordTaxSettlementCommand,
 )
 from talli_backend.modules.ledger.public import (
+    BankLoanEvent,
+    BankLoanReferenceId,
     CloseCompanyYearCommand,
     CompanyYearCloseAssessment,
     CompanyYearCloseAssessmentId,
@@ -67,6 +69,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     LedgerPage,
     LockPeriodCommand,
+    OrdinaryBankLoanFacts,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
@@ -472,6 +475,22 @@ def _map_database_error(message: str) -> LedgerError:
             ),
         ),
         (
+            "ledger_bank_loan_already_exists",
+            LedgerError.conflict("LEDGER_BANK_LOAN_ALREADY_EXISTS"),
+        ),
+        (
+            "ledger_bank_loan_event_invalid",
+            LedgerError.precondition_failed("LEDGER_BANK_LOAN_EVENT_INVALID"),
+        ),
+        (
+            "ledger_opening_loan_anchor_missing",
+            LedgerError.precondition_failed("LEDGER_OPENING_LOAN_ANCHOR_MISSING"),
+        ),
+        (
+            "ledger_bank_loan_principal_exceeded",
+            LedgerError.precondition_failed("LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED"),
+        ),
+        (
             "ledger_received_dividend_already_settled",
             LedgerError.conflict("LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"),
         ),
@@ -839,6 +858,121 @@ class SupabaseLedgerSession:
             ),
         )
         return _posted_entry(row)
+
+    async def _record_bank_loan(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        expected_event: BankLoanEvent,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        interest: Money,
+        fee: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        facts = command.facts
+        if (
+            not isinstance(facts, OrdinaryBankLoanFacts)
+            or facts.event is not expected_event
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if (
+            loan_reference_id != facts.loan_reference_id
+            or principal != facts.principal
+            or interest != facts.interest
+            or fee != facts.fee
+            or sum((line.debit.amount for line in lines), Decimal("0.00"))
+            != principal.amount + interest.amount + fee.amount
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        if expected_event is BankLoanEvent.DISBURSEMENT:
+            function_name = "record_bank_loan_disbursement_v1"
+            allocation_placeholders = "%s::numeric"
+            allocations = (principal.amount,)
+        else:
+            function_name = "record_bank_loan_payment_v1"
+            allocation_placeholders = "%s::numeric, %s::numeric, %s::numeric"
+            allocations = (principal.amount, interest.amount, fee.amount)
+        row = await self._one_idempotent_row(
+            f"""
+            select * from ledger.{function_name}(
+              %s::text, %s::uuid, %s::integer, %s::text,
+              {allocation_placeholders}, %s::text, %s::jsonb, %s::text,
+              %s::text, %s::text, %s::text, %s::date, %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(loan_reference_id),
+                *allocations,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines], separators=(",", ":")
+                ),
+                command.primary_source.capability.value,
+                str(command.primary_source.record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return _posted_entry(row)
+
+    async def record_bank_loan_disbursement(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_bank_loan(
+            command,
+            expected_event=BankLoanEvent.DISBURSEMENT,
+            loan_reference_id=loan_reference_id,
+            principal=principal,
+            interest=Money.nok("0.00"),
+            fee=Money.nok("0.00"),
+            memo=memo,
+            lines=lines,
+        )
+
+    async def record_bank_loan_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        interest: Money,
+        fee: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry:
+        return await self._record_bank_loan(
+            command,
+            expected_event=BankLoanEvent.PAYMENT,
+            loan_reference_id=loan_reference_id,
+            principal=principal,
+            interest=interest,
+            fee=fee,
+            memo=memo,
+            lines=lines,
+        )
 
     async def record_received_dividend_decision(
         self,

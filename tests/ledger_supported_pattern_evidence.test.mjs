@@ -144,6 +144,35 @@ test("high-risk equity and group cases preserve the researched semantic distinct
   );
 });
 
+test("ordinary bank-loan phases retain stable agreement and loan linkage", () => {
+  const bankLoan = fixture.patterns.find(
+    (pattern) => pattern.id === "ordinary-bank-loan",
+  );
+
+  assert.equal(bankLoan.input.agreementId, "bank-loan-agreement:1");
+  assert.equal(bankLoan.input.loanReferenceId, "bank-loan:1");
+  assert.deepEqual(
+    bankLoan.journals.map((journal) => journal.phase),
+    ["DISBURSEMENT", "PAYMENT"],
+  );
+  for (const projection of [
+    "BANK",
+    "TAX",
+    "ANNUAL_ACCOUNTS",
+    "SAF_T",
+    "ARCHIVE",
+  ]) {
+    assert.ok(
+      bankLoan.projections.includes(projection),
+      `ordinary-bank-loan is missing ${projection}`,
+    );
+  }
+  assert.ok(
+    bankLoan.blocks.includes("OPENING_LOAN_ANCHOR_MISSING"),
+    "a prior-year loan without an evidenced opening anchor must fail closed",
+  );
+});
+
 test("golden outputs declare every downstream family needed by later reconciliation", () => {
   const used = new Set(fixture.patterns.flatMap((pattern) => pattern.projections));
   for (const required of [

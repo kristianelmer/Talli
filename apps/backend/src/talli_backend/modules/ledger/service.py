@@ -588,7 +588,12 @@ class LedgerService:
                     ),
                 )
         elif isinstance(facts, OrdinaryBankLoanFacts):
-            required_sources = frozenset({LedgerSourceCapability.BANKING})
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.BANKING,
+                    LedgerSourceCapability.DOCUMENTS,
+                }
+            )
             primary_source_capability = LedgerSourceCapability.BANKING
             if len(
                 {facts.principal.currency, facts.interest.currency, facts.fee.currency}
@@ -610,7 +615,7 @@ class LedgerService:
                     LedgerLine("1920", "Bank-loan proceeds", facts.principal, _ZERO),
                     LedgerLine("2220", "Bank-loan principal", _ZERO, facts.principal),
                 )
-            else:
+            elif facts.event is BankLoanEvent.PAYMENT:
                 total = Money.nok(
                     facts.principal.amount + facts.interest.amount + facts.fee.amount
                 )
@@ -634,6 +639,8 @@ class LedgerService:
                         LedgerLine("7770", "Bank-loan fee", facts.fee, _ZERO),
                     )
                 lines += (LedgerLine("1920", "Paid from bank", _ZERO, total),)
+            else:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, CashCapitalIncreaseFacts):
             required_sources = frozenset(
                 {LedgerSourceCapability.CORPORATE_GOVERNANCE}
@@ -783,6 +790,7 @@ class LedgerService:
         if (
             command.primary_source.capability is not primary_source_capability
             or actual_sources != required_sources
+            or len(sources) != len(required_sources)
         ):
             raise LedgerError.precondition_failed(
                 "LEDGER_SOURCE_CAPABILITY_MISMATCH"
@@ -801,6 +809,26 @@ class LedgerService:
             return await self._persistence.record_received_dividend_payment(
                 command,
                 decision_entry_id=decision_entry_id,
+                memo=memo,
+                lines=lines,
+            )
+        if isinstance(facts, OrdinaryBankLoanFacts):
+            if facts.event is BankLoanEvent.DISBURSEMENT:
+                return await self._persistence.record_bank_loan_disbursement(
+                    command,
+                    loan_reference_id=facts.loan_reference_id,
+                    principal=facts.principal,
+                    memo=memo,
+                    lines=lines,
+                )
+            if facts.event is not BankLoanEvent.PAYMENT:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            return await self._persistence.record_bank_loan_payment(
+                command,
+                loan_reference_id=facts.loan_reference_id,
+                principal=facts.principal,
+                interest=facts.interest,
+                fee=facts.fee,
                 memo=memo,
                 lines=lines,
             )

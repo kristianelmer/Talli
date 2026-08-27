@@ -119,6 +119,22 @@ class LedgerSourceRecordId:
         return self.value
 
 
+@dataclass(frozen=True, slots=True)
+class BankLoanReferenceId:
+    """Ledger-owned stable identity for one ordinary bank-loan lifecycle."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("bank-loan reference id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
 class LedgerSourceCapability(StrEnum):
     LEDGER = "LEDGER"
     BANKING = "BANKING"
@@ -353,6 +369,7 @@ class CompanyTaxAccrualFacts:
 @dataclass(frozen=True, slots=True)
 class OrdinaryBankLoanFacts:
     event: BankLoanEvent
+    loan_reference_id: BankLoanReferenceId
     principal: Money
     interest: Money
     fee: Money
@@ -483,6 +500,10 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    BANK_LOAN_ALREADY_EXISTS = "LEDGER_BANK_LOAN_ALREADY_EXISTS"
+    BANK_LOAN_EVENT_INVALID = "LEDGER_BANK_LOAN_EVENT_INVALID"
+    OPENING_LOAN_ANCHOR_MISSING = "LEDGER_OPENING_LOAN_ANCHOR_MISSING"
+    BANK_LOAN_PRINCIPAL_EXCEEDED = "LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED"
     RECEIVED_DIVIDEND_ALREADY_SETTLED = "LEDGER_RECEIVED_DIVIDEND_ALREADY_SETTLED"
     RECEIVED_DIVIDEND_DECISION_INVALID = "LEDGER_RECEIVED_DIVIDEND_DECISION_INVALID"
     SOURCE_CAPABILITY_MISMATCH = "LEDGER_SOURCE_CAPABILITY_MISMATCH"
@@ -985,6 +1006,28 @@ class LedgerPersistence(Protocol):
         gap_codes: tuple[CompanyYearCloseGapCode, ...],
     ) -> CompanyYearCloseAssessment: ...
 
+    async def record_bank_loan_disbursement(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
+    async def record_bank_loan_payment(
+        self,
+        command: RecognizeHoldingActionCommand,
+        *,
+        loan_reference_id: BankLoanReferenceId,
+        principal: Money,
+        interest: Money,
+        fee: Money,
+        memo: str,
+        lines: tuple[LedgerLine, ...],
+    ) -> PostedLedgerEntry: ...
+
     async def record_received_dividend_decision(
         self,
         command: RecognizeHoldingActionCommand,
@@ -1194,6 +1237,7 @@ __all__ = [
     "ApprovedOwnerLoanFundingFacts",
     "BankInterestIncomeFacts",
     "BankLoanEvent",
+    "BankLoanReferenceId",
     "BankSuggestionRule",
     "CashCapitalIncreaseFacts",
     "CapitalIncreasePhase",

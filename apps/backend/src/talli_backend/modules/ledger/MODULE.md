@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -12,6 +12,7 @@ manual-journal warnings, posting invariants,
 durable idempotency, append-only guided corrections, deterministic entry/lock
 query ordering, compatibility period locks, and evidence-bound company-year
 close locks. It owns
+`ledger.bank_loan_anchors`, `ledger.bank_loan_payment_allocations`,
 `ledger.company_year_close_assessments`, `ledger.company_year_close_evidence`,
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
@@ -25,7 +26,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827102000_ledger_supported_patterns.sql`, and
 `supabase/migrations/20260827103000_ledger_corrections.sql`, and
 `supabase/migrations/20260827104000_ledger_company_year_close.sql`, and
-`supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`.
+`supabase/migrations/20260827105000_ledger_received_dividend_lifecycle.sql`, and
+`supabase/migrations/20260827106000_ledger_bank_loan_lifecycle.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -68,6 +70,17 @@ requires investments and banking facts plus the immutable decision entry ID.
 The serialized persistence path permits one settlement per decision, including
 a later admitted company-year, and rejects payments before the decision plus
 cross-company, amount-mismatched, or replay-inconsistent linkage.
+
+The ordinary NOK bank-loan receiver requires one banking fact as primary and
+one document fact as corroboration. A disbursement creates an immutable anchor
+for the stable, ledger-owned `BankLoanReferenceId`; source record identifiers
+remain separate capability correlations. Payments link to that anchor, may
+span later admitted company-years, and atomically reject chronology errors,
+inconsistent replays, and cumulative principal above the original
+disbursement. A payment
+for a loan reconstructed from an earlier year fails closed with
+`OPENING_LOAN_ANCHOR_MISSING` until the opening-rebuild slice can create a
+verified anchor; this increment does not infer opening debt from a payment.
 
 The capital-reduction receiver accepts only an approval fact emitted by the
 corporate-governance source owner. Ledger validates the accounting amount and
@@ -138,7 +151,8 @@ Purpose-specific query/results are `LedgerQueries`, `CompanyYearCloseAssessment`
 `PostedLedgerEntry`, `CorrectedLedgerEntries`, and `ReconstructionAssessment`.
 Growing collections use an opaque cursor and deterministic
 `(created_at, id)` ordering. Identifiers and values are `LedgerEntryId`,
-`PeriodLockId`, `LedgerSourceRecordId`, `LedgerEntryKind`, `LedgerSourceCapability`,
+`PeriodLockId`, `BankLoanReferenceId`, `LedgerSourceRecordId`, `LedgerEntryKind`,
+`LedgerSourceCapability`,
 `LedgerLine`, `LedgerRiskCode`, `LedgerRiskFlag`, and
 `AdministrativeCostBlock`, `AdministrativeCostCategory`, and
 `AdministrativeCostCorrectionScope`. Company-year close values are

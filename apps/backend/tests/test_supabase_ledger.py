@@ -28,6 +28,8 @@ from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     AdministrativeCostCorrectionScope,
     AdministrativeCostCorrectionFacts,
+    BankLoanEvent,
+    BankLoanReferenceId,
     BankInterestIncomeFacts,
     CloseCompanyYearCommand,
     CompanyYearCloseEvidence,
@@ -46,6 +48,7 @@ from talli_backend.modules.ledger.public import (
     LedgerLine,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    OrdinaryBankLoanFacts,
     PostManualJournalCommand,
     PostedLedgerEntry,
     ReconstructionAssessmentId,
@@ -217,6 +220,40 @@ def received_dividend_command(
             phase=phase,
             gross_amount=Money.nok("500.00"),
             decision_entry_id=decision_entry_id,
+        ),
+    )
+
+
+def bank_loan_command(event: BankLoanEvent) -> RecognizeHoldingActionCommand:
+    return RecognizeHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId(f"bank-loan-{event.value.lower()}"),
+        idempotency_key=IdempotencyKey(f"bank-loan-{event.value.lower()}-2026"),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.BANKING,
+            record_id=LedgerSourceRecordId(f"bank-transaction:{event.value.lower()}:1"),
+            revision=2,
+            fact_sha256="b" * 64,
+        ),
+        corroborating_sources=(
+            LedgerFactReference(
+                capability=LedgerSourceCapability.DOCUMENTS,
+                record_id=LedgerSourceRecordId("bank-loan-agreement:1"),
+                revision=1,
+                fact_sha256="c" * 64,
+            ),
+        ),
+        facts=OrdinaryBankLoanFacts(
+            event=event,
+            loan_reference_id=BankLoanReferenceId("bank-loan:1"),
+            principal=Money.nok("100.00"),
+            interest=Money.nok(
+                "20.00" if event is BankLoanEvent.PAYMENT else "0.00"
+            ),
+            fee=Money.nok("5.00" if event is BankLoanEvent.PAYMENT else "0.00"),
         ),
     )
 
@@ -611,6 +648,143 @@ def test_received_dividend_adapter_binds_dedicated_lifecycle_rpc(
     assert sources[0]["role"] == "PRIMARY"
 
 
+@pytest.mark.parametrize(
+    ("event", "method_name", "function_name", "rule_index", "sources_index"),
+    [
+        (
+            BankLoanEvent.DISBURSEMENT,
+            "record_bank_loan_disbursement",
+            "record_bank_loan_disbursement_v1",
+            12,
+            13,
+        ),
+        (
+            BankLoanEvent.PAYMENT,
+            "record_bank_loan_payment",
+            "record_bank_loan_payment_v1",
+            14,
+            15,
+        ),
+    ],
+)
+def test_bank_loan_adapter_binds_dedicated_lifecycle_rpc(
+    event: BankLoanEvent,
+    method_name: str,
+    function_name: str,
+    rule_index: int,
+    sources_index: int,
+) -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000006",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "BANK_LOAN",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    requested = bank_loan_command(event)
+    kwargs: dict[str, object] = {
+        "loan_reference_id": BankLoanReferenceId("bank-loan:1"),
+        "principal": Money.nok("100.00"),
+        "memo": "Ordinary NOK bank loan",
+        "lines": (
+            LedgerLine("1920", "Bank", Money.nok("100"), Money.nok("0")),
+            LedgerLine("2220", "Principal", Money.nok("0"), Money.nok("100")),
+        ),
+    }
+    if event is BankLoanEvent.PAYMENT:
+        kwargs.update(
+            interest=Money.nok("20.00"),
+            fee=Money.nok("5.00"),
+            lines=(
+                LedgerLine("2220", "Principal", Money.nok("100"), Money.nok("0")),
+                LedgerLine("8150", "Interest", Money.nok("20"), Money.nok("0")),
+                LedgerLine("7770", "Fee", Money.nok("5"), Money.nok("0")),
+                LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("125")),
+            ),
+        )
+
+    result = asyncio.run(getattr(session, method_name)(requested, **kwargs))
+
+    assert result.entry_kind is LedgerEntryKind.BANK_LOAN
+    assert f"ledger.{function_name}" in calls[0][0]
+    parameters = calls[0][1]
+    assert parameters[3] == "bank-loan:1"
+    assert parameters[rule_index] == "ledger-supported-patterns-2026.1"
+    sources = json.loads(str(parameters[sources_index]))
+    assert [source["capability"] for source in sources] == ["BANKING", "DOCUMENTS"]
+    assert [source["role"] for source in sources] == ["PRIMARY", "CORROBORATING"]
+
+
+@pytest.mark.parametrize(
+    ("loan_reference_id", "principal", "lines"),
+    [
+        (
+            BankLoanReferenceId("bank-loan:wrong"),
+            Money.nok("100.00"),
+            (
+                LedgerLine("2220", "Principal", Money.nok("100"), Money.nok("0")),
+                LedgerLine("8150", "Interest", Money.nok("20"), Money.nok("0")),
+                LedgerLine("7770", "Fee", Money.nok("5"), Money.nok("0")),
+                LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("125")),
+            ),
+        ),
+        (
+            BankLoanReferenceId("bank-loan:1"),
+            Money.nok("99.00"),
+            (
+                LedgerLine("2220", "Principal", Money.nok("99"), Money.nok("0")),
+                LedgerLine("8150", "Interest", Money.nok("20"), Money.nok("0")),
+                LedgerLine("7770", "Fee", Money.nok("5"), Money.nok("0")),
+                LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("124")),
+            ),
+        ),
+        (
+            BankLoanReferenceId("bank-loan:1"),
+            Money.nok("100.00"),
+            (
+                LedgerLine("2220", "Principal", Money.nok("100"), Money.nok("0")),
+                LedgerLine("1920", "Bank", Money.nok("0"), Money.nok("100")),
+            ),
+        ),
+    ],
+)
+def test_bank_loan_adapter_rejects_lifecycle_binding_mismatches_before_sql(
+    loan_reference_id: BankLoanReferenceId,
+    principal: Money,
+    lines: tuple[LedgerLine, ...],
+) -> None:
+    session = bound_session()
+
+    async def forbidden_database(*_args: object, **_kwargs: object) -> list[object]:
+        raise AssertionError("database must not be called")
+
+    session._database_rows = forbidden_database  # type: ignore[method-assign]
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            session.record_bank_loan_payment(
+                bank_loan_command(BankLoanEvent.PAYMENT),
+                loan_reference_id=loan_reference_id,
+                principal=principal,
+                interest=Money.nok("20.00"),
+                fee=Money.nok("5.00"),
+                memo="Ordinary NOK bank loan",
+                lines=lines,
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+
+
 def test_correction_adapter_binds_original_replacement_and_two_sources() -> None:
     session = bound_session()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -971,6 +1145,16 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
         (
             "ledger_prior_year_correction_policy_unresolved",
             "LEDGER_PRIOR_YEAR_CORRECTION_POLICY_UNRESOLVED",
+        ),
+        ("ledger_bank_loan_already_exists", "LEDGER_BANK_LOAN_ALREADY_EXISTS"),
+        ("ledger_bank_loan_event_invalid", "LEDGER_BANK_LOAN_EVENT_INVALID"),
+        (
+            "ledger_opening_loan_anchor_missing",
+            "LEDGER_OPENING_LOAN_ANCHOR_MISSING",
+        ),
+        (
+            "ledger_bank_loan_principal_exceeded",
+            "LEDGER_BANK_LOAN_PRINCIPAL_EXCEEDED",
         ),
         ("ledger_entry_already_corrected", "LEDGER_ENTRY_ALREADY_CORRECTED"),
         ("ledger_opening_already_exists", "LEDGER_OPENING_ALREADY_EXISTS"),

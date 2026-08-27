@@ -255,6 +255,8 @@
       "section": "Ordinary NOK bank loan",
       "input": {
         "eventId": "golden:bank-loan:1",
+        "agreementId": "bank-loan-agreement:1",
+        "loanReferenceId": "bank-loan:1",
         "disbursementDate": "2026-01-15",
         "paymentDate": "2026-07-15",
         "principalNok": "100000.00",
@@ -281,7 +283,7 @@
         }
       ],
       "projections": ["LEDGER", "BANK", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
-      "blocks": ["LOAN_ALLOCATION_MISSING", "FOREIGN_CURRENCY_FOUND", "COMPLEX_LOAN_TERMS"]
+      "blocks": ["LOAN_ALLOCATION_MISSING", "OPENING_LOAN_ANCHOR_MISSING", "FOREIGN_CURRENCY_FOUND", "COMPLEX_LOAN_TERMS"]
     },
     {
       "id": "owner-to-company-loan",
