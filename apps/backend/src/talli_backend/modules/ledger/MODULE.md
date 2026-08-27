@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.entries","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.entries","ledger.entry_contexts","ledger.entry_sources","ledger.period_locks","ledger.reconstruction_assessments","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -10,10 +10,12 @@
 immutable full-year reconstruction assessments and source evidence,
 manual-journal warnings, posting invariants,
 durable idempotency, deterministic entry/lock query ordering, and company-year
-period locks. It owns `ledger.entries`, `ledger.period_locks`,
+period locks. It owns `ledger.entries`, `ledger.entry_contexts`,
+`ledger.entry_sources`, `ledger.period_locks`,
 `ledger.reconstruction_assessments`, and `ledger.reconstruction_evidence`
-through `supabase/migrations/20260827100000_ledger_capability.sql` and
-`supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`.
+through `supabase/migrations/20260827100000_ledger_capability.sql`,
+`supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`, and
+`supabase/migrations/20260827102000_ledger_supported_patterns.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -35,7 +37,17 @@ Source capabilities provide authoritative facts, never accounts, lines, memos,
 or risk flags. Owner-dividend posting fails closed until the named Norwegian
 accounting review approves an immutable policy version.
 
-The command surface is `LedgerCommands`, `LockPeriodCommand`,
+The mass-market interface begins with `RecognizeHoldingActionCommand`, which
+accepts a closed `SupportedHoldingActionFacts` variant and immutable
+`LedgerFactReference` values. The initial variants are
+`BankInterestIncomeFacts`, `CompanyTaxAccrualFacts`,
+`OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
+`GroupContributionFacts`; their closed phase and relationship values are
+`BankLoanEvent`, `CapitalIncreasePhase`, `GroupContributionRelationship`, and
+`GroupContributionPerspective`. Callers cannot select an account, line,
+pattern, or rule version.
+
+The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`, `LockPeriodCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,
 `PostInvestmentDividendCommand`, `PostInvestmentPurchaseCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,

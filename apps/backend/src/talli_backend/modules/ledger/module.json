@@ -8,15 +8,15 @@
   "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.ledger.public",
   "exports": {
-    "commands": ["LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentDividendCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOpeningBalanceCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RecordReconstructionAssessmentCommand"],
+    "commands": ["LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentDividendCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOpeningBalanceCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RecognizeHoldingActionCommand", "RecordReconstructionAssessmentCommand"],
     "queries": ["LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry", "ReconstructionAssessment"],
     "events": [],
     "errors": ["LedgerError"],
-    "identifiers": ["AdministrativeCostCategory", "BankSuggestionRule", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionGapCode", "ReconstructionState", "ShareholderLoanDirection", "TaxSettlementKind", "ledger_persistence_adapter"]
+    "identifiers": ["AdministrativeCostCategory", "BankInterestIncomeFacts", "BankLoanEvent", "BankSuggestionRule", "CashCapitalIncreaseFacts", "CapitalIncreasePhase", "CompanyTaxAccrualFacts", "GroupContributionFacts", "GroupContributionPerspective", "GroupContributionRelationship", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerFactReference", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "OrdinaryBankLoanFacts", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionGapCode", "ReconstructionState", "ShareholderLoanDirection", "SupportedHoldingActionFacts", "TaxSettlementKind", "ledger_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["ledger"],
-    "tables": ["ledger.entries", "ledger.period_locks", "ledger.reconstruction_assessments", "ledger.reconstruction_evidence"],
+    "tables": ["ledger.entries", "ledger.entry_contexts", "ledger.entry_sources", "ledger.period_locks", "ledger.reconstruction_assessments", "ledger.reconstruction_evidence"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260827100000_ledger_capability.sql"

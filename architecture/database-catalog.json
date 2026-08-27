@@ -52,6 +52,8 @@
     { "name": "public.investment_positions", "kind": "legacy-business" },
     { "name": "public.launch_signoffs", "kind": "technical" },
     { "name": "ledger.entries", "kind": "capability-business", "owner": "backend:ledger", "compatibilityResources": ["table:ledger_entries"] },
+    { "name": "ledger.entry_contexts", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.entry_sources", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_assessments", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_evidence", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "public.notification_outbox", "kind": "technical" },

@@ -88,6 +88,7 @@ def test_ledger_public_commands_are_owned_intents_not_generic_source_postings() 
         "PostOwnerDividendPaymentCommand",
         "PostShareholderLoanCommand",
         "PostTaxSettlementCommand",
+        "RecognizeHoldingActionCommand",
     ):
         command = getattr(public, name)
         assert name in public.__all__

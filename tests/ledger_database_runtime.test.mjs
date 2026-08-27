@@ -8,6 +8,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expandPath = "/repo/supabase/migrations/20260827100000_ledger_capability.sql";
 const coordinatorPath = "/repo/supabase/migrations/20260827100500_ledger_writer_coordinators.sql";
 const reconstructionPath = "/repo/supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql";
+const supportedPatternsPath = "/repo/supabase/migrations/20260827102000_ledger_supported_patterns.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -891,6 +892,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", expandPath]);
     psql(containerName, ["--file", coordinatorPath]);
     psql(containerName, ["--file", reconstructionPath]);
+    psql(containerName, ["--file", supportedPatternsPath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -915,7 +917,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       where (namespace.nspname = 'ledger'
           and class.relname = any(array[
             'entries', 'period_locks', 'reconstruction_assessments',
-            'reconstruction_evidence'
+            'reconstruction_evidence', 'entry_contexts', 'entry_sources'
           ]))
         or (namespace.nspname = 'backend_system'
           and class.relname = any(array[
@@ -924,8 +926,72 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(
       forcedRls,
-      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
+      "backend_system.ledger_command_receipts:true:true,backend_system.ledger_workflow_receipts:true:true,ledger.entries:true:true,ledger.entry_contexts:true:true,ledger.entry_sources:true:true,ledger.period_locks:true:true,ledger.reconstruction_assessments:true:true,ledger.reconstruction_evidence:true:true",
     );
+
+    const supportedSources = JSON.stringify([{
+      role: "PRIMARY",
+      capability: "BANKING",
+      recordId: "golden:runtime-bank-interest",
+      revision: 1,
+      factSha256: "a".repeat(64),
+    }]);
+    const supportedLines = JSON.stringify([
+      { account: "1920", description: "Bank interest received", debit: "500.00", credit: "0.00", currency: "NOK" },
+      { account: "8050", description: "Bank interest income", debit: "0.00", credit: "500.00", currency: "NOK" },
+    ]);
+    const supportedCall = ({ sources = supportedSources, actorId = ownerId } = {}) => String.raw`
+      begin;
+      ${actorContext(actorId)}
+      select row_to_json(posted)::text
+      from ledger.post_supported_entry_v1(
+        '62000000-0000-4000-8000-000000000001', '${companyId}', 2026,
+        'BANK_INTEREST', 'Bank interest supported by bank advice',
+        '${sqlQuote(supportedLines)}'::jsonb, 'BANKING',
+        'golden:runtime-bank-interest', 'supported-pattern-runtime', '${actorId}',
+        '2026-08-27', 'ledger-supported-patterns-2026.1',
+        '${sqlQuote(sources)}'::jsonb
+      ) posted;
+      commit;
+    `;
+    const supportedPosting = jsonOutput(containerName, supportedCall());
+    assert.equal(supportedPosting.entry_kind, "BANK_INTEREST");
+    assert.equal(supportedPosting.replayed, false);
+    assert.equal(jsonOutput(containerName, supportedCall()).replayed, true);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      select concat_ws(':',
+        (select count(*) from ledger.entry_contexts
+          where entry_id = '${supportedPosting.ledger_entry_id}'),
+        (select count(*) from ledger.entry_sources
+          where entry_id = '${supportedPosting.ledger_entry_id}'),
+        (select event_date from ledger.entry_contexts
+          where entry_id = '${supportedPosting.ledger_entry_id}'));
+    `)), "1:1:2026-08-27");
+    const changedSources = JSON.stringify([{
+      ...JSON.parse(supportedSources)[0],
+      factSha256: "b".repeat(64),
+    }]);
+    assert.match(
+      psqlFailure(containerName, supportedCall({ sources: changedSources })),
+      /ledger_idempotency_key_reused/iu,
+    );
+    assert.match(
+      psqlFailure(containerName, supportedCall({ actorId: reviewerId })),
+      /ledger_forbidden/iu,
+    );
+    assert.match(psqlFailure(containerName, String.raw`
+      begin;
+      ${actorContext(ownerId)}
+      insert into ledger.entry_sources (
+        entry_id, company_id, income_year, ordinal, source_role,
+        source_capability, source_record_id, source_revision, fact_sha256
+      ) values (
+        '${supportedPosting.ledger_entry_id}', '${companyId}', 2026, 2,
+        'CORROBORATING', 'BANKING', 'forbidden-direct-source', 1,
+        '${"c".repeat(64)}'
+      );
+      commit;
+    `), /permission denied/iu);
 
     const blockedReconstruction = jsonOutput(
       containerName,
@@ -1988,6 +2054,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
 
     psql(containerName, ["--file", expandPath]);
     psql(containerName, ["--file", coordinatorPath]);
+    psql(containerName, ["--file", supportedPatternsPath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))

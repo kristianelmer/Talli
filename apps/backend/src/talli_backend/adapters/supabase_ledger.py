@@ -48,6 +48,7 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryPage,
     LedgerEntryView,
     LedgerError,
+    LedgerFactReference,
     LedgerLine,
     LedgerPersistence,
     LedgerRiskCode,
@@ -65,6 +66,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidence,
     ReconstructionGapCode,
     ReconstructionState,
+    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
     ledger_persistence_adapter,
 )
@@ -166,6 +168,20 @@ def _line_payload(line: LedgerLine) -> dict[str, str]:
 
 def _risk_payload(flag: LedgerRiskFlag) -> dict[str, str]:
     return {"code": flag.code.value, "account": flag.account}
+
+
+def _fact_reference_payload(
+    reference: LedgerFactReference,
+    *,
+    primary: bool,
+) -> dict[str, object]:
+    return {
+        "role": "PRIMARY" if primary else "CORROBORATING",
+        "capability": reference.capability.value,
+        "recordId": str(reference.record_id),
+        "revision": reference.revision,
+        "factSha256": reference.fact_sha256,
+    }
 
 
 def _optional_source(value: LedgerSourceRecordId | None) -> str | None:
@@ -591,7 +607,41 @@ class SupabaseLedgerSession:
                 str(command.correlation_id),
                 str(command.actor_id.subject),
         )
-        if requested_entry_id is None:
+        if isinstance(command, RecognizeHoldingActionCommand):
+            if requested_entry_id is not None:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            sources = (
+                _fact_reference_payload(command.primary_source, primary=True),
+                *(
+                    _fact_reference_payload(source, primary=False)
+                    for source in command.corroborating_sources
+                ),
+            )
+            row = await self._one_idempotent_row(
+                """
+                select * from ledger.post_supported_entry_v1(
+                  %s::text, %s::uuid, %s::integer, %s::text, %s::text,
+                  %s::jsonb, %s::text, %s::text, %s::text, %s::text,
+                  %s::date, %s::text, %s::jsonb
+                )
+                """,
+                (
+                    str(command.idempotency_key),
+                    str(command.company_id),
+                    int(command.income_year),
+                    entry_kind.value,
+                    memo,
+                    json.dumps(lines_payload, separators=(",", ":")),
+                    source_capability.value,
+                    str(source_record_id),
+                    str(command.correlation_id),
+                    str(command.actor_id.subject),
+                    command.event_date.value,
+                    "ledger-supported-patterns-2026.1",
+                    json.dumps(sources, separators=(",", ":")),
+                ),
+            )
+        elif requested_entry_id is None:
             row = await self._one_idempotent_row(
                 """
                 select * from ledger.post_entry(

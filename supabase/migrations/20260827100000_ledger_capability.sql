@@ -309,7 +309,9 @@ where not ledger.entry_lines_are_valid_v1(entry.lines, true)
     'bank_rule_suggestion', 'dividend_received',
     'dividend_to_owner_declared', 'owner_dividend_declared',
     'dividend_to_owner_payment', 'owner_dividend_payment',
-    'share_purchase', 'share_sale', 'shareholder_loan', 'tax_settlement'
+    'share_purchase', 'share_sale', 'shareholder_loan', 'tax_settlement',
+    'bank_interest', 'bank_loan', 'capital_increase',
+    'company_tax_accrual', 'group_contribution'
   )
 on conflict (run_id, source_table, source_id) do nothing;
 
@@ -344,6 +346,11 @@ set lines = ledger.normalize_lines_v1(lines),
       when 'share_sale' then 'SHARE_SALE'
       when 'shareholder_loan' then 'SHAREHOLDER_LOAN'
       when 'tax_settlement' then 'TAX_SETTLEMENT'
+      when 'bank_interest' then 'BANK_INTEREST'
+      when 'bank_loan' then 'BANK_LOAN'
+      when 'capital_increase' then 'CAPITAL_INCREASE'
+      when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
+      when 'group_contribution' then 'GROUP_CONTRIBUTION'
     end,
     source_capability = coalesce(
       source_capability,
@@ -362,6 +369,11 @@ set lines = ledger.normalize_lines_v1(lines),
         when 'owner_dividend_payment' then 'CORPORATE_GOVERNANCE'
         when 'shareholder_loan' then 'CORPORATE_GOVERNANCE'
         when 'tax_settlement' then 'COMPANY_TAX_FILING'
+        when 'bank_interest' then 'BANKING'
+        when 'bank_loan' then 'BANKING'
+        when 'capital_increase' then 'CORPORATE_GOVERNANCE'
+        when 'company_tax_accrual' then 'COMPANY_TAX_FILING'
+        when 'group_contribution' then 'CORPORATE_GOVERNANCE'
         else 'LEDGER'
       end
     ),
@@ -421,13 +433,20 @@ begin
     when 'share_sale' then 'SHARE_SALE'
     when 'shareholder_loan' then 'SHAREHOLDER_LOAN'
     when 'tax_settlement' then 'TAX_SETTLEMENT'
+    when 'bank_interest' then 'BANK_INTEREST'
+    when 'bank_loan' then 'BANK_LOAN'
+    when 'capital_increase' then 'CAPITAL_INCREASE'
+    when 'company_tax_accrual' then 'COMPANY_TAX_ACCRUAL'
+    when 'group_contribution' then 'GROUP_CONTRIBUTION'
     else pg_catalog.upper(pg_catalog.btrim(new.entry_kind))
   end;
   if new.entry_kind not in (
     'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',
     'BANK_RULE_SUGGESTION', 'DIVIDEND_RECEIVED',
     'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
-    'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT'
+    'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
+    'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
+    'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
   ) or not ledger.entry_lines_are_valid_v1(new.lines, true) then
     raise exception 'ledger_invalid_input';
   end if;
@@ -448,6 +467,11 @@ begin
       when 'OWNER_DIVIDEND_PAYMENT' then 'CORPORATE_GOVERNANCE'
       when 'SHAREHOLDER_LOAN' then 'CORPORATE_GOVERNANCE'
       when 'TAX_SETTLEMENT' then 'COMPANY_TAX_FILING'
+      when 'BANK_INTEREST' then 'BANKING'
+      when 'BANK_LOAN' then 'BANKING'
+      when 'CAPITAL_INCREASE' then 'CORPORATE_GOVERNANCE'
+      when 'COMPANY_TAX_ACCRUAL' then 'COMPANY_TAX_FILING'
+      when 'GROUP_CONTRIBUTION' then 'CORPORATE_GOVERNANCE'
       else 'LEDGER'
     end
   );
@@ -1384,7 +1408,9 @@ begin
       'OPENING_BALANCE', 'ADMINISTRATIVE_COST', 'MANUAL_JOURNAL',
       'BANK_RULE_SUGGESTION', 'DIVIDEND_RECEIVED',
       'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT', 'SHARE_PURCHASE',
-      'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT'
+      'SHARE_SALE', 'SHAREHOLDER_LOAN', 'TAX_SETTLEMENT',
+      'BANK_INTEREST', 'BANK_LOAN', 'CAPITAL_INCREASE',
+      'COMPANY_TAX_ACCRUAL', 'GROUP_CONTRIBUTION'
     )
     or pg_catalog.jsonb_typeof(p_risk_flags) is distinct from 'array'
     or not ledger.entry_lines_are_valid_v1(p_lines, false)

@@ -56,5 +56,17 @@
     ],
     "unknownMaterialFactBlocks": true,
     "canonicalEvidenceOrder": true
+  },
+  "supportedHoldingActionRules": {
+    "version": "ledger-supported-patterns-2026.1",
+    "sourceCut": "2026-08-27",
+    "normativeMap": "docs/accounting/supported-ledger-patterns.md",
+    "implementedFacts": [
+      "BANK_INTEREST_INCOME",
+      "COMPANY_TAX_ACCRUAL",
+      "ORDINARY_BANK_LOAN",
+      "CASH_CAPITAL_INCREASE",
+      "GROUP_CONTRIBUTION"
+    ]
   }
 }

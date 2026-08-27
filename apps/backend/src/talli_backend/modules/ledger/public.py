@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeAlias, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import (
@@ -102,6 +102,22 @@ class LedgerSourceCapability(StrEnum):
     COMPANY_TAX_FILING = "COMPANY_TAX_FILING"
 
 
+@dataclass(frozen=True, slots=True)
+class LedgerFactReference:
+    capability: LedgerSourceCapability
+    record_id: LedgerSourceRecordId
+    revision: int
+    fact_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        if self.revision < 1 or len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "fact_sha256", digest)
+
+
 class AdministrativeCostCategory(StrEnum):
     BANK_FEE = "BANK_FEE"
     ACCOUNTING_FEE = "ACCOUNTING_FEE"
@@ -178,6 +194,74 @@ class ReconstructionState(StrEnum):
     READY = "READY"
 
 
+class BankLoanEvent(StrEnum):
+    DISBURSEMENT = "DISBURSEMENT"
+    PAYMENT = "PAYMENT"
+
+
+class CapitalIncreasePhase(StrEnum):
+    BINDING_SUBSCRIPTION = "BINDING_SUBSCRIPTION"
+    RESTRICTED_PAYMENT = "RESTRICTED_PAYMENT"
+    REGISTERED = "REGISTERED"
+
+
+class GroupContributionRelationship(StrEnum):
+    SUBSIDIARY_TO_PARENT = "SUBSIDIARY_TO_PARENT"
+    PARENT_TO_SUBSIDIARY = "PARENT_TO_SUBSIDIARY"
+    SISTER_TO_SISTER = "SISTER_TO_SISTER"
+
+
+class GroupContributionPerspective(StrEnum):
+    GIVER = "GIVER"
+    RECIPIENT = "RECIPIENT"
+
+
+@dataclass(frozen=True, slots=True)
+class BankInterestIncomeFacts:
+    amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxAccrualFacts:
+    current_tax: Money
+    deferred_tax_increase: Money
+
+
+@dataclass(frozen=True, slots=True)
+class OrdinaryBankLoanFacts:
+    event: BankLoanEvent
+    principal: Money
+    interest: Money
+    fee: Money
+
+
+@dataclass(frozen=True, slots=True)
+class CashCapitalIncreaseFacts:
+    phase: CapitalIncreasePhase
+    nominal_increase: Money
+    share_premium: Money
+
+
+@dataclass(frozen=True, slots=True)
+class GroupContributionFacts:
+    relationship: GroupContributionRelationship
+    perspective: GroupContributionPerspective
+    gross_tax_amount: Money
+    related_tax: Money
+    after_tax_accounting_amount: Money
+    post_acquisition_income_proved: bool
+    impairment_cleared: bool
+
+
+SupportedHoldingActionFacts: TypeAlias = (
+    BankInterestIncomeFacts
+    | CashCapitalIncreaseFacts
+    | CompanyTaxAccrualFacts
+    | GroupContributionFacts
+    | OrdinaryBankLoanFacts
+)
+
+
 class LedgerEntryKind(StrEnum):
     OPENING_BALANCE = "OPENING_BALANCE"
     ADMINISTRATIVE_COST = "ADMINISTRATIVE_COST"
@@ -190,6 +274,11 @@ class LedgerEntryKind(StrEnum):
     SHARE_SALE = "SHARE_SALE"
     SHAREHOLDER_LOAN = "SHAREHOLDER_LOAN"
     TAX_SETTLEMENT = "TAX_SETTLEMENT"
+    BANK_INTEREST = "BANK_INTEREST"
+    BANK_LOAN = "BANK_LOAN"
+    CAPITAL_INCREASE = "CAPITAL_INCREASE"
+    COMPANY_TAX_ACCRUAL = "COMPANY_TAX_ACCRUAL"
+    GROUP_CONTRIBUTION = "GROUP_CONTRIBUTION"
 
 
 class LedgerRiskCode(StrEnum):
@@ -229,6 +318,7 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    SOURCE_CAPABILITY_MISMATCH = "LEDGER_SOURCE_CAPABILITY_MISMATCH"
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,6 +356,14 @@ class LedgerCommand:
     correlation_id: CorrelationId
     idempotency_key: IdempotencyKey
     income_year: IncomeYear
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeHoldingActionCommand(LedgerCommand):
+    event_date: LocalDate
+    primary_source: LedgerFactReference
+    corroborating_sources: tuple[LedgerFactReference, ...]
+    facts: SupportedHoldingActionFacts
 
 
 @dataclass(frozen=True, slots=True)
@@ -644,6 +742,10 @@ def ledger_persistence_adapter(
 
 
 class LedgerCommands(Protocol):
+    async def recognize_holding_action(
+        self, command: RecognizeHoldingActionCommand
+    ) -> PostedLedgerEntry: ...
+
     async def post_opening_balance(
         self, command: PostOpeningBalanceCommand
     ) -> PostedLedgerEntry: ...
@@ -728,7 +830,15 @@ class LedgerQueries(Protocol):
 
 __all__ = [
     "AdministrativeCostCategory",
+    "BankInterestIncomeFacts",
+    "BankLoanEvent",
     "BankSuggestionRule",
+    "CashCapitalIncreaseFacts",
+    "CapitalIncreasePhase",
+    "CompanyTaxAccrualFacts",
+    "GroupContributionFacts",
+    "GroupContributionPerspective",
+    "GroupContributionRelationship",
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",
@@ -737,6 +847,7 @@ __all__ = [
     "LedgerEntryView",
     "LedgerError",
     "LedgerErrorCode",
+    "LedgerFactReference",
     "LedgerLine",
     "LedgerPersistence",
     "LedgerQueries",
@@ -746,12 +857,14 @@ __all__ = [
     "LedgerSourceRecordId",
     "LedgerPage",
     "LockPeriodCommand",
+    "OrdinaryBankLoanFacts",
     "PeriodLock",
     "PeriodLockId",
     "PeriodLockPage",
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
     "RecordReconstructionAssessmentCommand",
+    "RecognizeHoldingActionCommand",
     "ReconstructionAssessment",
     "ReconstructionAssessmentId",
     "ReconstructionEvidence",
@@ -769,6 +882,7 @@ __all__ = [
     "PostTaxSettlementCommand",
     "ShareholderLoanDirection",
     "TaxSettlementKind",
+    "SupportedHoldingActionFacts",
     "PostedLedgerEntry",
     "PostManualJournalCommand",
     "PostOpeningBalanceCommand",

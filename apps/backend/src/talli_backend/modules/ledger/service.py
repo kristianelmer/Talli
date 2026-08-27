@@ -7,7 +7,15 @@ from decimal import Decimal
 
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    BankInterestIncomeFacts,
+    BankLoanEvent,
     BankSuggestionRule,
+    CashCapitalIncreaseFacts,
+    CapitalIncreasePhase,
+    CompanyTaxAccrualFacts,
+    GroupContributionFacts,
+    GroupContributionPerspective,
+    GroupContributionRelationship,
     LedgerCursor,
     LedgerEntryKind,
     LedgerError,
@@ -19,6 +27,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     LedgerEntryPage,
     LockPeriodCommand,
+    OrdinaryBankLoanFacts,
     PeriodLock,
     PeriodLockPage,
     PostAdministrativeCostCommand,
@@ -37,6 +46,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidenceStatus,
     ReconstructionGapCode,
     ReconstructionState,
+    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
@@ -150,6 +160,243 @@ def _balanced(lines: tuple[LedgerLine, ...], *, permit_zero_line: bool = False) 
 class LedgerService:
     def __init__(self, persistence: LedgerPersistence) -> None:
         self._persistence = persistence
+
+    async def recognize_holding_action(
+        self, command: RecognizeHoldingActionCommand
+    ) -> PostedLedgerEntry:
+        if command.event_date.value.year != int(command.income_year):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (command.primary_source, *command.corroborating_sources)
+        source_keys = {
+            (source.capability, source.record_id.value, source.revision)
+            for source in sources
+        }
+        if len(source_keys) != len(sources):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+
+        facts = command.facts
+        required_sources: frozenset[LedgerSourceCapability]
+        entry_kind: LedgerEntryKind
+        memo: str
+        lines: tuple[LedgerLine, ...]
+        if isinstance(facts, BankInterestIncomeFacts):
+            required_sources = frozenset({LedgerSourceCapability.BANKING})
+            _positive(facts.amount, "LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.BANK_INTEREST
+            memo = "Bank interest supported by bank advice"
+            lines = (
+                LedgerLine("1920", "Bank interest received", facts.amount, _ZERO),
+                LedgerLine("8050", "Bank interest income", _ZERO, facts.amount),
+            )
+        elif isinstance(facts, CompanyTaxAccrualFacts):
+            required_sources = frozenset(
+                {LedgerSourceCapability.COMPANY_TAX_FILING}
+            )
+            if (
+                facts.current_tax.amount < 0
+                or facts.deferred_tax_increase.amount < 0
+                or facts.current_tax.currency != facts.deferred_tax_increase.currency
+                or (
+                    facts.current_tax.amount == 0
+                    and facts.deferred_tax_increase.amount == 0
+                )
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.COMPANY_TAX_ACCRUAL
+            memo = "Company tax accrual from versioned tax calculation"
+            lines = ()
+            if facts.current_tax.amount > 0:
+                lines += (
+                    LedgerLine("8300", "Current tax expense", facts.current_tax, _ZERO),
+                    LedgerLine("2500", "Current tax payable", _ZERO, facts.current_tax),
+                )
+            if facts.deferred_tax_increase.amount > 0:
+                lines += (
+                    LedgerLine(
+                        "8320",
+                        "Increase in deferred tax expense",
+                        facts.deferred_tax_increase,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        "2120",
+                        "Deferred tax liability",
+                        _ZERO,
+                        facts.deferred_tax_increase,
+                    ),
+                )
+        elif isinstance(facts, OrdinaryBankLoanFacts):
+            required_sources = frozenset({LedgerSourceCapability.BANKING})
+            if len(
+                {facts.principal.currency, facts.interest.currency, facts.fee.currency}
+            ) != 1 or any(
+                amount.amount < 0
+                for amount in (facts.principal, facts.interest, facts.fee)
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.BANK_LOAN
+            if facts.event is BankLoanEvent.DISBURSEMENT:
+                if (
+                    facts.principal.amount <= 0
+                    or facts.interest.amount != 0
+                    or facts.fee.amount != 0
+                ):
+                    raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+                memo = "Ordinary NOK bank-loan disbursement"
+                lines = (
+                    LedgerLine("1920", "Bank-loan proceeds", facts.principal, _ZERO),
+                    LedgerLine("2220", "Bank-loan principal", _ZERO, facts.principal),
+                )
+            else:
+                total = Money.nok(
+                    facts.principal.amount + facts.interest.amount + facts.fee.amount
+                )
+                _positive(total, "LEDGER_INVALID_INPUT")
+                memo = "Allocated ordinary NOK bank-loan payment"
+                lines = ()
+                if facts.principal.amount > 0:
+                    lines += (
+                        LedgerLine(
+                            "2220", "Bank-loan principal paid", facts.principal, _ZERO
+                        ),
+                    )
+                if facts.interest.amount > 0:
+                    lines += (
+                        LedgerLine(
+                            "8150", "Bank-loan interest", facts.interest, _ZERO
+                        ),
+                    )
+                if facts.fee.amount > 0:
+                    lines += (
+                        LedgerLine("7770", "Bank-loan fee", facts.fee, _ZERO),
+                    )
+                lines += (LedgerLine("1920", "Paid from bank", _ZERO, total),)
+        elif isinstance(facts, CashCapitalIncreaseFacts):
+            required_sources = frozenset(
+                {LedgerSourceCapability.CORPORATE_GOVERNANCE}
+            )
+            if (
+                facts.nominal_increase.amount <= 0
+                or facts.share_premium.amount < 0
+                or facts.nominal_increase.currency != facts.share_premium.currency
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            total = Money.nok(
+                facts.nominal_increase.amount + facts.share_premium.amount
+            )
+            entry_kind = LedgerEntryKind.CAPITAL_INCREASE
+            if facts.phase is CapitalIncreasePhase.BINDING_SUBSCRIPTION:
+                memo = "Binding cash-capital subscription"
+                lines = (
+                    LedgerLine("1500", "Subscription receivable", total, _ZERO),
+                    LedgerLine(
+                        "2005", "Unregistered capital increase", _ZERO, total
+                    ),
+                )
+            elif facts.phase is CapitalIncreasePhase.RESTRICTED_PAYMENT:
+                memo = "Cash contribution paid to restricted account"
+                lines = (
+                    LedgerLine("1950", "Restricted contribution bank", total, _ZERO),
+                    LedgerLine("1500", "Subscription receivable", _ZERO, total),
+                )
+            else:
+                memo = "Registered cash-capital increase"
+                lines = (
+                    LedgerLine("2005", "Unregistered capital increase", total, _ZERO),
+                    LedgerLine(
+                        "2000", "Registered share capital", _ZERO, facts.nominal_increase
+                    ),
+                    LedgerLine("2020", "Share premium", _ZERO, facts.share_premium),
+                    LedgerLine("1920", "Released contribution bank", total, _ZERO),
+                    LedgerLine("1950", "Restricted contribution bank", _ZERO, total),
+                )
+        elif isinstance(facts, GroupContributionFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.CORPORATE_GOVERNANCE,
+                    LedgerSourceCapability.COMPANY_TAX_FILING,
+                }
+            )
+            amounts = (
+                facts.gross_tax_amount,
+                facts.related_tax,
+                facts.after_tax_accounting_amount,
+            )
+            if (
+                any(amount.amount < 0 for amount in amounts)
+                or len({amount.currency for amount in amounts}) != 1
+                or facts.gross_tax_amount.amount
+                != facts.related_tax.amount + facts.after_tax_accounting_amount.amount
+                or facts.after_tax_accounting_amount.amount <= 0
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            if (
+                facts.relationship
+                is GroupContributionRelationship.SUBSIDIARY_TO_PARENT
+                and not facts.post_acquisition_income_proved
+            ) or (
+                facts.relationship
+                is GroupContributionRelationship.PARENT_TO_SUBSIDIARY
+                and not facts.impairment_cleared
+            ):
+                raise LedgerError.precondition_failed("LEDGER_INVALID_INPUT")
+            amount = facts.after_tax_accounting_amount
+            entry_kind = LedgerEntryKind.GROUP_CONTRIBUTION
+            memo = f"Supported group contribution: {facts.relationship.value}"
+            if facts.perspective is GroupContributionPerspective.GIVER:
+                debit_account = (
+                    "1300"
+                    if facts.relationship
+                    is GroupContributionRelationship.PARENT_TO_SUBSIDIARY
+                    else "2050"
+                )
+                debit_description = (
+                    "Increase in subsidiary investment"
+                    if debit_account == "1300"
+                    else "Group contribution against other equity"
+                )
+                lines = (
+                    LedgerLine(debit_account, debit_description, amount, _ZERO),
+                    LedgerLine("2960", "Group contribution payable", _ZERO, amount),
+                )
+            else:
+                credit_account = (
+                    "8075"
+                    if facts.relationship
+                    is GroupContributionRelationship.SUBSIDIARY_TO_PARENT
+                    else "2030"
+                )
+                credit_description = (
+                    "Income from subsidiary"
+                    if credit_account == "8075"
+                    else "Other paid-in equity"
+                )
+                lines = (
+                    LedgerLine("1560", "Group contribution receivable", amount, _ZERO),
+                    LedgerLine(credit_account, credit_description, _ZERO, amount),
+                )
+        else:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+
+        actual_sources = frozenset(source.capability for source in sources)
+        if (
+            command.primary_source.capability not in required_sources
+            or actual_sources != required_sources
+        ):
+            raise LedgerError.precondition_failed(
+                "LEDGER_SOURCE_CAPABILITY_MISMATCH"
+            )
+        _balanced(lines)
+        return await self._persistence.post_entry(
+            command,
+            entry_kind=entry_kind,
+            memo=memo,
+            lines=lines,
+            risk_flags=(),
+            warning_accepted=False,
+            source_capability=command.primary_source.capability,
+            source_record_id=command.primary_source.record_id,
+        )
 
     async def record_reconstruction_assessment(
         self, command: RecordReconstructionAssessmentCommand

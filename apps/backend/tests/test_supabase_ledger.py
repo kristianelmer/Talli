@@ -26,9 +26,11 @@ from talli_backend.application.opening_snapshot_compatibility import (
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
+    BankInterestIncomeFacts,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
+    LedgerFactReference,
     LedgerLine,
     LedgerSourceCapability,
     LedgerSourceRecordId,
@@ -39,6 +41,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEvidenceKind,
     ReconstructionEvidenceStatus,
     ReconstructionState,
+    RecognizeHoldingActionCommand,
     RecordReconstructionAssessmentCommand,
 )
 from talli_backend.shared.kernel import (
@@ -133,6 +136,25 @@ def reconstruction_command() -> RecordReconstructionAssessmentCommand:
         income_year=IncomeYear(2026),
         as_of=as_of,
         evidence=evidence,
+    )
+
+
+def supported_pattern_command() -> RecognizeHoldingActionCommand:
+    return RecognizeHoldingActionCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("supported-pattern-adapter"),
+        idempotency_key=IdempotencyKey("supported-pattern-adapter-2026-08-27"),
+        income_year=IncomeYear(2026),
+        event_date=LocalDate(date(2026, 8, 27)),
+        primary_source=LedgerFactReference(
+            capability=LedgerSourceCapability.BANKING,
+            record_id=LedgerSourceRecordId("bank-interest:2026:1"),
+            revision=2,
+            fact_sha256="a" * 64,
+        ),
+        corroborating_sources=(),
+        facts=BankInterestIncomeFacts(amount=Money.nok("500.00")),
     )
 
 
@@ -308,6 +330,54 @@ def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result
         "coverageThrough": "2026-08-27",
         "gapCode": None,
     }
+
+
+def test_supported_pattern_adapter_binds_rule_event_and_source_provenance() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "ledger_entry_id": "40000000-0000-0000-0000-000000000004",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "entry_kind": "BANK_INTEREST",
+            "posted_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    requested = supported_pattern_command()
+    result = asyncio.run(
+        session.post_entry(
+            requested,
+            entry_kind=LedgerEntryKind.BANK_INTEREST,
+            memo="Bank interest supported by bank advice",
+            lines=(
+                LedgerLine("1920", "Bank", Money.nok("500"), Money.nok("0")),
+                LedgerLine("8050", "Interest", Money.nok("0"), Money.nok("500")),
+            ),
+            risk_flags=(),
+            warning_accepted=False,
+            source_capability=LedgerSourceCapability.BANKING,
+            source_record_id=requested.primary_source.record_id,
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.BANK_INTEREST
+    assert "ledger.post_supported_entry_v1" in calls[0][0]
+    assert calls[0][1][10] == date(2026, 8, 27)
+    assert calls[0][1][11] == "ledger-supported-patterns-2026.1"
+    assert json.loads(str(calls[0][1][12])) == [{
+        "role": "PRIMARY",
+        "capability": "BANKING",
+        "recordId": "bank-interest:2026:1",
+        "revision": 2,
+        "factSha256": "a" * 64,
+    }]
 
 
 def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:
