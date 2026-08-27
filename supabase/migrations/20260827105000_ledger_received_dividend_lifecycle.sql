@@ -16,15 +16,23 @@ create table if not exists ledger.received_dividend_settlements (
   decision_entry_id uuid primary key,
   payment_entry_id uuid not null unique,
   company_id uuid not null references public.companies(id) on delete restrict,
-  income_year integer not null check (income_year between 2000 and 2100),
+  decision_income_year integer not null check (
+    decision_income_year between 2000 and 2100
+  ),
+  payment_income_year integer not null check (
+    payment_income_year between 2000 and 2100
+  ),
   recorded_at timestamptz not null default pg_catalog.statement_timestamp(),
-  foreign key (decision_entry_id, company_id, income_year)
+  foreign key (decision_entry_id, company_id, decision_income_year)
     references ledger.received_dividend_decisions(
       decision_entry_id, company_id, income_year
     ) on delete restrict,
-  foreign key (payment_entry_id, company_id, income_year)
+  foreign key (payment_entry_id, company_id, payment_income_year)
     references ledger.entries(id, company_id, income_year) on delete restrict,
-  check (decision_entry_id <> payment_entry_id)
+  check (
+    decision_entry_id <> payment_entry_id
+    and payment_income_year >= decision_income_year
+  )
 );
 
 alter table ledger.received_dividend_decisions enable row level security;
@@ -62,7 +70,7 @@ on ledger.received_dividend_settlements for insert to ledger_store_owner
 with check (
   public.company_access_is_accepted_owner_v1(company_id)
   and public.company_access_company_year_allows_consequential_v1(
-    company_id, income_year
+    company_id, payment_income_year
   )
 );
 
@@ -173,6 +181,8 @@ declare
   v_post record;
   v_capabilities text[];
   v_decision_lines jsonb;
+  v_decision_event_date date;
+  v_decision_income_year integer;
   v_decision_total numeric;
   v_payment_total numeric;
 begin
@@ -204,21 +214,28 @@ begin
       where settlement.decision_entry_id = p_decision_entry_id
         and settlement.payment_entry_id = v_post.ledger_entry_id
         and settlement.company_id = p_company_id
-        and settlement.income_year = p_income_year
+        and settlement.payment_income_year = p_income_year
     ) then
       raise exception 'ledger_idempotency_key_reused';
     end if;
   else
-    select entry.lines into v_decision_lines
+    select entry.lines, context.event_date, decision.income_year
+    into v_decision_lines, v_decision_event_date, v_decision_income_year
     from ledger.received_dividend_decisions decision
     join ledger.entries entry
       on entry.id = decision.decision_entry_id
       and entry.company_id = decision.company_id
       and entry.income_year = decision.income_year
+    join ledger.entry_contexts context
+      on context.entry_id = decision.decision_entry_id
+      and context.company_id = decision.company_id
+      and context.income_year = decision.income_year
     where decision.decision_entry_id = p_decision_entry_id
-      and decision.company_id = p_company_id
-      and decision.income_year = p_income_year;
+      and decision.company_id = p_company_id;
     if not found then
+      raise exception 'ledger_received_dividend_decision_invalid';
+    end if;
+    if p_event_date < v_decision_event_date then
       raise exception 'ledger_received_dividend_decision_invalid';
     end if;
     if exists (
@@ -241,9 +258,11 @@ begin
       raise exception 'ledger_received_dividend_decision_invalid';
     end if;
     insert into ledger.received_dividend_settlements (
-      decision_entry_id, payment_entry_id, company_id, income_year
+      decision_entry_id, payment_entry_id, company_id,
+      decision_income_year, payment_income_year
     ) values (
-      p_decision_entry_id, v_post.ledger_entry_id, p_company_id, p_income_year
+      p_decision_entry_id, v_post.ledger_entry_id, p_company_id,
+      v_decision_income_year, p_income_year
     );
   end if;
 

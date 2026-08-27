@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, date, datetime
+from typing import cast
 
 import pytest
 
@@ -339,6 +340,37 @@ def test_investment_dividend_phase_requires_valid_decision_linkage(
                     facts,
                     source(LedgerSourceCapability.INVESTMENTS, "invalid-linkage"),
                     *corroborating,
+                )
+            )
+        )
+
+    assert failure.value.code == "LEDGER_INVALID_INPUT"
+    assert persistence.calls == []
+
+
+def test_investment_dividend_rejects_runtime_invalid_phase_without_persistence(
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).recognize_holding_action(
+                command(
+                    InvestmentDividendFacts(
+                        phase=cast(InvestmentDividendPhase, "UNSUPPORTED"),
+                        gross_amount=Money.nok("5000.00"),
+                        decision_entry_id=LedgerEntryId(
+                            "40000000-0000-0000-0000-000000000005"
+                        ),
+                    ),
+                    source(
+                        LedgerSourceCapability.INVESTMENTS,
+                        "invalid-dividend-phase",
+                    ),
+                    source(
+                        LedgerSourceCapability.BANKING,
+                        "invalid-dividend-phase-bank",
+                    ),
                 )
             )
         )

@@ -485,7 +485,7 @@ class LedgerService:
                         "8070", "Dividend income", _ZERO, facts.gross_amount
                     ),
                 )
-            else:
+            elif facts.phase is InvestmentDividendPhase.PAYMENT:
                 if facts.decision_entry_id is None:
                     raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
                 required_sources = frozenset(
@@ -501,6 +501,8 @@ class LedgerService:
                         "1530", "Dividend receivable settled", _ZERO, facts.gross_amount
                     ),
                 )
+            else:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         elif isinstance(facts, ApprovedOwnerLoanFundingFacts):
             required_sources = frozenset(
                 {

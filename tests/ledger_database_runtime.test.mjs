@@ -1458,7 +1458,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.equal(receivedDividendState(), decisionOnlyState);
     assert.match(psqlFailure(containerName, receivedDividendDecisionTransaction({
       idempotencyKey: "66000000-0000-4000-8000-000000000003",
-    })), /ledger_(?:received_dividend_decision_exists|idempotency_key_reused|invalid_input)/iu);
+    })), /ledger_idempotency_key_reused/iu);
     assert.equal(receivedDividendState(), decisionOnlyState);
     assert.match(psqlFailure(containerName, receivedDividendDecisionTransaction({
       actorId: reviewerId,
@@ -1466,25 +1466,43 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     })), /ledger_forbidden/iu);
     assert.equal(receivedDividendState(), decisionOnlyState);
 
+    const backdatedPaymentSourceRecordId = "received-dividend-backdated-payment-runtime";
+    assert.match(psqlFailure(containerName, receivedDividendPaymentTransaction({
+      decisionEntryId: receivedDividendDecision.ledger_entry_id,
+      eventDate: "2026-04-19",
+      idempotencyKey: "66000000-0000-4000-8000-000000000012",
+      sourceRecordId: backdatedPaymentSourceRecordId,
+      sources: [
+        {
+          role: "PRIMARY",
+          capability: "INVESTMENTS",
+          recordId: backdatedPaymentSourceRecordId,
+          revision: 1,
+          factSha256: "d".repeat(64),
+        },
+        {
+          role: "CORROBORATING",
+          capability: "BANKING",
+          recordId: "received-dividend-backdated-bank-runtime",
+          revision: 1,
+          factSha256: "e".repeat(64),
+        },
+      ],
+    })), /ledger_received_dividend_decision_invalid/iu);
+    assert.equal(receivedDividendState(), decisionOnlyState);
+
     const absentDecisionId = "67000000-0000-4000-8000-000000000099";
     assert.match(psqlFailure(containerName, receivedDividendPaymentTransaction({
       decisionEntryId: absentDecisionId,
       idempotencyKey: "66000000-0000-4000-8000-000000000005",
-    })), /ledger_(?:received_dividend_decision_(?:not_found|invalid)|not_found|invalid_input)/iu);
-    assert.equal(receivedDividendState(), decisionOnlyState);
-    assert.match(psqlFailure(containerName, receivedDividendPaymentTransaction({
-      decisionEntryId: receivedDividendDecision.ledger_entry_id,
-      incomeYear: 2027,
-      eventDate: "2027-04-25",
-      idempotencyKey: "66000000-0000-4000-8000-000000000006",
-    })), /ledger_(?:received_dividend_decision_(?:not_found|invalid)|not_found|invalid_input)/iu);
+    })), /ledger_received_dividend_decision_invalid/iu);
     assert.equal(receivedDividendState(), decisionOnlyState);
     assert.match(psqlFailure(containerName, receivedDividendPaymentTransaction({
       decisionEntryId: receivedDividendDecision.ledger_entry_id,
       actorId: otherOwnerId,
       company: otherCompanyId,
       idempotencyKey: "66000000-0000-4000-8000-000000000007",
-    })), /ledger_(?:received_dividend_decision_(?:not_found|invalid)|not_found|invalid_input)/iu);
+    })), /ledger_received_dividend_decision_invalid/iu);
     assert.equal(receivedDividendState(), decisionOnlyState);
     const shortPaymentLines = [
       { account: "1920", description: "Dividend received", debit: "4000.00", credit: "0.00", currency: "NOK" },
@@ -1494,7 +1512,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       decisionEntryId: receivedDividendDecision.ledger_entry_id,
       idempotencyKey: "66000000-0000-4000-8000-000000000008",
       lines: shortPaymentLines,
-    })), /ledger_(?:received_dividend_(?:amount_mismatch|decision_invalid)|invalid_input)/iu);
+    })), /ledger_received_dividend_decision_invalid/iu);
     assert.equal(receivedDividendState(), decisionOnlyState);
 
     const receivedDividendPayment = jsonOutput(containerName,
@@ -1517,7 +1535,8 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         'decisionEntryId', settlement.decision_entry_id,
         'paymentEntryId', settlement.payment_entry_id,
         'companyId', settlement.company_id,
-        'incomeYear', settlement.income_year,
+        'decisionIncomeYear', settlement.decision_income_year,
+        'paymentIncomeYear', settlement.payment_income_year,
         'lines', entry.lines
       )::text
       from ledger.received_dividend_settlements settlement
@@ -1525,12 +1544,13 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       where settlement.decision_entry_id = '${receivedDividendDecision.ledger_entry_id}';
     `), {
       companyId,
+      decisionIncomeYear: 2026,
       decisionEntryId: receivedDividendDecision.ledger_entry_id,
-      incomeYear: 2026,
       lines: [
         { account: "1920", credit: 0, currency: "NOK", debit: 5000, description: "Dividend received" },
         { account: "1530", credit: 5000, currency: "NOK", debit: 0, description: "Dividend receivable settled" },
       ],
+      paymentIncomeYear: 2026,
       paymentEntryId: receivedDividendPayment.ledger_entry_id,
     });
     const settledState = receivedDividendState();
@@ -1551,8 +1571,119 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
         { role: "PRIMARY", capability: "INVESTMENTS", recordId: "received-dividend-second-payment-runtime", revision: 1, factSha256: "6".repeat(64) },
         { role: "CORROBORATING", capability: "BANKING", recordId: "received-dividend-second-bank-runtime", revision: 1, factSha256: "7".repeat(64) },
       ],
-    })), /ledger_(?:received_dividend_already_settled|invalid_input)/iu);
+    })), /ledger_received_dividend_already_settled/iu);
     assert.equal(receivedDividendState(), settledState);
+
+    const yearBoundaryDecisionSourceRecordId =
+      "received-dividend-year-boundary-decision-runtime";
+    const yearBoundaryDecisionOptions = {
+      eventDate: "2026-12-20",
+      idempotencyKey: "66000000-0000-4000-8000-000000000013",
+      sourceRecordId: yearBoundaryDecisionSourceRecordId,
+      sources: [
+        {
+          role: "PRIMARY",
+          capability: "INVESTMENTS",
+          recordId: yearBoundaryDecisionSourceRecordId,
+          revision: 1,
+          factSha256: "1".repeat(64),
+        },
+        {
+          role: "CORROBORATING",
+          capability: "DOCUMENTS",
+          recordId: "received-dividend-year-boundary-document-runtime",
+          revision: 1,
+          factSha256: "2".repeat(64),
+        },
+        {
+          role: "CORROBORATING",
+          capability: "COMPANY_TAX_FILING",
+          recordId: "received-dividend-year-boundary-tax-runtime",
+          revision: 1,
+          factSha256: "3".repeat(64),
+        },
+      ],
+    };
+    const yearBoundaryDecision = jsonOutput(
+      containerName,
+      receivedDividendDecisionTransaction(yearBoundaryDecisionOptions),
+    );
+    assert.equal(yearBoundaryDecision.income_year, 2026);
+    assert.equal(yearBoundaryDecision.replayed, false);
+    const yearBoundaryPaymentSourceRecordId =
+      "received-dividend-year-boundary-payment-runtime";
+    const yearBoundaryPaymentOptions = {
+      decisionEntryId: yearBoundaryDecision.ledger_entry_id,
+      eventDate: "2027-01-10",
+      idempotencyKey: "66000000-0000-4000-8000-000000000014",
+      incomeYear: 2027,
+      sourceRecordId: yearBoundaryPaymentSourceRecordId,
+      sources: [
+        {
+          role: "PRIMARY",
+          capability: "INVESTMENTS",
+          recordId: yearBoundaryPaymentSourceRecordId,
+          revision: 1,
+          factSha256: "4".repeat(64),
+        },
+        {
+          role: "CORROBORATING",
+          capability: "BANKING",
+          recordId: "received-dividend-year-boundary-bank-runtime",
+          revision: 1,
+          factSha256: "5".repeat(64),
+        },
+      ],
+    };
+    const yearBoundaryPayment = jsonOutput(
+      containerName,
+      receivedDividendPaymentTransaction(yearBoundaryPaymentOptions),
+    );
+    assert.equal(yearBoundaryPayment.income_year, 2027);
+    assert.equal(yearBoundaryPayment.replayed, false);
+    const yearBoundaryDecisionReplay = jsonOutput(
+      containerName,
+      receivedDividendDecisionTransaction(yearBoundaryDecisionOptions),
+    );
+    assert.equal(
+      yearBoundaryDecisionReplay.ledger_entry_id,
+      yearBoundaryDecision.ledger_entry_id,
+    );
+    assert.equal(yearBoundaryDecisionReplay.replayed, true);
+    const yearBoundaryPaymentReplay = jsonOutput(
+      containerName,
+      receivedDividendPaymentTransaction(yearBoundaryPaymentOptions),
+    );
+    assert.equal(
+      yearBoundaryPaymentReplay.ledger_entry_id,
+      yearBoundaryPayment.ledger_entry_id,
+    );
+    assert.equal(yearBoundaryPaymentReplay.replayed, true);
+    assert.deepEqual(jsonOutput(containerName, String.raw`
+      select pg_catalog.jsonb_build_object(
+        'companyId', settlement.company_id,
+        'decisionYear', decision.income_year,
+        'decisionEventDate', decision_context.event_date,
+        'paymentYear', payment.income_year,
+        'paymentEventDate', payment_context.event_date
+      )::text
+      from ledger.received_dividend_settlements settlement
+      join ledger.received_dividend_decisions decision
+        on decision.decision_entry_id = settlement.decision_entry_id
+      join ledger.entries payment
+        on payment.id = settlement.payment_entry_id
+      join ledger.entry_contexts decision_context
+        on decision_context.entry_id = decision.decision_entry_id
+      join ledger.entry_contexts payment_context
+        on payment_context.entry_id = payment.id
+      where settlement.decision_entry_id = '${yearBoundaryDecision.ledger_entry_id}';
+    `), {
+      companyId,
+      decisionEventDate: "2026-12-20",
+      decisionYear: 2026,
+      paymentEventDate: "2027-01-10",
+      paymentYear: 2027,
+    });
     for (const table of ["received_dividend_decisions", "received_dividend_settlements"]) {
       assert.match(psqlFailure(containerName, String.raw`
         begin;
@@ -3524,6 +3655,24 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       receivedDividendPayment.ledger_entry_id,
     );
     assert.equal(recutoverReceivedDividendPayment.replayed, true);
+    const recutoverYearBoundaryDecision = jsonOutput(
+      containerName,
+      receivedDividendDecisionTransaction(yearBoundaryDecisionOptions),
+    );
+    assert.equal(
+      recutoverYearBoundaryDecision.ledger_entry_id,
+      yearBoundaryDecision.ledger_entry_id,
+    );
+    assert.equal(recutoverYearBoundaryDecision.replayed, true);
+    const recutoverYearBoundaryPayment = jsonOutput(
+      containerName,
+      receivedDividendPaymentTransaction(yearBoundaryPaymentOptions),
+    );
+    assert.equal(
+      recutoverYearBoundaryPayment.ledger_entry_id,
+      yearBoundaryPayment.ledger_entry_id,
+    );
+    assert.equal(recutoverYearBoundaryPayment.replayed, true);
 
     const durableAfterRecutover = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':',

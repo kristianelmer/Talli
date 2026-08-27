@@ -65,9 +65,9 @@ The received-dividend receiver recognizes the final investee decision as a
 receivable and income, then settles that exact decision from the bank payment.
 The decision requires investments, documents, and company-tax facts; payment
 requires investments and banking facts plus the immutable decision entry ID.
-The company-year serialized persistence path permits one settlement per
-decision and rejects cross-company, cross-year, amount-mismatched, or replay-
-inconsistent linkage.
+The serialized persistence path permits one settlement per decision, including
+a later admitted company-year, and rejects payments before the decision plus
+cross-company, amount-mismatched, or replay-inconsistent linkage.
 
 The capital-reduction receiver accepts only an approval fact emitted by the
 corporate-governance source owner. Ledger validates the accounting amount and
