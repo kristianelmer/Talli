@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#196",
   "source": "https://github.com/kristianelmer/Talli/issues/196",
-  "sourceCheckedAt": "2026-08-28T16:41:50Z",
+  "sourceCheckedAt": "2026-08-28T17:39:21Z",
   "route": {
     "entryGate": "#187",
     "entryGateState": "CLOSED",
@@ -85,7 +85,7 @@
       "requirement": "Rendered public and signup/checkout-shell journeys pass copy, keyboard, focus, labels/status, contrast, 200% zoom/reflow, 390px mobile, performance, and no-horizontal-overflow gates.",
       "plannedEvidence": [
         {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"},
-        {"path": "architecture/evidence/customer-ready-gates/<revision>.json", "command": "npm run gate:customer-ready"}
+        {"path": "architecture/evidence/customer-ready-gates/99c845b332522998278827510a7d30220a2a3137.json", "command": "npm run gate:customer-ready"}
       ],
       "status": "local-rendered-evidence-passed-founder-legal-launch-signoff-remains-external"
     },
@@ -100,7 +100,15 @@
     }
   ],
   "boundaryValidation": {
-    "checkedAt": "2026-08-28T16:41:50Z",
+    "checkedAt": "2026-08-28T17:36:52.884Z",
+    "immutableGate": {
+      "sourceRevision": "99c845b332522998278827510a7d30220a2a3137",
+      "evidenceCommit": "928f9d36c32d18031d1583639dcf387c13ca33c2",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:614dfe10e773f4882973fc36ff4262e204314618cac1d06f7645550ff4d675b4",
+      "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff"
+    },
     "commands": [
       "node scripts/check-architecture.mjs --write-evidence",
       "npm run typecheck",
