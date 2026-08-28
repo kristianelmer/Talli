@@ -16,6 +16,12 @@
       "previousPassingRevision": null,
       "evidencePath": "architecture/evidence/customer-ready-gates/4cdb7730c88a9b9138b284f92597e5be243a35c1.json",
       "verdict": "pass"
+    },
+    {
+      "revision": "006e7e153a6d566b536004470bc66e826395f52e",
+      "previousPassingRevision": "4cdb7730c88a9b9138b284f92597e5be243a35c1",
+      "evidencePath": "architecture/evidence/customer-ready-gates/006e7e153a6d566b536004470bc66e826395f52e.json",
+      "verdict": "pass"
     }
   ],
   "entryBlockers": [
@@ -259,10 +265,11 @@
       ],
       "observedEvidence": [
         "R1 4cdb7730c88a9b9138b284f92597e5be243a35c1 complete customer-ready gate passed all 11 checks",
-        "R2 linked immutable complete gate remains required before criterion pass"
+        "R2 006e7e153a6d566b536004470bc66e826395f52e passed all 11 checks with previousPassingRevision bound to R1",
+        "both passes include ledger 69/69, Supabase/RLS 45/45, browser-owner 17/17, hosted migrator 1/1, builds, pinned authority-schema rehearsal, dependency audit, credential scan and clean-worktree proof"
       ],
-      "status": "in-progress"
+      "status": "passed"
     }
   ],
-  "closeState": "blocked-until-all-criteria-pass-and-evidence-is-immutable"
+  "closeState": "accepted-all-criteria-passed-and-evidence-is-immutable"
 }
