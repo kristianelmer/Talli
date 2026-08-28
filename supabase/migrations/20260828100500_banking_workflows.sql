@@ -5,14 +5,29 @@ begin;
 do $banking_workflow_migration_authority$
 begin
   execute pg_catalog.format(
-    'grant banking_store_owner, banking_workflow_store_owner to %I', current_user
+    'grant ledger_store_owner, banking_store_owner, banking_workflow_store_owner to %I',
+    current_user
   );
   execute pg_catalog.format(
-    'grant create on schema banking, backend_system to %I', current_user
+    'grant create on schema banking to %I', current_user
   );
 end
 $banking_workflow_migration_authority$;
-grant usage, create on schema banking, backend_system to banking_store_owner;
+select pg_catalog.set_config(
+  'talli.banking_workflow_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to banking_store_owner;
+do $banking_workflow_backend_system_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting('talli.banking_workflow_migration_principal')
+  );
+end
+$banking_workflow_backend_system_authority$;
+reset role;
+grant usage, create on schema banking to banking_store_owner;
 
 create table if not exists backend_system.banking_command_receipts (
   id uuid primary key default pg_catalog.gen_random_uuid(),
@@ -591,14 +606,25 @@ from public, anon, authenticated, service_role, banking_executor,
 grant select, insert on backend_system.banking_command_receipts
 to banking_store_owner;
 
-revoke create on schema banking, backend_system from banking_store_owner;
+revoke create on schema banking from banking_store_owner;
+set local role ledger_store_owner;
+revoke create on schema backend_system from banking_store_owner;
+do $banking_workflow_revoke_backend_system_authority$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting('talli.banking_workflow_migration_principal')
+  );
+end
+$banking_workflow_revoke_backend_system_authority$;
+reset role;
 do $banking_workflow_revoke_migration_authority$
 begin
   execute pg_catalog.format(
-    'revoke create on schema banking, backend_system from %I', current_user
+    'revoke create on schema banking from %I', current_user
   );
   execute pg_catalog.format(
-    'revoke banking_store_owner, banking_workflow_store_owner from %I',
+    'revoke ledger_store_owner, banking_store_owner, banking_workflow_store_owner from %I',
     current_user
   );
 end

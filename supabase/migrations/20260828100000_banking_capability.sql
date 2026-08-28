@@ -43,14 +43,30 @@ $banking_roles$;
 do $banking_migration_authority$
 begin
   execute pg_catalog.format(
-    'grant banking_store_owner, banking_workflow_store_owner, company_access_executor to %I',
+    'grant ledger_store_owner, banking_store_owner, banking_workflow_store_owner, company_access_executor to %I',
     current_user
   );
   execute pg_catalog.format(
-    'grant create on schema banking, backend_system to %I', current_user
+    'grant create on schema banking to %I', current_user
   );
 end
 $banking_migration_authority$;
+
+select pg_catalog.set_config(
+  'talli.banking_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to banking_store_owner,
+  banking_workflow_store_owner;
+do $banking_backend_system_migration_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting('talli.banking_migration_principal')
+  );
+end
+$banking_backend_system_migration_authority$;
+reset role;
 
 alter role banking_store_owner nologin noinherit nobypassrls;
 alter role banking_executor nologin noinherit nobypassrls;
@@ -60,8 +76,7 @@ alter role talli_banking_backend nologin noinherit nobypassrls;
 grant banking_executor to talli_banking_backend with inherit false, set true;
 grant banking_workflow_executor to talli_banking_backend with inherit false, set true;
 
-grant usage, create on schema banking, backend_system to banking_store_owner;
-grant usage, create on schema backend_system to banking_workflow_store_owner;
+grant usage, create on schema banking to banking_store_owner;
 grant usage on schema extensions to banking_store_owner,
   banking_workflow_store_owner;
 grant execute on function extensions.digest(text, text)
@@ -591,15 +606,26 @@ alter table backend_system.banking_migration_source_rows owner to banking_store_
 alter table backend_system.banking_migration_reconciliations owner to banking_store_owner;
 alter schema banking owner to banking_store_owner;
 
-revoke create on schema banking, backend_system from banking_store_owner;
-revoke create on schema backend_system from banking_workflow_store_owner;
+revoke create on schema banking from banking_store_owner;
+set local role ledger_store_owner;
+revoke create on schema backend_system from banking_store_owner,
+  banking_workflow_store_owner;
+do $banking_revoke_backend_system_migration_authority$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting('talli.banking_migration_principal')
+  );
+end
+$banking_revoke_backend_system_migration_authority$;
+reset role;
 do $banking_revoke_migration_authority$
 begin
   execute pg_catalog.format(
-    'revoke create on schema banking, backend_system from %I', current_user
+    'revoke create on schema banking from %I', current_user
   );
   execute pg_catalog.format(
-    'revoke banking_store_owner, banking_workflow_store_owner, company_access_executor from %I',
+    'revoke ledger_store_owner, banking_store_owner, banking_workflow_store_owner, company_access_executor from %I',
     current_user
   );
 end

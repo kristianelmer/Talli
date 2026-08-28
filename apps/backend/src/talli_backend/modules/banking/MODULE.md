@@ -34,11 +34,11 @@ only an opaque completion correlation returned by the ledger-owned workflow.
 ## Ports and workflow seam
 
 `BankingPersistence` is the sole outbound persistence port and is declared by
-`banking_persistence_adapter`. Its adapter binding is deliberately empty in this
-interface-only slice and becomes
-`talli_backend.adapters.supabase_banking.SupabaseBankingSession` in the expand
-slice. Provider ports may produce bank source rows only. They cannot depend on
-ledger contracts or request accounting entries.
+`banking_persistence_adapter`. The expand slice binds it to the verified-actor,
+restricted-role PostgreSQL adapter
+`talli_backend.adapters.supabase_banking.SupabaseBankingSession`. Provider ports
+may produce bank source rows only. They cannot depend on ledger contracts or
+request accounting entries.
 
 The backend-system bank reconciliation workflow opens one short transaction,
 asks banking to lock and revalidate the source fact, maps the closed account-free

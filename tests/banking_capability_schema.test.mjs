@@ -53,6 +53,22 @@ test("migration evidence proves exact count and canonical hash reconciliation", 
   assert.match(source, /banking_migration_evidence_is_immutable/iu);
 });
 
+test("banking migrations borrow and revoke backend-system schema authority", () => {
+  for (const source of [artifact(expandPath), workflowArtifact()]) {
+    assert.match(source, /grant ledger_store_owner,[^;]+to %I/iu);
+    assert.match(source, /set local role ledger_store_owner/iu);
+    assert.match(
+      source,
+      /grant usage, create on schema backend_system to %I/iu,
+    );
+    assert.match(
+      source,
+      /revoke create on schema backend_system from %I/iu,
+    );
+    assert.match(source, /revoke ledger_store_owner,[^;]+from %I/iu);
+  }
+});
+
 test("legacy transaction writes are mirrored during expand without a second policy engine", () => {
   const source = artifact(expandPath);
   assert.match(source, /sync_legacy_bank_transaction_to_banking_v1/iu);

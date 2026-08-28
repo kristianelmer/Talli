@@ -27,7 +27,7 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.banking.public.BankingPersistence",
       "registrationDecorator": "talli_backend.modules.banking.public.banking_persistence_adapter",
-      "adapters": []
+      "adapters": ["talli_backend.adapters.supabase_banking.SupabaseBankingSession"]
     }
   ],
   "dependencies": [],
