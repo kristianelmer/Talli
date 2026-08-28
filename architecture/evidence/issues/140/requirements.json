@@ -3,6 +3,14 @@
   "issue": "#140",
   "source": "https://github.com/kristianelmer/Talli/issues/140",
   "sourceCheckedAt": "2026-08-28T06:15:00Z",
+  "completeGates": [
+    {
+      "revision": "1f5d81526f4d9a41fdca072c3893baee3cf05163",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/1f5d81526f4d9a41fdca072c3893baee3cf05163.json",
+      "verdict": "pass"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#188",
@@ -42,7 +50,11 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "customer-ready R1 boundary: backend 414/414, web 103/103, and contract 36/36 passed",
+        "customer-ready R1 browser-owner: 17/17 passed, including canonical CSV import, no posting before consent, explicit acceptance, one ledger entry, and reconciliation"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-140-A2",
@@ -68,7 +80,11 @@
           "command": "npm run test:banking-database-lifecycle"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "banking focused backend suite passed 14/14 with duplicate, replay, stale, ambiguous, wrong-direction, locked, and already-reconciled cases",
+        "customer-ready R1 database isolation passed banking lifecycle 15/15 with no-partial-state and exact overlap reconciliation"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-140-A3",
@@ -98,7 +114,11 @@
           "command": "node --test tests/bank_suggestion_integration.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "canonical banking backend, public-contract, and workflow tests passed within the 414/414 backend boundary",
+        "customer-ready R1 banking lifecycle passed atomic posting, exact acceptance/transaction/entry binding, rollback, and recutover"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-140-A4",
@@ -124,7 +144,11 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "banking public-contract tests passed within the 414/414 backend boundary",
+        "architecture and source scans prove provider ports expose source rows only and contain no ledger/account/line dependency"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-140-A5",
@@ -154,7 +178,11 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "customer-ready R1 architecture and boundary checks passed with banking absent from the active compatibility registry",
+        "contract lifecycle removed the legacy RPC, coordinator, mirrors, storage, TypeScript policy, and generated ledger banking operation"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-140-A6",
@@ -188,7 +216,11 @@
           "command": "npm run gate:customer-ready -- --previous <R1>"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "R1 1f5d81526f4d9a41fdca072c3893baee3cf05163 passed all 11 complete customer-ready checks",
+        "R2 linked immutable complete gate remains required before stage exit"
+      ],
+      "status": "in-progress"
     }
   ],
   "closeState": "blocked-until-all-criteria-pass-and-evidence-is-immutable"
