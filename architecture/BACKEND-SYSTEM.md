@@ -5,11 +5,15 @@
 -->
 
 <!-- architecture-inventory
-{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql","supabase/migrations/20260828100500_banking_workflows.sql"],"technicalTables":["backend_system.banking_command_receipts","backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
+{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql","supabase/migrations/20260828100500_banking_workflows.sql","supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql"],"technicalTables":["backend_system.banking_command_receipts","backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["BankingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BankingPersistence=>backend-system"],"adapterBindings":["BankingPersistence=>talli_backend.adapters.supabase_banking.SupabaseBankingSession"],"adapterDependencies":["talli_backend.adapters.supabase_ledger","talli_backend.application.banking_session","talli_backend.modules.banking.public"],"ports":["BankingPersistence"]}
+{"adapterBindingModes":["BankingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BankingPersistence=>backend-system"],"adapterBindings":["BankingPersistence=>talli_backend.adapters.supabase_banking.SupabaseBankingSession"],"adapterDependencies":["talli_backend.adapters.supabase_ledger","talli_backend.application.banking_session","talli_backend.application.banking_workflow","talli_backend.modules.banking.public","talli_backend.modules.ledger.service"],"ports":["BankingPersistence"],"publicPackages":["talli_backend.modules.banking.public"],"transportDependencies":["talli_backend.adapters.supabase_banking","talli_backend.application.banking_session","talli_backend.modules.banking.public"],"workflowDependencies":["talli_backend.modules.banking.public"]}
+-->
+
+<!-- architecture-inventory
+{"routes":["/api/v1/banking/statement-imports","/api/v1/banking/suggestion-acceptances","/api/v1/banking/transactions"],"workflowPurposes":["banking-reconciliation=>Authenticates one verified actor and runs bank-statement import, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts."],"workflows":["banking-reconciliation"]}
 -->
 
 <!-- architecture-inventory
@@ -25,7 +29,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["LedgerPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["LedgerPersistence=>backend-system"],"adapterBindings":["LedgerPersistence=>talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"],"adapterDependencies":["datetime","decimal","talli_backend.application.ledger_session","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.modules.ledger.service","talli_backend.shared.kernel"],"ports":["LedgerPersistence"],"publicPackages":["talli_backend.modules.ledger.public"],"routes":["/api/v1/ledger/administrative-costs","/api/v1/ledger/bank-suggestion-outcomes","/api/v1/ledger/company-year-close-assessment","/api/v1/ledger/corporate-decisions/finalizations","/api/v1/ledger/entries","/api/v1/ledger/investment-dividends","/api/v1/ledger/investment-purchases","/api/v1/ledger/investment-sales","/api/v1/ledger/manual-journals","/api/v1/ledger/opening-snapshots","/api/v1/ledger/owner-dividends/payments","/api/v1/ledger/period-locks","/api/v1/ledger/reconstruction-assessment","/api/v1/ledger/shareholder-loans","/api/v1/ledger/tax-settlements","/api/v1/new-year-starts"],"technicalMigrations":["supabase/migrations/20260827100000_ledger_capability.sql","supabase/migrations/20260827100500_ledger_writer_coordinators.sql","supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql","supabase/migrations/20260827103000_ledger_corrections.sql","supabase/migrations/20260827104000_ledger_company_year_close.sql"],"transportDependencies":["datetime","talli_backend.adapters.supabase_ledger","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.shared.kernel"],"workflowDependencies":["talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public"],"workflowPurposes":["ledger-posting-and-period-control=>Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract."],"workflows":["ledger-posting-and-period-control"]}
+{"adapterBindingModes":["LedgerPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["LedgerPersistence=>backend-system"],"adapterBindings":["LedgerPersistence=>talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"],"adapterDependencies":["datetime","decimal","talli_backend.application.ledger_session","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.modules.ledger.service","talli_backend.shared.kernel"],"ports":["LedgerPersistence"],"publicPackages":["talli_backend.modules.ledger.public"],"routes":["/api/v1/ledger/administrative-costs","/api/v1/ledger/company-year-close-assessment","/api/v1/ledger/corporate-decisions/finalizations","/api/v1/ledger/entries","/api/v1/ledger/investment-dividends","/api/v1/ledger/investment-purchases","/api/v1/ledger/investment-sales","/api/v1/ledger/manual-journals","/api/v1/ledger/opening-snapshots","/api/v1/ledger/owner-dividends/payments","/api/v1/ledger/period-locks","/api/v1/ledger/reconstruction-assessment","/api/v1/ledger/shareholder-loans","/api/v1/ledger/tax-settlements","/api/v1/new-year-starts"],"technicalMigrations":["supabase/migrations/20260827100000_ledger_capability.sql","supabase/migrations/20260827100500_ledger_writer_coordinators.sql","supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql","supabase/migrations/20260827103000_ledger_corrections.sql","supabase/migrations/20260827104000_ledger_company_year_close.sql"],"transportDependencies":["datetime","talli_backend.adapters.supabase_ledger","talli_backend.application.ledger_workflow","talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public","talli_backend.shared.kernel"],"workflowDependencies":["talli_backend.application.opening_snapshot_compatibility","talli_backend.modules.ledger.public"],"workflowPurposes":["ledger-posting-and-period-control=>Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract."],"workflows":["ledger-posting-and-period-control"]}
 -->
 
 <!-- architecture-inventory
@@ -95,13 +99,21 @@ backend-owned transaction. The shareholder-register module owns no migrated
 data or filing behavior until #151. The application-layer compatibility adapter
 translates both intents only inside this workflow's active transaction.
 
+The `banking-reconciliation` workflow serves
+`/api/v1/banking/statement-imports`, `/api/v1/banking/transactions`, and both
+methods on `/api/v1/banking/suggestion-acceptances`. It authenticates a single
+verified actor, delegates statement parsing, deduplication, suggestion policy,
+and cursor reads to `talli_backend.modules.banking.public`, and coordinates an
+accepted suggestion with its ledger posting inside one request-bound database
+transaction. The web sends only source facts and the canonical expected
+suggestion; it cannot choose ledger accounts or lines.
+
 The `ledger-posting-and-period-control` workflow serves `/api/v1/ledger/entries`,
 `/api/v1/ledger/opening-snapshots`, `/api/v1/ledger/period-locks`,
 `/api/v1/ledger/company-year-close-assessment`,
 `/api/v1/ledger/reconstruction-assessment`,
 `/api/v1/ledger/administrative-costs`, `/api/v1/ledger/investment-dividends`,
 `/api/v1/ledger/shareholder-loans`, `/api/v1/ledger/tax-settlements`,
-`/api/v1/ledger/bank-suggestion-outcomes`,
 `/api/v1/ledger/investment-purchases`, `/api/v1/ledger/investment-sales`,
 `/api/v1/ledger/corporate-decisions/finalizations`,
 `/api/v1/ledger/owner-dividends/payments`, and
@@ -127,6 +139,12 @@ exact-ID, count, and canonical-hash transfer performed by
 idempotency installed by
 `supabase/migrations/20260828100500_banking_workflows.sql`; they contain no
 banking classification or accounting policy.
+`supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql` adds
+only trigger-depth mixed-version authority: canonical transactions and
+acceptances are projected into their frozen legacy relations, and the
+ledger-owned acceptance projector copies the exact already-posted entry lines.
+It cannot select an account or admit a canonical command, and contract removes
+the projector, grants, policies, triggers, and legacy storage together.
 
 The backend system owns the deny-by-default `public.launch_signoffs` operational
 control state. It also owns `public.company_access_command_receipts` and

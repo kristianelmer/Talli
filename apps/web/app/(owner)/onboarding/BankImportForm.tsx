@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { importBankCsv } from "../../actions";
 import {
   Banner,
@@ -13,6 +15,7 @@ type BankImportFormProps = {
   companyId: string;
   incomeYear: number;
   importedCount: number;
+  retryOperationId?: string;
 };
 
 /** Step 3 — optional bank CSV import. The owner can skip and finish anytime. */
@@ -20,7 +23,9 @@ export function BankImportForm({
   companyId,
   incomeYear,
   importedCount,
+  retryOperationId,
 }: BankImportFormProps) {
+  const [operationId] = useState(() => retryOperationId ?? crypto.randomUUID());
   const c = ownerCopy.onboarding.bank;
   return (
     <div className="wizardForm">
@@ -31,6 +36,7 @@ export function BankImportForm({
       ) : null}
 
       <form action={importBankCsv} className="wizardForm">
+        <input type="hidden" name="operationId" value={operationId} />
         <input type="hidden" name="returnTo" value="/onboarding?step=bank" />
         <input type="hidden" name="companyId" value={companyId} />
         <input type="hidden" name="incomeYear" value={incomeYear} />

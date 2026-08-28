@@ -13,6 +13,10 @@ state, and bank-provider source ports. The expand migration
 `banking.transactions` and `banking.suggestion_acceptances`, reconciles them
 against the public legacy tables without changing stable record identifiers,
 and maintains a bounded mixed-version mirror until browser cutover.
+During that rollback window, a trigger-depth-only backend-system projection
+keeps the frozen legacy acceptance/archive row exact. Its ledger-owned function
+copies only the already-linked entry lines, contains no suggestion or account
+selection rule, and is removed by the #140 contract artifact.
 
 ## Public interface
 
@@ -54,9 +58,13 @@ future-owner reconciliation action. `ImportedBankTransaction` is the normalized 
 capture value. Expected failures are `BankingError` values with declared
 `BankingErrorCode` identifiers and shared domain error categories.
 
-## Compatibility
+## Contract state
 
-`compat-banking-persistence` permits only the four frozen browser reads/writes
-listed in `architecture/compatibility.json` during expand and data migration.
-The contract step removes those scopes, the legacy public banking tables and
-routines, and every SQL copy of suggestion policy before #140 exits.
+The #140 contract artifact removes every banking compatibility scope, both
+legacy public banking tables, the predecessor RPC, mirror functions, and the
+duplicate ledger banking coordinator after locked count/hash reconciliation.
+`public.bank_transactions` is a write-restricted compatibility view for exact
+later-stage coordinator owners; it has no browser grants or banking policy.
+The company-archive acceptance projection is member-filtered, read-only, and
+derives lines from the linked canonical ledger entry rather than storing a
+second policy copy.

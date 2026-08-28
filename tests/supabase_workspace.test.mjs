@@ -11,7 +11,6 @@ import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
-import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../apps/web/app/lib/bank.ts";
 import { buildBillingAccount, productionBillingGate } from "../apps/web/app/lib/billing.ts";
 import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
 import {
@@ -45,6 +44,7 @@ import {
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 
 const invitationTokenHash = async (token) => createHash("sha256").update(token).digest("hex");
+const bankSourceHash = (value) => createHash("sha256").update(value).digest("hex");
 const invitationExpiry = () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 const invitationDeliveryEvent = ({ recipientEmail, queuedAt = new Date().toISOString() }) => ({
   channel: "email",
@@ -237,6 +237,14 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     await database.connect();
     connected = true;
     await database.query("begin");
+    await database.query(
+      `select pg_catalog.set_config(
+        'talli.verified_actor_id',
+        (select company.created_by::text from public.companies company where company.id = $1),
+        true
+      )`,
+      [companyId],
+    );
     for (const table of [
       "production_feedback_artifacts",
       "filing_approval_snapshots",
@@ -250,6 +258,7 @@ async function deleteWorkspaceCompanyFixture(companyId) {
       "corporate_document_sets",
       "corporate_decisions",
       "bank_suggestion_acceptances",
+      "bank_transactions",
       "investment_lot_allocations",
       "investment_lots",
       "investment_positions",
@@ -2007,8 +2016,22 @@ test(
       /simulert innsending/,
     );
 
-    const bankCsv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";
-    const parsedBank = parseBankCsv(bankCsv);
+    const parsedBank = [
+      {
+        transactionDate: "2025-01-02",
+        text: "Opening",
+        amount: 30000,
+        balance: 30000,
+        sourceHash: "1b22d1e46d2e15f7b51c68f74d280e669fea9bc692e862a3a5eaed1ec6b80778",
+      },
+      {
+        transactionDate: "2025-01-03",
+        text: "Bank fee",
+        amount: -50,
+        balance: 29950,
+        sourceHash: "ab40e8421185f6eba0502af6427d3e38c3d76ad0849ce23ce4055ebb9732577f",
+      },
+    ];
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const { error: bankImportError } = await owner.from("bank_transactions").upsert(
         parsedBank.map((transaction) => ({
@@ -2036,8 +2059,11 @@ test(
 
     const feeTransaction = importedBankTransactions.find((transaction) => Number(transaction.amount) === -50);
     assert.ok(feeTransaction);
-    assertBankTransactionMatchesCost(Number(feeTransaction.amount), 50);
-    const adminCostLines = buildAdminCostLedgerLines({ category: "bank_fee", payee: "Bank", amount: 50 });
+    assert.equal(Number(feeTransaction.amount), -50);
+    const adminCostLines = [
+      { account: "7770", description: "Admin cost: Bank", debit: 50, credit: 0 },
+      { account: "1920", description: "Paid from bank", debit: 0, credit: 50 },
+    ];
     const { data: adminCostEntry, error: adminCostEntryError } = await owner
       .from("ledger_entries")
       .insert({
@@ -2087,7 +2113,7 @@ test(
         transaction_date: "2025-02-01",
         text: "Årsgebyr bedriftskonto",
         amount: -50,
-        source_hash: `bank-suggestion-${randomUUID()}`,
+        source_hash: bankSourceHash(`bank-suggestion-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id")
@@ -2166,7 +2192,7 @@ test(
         transaction_date: "2025-02-02",
         text: "Bankgebyr og renter",
         amount: 100,
-        source_hash: `bank-ambiguous-${randomUUID()}`,
+        source_hash: bankSourceHash(`bank-ambiguous-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id")
@@ -2205,7 +2231,7 @@ test(
       created_by: ownerUser.id,
     });
     assert.ifError(dividendDocumentError);
-    const dividendSourceHash = `dividend-bank-${randomUUID()}`;
+    const dividendSourceHash = bankSourceHash(`dividend-bank-${randomUUID()}`);
     const { data: dividendBankTransaction, error: dividendBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2344,7 +2370,7 @@ test(
         text: "Purchase Portfolio AS",
         amount: -50000,
         balance: -19050,
-        source_hash: `purchase-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`purchase-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
@@ -2497,7 +2523,7 @@ test(
         text: "Sale Portfolio AS",
         amount: 30000,
         balance: 10950,
-        source_hash: `sale-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`sale-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
@@ -2662,7 +2688,7 @@ test(
         text: "Loan from shareholder",
         amount: 20000,
         balance: 30950,
-        source_hash: `loan-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`loan-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
@@ -2772,7 +2798,7 @@ test(
         text: "Tax payment",
         amount: -17.6,
         balance: 30932.4,
-        source_hash: `tax-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`tax-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
@@ -2953,7 +2979,7 @@ test(
       text: "Late locked import",
       amount: -10,
       balance: 29940,
-      source_hash: `locked-bank-${randomUUID()}`,
+      source_hash: bankSourceHash(`locked-bank-${randomUUID()}`),
       created_by: ownerUser.id,
     });
     assert.ok(lockedBankImportError);

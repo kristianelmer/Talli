@@ -54,13 +54,22 @@ const ledgerOperations = {
   postInvestmentDividend: ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
   postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-  postBankSuggestionOutcome: ["/api/v1/ledger/bank-suggestion-outcomes", "post", "ledgerPostBankSuggestionOutcome"],
   postInvestmentPurchase: ["/api/v1/ledger/investment-purchases", "post", "ledgerPostInvestmentPurchase"],
   postInvestmentSale: ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
   postOwnerDividendPayment: ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+};
+const bankingOperations = {
+  importStatement: ["/api/v1/banking/statement-imports", "post", "bankingImportStatement"],
+  listTransactions: ["/api/v1/banking/transactions", "get", "bankingListTransactions"],
+  acceptSuggestion: ["/api/v1/banking/suggestion-acceptances", "post", "bankingAcceptSuggestion"],
+  listSuggestionAcceptances: [
+    "/api/v1/banking/suggestion-acceptances",
+    "get",
+    "bankingListSuggestionAcceptances",
+  ],
 };
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
@@ -75,6 +84,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(compan
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(ledgerOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(bankingOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -279,7 +293,6 @@ const ledgerSchemas = Object.fromEntries([
   "CompanyYearCloseGapCode",
   "CompanyYearCloseState",
   "LedgerAdministrativeCostWire",
-  "LedgerBankSuggestionWire",
   "LedgerCorporateDecisionFinalizationWire",
   "LedgerCompanyYearCloseAssessmentWire",
   "LedgerEntryKind",
@@ -329,6 +342,19 @@ const ledgerSchemas = Object.fromEntries([
   "ReconstructionState",
   "TaxSettlementKind",
 ].map((name) => [name, contract.components.schemas[name]]));
+const bankingSchemas = Object.fromEntries([
+  "AcceptBankSuggestionWire",
+  "AcceptedBankSuggestionWire",
+  "BankStatementImportResultWire",
+  "BankStatementImportWire",
+  "BankSuggestionAcceptancePageWire",
+  "BankSuggestionKind",
+  "BankSuggestionWire",
+  "BankTransactionPageWire",
+  "BankTransactionWire",
+  "BankingPageWire",
+  "SupportedBankDataFormat",
+].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
 );
@@ -345,6 +371,8 @@ ${renderInterface("CompanyContextResponse", companyContextResponseSchema)}
 ${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${renderInterface("ProblemDetails", problemSchema)}
 
@@ -422,6 +450,8 @@ ${[
 
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${renderGuard("ProblemDetails", problemSchema)}
 
 export class TalliApiError extends Error {
@@ -474,6 +504,12 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
 export interface LedgerReconstructionRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
+}
+
+export interface BankingListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -1097,18 +1133,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async ledgerPostBankSuggestionOutcome(
-      body: LedgerBankSuggestionWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/bank-suggestion-outcomes",
-        body,
-        request,
-        "BANK_RULE_SUGGESTION",
-      );
-    },
-
     async ledgerPostInvestmentPurchase(
       body: LedgerInvestmentPurchaseWire,
       request: TalliMutationOptions,
@@ -1182,6 +1206,64 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isLedgerPeriodLockWire,
+      );
+    },
+
+    async bankingImportStatement(
+      body: BankStatementImportWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/statement-imports\`,
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingListTransactions(
+      request: BankingListRequest,
+    ): Promise<BankTransactionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/transactions?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isBankTransactionPageWire,
+      );
+    },
+
+    async bankingAcceptSuggestion(
+      body: AcceptBankSuggestionWire,
+      request: TalliMutationOptions,
+    ): Promise<AcceptedBankSuggestionWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/suggestion-acceptances\`,
+        "POST",
+        request,
+        body,
+        isAcceptedBankSuggestionWire,
+      );
+    },
+
+    async bankingListSuggestionAcceptances(
+      request: BankingListRequest,
+    ): Promise<BankSuggestionAcceptancePageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/suggestion-acceptances?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isBankSuggestionAcceptancePageWire,
       );
     },
   };

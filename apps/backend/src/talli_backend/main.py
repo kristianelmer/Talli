@@ -16,10 +16,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
+from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.application.banking_session import (
+    BankingAuthenticationError,
+    BankingSessionFactory,
+)
 from talli_backend.application.ledger_workflow import (
-    AcceptBankTransactionSuggestionCommand,
     FinalizeCorporateDecisionCommand,
     LedgerAuthenticationError,
     LedgerSessionFactory,
@@ -37,6 +41,21 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
     LegacyOpeningSnapshotPage,
     LegacyOpeningSnapshotView,
+)
+from talli_backend.modules.banking.public import (
+    AcceptBankSuggestionCommand,
+    AcceptedBankSuggestion,
+    BankStatementImportResult,
+    BankSuggestionAcceptancePage,
+    BankSuggestionAcceptanceId,
+    BankSuggestionKind,
+    BankTransaction,
+    BankTransactionId,
+    BankTransactionPage,
+    BankingCursor,
+    BankingError,
+    ImportBankStatementCommand,
+    SupportedBankDataFormat,
 )
 from talli_backend.modules.company_access.public import (
     AcceptCompanyInvitationRequest,
@@ -82,7 +101,6 @@ from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
     BankLoanMaturity,
     BankLoanReferenceId,
-    BankSuggestionRule,
     CapitalIncreasePhase,
     CapitalIncreaseReferenceId,
     CapitalReductionRecognition,
@@ -204,6 +222,75 @@ class LedgerMoneyWire(StrictTransportModel):
 
     def to_domain(self) -> Money:
         return Money.nok(self.amount)
+
+
+class BankStatementImportWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    data_format: SupportedBankDataFormat
+    statement_text: str = Field(min_length=1, max_length=5_000_000)
+
+
+class BankStatementImportResultWire(TransportModel):
+    imported_count: int = Field(ge=0)
+    duplicate_count: int = Field(ge=0)
+    replayed: bool
+
+
+class AcceptBankSuggestionWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    acceptance_id: UUID
+    bank_transaction_id: UUID
+    expected_suggestion: BankSuggestionKind
+    expected_rule_version: str = Field(min_length=1, max_length=80)
+
+
+class BankSuggestionWire(TransportModel):
+    kind: str
+    rule_version: str
+    reason: str
+
+
+class BankTransactionWire(TransportModel):
+    transaction_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    transaction_date: date
+    text: str
+    amount: LedgerMoneyWire
+    balance: LedgerMoneyWire | None
+    source_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    matched_entry_id: UUID | None
+    matched_action_reference: str | None
+    warning_accepted: bool
+    suggestion: BankSuggestionWire | None
+    created_at: datetime
+
+
+class BankingPageWire(TransportModel):
+    next_cursor: str | None
+    has_more: bool
+
+
+class BankTransactionPageWire(TransportModel):
+    items: list[BankTransactionWire]
+    page: BankingPageWire
+
+
+class AcceptedBankSuggestionWire(TransportModel):
+    acceptance_id: UUID
+    bank_transaction_id: UUID
+    accounting_entry_id: UUID
+    suggestion: BankSuggestionWire
+    accepted_by: UUID
+    accepted_at: datetime
+    replayed: bool
+
+
+class BankSuggestionAcceptancePageWire(TransportModel):
+    items: list[AcceptedBankSuggestionWire]
+    page: BankingPageWire
 
 
 class LedgerLineWire(StrictTransportModel):
@@ -475,13 +562,6 @@ class LedgerTaxSettlementWire(LedgerCompanyYearWire):
     document_id: UUID | None = None
 
 
-class LedgerBankSuggestionWire(LedgerCompanyYearWire):
-    acceptance_id: UUID
-    bank_transaction_id: UUID
-    rule: Literal["bank_fee", "system_subscription", "deposit_interest"]
-    rule_version: str = Field(min_length=1, max_length=64)
-
-
 class LedgerInvestmentPurchaseWire(LedgerCompanyYearWire):
     action_id: UUID
     investment_key: str = Field(min_length=1, max_length=255)
@@ -724,6 +804,56 @@ def _money_wire(value: Money) -> LedgerMoneyWire:
     return LedgerMoneyWire(amount=format(value.amount, "f"), currency=value.currency.value)
 
 
+def _bank_transaction_wire(value: BankTransaction) -> BankTransactionWire:
+    return BankTransactionWire(
+        transaction_id=str(value.transaction_id),
+        company_id=str(value.company_id),
+        income_year=int(value.income_year),
+        transaction_date=value.transaction_date.value,
+        text=value.text,
+        amount=_money_wire(value.amount),
+        balance=_money_wire(value.balance) if value.balance is not None else None,
+        source_hash=value.source_hash,
+        matched_entry_id=(
+            str(value.matched_entry_id) if value.matched_entry_id is not None else None
+        ),
+        matched_action_reference=(
+            str(value.matched_action_reference)
+            if value.matched_action_reference is not None
+            else None
+        ),
+        warning_accepted=value.warning_accepted,
+        suggestion=(
+            BankSuggestionWire(
+                kind=value.suggestion.kind.value,
+                rule_version=value.suggestion.rule_version,
+                reason=value.suggestion.reason,
+            )
+            if value.suggestion is not None
+            else None
+        ),
+        created_at=value.created_at.value,
+    )
+
+
+def _accepted_bank_suggestion_wire(
+    value: AcceptedBankSuggestion,
+) -> AcceptedBankSuggestionWire:
+    return AcceptedBankSuggestionWire(
+        acceptance_id=str(value.acceptance_id),
+        bank_transaction_id=str(value.bank_transaction_id),
+        accounting_entry_id=str(value.accounting_entry_id),
+        suggestion=BankSuggestionWire(
+            kind=value.suggestion.kind.value,
+            rule_version=value.suggestion.rule_version,
+            reason=value.suggestion.reason,
+        ),
+        accepted_by=str(value.accepted_by.subject),
+        accepted_at=value.accepted_at.value,
+        replayed=value.replayed,
+    )
+
+
 def _line_wire(value: LedgerLine) -> LedgerLineWire:
     return LedgerLineWire(
         account=value.account,
@@ -941,6 +1071,7 @@ def create_app(
     company_access_gateway: CompanyAccessGateway | None = None,
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
+    banking_session_factory: BankingSessionFactory | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="Talli API",
@@ -961,6 +1092,7 @@ def create_app(
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
+    banking_application = compose_banking_application(banking_session_factory)
 
     def bearer_token(
         credentials: HTTPAuthorizationCredentials | None,
@@ -1026,11 +1158,43 @@ def create_app(
                 detail=error.message or "The opening snapshot could not be recorded.",
             ) from None
 
+    async def banking_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except BankingAuthenticationError:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        except BankingError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Banking request failed",
+                detail=error.message or "The banking request could not be completed.",
+            ) from None
+
     def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
         try:
             return factory()
         except (TypeError, ValueError, ShareholderRegisterFilingError):
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT") from None
+
+    def banking_input(factory: Callable[[], ResponseT]) -> ResponseT:
+        try:
+            return factory()
+        except (TypeError, ValueError, BankingError):
+            raise BankingError.invalid_input("BANKING_INVALID_INPUT") from None
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
@@ -1668,6 +1832,214 @@ def create_app(
         "headers": {"X-Request-ID": REQUEST_ID_HEADER}
     }
 
+    banking_errors: Any = {
+        status: {
+            "description": "Banking request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (400, 401, 403, 404, 409, 422, 503)
+    }
+    banking_success: dict[str, Any] = {
+        "headers": {"X-Request-ID": REQUEST_ID_HEADER}
+    }
+
+    @application.post(
+        "/api/v1/banking/statement-imports",
+        operation_id="bankingImportStatement",
+        response_model=BankStatementImportResultWire,
+        responses={
+            200: {"description": "Bank statement imported idempotently."}
+            | banking_success
+        }
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def import_bank_statement(
+        request: Request,
+        command: BankStatementImportWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankStatementImportResultWire:
+        async def execute() -> BankStatementImportResultWire:
+            session = await banking_application.session(bearer_token(credentials))
+            result: BankStatementImportResult = await session.import_statement(
+                banking_input(
+                    lambda: ImportBankStatementCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        data_format=command.data_format,
+                        statement_text=command.statement_text,
+                    )
+                )
+            )
+            return BankStatementImportResultWire(
+                imported_count=result.imported_count,
+                duplicate_count=result.duplicate_count,
+                replayed=result.replayed,
+            )
+
+        return await banking_call(execute)
+
+    @application.get(
+        "/api/v1/banking/transactions",
+        operation_id="bankingListTransactions",
+        response_model=BankTransactionPageWire,
+        responses={
+            200: {"description": "Authorized bank-transaction page."}
+            | banking_success
+        }
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_bank_transactions(
+        request: Request,
+        company_id: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankTransactionPageWire:
+        async def execute() -> BankTransactionPageWire:
+            session = await banking_application.session(bearer_token(credentials))
+            page: BankTransactionPage = await session.list_transactions(
+                actor_id=session.actor_id,
+                company_ids=banking_input(
+                    lambda: tuple(CompanyId(str(value)) for value in company_id)
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    banking_input(lambda: BankingCursor(cursor)) if cursor else None
+                ),
+                limit=limit,
+            )
+            return BankTransactionPageWire(
+                items=[_bank_transaction_wire(item) for item in page.items],
+                page=BankingPageWire(
+                    next_cursor=(
+                        str(page.page.next_cursor)
+                        if page.page.next_cursor is not None
+                        else None
+                    ),
+                    has_more=page.page.has_more,
+                ),
+            )
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/suggestion-acceptances",
+        operation_id="bankingAcceptSuggestion",
+        response_model=AcceptedBankSuggestionWire,
+        responses={
+            200: {"description": "Bank suggestion explicitly accepted."}
+            | banking_success
+        }
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def accept_bank_suggestion(
+        request: Request,
+        command: AcceptBankSuggestionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AcceptedBankSuggestionWire:
+        async def execute() -> AcceptedBankSuggestionWire:
+            session = await banking_application.session(bearer_token(credentials))
+            accepted = await session.accept_suggestion(
+                banking_input(
+                    lambda: AcceptBankSuggestionCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        acceptance_id=BankSuggestionAcceptanceId(
+                            str(command.acceptance_id)
+                        ),
+                        bank_transaction_id=BankTransactionId(
+                            str(command.bank_transaction_id)
+                        ),
+                        expected_suggestion=command.expected_suggestion,
+                        expected_rule_version=command.expected_rule_version,
+                    )
+                )
+            )
+            return _accepted_bank_suggestion_wire(accepted)
+
+        return await banking_call(execute)
+
+    @application.get(
+        "/api/v1/banking/suggestion-acceptances",
+        operation_id="bankingListSuggestionAcceptances",
+        response_model=BankSuggestionAcceptancePageWire,
+        responses={
+            200: {"description": "Authorized suggestion-acceptance page."}
+            | banking_success
+        }
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_bank_suggestion_acceptances(
+        request: Request,
+        company_id: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankSuggestionAcceptancePageWire:
+        async def execute() -> BankSuggestionAcceptancePageWire:
+            session = await banking_application.session(bearer_token(credentials))
+            page: BankSuggestionAcceptancePage = (
+                await session.list_suggestion_acceptances(
+                    actor_id=session.actor_id,
+                    company_ids=banking_input(
+                        lambda: tuple(
+                            CompanyId(str(value)) for value in company_id
+                        )
+                    ),
+                    correlation_id=CorrelationId(request.state.request_id),
+                    cursor=(
+                        banking_input(lambda: BankingCursor(cursor))
+                        if cursor
+                        else None
+                    ),
+                    limit=limit,
+                )
+            )
+            return BankSuggestionAcceptancePageWire(
+                items=[
+                    _accepted_bank_suggestion_wire(item) for item in page.items
+                ],
+                page=BankingPageWire(
+                    next_cursor=(
+                        str(page.page.next_cursor)
+                        if page.page.next_cursor is not None
+                        else None
+                    ),
+                    has_more=page.page.has_more,
+                ),
+            )
+
+        return await banking_call(execute)
+
     def ledger_correlation(request: Request) -> CorrelationId:
         return CorrelationId(request.state.request_id)
 
@@ -2139,47 +2511,6 @@ def create_app(
             return ledger_writer_wire(
                 result, company_id=command.company_id, income_year=command.income_year,
                 expected_kind=LedgerEntryKind.TAX_SETTLEMENT,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/bank-suggestion-outcomes",
-        operation_id="ledgerPostBankSuggestionOutcome",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Bank suggestion accepted atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_bank_suggestion(
-        request: Request,
-        command: LedgerBankSuggestionWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        rules = {
-            "bank_fee": BankSuggestionRule.BANK_FEE,
-            "system_subscription": BankSuggestionRule.SYSTEM_SUBSCRIPTION,
-            "deposit_interest": BankSuggestionRule.DEPOSIT_INTEREST,
-        }
-
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: AcceptBankTransactionSuggestionCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), acceptance_id=LedgerSourceRecordId(str(command.acceptance_id)),
-                bank_transaction_id=LedgerSourceRecordId(str(command.bank_transaction_id)),
-                rule=rules[command.rule], rule_version=command.rule_version,
-            ))
-            result = await session.accept_bank_transaction_suggestion(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.BANK_RULE_SUGGESTION,
             )
 
         return await ledger_call(execute)

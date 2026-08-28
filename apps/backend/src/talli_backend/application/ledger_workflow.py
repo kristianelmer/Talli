@@ -25,7 +25,6 @@ from talli_backend.application.shareholder_register_compatibility import (
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
-    BankSuggestionRule,
     CompanyYearCloseAssessment,
     LedgerCommand,
     LedgerCommands,
@@ -53,7 +52,6 @@ from talli_backend.modules.ledger.public import (
     PeriodLock,
     PeriodLockPage,
     PostAdministrativeCostCommand,
-    PostBankSuggestionOutcomeCommand,
     PostedLedgerEntry,
     PostInvestmentDividendCommand,
     PostInvestmentPurchaseCommand,
@@ -139,14 +137,6 @@ class RecordTaxSettlementCommand(LedgerCommand):
     document_status: str
     bank_transaction_id: LedgerSourceRecordId | None
     document_id: LedgerSourceRecordId | None
-
-
-@dataclass(frozen=True, slots=True)
-class AcceptBankTransactionSuggestionCommand(LedgerCommand):
-    acceptance_id: LedgerSourceRecordId
-    bank_transaction_id: LedgerSourceRecordId
-    rule: BankSuggestionRule
-    rule_version: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -735,45 +725,6 @@ class LedgerApplicationSession:
             )
             return LedgerWriterResult(posted, result, False)
 
-    async def accept_bank_transaction_suggestion(
-        self, command: AcceptBankTransactionSuggestionCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_bank_transaction_suggestion(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(
-                    replay, command, LedgerEntryKind.BANK_RULE_SUGGESTION
-                )
-            try:
-                amount = Money.nok(str(prepared["amount"]))
-                transaction_text = str(prepared["transactionText"])
-            except (KeyError, TypeError, ValueError):
-                raise LedgerError.unavailable() from None
-            posted = await self._facade_factory(
-                transaction
-            ).post_bank_suggestion_outcome(
-                PostBankSuggestionOutcomeCommand(
-                    company_id=command.company_id,
-                    actor_id=command.actor_id,
-                    correlation_id=command.correlation_id,
-                    idempotency_key=command.idempotency_key,
-                    income_year=command.income_year,
-                    acceptance_id=command.acceptance_id,
-                    rule=command.rule,
-                    amount=amount,
-                    transaction_text=transaction_text,
-                )
-            )
-            result = await transaction.complete_bank_transaction_suggestion(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def record_investment_purchase_fifo(
         self, command: RecordInvestmentPurchaseFifoCommand
     ) -> LedgerWriterResult:
@@ -1086,7 +1037,6 @@ class LedgerApplication:
 
 
 __all__ = [
-    "AcceptBankTransactionSuggestionCommand",
     "FinalizeCorporateDecisionCommand",
     "LedgerApplication",
     "LedgerAuthenticationError",

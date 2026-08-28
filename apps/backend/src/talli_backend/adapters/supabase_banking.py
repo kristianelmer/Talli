@@ -18,7 +18,11 @@ from talli_backend.adapters.supabase_ledger import (
     SupabaseLedgerWorkflowTransaction,
     _VerifiedActor,
 )
-from talli_backend.application.banking_session import BankingAuthenticationError
+from talli_backend.application.banking_session import (
+    BankingAuthenticationError,
+    BankingSessionFactory,
+)
+from talli_backend.application.banking_workflow import BankingApplication
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.modules.banking.public import (
     AcceptBankSuggestionCommand,
@@ -43,6 +47,7 @@ from talli_backend.modules.banking.public import (
     PreparedBankSuggestion,
     banking_persistence_adapter,
 )
+from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import (
     ActorId,
     ActorKind,
@@ -418,4 +423,20 @@ class SupabaseBankingAdapter(SupabaseLedgerAdapter):
         return SupabaseBankingSession(self._configuration.database_url, verified)
 
 
-__all__ = ["BankingSupabaseConfiguration", "SupabaseBankingAdapter", "SupabaseBankingSession"]
+def compose_banking_application(
+    sessions: BankingSessionFactory | None = None,
+) -> BankingApplication:
+    """Bind banking and ledger implementations outside the transport seam."""
+
+    return BankingApplication(
+        sessions or SupabaseBankingAdapter.from_environment(),
+        LedgerService,
+    )
+
+
+__all__ = [
+    "BankingSupabaseConfiguration",
+    "SupabaseBankingAdapter",
+    "SupabaseBankingSession",
+    "compose_banking_application",
+]

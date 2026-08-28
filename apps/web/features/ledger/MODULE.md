@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostBankSuggestionOutcome","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
@@ -15,7 +15,7 @@ company action.
 
 The browser sends only business facts and stable operation identifiers. The
 backend ledger application coordinates the supported administrative-cost,
-bank-suggestion, investment, shareholder-loan, tax-settlement, corporate
+investment, shareholder-loan, tax-settlement, corporate
 decision, and owner-dividend writers in one request-bound transaction. The
 compatibility read does not assign filing policy or persistence ownership to
 this feature, and arbitrary source lines are not a browser API.

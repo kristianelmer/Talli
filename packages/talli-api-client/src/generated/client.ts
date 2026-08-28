@@ -429,15 +429,6 @@ export interface LedgerAdministrativeCostWire {
   payee: string;
 }
 
-export interface LedgerBankSuggestionWire {
-  acceptanceId: string;
-  bankTransactionId: string;
-  companyId: string;
-  incomeYear: number;
-  rule: "bank_fee" | "system_subscription" | "deposit_interest";
-  ruleVersion: string;
-}
-
 export interface LedgerCorporateDecisionFinalizationWire {
   companyId: string;
   decisionHash: string;
@@ -809,6 +800,79 @@ export interface LedgerWriterResultWire {
 export type ReconstructionState = "BLOCKED" | "READY";
 
 export type TaxSettlementKind = "payable" | "payment" | "refund";
+
+export interface AcceptBankSuggestionWire {
+  acceptanceId: string;
+  bankTransactionId: string;
+  companyId: string;
+  expectedRuleVersion: string;
+  expectedSuggestion: BankSuggestionKind;
+  incomeYear: number;
+}
+
+export interface AcceptedBankSuggestionWire {
+  acceptanceId: string;
+  acceptedAt: string;
+  acceptedBy: string;
+  accountingEntryId: string;
+  bankTransactionId: string;
+  replayed: boolean;
+  suggestion: BankSuggestionWire;
+}
+
+export interface BankStatementImportResultWire {
+  duplicateCount: number;
+  importedCount: number;
+  replayed: boolean;
+}
+
+export interface BankStatementImportWire {
+  companyId: string;
+  dataFormat: SupportedBankDataFormat;
+  incomeYear: number;
+  statementText: string;
+}
+
+export interface BankSuggestionAcceptancePageWire {
+  items: AcceptedBankSuggestionWire[];
+  page: BankingPageWire;
+}
+
+export type BankSuggestionKind = "BANK_FEE" | "SYSTEM_SUBSCRIPTION" | "DEPOSIT_INTEREST";
+
+export interface BankSuggestionWire {
+  kind: string;
+  reason: string;
+  ruleVersion: string;
+}
+
+export interface BankTransactionPageWire {
+  items: BankTransactionWire[];
+  page: BankingPageWire;
+}
+
+export interface BankTransactionWire {
+  amount: LedgerMoneyWire;
+  balance: LedgerMoneyWire | null;
+  companyId: string;
+  createdAt: string;
+  incomeYear: number;
+  matchedActionReference: string | null;
+  matchedEntryId: string | null;
+  sourceHash: string;
+  suggestion: BankSuggestionWire | null;
+  text: string;
+  transactionDate: string;
+  transactionId: string;
+  warningAccepted: boolean;
+}
+
+export interface BankingPageWire {
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
+export type SupportedBankDataFormat = "CSV";
 
 export interface ProblemDetails {
   code: string;
@@ -1306,19 +1370,6 @@ function isLedgerAdministrativeCostWire(value: unknown): value is LedgerAdminist
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     typeof value.paidDate === "string" &&
     (typeof value.payee === "string" && value.payee.length >= 1 && value.payee.length <= 255)
-  );
-}
-
-function isLedgerBankSuggestionWire(value: unknown): value is LedgerBankSuggestionWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["acceptanceId","bankTransactionId","companyId","incomeYear","rule","ruleVersion"]) &&
-    isUuid(value.acceptanceId) &&
-    isUuid(value.bankTransactionId) &&
-    isUuid(value.companyId) &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    (value.rule === "bank_fee" || value.rule === "system_subscription" || value.rule === "deposit_interest") &&
-    (typeof value.ruleVersion === "string" && value.ruleVersion.length >= 1 && value.ruleVersion.length <= 64)
   );
 }
 
@@ -1864,6 +1915,119 @@ function isTaxSettlementKind(value: unknown): value is TaxSettlementKind {
   return value === "payable" || value === "payment" || value === "refund";
 }
 
+function isAcceptBankSuggestionWire(value: unknown): value is AcceptBankSuggestionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptanceId","bankTransactionId","companyId","expectedRuleVersion","expectedSuggestion","incomeYear"]) &&
+    isUuid(value.acceptanceId) &&
+    isUuid(value.bankTransactionId) &&
+    isUuid(value.companyId) &&
+    (typeof value.expectedRuleVersion === "string" && value.expectedRuleVersion.length >= 1 && value.expectedRuleVersion.length <= 80) &&
+    isBankSuggestionKind(value.expectedSuggestion) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100)
+  );
+}
+
+function isAcceptedBankSuggestionWire(value: unknown): value is AcceptedBankSuggestionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptanceId","acceptedAt","acceptedBy","accountingEntryId","bankTransactionId","replayed","suggestion"]) &&
+    isUuid(value.acceptanceId) &&
+    isDateTime(value.acceptedAt) &&
+    isUuid(value.acceptedBy) &&
+    isUuid(value.accountingEntryId) &&
+    isUuid(value.bankTransactionId) &&
+    typeof value.replayed === "boolean" &&
+    isBankSuggestionWire(value.suggestion)
+  );
+}
+
+function isBankStatementImportResultWire(value: unknown): value is BankStatementImportResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["duplicateCount","importedCount","replayed"]) &&
+    (typeof value.duplicateCount === "number" && Number.isInteger(value.duplicateCount) && value.duplicateCount >= 0) &&
+    (typeof value.importedCount === "number" && Number.isInteger(value.importedCount) && value.importedCount >= 0) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isBankStatementImportWire(value: unknown): value is BankStatementImportWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","dataFormat","incomeYear","statementText"]) &&
+    isUuid(value.companyId) &&
+    isSupportedBankDataFormat(value.dataFormat) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.statementText === "string" && value.statementText.length >= 1 && value.statementText.length <= 5000000)
+  );
+}
+
+function isBankSuggestionAcceptancePageWire(value: unknown): value is BankSuggestionAcceptancePageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isAcceptedBankSuggestionWire(item)) &&
+    isBankingPageWire(value.page)
+  );
+}
+
+function isBankSuggestionKind(value: unknown): value is BankSuggestionKind {
+  return value === "BANK_FEE" || value === "SYSTEM_SUBSCRIPTION" || value === "DEPOSIT_INTEREST";
+}
+
+function isBankSuggestionWire(value: unknown): value is BankSuggestionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["kind","reason","ruleVersion"]) &&
+    typeof value.kind === "string" &&
+    typeof value.reason === "string" &&
+    typeof value.ruleVersion === "string"
+  );
+}
+
+function isBankTransactionPageWire(value: unknown): value is BankTransactionPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isBankTransactionWire(item)) &&
+    isBankingPageWire(value.page)
+  );
+}
+
+function isBankTransactionWire(value: unknown): value is BankTransactionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","balance","companyId","createdAt","incomeYear","matchedActionReference","matchedEntryId","sourceHash","suggestion","text","transactionDate","transactionId","warningAccepted"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    (isLedgerMoneyWire(value.balance) || value.balance === null) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.matchedActionReference === "string" || value.matchedActionReference === null) &&
+    (isUuid(value.matchedEntryId) || value.matchedEntryId === null) &&
+    (typeof value.sourceHash === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.sourceHash)) &&
+    (isBankSuggestionWire(value.suggestion) || value.suggestion === null) &&
+    typeof value.text === "string" &&
+    typeof value.transactionDate === "string" &&
+    isUuid(value.transactionId) &&
+    typeof value.warningAccepted === "boolean"
+  );
+}
+
+function isBankingPageWire(value: unknown): value is BankingPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["hasMore","nextCursor"]) &&
+    typeof value.hasMore === "boolean" &&
+    (typeof value.nextCursor === "string" || value.nextCursor === null)
+  );
+}
+
+function isSupportedBankDataFormat(value: unknown): value is SupportedBankDataFormat {
+  return value === "CSV";
+}
+
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
@@ -1928,6 +2092,12 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
 export interface LedgerReconstructionRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
+}
+
+export interface BankingListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -2551,18 +2721,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async ledgerPostBankSuggestionOutcome(
-      body: LedgerBankSuggestionWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/bank-suggestion-outcomes",
-        body,
-        request,
-        "BANK_RULE_SUGGESTION",
-      );
-    },
-
     async ledgerPostInvestmentPurchase(
       body: LedgerInvestmentPurchaseWire,
       request: TalliMutationOptions,
@@ -2636,6 +2794,64 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isLedgerPeriodLockWire,
+      );
+    },
+
+    async bankingImportStatement(
+      body: BankStatementImportWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/banking/statement-imports`,
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingListTransactions(
+      request: BankingListRequest,
+    ): Promise<BankTransactionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/banking/transactions?${query}`,
+        "GET",
+        request,
+        undefined,
+        isBankTransactionPageWire,
+      );
+    },
+
+    async bankingAcceptSuggestion(
+      body: AcceptBankSuggestionWire,
+      request: TalliMutationOptions,
+    ): Promise<AcceptedBankSuggestionWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/banking/suggestion-acceptances`,
+        "POST",
+        request,
+        body,
+        isAcceptedBankSuggestionWire,
+      );
+    },
+
+    async bankingListSuggestionAcceptances(
+      request: BankingListRequest,
+    ): Promise<BankSuggestionAcceptancePageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/banking/suggestion-acceptances?${query}`,
+        "GET",
+        request,
+        undefined,
+        isBankSuggestionAcceptancePageWire,
       );
     },
   };

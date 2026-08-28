@@ -18,6 +18,14 @@ import type {
 } from "../rf1086-submission";
 import type { SystemUserRequestStatus } from "../system-user-requests";
 import {
+  loadBankSuggestionAcceptances,
+  loadBankTransactions,
+  presentBankSuggestionAcceptances,
+  presentBankTransactions,
+  type BankSuggestionAcceptancePresentation,
+  type BankTransactionPresentation,
+} from "../../../features/banking";
+import {
   loadOperatorContext,
   presentOperatorCompanyRecord,
   searchOperatorCompanyRecords,
@@ -430,34 +438,9 @@ export type FilingReadinessSnapshotRow = {
 
 export type LedgerEntryRow = LedgerEntryPresentation;
 
-export type BankTransactionRow = {
-  id: string;
-  company_id: string;
-  income_year: number;
-  transaction_date: string;
-  text: string;
-  amount: number;
-  balance: number | null;
-  source_hash: string;
-  matched_entry_id: string | null;
-  matched_action_id: string | null;
-  accepted_warning: boolean;
-  created_by: string;
-  created_at: string;
-};
+export type BankTransactionRow = BankTransactionPresentation;
 
-export type BankSuggestionAcceptanceRow = {
-  id: string;
-  company_id: string;
-  bank_transaction_id: string;
-  ledger_entry_id: string;
-  rule_id: "bank_fee" | "system_subscription" | "deposit_interest";
-  rule_version: string;
-  reason: string;
-  lines: unknown[];
-  accepted_by: string;
-  accepted_at: string;
-};
+export type BankSuggestionAcceptanceRow = BankSuggestionAcceptancePresentation;
 
 export type HoldingActionRow = {
   id: string;
@@ -947,16 +930,16 @@ export async function listBankTransactions(companyIds: string[]) {
     return { transactions: [] as BankTransactionRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("bank_transactions")
-    .select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("transaction_date", { ascending: false });
-
-  return {
-    transactions: (data ?? []) as BankTransactionRow[],
-    error: error?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return { transactions: [] as BankTransactionRow[], error: "Innlogging kreves." };
+  try {
+    const transactions = presentBankTransactions(
+      await loadBankTransactions(accessToken, companyIds),
+    ).sort((left, right) => right.transaction_date.localeCompare(left.transaction_date));
+    return { transactions, error: null };
+  } catch {
+    return { transactions: [] as BankTransactionRow[], error: "Kunne ikke laste bankbevegelser." };
+  }
 }
 
 export async function listBankSuggestionAcceptances(companyIds: string[]) {
@@ -964,16 +947,16 @@ export async function listBankSuggestionAcceptances(companyIds: string[]) {
     return { acceptances: [] as BankSuggestionAcceptanceRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("bank_suggestion_acceptances")
-    .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
-    .in("company_id", companyIds)
-    .order("accepted_at", { ascending: false });
-
-  return {
-    acceptances: (data ?? []) as BankSuggestionAcceptanceRow[],
-    error: error?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return { acceptances: [] as BankSuggestionAcceptanceRow[], error: "Innlogging kreves." };
+  try {
+    const acceptances = presentBankSuggestionAcceptances(
+      await loadBankSuggestionAcceptances(accessToken, companyIds),
+    ).sort((left, right) => right.accepted_at.localeCompare(left.accepted_at));
+    return { acceptances, error: null };
+  } catch {
+    return { acceptances: [] as BankSuggestionAcceptanceRow[], error: "Kunne ikke laste bankforslag." };
+  }
 }
 
 export async function listHoldingActions(companyIds: string[]) {

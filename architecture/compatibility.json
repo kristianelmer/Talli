@@ -296,46 +296,6 @@
       ]
     },
     {
-      "id": "compat-banking-persistence",
-      "kind": "legacy-facade",
-      "capability": "banking",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#140",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:banking",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove bank import and reconciliation persistence in #140.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "importBankCsv"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_suggestion_acceptances",
-          "operation": "listBankSuggestionAcceptances"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "listBankTransactions"
-        }
-      ]
-    },
-    {
       "id": "compat-investment-purchase-persistence",
       "kind": "legacy-facade",
       "capability": "investments",

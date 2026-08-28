@@ -4,7 +4,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { parseBankCsv } from "./lib/bank";
 import {
   applyBillingProviderEvent,
   BillingValidationError,
@@ -98,12 +97,18 @@ import {
   revokeCompanyInvitation,
 } from "../features/company-access";
 import {
+  acceptBankSuggestion,
+  bankingActionErrorMessage,
+  bankingOutcomeMayBeUnknown,
+  importBankStatement,
+  type BankSuggestionKind,
+} from "../features/banking";
+import {
   finalizeLedgerCorporateDecision,
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
-  postLedgerBankSuggestionOutcome,
   postLedgerInvestmentDividend,
   postLedgerInvestmentPurchase,
   postLedgerInvestmentSale,
@@ -201,6 +206,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
   hasSupabaseEnv,
+  listBankTransactions,
   listLedgerEntries,
   listOpeningSetups,
   listPeriodLocks,
@@ -1656,46 +1662,39 @@ export async function importBankCsv(formData: FormData) {
     failTo(returnTo, "Innlogging kreves.");
   }
 
-  const companyId = formString(formData, "companyId");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const csvText = formString(formData, "csvText");
-  let transactions;
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    transactions = parseBankCsv(csvText);
+    await importBankStatement(
+      accessToken,
+      { companyId, incomeYear, dataFormat: "CSV", statementText: csvText },
+      operationId,
+      operationId,
+    );
   } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Bank CSV kunne ikke leses");
+    const outcomeMayBeUnknown = bankingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: bankingActionErrorMessage(error),
+      bankImportOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
-  if (transactions.length === 0) {
-    failTo(returnTo, "Bank CSV mangler transaksjoner.");
-  }
-
-  const { error: insertError } = await supabase.from("bank_transactions").upsert(
-    transactions.map((transaction) => ({
-      company_id: companyId,
-      income_year: incomeYear,
-      transaction_date: transaction.transactionDate,
-      text: transaction.text,
-      amount: transaction.amount,
-      balance: transaction.balance,
-      source_hash: transaction.sourceHash,
-      created_by: user.id,
-    })),
-    { onConflict: "company_id,income_year,source_hash", ignoreDuplicates: true },
-  );
-  if (insertError) {
-    failTo(returnTo, insertError.message);
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "bank",
-    action: "bank_csv_imported",
-    message: `Bank CSV importert for ${incomeYear}.`,
-  });
+  // #155 owns the remaining audit facade. Until that serialized stage, retain
+  // the frozen web-side observation of the backend's atomic import audit fact.
+  await supabase
+    .from("audit_events")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("actor_id", user.id)
+    .eq("action", "bank_csv_imported")
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   revalidatePath("/");
-  redirect(returnTo);
+  redirect(returnTo === "/transactions" ? "/transactions?imported=1" : returnTo);
 }
 
 export async function acceptBankTransactionSuggestion(formData: FormData) {
@@ -1715,10 +1714,10 @@ export async function acceptBankTransactionSuggestion(formData: FormData) {
   const bankTransactionId = requiredFormUuid(formData, "bankTransactionId");
   const companyId = requiredFormUuid(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear"));
-  const requestedRuleId = formString(formData, "ruleId");
+  const expectedSuggestion = formString(formData, "expectedSuggestion");
   const requestedRuleVersion = formString(formData, "ruleVersion");
-  if (!(["bank_fee", "system_subscription", "deposit_interest"] as const).includes(
-    requestedRuleId as "bank_fee" | "system_subscription" | "deposit_interest",
+  if (!(["BANK_FEE", "SYSTEM_SUBSCRIPTION", "DEPOSIT_INTEREST"] as const).includes(
+    expectedSuggestion as BankSuggestionKind,
   )) {
     failTo(returnTo, "Forslaget er endret eller ikke lenger gyldig. Last siden på nytt.");
   }
@@ -1727,23 +1726,23 @@ export async function acceptBankTransactionSuggestion(formData: FormData) {
     failTo(returnTo, "Innlogging kreves.");
   }
   try {
-    await postLedgerBankSuggestionOutcome(
+    await acceptBankSuggestion(
       accessToken,
       {
         acceptanceId: operationId,
         bankTransactionId,
         companyId,
         incomeYear,
-        rule: requestedRuleId as "bank_fee" | "system_subscription" | "deposit_interest",
-        ruleVersion: requestedRuleVersion,
+        expectedSuggestion: expectedSuggestion as BankSuggestionKind,
+        expectedRuleVersion: requestedRuleVersion,
       },
       operationId,
       operationId,
     );
   } catch (error) {
-    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = bankingOutcomeMayBeUnknown(error);
     redirect(ownerPathWithQuery(returnTo, {
-      error: ledgerActionErrorMessage(error),
+      error: bankingActionErrorMessage(error),
       suggestionOperationId: outcomeMayBeUnknown ? operationId : undefined,
       suggestionBankTransactionId: outcomeMayBeUnknown ? bankTransactionId : undefined,
     }));
@@ -3426,7 +3425,10 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error: error ? { message: error } : null,
     })),
     supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("bank_transactions").select("id, company_id, income_year, transaction_date, text, amount, balance, source_hash, matched_entry_id, matched_action_id, accepted_warning, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    listBankTransactions([companyId]).then(({ transactions, error }) => ({
+      data: transactions.filter((transaction) => transaction.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     listPeriodLocks([companyId]).then(({ locks, error }) => ({

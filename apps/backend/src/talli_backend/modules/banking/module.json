@@ -18,7 +18,7 @@
     "postgresSchemas": ["banking"],
     "tables": ["banking.suggestion_acceptances", "banking.transactions"],
     "storageBuckets": [],
-    "projections": [],
+    "projections": ["public.bank_transactions"],
     "migrations": "supabase/migrations/20260828100000_banking_capability.sql"
   },
   "ports": [
@@ -43,5 +43,5 @@
     "policy": "apps/backend/tests/test_banking.py",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
-  "compatibilityExceptions": ["compat-banking-persistence"]
+  "compatibilityExceptions": []
 }

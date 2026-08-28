@@ -21,7 +21,6 @@ from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.ledger_workflow import (
-    AcceptBankTransactionSuggestionCommand,
     FinalizeCorporateDecisionCommand,
     LedgerApplication,
     LedgerSessionFactory,
@@ -415,18 +414,6 @@ def _writer_payload(command: LedgerCommand) -> dict[str, object]:
             documentStatus=command.document_status,
             bankTransactionId=_optional_source(command.bank_transaction_id),
             documentId=_optional_source(command.document_id),
-        )
-    elif isinstance(command, AcceptBankTransactionSuggestionCommand):
-        rule = {
-            "BANK_FEE": "bank_fee",
-            "SYSTEM_SUBSCRIPTION": "system_subscription",
-            "DEPOSIT_INTEREST": "deposit_interest",
-        }[command.rule.value]
-        payload.update(
-            acceptanceId=str(command.acceptance_id),
-            bankTransactionId=str(command.bank_transaction_id),
-            rule=rule,
-            ruleVersion=command.rule_version,
         )
     elif isinstance(command, RecordInvestmentPurchaseFifoCommand):
         payload.update(
@@ -2415,29 +2402,6 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
         typed = self._writer_command(command, RecordTaxSettlementCommand)
         return await self._complete_writer(
             "select backend_system.complete_tax_settlement_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
-            typed,
-            posted_entry,
-            prepared,
-        )
-
-    async def prepare_bank_transaction_suggestion(
-        self, command: object
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, AcceptBankTransactionSuggestionCommand)
-        return await self._prepare_writer(
-            "select backend_system.prepare_bank_transaction_suggestion_v1(%s::jsonb, %s::text) as result",
-            typed,
-        )
-
-    async def complete_bank_transaction_suggestion(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry,
-        prepared: dict[str, object],
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, AcceptBankTransactionSuggestionCommand)
-        return await self._complete_writer(
-            "select backend_system.complete_bank_transaction_suggestion_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
             typed,
             posted_entry,
             prepared,

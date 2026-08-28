@@ -89,7 +89,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
     ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
     ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-    ["/api/v1/ledger/bank-suggestion-outcomes", "post", "ledgerPostBankSuggestionOutcome"],
     ["/api/v1/ledger/investment-purchases", "post", "ledgerPostInvestmentPurchase"],
     ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
     ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
@@ -129,7 +128,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     "LedgerInvestmentDividendWire",
     "LedgerShareholderLoanWire",
     "LedgerTaxSettlementWire",
-    "LedgerBankSuggestionWire",
     "LedgerInvestmentPurchaseWire",
     "LedgerInvestmentSaleWire",
     "LedgerCorporateDecisionFinalizationWire",
@@ -175,6 +173,68 @@ test("opening snapshots use the ledger compatibility authenticated read contract
     response.properties.items.items.$ref,
     "#/components/schemas/LedgerOpeningSnapshotWire",
   );
+});
+
+test("the committed contract exposes the account-free banking workflow", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const generatedClient = readFileSync(generatedClientPath, "utf8");
+  const operations = [
+    ["/api/v1/banking/statement-imports", "post", "bankingImportStatement"],
+    ["/api/v1/banking/transactions", "get", "bankingListTransactions"],
+    ["/api/v1/banking/suggestion-acceptances", "post", "bankingAcceptSuggestion"],
+    [
+      "/api/v1/banking/suggestion-acceptances",
+      "get",
+      "bankingListSuggestionAcceptances",
+    ],
+  ];
+  for (const [path, method, operationId] of operations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+
+  for (const operationId of ["bankingImportStatement", "bankingAcceptSuggestion"]) {
+    const operation = Object.values(contract.paths)
+      .flatMap((path) => Object.values(path))
+      .find((candidate) => candidate.operationId === operationId);
+    assert.equal(
+      operation.parameters.some(
+        (parameter) => parameter.in === "header"
+          && parameter.name === "Idempotency-Key"
+          && parameter.required === true,
+      ),
+      true,
+    );
+  }
+
+  const importRequest = contract.components.schemas.BankStatementImportWire;
+  const acceptanceRequest = contract.components.schemas.AcceptBankSuggestionWire;
+  for (const request of [importRequest, acceptanceRequest]) {
+    assert.equal(request.properties.account, undefined);
+    assert.equal(request.properties.lines, undefined);
+    assert.equal(request.properties.ledgerEntryId, undefined);
+  }
+  const suggestionSchemaName = acceptanceRequest.properties.expectedSuggestion.$ref
+    .split("/")
+    .at(-1);
+  assert.deepEqual(contract.components.schemas[suggestionSchemaName].enum, [
+    "BANK_FEE",
+    "SYSTEM_SUBSCRIPTION",
+    "DEPOSIT_INTEREST",
+  ]);
+  for (const clientSymbol of [
+    "BankStatementImportWire",
+    "BankTransactionPageWire",
+    "AcceptedBankSuggestionWire",
+    "bankingImportStatement",
+    "bankingListTransactions",
+    "bankingAcceptSuggestion",
+    "bankingListSuggestionAcceptances",
+  ]) {
+    assert.match(generatedClient, new RegExp(`\\b${clientSymbol}\\b`, "u"));
+  }
 });
 
 test("the tracer contract declares optional request and response correlation headers", () => {

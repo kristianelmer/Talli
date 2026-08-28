@@ -90,8 +90,43 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         execute pg_catalog.format(
           'grant ledger_workflow_store_owner to %I', current_user
         );
+        execute pg_catalog.format(
+          'grant banking_store_owner to %I', current_user
+        );
       end
       $browser_owner_cleanup_authority$`);
+    await database.query("set local role banking_store_owner");
+    await database.query(
+      "alter table backend_system.banking_command_receipts no force row level security",
+    );
+    await database.query(
+      "alter table banking.suggestion_acceptances no force row level security",
+    );
+    await database.query(
+      "alter table banking.transactions no force row level security",
+    );
+    await database.query(
+      "delete from backend_system.banking_command_receipts where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from banking.suggestion_acceptances where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from banking.transactions where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "alter table backend_system.banking_command_receipts force row level security",
+    );
+    await database.query(
+      "alter table banking.suggestion_acceptances force row level security",
+    );
+    await database.query(
+      "alter table banking.transactions force row level security",
+    );
+    await database.query("reset role");
     const ledgerTables = [
       "opening_received_dividend_settlements",
       "opening_position_component_sources",
@@ -148,6 +183,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         execute pg_catalog.format(
           'revoke ledger_workflow_store_owner from %I', current_user
         );
+        execute pg_catalog.format(
+          'revoke banking_store_owner from %I', current_user
+        );
       end
       $browser_owner_cleanup_authority$`);
     for (const table of [
@@ -176,6 +214,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "production_pilot_entitlements",
       "company_deletion_reviews",
       "bank_suggestion_acceptances",
+      "bank_transactions",
       "investment_lot_allocations",
       "investment_lots",
       "investment_positions",

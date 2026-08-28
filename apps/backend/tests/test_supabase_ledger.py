@@ -2037,7 +2037,7 @@ def test_writer_adapter_fails_closed_on_non_object_database_result() -> None:
     assert failure.value.code == "LEDGER_DEPENDENCY_UNAVAILABLE"
 
 
-def test_transaction_adapter_names_all_nine_exact_prepare_and_complete_routines() -> None:
+def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_routines() -> None:
     source = Path(__file__).parents[1].joinpath(
         "src/talli_backend/adapters/supabase_ledger.py"
     ).read_text(encoding="utf-8")
@@ -2046,7 +2046,6 @@ def test_transaction_adapter_names_all_nine_exact_prepare_and_complete_routines(
         "investment_dividend",
         "shareholder_loan",
         "tax_settlement",
-        "bank_transaction_suggestion",
         "investment_purchase_fifo",
         "investment_sale_fifo",
         "corporate_decision_finalization",
@@ -2054,6 +2053,8 @@ def test_transaction_adapter_names_all_nine_exact_prepare_and_complete_routines(
     ):
         assert f"backend_system.prepare_{operation}_v1" in source
         assert f"backend_system.complete_{operation}_v1" in source
+    assert "backend_system.prepare_bank_transaction_suggestion_v1" not in source
+    assert "backend_system.complete_bank_transaction_suggestion_v1" not in source
 
 
 def test_adapter_never_uses_a_service_role_business_path() -> None:

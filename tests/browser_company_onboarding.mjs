@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
@@ -24,6 +25,10 @@ import {
 } from "./support/supabase_fixture_safety.mjs";
 
 loadDotEnv();
+
+const nextCli = createRequire(
+  new URL("../apps/web/package.json", import.meta.url),
+).resolve("next/dist/bin/next");
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -109,6 +114,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     resources.databaseStarted = true;
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
     const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
+    const bankingDatabasePassword = randomUUID().replaceAll("-", "");
     const roleBoundary = await database.query(
       `select rolcanlogin, rolinherit, rolbypassrls,
         pg_catalog.pg_has_role('talli_company_access_backend', 'company_access_executor', 'set') as can_set_executor,
@@ -128,12 +134,18 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     await database.query(
       `alter role talli_ledger_backend login password '${ledgerDatabasePassword}'`,
     );
+    await database.query(
+      `alter role talli_banking_backend login password '${bankingDatabasePassword}'`,
+    );
     resources.cleanupBackendDatabaseRole = async () => {
       await database.query(
         "alter role talli_company_access_backend nologin password null",
       );
       await database.query(
         "alter role talli_ledger_backend nologin password null",
+      );
+      await database.query(
+        "alter role talli_banking_backend nologin password null",
       );
       resources.cleanupBackendDatabaseRole = undefined;
     };
@@ -145,6 +157,11 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       databaseUrl,
       "talli_ledger_backend",
       ledgerDatabasePassword,
+    );
+    const bankingDatabaseUrl = databaseUrlForRole(
+      databaseUrl,
+      "talli_banking_backend",
+      bankingDatabasePassword,
     );
     const ownerEmail = `onboarding-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
@@ -165,16 +182,29 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       anonKey,
       brregBaseUrl,
       databaseUrl: backendDatabaseUrl,
+      bankingDatabaseUrl,
       ledgerDatabaseUrl,
       port: backendPort,
       supabaseUrl,
     });
-    await waitForOwnedReadiness({
-      process: resources.backend,
-      url: `${backendBaseUrl}/health/ready`,
-    });
+    try {
+      await waitForOwnedReadiness({
+        process: resources.backend,
+        url: `${backendBaseUrl}/health/ready`,
+      });
+    } catch (error) {
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n${ownedProcessDiagnostics(resources.backend)}`,
+      );
+    }
     resources.server = startNextServer({ backendBaseUrl, port: webPort });
-    await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
+    try {
+      await waitForOwnedReadiness({ process: resources.server, url: baseUrl });
+    } catch (error) {
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n${ownedProcessDiagnostics(resources.server)}`,
+      );
+    }
 
     resources.browser = await chromium.launch({ headless: true });
     const page = await resources.browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -407,6 +437,66 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
         shareholderCount: 1,
         snapshotCount: 1,
       },
+    );
+
+    const statement = [
+      "date,text,amount,balance",
+      "2026-02-03,Arsgebyr,-89.00,29911.00",
+    ].join("\n");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "bank.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(statement),
+    });
+    await page.getByText("Valgt fil: bank.csv").waitFor();
+    const importResponse = page.waitForResponse((response) => (
+      response.request().method() === "POST"
+      && new URL(response.url()).pathname === "/onboarding"
+    ));
+    await page.getByRole("button", { name: "Importer" }).click();
+    await importResponse;
+    await page.waitForLoadState("networkidle");
+    try {
+      await page.getByText("1 banktransaksjoner er registrert.").waitFor({ timeout: 10_000 });
+    } catch {
+      throw new Error([
+        `bank_import_browser_failure:url=${page.url()}`,
+        (await page.locator("body").innerText()).replace(/\s+/gu, " ").trim().slice(0, 1_500),
+        `backend=${ownedProcessDiagnostics(resources.backend)}`,
+        `web=${ownedProcessDiagnostics(resources.server)}`,
+      ].join("\n"));
+    }
+    assert.deepEqual(
+      await canonicalBankingState(database, resources.companyId, resources.ownerId),
+      {
+        acceptanceCount: 0,
+        entryCount: 0,
+        matchedCount: 0,
+        suggestionKinds: [],
+        transactionCount: 1,
+      },
+      "import must remain read-only until the owner explicitly accepts",
+    );
+
+    await page.goto(`${baseUrl}/transactions`);
+    await page.getByRole("heading", { name: "Transaksjoner" }).waitFor();
+    await page.getByText("Arsgebyr", { exact: true }).click();
+    await page.getByText("Ingenting bokføres før du godkjenner.").waitFor();
+    await page.getByRole("button", { name: "Godkjenn og avstem" }).click();
+    await page.waitForURL((url) => (
+      url.pathname === "/transactions" && url.searchParams.get("posted") === "1"
+    ), { timeout: 20_000 });
+    await page.getByText("Transaksjonen er avstemt.").waitFor();
+    assert.deepEqual(
+      await canonicalBankingState(database, resources.companyId, resources.ownerId),
+      {
+        acceptanceCount: 1,
+        entryCount: 1,
+        matchedCount: 1,
+        suggestionKinds: ["BANK_FEE"],
+        transactionCount: 1,
+      },
+      "acceptance must atomically link canonical banking state to one ledger entry",
     );
 
     // A supported owner can report a material change through company_access.
@@ -722,6 +812,27 @@ async function typedOpeningState(database, companyId, ownerId) {
   return result.rows[0];
 }
 
+async function canonicalBankingState(database, companyId, ownerId) {
+  const result = await database.query(
+    `select
+       (select count(*)::integer from banking.transactions bank_tx
+         where bank_tx.company_id = $1) as "transactionCount",
+       (select count(*)::integer from banking.transactions bank_tx
+         where bank_tx.company_id = $1
+           and bank_tx.matched_accounting_entry_id is not null) as "matchedCount",
+       (select count(*)::integer from banking.suggestion_acceptances acceptance
+         where acceptance.company_id = $1 and acceptance.accepted_by = $2) as "acceptanceCount",
+       (select coalesce(array_agg(acceptance.suggestion_kind order by acceptance.id), '{}')
+          from banking.suggestion_acceptances acceptance
+         where acceptance.company_id = $1 and acceptance.accepted_by = $2) as "suggestionKinds",
+       (select count(*)::integer from ledger.entries entry
+         where entry.company_id = $1 and entry.created_by = $2
+           and entry.entry_kind = 'BANK_RULE_SUGGESTION') as "entryCount"`,
+    [companyId, ownerId],
+  );
+  return result.rows[0];
+}
+
 async function companyEligibilityState(database, companyId, ownerId) {
   const result = await database.query(
     `select concat_ws(':',
@@ -879,7 +990,7 @@ function createBrregServer({ control, orgNumbers, requests }) {
   });
 }
 
-function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl, ledgerDatabaseUrl }) {
+function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl, bankingDatabaseUrl, ledgerDatabaseUrl }) {
   const backendPython =
     process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
   if (!existsSync(backendPython)) throw new Error("backend_python_missing");
@@ -895,6 +1006,7 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
       SUPABASE_URL: localSupabaseUrl,
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
+      TALLI_BANKING_DATABASE_URL: bankingDatabaseUrl,
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
@@ -907,7 +1019,7 @@ function startNextServer({ port, backendBaseUrl }) {
   return startOwnedProcess({
     command: process.execPath,
     args: [
-      "apps/web/node_modules/next/dist/bin/next",
+      nextCli,
       "dev",
       "apps/web",
       "--hostname",

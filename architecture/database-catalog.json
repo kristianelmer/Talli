@@ -22,8 +22,6 @@
     { "name": "public.authority_operations", "kind": "legacy-business" },
     { "name": "public.authority_permissions", "kind": "legacy-business" },
     { "name": "public.authority_test_runs", "kind": "legacy-business" },
-    { "name": "public.bank_suggestion_acceptances", "kind": "legacy-business" },
-    { "name": "public.bank_transactions", "kind": "legacy-business" },
     { "name": "public.billing_accounts", "kind": "legacy-business" },
     { "name": "public.billing_payment_events", "kind": "legacy-business" },
     { "name": "public.companies", "kind": "capability-business", "owner": "backend:company_access" },

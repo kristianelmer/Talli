@@ -8,7 +8,6 @@ export {
   loadOpeningSnapshots,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
-  postLedgerBankSuggestionOutcome,
   postLedgerInvestmentDividend,
   postLedgerInvestmentPurchase,
   postLedgerInvestmentSale,
@@ -38,7 +37,6 @@ export {
 } from "./presentation.ts";
 export type {
   LedgerAdministrativeCostWire,
-  LedgerBankSuggestionWire,
   LedgerCorporateDecisionFinalizationWire,
   LedgerInvestmentDividendWire,
   LedgerInvestmentPurchaseWire,

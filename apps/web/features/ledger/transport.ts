@@ -1,7 +1,6 @@
 import {
   createTalliApiClient,
   type LedgerAdministrativeCostWire,
-  type LedgerBankSuggestionWire,
   type LedgerCorporateDecisionFinalizationWire,
   type LedgerCompanyYearCloseAssessmentWire,
   type LedgerEntryViewWire,
@@ -311,18 +310,6 @@ export function postLedgerTaxSettlement(
   requestId?: string,
 ) {
   return client(accessToken).ledgerPostTaxSettlement(
-    command,
-    mutationRequest(idempotencyKey, requestId),
-  );
-}
-
-export function postLedgerBankSuggestionOutcome(
-  accessToken: string,
-  command: LedgerBankSuggestionWire,
-  idempotencyKey: string,
-  requestId?: string,
-) {
-  return client(accessToken).ledgerPostBankSuggestionOutcome(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

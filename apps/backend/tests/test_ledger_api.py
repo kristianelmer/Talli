@@ -251,23 +251,6 @@ class LedgerSessionStub:
     ) -> dict[str, object]:
         return await self._complete("tax_settlement", command, posted_entry, prepared)
 
-    async def prepare_bank_transaction_suggestion(
-        self, command: object
-    ) -> dict[str, object]:
-        return await self._prepare(
-            "bank_transaction_suggestion",
-            command,
-            amount="125.50",
-            transactionText="Bank fee",
-        )
-
-    async def complete_bank_transaction_suggestion(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]:
-        return await self._complete(
-            "bank_transaction_suggestion", command, posted_entry, prepared
-        )
-
     async def prepare_investment_purchase_fifo(
         self, command: object
     ) -> dict[str, object]:
@@ -518,7 +501,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerListPeriodLocks",
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
-        "ledgerPostBankSuggestionOutcome",
         "ledgerPostInvestmentDividend",
         "ledgerPostInvestmentPurchase",
         "ledgerPostInvestmentSale",
@@ -598,17 +580,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
                 "documentStatus": "attached",
                 "bankTransactionId": bank_id,
                 "documentId": document_id,
-            },
-        ),
-        (
-            "/api/v1/ledger/bank-suggestion-outcomes",
-            "BANK_RULE_SUGGESTION",
-            {
-                **common,
-                "acceptanceId": operation_id,
-                "bankTransactionId": bank_id,
-                "rule": "bank_fee",
-                "ruleVersion": "v1",
             },
         ),
         (

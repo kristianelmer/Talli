@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
@@ -23,6 +24,10 @@ import {
 } from "./support/supabase_fixture_safety.mjs";
 
 loadDotEnv();
+
+const nextCli = createRequire(
+  new URL("../apps/web/package.json", import.meta.url),
+).resolve("next/dist/bin/next");
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -81,11 +86,15 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await database.connect();
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
     const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
+    const bankingDatabasePassword = randomUUID().replaceAll("-", "");
     await database.query(
       `alter role talli_company_access_backend login password '${backendDatabasePassword}'`,
     );
     await database.query(
       `alter role talli_ledger_backend login password '${ledgerDatabasePassword}'`,
+    );
+    await database.query(
+      `alter role talli_banking_backend login password '${bankingDatabasePassword}'`,
     );
     resources.cleanupBackendDatabaseRole = async () => {
       await database.query(
@@ -93,6 +102,9 @@ test("browser owner annual loop uses persisted state and survives reload", async
       );
       await database.query(
         "alter role talli_ledger_backend nologin password null",
+      );
+      await database.query(
+        "alter role talli_banking_backend nologin password null",
       );
       resources.cleanupBackendDatabaseRole = undefined;
     };
@@ -105,6 +117,11 @@ test("browser owner annual loop uses persisted state and survives reload", async
       databaseUrl,
       "talli_ledger_backend",
       ledgerDatabasePassword,
+    );
+    const bankingDatabaseUrl = databaseUrlForRole(
+      databaseUrl,
+      "talli_banking_backend",
+      bankingDatabasePassword,
     );
     const ownerEmail = `owner-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
@@ -151,6 +168,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
       supabaseUrl,
       anonKey,
       databaseUrl: backendDatabaseUrl,
+      bankingDatabaseUrl,
       ledgerDatabaseUrl,
     });
     await waitForOwnedReadiness({
@@ -519,6 +537,7 @@ function startBackendServer({
   supabaseUrl: localSupabaseUrl,
   anonKey: localAnonKey,
   databaseUrl: localDatabaseUrl,
+  bankingDatabaseUrl,
   ledgerDatabaseUrl,
 }) {
   const backendPython =
@@ -536,6 +555,7 @@ function startBackendServer({
       SUPABASE_URL: localSupabaseUrl,
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
+      TALLI_BANKING_DATABASE_URL: bankingDatabaseUrl,
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
@@ -556,7 +576,7 @@ function startNextServer({ port, backendBaseUrl }) {
   return startOwnedProcess({
     command: process.execPath,
     args: [
-      "apps/web/node_modules/next/dist/bin/next",
+      nextCli,
       "dev",
       "apps/web",
       "--hostname",

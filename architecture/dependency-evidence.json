@@ -1,6 +1,14 @@
 {
   "edges": [
     {
+      "from": "backend-system:banking-reconciliation",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
       "from": "backend-system:company-access-administration",
       "imports": [
         "talli_backend.modules.company_access.public"
@@ -68,9 +76,11 @@
   "generatedBy": "scripts/check-architecture.mjs",
   "modules": [
     "backend-system:system_boundary",
+    "backend:banking",
     "backend:company_access",
     "backend:ledger",
     "backend:shareholder_register_filing",
+    "web:banking",
     "web:company-access",
     "web:ledger",
     "web:public-acquisition",
@@ -78,6 +88,22 @@
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_source_rows"
+    },
     {
       "owner": "backend-system",
       "table": "backend_system.ledger_command_receipts"

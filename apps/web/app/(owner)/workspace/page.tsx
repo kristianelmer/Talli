@@ -108,6 +108,7 @@ type WorkspaceProps = {
     manualOperationId?: string;
     newYearOperationId?: string;
     adminCostOperationId?: string;
+    bankImportOperationId?: string;
     adminCostBankTransactionId?: string;
     dividendReceivedOperationId?: string;
     sharePurchaseOperationId?: string;
@@ -1650,6 +1651,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 <div className="setupGrid">
                   <form className="dataPanel formPanel" action={importBankCsv}>
                     <span className="panelLabel">Bank CSV</span>
+                    <input
+                      name="operationId"
+                      type="hidden"
+                      value={params?.bankImportOperationId ?? randomUUID()}
+                    />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår

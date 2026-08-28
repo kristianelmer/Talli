@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -23,6 +24,9 @@ import {
 } from "./fixtures/system-user-authority-mock.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const nextCli = createRequire(
+  new URL("../apps/web/package.json", import.meta.url),
+).resolve("next/dist/bin/next");
 const MOCK_PRELOAD = new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href;
 const INCOME_YEAR = 2025;
 const CALLBACK_PATH = "/auth/systembruker/confirm";
@@ -794,7 +798,7 @@ function startNextServer({ port, siteOrigin, mockBaseUrl, localSupabase }) {
   const server = spawn(
     process.execPath,
     [
-      "apps/web/node_modules/next/dist/bin/next",
+      nextCli,
       "dev",
       "apps/web",
       "--hostname",

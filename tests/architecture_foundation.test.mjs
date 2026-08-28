@@ -214,15 +214,23 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.evidence.modules, [
     "backend-system:system_boundary",
+    "backend:banking",
     "backend:company_access",
     "backend:ledger",
     "backend:shareholder_register_filing",
+    "web:banking",
     "web:company-access",
     "web:ledger",
     "web:public-acquisition",
     "web:system-boundary",
   ]);
   assert.deepEqual(result.evidence.edges, [
+    {
+      from: "backend-system:banking-reconciliation",
+      imports: ["talli_backend.modules.banking.public"],
+      kind: "workflow",
+      to: "backend:banking",
+    },
     {
       from: "backend-system:company-access-administration",
       imports: ["talli_backend.modules.company_access.public"],
@@ -1858,8 +1866,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 15);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 164);
+  assert.equal(registry.records.length, 14);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 160);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1881,6 +1889,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
     new Set([
       "compat-company-onboarding-persistence",
       "compat-ledger-persistence",
+      "compat-banking-persistence",
       "compat-owner-dividend-persistence",
       "compat-shareholder-loan-persistence",
       "compat-tax-settlement-persistence",

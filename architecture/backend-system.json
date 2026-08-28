@@ -66,6 +66,16 @@
       "routes": ["/api/v1/new-year-starts"]
     },
     {
+      "name": "banking-reconciliation",
+      "purpose": "Authenticates one verified actor and runs bank-statement import, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts.",
+      "publicPackages": ["talli_backend.modules.banking.public"],
+      "routes": [
+        "/api/v1/banking/statement-imports",
+        "/api/v1/banking/transactions",
+        "/api/v1/banking/suggestion-acceptances"
+      ]
+    },
+    {
       "name": "ledger-posting-and-period-control",
       "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract.",
       "publicPackages": ["talli_backend.modules.ledger.public"],
@@ -79,7 +89,6 @@
         "/api/v1/ledger/investment-dividends",
         "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/tax-settlements",
-        "/api/v1/ledger/bank-suggestion-outcomes",
         "/api/v1/ledger/investment-purchases",
         "/api/v1/ledger/investment-sales",
         "/api/v1/ledger/corporate-decisions/finalizations",
@@ -97,7 +106,7 @@
   "technicalOwnership": {
     "schemas": ["backend_system", "public"],
     "tables": ["backend_system.banking_command_receipts", "backend_system.banking_migration_reconciliations", "backend_system.banking_migration_runs", "backend_system.banking_migration_source_rows", "backend_system.ledger_command_receipts", "backend_system.ledger_cursor_signing_keys", "backend_system.ledger_migration_quarantine", "backend_system.ledger_migration_reconciliations", "backend_system.ledger_migration_runs", "backend_system.ledger_migration_source_rows", "backend_system.ledger_workflow_receipts", "public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql", "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql"],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {
@@ -140,8 +149,8 @@
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "datetime", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
-    "workflows": ["talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
-    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "urllib.error", "urllib.parse", "urllib.request"]
+    "transport": ["__future__", "re", "collections", "datetime", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_banking", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
+    "workflows": ["talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
+    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.banking_workflow", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "urllib.error", "urllib.parse", "urllib.request"]
   }
 }

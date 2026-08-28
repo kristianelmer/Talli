@@ -1228,7 +1228,6 @@ function ledgerServerActionSource(actionName) {
 
 test("all relocated ledger writers use the stable operation ID at the generated boundary", () => {
   const coordinators = {
-    acceptBankTransactionSuggestion: ["postLedgerBankSuggestionOutcome", "acceptanceId"],
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["postLedgerInvestmentDividend", "actionId"],
     recordSharePurchase: ["postLedgerInvestmentPurchase", "actionId"],
@@ -1260,6 +1259,7 @@ test("all relocated ledger writers use the stable operation ID at the generated 
 test("committed retries reach the coordinator before mutable legacy state can reject them", () => {
   const suggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
   assert.doesNotMatch(suggestion, /matched_entry_id|matched_action_id|accepted_warning|suggestBankTransaction/u);
+  assert.match(suggestion, /await acceptBankSuggestion\(/u);
 
   const sale = ledgerServerActionSource("recordShareSale");
   assert.doesNotMatch(sale, /investment_positions|investment_lots|validateShareSale/u);
@@ -1284,7 +1284,6 @@ test("committed retries reach the coordinator before mutable legacy state can re
 
 test("unknown ledger outcomes preserve only the scoped retry operation", () => {
   const retryFields = {
-    acceptBankTransactionSuggestion: ["suggestionOperationId", "suggestionBankTransactionId"],
     recordAdminCost: ["adminCostOperationId", "adminCostBankTransactionId"],
     recordDividendReceived: ["dividendReceivedOperationId"],
     recordSharePurchase: ["sharePurchaseOperationId"],
@@ -1300,6 +1299,12 @@ test("unknown ledger outcomes preserve only the scoped retry operation", () => {
     assert.match(action, /ledgerActionErrorMessage\(error\)/u, actionName);
     for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
   }
+
+  const bankingSuggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
+  assert.match(bankingSuggestion, /bankingOutcomeMayBeUnknown\(error\)/u);
+  assert.match(bankingSuggestion, /bankingActionErrorMessage\(error\)/u);
+  assert.match(bankingSuggestion, /suggestionOperationId/u);
+  assert.match(bankingSuggestion, /suggestionBankTransactionId/u);
 
   for (const actionName of [
     "recordAdminCost",

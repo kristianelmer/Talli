@@ -15,6 +15,7 @@ import { OpeningBalanceForm } from "./OpeningBalanceForm";
 type OnboardingProps = {
   searchParams?: Promise<{
     error?: string;
+    bankImportOperationId?: string;
     newYearOperationId?: string;
     step?: string;
   }>;
@@ -89,6 +90,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
           companyId={primaryCompany.id}
           incomeYear={year}
           importedCount={transactions.length}
+          retryOperationId={params?.bankImportOperationId}
         />
       ) : null}
     </WizardShell>

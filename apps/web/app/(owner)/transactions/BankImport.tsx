@@ -55,9 +55,11 @@ type BankImportProps = {
   companyId: string;
   incomeYear: number;
   returnTo: string;
+  retryOperationId?: string;
 };
 
-export function BankImport({ companyId, incomeYear, returnTo }: BankImportProps) {
+export function BankImport({ companyId, incomeYear, returnTo, retryOperationId }: BankImportProps) {
+  const [operationId] = useState(() => retryOperationId ?? crypto.randomUUID());
   const [csv, setCsv] = useState("");
   const preview = useMemo(() => buildPreview(csv), [csv]);
   const hasContent = csv.trim().length > 0;
@@ -68,6 +70,7 @@ export function BankImport({ companyId, incomeYear, returnTo }: BankImportProps)
 
   return (
     <form className="txImport" action={importBankCsv}>
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
       <input type="hidden" name="returnTo" value={returnTo} />
