@@ -10,6 +10,14 @@
     "deferredIntegrationIssue": "#199",
     "boundary": "#188 proves the canonical ledger receiver, immutable source/output bindings, deterministic postings, official mappings, golden journals, and fail-closed behavior. #199 proves actual source-owner production and executable agreement with every canonical downstream calculator after #195."
   },
+  "completeGates": [
+    {
+      "revision": "4cdb7730c88a9b9138b284f92597e5be243a35c1",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/4cdb7730c88a9b9138b284f92597e5be243a35c1.json",
+      "verdict": "pass"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#139",
@@ -47,7 +55,11 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "apps/backend ledger acceptance: 91/91 focused tests passed on 2026-08-28",
+        "customer-ready gate R1 database isolation: ledger 69/69, Supabase/RLS 45/45, browser-owner 17/17, hosted migrator 1/1"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A2",
@@ -77,7 +89,11 @@
           "command": "node --test tests/ledger_capability_boundary_regressions.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "apps/backend ledger acceptance: 91/91 focused tests passed on 2026-08-28",
+        "customer-ready gate R1: boundary, fresh database, rollback/recutover and browser checks passed"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A3",
@@ -107,7 +123,11 @@
           "command": "node --test tests/ledger_supported_pattern_evidence.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "node --test tests/ledger_supported_pattern_evidence.test.mjs: 11/11 passed",
+        "docs/accounting/supported-ledger-patterns.md and tests/fixtures/ledger-supported-patterns.json pin the 2026-08-27 source cut and 19 golden patterns"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A4",
@@ -129,7 +149,11 @@
           "command": "node --test tests/ledger_full_year_database_runtime.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "apps/backend test_ledger_supported_patterns.py passed within the 91/91 focused acceptance run",
+        "customer-ready gate R1 fresh ledger lifecycle passed 69/69 including coded reconstruction gaps and no-partial-state cases"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A5",
@@ -163,7 +187,12 @@
           "command": "npm run test:ledger-database-lifecycle"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "apps/backend source/close binding tests passed within the 91/91 focused acceptance run",
+        "database contract evidence tests passed 40/40",
+        "customer-ready gate R1 fresh lifecycle independently revalidated 13 source bindings, seven output declarations, replay, historical staleness, rollback and recutover"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A6",
@@ -189,7 +218,12 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "npm run check:architecture passed on R1",
+        "full architecture suite passed 50/50 after the framed Python inspection reliability fix",
+        "architecture/compatibility.json has no new record or scope"
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-188-A7",
@@ -223,7 +257,11 @@
           "command": "npm run gate:customer-ready -- --previous <R1>"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "R1 4cdb7730c88a9b9138b284f92597e5be243a35c1 complete customer-ready gate passed all 11 checks",
+        "R2 linked immutable complete gate remains required before criterion pass"
+      ],
+      "status": "in-progress"
     }
   ],
   "closeState": "blocked-until-all-criteria-pass-and-evidence-is-immutable"
