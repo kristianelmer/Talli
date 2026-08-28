@@ -106,3 +106,13 @@ test("statement import is durable-idempotent and provider data cannot select acc
   assert.match(source, /banking_idempotency_key_reused/iu);
   assert.doesNotMatch(source, /p_request\s*->>?\s*['"](?:account|lines|memo)/iu);
 });
+
+test("banking reads are tenant-scoped deterministic cursor pages", () => {
+  const source = workflowArtifact();
+  assert.match(source, /banking\.list_records_v1/iu);
+  assert.match(source, /company_id\s*=\s*any\(p_company_ids\)/iu);
+  assert.match(source, /company_access_is_accepted_member_v1/iu);
+  assert.match(source, /order by sort_at desc, id desc/iu);
+  assert.match(source, /p_limit \+ 1/iu);
+  assert.match(source, /banking_invalid_cursor/iu);
+});

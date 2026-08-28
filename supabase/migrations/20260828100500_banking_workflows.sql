@@ -388,6 +388,140 @@ begin
 end;
 $function$;
 
+create or replace function banking.list_records_v1(
+  p_resource text,
+  p_company_ids uuid[],
+  p_cursor text,
+  p_limit integer,
+  p_verified_subject text
+)
+returns table (items jsonb, next_cursor text, has_more boolean)
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_cursor_at timestamptz;
+  v_cursor_id uuid;
+  v_payload jsonb;
+  v_companies text;
+  v_company_hash text;
+  v_last_at timestamptz;
+  v_last_id uuid;
+begin
+  if v_actor_id is null or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then raise exception 'banking_forbidden'; end if;
+  if p_resource not in ('transactions', 'suggestion_acceptances')
+    or p_company_ids is null or pg_catalog.cardinality(p_company_ids) = 0
+    or pg_catalog.cardinality(p_company_ids) > 100
+    or p_limit is null or p_limit < 1 or p_limit > 500
+    or (p_cursor is not null and pg_catalog.length(p_cursor) > 4096)
+  then raise exception 'banking_invalid_input'; end if;
+  select coalesce(pg_catalog.string_agg(company_id::text, ',' order by company_id), '')
+  into v_companies from pg_catalog.unnest(p_company_ids) company_id;
+  v_company_hash := pg_catalog.encode(
+    extensions.digest(v_companies, 'sha256'), 'hex'
+  );
+  if p_cursor is not null then
+    begin
+      v_payload := pg_catalog.convert_from(pg_catalog.decode(
+        pg_catalog.translate(p_cursor, '-_', '+/')
+          || pg_catalog.repeat('=', (4 - pg_catalog.length(p_cursor) % 4) % 4),
+        'base64'
+      ), 'UTF8')::jsonb;
+      if v_payload ->> 'resource' <> p_resource
+        or v_payload ->> 'companies' <> v_company_hash
+      then raise exception 'banking_invalid_cursor'; end if;
+      v_cursor_at := (v_payload ->> 'at')::timestamptz;
+      v_cursor_id := (v_payload ->> 'id')::uuid;
+    exception when others then
+      raise exception 'banking_invalid_cursor';
+    end;
+  end if;
+
+  with visible as (
+    select
+      bank_row.id,
+      bank_row.created_at as sort_at,
+      pg_catalog.jsonb_build_object(
+        'transactionId', bank_row.id,
+        'companyId', bank_row.company_id,
+        'incomeYear', bank_row.income_year,
+        'transactionDate', bank_row.transaction_date,
+        'text', bank_row.text,
+        'amount', bank_row.amount,
+        'balance', bank_row.balance,
+        'sourceHash', bank_row.source_hash,
+        'matchedEntryId', bank_row.matched_accounting_entry_id,
+        'matchedActionReference', bank_row.matched_action_reference,
+        'warningAccepted', bank_row.warning_accepted,
+        'createdBy', bank_row.created_by,
+        'createdAt', bank_row.created_at
+      ) as item
+    from banking.transactions bank_row
+    where p_resource = 'transactions'
+      and bank_row.company_id = any(p_company_ids)
+      and public.company_access_is_accepted_member_v1(bank_row.company_id)
+      and (p_cursor is null or (bank_row.created_at, bank_row.id) < (v_cursor_at, v_cursor_id))
+    union all
+    select
+      acceptance.id,
+      acceptance.accepted_at as sort_at,
+      pg_catalog.jsonb_build_object(
+        'acceptanceId', acceptance.id,
+        'bankTransactionId', acceptance.bank_transaction_id,
+        'accountingEntryId', acceptance.accounting_entry_id,
+        'suggestionKind', acceptance.suggestion_kind,
+        'ruleVersion', acceptance.rule_version,
+        'reason', acceptance.reason,
+        'acceptedBy', acceptance.accepted_by,
+        'acceptedAt', acceptance.accepted_at,
+        'replayed', false
+      ) as item
+    from banking.suggestion_acceptances acceptance
+    where p_resource = 'suggestion_acceptances'
+      and acceptance.company_id = any(p_company_ids)
+      and public.company_access_is_accepted_member_v1(acceptance.company_id)
+      and (p_cursor is null or (acceptance.accepted_at, acceptance.id) < (v_cursor_at, v_cursor_id))
+  ), page_rows as (
+    select * from visible order by sort_at desc, id desc limit p_limit + 1
+  )
+  select
+    coalesce(pg_catalog.jsonb_agg(item order by sort_at desc, id desc)
+      filter (where ordinal <= p_limit), '[]'::jsonb),
+    pg_catalog.count(*) > p_limit,
+    (pg_catalog.array_agg(sort_at) filter (where ordinal = p_limit))[1],
+    (pg_catalog.array_agg(id) filter (where ordinal = p_limit))[1]
+  into items, has_more, v_last_at, v_last_id
+  from (
+    select page_rows.*,
+      pg_catalog.row_number() over (order by sort_at desc, id desc) as ordinal
+    from page_rows
+  ) numbered;
+
+  if has_more and v_last_at is not null and v_last_id is not null then
+    next_cursor := pg_catalog.rtrim(pg_catalog.translate(
+      pg_catalog.replace(pg_catalog.encode(pg_catalog.convert_to(
+        pg_catalog.jsonb_build_object(
+          'resource', p_resource,
+          'companies', v_company_hash,
+          'at', v_last_at,
+          'id', v_last_id
+        )::text,
+        'UTF8'
+      ), 'base64'), E'\n', ''),
+      '+/', '-_'
+    ), '=');
+  else
+    next_cursor := null;
+  end if;
+  return next;
+end;
+$function$;
+
 create or replace function backend_system.prevent_banking_command_receipt_mutation()
 returns trigger
 language plpgsql
@@ -413,6 +547,8 @@ alter function banking.prepare_suggestion_acceptance_v1(jsonb, text)
   owner to banking_store_owner;
 alter function banking.complete_suggestion_acceptance_v1(jsonb, uuid, text, text)
   owner to banking_store_owner;
+alter function banking.list_records_v1(text, uuid[], text, integer, text)
+  owner to banking_store_owner;
 alter function backend_system.prevent_banking_command_receipt_mutation()
   owner to banking_store_owner;
 alter table backend_system.banking_command_receipts owner to banking_store_owner;
@@ -430,10 +566,13 @@ revoke all on function
   banking.import_statement_v1(jsonb, text),
   banking.suggestion_acceptance_replay_v1(jsonb, text),
   banking.prepare_suggestion_acceptance_v1(jsonb, text),
-  banking.complete_suggestion_acceptance_v1(jsonb, uuid, text, text)
+  banking.complete_suggestion_acceptance_v1(jsonb, uuid, text, text),
+  banking.list_records_v1(text, uuid[], text, integer, text)
 from public, anon, authenticated, service_role, banking_executor,
   banking_workflow_executor, talli_banking_backend;
 grant execute on function banking.import_statement_v1(jsonb, text)
+  to banking_executor;
+grant execute on function banking.list_records_v1(text, uuid[], text, integer, text)
   to banking_executor;
 grant execute on function
   banking.suggestion_acceptance_replay_v1(jsonb, text),
