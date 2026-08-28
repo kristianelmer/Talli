@@ -82,15 +82,25 @@ revoke all on function ledger.record_reconstruction_assessment(
 revoke all on function ledger.record_reconstruction_assessment(
   text, uuid, integer, date, jsonb, uuid[], text, text[], text, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.record_reconstruction_assessment_without_source_evidence_v1(
+  text, uuid, integer, date, jsonb, uuid[], text, text[], text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.get_reconstruction_economic_facts_v1(uuid, text)
   from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.get_reconstruction_assessment_with_economic_facts_v1(
+  uuid, integer, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.get_reconstruction_assessment_with_source_evidence_v1(
   uuid, integer, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.get_company_year_economic_fact_candidates_v1(
   uuid, integer, date, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
 revoke all on function ledger.close_company_year_v1(
+  text, uuid, integer, date, text, uuid, text, jsonb,
+  text, text[], text, text
+) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;
+revoke all on function ledger.close_company_year_without_source_evidence_v1(
   text, uuid, integer, date, text, uuid, text, jsonb,
   text, text[], text, text
 ) from ledger_executor, ledger_workflow_executor, talli_ledger_backend;

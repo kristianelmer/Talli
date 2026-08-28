@@ -26,10 +26,15 @@ const additiveLedgerMigrationPaths = [
   "20260827109000_ledger_opening_position_rebuild.sql",
   "20260827109200_ledger_reconstruction_economic_facts.sql",
   "20260827109300_ledger_close_output_economic_facts.sql",
+  "20260827109400_ledger_reconstruction_source_evidence.sql",
 ].map((name) => new URL(`../supabase/migrations/${name}`, import.meta.url));
 
 const economicFactsPath = new URL(
   "../supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql",
+  import.meta.url,
+);
+const sourceEvidencePath = new URL(
+  "../supabase/migrations/20260827109400_ledger_reconstruction_source_evidence.sql",
   import.meta.url,
 );
 const lifecyclePath = new URL("./ledger_database_runtime.test.mjs", import.meta.url);
@@ -231,6 +236,33 @@ test("reconstruction readiness binds the complete canonical economic-fact set", 
   assert.match(source, /get_reconstruction_assessment_with_economic_facts_v1/iu);
   assert.match(source, /economic_facts_digest/iu);
   assert.doesNotMatch(source, /jsonb_array_length\(p_economic_fact_entry_ids\)/iu);
+});
+
+test("reconstruction readiness binds revisioned full-interval source evidence", () => {
+  const source = readFileSync(sourceEvidencePath, "utf8");
+  for (const table of [
+    "reconstruction_source_evidence_sets",
+    "reconstruction_source_evidence_bindings",
+  ]) {
+    assert.match(source, new RegExp(`alter table ledger\\.${table} force row level security`, "iu"));
+    assert.match(source, new RegExp(`create trigger ${table}_immutable`, "iu"));
+  }
+  const record = functionBody(source, "record_reconstruction_assessment");
+  assert.match(record, /sourceRevision/iu);
+  assert.match(record, /make_date\(p_income_year, 1, 1\)/iu);
+  assert.match(record, /coverageThrough'\)::date <> p_as_of/iu);
+  assert.match(record, /ledger_reconstruction_source_evidence_invalid/iu);
+  assert.match(source, /get_reconstruction_assessment_with_source_evidence_v1/iu);
+  assert.match(source, /record_reconstruction_assessment_without_source_evidence_v1/iu);
+  assert.match(source, /close_company_year_without_source_evidence_v1/iu);
+  assert.match(
+    source,
+    /company_year_close_is_current_v1[\s\S]+reconstruction_source_evidence_sets/iu,
+  );
+  assert.match(
+    source,
+    /close_company_year_without_source_evidence_v1[\s\S]+ledger_company_year_close_reconstruction_stale/iu,
+  );
 });
 
 test("fresh database rehearsal executes reconstruction replay, RLS, and gap cases", () => {

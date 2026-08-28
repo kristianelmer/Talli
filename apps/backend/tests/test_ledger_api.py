@@ -84,6 +84,8 @@ class LedgerSessionStub:
             replayed=False,
             economic_facts_digest="e" * 64,
             economic_fact_count=7,
+            source_evidence_digest="a" * 64,
+            source_evidence_count=13,
         )
         self.company_year_close_assessment = CompanyYearCloseAssessment(
             assessment_id=CompanyYearCloseAssessmentId(
@@ -1134,6 +1136,8 @@ def test_reconstruction_query_exposes_only_backend_derived_readiness() -> None:
         "ledgerStateDigest": "d" * 64,
         "economicFactsDigest": "e" * 64,
         "economicFactCount": 7,
+        "sourceEvidenceDigest": "a" * 64,
+        "sourceEvidenceCount": 13,
         "recordedAt": "2026-08-27T10:00:00Z",
     }
     query = session.calls[0][1]
@@ -1149,6 +1153,8 @@ def test_historical_reconstruction_exposes_missing_ledger_state_digest_as_null()
         ledger_state_digest=None,
         economic_facts_digest=None,
         economic_fact_count=None,
+        source_evidence_digest=None,
+        source_evidence_count=None,
     )
 
     response = client.get(
@@ -1160,6 +1166,8 @@ def test_historical_reconstruction_exposes_missing_ledger_state_digest_as_null()
     assert response.json()["ledgerStateDigest"] is None
     assert response.json()["economicFactsDigest"] is None
     assert response.json()["economicFactCount"] is None
+    assert response.json()["sourceEvidenceDigest"] is None
+    assert response.json()["sourceEvidenceCount"] is None
 
 
 def test_company_year_close_query_exposes_current_backend_assessment() -> None:

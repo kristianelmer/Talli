@@ -38,7 +38,19 @@
       "DOCUMENTS",
       "UNSUPPORTED_ACTIVITY_CHECK"
     ],
-    "fullCoverageKinds": ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"],
+    "fullCoverageKinds": [
+      "PRIOR_CLOSING_OPENING",
+      "BANK_MOVEMENTS",
+      "BANK_RECONCILIATION",
+      "INVESTMENTS",
+      "SHAREHOLDERS",
+      "LOANS",
+      "EQUITY",
+      "TAX_HISTORY",
+      "CURRENT_YEAR_ACTIVITY",
+      "DOCUMENTS",
+      "UNSUPPORTED_ACTIVITY_CHECK"
+    ],
     "requiredIssuerKindPairs": [
       ["LEDGER", "PRIOR_CLOSING_OPENING"],
       ["BANKING", "BANK_MOVEMENTS"],
@@ -56,6 +68,15 @@
     ],
     "unknownMaterialFactBlocks": true,
     "canonicalEvidenceOrder": true,
+    "sourceEvidenceBinding": {
+      "requiredEvidenceCount": 13,
+      "positiveSourceRevisionRequired": true,
+      "coverage": "every required source attestation covers January 1 through as-of",
+      "serviceRevalidatesCoverage": true,
+      "databaseRevalidatesCoverage": true,
+      "immutableDigestAndRevisionBindings": true,
+      "historicalUnboundAssessmentCloses": false
+    },
     "economicFactSet": {
       "coverage": "every persisted ledger entry from January 1 through as-of",
       "uncapped": true,

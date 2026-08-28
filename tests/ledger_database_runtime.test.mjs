@@ -19,6 +19,7 @@ const openingPositionRebuildPath = "/repo/supabase/migrations/20260827109000_led
 const openingPositionAcceptancePath = "/repo/supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql";
 const reconstructionEconomicFactsPath = "/repo/supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql";
 const closeOutputEconomicFactsPath = "/repo/supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql";
+const reconstructionSourceEvidencePath = "/repo/supabase/migrations/20260827109400_ledger_reconstruction_source_evidence.sql";
 const contractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260827101000_ledger_capability_contract.sql";
 const predecessorMigrations = [
@@ -1447,13 +1448,10 @@ function reconstructionEvidence({
     issuer,
     confirmation: kind === "DOCUMENTS" && !documentsReady ? "UNKNOWN" : "CONFIRMED",
     sourceRecordId: `runtime:${issuer.toLowerCase()}:${index}`,
+    sourceRevision: index + 1,
     factSha256: index.toString(16).padStart(64, "0"),
-    coverageFrom: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
-      ? `${incomeYear}-01-01`
-      : null,
-    coverageThrough: ["BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"].includes(kind)
-      ? asOf
-      : null,
+    coverageFrom: `${incomeYear}-01-01`,
+    coverageThrough: asOf,
     gapCode: kind === "DOCUMENTS" && !documentsReady ? "DOCUMENTS_INCOMPLETE" : null,
   }));
 }
@@ -1466,8 +1464,10 @@ function reconstructionCall({
   documentsReady = true,
   asOf = "2026-08-27",
   economicFactEntryIdsSql,
+  evidenceOverride,
 } = {}) {
-  const evidence = reconstructionEvidence({ documentsReady, asOf, incomeYear });
+  const evidence = evidenceOverride
+    ?? reconstructionEvidence({ documentsReady, asOf, incomeYear });
   const state = documentsReady ? "READY" : "BLOCKED";
   const gaps = documentsReady ? "array[]::text[]" : "array['DOCUMENTS_INCOMPLETE']::text[]";
   const factEntryIds = economicFactEntryIdsSql ?? String.raw`(
@@ -1491,6 +1491,41 @@ from ledger.record_reconstruction_assessment(
   '${state}'::text,
   ${gaps},
   'ledger-reconstruction-runtime'::text,
+  '${actorId}'::text
+) assessment;
+commit;
+`;
+}
+
+function historicalReconstructionWithoutSourceEvidenceCall({
+  actorId = ownerId,
+  company = companyId,
+  incomeYear = 2026,
+  idempotencyKey = "61000000-0000-4000-8000-000000000040",
+  asOf = "2026-12-31",
+} = {}) {
+  const evidence = reconstructionEvidence({ asOf, incomeYear });
+  return String.raw`
+begin;
+set local role ledger_store_owner;
+set local talli.verified_actor_id = '${actorId}';
+set local talli.verified_actor_claims = '{"sub":"${actorId}","role":"authenticated","aal":"aal2"}';
+select row_to_json(assessment)::text
+from ledger.record_reconstruction_assessment_without_source_evidence_v1(
+  '${idempotencyKey}'::text,
+  '${company}'::uuid,
+  ${incomeYear}::integer,
+  '${asOf}'::date,
+  '${sqlQuote(JSON.stringify(evidence))}'::jsonb,
+  (
+    select candidate.entry_ids
+    from ledger.get_company_year_economic_fact_candidates_v1(
+      '${company}'::uuid, ${incomeYear}, '${asOf}'::date, '${actorId}'
+    ) candidate
+  )::uuid[],
+  'READY'::text,
+  array[]::text[],
+  'ledger-historical-reconstruction-runtime'::text,
   '${actorId}'::text
 ) assessment;
 commit;
@@ -1565,6 +1600,7 @@ function economicFactsBoundEvidenceSql(
 }
 
 function companyYearCloseCall({
+  functionName = "ledger.close_company_year_v1",
   actorId = ownerId,
   verifiedSubject = actorId,
   company = companyId,
@@ -1588,7 +1624,7 @@ function companyYearCloseCall({
     : `array[${gapCodes.map((gap) => `'${sqlQuote(gap)}'`).join(",")}]::text[]`;
   return String.raw`
 select row_to_json(closed)::text
-from ledger.close_company_year_v1(
+from ${functionName}(
   '${sqlQuote(idempotencyKey)}'::text,
   '${company}'::uuid,
   ${incomeYear}::integer,
@@ -1841,6 +1877,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", openingPositionAcceptancePath]);
     psql(containerName, ["--file", reconstructionEconomicFactsPath]);
     psql(containerName, ["--file", closeOutputEconomicFactsPath]);
+    psql(containerName, ["--file", reconstructionSourceEvidencePath]);
 
     const roleBoundary = lastOutputLine(psql(containerName, ["-Atq"], String.raw`
       select concat_ws(':', executor.rolcanlogin, executor.rolinherit, executor.rolbypassrls,
@@ -4083,6 +4120,18 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     assert.deepEqual(blockedReconstruction.gap_codes, ["DOCUMENTS_INCOMPLETE"]);
     assert.match(blockedReconstruction.evidence_digest, /^[a-f0-9]{64}$/u);
     assert.match(blockedReconstruction.ledger_state_digest, /^[a-f0-9]{64}$/u);
+    const missingRevisionEvidence = reconstructionEvidence();
+    delete missingRevisionEvidence[0].sourceRevision;
+    assert.match(psqlFailure(containerName, reconstructionCall({
+      idempotencyKey: "61000000-0000-4000-8000-000000000030",
+      evidenceOverride: missingRevisionEvidence,
+    })), /ledger_reconstruction_source_evidence_invalid/iu);
+    const incompleteInvestmentCoverage = reconstructionEvidence();
+    incompleteInvestmentCoverage[3].coverageFrom = "2026-02-01";
+    assert.match(psqlFailure(containerName, reconstructionCall({
+      idempotencyKey: "61000000-0000-4000-8000-000000000031",
+      evidenceOverride: incompleteInvestmentCoverage,
+    })), /ledger_reconstruction_source_evidence_invalid/iu);
     assert.equal(
       jsonOutput(
         containerName,
@@ -4117,7 +4166,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       begin;
       ${actorContext(ownerId)}
       select row_to_json(assessment)::text
-      from ledger.get_reconstruction_assessment_with_economic_facts_v1(
+      from ledger.get_reconstruction_assessment_with_source_evidence_v1(
         '${companyId}'::uuid, 2026, '${ownerId}'
       ) assessment;
       commit;
@@ -4127,6 +4176,38 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       readyReconstruction.economic_facts_digest,
     );
     assert.equal(latestReconstruction.economic_fact_count, readyReconstruction.economic_fact_count);
+    assert.equal(
+      latestReconstruction.source_evidence_digest,
+      readyReconstruction.evidence_digest,
+    );
+    assert.equal(latestReconstruction.source_evidence_count, 13);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${ownerId}';
+      set local talli.verified_actor_claims = '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}';
+      select concat_ws(':', source_set.evidence_count,
+        pg_catalog.count(binding.*), pg_catalog.min(binding.source_revision),
+        pg_catalog.max(binding.source_revision))
+      from ledger.reconstruction_source_evidence_sets source_set
+      join ledger.reconstruction_source_evidence_bindings binding
+        on binding.assessment_id = source_set.assessment_id
+      where source_set.assessment_id = '${readyReconstruction.assessment_id}'
+      group by source_set.evidence_count;
+      commit;
+    `)), "13:13:1:13");
+    for (const table of [
+      "reconstruction_source_evidence_sets",
+      "reconstruction_source_evidence_bindings",
+    ]) {
+      assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+        select concat_ws(':', c.relrowsecurity, c.relforcerowsecurity,
+          pg_catalog.has_table_privilege('ledger_executor', 'ledger.${table}', 'insert'),
+          pg_catalog.has_table_privilege('authenticated', 'ledger.${table}', 'select'))
+        from pg_catalog.pg_class c
+        where c.oid = 'ledger.${table}'::regclass;
+      `)), "t:t:f:f");
+    }
     assert.match(psqlFailure(containerName, reconstructionCall({
       idempotencyKey: "61000000-0000-4000-8000-000000000003",
       economicFactEntryIdsSql: "array[]",
@@ -5497,6 +5578,59 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
       false,
     );
 
+    const historicalReconstruction = jsonOutput(
+      containerName,
+      historicalReconstructionWithoutSourceEvidenceCall(),
+    );
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${ownerId}';
+      set local talli.verified_actor_claims = '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}';
+      select count(*)
+      from ledger.reconstruction_source_evidence_sets
+      where assessment_id = '${historicalReconstruction.assessment_id}';
+      commit;
+    `)), "0");
+    assert.match(psqlFailure(containerName, companyYearCloseTransaction({
+      idempotencyKey: "65000000-0000-4000-8000-000000000040",
+      reconstructionAssessmentId: historicalReconstruction.assessment_id,
+      reconstructionDigest: historicalReconstruction.evidence_digest,
+      reconstructionLedgerStateDigest: historicalReconstruction.ledger_state_digest,
+    })), /ledger_company_year_close_reconstruction_stale/iu);
+    const historicalCloseEvidence = companyYearCloseEvidence({
+      ledgerStateDigest: historicalReconstruction.ledger_state_digest,
+      omit: ["MATERIAL_BALANCES_DOCUMENTED"],
+    });
+    const historicalClose = jsonOutput(containerName, String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${ownerId}';
+      set local talli.verified_actor_claims = '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}';
+      ${companyYearCloseCall({
+        functionName: "ledger.close_company_year_without_source_evidence_v1",
+        idempotencyKey: "65000000-0000-4000-8000-000000000041",
+        reconstructionAssessmentId: historicalReconstruction.assessment_id,
+        reconstructionDigest: historicalReconstruction.evidence_digest,
+        reconstructionLedgerStateDigest: historicalReconstruction.ledger_state_digest,
+        evidence: historicalCloseEvidence,
+        derivedState: "BLOCKED",
+        gapCodes: ["CHECK_EVIDENCE_INCOMPLETE"],
+      })}
+      commit;
+    `);
+    assert.equal(historicalClose.is_current, false);
+    assert.equal(lastOutputLine(psql(containerName, ["-Atq"], String.raw`
+      begin;
+      set local role ledger_store_owner;
+      set local talli.verified_actor_id = '${ownerId}';
+      set local talli.verified_actor_claims = '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}';
+      select ledger.company_year_close_is_current_v1(
+        '${historicalClose.assessment_id}', '${companyId}', 2026
+      );
+      commit;
+    `)), "f");
+
     const yearEndReconstruction = jsonOutput(containerName, reconstructionCall({
       idempotencyKey: "61000000-0000-4000-8000-000000000010",
       asOf: "2026-12-31",
@@ -6477,6 +6611,7 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     psql(containerName, ["--file", openingPositionAcceptancePath]);
     psql(containerName, ["--file", reconstructionEconomicFactsPath]);
     psql(containerName, ["--file", closeOutputEconomicFactsPath]);
+    psql(containerName, ["--file", reconstructionSourceEvidencePath]);
     psql(containerName, ["--file", contractPath]);
     assert.deepEqual(
       jsonOutput(containerName, openingSnapshotCall({ actorId: ownerId }))

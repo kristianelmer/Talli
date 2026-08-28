@@ -598,12 +598,7 @@ _RECONSTRUCTION_EVIDENCE_REQUIREMENTS = (
         ReconstructionEvidenceIssuer.COMPANY_ACCESS,
     ),
 )
-_FULL_YEAR_COVERAGE_EVIDENCE = frozenset(
-    {
-        ReconstructionEvidenceKind.BANK_MOVEMENTS,
-        ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
-    }
-)
+_FULL_YEAR_COVERAGE_EVIDENCE = frozenset(ReconstructionEvidenceKind)
 _COMPANY_YEAR_CLOSE_REQUIREMENTS = (
     (
         CompanyYearCloseEvidenceKind.BANK_ROWS_RESOLVED,
@@ -793,6 +788,8 @@ class LedgerService:
             or current.ledger_state_digest is None
             or current.economic_facts_digest is None
             or current.economic_fact_count is None
+            or current.source_evidence_digest is None
+            or current.source_evidence_count is None
             or any(
                 item.ledger_state_digest != current.ledger_state_digest
                 for item in canonical

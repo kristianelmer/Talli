@@ -173,19 +173,16 @@ def complete_evidence() -> tuple[ReconstructionEvidence, ...]:
     )
     rows: list[ReconstructionEvidence] = []
     for index, (kind, issuer) in enumerate(requirements):
-        coverage = kind in {
-            ReconstructionEvidenceKind.BANK_MOVEMENTS,
-            ReconstructionEvidenceKind.CURRENT_YEAR_ACTIVITY,
-        }
         rows.append(
             ReconstructionEvidence(
                 kind=kind,
                 confirmation=ReconstructionEvidenceStatus.CONFIRMED,
                 issuer=issuer,
                 source_record_id=LedgerSourceRecordId(f"fact:{index}:{kind.value}"),
+                source_revision=1,
                 fact_sha256=f"{index:064x}",
-                coverage_from=LocalDate(date(2026, 1, 1)) if coverage else None,
-                coverage_through=AS_OF if coverage else None,
+                coverage_from=LocalDate(date(2026, 1, 1)),
+                coverage_through=AS_OF,
             )
         )
     return tuple(reversed(rows))
@@ -217,6 +214,23 @@ def test_complete_january_to_date_evidence_is_canonicalized_and_ready() -> None:
     ]
 
 
+def test_source_owned_evidence_carries_a_positive_immutable_revision() -> None:
+    item = complete_evidence()[0]
+
+    revised = ReconstructionEvidence(
+        kind=item.kind,
+        confirmation=item.confirmation,
+        issuer=item.issuer,
+        source_record_id=item.source_record_id,
+        source_revision=2,
+        fact_sha256=item.fact_sha256,
+        coverage_from=item.coverage_from,
+        coverage_through=item.coverage_through,
+    )
+
+    assert revised.source_revision == 2
+
+
 def test_unknown_source_fact_records_a_stable_gap_and_blocks_readiness() -> None:
     persistence = ReconstructionPersistenceStub()
     evidence = list(complete_evidence())
@@ -231,7 +245,10 @@ def test_unknown_source_fact_records_a_stable_gap_and_blocks_readiness() -> None
         confirmation=ReconstructionEvidenceStatus.UNKNOWN,
         issuer=item.issuer,
         source_record_id=item.source_record_id,
+        source_revision=item.source_revision,
         fact_sha256=item.fact_sha256,
+        coverage_from=item.coverage_from,
+        coverage_through=item.coverage_through,
         gap_code=ReconstructionGapCode.DOCUMENTS_INCOMPLETE,
     )
 
@@ -291,9 +308,39 @@ def test_bank_and_activity_coverage_must_start_on_january_first_and_reach_cutoff
         confirmation=item.confirmation,
         issuer=item.issuer,
         source_record_id=item.source_record_id,
+        source_revision=item.source_revision,
         fact_sha256=item.fact_sha256,
         coverage_from=LocalDate(date(2026, 2, 1)),
         coverage_through=AS_OF,
+    )
+
+    with pytest.raises(LedgerError) as failure:
+        asyncio.run(
+            LedgerService(persistence).record_reconstruction_assessment(
+                command(tuple(evidence))
+            )
+        )
+
+    assert failure.value.code == "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    assert persistence.calls == []
+
+
+def test_every_source_owner_must_attest_january_first_to_cutoff_coverage() -> None:
+    persistence = ReconstructionPersistenceStub()
+    evidence = list(complete_evidence())
+    index = next(
+        index
+        for index, item in enumerate(evidence)
+        if item.kind is ReconstructionEvidenceKind.INVESTMENTS
+    )
+    item = evidence[index]
+    evidence[index] = ReconstructionEvidence(
+        kind=item.kind,
+        confirmation=item.confirmation,
+        issuer=item.issuer,
+        source_record_id=item.source_record_id,
+        source_revision=item.source_revision,
+        fact_sha256=item.fact_sha256,
     )
 
     with pytest.raises(LedgerError) as failure:

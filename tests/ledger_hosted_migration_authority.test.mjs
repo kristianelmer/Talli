@@ -30,6 +30,7 @@ const recutoverMigrations = [
   "20260827109100_ledger_opening_position_acceptance.sql",
   "20260827109200_ledger_reconstruction_economic_facts.sql",
   "20260827109300_ledger_close_output_economic_facts.sql",
+  "20260827109400_ledger_reconstruction_source_evidence.sql",
 ].map((name) =>
   readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8"),
 );

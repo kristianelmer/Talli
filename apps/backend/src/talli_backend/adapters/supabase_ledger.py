@@ -9,7 +9,7 @@ import json
 import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
@@ -224,6 +224,7 @@ def _reconstruction_evidence_payload(
         "issuer": evidence.issuer.value,
         "confirmation": evidence.confirmation.value,
         "sourceRecordId": str(evidence.source_record_id),
+        "sourceRevision": evidence.source_revision,
         "factSha256": evidence.fact_sha256,
         "coverageFrom": (
             evidence.coverage_from.value.isoformat()
@@ -269,6 +270,16 @@ def _reconstruction_assessment(row: Mapping[str, object]) -> ReconstructionAsses
         economic_fact_count=(
             int(row["economic_fact_count"])
             if row.get("economic_fact_count") is not None
+            else None
+        ),
+        source_evidence_digest=(
+            str(row["source_evidence_digest"])
+            if row.get("source_evidence_digest") is not None
+            else None
+        ),
+        source_evidence_count=(
+            int(row["source_evidence_count"])
+            if row.get("source_evidence_count") is not None
             else None
         ),
     )
@@ -508,6 +519,12 @@ def _map_database_error(message: str) -> LedgerError:
             "ledger_reconstruction_economic_facts_invalid",
             LedgerError.invalid_input(
                 "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
+            ),
+        ),
+        (
+            "ledger_reconstruction_source_evidence_invalid",
+            LedgerError.invalid_input(
+                "LEDGER_RECONSTRUCTION_SOURCE_EVIDENCE_INVALID"
             ),
         ),
         (
@@ -1603,7 +1620,12 @@ class SupabaseLedgerSession:
             ),
         )
         try:
-            return _reconstruction_assessment(row)
+            assessment = _reconstruction_assessment(row)
+            return replace(
+                assessment,
+                source_evidence_digest=assessment.evidence_digest,
+                source_evidence_count=len(evidence),
+            )
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 
@@ -1717,7 +1739,7 @@ class SupabaseLedgerSession:
             raise LedgerError.forbidden()
         _ = correlation_id
         rows = await self._database_rows(
-            "select * from ledger.get_reconstruction_assessment_with_economic_facts_v1(%s::uuid, %s::integer, %s::text)",
+            "select * from ledger.get_reconstruction_assessment_with_source_evidence_v1(%s::uuid, %s::integer, %s::text)",
             (str(company_id), int(income_year), str(actor_id.subject)),
         )
         if len(rows) != 1:

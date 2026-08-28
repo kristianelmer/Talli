@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence","ledger.reconstruction_source_evidence_bindings","ledger.reconstruction_source_evidence_sets"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 ## Purpose and ownership
@@ -26,7 +26,9 @@ close locks. It owns
 `ledger.period_locks`,
 `ledger.received_dividend_decisions`, `ledger.received_dividend_settlements`,
 `ledger.reconstruction_assessments`, `ledger.reconstruction_economic_fact_sets`,
-`ledger.reconstruction_economic_facts`, and `ledger.reconstruction_evidence`
+`ledger.reconstruction_economic_facts`, `ledger.reconstruction_evidence`,
+`ledger.reconstruction_source_evidence_bindings`, and
+`ledger.reconstruction_source_evidence_sets`
 through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql`, and
 `supabase/migrations/20260827102000_ledger_supported_patterns.sql`, and
@@ -39,7 +41,8 @@ through `supabase/migrations/20260827100000_ledger_capability.sql`,
 `supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql`, and
 `supabase/migrations/20260827109100_ledger_opening_position_acceptance.sql`, and
 `supabase/migrations/20260827109200_ledger_reconstruction_economic_facts.sql`, and
-`supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql`.
+`supabase/migrations/20260827109300_ledger_close_output_economic_facts.sql`, and
+`supabase/migrations/20260827109400_ledger_reconstruction_source_evidence.sql`.
 
 It does not own company authorization, shareholder facts, bank classification,
 investment/FIFO decisions, governance decisions, tax decisions, filing rules,
@@ -191,6 +194,11 @@ writer `RebuildCompanyYearOpeningCommand`.
 only immutable evidence issued by the exact public source capability declared
 for each fact plus the candidate query's exact economic-fact entry set; it is
 intentionally not exposed as a browser mutation. The
+13 source attestations each carry a positive source-owned revision and must
+cover January 1 through the assessment cutoff, including gap and unknown facts.
+The database independently revalidates that interval and stores an immutable
+revision binding plus digest/count set. Historical assessments without this
+binding remain readable but cannot satisfy company-year close readiness. The
 opening-position command is exposed through the mode-aware new-year intent; it
 accepts typed balances and lifecycle facts but never accounts, debit/credit
 choices, or lines. Python alone compiles those facts into the atomic opening

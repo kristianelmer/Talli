@@ -3415,6 +3415,31 @@
             "title": "Recordedat",
             "type": "string"
           },
+          "sourceEvidenceCount": {
+            "anyOf": [
+              {
+                "maximum": 13.0,
+                "minimum": 13.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceevidencecount"
+          },
+          "sourceEvidenceDigest": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceevidencedigest"
+          },
           "state": {
             "$ref": "#/components/schemas/ReconstructionState"
           }
@@ -3430,6 +3455,8 @@
           "ledgerStateDigest",
           "economicFactsDigest",
           "economicFactCount",
+          "sourceEvidenceDigest",
+          "sourceEvidenceCount",
           "recordedAt"
         ],
         "title": "LedgerReconstructionAssessmentWire",

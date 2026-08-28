@@ -346,6 +346,8 @@ test("reconstruction readiness comes from the generated backend contract", async
       ledgerStateDigest: "d".repeat(64),
       economicFactsDigest: "e".repeat(64),
       economicFactCount: 4,
+      sourceEvidenceDigest: "a".repeat(64),
+      sourceEvidenceCount: 13,
       recordedAt: "2026-08-27T10:00:00Z",
     });
   };
@@ -518,6 +520,8 @@ test("generated reconstruction decoder rejects unknown gap codes", async () => {
       ledgerStateDigest: "d".repeat(64),
       economicFactsDigest: "e".repeat(64),
       economicFactCount: 4,
+      sourceEvidenceDigest: "a".repeat(64),
+      sourceEvidenceCount: 13,
       recordedAt: "2026-08-27T10:00:00Z",
     }),
   });
@@ -543,6 +547,8 @@ test("generated reconstruction decoder preserves historical null and rejects par
     ledgerStateDigest: null,
     economicFactsDigest: null,
     economicFactCount: null,
+    sourceEvidenceDigest: null,
+    sourceEvidenceCount: null,
     recordedAt: "2026-08-27T10:00:00Z",
   };
   const generated = createTalliApiClient({
@@ -574,6 +580,17 @@ test("generated reconstruction decoder preserves historical null and rejects par
 
   response.ledgerStateDigest = null;
   delete response.economicFactCount;
+
+  await assert.rejects(
+    generated.ledgerGetReconstructionAssessment({
+      companyId: OPENING_COMPANY_ID,
+      incomeYear: 2026,
+    }),
+    (error) => error instanceof TalliApiError && error.status === 502,
+  );
+
+  response.economicFactCount = null;
+  delete response.sourceEvidenceCount;
 
   await assert.rejects(
     generated.ledgerGetReconstructionAssessment({

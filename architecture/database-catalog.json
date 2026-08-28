@@ -73,6 +73,8 @@
     { "name": "ledger.reconstruction_economic_fact_sets", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_economic_facts", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "ledger.reconstruction_evidence", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.reconstruction_source_evidence_bindings", "kind": "capability-business", "owner": "backend:ledger" },
+    { "name": "ledger.reconstruction_source_evidence_sets", "kind": "capability-business", "owner": "backend:ledger" },
     { "name": "public.notification_outbox", "kind": "technical" },
     { "name": "public.opening_balance_setups", "kind": "legacy-business" },
     { "name": "public.opening_shareholders", "kind": "legacy-business" },

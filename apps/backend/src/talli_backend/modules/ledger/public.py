@@ -617,6 +617,9 @@ class LedgerErrorCode(StrEnum):
     RECONSTRUCTION_EVIDENCE_INCOMPLETE = "LEDGER_RECONSTRUCTION_EVIDENCE_INCOMPLETE"
     RECONSTRUCTION_EVIDENCE_DUPLICATE = "LEDGER_RECONSTRUCTION_EVIDENCE_DUPLICATE"
     RECONSTRUCTION_COVERAGE_INVALID = "LEDGER_RECONSTRUCTION_COVERAGE_INVALID"
+    RECONSTRUCTION_SOURCE_EVIDENCE_INVALID = (
+        "LEDGER_RECONSTRUCTION_SOURCE_EVIDENCE_INVALID"
+    )
     RECONSTRUCTION_ECONOMIC_FACTS_INVALID = (
         "LEDGER_RECONSTRUCTION_ECONOMIC_FACTS_INVALID"
     )
@@ -833,6 +836,7 @@ class ReconstructionEvidence:
     confirmation: ReconstructionEvidenceStatus
     issuer: ReconstructionEvidenceIssuer
     source_record_id: LedgerSourceRecordId
+    source_revision: int
     fact_sha256: str
     coverage_from: LocalDate | None = None
     coverage_through: LocalDate | None = None
@@ -840,8 +844,14 @@ class ReconstructionEvidence:
 
     def __post_init__(self) -> None:
         digest = self.fact_sha256.strip().lower()
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
-            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if (
+            self.source_revision < 1
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise LedgerError.invalid_input(
+                "LEDGER_RECONSTRUCTION_SOURCE_EVIDENCE_INVALID"
+            )
         gap = self.gap_code
         if self.confirmation is ReconstructionEvidenceStatus.CONFIRMED and gap is not None:
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
@@ -1108,6 +1118,8 @@ class ReconstructionAssessment:
     replayed: bool
     economic_facts_digest: str | None = None
     economic_fact_count: int | None = None
+    source_evidence_digest: str | None = None
+    source_evidence_count: int | None = None
 
     def __post_init__(self) -> None:
         digest = self.economic_facts_digest
@@ -1122,6 +1134,20 @@ class ReconstructionAssessment:
             )
         ):
             raise ValueError("reconstruction economic fact binding is invalid")
+        source_digest = self.source_evidence_digest
+        source_count = self.source_evidence_count
+        if (source_digest is None) is not (source_count is None) or (
+            source_digest is not None
+            and (
+                len(source_digest) != 64
+                or any(
+                    character not in "0123456789abcdef"
+                    for character in source_digest
+                )
+                or source_count != 13
+            )
+        ):
+            raise ValueError("reconstruction source evidence binding is invalid")
 
 
 @dataclass(frozen=True, slots=True)

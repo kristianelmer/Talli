@@ -88,14 +88,18 @@ export type LedgerReconstructionPresentation = {
 export function presentLedgerReconstruction(
   assessment: LedgerReconstructionAssessmentWire,
 ): LedgerReconstructionPresentation {
-  const isBoundToLedgerState = assessment.ledgerStateDigest !== null;
+  const hasCompleteReconstructionBindings = assessment.ledgerStateDigest !== null
+    && assessment.economicFactsDigest !== null
+    && assessment.economicFactCount !== null
+    && assessment.sourceEvidenceDigest !== null
+    && assessment.sourceEvidenceCount === 13;
   return {
     assessment_id: assessment.assessmentId,
     company_id: assessment.companyId,
     income_year: assessment.incomeYear,
     as_of: assessment.asOf,
-    ready: assessment.state === "READY" && isBoundToLedgerState,
-    refresh_message: isBoundToLedgerState
+    ready: assessment.state === "READY" && hasCompleteReconstructionBindings,
+    refresh_message: hasCompleteReconstructionBindings
       ? null
       : "Oppdater årsgrunnlaget før du avslutter året.",
     gaps: assessment.gapCodes.map((code) => ({

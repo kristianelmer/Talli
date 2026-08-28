@@ -738,6 +738,8 @@ export interface LedgerReconstructionAssessmentWire {
   incomeYear: number;
   ledgerStateDigest: string | null;
   recordedAt: string;
+  sourceEvidenceCount: number | null;
+  sourceEvidenceDigest: string | null;
   state: ReconstructionState;
 }
 
@@ -1744,7 +1746,7 @@ function isLedgerPeriodLockWire(value: unknown): value is LedgerPeriodLockWire {
 function isLedgerReconstructionAssessmentWire(value: unknown): value is LedgerReconstructionAssessmentWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["asOf","assessmentId","companyId","economicFactCount","economicFactsDigest","evidenceDigest","gapCodes","incomeYear","ledgerStateDigest","recordedAt","state"]) &&
+    hasOnlyProperties(value, ["asOf","assessmentId","companyId","economicFactCount","economicFactsDigest","evidenceDigest","gapCodes","incomeYear","ledgerStateDigest","recordedAt","sourceEvidenceCount","sourceEvidenceDigest","state"]) &&
     typeof value.asOf === "string" &&
     isUuid(value.assessmentId) &&
     isUuid(value.companyId) &&
@@ -1755,6 +1757,8 @@ function isLedgerReconstructionAssessmentWire(value: unknown): value is LedgerRe
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     ((typeof value.ledgerStateDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.ledgerStateDigest)) || value.ledgerStateDigest === null) &&
     isDateTime(value.recordedAt) &&
+    ((typeof value.sourceEvidenceCount === "number" && Number.isInteger(value.sourceEvidenceCount) && value.sourceEvidenceCount >= 13 && value.sourceEvidenceCount <= 13) || value.sourceEvidenceCount === null) &&
+    ((typeof value.sourceEvidenceDigest === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.sourceEvidenceDigest)) || value.sourceEvidenceDigest === null) &&
     isReconstructionState(value.state)
   );
 }

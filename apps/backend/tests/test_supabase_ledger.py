@@ -144,17 +144,10 @@ def reconstruction_command() -> RecordReconstructionAssessmentCommand:
             issuer=ReconstructionEvidenceIssuer(issuer),
             confirmation=ReconstructionEvidenceStatus.CONFIRMED,
             source_record_id=LedgerSourceRecordId(f"source:{index}"),
+            source_revision=index + 1,
             fact_sha256=f"{index:064x}",
-            coverage_from=(
-                LocalDate(date(2026, 1, 1))
-                if kind in {"BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"}
-                else None
-            ),
-            coverage_through=(
-                as_of
-                if kind in {"BANK_MOVEMENTS", "CURRENT_YEAR_ACTIVITY"}
-                else None
-            ),
+            coverage_from=LocalDate(date(2026, 1, 1)),
+            coverage_through=as_of,
         )
         for index, (kind, issuer) in enumerate(pairs)
     )
@@ -779,6 +772,8 @@ def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result
     )
 
     assert result.state is ReconstructionState.READY
+    assert result.source_evidence_digest == "a" * 64
+    assert result.source_evidence_count == 13
     assert "ledger.record_reconstruction_assessment" in calls[0][0]
     payload = json.loads(str(calls[0][1][4]))
     assert len(payload) == 13
@@ -787,12 +782,53 @@ def test_reconstruction_adapter_serializes_canonical_evidence_and_decodes_result
         "issuer": "BANKING",
         "confirmation": "CONFIRMED",
         "sourceRecordId": "source:1",
+        "sourceRevision": 2,
         "factSha256": f"{1:064x}",
         "coverageFrom": "2026-01-01",
         "coverageThrough": "2026-08-27",
         "gapCode": None,
     }
     assert calls[0][1][5] == ["50000000-0000-0000-0000-000000000005"]
+
+
+def test_reconstruction_read_requires_the_source_evidence_binding_pair() -> None:
+    session = bound_session()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{
+            "assessment_id": "40000000-0000-0000-0000-000000000004",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "income_year": 2026,
+            "as_of": date(2026, 8, 27),
+            "state": "READY",
+            "gap_codes": [],
+            "evidence_digest": "a" * 64,
+            "ledger_state_digest": "b" * 64,
+            "source_evidence_digest": "a" * 64,
+            "source_evidence_count": 13,
+            "economic_facts_digest": "c" * 64,
+            "economic_fact_count": 1,
+            "recorded_at": datetime(2026, 8, 27, 10, tzinfo=UTC),
+            "replayed": False,
+        }]
+
+    session._database_rows = database_rows  # type: ignore[method-assign]
+    result = asyncio.run(
+        session.get_reconstruction_assessment(
+            actor_id=ACTOR_ID,
+            company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+            income_year=IncomeYear(2026),
+            correlation_id=CorrelationId("reconstruction-source-evidence-query"),
+        )
+    )
+
+    assert result.source_evidence_digest == "a" * 64
+    assert result.source_evidence_count == 13
+    assert "get_reconstruction_assessment_with_source_evidence_v1" in calls[0][0]
 
 
 def test_reconstruction_candidate_query_is_member_scoped_and_typed() -> None:
@@ -2045,6 +2081,10 @@ def test_adapter_never_uses_a_service_role_business_path() -> None:
             "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE",
         ),
         ("ledger_reconstruction_stale", "LEDGER_RECONSTRUCTION_STALE"),
+        (
+            "ledger_reconstruction_source_evidence_invalid",
+            "LEDGER_RECONSTRUCTION_SOURCE_EVIDENCE_INVALID",
+        ),
         (
             "ledger_correction_original_kind_unsupported",
             "LEDGER_CORRECTION_ORIGINAL_KIND_UNSUPPORTED",

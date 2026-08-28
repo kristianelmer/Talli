@@ -699,6 +699,8 @@ class LedgerReconstructionAssessmentWire(TransportModel):
     ledger_state_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
     economic_facts_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
     economic_fact_count: int | None = Field(ge=0)
+    source_evidence_digest: str | None = Field(pattern=r"^[a-f0-9]{64}$")
+    source_evidence_count: int | None = Field(ge=13, le=13)
     recorded_at: datetime
 
 
@@ -760,6 +762,8 @@ def _reconstruction_wire(
         ledger_state_digest=value.ledger_state_digest,
         economic_facts_digest=value.economic_facts_digest,
         economic_fact_count=value.economic_fact_count,
+        source_evidence_digest=value.source_evidence_digest,
+        source_evidence_count=value.source_evidence_count,
         recorded_at=value.recorded_at.value,
     )
 

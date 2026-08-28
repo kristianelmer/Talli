@@ -50,6 +50,7 @@ RECONSTRUCTION_ID = ReconstructionAssessmentId(
 NOW = Timestamp(datetime(2026, 12, 31, 22, tzinfo=UTC))
 LEDGER_STATE_DIGEST = "c" * 64
 ECONOMIC_FACTS_DIGEST = "e" * 64
+SOURCE_EVIDENCE_DIGEST = "a" * 64
 REQUIRED_OUTPUT_KINDS = tuple(CompanyYearCloseOutputKind)
 
 
@@ -70,6 +71,8 @@ def reconstruction(
         ledger_state_digest=LEDGER_STATE_DIGEST,
         economic_facts_digest=ECONOMIC_FACTS_DIGEST,
         economic_fact_count=19,
+        source_evidence_digest=SOURCE_EVIDENCE_DIGEST,
+        source_evidence_count=13,
         recorded_at=NOW,
         replayed=False,
     )
@@ -297,6 +300,27 @@ def test_reporting_outputs_must_bind_the_current_economic_fact_set() -> None:
         asyncio.run(
             LedgerService(persistence).close_company_year(
                 command(close_evidence=tuple(facts))
+            )
+        )
+
+    assert getattr(failure.value, "code", None) == (
+        "LEDGER_COMPANY_YEAR_CLOSE_RECONSTRUCTION_STALE"
+    )
+    assert persistence.recorded == []
+
+
+def test_close_rejects_a_reconstruction_without_revisioned_source_evidence() -> None:
+    current = replace(
+        reconstruction(),
+        source_evidence_digest=None,
+        source_evidence_count=None,
+    )
+    persistence = ClosePersistenceStub(current)
+
+    with pytest.raises(Exception) as failure:
+        asyncio.run(
+            LedgerService(persistence).close_company_year(
+                command(close_evidence=complete_evidence())
             )
         )
 
