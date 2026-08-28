@@ -13,6 +13,10 @@
 -->
 
 <!-- architecture-inventory
+{"adapterBindingModes":["BankDataProvider=>disabled-until-approved read-only Enable Banking fallback adapter with injected transport","BankDataProvider=>disabled-until-approved read-only Neonomics edge adapter with injected transport"],"adapterBindingOwners":["BankDataProvider=>backend-system"],"adapterBindings":["BankDataProvider=>talli_backend.adapters.enable_banking.EnableBankingAdapter","BankDataProvider=>talli_backend.adapters.neonomics_banking.NeonomicsBankingAdapter"],"adapterDependencies":["hashlib","talli_backend.adapters.bank_provider_http","typing"],"ports":["BankDataProvider"]}
+-->
+
+<!-- architecture-inventory
 {"routes":["/api/v1/banking/statement-imports","/api/v1/banking/suggestion-acceptances","/api/v1/banking/transactions"],"workflowPurposes":["banking-reconciliation=>Authenticates one verified actor and runs bank-statement import, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts."],"workflows":["banking-reconciliation"]}
 -->
 
@@ -107,6 +111,13 @@ and cursor reads to `talli_backend.modules.banking.public`, and coordinates an
 accepted suggestion with its ledger posting inside one request-bound database
 transaction. The web sends only source facts and the canonical expected
 suggestion; it cannot choose ledger accounts or lines.
+
+The same system boundary declares `BankDataProvider` and binds
+`talli_backend.adapters.neonomics_banking.NeonomicsBankingAdapter` plus
+`talli_backend.adapters.enable_banking.EnableBankingAdapter`. Both are
+disabled-until-approved read-only edges with injected transports: they normalize
+consent, account, pagination, and transaction facts but own no persistence,
+ledger command, credential activation, or live-call authority.
 
 The `ledger-posting-and-period-control` workflow serves `/api/v1/ledger/entries`,
 `/api/v1/ledger/opening-snapshots`, `/api/v1/ledger/period-locks`,

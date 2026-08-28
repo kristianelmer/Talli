@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol, TypeVar
+import re
+from typing import Mapping, Protocol, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import (
@@ -57,6 +58,31 @@ class BankSuggestionAcceptanceId:
 
 
 @dataclass(frozen=True, slots=True)
+class BankConnectionId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "bank connection id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class BankConnectorId:
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip().lower()
+        if not value or len(value) > 80 or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", value):
+            raise ValueError("bank connector id is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class AccountingEntryReference:
     """Opaque correlation to an entry owned by the ledger capability."""
 
@@ -99,6 +125,21 @@ class BankingCursor:
 
 class SupportedBankDataFormat(StrEnum):
     CSV = "CSV"
+    CAMT053 = "CAMT053"
+
+
+class BankSyncMode(StrEnum):
+    INITIAL_BACKFILL = "INITIAL_BACKFILL"
+    NIGHTLY = "NIGHTLY"
+    ON_DEMAND = "ON_DEMAND"
+    ANNUAL_CLOSE = "ANNUAL_CLOSE"
+    RECOVERY = "RECOVERY"
+
+
+class BankTransactionState(StrEnum):
+    PENDING = "PENDING"
+    BOOKED = "BOOKED"
+    REVERSED = "REVERSED"
 
 
 class BankSuggestionKind(StrEnum):
@@ -117,6 +158,155 @@ class BankingCommand:
     correlation_id: CorrelationId
     idempotency_key: IdempotencyKey
     income_year: IncomeYear
+
+
+@dataclass(frozen=True, slots=True)
+class BeginBankConsentRequest:
+    connection_id: BankConnectionId
+    company_id: CompanyId
+    connector_id: BankConnectorId
+    bank_key: str
+    return_url: str
+
+    def __post_init__(self) -> None:
+        bank_key = self.bank_key.strip()
+        if not bank_key or len(bank_key) > 120:
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        if not self.return_url.startswith("https://") or len(self.return_url) > 2048:
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "bank_key", bank_key)
+
+
+@dataclass(frozen=True, slots=True)
+class CompleteBankConsentRequest:
+    connection_id: BankConnectionId
+    company_id: CompanyId
+    callback_parameters: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        normalized = {
+            str(key).strip(): str(value).strip()
+            for key, value in self.callback_parameters.items()
+        }
+        if (
+            not normalized
+            or len(normalized) > 12
+            or any(not key or not value or len(key) > 80 or len(value) > 4096 for key, value in normalized.items())
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.CONSENT_CALLBACK_INVALID)
+        object.__setattr__(self, "callback_parameters", normalized)
+
+
+@dataclass(frozen=True, slots=True)
+class FetchBankTransactionsRequest:
+    connection_id: BankConnectionId
+    company_id: CompanyId
+    adapter_account_reference: str
+    date_from: LocalDate
+    date_to: LocalDate
+    cursor: str | None
+    mode: BankSyncMode
+    owner_present: bool
+
+    def __post_init__(self) -> None:
+        reference = self.adapter_account_reference.strip()
+        cursor = self.cursor.strip() if self.cursor is not None else None
+        if (
+            not reference
+            or len(reference) > 1024
+            or self.date_to.value < self.date_from.value
+            or (cursor is not None and (not cursor or len(cursor) > 4096))
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "adapter_account_reference", reference)
+        object.__setattr__(self, "cursor", cursor)
+
+
+@dataclass(frozen=True, slots=True)
+class RevokeBankConsentRequest:
+    connection_id: BankConnectionId
+    company_id: CompanyId
+
+
+@dataclass(frozen=True, slots=True)
+class BankConsentRedirect:
+    redirect_url: str
+    state: str
+
+    def __post_init__(self) -> None:
+        if not self.redirect_url.startswith("https://") or not self.state:
+            raise BankingError.unavailable()
+
+
+@dataclass(frozen=True, slots=True)
+class BankProviderAccount:
+    adapter_account_reference: str
+    masked_account: str
+    currency: str
+    account_kind: str
+    display_name: str
+
+    def __post_init__(self) -> None:
+        reference = self.adapter_account_reference.strip()
+        masked = self.masked_account.strip()
+        currency = self.currency.strip().upper()
+        if (
+            not reference
+            or len(reference) > 1024
+            or not masked
+            or len(masked) > 80
+            or currency != "NOK"
+            or not self.account_kind.strip()
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+        object.__setattr__(self, "adapter_account_reference", reference)
+        object.__setattr__(self, "masked_account", masked)
+        object.__setattr__(self, "currency", currency)
+        object.__setattr__(self, "account_kind", self.account_kind.strip())
+        object.__setattr__(self, "display_name", self.display_name.strip()[:120])
+
+
+@dataclass(frozen=True, slots=True)
+class BankProviderConnection:
+    connection_id: BankConnectionId
+    connector_id: BankConnectorId
+    consent_expires_on: LocalDate | None
+    accounts: tuple[BankProviderAccount, ...]
+
+    def __post_init__(self) -> None:
+        if not self.accounts:
+            raise BankingError.precondition_failed(BankingErrorCode.NO_SUPPORTED_ACCOUNTS)
+
+
+@dataclass(frozen=True, slots=True)
+class BankProviderTransaction:
+    adapter_transaction_reference: str
+    booking_date: LocalDate
+    value_date: LocalDate | None
+    text: str
+    amount: Money
+    balance: Money | None
+    state: BankTransactionState
+
+    def __post_init__(self) -> None:
+        reference = self.adapter_transaction_reference.strip()
+        text = self.text.strip()
+        if not reference or len(reference) > 1024 or not text or len(text) > 500:
+            raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+        object.__setattr__(self, "adapter_transaction_reference", reference)
+        object.__setattr__(self, "text", text)
+
+
+@dataclass(frozen=True, slots=True)
+class BankProviderTransactionPage:
+    transactions: tuple[BankProviderTransaction, ...]
+    next_cursor: str | None
+
+    def __post_init__(self) -> None:
+        cursor = self.next_cursor.strip() if self.next_cursor is not None else None
+        if cursor is not None and (not cursor or len(cursor) > 4096):
+            raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+        object.__setattr__(self, "next_cursor", cursor)
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,6 +439,11 @@ class BankingErrorCode(StrEnum):
     SUGGESTION_STALE = "BANKING_SUGGESTION_STALE"
     FORBIDDEN = "BANKING_FORBIDDEN"
     DEPENDENCY_UNAVAILABLE = "BANKING_DEPENDENCY_UNAVAILABLE"
+    PROVIDER_UNAVAILABLE = "BANKING_PROVIDER_UNAVAILABLE"
+    PROVIDER_RESPONSE_INVALID = "BANKING_PROVIDER_RESPONSE_INVALID"
+    CONSENT_CALLBACK_INVALID = "BANKING_CONSENT_CALLBACK_INVALID"
+    CONSENT_EXPIRED = "BANKING_CONSENT_EXPIRED"
+    NO_SUPPORTED_ACCOUNTS = "BANKING_NO_SUPPORTED_ACCOUNTS"
 
 
 class BankingError(DomainError):
@@ -332,6 +527,22 @@ class BankingPersistence(Protocol):
     ) -> BankSuggestionAcceptancePage: ...
 
 
+class BankDataProvider(Protocol):
+    async def begin_consent(
+        self, request: BeginBankConsentRequest
+    ) -> BankConsentRedirect: ...
+
+    async def complete_consent(
+        self, request: CompleteBankConsentRequest
+    ) -> BankProviderConnection: ...
+
+    async def fetch_transactions(
+        self, request: FetchBankTransactionsRequest
+    ) -> BankProviderTransactionPage: ...
+
+    async def revoke_consent(self, request: RevokeBankConsentRequest) -> None: ...
+
+
 BankingAdapter = TypeVar("BankingAdapter", bound=type[object])
 
 
@@ -339,6 +550,18 @@ def banking_persistence_adapter(
     contract: type[object],
 ) -> Callable[[BankingAdapter], BankingAdapter]:
     """Declare an infrastructure binding without registering global state."""
+
+    def declare(adapter: BankingAdapter) -> BankingAdapter:
+        _ = contract
+        return adapter
+
+    return declare
+
+
+def bank_data_provider_adapter(
+    contract: type[object],
+) -> Callable[[BankingAdapter], BankingAdapter]:
+    """Declare a read-only provider binding without registering global state."""
 
     def declare(adapter: BankingAdapter) -> BankingAdapter:
         _ = contract
@@ -396,6 +619,15 @@ __all__ = [
     "AcceptedBankSuggestion",
     "AccountingEntryReference",
     "BankStatementImportResult",
+    "BankConnectionId",
+    "BankConnectorId",
+    "BankConsentRedirect",
+    "BankDataProvider",
+    "BankProviderAccount",
+    "BankProviderConnection",
+    "BankProviderTransaction",
+    "BankProviderTransactionPage",
+    "BankSyncMode",
     "BankSuggestion",
     "BankSuggestionAcceptanceId",
     "BankSuggestionAcceptancePage",
@@ -403,6 +635,7 @@ __all__ = [
     "BankTransaction",
     "BankTransactionId",
     "BankTransactionPage",
+    "BankTransactionState",
     "BankingCommand",
     "BankingCommands",
     "BankingCursor",
@@ -413,9 +646,14 @@ __all__ = [
     "BankingQueries",
     "CURRENT_BANK_SUGGESTION_RULE_VERSION",
     "ExternalActionReference",
+    "BeginBankConsentRequest",
+    "CompleteBankConsentRequest",
+    "FetchBankTransactionsRequest",
     "ImportBankStatementCommand",
     "ImportedBankTransaction",
     "PreparedBankSuggestion",
+    "RevokeBankConsentRequest",
     "SupportedBankDataFormat",
     "banking_persistence_adapter",
+    "bank_data_provider_adapter",
 ]

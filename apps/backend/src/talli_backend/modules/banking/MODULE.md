@@ -1,7 +1,7 @@
 # Banking backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["banking.suggestion_acceptances","banking.transactions"],"ports":["BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
+{"dependencies":[],"ownedTables":["banking.suggestion_acceptances","banking.transactions"],"ports":["BankDataProvider","BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
 -->
 
 ## Purpose and ownership
@@ -35,6 +35,16 @@ the locked source row before any accounting effect.
 debit or credit lines, or a posting instruction. `AccountingEntryReference` is
 only an opaque completion correlation returned by the ledger-owned workflow.
 
+The provider-neutral read-only surface uses `BeginBankConsentRequest`,
+`CompleteBankConsentRequest`, `FetchBankTransactionsRequest`, and
+`RevokeBankConsentRequest`. `BankDataProvider` returns only
+`BankConsentRedirect`, `BankProviderConnection`, `BankProviderAccount`, and
+`BankProviderTransactionPage` containing `BankProviderTransaction` source
+facts. `BankConnectionId` remains canonical; `BankConnectorId` is a visible
+connector label rather than provider business identity. `BankSyncMode` keeps
+initial, scheduled, owner-requested, annual-close, and recovery reads explicit,
+while `BankTransactionState` preserves pending, booked, and reversed facts.
+
 ## Ports and workflow seam
 
 `BankingPersistence` is the sole outbound persistence port and is declared by
@@ -43,6 +53,13 @@ restricted-role PostgreSQL adapter
 `talli_backend.adapters.supabase_banking.SupabaseBankingSession`. Provider ports
 may produce bank source rows only. They cannot depend on ledger contracts or
 request accounting entries.
+
+`BankDataProvider` is the sole outbound read-only provider port and is declared
+by `bank_data_provider_adapter`. The backend-system binds both
+`talli_backend.adapters.neonomics_banking.NeonomicsBankingAdapter` and
+`talli_backend.adapters.enable_banking.EnableBankingAdapter` behind injected
+transports. Neither binding is composed with credentials or live network access
+until the separate #189 external gates are approved.
 
 The backend-system bank reconciliation workflow opens one short transaction,
 asks banking to lock and revalidate the source fact, maps the closed account-free

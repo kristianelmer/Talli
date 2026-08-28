@@ -8,11 +8,11 @@
   "documentation": "apps/backend/src/talli_backend/modules/banking/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.banking.public",
   "exports": {
-    "commands": ["AcceptBankSuggestionCommand", "BankingCommand", "BankingCommands", "ImportBankStatementCommand"],
-    "queries": ["AcceptedBankSuggestion", "BankStatementImportResult", "BankSuggestionAcceptancePage", "BankTransaction", "BankTransactionPage", "BankingQueries", "PreparedBankSuggestion"],
+    "commands": ["AcceptBankSuggestionCommand", "BankingCommand", "BankingCommands", "BeginBankConsentRequest", "CompleteBankConsentRequest", "FetchBankTransactionsRequest", "ImportBankStatementCommand", "RevokeBankConsentRequest"],
+    "queries": ["AcceptedBankSuggestion", "BankConsentRedirect", "BankProviderAccount", "BankProviderConnection", "BankProviderTransaction", "BankProviderTransactionPage", "BankStatementImportResult", "BankSuggestionAcceptancePage", "BankTransaction", "BankTransactionPage", "BankingQueries", "PreparedBankSuggestion"],
     "events": [],
     "errors": ["BankingError", "BankingErrorCode"],
-    "identifiers": ["AccountingEntryReference", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankTransactionId", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ExternalActionReference", "ImportedBankTransaction", "SupportedBankDataFormat", "banking_persistence_adapter"]
+    "identifiers": ["AccountingEntryReference", "BankConnectionId", "BankConnectorId", "BankDataProvider", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankSyncMode", "BankTransactionId", "BankTransactionState", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ExternalActionReference", "ImportedBankTransaction", "SupportedBankDataFormat", "bank_data_provider_adapter", "banking_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["banking"],
@@ -28,6 +28,13 @@
       "contract": "talli_backend.modules.banking.public.BankingPersistence",
       "registrationDecorator": "talli_backend.modules.banking.public.banking_persistence_adapter",
       "adapters": ["talli_backend.adapters.supabase_banking.SupabaseBankingSession"]
+    },
+    {
+      "name": "BankDataProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.banking.public.BankDataProvider",
+      "registrationDecorator": "talli_backend.modules.banking.public.bank_data_provider_adapter",
+      "adapters": ["talli_backend.adapters.enable_banking.EnableBankingAdapter", "talli_backend.adapters.neonomics_banking.NeonomicsBankingAdapter"]
     }
   ],
   "dependencies": [],
