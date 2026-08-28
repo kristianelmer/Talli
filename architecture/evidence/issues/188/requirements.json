@@ -2,7 +2,14 @@
   "schemaVersion": "1.0",
   "issue": "#188",
   "source": "https://github.com/kristianelmer/Talli/issues/188",
-  "sourceCheckedAt": "2026-08-27T08:30:34Z",
+  "sourceCheckedAt": "2026-08-28T00:30:00Z",
+  "routeDecision": {
+    "resolution": "ledger-live-reconciliation-acceptance-split",
+    "approvedAt": "2026-08-28",
+    "evidence": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+    "deferredIntegrationIssue": "#199",
+    "boundary": "#188 proves the canonical ledger receiver, immutable source/output bindings, deterministic postings, official mappings, golden journals, and fail-closed behavior. #199 proves actual source-owner production and executable agreement with every canonical downstream calculator after #195."
+  },
   "entryBlockers": [
     {
       "issue": "#139",
@@ -14,14 +21,18 @@
   "criteria": [
     {
       "id": "GH-188-A1",
-      "requirement": "Join at any date and reconstruct from 1 January with source completeness/gap evidence.",
+      "requirement": "The canonical ledger contract reconstructs any January 1-to-as-of fact set and deterministically rejects incomplete source coverage or coded gaps before posting/close; live source-owner production is accepted only by #199.",
       "sources": [
         {
           "url": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
-          "version": "owner resolution 2026-08-26"
+          "version": "owner resolution 2026-08-26, staged by #188 split 2026-08-28"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved acceptance split 2026-08-28"
         }
       ],
-      "expectedResult": "A supported company joining on any date reconstructs every day from 1 January or receives a deterministic pre-posting gap block with source evidence.",
+      "expectedResult": "For any as-of date, the ledger accepts only the exact January 1-through-as-of source topology and economic fact set, binds it immutably, and blocks missing coverage, declared gaps, stale evidence, replay mismatch, or an unsupported case before posting or close. Actual source-owner production remains a mandatory #199 proof.",
       "plannedEvidence": [
         {
           "path": "apps/backend/tests/test_ledger_full_year_reconstruction.py",
@@ -70,18 +81,22 @@
     },
     {
       "id": "GH-188-A3",
-      "requirement": "All #172 accepted ledger patterns have official-source mapping, golden cases, and cross-output facts.",
+      "requirement": "All #172 accepted ledger patterns have pinned official-source mappings, versioned golden inputs/journals, and typed downstream projection contracts.",
       "sources": [
         {
           "url": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
           "version": "owner resolution 2026-08-26"
         },
         {
-          "status": "required-before-pass",
-          "version": "current official Norwegian accounting/tax source version pinned per pattern during #188"
+          "path": "docs/accounting/supported-ledger-patterns.md",
+          "version": "official-source cut pinned 2026-08-27"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved split: real calculator agreement deferred to #199"
         }
       ],
-      "expectedResult": "Every supported #172 ledger pattern has a versioned official-source citation, deterministic golden input/output and matching downstream fact projection; no pattern is accepted on an unpinned source.",
+      "expectedResult": "Every supported #172 ledger pattern has a versioned official-source citation, deterministic golden input and balanced canonical journal, declared typed downstream consumers, and coded fail-closed cases. No fixture declaration is represented as proof that a future calculator already agrees.",
       "plannedEvidence": [
         {
           "path": "docs/accounting/supported-ledger-patterns.md",
@@ -90,10 +105,6 @@
         {
           "path": "tests/fixtures/ledger-supported-patterns.json",
           "command": "node --test tests/ledger_supported_pattern_evidence.test.mjs"
-        },
-        {
-          "path": "tests/ledger_cross_output_reconciliation.test.mjs",
-          "command": "node --test tests/ledger_cross_output_reconciliation.test.mjs"
         }
       ],
       "status": "planned"
@@ -122,22 +133,34 @@
     },
     {
       "id": "GH-188-A5",
-      "requirement": "Ledger facts reconcile to investments, governance, all filings, SAF-T, and archive.",
+      "requirement": "Reconstruction and close bind immutable stable-ID/revision/hash source attestations and downstream output declarations to the exact economic-fact digest; historical, unbound, stale, or mismatched evidence cannot be current. #199 proves actual source-owned derivation and cross-output agreement.",
       "sources": [
         {
           "url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866",
           "version": "launch-clearance resolution 2026-08-26, lane 3"
-        }
-      ],
-      "expectedResult": "One canonical fact set reconciles by stable IDs and hashes to every published downstream projection with zero unexplained difference.",
-      "plannedEvidence": [
-        {
-          "path": "tests/ledger_cross_output_reconciliation.test.mjs",
-          "command": "node --test tests/ledger_cross_output_reconciliation.test.mjs"
         },
         {
-          "path": "architecture/company-archive-sources.json",
-          "command": "npm run check:architecture"
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved receiving-contract/live-integration split 2026-08-28"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/199",
+          "version": "mandatory live integration gate created 2026-08-28"
+        }
+      ],
+      "expectedResult": "The ledger independently binds all 13 typed source attestations and all seven close-output declarations to the current economic-fact digest, rejects partial or mismatched pairs, and refuses to treat historical unbound evidence as current. The contract states—and tests preserve—that these declarations are not themselves proof of source-owned derivation; #199 must supply that proof.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_ledger_full_year_reconstruction.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger_full_year_reconstruction.py apps/backend/tests/test_ledger_company_year_close.py"
+        },
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "node --test tests/ledger_full_year_database_runtime.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs"
+        },
+        {
+          "path": "supabase/migrations/20260827109400_ledger_reconstruction_source_evidence.sql",
+          "command": "npm run test:ledger-database-lifecycle"
         }
       ],
       "status": "planned"

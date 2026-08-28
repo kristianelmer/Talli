@@ -142,6 +142,43 @@ permitted. Characterization, generated-contract, database/RLS, browser,
 rollback/recutover, deterministic dependency, and two immutable complete-gate
 passes must prove the relocation before #139 exits.
 
+## 2026-08-28 amendment: split ledger acceptance from live cross-capability reconciliation
+
+Issue #188 exposed a dependency cycle in the mass-market route. The ledger stage
+must define and enforce January-to-as-of source completeness and downstream-output
+binding, but the canonical source producers and several receiving calculators do
+not exist until their later serialized capability stages. Requiring their live
+results before #188 closes would either start later capabilities concurrently,
+read their private legacy tables, or accept fixture labels as if they were real
+reconciliation. All three outcomes contradict this ADR and weaken the launch
+proof.
+
+Kristian therefore approved the explicit split recorded in
+[#188 comment 5448715773](https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773).
+#188 owns the canonical ledger receiver and close contracts: typed January-to-as-of
+coverage and gap topology, immutable economic/source fact bindings, immutable
+downstream-output declarations, deterministic postings and corrections, pinned
+official mappings, golden journals, and unsupported-case failure. It must reject
+historical, incomplete, stale, unbound, duplicated, or digest-mismatched evidence.
+It does not claim that future source owners already produce their attestations or
+that future calculators already agree with them.
+
+Issue #199 is a mandatory post-#195 integration gate. Once all canonical source
+owners, filings, SAF-T, audit, and archive exist, #199 must exercise their public
+contracts over one complete company-year graph and prove stable-ID/hash agreement
+with zero unexplained material differences. It may add integration tests and
+evidence, but it may not create a cross-capability writer, read a private capability
+table, revive a compatibility facade, or duplicate accounting policy. A defect is
+routed through exactly one owning capability at a time and the whole graph is
+rerun. Fixture declarations alone cannot satisfy #199.
+
+The serialized tail is therefore `#195 → #199 → #154`. The archive/SAF-T and
+final zero-difference tranche of #197 also waits for #199. This is an ordering
+change, not an assurance waiver: #154 cannot contract the legacy system and #198
+cannot clear launch until #199 and the representative #197 evidence have passed.
+Cost, credential, named-data, production, filing, provider, and public-action
+guardrails are unchanged.
+
 ## Canonical decision inputs
 
 - Repository prototype and manifest format: issue #130 and commit `1c38dc6d`.
@@ -150,6 +187,8 @@ passes must prove the relocation before #139 exits.
 - Final approval and frozen pointer index: issue #133.
 - Ledger atomic-coordinator relocation and option A: issue #139 comment
   `5434908084`.
+- Ledger/live-reconciliation acceptance split: issue #188 comment `5448715773`
+  and issue #199.
 
 ## Consequences
 
