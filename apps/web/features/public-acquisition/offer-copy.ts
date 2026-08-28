@@ -39,7 +39,9 @@ const refundPromise =
   "Full refusjon innen 30 dager etter første kjøp når ingen produksjonsinnsending er sendt. Hvis Talli godtar en sak som skulle vært stoppet, eller Talli eller en leverandør ikke kan fullføre det lovede selskapsåret, refunderes hele beløpet automatisk.";
 
 const proofLinks = [
-  { label: "Se selskapsgrensen", href: "/selskapsgrense" },
+  { label: "Se selskapsgrensen", href: "/passer-talli" },
+  { label: "Se pris og refusjon", href: "/pris" },
+  { label: "Få hjelp", href: "/hjelp" },
   { label: "Les personvern", href: "/personvern" },
   { label: "Les vilkår og refusjon", href: "/vilkar" },
 ] as const;

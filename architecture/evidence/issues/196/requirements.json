@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#196",
+  "source": "https://github.com/kristianelmer/Talli/issues/196",
+  "sourceCheckedAt": "2026-08-28T13:10:00Z",
+  "route": {
+    "entryGate": "#187",
+    "entryGateState": "CLOSED",
+    "parallelAuthority": "#165 and #180 explicitly permit this non-business public-acquisition lane after #187",
+    "serializedIssueStillOpen": "#189",
+    "serializedSuccessorClaimed": false
+  },
+  "executionBoundary": {
+    "localAuthorized": [
+      "public acquisition presentation and indexable information routes",
+      "deny-by-default signup, consent, and checkout shell",
+      "first-party privacy-minimized funnel measurement and aggregate operator evidence",
+      "local copy, SEO, accessibility, performance, mobile, security, and release gates"
+    ],
+    "externalNotAuthorized": [
+      "deployment or public launch",
+      "tracker or payment-provider activation",
+      "checkout, charge, refund, or paid advertising",
+      "customer contact, outreach, named-company intake, or production data"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-196-A1",
+      "requirement": "‘Sjekk selskapet gratis’ is the single primary public action and starts the canonical free provisional eligibility flow.",
+      "plannedEvidence": [
+        {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"},
+        {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"}
+      ],
+      "status": "local-static-evidence-passed"
+    },
+    {
+      "id": "GH-196-A2",
+      "requirement": "Provisional/definitive eligibility, NOK 1,490 including VAT, three filings, supported/blocked/clarify boundary, refund, operator, and non-affiliation copy exactly match the owner-approved versioned sources.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/offer-copy.ts", "command": "npm run test:boundary-web"},
+        {"path": "tests/launch_copy.test.mjs", "command": "npm run test:launch-copy"}
+      ],
+      "status": "local-copy-evidence-passed"
+    },
+    {
+      "id": "GH-196-A3",
+      "requirement": "Recruitment mode cannot claim or enable paid production; live claims and checkout require the exact capability version, immutable release state, runtime switches, and a definitive eligibility continuation.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/runtime.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/pris/page.tsx", "command": "npm run test:browser-public-acquisition"}
+      ],
+      "status": "local-runtime-gate-passed"
+    },
+    {
+      "id": "GH-196-A4",
+      "requirement": "Marketing measurement accepts no personal, company, financial, bank, filing, document, or free-text data; non-essential collection starts only after explicit consent and uses a short-lived anonymous first-party session.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/measurement.ts", "command": "npm run test:boundary-web"},
+        {"path": "tests/marketing_measurement_database_runtime.test.mjs", "command": "npm run test:marketing-measurement"}
+      ],
+      "status": "pending-measurement-slice"
+    },
+    {
+      "id": "GH-196-A5",
+      "requirement": "Every required funnel event and bounded reason code can be recorded through a first-party provider-neutral endpoint and reported as aggregate conversion, timing, error/help, refund/unsupported, and completion metrics without cross-site identifiers.",
+      "plannedEvidence": [
+        {"path": "apps/web/app/api/marketing-events/route.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/(operator)/operator/marketing/page.tsx", "command": "npm run test:browser-public-acquisition"}
+      ],
+      "status": "pending-measurement-slice"
+    },
+    {
+      "id": "GH-196-A6",
+      "requirement": "Homepage, scope, price, help, terms, privacy, security, and status are indexable with Norwegian metadata, canonical HTTPS URLs, sitemap, robots, social preview, favicon, semantic headings, and truthful Organization/SoftwareApplication structured data.",
+      "plannedEvidence": [
+        {"path": "apps/web/app/sitemap.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/layout.tsx", "command": "npm run build:web"}
+      ],
+      "status": "local-seo-build-passed"
+    },
+    {
+      "id": "GH-196-A7",
+      "requirement": "Rendered public and signup/checkout-shell journeys pass copy, keyboard, focus, labels/status, contrast, 200% zoom/reflow, 390px mobile, performance, and no-horizontal-overflow gates.",
+      "plannedEvidence": [
+        {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"},
+        {"path": "architecture/evidence/customer-ready-gates/<revision>.json", "command": "npm run gate:customer-ready"}
+      ],
+      "status": "pending-browser-accessibility-performance-evidence"
+    },
+    {
+      "id": "GH-196-A8",
+      "requirement": "Ad and checkout stop rules fail closed whenever eligibility, capability, production, billing, bank, filing, security, UX, deadline, data-integrity, charge, or support-capacity evidence is red or stale.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/runtime.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"}
+      ],
+      "status": "local-stop-rules-passed"
+    }
+  ],
+  "boundaryValidation": {
+    "checkedAt": "2026-08-28T13:18:09Z",
+    "commands": [
+      "npm run check:architecture",
+      "npm run typecheck",
+      "node --test apps/web/tests/public-acquisition.test.mjs apps/web/tests/launch-copy.test.mjs",
+      "npm run build:web"
+    ],
+    "focusedTests": {"passed": 8, "failed": 0},
+    "renderedRouteChecks": ["/", "/passer-talli", "/pris", "/hjelp", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
+    "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
+  },
+  "closeState": "open-implementation-and-local-evidence"
+}

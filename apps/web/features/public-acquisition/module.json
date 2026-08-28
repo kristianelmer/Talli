@@ -4,20 +4,20 @@
   "name": "public-acquisition",
   "path": "apps/web/features/public-acquisition",
   "owner": "web:public-acquisition",
-  "purpose": "Present the truthful free-recruitment homepage and approved annual offer without enabling checkout or claiming live production capabilities.",
+  "purpose": "Present the truthful free-recruitment website, approved annual offer, deny-by-default acquisition state, and privacy-minimized measurement vocabulary without owning eligibility, billing, or launch clearance.",
   "documentation": "apps/web/features/public-acquisition/MODULE.md",
   "publicEntryPoint": "@/features/public-acquisition",
-  "publicImportPaths": ["@/features/public-acquisition", "apps/web/features/public-acquisition", "apps/web/features/public-acquisition/index.ts"],
-  "ownedRoutes": ["/"],
+  "publicImportPaths": ["@/features/public-acquisition", "apps/web/features/public-acquisition", "apps/web/features/public-acquisition/index.ts", "apps/web/features/public-acquisition/PublicPage"],
+  "ownedRoutes": ["/", "/passer-talli", "/pris", "/hjelp", "/sikkerhet", "/status", "/api/marketing-events"],
   "apiOperations": [],
   "dependencies": [],
-  "allowedImports": [],
+  "allowedImports": ["next/link", "react"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
   "directBrowserFlows": [],
   "forbiddenResponsibilities": [
     "Eligibility policy, company-year admission, billing, checkout, or provider activation",
     "Live capability or launch-clearance decisions",
-    "Analytics persistence, personal data, company data, or financial data"
+    "Analytics persistence policy, personal data, company data, financial data, documents, bank data, or free text"
   ],
   "tests": {
     "feature": "apps/web/tests/public-acquisition.test.mjs",

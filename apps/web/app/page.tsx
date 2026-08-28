@@ -8,11 +8,43 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: c.metadata.title,
   description: c.metadata.description,
+  alternates: { canonical: "/" },
 };
+
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Talli",
+    legalName: "ELMER WELFIS",
+    url: "https://talli.no",
+    email: "post@talli.no",
+    identifier: "930835978",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Talli",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description: c.metadata.description,
+    offers: {
+      "@type": "Offer",
+      price: "1490",
+      priceCurrency: "NOK",
+      availability: "https://schema.org/OutOfStock",
+      description: "Betaling er ikke åpnet; gratis rekrutteringsmodus.",
+    },
+  },
+] as const;
 
 export default function Home() {
   return (
     <div className={styles.page}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="Talli forside">
           <span className={styles.brandMark} aria-hidden="true" />
@@ -122,6 +154,11 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <nav className={styles.footerLinks} aria-label="Juridisk og kontakt">
+            <Link href="/passer-talli">Passer Talli?</Link>
+            <Link href="/pris">Pris</Link>
+            <Link href="/hjelp">Hjelp</Link>
+            <Link href="/sikkerhet">Sikkerhet</Link>
+            <Link href="/status">Status</Link>
             <Link href="/vilkar">Vilkår</Link>
             <Link href="/personvern">Personvern</Link>
             <Link href="/databehandleravtale">Databehandleravtale</Link>

@@ -6,6 +6,7 @@ import styles from "./eligibility.module.css";
 export const metadata: Metadata = {
   title: "Sjekk selskapet gratis – Talli",
   description: "Finn ut om Talli passer for selskapsåret før du oppretter konto.",
+  alternates: { canonical: "/sjekk-selskapet" },
 };
 
 export default function CompanyEligibilityPage() {

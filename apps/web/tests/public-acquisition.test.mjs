@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { publicRecruitmentOffer } from "../features/public-acquisition/index.ts";
+import {
+  acquisitionStopRuleKeys,
+  deniedAcquisitionGates,
+  derivePublicAcquisitionRuntime,
+  publicRecruitmentOffer,
+} from "../features/public-acquisition/index.ts";
 
 const homepageSource = readFileSync(
   new URL("../app/page.tsx", import.meta.url),
@@ -15,6 +20,10 @@ const capabilityManifest = JSON.parse(readFileSync(
   ),
   "utf8",
 ));
+const routeSource = (route) => readFileSync(
+  new URL(`../app/${route}/page.tsx`, import.meta.url),
+  "utf8",
+);
 
 test("the public offer stays in free recruitment mode with one eligibility action", () => {
   assert.equal(publicRecruitmentOffer.mode, "recruitment");
@@ -114,7 +123,9 @@ test("the recruitment homepage presents the approved annual offer exactly", () =
 
 test("the public offer carries the approved proof links, minimum FAQ, and final eligibility invitation", () => {
   assert.deepEqual(publicRecruitmentOffer.proofLinks, [
-    { label: "Se selskapsgrensen", href: "/selskapsgrense" },
+    { label: "Se selskapsgrensen", href: "/passer-talli" },
+    { label: "Se pris og refusjon", href: "/pris" },
+    { label: "Få hjelp", href: "/hjelp" },
     { label: "Les personvern", href: "/personvern" },
     { label: "Les vilkår og refusjon", href: "/vilkar" },
   ]);
@@ -155,4 +166,74 @@ test("the complete public company-year promise is pinned to the canonical manife
     publicRecruitmentOffer.includedCapabilityClaims,
     capabilityManifest.promise.customerClaims,
   );
+});
+
+test("live claims and checkout deny by default and every ad stop rule is binding", () => {
+  const denied = derivePublicAcquisitionRuntime({
+    requestedMode: "launch",
+    requestedCheckout: "true",
+    stableRelease: null,
+    capabilityManifestVersion: "2026.1",
+    expectedCapabilityManifestVersion: "2026.1",
+    definitiveEligibilityContinuation: true,
+    gates: deniedAcquisitionGates,
+  });
+  assert.equal(denied.mode, "recruitment");
+  assert.equal(denied.liveClaimsEnabled, false);
+  assert.equal(denied.checkoutEnabled, false);
+  for (const key of acquisitionStopRuleKeys) {
+    assert.ok(denied.blockingReasons.includes(`gate:${key}`), key);
+  }
+  assert.ok(denied.blockingReasons.includes("release:missing"));
+
+  const greenGates = Object.fromEntries(
+    acquisitionStopRuleKeys.map((key) => [key, true]),
+  );
+  const provisional = derivePublicAcquisitionRuntime({
+    requestedMode: "launch",
+    requestedCheckout: "true",
+    stableRelease: { gitRevision: "a".repeat(40) },
+    capabilityManifestVersion: "2026.1",
+    expectedCapabilityManifestVersion: "2026.1",
+    definitiveEligibilityContinuation: false,
+    gates: greenGates,
+  });
+  assert.equal(provisional.liveClaimsEnabled, true);
+  assert.equal(provisional.checkoutEnabled, false);
+  assert.ok(provisional.blockingReasons.includes("eligibility:definitive-required"));
+
+  for (const key of acquisitionStopRuleKeys) {
+    const runtime = derivePublicAcquisitionRuntime({
+      requestedMode: "launch",
+      requestedCheckout: "true",
+      stableRelease: { gitRevision: "a".repeat(40) },
+      capabilityManifestVersion: "2026.1",
+      expectedCapabilityManifestVersion: "2026.1",
+      definitiveEligibilityContinuation: true,
+      gates: { ...greenGates, [key]: false },
+    });
+    assert.equal(runtime.checkoutEnabled, false, key);
+    assert.equal(runtime.liveClaimsEnabled, false, key);
+  }
+});
+
+test("the indexable public route set carries canonical metadata and no live overclaim", () => {
+  for (const route of ["passer-talli", "pris", "hjelp", "sikkerhet", "status"]) {
+    const source = routeSource(route);
+    assert.match(source, new RegExp(`canonical: "/${route}"`, "u"), route);
+    assert.doesNotMatch(source, /godkjent av|garantert|markedsledende|kund(er|erfaring)|stjerner/iu);
+  }
+  const layout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const robots = readFileSync(new URL("../app/robots.ts", import.meta.url), "utf8");
+  const sitemap = readFileSync(new URL("../app/sitemap.ts", import.meta.url), "utf8");
+  assert.match(layout, /metadataBase: new URL\("https:\/\/talli\.no"\)/u);
+  assert.match(layout, /images: \["\/og\.png"\]/u);
+  assert.match(homepageSource, /"@type": "Organization"/u);
+  assert.match(homepageSource, /"@type": "SoftwareApplication"/u);
+  assert.match(homepageSource, /schema\.org\/OutOfStock/u);
+  for (const route of ["passer-talli", "pris", "hjelp", "sikkerhet", "status"]) {
+    assert.match(sitemap, new RegExp(`"/${route}"`, "u"));
+  }
+  assert.match(robots, /disallow:[\s\S]+"\/api\/"/u);
+  assert.match(robots, /sitemap: "https:\/\/talli\.no\/sitemap\.xml"/u);
 });
