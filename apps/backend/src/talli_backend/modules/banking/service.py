@@ -7,6 +7,7 @@ import hashlib
 import io
 import re
 import unicodedata
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -204,12 +205,19 @@ class BankingService:
         cursor: BankingCursor | None,
         limit: int,
     ) -> BankTransactionPage:
-        return await self._persistence.list_transactions(
+        page = await self._persistence.list_transactions(
             actor_id=actor_id,
             company_ids=company_ids,
             correlation_id=correlation_id,
             cursor=cursor,
             limit=limit,
+        )
+        return replace(
+            page,
+            items=tuple(
+                replace(item, suggestion=self.suggestion_for(item))
+                for item in page.items
+            ),
         )
 
     async def list_suggestion_acceptances(

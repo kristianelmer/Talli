@@ -75,6 +75,8 @@ def transaction(text: str, amount: str, *, matched: bool = False) -> BankTransac
             if matched
             else None
         ),
+        matched_action_reference=None,
+        warning_accepted=False,
         suggestion=None,
         created_at=Timestamp(datetime(2026, 1, 2, tzinfo=UTC)),
     )

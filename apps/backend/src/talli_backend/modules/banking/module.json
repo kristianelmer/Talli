@@ -12,7 +12,7 @@
     "queries": ["AcceptedBankSuggestion", "BankStatementImportResult", "BankSuggestionAcceptancePage", "BankTransaction", "BankTransactionPage", "BankingQueries", "PreparedBankSuggestion"],
     "events": [],
     "errors": ["BankingError", "BankingErrorCode"],
-    "identifiers": ["AccountingEntryReference", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankTransactionId", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ImportedBankTransaction", "SupportedBankDataFormat", "banking_persistence_adapter"]
+    "identifiers": ["AccountingEntryReference", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankTransactionId", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ExternalActionReference", "ImportedBankTransaction", "SupportedBankDataFormat", "banking_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["banking"],

@@ -49,7 +49,8 @@ never reads banking tables or evaluates transaction text.
 The closed public vocabulary is `SupportedBankDataFormat`,
 `CURRENT_BANK_SUGGESTION_RULE_VERSION`, `BankSuggestionKind`,
 `BankTransactionId`, `BankSuggestionAcceptanceId`, `BankingCursor`, and
-`BankingPage`. `ImportedBankTransaction` is the normalized private-to-persistence
+`BankingPage`. `ExternalActionReference` is an opaque correlation to a
+future-owner reconciliation action. `ImportedBankTransaction` is the normalized private-to-persistence
 capture value. Expected failures are `BankingError` values with declared
 `BankingErrorCode` identifiers and shared domain error categories.
 

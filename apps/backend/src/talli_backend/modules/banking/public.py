@@ -70,6 +70,22 @@ class AccountingEntryReference:
 
 
 @dataclass(frozen=True, slots=True)
+class ExternalActionReference:
+    """Opaque correlation to a reconciliation action owned elsewhere."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        value = self.value.strip()
+        if not value or len(value) > 255:
+            raise ValueError("external action reference is invalid")
+        object.__setattr__(self, "value", value)
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class BankingCursor:
     value: str
 
@@ -165,6 +181,8 @@ class BankTransaction:
     balance: Money | None
     source_hash: str
     matched_entry_id: AccountingEntryReference | None
+    matched_action_reference: ExternalActionReference | None
+    warning_accepted: bool
     suggestion: BankSuggestion | None
     created_at: Timestamp
 
@@ -381,6 +399,7 @@ __all__ = [
     "BankingPersistence",
     "BankingQueries",
     "CURRENT_BANK_SUGGESTION_RULE_VERSION",
+    "ExternalActionReference",
     "ImportBankStatementCommand",
     "ImportedBankTransaction",
     "PreparedBankSuggestion",
