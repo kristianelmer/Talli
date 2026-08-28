@@ -1,19 +1,18 @@
 # Banking backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":[],"ports":["BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
+{"dependencies":[],"ownedTables":["banking.suggestion_acceptances","banking.transactions"],"ports":["BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
 -->
 
 ## Purpose and ownership
 
 `banking` owns bank statement capture, canonical duplicate identity,
 deterministic account-free suggestions, explicit acceptance, reconciliation
-state, and bank-provider source ports. This first interface slice declares no
-database ownership while the frozen browser implementation remains canonical.
-The next expand step creates canonical `banking.transactions` and
-`banking.suggestion_acceptances`, reconciles them against the public legacy
-tables without changing stable record identifiers, and only then binds the
-persistence adapter.
+state, and bank-provider source ports. The expand migration
+`supabase/migrations/20260828100000_banking_capability.sql` creates canonical
+`banking.transactions` and `banking.suggestion_acceptances`, reconciles them
+against the public legacy tables without changing stable record identifiers,
+and maintains a bounded mixed-version mirror until browser cutover.
 
 ## Public interface
 

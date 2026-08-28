@@ -5,6 +5,10 @@
 -->
 
 <!-- architecture-inventory
+{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql"],"technicalTables":["backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
+-->
+
+<!-- architecture-inventory
 {"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
 -->
 
@@ -108,6 +112,14 @@ read stays in an explicitly named compatibility model outside the frozen future
 capability package; ledger owns only posting and lock behavior.
 
 ## Operational and technical ownership
+
+The banking expand stage adds immutable technical migration evidence in
+`backend_system.banking_migration_runs`,
+`backend_system.banking_migration_source_rows`, and
+`backend_system.banking_migration_reconciliations`. These records prove the
+exact-ID, count, and canonical-hash transfer performed by
+`supabase/migrations/20260828100000_banking_capability.sql`; they contain no
+banking classification or accounting policy.
 
 The backend system owns the deny-by-default `public.launch_signoffs` operational
 control state. It also owns `public.company_access_command_receipts` and

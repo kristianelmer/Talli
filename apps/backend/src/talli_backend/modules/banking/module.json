@@ -15,11 +15,11 @@
     "identifiers": ["AccountingEntryReference", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankTransactionId", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ImportedBankTransaction", "SupportedBankDataFormat", "banking_persistence_adapter"]
   },
   "owns": {
-    "postgresSchemas": [],
-    "tables": [],
+    "postgresSchemas": ["banking"],
+    "tables": ["banking.suggestion_acceptances", "banking.transactions"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "None"
+    "migrations": "supabase/migrations/20260828100000_banking_capability.sql"
   },
   "ports": [
     {

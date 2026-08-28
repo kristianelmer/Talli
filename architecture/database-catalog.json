@@ -4,6 +4,9 @@
   "ownershipPolicy": "capability owners are authoritative",
   "compatibilityAdapterRegistry": "architecture/compatibility.json",
   "tables": [
+    { "name": "backend_system.banking_migration_reconciliations", "kind": "technical" },
+    { "name": "backend_system.banking_migration_runs", "kind": "technical" },
+    { "name": "backend_system.banking_migration_source_rows", "kind": "technical" },
     { "name": "backend_system.ledger_command_receipts", "kind": "technical" },
     { "name": "backend_system.ledger_cursor_signing_keys", "kind": "technical" },
     { "name": "backend_system.ledger_migration_quarantine", "kind": "technical" },
@@ -11,6 +14,8 @@
     { "name": "backend_system.ledger_migration_runs", "kind": "technical" },
     { "name": "backend_system.ledger_migration_source_rows", "kind": "technical" },
     { "name": "backend_system.ledger_workflow_receipts", "kind": "technical" },
+    { "name": "banking.suggestion_acceptances", "kind": "capability-business", "owner": "backend:banking" },
+    { "name": "banking.transactions", "kind": "capability-business", "owner": "backend:banking" },
     { "name": "public.annual_data", "kind": "legacy-business" },
     { "name": "public.audit_events", "kind": "legacy-business" },
     { "name": "public.authority_operations", "kind": "legacy-business" },
