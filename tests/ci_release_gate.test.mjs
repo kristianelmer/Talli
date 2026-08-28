@@ -238,6 +238,22 @@ test("local immutable gate rejects tracked, staged, and untracked drift", () => 
   }
 });
 
+test("local immutable gate normalizes terminal output before recording it", () => {
+  const localGate = readFileSync(localGatePath, "utf8");
+
+  assert.match(localGate, /function normalizeTranscriptOutput\(value\)/u);
+  assert.match(localGate, /\.replaceAll\("\\r", ""\)/u);
+  assert.match(localGate, /\.map\(\(line\) => line\.trimEnd\(\)\)/u);
+  assert.match(
+    localGate,
+    /transcript\.push\(normalizeTranscriptOutput\(result\.stdout\)\)/u,
+  );
+  assert.match(
+    localGate,
+    /transcript\.push\(normalizeTranscriptOutput\(result\.stderr\)\)/u,
+  );
+});
+
 test("database harness restores generated drift and preserves failure semantics", () => {
   for (const mode of ["success", "command-failure", "restore-failure"]) {
     const workspace = createHarnessWorkspace(mode);

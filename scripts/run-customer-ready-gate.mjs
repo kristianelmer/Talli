@@ -39,6 +39,15 @@ const transcript = [
   `startedAt=${startedAt}`,
 ];
 
+function normalizeTranscriptOutput(value) {
+  return value
+    .replaceAll("\r", "")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trimEnd();
+}
+
 function execute(name, command, executable, args, environment = {}) {
   const started = Date.now();
   transcript.push("", `[${name}] command=${command}`);
@@ -48,8 +57,8 @@ function execute(name, command, executable, args, environment = {}) {
     env: { ...process.env, ...environment },
     maxBuffer: 100 * 1024 * 1024,
   });
-  if (result.stdout) transcript.push(result.stdout.trimEnd());
-  if (result.stderr) transcript.push(result.stderr.trimEnd());
+  if (result.stdout) transcript.push(normalizeTranscriptOutput(result.stdout));
+  if (result.stderr) transcript.push(normalizeTranscriptOutput(result.stderr));
   const exitCode = result.status ?? 1;
   const durationMs = Date.now() - started;
   transcript.push(`[${name}] exit=${exitCode}`, `[${name}] durationMs=${durationMs}`);
