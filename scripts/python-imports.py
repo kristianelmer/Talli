@@ -135,7 +135,10 @@ def imports_for(file: dict[str, str], source_root: str) -> dict[str, Any]:
 
 
 def main() -> None:
-    request = json.load(sys.stdin)
+    request_line = sys.stdin.readline()
+    if not request_line:
+        raise ValueError("missing newline-delimited architecture inspection request")
+    request = json.loads(request_line)
     source_root = request["sourceRoot"]
     print(json.dumps({"files": [imports_for(file, source_root) for file in request["files"]]}))
 

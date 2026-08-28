@@ -882,10 +882,10 @@ function pythonInspection(root, paths, errors) {
     {
       cwd: root,
       encoding: "utf8",
-      input: JSON.stringify({
+      input: `${JSON.stringify({
         sourceRoot: join(root, "apps/backend/src"),
         files: paths.map((path) => ({ path, source: readFileSync(path, "utf8") })),
-      }),
+      })}\n`,
     },
   );
   if (result.error || result.status !== 0) {

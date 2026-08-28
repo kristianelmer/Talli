@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -13,6 +14,31 @@ import {
 } from "../scripts/check-architecture.mjs";
 
 const repositoryRoot = new URL("..", import.meta.url);
+
+test("Python architecture inspection consumes one framed request without waiting for EOF", async (t) => {
+  const python = fileURLToPath(new URL("../apps/backend/.venv/bin/python", import.meta.url));
+  const helper = fileURLToPath(new URL("../scripts/python-imports.py", import.meta.url));
+  const sourceRoot = fileURLToPath(new URL("../apps/backend/src", import.meta.url));
+  const child = spawn(python, [helper], { stdio: ["pipe", "pipe", "pipe"] });
+  t.after(() => child.kill("SIGKILL"));
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
+  child.stdin.write(`${JSON.stringify({ sourceRoot, files: [] })}\n`);
+
+  const exit = await new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve({ timeout: true }), 2_000);
+    child.once("exit", (code, signal) => {
+      clearTimeout(timeout);
+      resolve({ code, signal });
+    });
+  });
+
+  assert.deepEqual(exit, { code: 0, signal: null }, `helper did not exit: ${stderr}`);
+  assert.deepEqual(JSON.parse(stdout), { files: [] });
+});
 
 const compatibilityScope = Object.freeze({
   path: "apps/web/app/actions.ts",
