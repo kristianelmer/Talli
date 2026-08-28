@@ -231,7 +231,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     assert.match(await page.locator("main").innerText(), /Bruk regnskapsfører/u);
     assert.equal(await actorState(database, resources.ownerId), "0:0:0:0:0:0:0");
 
-    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await restartEligibility(page);
     await beginEligibility(page, orgNumbers.missing);
     await assertEligibilityFailureAndZeroState({ database, ownerId: resources.ownerId, page });
     assert.match(await errorAlert(page).innerText(), /Enhetsregisteret/u);
@@ -259,7 +259,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
 
     // A known unsupported private fact is a definitive block, not a provisional
     // registry result and not a provider failure.
-    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await restartEligibility(page);
     await beginEligibility(page, orgNumbers.supported);
     await answerEligibilityInterview(page, { blockedCode: "has_auditor_or_audit_requirement" });
     const definitiveBlockHeading = page.getByRole("heading", { name: "Talli passer ikke for dette året" });
@@ -271,7 +271,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
 
     // The supported golden path answers the complete manifest, keeps the
     // continuation HTTP-only, and preserves it through login to admission.
-    await page.getByRole("link", { name: "Start på nytt" }).click();
+    await restartEligibility(page);
     await beginEligibility(page, orgNumbers.supported);
     await answerEligibilityInterview(page);
     const supportedHeading = page.getByRole("heading", { name: /kan bruke Talli/u });
@@ -671,6 +671,17 @@ async function beginEligibility(page, orgNumberValue, { keyboardSubmit = false }
   } else {
     await page.getByRole("button", { name: "Sjekk selskapet gratis" }).click();
   }
+}
+
+async function restartEligibility(page) {
+  const navigation = page.waitForEvent(
+    "framenavigated",
+    (frame) => frame === page.mainFrame(),
+  );
+  await page.getByRole("link", { name: "Start på nytt" }).click();
+  await navigation;
+  await page.waitForLoadState("networkidle");
+  await assertAccessibleEligibilityLookup(page);
 }
 
 async function answerEligibilityInterview(page, {
