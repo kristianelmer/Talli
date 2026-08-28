@@ -95,37 +95,42 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         );
       end
       $browser_owner_cleanup_authority$`);
+    const bankingTables = [
+      "transaction_sources",
+      "coverage_intervals",
+      "suggestion_acceptances",
+      "transactions",
+      "source_files",
+      "sync_attempts",
+      "accounts",
+      "connections",
+    ];
     await database.query("set local role banking_store_owner");
     await database.query(
       "alter table backend_system.banking_command_receipts no force row level security",
     );
-    await database.query(
-      "alter table banking.suggestion_acceptances no force row level security",
-    );
-    await database.query(
-      "alter table banking.transactions no force row level security",
-    );
+    for (const table of bankingTables) {
+      await database.query(
+        `alter table banking.${table} no force row level security`,
+      );
+    }
     await database.query(
       "delete from backend_system.banking_command_receipts where company_id = $1",
       [companyId],
     );
-    await database.query(
-      "delete from banking.suggestion_acceptances where company_id = $1",
-      [companyId],
-    );
-    await database.query(
-      "delete from banking.transactions where company_id = $1",
-      [companyId],
-    );
+    for (const table of bankingTables) {
+      await database.query(`delete from banking.${table} where company_id = $1`, [
+        companyId,
+      ]);
+    }
     await database.query(
       "alter table backend_system.banking_command_receipts force row level security",
     );
-    await database.query(
-      "alter table banking.suggestion_acceptances force row level security",
-    );
-    await database.query(
-      "alter table banking.transactions force row level security",
-    );
+    for (const table of bankingTables) {
+      await database.query(
+        `alter table banking.${table} force row level security`,
+      );
+    }
     await database.query("reset role");
     const ledgerTables = [
       "opening_received_dividend_settlements",

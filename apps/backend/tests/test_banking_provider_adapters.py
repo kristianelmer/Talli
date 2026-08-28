@@ -50,6 +50,7 @@ def sync_request(*, cursor: str | None = None) -> FetchBankTransactionsRequest:
     return FetchBankTransactionsRequest(
         connection_id=CONNECTION_ID,
         company_id=COMPANY_ID,
+        adapter_connection_reference="provider-session",
         adapter_account_reference="opaque-account-ref",
         date_from=LocalDate(date(2026, 1, 1)),
         date_to=LocalDate(date(2026, 12, 31)),
@@ -157,4 +158,3 @@ def test_provider_failures_are_coded_and_redacted(adapter_type: type[object]) ->
 
     assert failure.value.code == "BANKING_PROVIDER_UNAVAILABLE"
     assert "secret-token" not in str(failure.value)
-

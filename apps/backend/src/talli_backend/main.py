@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, TypeVar, cast
 from uuid import UUID, uuid4
@@ -20,6 +20,7 @@ from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.application.banking_session import (
+    AuthenticatedBankingSession,
     BankingAuthenticationError,
     BankingSessionFactory,
 )
@@ -43,9 +44,24 @@ from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotView,
 )
 from talli_backend.modules.banking.public import (
+    AcceptBankFileCommand,
     AcceptBankSuggestionCommand,
     AcceptedBankSuggestion,
     BankStatementImportResult,
+    BankAccount,
+    BankAccountId,
+    BankConnection,
+    BankConnectionList,
+    BankConnectionId,
+    BankConnectorId,
+    BankConsentRedirect,
+    BankDataProvider,
+    BankFileColumnMapping,
+    BankFilePreviewCommand,
+    BankSourceFileId,
+    BankSyncCommand,
+    BankSyncMode,
+    BankSyncResult,
     BankSuggestionAcceptancePage,
     BankSuggestionAcceptanceId,
     BankSuggestionKind,
@@ -54,7 +70,11 @@ from talli_backend.modules.banking.public import (
     BankTransactionPage,
     BankingCursor,
     BankingError,
+    CompleteBankConnectionCommand,
     ImportBankStatementCommand,
+    PersistedBankFilePreview,
+    RevokeBankConnectionCommand,
+    StartBankConnectionCommand,
     SupportedBankDataFormat,
 )
 from talli_backend.modules.company_access.public import (
@@ -235,6 +255,115 @@ class BankStatementImportResultWire(TransportModel):
     imported_count: int = Field(ge=0)
     duplicate_count: int = Field(ge=0)
     replayed: bool
+
+
+class StartBankConnectionWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    connection_id: UUID
+    connector_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
+    bank_key: str = Field(min_length=1, max_length=120)
+    return_url: str = Field(pattern=r"^https://", max_length=2048)
+
+
+class BankConsentRedirectWire(TransportModel):
+    redirect_url: str
+    state: str
+
+
+class BankAccountWire(TransportModel):
+    account_id: UUID
+    connection_id: UUID
+    masked_account: str
+    currency: Literal["NOK"]
+    account_kind: str
+    display_name: str
+    status: str
+    earliest_covered_date: date | None
+    latest_covered_date: date | None
+    last_success_at: datetime | None
+
+
+class BankConnectionWire(TransportModel):
+    connection_id: UUID
+    company_id: UUID
+    connector_id: str
+    status: str
+    consent_expires_on: date | None
+    accounts: list[BankAccountWire]
+    last_success_at: datetime | None
+    last_failure_code: str | None
+
+
+class BankConnectionListWire(TransportModel):
+    items: list[BankConnectionWire]
+
+
+class BankSyncWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    connector_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
+    date_from: date
+    date_to: date
+    mode: BankSyncMode
+
+
+class BankConnectionActionWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    connector_id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,79}$")
+
+
+class BankSyncResultWire(TransportModel):
+    attempt_id: UUID
+    page_count: int = Field(ge=0)
+    imported_count: int = Field(ge=0)
+    updated_count: int = Field(ge=0)
+    duplicate_count: int = Field(ge=0)
+    replayed: bool
+
+
+class BankFileColumnMappingWire(StrictTransportModel):
+    booking_date: str = Field(min_length=1, max_length=120)
+    value_date: str | None = Field(default=None, max_length=120)
+    text: str = Field(min_length=1, max_length=120)
+    amount: str = Field(min_length=1, max_length=120)
+    balance: str | None = Field(default=None, max_length=120)
+    reference: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=120)
+
+
+class BankFilePreviewWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    source_file_id: UUID
+    account_id: UUID
+    data_format: SupportedBankDataFormat
+    filename: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1, max_length=5_000_000)
+    column_mapping: BankFileColumnMappingWire | None = None
+
+
+class BankFilePreviewResultWire(TransportModel):
+    source_file_id: UUID
+    document_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    account_mask: str | None
+    interval_start: date
+    interval_end: date
+    currency: Literal["NOK"]
+    opening_balance: LedgerMoneyWire | None
+    closing_balance: LedgerMoneyWire | None
+    transaction_count: int = Field(ge=1)
+    duplicate_count: int = Field(ge=0)
+    correction_count: int = Field(ge=0)
+    ignored_count: int = Field(ge=0)
+    replayed: bool
+
+
+class AcceptBankFileWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    document_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class AcceptBankSuggestionWire(StrictTransportModel):
@@ -854,6 +983,50 @@ def _accepted_bank_suggestion_wire(
     )
 
 
+def _bank_account_wire(value: BankAccount) -> BankAccountWire:
+    return BankAccountWire(
+        account_id=str(value.account_id),
+        connection_id=str(value.connection_id),
+        masked_account=value.masked_account,
+        currency=value.currency,
+        account_kind=value.account_kind,
+        display_name=value.display_name,
+        status=value.status.value,
+        earliest_covered_date=(
+            value.earliest_covered_date.value
+            if value.earliest_covered_date is not None
+            else None
+        ),
+        latest_covered_date=(
+            value.latest_covered_date.value
+            if value.latest_covered_date is not None
+            else None
+        ),
+        last_success_at=(
+            value.last_success_at.value if value.last_success_at is not None else None
+        ),
+    )
+
+
+def _bank_connection_wire(value: BankConnection) -> BankConnectionWire:
+    return BankConnectionWire(
+        connection_id=str(value.connection_id),
+        company_id=str(value.company_id),
+        connector_id=str(value.connector_id),
+        status=value.status.value,
+        consent_expires_on=(
+            value.consent_expires_on.value
+            if value.consent_expires_on is not None
+            else None
+        ),
+        accounts=[_bank_account_wire(account) for account in value.accounts],
+        last_success_at=(
+            value.last_success_at.value if value.last_success_at is not None else None
+        ),
+        last_failure_code=value.last_failure_code,
+    )
+
+
 def _line_wire(value: LedgerLine) -> LedgerLineWire:
     return LedgerLineWire(
         account=value.account,
@@ -1072,6 +1245,7 @@ def create_app(
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
+    banking_providers: Mapping[str, BankDataProvider] | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="Talli API",
@@ -1093,6 +1267,37 @@ def create_app(
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
     banking_application = compose_banking_application(banking_session_factory)
+    provider_registry = dict(banking_providers or {})
+
+    def banking_provider(connector_id: BankConnectorId) -> BankDataProvider:
+        provider = provider_registry.get(str(connector_id))
+        if provider is None or provider.connector_id != connector_id:
+            raise BankingError.unavailable()
+        return provider
+
+    async def canonical_banking_connector(
+        session: AuthenticatedBankingSession,
+        *,
+        company_id: CompanyId,
+        connection_id: BankConnectionId,
+        correlation_id: CorrelationId,
+    ) -> BankConnectorId:
+        connections = await session.list_connections(
+            actor_id=session.actor_id,
+            company_id=company_id,
+            correlation_id=correlation_id,
+        )
+        canonical_connection = next(
+            (
+                item
+                for item in connections.items
+                if item.connection_id == connection_id
+            ),
+            None,
+        )
+        if canonical_connection is None:
+            raise BankingError.forbidden()
+        return canonical_connection.connector_id
 
     def bearer_token(
         credentials: HTTPAuthorizationCredentials | None,
@@ -1847,6 +2052,341 @@ def create_app(
     banking_success: dict[str, Any] = {
         "headers": {"X-Request-ID": REQUEST_ID_HEADER}
     }
+
+    @application.get(
+        "/api/v1/banking/connections",
+        operation_id="bankingListConnections",
+        response_model=BankConnectionListWire,
+        responses={200: {"description": "Authorized bank connections."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_bank_connections(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankConnectionListWire:
+        async def execute() -> BankConnectionListWire:
+            session = await banking_application.session(bearer_token(credentials))
+            connections: BankConnectionList = await session.list_connections(
+                actor_id=session.actor_id,
+                company_id=banking_input(lambda: CompanyId(str(company_id))),
+                correlation_id=CorrelationId(request.state.request_id),
+            )
+            return BankConnectionListWire(
+                items=[_bank_connection_wire(item) for item in connections.items]
+            )
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/connections",
+        operation_id="bankingStartConnection",
+        response_model=BankConsentRedirectWire,
+        responses={200: {"description": "Read-only bank consent started."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def start_bank_connection(
+        request: Request,
+        command: StartBankConnectionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankConsentRedirectWire:
+        async def execute() -> BankConsentRedirectWire:
+            session = await banking_application.session(bearer_token(credentials))
+            connector_id = banking_input(lambda: BankConnectorId(command.connector_id))
+            redirect: BankConsentRedirect = await session.start_connection(
+                banking_input(
+                    lambda: StartBankConnectionCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        connection_id=BankConnectionId(str(command.connection_id)),
+                        connector_id=connector_id,
+                        bank_key=command.bank_key,
+                        return_url=command.return_url,
+                    )
+                ),
+                banking_provider(connector_id),
+            )
+            return BankConsentRedirectWire(
+                redirect_url=redirect.redirect_url,
+                state=redirect.state,
+            )
+
+        return await banking_call(execute)
+
+    @application.get(
+        "/api/v1/banking/connections/{connection_id}/callback",
+        operation_id="bankingCompleteConnection",
+        response_model=BankConnectionWire,
+        responses={200: {"description": "Bank consent completed."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def complete_bank_connection(
+        request: Request,
+        connection_id: UUID,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        code: Annotated[str | None, Query(max_length=4096)] = None,
+        state: Annotated[str | None, Query(max_length=4096)] = None,
+        resource_id: Annotated[str | None, Query(alias="resource_id", max_length=4096)] = None,
+        result: Annotated[str | None, Query(max_length=4096)] = None,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankConnectionWire:
+        async def execute() -> BankConnectionWire:
+            session = await banking_application.session(bearer_token(credentials))
+            connector = await canonical_banking_connector(
+                session,
+                company_id=banking_input(lambda: CompanyId(str(company_id))),
+                connection_id=BankConnectionId(str(connection_id)),
+                correlation_id=CorrelationId(request.state.request_id),
+            )
+            callback = {
+                key: value
+                for key, value in {
+                    "code": code,
+                    "state": state,
+                    "resource_id": resource_id,
+                    "result": result,
+                }.items()
+                if value is not None
+            }
+            connection = await session.complete_connection(
+                banking_input(
+                    lambda: CompleteBankConnectionCommand(
+                        company_id=CompanyId(str(company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(
+                            f"banking-callback:{connection_id}"
+                        ),
+                        income_year=IncomeYear(income_year),
+                        connection_id=BankConnectionId(str(connection_id)),
+                        callback_parameters=callback,
+                    )
+                ),
+                banking_provider(connector),
+            )
+            return _bank_connection_wire(connection)
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/connections/{connection_id}/revoke",
+        operation_id="bankingRevokeConnection",
+        status_code=204,
+        responses={204: {"description": "Bank connection revoked."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def revoke_bank_connection(
+        request: Request,
+        connection_id: UUID,
+        command: BankConnectionActionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Response:
+        async def execute() -> Response:
+            session = await banking_application.session(bearer_token(credentials))
+            connector = await canonical_banking_connector(
+                session,
+                company_id=banking_input(lambda: CompanyId(str(command.company_id))),
+                connection_id=BankConnectionId(str(connection_id)),
+                correlation_id=CorrelationId(request.state.request_id),
+            )
+            await session.revoke_connection(
+                banking_input(
+                    lambda: RevokeBankConnectionCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        connection_id=BankConnectionId(str(connection_id)),
+                    )
+                ),
+                banking_provider(connector),
+            )
+            return Response(status_code=204)
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/connections/{connection_id}/accounts/{account_id}/syncs",
+        operation_id="bankingSyncAccount",
+        response_model=BankSyncResultWire,
+        responses={200: {"description": "Read-only bank sync completed."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def sync_bank_account(
+        request: Request,
+        connection_id: UUID,
+        account_id: UUID,
+        command: BankSyncWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankSyncResultWire:
+        async def execute() -> BankSyncResultWire:
+            session = await banking_application.session(bearer_token(credentials))
+            connector = await canonical_banking_connector(
+                session,
+                company_id=banking_input(lambda: CompanyId(str(command.company_id))),
+                connection_id=BankConnectionId(str(connection_id)),
+                correlation_id=CorrelationId(request.state.request_id),
+            )
+            result: BankSyncResult = await session.sync(
+                banking_input(
+                    lambda: BankSyncCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        connection_id=BankConnectionId(str(connection_id)),
+                        account_id=BankAccountId(str(account_id)),
+                        date_from=LocalDate(command.date_from),
+                        date_to=LocalDate(command.date_to),
+                        mode=command.mode,
+                    )
+                ),
+                banking_provider(connector),
+            )
+            return BankSyncResultWire(
+                attempt_id=str(result.attempt_id),
+                page_count=result.page_count,
+                imported_count=result.imported_count,
+                updated_count=result.updated_count,
+                duplicate_count=result.duplicate_count,
+                replayed=result.replayed,
+            )
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/source-files/previews",
+        operation_id="bankingPreviewSourceFile",
+        response_model=BankFilePreviewResultWire,
+        responses={200: {"description": "Bank file preview persisted without importing."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_bank_source_file(
+        request: Request,
+        command: BankFilePreviewWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankFilePreviewResultWire:
+        async def execute() -> BankFilePreviewResultWire:
+            session = await banking_application.session(bearer_token(credentials))
+            mapping = command.column_mapping
+            receipt: PersistedBankFilePreview = await session.preview_file(
+                banking_input(
+                    lambda: BankFilePreviewCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        source_file_id=BankSourceFileId(str(command.source_file_id)),
+                        account_id=BankAccountId(str(command.account_id)),
+                        data_format=command.data_format,
+                        filename=command.filename,
+                        content=command.content,
+                        column_mapping=(
+                            BankFileColumnMapping(**mapping.model_dump())
+                            if mapping is not None
+                            else None
+                        ),
+                    )
+                )
+            )
+            preview = receipt.preview
+            return BankFilePreviewResultWire(
+                source_file_id=str(receipt.source_file_id),
+                document_sha256=preview.document_sha256,
+                account_mask=preview.account_mask,
+                interval_start=preview.interval_start.value,
+                interval_end=preview.interval_end.value,
+                currency=preview.currency,
+                opening_balance=(
+                    _money_wire(preview.opening_balance)
+                    if preview.opening_balance is not None
+                    else None
+                ),
+                closing_balance=(
+                    _money_wire(preview.closing_balance)
+                    if preview.closing_balance is not None
+                    else None
+                ),
+                transaction_count=preview.transaction_count,
+                duplicate_count=preview.duplicate_count,
+                correction_count=preview.correction_count,
+                ignored_count=preview.ignored_count,
+                replayed=receipt.replayed,
+            )
+
+        return await banking_call(execute)
+
+    @application.post(
+        "/api/v1/banking/source-files/{source_file_id}/acceptance",
+        operation_id="bankingAcceptSourceFile",
+        response_model=BankStatementImportResultWire,
+        responses={200: {"description": "Previewed bank file explicitly accepted."} | banking_success}
+        | banking_errors,
+        tags=["banking"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def accept_bank_source_file(
+        request: Request,
+        source_file_id: UUID,
+        command: AcceptBankFileWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BankStatementImportResultWire:
+        async def execute() -> BankStatementImportResultWire:
+            session = await banking_application.session(bearer_token(credentials))
+            result = await session.accept_file(
+                banking_input(
+                    lambda: AcceptBankFileCommand(
+                        company_id=CompanyId(str(command.company_id)),
+                        actor_id=session.actor_id,
+                        correlation_id=CorrelationId(request.state.request_id),
+                        idempotency_key=IdempotencyKey(idempotency_key),
+                        income_year=IncomeYear(command.income_year),
+                        source_file_id=BankSourceFileId(str(source_file_id)),
+                        document_sha256=command.document_sha256,
+                    )
+                )
+            )
+            return BankStatementImportResultWire(
+                imported_count=result.imported_count,
+                duplicate_count=result.duplicate_count,
+                replayed=result.replayed,
+            )
+
+        return await banking_call(execute)
 
     @application.post(
         "/api/v1/banking/statement-imports",

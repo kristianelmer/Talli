@@ -456,6 +456,21 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     await page.getByRole("button", { name: "Importer" }).click();
     await importResponse;
     await page.waitForLoadState("networkidle");
+    await page.getByText("Kontoutskriften er klar til kontroll").waitFor();
+    assert.deepEqual(
+      await canonicalBankingState(database, resources.companyId, resources.ownerId),
+      {
+        acceptanceCount: 0,
+        entryCount: 0,
+        matchedCount: 0,
+        suggestionKinds: [],
+        transactionCount: 0,
+      },
+    );
+    await page
+      .getByRole("button", { name: "Bekreft og importer" })
+      .click();
+    await page.waitForLoadState("networkidle");
     try {
       await page.getByText("1 banktransaksjoner er registrert.").waitFor({ timeout: 10_000 });
     } catch {
@@ -1007,6 +1022,8 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
       TALLI_BANKING_DATABASE_URL: bankingDatabaseUrl,
+      TALLI_BANKING_ENCRYPTION_KEY:
+        "browser-fixture-only-banking-encryption-key",
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,

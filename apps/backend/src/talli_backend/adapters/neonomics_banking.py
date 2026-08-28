@@ -52,8 +52,6 @@ class NeonomicsBankingAdapter:
     def __init__(self, *, transport: BankProviderHttpTransport, authorization: str) -> None:
         self._transport = transport
         self._authorization = required_text(authorization, maximum=8192)
-        self._sessions: dict[str, str] = {}
-        self._return_urls: dict[str, str] = {}
 
     def _headers(self, connection_id: object, *, session_id: str | None = None) -> dict[str, str]:
         headers = {
@@ -75,9 +73,6 @@ class NeonomicsBankingAdapter:
             )
         )
         session_id = required_text(created.get("sessionId"))
-        key = str(request.connection_id)
-        self._sessions[key] = session_id
-        self._return_urls[key] = request.return_url
         account_response = await self._transport.request(
             method="GET",
             path="/ics/v3/accounts",
@@ -114,9 +109,8 @@ class NeonomicsBankingAdapter:
         )
 
     async def complete_consent(self, request: CompleteBankConsentRequest) -> BankProviderConnection:
-        key = str(request.connection_id)
-        session_id = self._sessions.get(key)
-        if session_id is None or request.callback_parameters.get("resource_id", session_id) != session_id:
+        session_id = request.callback_parameters.get("resource_id")
+        if session_id is None:
             raise provider_error(BankingErrorCode.CONSENT_CALLBACK_INVALID)
         if request.callback_parameters.get("result", "OK").upper() != "OK":
             raise provider_error(BankingErrorCode.CONSENT_CALLBACK_INVALID)
@@ -133,6 +127,7 @@ class NeonomicsBankingAdapter:
         return BankProviderConnection(
             connection_id=request.connection_id,
             connector_id=self.connector_id,
+            adapter_connection_reference=session_id,
             consent_expires_on=optional_date(body.get("consentExpiresOn")),
             accounts=accounts,
         )
@@ -152,9 +147,7 @@ class NeonomicsBankingAdapter:
     async def fetch_transactions(
         self, request: FetchBankTransactionsRequest
     ) -> BankProviderTransactionPage:
-        session_id = self._sessions.get(str(request.connection_id))
-        if session_id is None:
-            raise provider_error(BankingErrorCode.CONSENT_EXPIRED)
+        session_id = request.adapter_connection_reference
         query = (
             {"scope": "business-accounts", "cursor": request.cursor}
             if request.cursor is not None
@@ -199,19 +192,22 @@ class NeonomicsBankingAdapter:
             amount=money(amount.get("amount"), currency=amount.get("currency")),
             balance=(money(balance.get("amount"), currency=balance.get("currency")) if balance is not None else None),
             state=transaction_state(raw.get("bookingStatus") or raw.get("status") or "booked"),
+            bank_reference=(
+                required_text(raw.get("transactionReference"), maximum=1024)
+                if raw.get("transactionReference")
+                else None
+            ),
         )
 
     async def revoke_consent(self, request: RevokeBankConsentRequest) -> None:
-        key = str(request.connection_id)
-        session_id = self._sessions.pop(key, None)
-        self._return_urls.pop(key, None)
-        if session_id is None:
-            return
         successful_body(
             await self._transport.request(
                 method="DELETE",
-                path=f"/ics/v3/session/{session_id}",
-                headers=self._headers(request.connection_id, session_id=session_id),
+                path=f"/ics/v3/session/{request.adapter_connection_reference}",
+                headers=self._headers(
+                    request.connection_id,
+                    session_id=request.adapter_connection_reference,
+                ),
             )
         )
 

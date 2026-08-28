@@ -8,17 +8,32 @@ from talli_backend.application.banking_session import (
     AuthenticatedBankingSession,
     BankingSessionFactory,
 )
+from talli_backend.application.banking_consent import BankingConsentWorkflow
+from talli_backend.application.banking_file import BankingFileWorkflow
+from talli_backend.application.banking_sync import BankingSyncWorkflow
 from talli_backend.modules.banking.public import (
+    AcceptBankFileCommand,
     AcceptBankSuggestionCommand,
     AcceptedBankSuggestion,
     AccountingEntryReference,
     BankStatementImportResult,
+    BankConnection,
+    BankConnectionList,
+    BankConsentRedirect,
+    BankDataProvider,
+    BankFilePreviewCommand,
+    BankSyncCommand,
+    BankSyncResult,
     BankSuggestionAcceptancePage,
     BankSuggestionKind,
     BankTransactionPage,
     BankingCursor,
     BankingError,
     ImportBankStatementCommand,
+    PersistedBankFilePreview,
+    CompleteBankConnectionCommand,
+    RevokeBankConnectionCommand,
+    StartBankConnectionCommand,
 )
 from talli_backend.modules.banking.service import BankingService
 from talli_backend.modules.ledger.public import (
@@ -59,6 +74,71 @@ class BankingSession:
         if command.actor_id != self.actor_id:
             raise BankingError.forbidden()
         return await BankingService(self._persistence).import_statement(command)
+
+    async def preview_file(
+        self, command: BankFilePreviewCommand
+    ) -> PersistedBankFilePreview:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await BankingFileWorkflow(self._persistence).preview(command)
+
+    async def accept_file(
+        self, command: AcceptBankFileCommand
+    ) -> BankStatementImportResult:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await BankingFileWorkflow(self._persistence).accept(command)
+
+    async def start_connection(
+        self,
+        command: StartBankConnectionCommand,
+        provider: BankDataProvider,
+    ) -> BankConsentRedirect:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await BankingConsentWorkflow(self._persistence, provider).start(command)
+
+    async def list_connections(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+    ) -> BankConnectionList:
+        if actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await self._persistence.list_connections(
+            actor_id=actor_id,
+            company_id=company_id,
+            correlation_id=correlation_id,
+        )
+
+    async def complete_connection(
+        self,
+        command: CompleteBankConnectionCommand,
+        provider: BankDataProvider,
+    ) -> BankConnection:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await BankingConsentWorkflow(self._persistence, provider).complete(command)
+
+    async def revoke_connection(
+        self,
+        command: RevokeBankConnectionCommand,
+        provider: BankDataProvider,
+    ) -> None:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        await BankingConsentWorkflow(self._persistence, provider).revoke(command)
+
+    async def sync(
+        self,
+        command: BankSyncCommand,
+        provider: BankDataProvider,
+    ) -> BankSyncResult:
+        if command.actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        return await BankingSyncWorkflow(self._persistence, provider).sync(command)
 
     async def accept_suggestion(
         self, command: AcceptBankSuggestionCommand

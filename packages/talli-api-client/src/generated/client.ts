@@ -801,6 +801,12 @@ export type ReconstructionState = "BLOCKED" | "READY";
 
 export type TaxSettlementKind = "payable" | "payment" | "refund";
 
+export interface AcceptBankFileWire {
+  companyId: string;
+  documentSha256: string;
+  incomeYear: number;
+}
+
 export interface AcceptBankSuggestionWire {
   acceptanceId: string;
   bankTransactionId: string;
@@ -818,6 +824,82 @@ export interface AcceptedBankSuggestionWire {
   bankTransactionId: string;
   replayed: boolean;
   suggestion: BankSuggestionWire;
+}
+
+export interface BankAccountWire {
+  accountId: string;
+  accountKind: string;
+  connectionId: string;
+  currency: "NOK";
+  displayName: string;
+  earliestCoveredDate: string | null;
+  lastSuccessAt: string | null;
+  latestCoveredDate: string | null;
+  maskedAccount: string;
+  status: string;
+}
+
+export interface BankConnectionActionWire {
+  companyId: string;
+  connectorId: string;
+  incomeYear: number;
+}
+
+export interface BankConnectionListWire {
+  items: BankConnectionWire[];
+}
+
+export interface BankConnectionWire {
+  accounts: BankAccountWire[];
+  companyId: string;
+  connectionId: string;
+  connectorId: string;
+  consentExpiresOn: string | null;
+  lastFailureCode: string | null;
+  lastSuccessAt: string | null;
+  status: string;
+}
+
+export interface BankConsentRedirectWire {
+  redirectUrl: string;
+  state: string;
+}
+
+export interface BankFileColumnMappingWire {
+  amount: string;
+  balance?: string | null;
+  bookingDate: string;
+  reference?: string | null;
+  state?: string | null;
+  text: string;
+  valueDate?: string | null;
+}
+
+export interface BankFilePreviewResultWire {
+  accountMask: string | null;
+  closingBalance: LedgerMoneyWire | null;
+  correctionCount: number;
+  currency: "NOK";
+  documentSha256: string;
+  duplicateCount: number;
+  ignoredCount: number;
+  intervalEnd: string;
+  intervalStart: string;
+  openingBalance: LedgerMoneyWire | null;
+  replayed: boolean;
+  sourceFileId: string;
+  transactionCount: number;
+}
+
+export interface BankFilePreviewWire {
+  accountId: string;
+  columnMapping?: BankFileColumnMappingWire | null;
+  companyId: string;
+  content: string;
+  dataFormat: SupportedBankDataFormat;
+  filename: string;
+  incomeYear: number;
+  sourceFileId: string;
 }
 
 export interface BankStatementImportResultWire {
@@ -846,6 +928,26 @@ export interface BankSuggestionWire {
   ruleVersion: string;
 }
 
+export type BankSyncMode = "INITIAL_BACKFILL" | "NIGHTLY" | "ON_DEMAND" | "ANNUAL_CLOSE" | "RECOVERY";
+
+export interface BankSyncResultWire {
+  attemptId: string;
+  duplicateCount: number;
+  importedCount: number;
+  pageCount: number;
+  replayed: boolean;
+  updatedCount: number;
+}
+
+export interface BankSyncWire {
+  companyId: string;
+  connectorId: string;
+  dateFrom: string;
+  dateTo: string;
+  incomeYear: number;
+  mode: BankSyncMode;
+}
+
 export interface BankTransactionPageWire {
   items: BankTransactionWire[];
   page: BankingPageWire;
@@ -872,7 +974,16 @@ export interface BankingPageWire {
   nextCursor: string | null;
 }
 
-export type SupportedBankDataFormat = "CSV";
+export type SupportedBankDataFormat = "CSV" | "CAMT053";
+
+export interface StartBankConnectionWire {
+  bankKey: string;
+  companyId: string;
+  connectionId: string;
+  connectorId: string;
+  incomeYear: number;
+  returnUrl: string;
+}
 
 export interface ProblemDetails {
   code: string;
@@ -1915,6 +2026,16 @@ function isTaxSettlementKind(value: unknown): value is TaxSettlementKind {
   return value === "payable" || value === "payment" || value === "refund";
 }
 
+function isAcceptBankFileWire(value: unknown): value is AcceptBankFileWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","documentSha256","incomeYear"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.documentSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.documentSha256)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100)
+  );
+}
+
 function isAcceptBankSuggestionWire(value: unknown): value is AcceptBankSuggestionWire {
   return (
     isRecord(value) &&
@@ -1939,6 +2060,114 @@ function isAcceptedBankSuggestionWire(value: unknown): value is AcceptedBankSugg
     isUuid(value.bankTransactionId) &&
     typeof value.replayed === "boolean" &&
     isBankSuggestionWire(value.suggestion)
+  );
+}
+
+function isBankAccountWire(value: unknown): value is BankAccountWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountId","accountKind","connectionId","currency","displayName","earliestCoveredDate","lastSuccessAt","latestCoveredDate","maskedAccount","status"]) &&
+    isUuid(value.accountId) &&
+    typeof value.accountKind === "string" &&
+    isUuid(value.connectionId) &&
+    value.currency === "NOK" &&
+    typeof value.displayName === "string" &&
+    (typeof value.earliestCoveredDate === "string" || value.earliestCoveredDate === null) &&
+    (isDateTime(value.lastSuccessAt) || value.lastSuccessAt === null) &&
+    (typeof value.latestCoveredDate === "string" || value.latestCoveredDate === null) &&
+    typeof value.maskedAccount === "string" &&
+    typeof value.status === "string"
+  );
+}
+
+function isBankConnectionActionWire(value: unknown): value is BankConnectionActionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","connectorId","incomeYear"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.connectorId === "string" && new RegExp("^[a-z0-9][a-z0-9-]{0,79}$", "u").test(value.connectorId)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100)
+  );
+}
+
+function isBankConnectionListWire(value: unknown): value is BankConnectionListWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isBankConnectionWire(item))
+  );
+}
+
+function isBankConnectionWire(value: unknown): value is BankConnectionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accounts","companyId","connectionId","connectorId","consentExpiresOn","lastFailureCode","lastSuccessAt","status"]) &&
+    Array.isArray(value.accounts) && value.accounts.every((item) => isBankAccountWire(item)) &&
+    isUuid(value.companyId) &&
+    isUuid(value.connectionId) &&
+    typeof value.connectorId === "string" &&
+    (typeof value.consentExpiresOn === "string" || value.consentExpiresOn === null) &&
+    (typeof value.lastFailureCode === "string" || value.lastFailureCode === null) &&
+    (isDateTime(value.lastSuccessAt) || value.lastSuccessAt === null) &&
+    typeof value.status === "string"
+  );
+}
+
+function isBankConsentRedirectWire(value: unknown): value is BankConsentRedirectWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["redirectUrl","state"]) &&
+    typeof value.redirectUrl === "string" &&
+    typeof value.state === "string"
+  );
+}
+
+function isBankFileColumnMappingWire(value: unknown): value is BankFileColumnMappingWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","balance","bookingDate","reference","state","text","valueDate"]) &&
+    (typeof value.amount === "string" && value.amount.length >= 1 && value.amount.length <= 120) &&
+    (value.balance === undefined || ((typeof value.balance === "string" && value.balance.length <= 120) || value.balance === null)) &&
+    (typeof value.bookingDate === "string" && value.bookingDate.length >= 1 && value.bookingDate.length <= 120) &&
+    (value.reference === undefined || ((typeof value.reference === "string" && value.reference.length <= 120) || value.reference === null)) &&
+    (value.state === undefined || ((typeof value.state === "string" && value.state.length <= 120) || value.state === null)) &&
+    (typeof value.text === "string" && value.text.length >= 1 && value.text.length <= 120) &&
+    (value.valueDate === undefined || ((typeof value.valueDate === "string" && value.valueDate.length <= 120) || value.valueDate === null))
+  );
+}
+
+function isBankFilePreviewResultWire(value: unknown): value is BankFilePreviewResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountMask","closingBalance","correctionCount","currency","documentSha256","duplicateCount","ignoredCount","intervalEnd","intervalStart","openingBalance","replayed","sourceFileId","transactionCount"]) &&
+    (typeof value.accountMask === "string" || value.accountMask === null) &&
+    (isLedgerMoneyWire(value.closingBalance) || value.closingBalance === null) &&
+    (typeof value.correctionCount === "number" && Number.isInteger(value.correctionCount) && value.correctionCount >= 0) &&
+    value.currency === "NOK" &&
+    (typeof value.documentSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.documentSha256)) &&
+    (typeof value.duplicateCount === "number" && Number.isInteger(value.duplicateCount) && value.duplicateCount >= 0) &&
+    (typeof value.ignoredCount === "number" && Number.isInteger(value.ignoredCount) && value.ignoredCount >= 0) &&
+    typeof value.intervalEnd === "string" &&
+    typeof value.intervalStart === "string" &&
+    (isLedgerMoneyWire(value.openingBalance) || value.openingBalance === null) &&
+    typeof value.replayed === "boolean" &&
+    isUuid(value.sourceFileId) &&
+    (typeof value.transactionCount === "number" && Number.isInteger(value.transactionCount) && value.transactionCount >= 1)
+  );
+}
+
+function isBankFilePreviewWire(value: unknown): value is BankFilePreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountId","columnMapping","companyId","content","dataFormat","filename","incomeYear","sourceFileId"]) &&
+    isUuid(value.accountId) &&
+    (value.columnMapping === undefined || (isBankFileColumnMappingWire(value.columnMapping) || value.columnMapping === null)) &&
+    isUuid(value.companyId) &&
+    (typeof value.content === "string" && value.content.length >= 1 && value.content.length <= 5000000) &&
+    isSupportedBankDataFormat(value.dataFormat) &&
+    (typeof value.filename === "string" && value.filename.length >= 1 && value.filename.length <= 255) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.sourceFileId)
   );
 }
 
@@ -1986,6 +2215,36 @@ function isBankSuggestionWire(value: unknown): value is BankSuggestionWire {
   );
 }
 
+function isBankSyncMode(value: unknown): value is BankSyncMode {
+  return value === "INITIAL_BACKFILL" || value === "NIGHTLY" || value === "ON_DEMAND" || value === "ANNUAL_CLOSE" || value === "RECOVERY";
+}
+
+function isBankSyncResultWire(value: unknown): value is BankSyncResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["attemptId","duplicateCount","importedCount","pageCount","replayed","updatedCount"]) &&
+    isUuid(value.attemptId) &&
+    (typeof value.duplicateCount === "number" && Number.isInteger(value.duplicateCount) && value.duplicateCount >= 0) &&
+    (typeof value.importedCount === "number" && Number.isInteger(value.importedCount) && value.importedCount >= 0) &&
+    (typeof value.pageCount === "number" && Number.isInteger(value.pageCount) && value.pageCount >= 0) &&
+    typeof value.replayed === "boolean" &&
+    (typeof value.updatedCount === "number" && Number.isInteger(value.updatedCount) && value.updatedCount >= 0)
+  );
+}
+
+function isBankSyncWire(value: unknown): value is BankSyncWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","connectorId","dateFrom","dateTo","incomeYear","mode"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.connectorId === "string" && new RegExp("^[a-z0-9][a-z0-9-]{0,79}$", "u").test(value.connectorId)) &&
+    typeof value.dateFrom === "string" &&
+    typeof value.dateTo === "string" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isBankSyncMode(value.mode)
+  );
+}
+
 function isBankTransactionPageWire(value: unknown): value is BankTransactionPageWire {
   return (
     isRecord(value) &&
@@ -2025,7 +2284,20 @@ function isBankingPageWire(value: unknown): value is BankingPageWire {
 }
 
 function isSupportedBankDataFormat(value: unknown): value is SupportedBankDataFormat {
-  return value === "CSV";
+  return value === "CSV" || value === "CAMT053";
+}
+
+function isStartBankConnectionWire(value: unknown): value is StartBankConnectionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankKey","companyId","connectionId","connectorId","incomeYear","returnUrl"]) &&
+    (typeof value.bankKey === "string" && value.bankKey.length >= 1 && value.bankKey.length <= 120) &&
+    isUuid(value.companyId) &&
+    isUuid(value.connectionId) &&
+    (typeof value.connectorId === "string" && new RegExp("^[a-z0-9][a-z0-9-]{0,79}$", "u").test(value.connectorId)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.returnUrl === "string" && value.returnUrl.length <= 2048 && new RegExp("^https://", "u").test(value.returnUrl))
+  );
 }
 
 function isProblemDetails(value: unknown): value is ProblemDetails {
@@ -2100,6 +2372,19 @@ export interface BankingListRequest extends TalliRequestOptions {
   limit?: number;
 }
 
+export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  code?: string;
+  state?: string;
+  resourceId?: string;
+  result?: string;
+}
+
+export interface BankingConnectionListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
 }
@@ -2152,6 +2437,40 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
+  }
+
+  async function executeEmpty(
+    url: string,
+    method: string,
+    request: TalliMutationOptions,
+    body: unknown,
+  ): Promise<void> {
+    const response = await fetchImplementation(url, {
+      body: JSON.stringify(body),
+      cache: "no-store",
+      headers: {
+        Accept: "application/json, application/problem+json",
+        ["Content-Type"]: "application/json",
+        ...options.headers,
+        ...request.headers,
+        ["Idempotency-Key"]: request.idempotencyKey,
+        ...(request.requestId === undefined
+          ? {}
+          : { ["X-Request-ID"]: request.requestId }),
+      },
+      method,
+      signal: request.signal,
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      const candidate = contentType.includes("application/problem+json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+      throw new TalliApiError(
+        response.status,
+        isProblemDetails(candidate) ? candidate : undefined,
+      );
+    }
   }
 
   async function executeLedgerWriter(
@@ -2803,6 +3122,109 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<BankStatementImportResultWire> {
       return executeJson(
         `${baseUrl}/api/v1/banking/statement-imports`,
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingStartConnection(
+      body: StartBankConnectionWire,
+      request: TalliMutationOptions,
+    ): Promise<BankConsentRedirectWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections",
+        "POST",
+        request,
+        body,
+        isBankConsentRedirectWire,
+      );
+    },
+
+    async bankingListConnections(
+      request: BankingConnectionListRequest,
+    ): Promise<BankConnectionListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionListWire,
+      );
+    },
+
+    async bankingCompleteConnection(
+      connectionId: string,
+      request: BankingConnectionCallbackRequest,
+    ): Promise<BankConnectionWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      if (request.code !== undefined) query.set("code", request.code);
+      if (request.state !== undefined) query.set("state", request.state);
+      if (request.resourceId !== undefined) query.set("resource_id", request.resourceId);
+      if (request.result !== undefined) query.set("result", request.result);
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/callback?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionWire,
+      );
+    },
+
+    async bankingRevokeConnection(
+      connectionId: string,
+      body: BankConnectionActionWire,
+      request: TalliMutationOptions,
+    ): Promise<void> {
+      return executeEmpty(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/revoke",
+        "POST",
+        request,
+        body,
+      );
+    },
+
+    async bankingSyncAccount(
+      connectionId: string,
+      accountId: string,
+      body: BankSyncWire,
+      request: TalliMutationOptions,
+    ): Promise<BankSyncResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId)
+          + "/accounts/" + encodeURIComponent(accountId) + "/syncs",
+        "POST",
+        request,
+        body,
+        isBankSyncResultWire,
+      );
+    },
+
+    async bankingPreviewSourceFile(
+      body: BankFilePreviewWire,
+      request: TalliMutationOptions,
+    ): Promise<BankFilePreviewResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/previews",
+        "POST",
+        request,
+        body,
+        isBankFilePreviewResultWire,
+      );
+    },
+
+    async bankingAcceptSourceFile(
+      sourceFileId: string,
+      body: AcceptBankFileWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/" + encodeURIComponent(sourceFileId) + "/acceptance",
         "POST",
         request,
         body,

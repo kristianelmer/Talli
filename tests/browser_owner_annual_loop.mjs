@@ -556,6 +556,8 @@ function startBackendServer({
       SUPABASE_ANON_KEY: localAnonKey,
       TALLI_COMPANY_ACCESS_DATABASE_URL: localDatabaseUrl,
       TALLI_BANKING_DATABASE_URL: bankingDatabaseUrl,
+      TALLI_BANKING_ENCRYPTION_KEY:
+        "browser-fixture-only-banking-encryption-key",
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,

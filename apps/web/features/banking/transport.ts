@@ -1,9 +1,20 @@
 import {
   createTalliApiClient,
   type AcceptBankSuggestionWire,
+  type AcceptBankFileWire,
   type AcceptedBankSuggestionWire,
   type BankStatementImportResultWire,
   type BankStatementImportWire,
+  type BankFilePreviewResultWire,
+  type BankFilePreviewWire,
+  type BankConnectionActionWire,
+  type BankConnectionListWire,
+  type BankConnectionWire,
+  type BankConsentRedirectWire,
+  type BankingConnectionCallbackRequest,
+  type BankSyncResultWire,
+  type BankSyncWire,
+  type StartBankConnectionWire,
   type BankSuggestionAcceptancePageWire,
   type BankTransactionPageWire,
   type BankTransactionWire,
@@ -62,6 +73,93 @@ export function importBankStatement(
   requestId?: string,
 ): Promise<BankStatementImportResultWire> {
   return client(accessToken).bankingImportStatement(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function previewBankSourceFile(
+  accessToken: string,
+  command: BankFilePreviewWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<BankFilePreviewResultWire> {
+  return client(accessToken).bankingPreviewSourceFile(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function loadBankConnections(
+  accessToken: string,
+  companyId: string,
+  requestId?: string,
+): Promise<BankConnectionListWire> {
+  return client(accessToken).bankingListConnections({
+    companyId,
+    ...request(requestId),
+  });
+}
+
+export function startBankConnection(
+  accessToken: string,
+  command: StartBankConnectionWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<BankConsentRedirectWire> {
+  return client(accessToken).bankingStartConnection(
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function completeBankConnection(
+  accessToken: string,
+  connectionId: string,
+  callback: BankingConnectionCallbackRequest,
+): Promise<BankConnectionWire> {
+  return client(accessToken).bankingCompleteConnection(connectionId, callback);
+}
+
+export function syncBankAccount(
+  accessToken: string,
+  connectionId: string,
+  accountId: string,
+  command: BankSyncWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<BankSyncResultWire> {
+  return client(accessToken).bankingSyncAccount(
+    connectionId,
+    accountId,
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function revokeBankConnection(
+  accessToken: string,
+  connectionId: string,
+  command: BankConnectionActionWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<void> {
+  return client(accessToken).bankingRevokeConnection(
+    connectionId,
+    command,
+    mutationRequest(idempotencyKey, requestId),
+  );
+}
+
+export function acceptBankSourceFile(
+  accessToken: string,
+  sourceFileId: string,
+  command: AcceptBankFileWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<BankStatementImportResultWire> {
+  return client(accessToken).bankingAcceptSourceFile(
+    sourceFileId,
     command,
     mutationRequest(idempotencyKey, requestId),
   );

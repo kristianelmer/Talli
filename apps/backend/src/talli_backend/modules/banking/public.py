@@ -69,6 +69,39 @@ class BankConnectionId:
 
 
 @dataclass(frozen=True, slots=True)
+class BankAccountId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "bank account id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class BankSyncAttemptId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "bank sync attempt id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class BankSourceFileId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "bank source file id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class BankConnectorId:
     value: str
 
@@ -142,6 +175,22 @@ class BankTransactionState(StrEnum):
     REVERSED = "REVERSED"
 
 
+class BankConnectionStatus(StrEnum):
+    CONSENT_PENDING = "CONSENT_PENDING"
+    ACTIVE = "ACTIVE"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    REVOKING = "REVOKING"
+    REVOKED = "REVOKED"
+    FAILED = "FAILED"
+
+
+class BankAccountStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    DISCONNECTED = "DISCONNECTED"
+    UNSUPPORTED = "UNSUPPORTED"
+
+
 class BankSuggestionKind(StrEnum):
     BANK_FEE = "BANK_FEE"
     SYSTEM_SUBSCRIPTION = "SYSTEM_SUBSCRIPTION"
@@ -158,6 +207,136 @@ class BankingCommand:
     correlation_id: CorrelationId
     idempotency_key: IdempotencyKey
     income_year: IncomeYear
+
+
+@dataclass(frozen=True, slots=True)
+class BankFileColumnMapping:
+    booking_date: str
+    value_date: str | None
+    text: str
+    amount: str
+    balance: str | None
+    reference: str | None
+    state: str | None
+
+    def __post_init__(self) -> None:
+        values = (
+            self.booking_date,
+            self.value_date,
+            self.text,
+            self.amount,
+            self.balance,
+            self.reference,
+            self.state,
+        )
+        normalized = tuple(value.strip().lower() if value is not None else None for value in values)
+        required = (normalized[0], normalized[2], normalized[3])
+        present = tuple(value for value in normalized if value is not None)
+        if (
+            any(not value or len(value) > 120 for value in required)
+            or len(present) != len(set(present))
+            or any(value is not None and (not value or len(value) > 120) for value in normalized)
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
+        for field_name, value in zip(self.__dataclass_fields__, normalized, strict=True):
+            object.__setattr__(self, field_name, value)
+
+
+@dataclass(frozen=True, slots=True)
+class BankFilePreviewCommand(BankingCommand):
+    source_file_id: BankSourceFileId
+    account_id: BankAccountId
+    data_format: SupportedBankDataFormat
+    filename: str
+    content: str
+    column_mapping: BankFileColumnMapping | None
+
+    def __post_init__(self) -> None:
+        filename = self.filename.strip()
+        if (
+            not filename
+            or len(filename) > 255
+            or "/" in filename
+            or "\\" in filename
+            or not self.content
+            or len(self.content.encode("utf-8")) > 5_000_000
+            or (self.data_format is SupportedBankDataFormat.CSV) != (self.column_mapping is not None)
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
+        object.__setattr__(self, "filename", filename)
+
+
+@dataclass(frozen=True, slots=True)
+class BankSyncCommand(BankingCommand):
+    connection_id: BankConnectionId
+    account_id: BankAccountId
+    date_from: LocalDate
+    date_to: LocalDate
+    mode: BankSyncMode
+
+    def __post_init__(self) -> None:
+        if (
+            self.date_to.value < self.date_from.value
+            or self.date_from.value.year != self.income_year.value
+            or self.date_to.value.year != self.income_year.value
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+
+
+@dataclass(frozen=True, slots=True)
+class AcceptBankFileCommand(BankingCommand):
+    source_file_id: BankSourceFileId
+    document_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.document_sha256.strip().lower()
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
+        object.__setattr__(self, "document_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class StartBankConnectionCommand(BankingCommand):
+    connection_id: BankConnectionId
+    connector_id: BankConnectorId
+    bank_key: str
+    return_url: str
+
+    def __post_init__(self) -> None:
+        bank_key = self.bank_key.strip()
+        if (
+            not bank_key
+            or len(bank_key) > 120
+            or not self.return_url.startswith("https://")
+            or len(self.return_url) > 2048
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "bank_key", bank_key)
+
+
+@dataclass(frozen=True, slots=True)
+class CompleteBankConnectionCommand(BankingCommand):
+    connection_id: BankConnectionId
+    callback_parameters: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        normalized = {
+            str(key).strip(): str(value).strip()
+            for key, value in self.callback_parameters.items()
+        }
+        if not normalized or len(normalized) > 12 or any(
+            not key or not value or len(key) > 80 or len(value) > 4096
+            for key, value in normalized.items()
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.CONSENT_CALLBACK_INVALID)
+        object.__setattr__(self, "callback_parameters", normalized)
+
+
+@dataclass(frozen=True, slots=True)
+class RevokeBankConnectionCommand(BankingCommand):
+    connection_id: BankConnectionId
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +380,7 @@ class CompleteBankConsentRequest:
 class FetchBankTransactionsRequest:
     connection_id: BankConnectionId
     company_id: CompanyId
+    adapter_connection_reference: str
     adapter_account_reference: str
     date_from: LocalDate
     date_to: LocalDate
@@ -209,15 +389,19 @@ class FetchBankTransactionsRequest:
     owner_present: bool
 
     def __post_init__(self) -> None:
+        connection_reference = self.adapter_connection_reference.strip()
         reference = self.adapter_account_reference.strip()
         cursor = self.cursor.strip() if self.cursor is not None else None
         if (
-            not reference
+            not connection_reference
+            or len(connection_reference) > 4096
+            or not reference
             or len(reference) > 1024
             or self.date_to.value < self.date_from.value
             or (cursor is not None and (not cursor or len(cursor) > 4096))
         ):
             raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "adapter_connection_reference", connection_reference)
         object.__setattr__(self, "adapter_account_reference", reference)
         object.__setattr__(self, "cursor", cursor)
 
@@ -226,6 +410,13 @@ class FetchBankTransactionsRequest:
 class RevokeBankConsentRequest:
     connection_id: BankConnectionId
     company_id: CompanyId
+    adapter_connection_reference: str
+
+    def __post_init__(self) -> None:
+        reference = self.adapter_connection_reference.strip()
+        if not reference or len(reference) > 4096:
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "adapter_connection_reference", reference)
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,10 +461,15 @@ class BankProviderAccount:
 class BankProviderConnection:
     connection_id: BankConnectionId
     connector_id: BankConnectorId
+    adapter_connection_reference: str
     consent_expires_on: LocalDate | None
     accounts: tuple[BankProviderAccount, ...]
 
     def __post_init__(self) -> None:
+        reference = self.adapter_connection_reference.strip()
+        if not reference or len(reference) > 4096:
+            raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+        object.__setattr__(self, "adapter_connection_reference", reference)
         if not self.accounts:
             raise BankingError.precondition_failed(BankingErrorCode.NO_SUPPORTED_ACCOUNTS)
 
@@ -287,6 +483,7 @@ class BankProviderTransaction:
     amount: Money
     balance: Money | None
     state: BankTransactionState
+    bank_reference: str | None = None
 
     def __post_init__(self) -> None:
         reference = self.adapter_transaction_reference.strip()
@@ -295,6 +492,11 @@ class BankProviderTransaction:
             raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
         object.__setattr__(self, "adapter_transaction_reference", reference)
         object.__setattr__(self, "text", text)
+        if self.bank_reference is not None:
+            bank_reference = self.bank_reference.strip()
+            if not bank_reference or len(bank_reference) > 1024:
+                raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+            object.__setattr__(self, "bank_reference", bank_reference)
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,6 +509,100 @@ class BankProviderTransactionPage:
         if cursor is not None and (not cursor or len(cursor) > 4096):
             raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
         object.__setattr__(self, "next_cursor", cursor)
+
+
+@dataclass(frozen=True, slots=True)
+class BankSyncContext:
+    attempt_id: BankSyncAttemptId
+    connector_id: BankConnectorId
+    adapter_connection_reference: str
+    adapter_account_reference: str
+    resume_cursor: str | None
+    replayed_result: BankSyncResult | None = None
+
+    def __post_init__(self) -> None:
+        connection_reference = self.adapter_connection_reference.strip()
+        reference = self.adapter_account_reference.strip()
+        cursor = self.resume_cursor.strip() if self.resume_cursor is not None else None
+        if not connection_reference or len(connection_reference) > 4096 or not reference or len(reference) > 1024 or (cursor is not None and (not cursor or len(cursor) > 4096)):
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "adapter_connection_reference", connection_reference)
+        object.__setattr__(self, "adapter_account_reference", reference)
+        object.__setattr__(self, "resume_cursor", cursor)
+
+
+@dataclass(frozen=True, slots=True)
+class BankSyncPageResult:
+    imported_count: int
+    updated_count: int
+    duplicate_count: int
+
+    def __post_init__(self) -> None:
+        if min(self.imported_count, self.updated_count, self.duplicate_count) < 0:
+            raise ValueError("bank sync page counts cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class BankSyncResult:
+    attempt_id: BankSyncAttemptId
+    page_count: int
+    imported_count: int
+    updated_count: int
+    duplicate_count: int
+    replayed: bool
+
+    def __post_init__(self) -> None:
+        if min(self.page_count, self.imported_count, self.updated_count, self.duplicate_count) < 0:
+            raise ValueError("bank sync counts cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class BankAccount:
+    account_id: BankAccountId
+    connection_id: BankConnectionId
+    masked_account: str
+    currency: str
+    account_kind: str
+    display_name: str
+    status: BankAccountStatus
+    earliest_covered_date: LocalDate | None
+    latest_covered_date: LocalDate | None
+    last_success_at: Timestamp | None
+
+    def __post_init__(self) -> None:
+        if (
+            not self.masked_account.strip()
+            or len(self.masked_account) > 80
+            or self.currency != "NOK"
+            or not self.account_kind.strip()
+            or (
+                self.earliest_covered_date is not None
+                and self.latest_covered_date is not None
+                and self.latest_covered_date.value < self.earliest_covered_date.value
+            )
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID)
+
+
+@dataclass(frozen=True, slots=True)
+class BankConnection:
+    connection_id: BankConnectionId
+    company_id: CompanyId
+    connector_id: BankConnectorId
+    status: BankConnectionStatus
+    consent_expires_on: LocalDate | None
+    accounts: tuple[BankAccount, ...]
+    last_success_at: Timestamp | None
+    last_failure_code: str | None
+
+    def __post_init__(self) -> None:
+        if self.status is BankConnectionStatus.ACTIVE and not self.accounts:
+            raise BankingError.precondition_failed(BankingErrorCode.NO_SUPPORTED_ACCOUNTS)
+
+
+@dataclass(frozen=True, slots=True)
+class BankConnectionList:
+    items: tuple[BankConnection, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -338,6 +634,9 @@ class ImportedBankTransaction:
     amount: Money
     balance: Money | None
     source_hash: str
+    value_date: LocalDate | None = None
+    state: BankTransactionState = BankTransactionState.BOOKED
+    adapter_transaction_reference: str | None = None
 
     def __post_init__(self) -> None:
         text = self.text.strip()
@@ -351,6 +650,48 @@ class ImportedBankTransaction:
             raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
         object.__setattr__(self, "text", text)
         object.__setattr__(self, "source_hash", digest)
+        if self.adapter_transaction_reference is not None:
+            reference = self.adapter_transaction_reference.strip()
+            if not reference or len(reference) > 1024:
+                raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
+            object.__setattr__(self, "adapter_transaction_reference", reference)
+
+
+@dataclass(frozen=True, slots=True)
+class BankFilePreview:
+    account_id: BankAccountId
+    filename: str
+    data_format: SupportedBankDataFormat
+    document_sha256: str
+    account_mask: str | None
+    interval_start: LocalDate
+    interval_end: LocalDate
+    currency: str
+    opening_balance: Money | None
+    closing_balance: Money | None
+    transaction_count: int
+    duplicate_count: int
+    correction_count: int
+    ignored_count: int
+    transactions: tuple[ImportedBankTransaction, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            len(self.document_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in self.document_sha256)
+            or self.currency != "NOK"
+            or self.interval_end.value < self.interval_start.value
+            or self.transaction_count != len(self.transactions)
+            or min(self.transaction_count, self.duplicate_count, self.correction_count, self.ignored_count) < 0
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.STATEMENT_INVALID)
+
+
+@dataclass(frozen=True, slots=True)
+class PersistedBankFilePreview:
+    source_file_id: BankSourceFileId
+    preview: BankFilePreview
+    replayed: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -528,6 +869,9 @@ class BankingPersistence(Protocol):
 
 
 class BankDataProvider(Protocol):
+    @property
+    def connector_id(self) -> BankConnectorId: ...
+
     async def begin_consent(
         self, request: BeginBankConsentRequest
     ) -> BankConsentRedirect: ...
@@ -541,6 +885,91 @@ class BankDataProvider(Protocol):
     ) -> BankProviderTransactionPage: ...
 
     async def revoke_consent(self, request: RevokeBankConsentRequest) -> None: ...
+
+
+class BankSyncPersistence(Protocol):
+    async def prepare_sync(self, command: BankSyncCommand) -> BankSyncContext: ...
+
+    async def apply_sync_page(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        transactions: tuple[ImportedBankTransaction, ...],
+        next_cursor: str | None,
+    ) -> BankSyncPageResult: ...
+
+    async def complete_sync(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        pages: int,
+        imported_count: int,
+        updated_count: int,
+        duplicate_count: int,
+    ) -> BankSyncResult: ...
+
+    async def fail_sync(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        error_code: str,
+    ) -> None: ...
+
+
+class BankConnectionPersistence(Protocol):
+    async def get_connection_completion_replay(
+        self,
+        command: CompleteBankConnectionCommand,
+    ) -> BankConnection | None: ...
+
+    async def list_connections(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+    ) -> BankConnectionList: ...
+
+    async def begin_connection(self, command: StartBankConnectionCommand) -> None: ...
+
+    async def record_consent_redirect(
+        self,
+        command: StartBankConnectionCommand,
+        redirect: BankConsentRedirect,
+    ) -> BankConsentRedirect: ...
+
+    async def complete_connection(
+        self,
+        command: CompleteBankConnectionCommand,
+        provider_connection: BankProviderConnection,
+    ) -> BankConnection: ...
+
+    async def fail_connection(
+        self,
+        command: StartBankConnectionCommand | CompleteBankConnectionCommand,
+        *,
+        error_code: str,
+    ) -> None: ...
+
+    async def begin_revocation(self, command: RevokeBankConnectionCommand) -> str: ...
+
+    async def complete_revocation(self, command: RevokeBankConnectionCommand) -> None: ...
+
+
+class BankFilePersistence(Protocol):
+    async def persist_file_preview(
+        self,
+        command: BankFilePreviewCommand,
+        preview: BankFilePreview,
+    ) -> PersistedBankFilePreview: ...
+
+    async def accept_file(
+        self,
+        command: AcceptBankFileCommand,
+    ) -> BankStatementImportResult: ...
 
 
 BankingAdapter = TypeVar("BankingAdapter", bound=type[object])
@@ -615,11 +1044,20 @@ class BankingQueries(Protocol):
 
 
 __all__ = [
+    "AcceptBankFileCommand",
     "AcceptBankSuggestionCommand",
     "AcceptedBankSuggestion",
     "AccountingEntryReference",
     "BankStatementImportResult",
+    "BankAccountId",
+    "BankAccount",
+    "BankAccountStatus",
+    "BankSyncAttemptId",
     "BankConnectionId",
+    "BankConnection",
+    "BankConnectionList",
+    "BankConnectionPersistence",
+    "BankConnectionStatus",
     "BankConnectorId",
     "BankConsentRedirect",
     "BankDataProvider",
@@ -627,7 +1065,17 @@ __all__ = [
     "BankProviderConnection",
     "BankProviderTransaction",
     "BankProviderTransactionPage",
+    "BankFileColumnMapping",
+    "BankFilePersistence",
+    "BankFilePreview",
+    "BankFilePreviewCommand",
+    "BankSourceFileId",
     "BankSyncMode",
+    "BankSyncCommand",
+    "BankSyncContext",
+    "BankSyncPageResult",
+    "BankSyncPersistence",
+    "BankSyncResult",
     "BankSuggestion",
     "BankSuggestionAcceptanceId",
     "BankSuggestionAcceptancePage",
@@ -648,12 +1096,16 @@ __all__ = [
     "ExternalActionReference",
     "BeginBankConsentRequest",
     "CompleteBankConsentRequest",
+    "CompleteBankConnectionCommand",
     "FetchBankTransactionsRequest",
     "ImportBankStatementCommand",
     "ImportedBankTransaction",
     "PreparedBankSuggestion",
+    "PersistedBankFilePreview",
+    "RevokeBankConnectionCommand",
     "RevokeBankConsentRequest",
     "SupportedBankDataFormat",
+    "StartBankConnectionCommand",
     "banking_persistence_adapter",
     "bank_data_provider_adapter",
 ]

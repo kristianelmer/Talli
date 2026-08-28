@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -311,6 +311,290 @@ test("banking authority survives reconciliation, contract, rollback, security, a
         (select count(*) from banking.suggestion_acceptances) || ':' ||
         (select count(*) from backend_system.banking_migration_reconciliations);
     `), `v:2:2:${evidenceRows}`);
+
+    psql(containerName, [], String.raw`
+      create or replace function public.company_access_company_year_allows_consequential_v1(
+        p_company_id uuid, p_income_year integer
+      ) returns boolean language sql stable security definer set search_path = '' as $$
+        select p_company_id = '${companyId}'::uuid and p_income_year = 2026;
+      $$;
+    `);
+    const connectionId = "60000000-0000-0000-0000-000000000001";
+    const encryptionKey = "runtime-only-banking-encryption-key";
+    const connectionRequest = JSON.stringify({
+      companyId,
+      incomeYear: 2026,
+      connectionId,
+      connectorId: "fixture-connector",
+      bankKey: "DNB",
+      idempotencyKey: "banking-connection-runtime-0001",
+      correlationId: "banking-connection-runtime",
+    });
+    const providerConnection = JSON.stringify({
+      connectorId: "fixture-connector",
+      adapterConnectionReference: "provider-session-secret",
+      consentExpiresOn: "2027-02-24",
+      accounts: [{
+        adapterReference: "provider-account-secret",
+        maskedAccount: "•••• 1234",
+        currency: "NOK",
+        accountKind: "CACC",
+        displayName: "Driftskonto",
+      }],
+    });
+    const verifiedContext = String.raw`
+      select set_config('talli.verified_actor_id', '${ownerId}', true);
+      select set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","aal":"aal2"}', true
+      );
+    `;
+    psql(containerName, [], String.raw`
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.begin_connection_v1(
+        '${connectionRequest}'::jsonb, '${ownerId}'
+      );
+      select banking.record_consent_redirect_v1(
+        '${connectionId}', '${companyId}', 'opaque-state', '${ownerId}'
+      );
+      commit;
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.complete_connection_v1(
+        '{"companyId":"${companyId}","incomeYear":2026,"connectionId":"${connectionId}","callbackState":"opaque-state","idempotencyKey":"banking-connection-runtime-0001","correlationId":"banking-connection-runtime"}'::jsonb,
+        '${providerConnection}'::jsonb, '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+    `);
+    const accountId = scalar(containerName, String.raw`
+      select id from banking.accounts where connection_id = '${connectionId}';
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      select concat_ws(':', connection.status, account.status,
+        position('provider-session-secret' in encode(connection.adapter_reference_ciphertext, 'escape')) = 0,
+        position('provider-account-secret' in encode(account.adapter_reference_ciphertext, 'escape')) = 0)
+      from banking.connections connection
+      join banking.accounts account on account.connection_id = connection.id
+      where connection.id = '${connectionId}';
+    `), "ACTIVE:ACTIVE:t:t");
+    const listedConnections = scalar(containerName, String.raw`
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.list_connections_v1('${companyId}', '${ownerId}');
+      commit;
+    `);
+    assert.match(listedConnections, /•••• 1234/u);
+    assert.doesNotMatch(listedConnections, /provider-(session|account)-secret/u);
+
+    const syncRequest = JSON.stringify({
+      companyId,
+      incomeYear: 2026,
+      connectionId,
+      accountId,
+      dateFrom: "2026-01-01",
+      dateTo: "2026-12-31",
+      mode: "ON_DEMAND",
+      idempotencyKey: "banking-sync-runtime-0001",
+      correlationId: "banking-sync-runtime",
+    });
+    const prepared = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.prepare_sync_v1(
+        '${syncRequest}'::jsonb, '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+    `));
+    assert.equal(prepared.adapterConnectionReference, "provider-session-secret");
+    assert.equal(prepared.adapterAccountReference, "provider-account-secret");
+    const transaction = (state, balance) => JSON.stringify([{
+      transactionDate: "2026-02-03",
+      valueDate: "2026-02-03",
+      text: "Annual fee",
+      amount: "-89.00",
+      balance,
+      sourceHash: "c".repeat(64),
+      state,
+      adapterReference: "provider-transaction-secret",
+    }]);
+    psql(containerName, [], String.raw`
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.apply_sync_page_v1(
+        '${syncRequest}'::jsonb, '${prepared.attemptId}',
+        '${transaction("PENDING", "1000.00")}'::jsonb, 'opaque-next',
+        '${ownerId}', '${encryptionKey}'
+      );
+      select banking.apply_sync_page_v1(
+        '${syncRequest}'::jsonb, '${prepared.attemptId}',
+        '${transaction("BOOKED", "911.00")}'::jsonb, null,
+        '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.complete_sync_v1(
+        '${syncRequest}'::jsonb, '${prepared.attemptId}', '${ownerId}'
+      );
+      commit;
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      select concat_ws(':', attempt.status, attempt.page_count,
+        attempt.imported_count, attempt.updated_count, transaction.transaction_state,
+        transaction.balance, (select count(*) from banking.transaction_sources source
+          where source.transaction_id = transaction.id),
+        (select count(*) from banking.coverage_intervals coverage
+          where coverage.sync_attempt_id = attempt.id and completeness = 'COMPLETE'))
+      from banking.sync_attempts attempt
+      join banking.transactions transaction
+        on transaction.account_id = attempt.account_id
+        and transaction.source_hash = repeat('c', 64)
+      where attempt.id = '${prepared.attemptId}';
+    `), "SUCCEEDED:2:1:1:BOOKED:911.00:2:1");
+    const replay = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.prepare_sync_v1(
+        '${syncRequest}'::jsonb, '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+    `));
+    assert.deepEqual(
+      [replay.replayed, replay.pageCount, replay.importedCount, replay.updatedCount],
+      [true, 2, 1, 1],
+    );
+    const sourceFileId = "70000000-0000-0000-0000-000000000001";
+    const fileContent = "date,text,amount\n2026-03-04,Interest,12.50\n";
+    const fileDigest = createHash("sha256").update(fileContent).digest("hex");
+    const fileRequest = JSON.stringify({
+      companyId,
+      incomeYear: 2026,
+      sourceFileId,
+      accountId,
+      dataFormat: "CSV",
+      filename: "statement.csv",
+      idempotencyKey: "banking-file-preview-runtime-0001",
+      correlationId: "banking-file-preview-runtime",
+    });
+    const filePreview = JSON.stringify({
+      documentSha256: fileDigest,
+      accountMask: "•••• 1234",
+      intervalStart: "2026-03-04",
+      intervalEnd: "2026-03-04",
+      currency: "NOK",
+      openingBalance: null,
+      closingBalance: null,
+      transactionCount: 1,
+      duplicateCount: 0,
+      correctionCount: 0,
+      ignoredCount: 0,
+      transactions: [{
+        transactionDate: "2026-03-04",
+        valueDate: null,
+        text: "Interest",
+        amount: "12.50",
+        balance: null,
+        sourceHash: "d".repeat(64),
+        state: "BOOKED",
+      }],
+    });
+    const previewReceipt = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.preview_source_file_v1(
+        '${fileRequest}'::jsonb, '${filePreview}'::jsonb,
+        '${fileContent}', '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+    `));
+    assert.deepEqual(previewReceipt, { sourceFileId, replayed: false });
+    assert.equal(scalar(containerName, String.raw`
+      select concat_ws(':', status,
+        position('Interest' in encode(content_ciphertext, 'escape')) = 0,
+        content_sha256 = '${fileDigest}')
+      from banking.source_files where id = '${sourceFileId}';
+    `), "PREVIEWED:t:t");
+    const acceptRequest = JSON.stringify({
+      companyId,
+      incomeYear: 2026,
+      sourceFileId,
+      documentSha256: fileDigest,
+      idempotencyKey: "banking-file-accept-runtime-0001",
+      correlationId: "banking-file-accept-runtime",
+    });
+    const accepted = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.accept_source_file_v1(
+        '${acceptRequest}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `));
+    assert.deepEqual(accepted, {
+      importedCount: 1,
+      duplicateCount: 0,
+      replayed: false,
+    });
+    const acceptedReplay = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.accept_source_file_v1(
+        '${acceptRequest}'::jsonb, '${ownerId}'
+      );
+      commit;
+    `));
+    assert.equal(acceptedReplay.replayed, true);
+    assert.equal(scalar(containerName, String.raw`
+      select concat_ws(':', source.status, transaction.source_kind,
+        (select count(*) from banking.transaction_sources provenance
+          where provenance.source_file_id = source.id),
+        (select count(*) from banking.coverage_intervals coverage
+          where coverage.source_file_id = source.id and completeness = 'COMPLETE'))
+      from banking.source_files source
+      join banking.transactions transaction on transaction.source_file_id = source.id
+      where source.id = '${sourceFileId}';
+    `), "ACCEPTED:BANK_CSV:1:1");
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role banking_provider_executor;
+      ${verifiedContext}
+      select banking.begin_connection_revocation_v1(
+        '${connectionId}', '${companyId}', '${ownerId}', '${encryptionKey}'
+      );
+      commit;
+    `), "provider-session-secret");
+    psql(containerName, [], String.raw`
+      begin;
+      set local role banking_executor;
+      ${verifiedContext}
+      select banking.complete_connection_revocation_v1(
+        '${connectionId}', '${companyId}', '${ownerId}'
+      );
+      commit;
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      select concat_ws(':', connection.status,
+        connection.adapter_reference_ciphertext is null,
+        (select count(*) from banking.transactions transaction
+          where transaction.company_id = connection.company_id),
+        (select count(*) from banking.transaction_sources source
+          join banking.transactions transaction on transaction.id = source.transaction_id
+          where transaction.company_id = connection.company_id),
+        (select count(*) from banking.coverage_intervals coverage
+          where coverage.company_id = connection.company_id))
+      from banking.connections connection where connection.id = '${connectionId}';
+    `), "REVOKED:t:4:3:2");
   } finally {
     docker(["rm", "-f", containerName]);
   }

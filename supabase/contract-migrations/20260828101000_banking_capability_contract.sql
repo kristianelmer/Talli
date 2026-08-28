@@ -74,7 +74,21 @@ begin
     pg_catalog.count(*),
     pg_catalog.encode(extensions.digest(coalesce(pg_catalog.string_agg(
       bank_row.id::text || ':' || pg_catalog.encode(extensions.digest(
-        pg_catalog.to_jsonb(bank_row)::text, 'sha256'
+        pg_catalog.jsonb_build_object(
+          'id', bank_row.id,
+          'company_id', bank_row.company_id,
+          'income_year', bank_row.income_year,
+          'transaction_date', bank_row.transaction_date,
+          'text', bank_row.text,
+          'amount', bank_row.amount,
+          'balance', bank_row.balance,
+          'source_hash', bank_row.source_hash,
+          'matched_accounting_entry_id', bank_row.matched_accounting_entry_id,
+          'matched_action_reference', bank_row.matched_action_reference,
+          'warning_accepted', bank_row.warning_accepted,
+          'created_by', bank_row.created_by,
+          'created_at', bank_row.created_at
+        )::text, 'sha256'
       ), 'hex'), '' order by bank_row.id), ''), 'sha256'), 'hex')
   into target_row_count, target_sha256
   from banking.transactions bank_row;

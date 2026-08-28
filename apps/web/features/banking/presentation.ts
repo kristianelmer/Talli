@@ -1,6 +1,7 @@
 import {
   TalliApiError,
   type AcceptedBankSuggestionWire,
+  type BankConnectionWire,
   type BankSuggestionKind,
   type BankSuggestionWire,
   type BankTransactionWire,
@@ -39,6 +40,58 @@ export type BankSuggestionAcceptancePresentation = {
   accepted_at: string;
   replayed?: boolean;
 };
+
+export type BankConnectionPresentation = {
+  id: string;
+  connectorId: string;
+  status: "Kobler til" | "Tilkoblet" | "Må fornyes" | "Frakoblet" | "Kunne ikke koble til";
+  action: "continue" | "sync" | "reconnect" | "connect";
+  accounts: {
+    id: string;
+    label: string;
+    coverage: string;
+    freshness: string;
+    hasGap: boolean;
+  }[];
+};
+
+export function presentBankConnections(
+  connections: readonly BankConnectionWire[],
+  incomeYear?: number,
+): BankConnectionPresentation[] {
+  return connections.map((connection) => {
+    const state = {
+      CONSENT_PENDING: ["Kobler til", "continue"],
+      ACTIVE: ["Tilkoblet", "sync"],
+      REAUTH_REQUIRED: ["Må fornyes", "reconnect"],
+      REVOKING: ["Frakoblet", "connect"],
+      REVOKED: ["Frakoblet", "connect"],
+      FAILED: ["Kunne ikke koble til", "reconnect"],
+    }[connection.status] ?? ["Kunne ikke koble til", "reconnect"];
+    return {
+      id: connection.connectionId,
+      connectorId: connection.connectorId,
+      status: state[0] as BankConnectionPresentation["status"],
+      action: state[1] as BankConnectionPresentation["action"],
+      accounts: connection.accounts.map((account) => ({
+        id: account.accountId,
+        label: `${account.displayName || "Bankkonto"} ${account.maskedAccount}`.trim(),
+        coverage: account.earliestCoveredDate && account.latestCoveredDate
+          ? `${account.earliestCoveredDate}–${account.latestCoveredDate}`
+          : "Ingen komplett periode registrert",
+        freshness: account.lastSuccessAt
+          ? `Sist oppdatert ${account.lastSuccessAt}`
+          : "Ikke synkronisert ennå",
+        hasGap: !account.earliestCoveredDate || !account.latestCoveredDate || (
+          incomeYear !== undefined && (
+            account.earliestCoveredDate > `${incomeYear}-01-01`
+            || account.latestCoveredDate < `${incomeYear}-12-31`
+          )
+        ),
+      })),
+    };
+  });
+}
 
 const RULE_IDS: Record<BankSuggestionKind, BankSuggestionAcceptancePresentation["rule_id"]> = {
   BANK_FEE: "bank_fee",
@@ -103,9 +156,15 @@ export function presentBankSuggestionAcceptances(
 const BANKING_ERROR_MESSAGES: Record<string, string> = {
   AUTHENTICATION_REQUIRED: "Innlogging kreves.",
   BANKING_COMPANY_YEAR_NOT_ADMITTED: "Selskapsåret er ikke godkjent for denne handlingen.",
+  BANKING_CONSENT_CALLBACK_INVALID: "Banken kunne ikke bekrefte tilkoblingen. Start tilkoblingen på nytt.",
+  BANKING_CONSENT_EXPIRED: "Banktilgangen må fornyes før nye transaksjoner kan hentes.",
+  BANKING_DEPENDENCY_UNAVAILABLE: "Banktjenesten er midlertidig utilgjengelig. Prøv samme forespørsel igjen.",
   BANKING_FORBIDDEN: "Du har ikke tilgang til bankdataene.",
   BANKING_IDEMPOTENCY_IN_PROGRESS: "Forespørselen behandles allerede. Prøv samme forespørsel igjen.",
   BANKING_IDEMPOTENCY_KEY_REUSED: "Forespørsels-ID-en er allerede brukt til et annet innhold.",
+  BANKING_NO_SUPPORTED_ACCOUNTS: "Banken returnerte ingen støttede bedriftskontoer.",
+  BANKING_PROVIDER_RESPONSE_INVALID: "Banken svarte med data som ikke kunne brukes. Prøv igjen senere.",
+  BANKING_PROVIDER_UNAVAILABLE: "Banken er midlertidig utilgjengelig. Prøv samme forespørsel igjen.",
   BANKING_STATEMENT_FORMAT_UNSUPPORTED: "Bankfilformatet støttes ikke.",
   BANKING_STATEMENT_INVALID: "Bankfilen kunne ikke leses. Kontroller kolonnene og inntektsåret.",
   BANKING_SUGGESTION_NOT_AVAILABLE: "Forslaget er ikke lenger tilgjengelig. Last siden på nytt.",

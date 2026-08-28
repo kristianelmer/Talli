@@ -13,7 +13,6 @@ import {
   confirmSimulatedRf1086Submission,
   createOpeningBalanceSetup,
   generateRf1086Preview,
-  importBankCsv,
   inviteWorkspaceReviewer,
   lockCompanyYear,
   markBillingRefundEligible,
@@ -97,6 +96,7 @@ import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
 import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation";
 import { loadPendingCancellationOperation } from "../../lib/cancellation-operation-state";
+import { BankImport } from "../transactions/BankImport";
 
 type WorkspaceProps = {
   searchParams?: Promise<{
@@ -109,6 +109,11 @@ type WorkspaceProps = {
     newYearOperationId?: string;
     adminCostOperationId?: string;
     bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
     adminCostBankTransactionId?: string;
     dividendReceivedOperationId?: string;
     sharePurchaseOperationId?: string;
@@ -1649,26 +1654,21 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Importer bank og avstem enkel administrasjonskostnad.</h2>
                 </div>
                 <div className="setupGrid">
-                  <form className="dataPanel formPanel" action={importBankCsv}>
-                    <span className="panelLabel">Bank CSV</span>
-                    <input
-                      name="operationId"
-                      type="hidden"
-                      value={params?.bankImportOperationId ?? randomUUID()}
+                  <div className="dataPanel formPanel">
+                    <BankImport
+                      companyId={primaryCompanyId}
+                      incomeYear={primaryIncomeYear}
+                      returnTo="/workspace"
+                      retryOperationId={params?.bankImportOperationId}
+                      retryAccountId={params?.bankImportAccountId}
+                      persistedPreview={params?.bankPreviewSourceFileId && params.bankPreviewDocumentSha256 ? {
+                        sourceFileId: params.bankPreviewSourceFileId,
+                        documentSha256: params.bankPreviewDocumentSha256,
+                        transactionCount: Number(params.bankPreviewTransactionCount ?? "0"),
+                        operationId: params.bankPreviewOperationId,
+                      } : undefined}
                     />
-                    <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <label>
-                      Inntektsår
-                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
-                    </label>
-                    <label>
-                      CSV
-                      <textarea name="csvText" placeholder="date,text,amount,balance" required />
-                    </label>
-                    <button className="primaryButton" type="submit">
-                      Importer bank
-                    </button>
-                  </form>
+                  </div>
 
                   <form className="dataPanel formPanel" action={recordAdminCost}>
                     <span className="panelLabel">Administrasjonskostnad</span>

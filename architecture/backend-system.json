@@ -67,9 +67,15 @@
     },
     {
       "name": "banking-reconciliation",
-      "purpose": "Authenticates one verified actor and runs bank-statement import, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts.",
+      "purpose": "Authenticates one verified actor and runs read-only consent, revocation, durable account sync and recovery, preview-first CSV/CAMT.053 fallback, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts.",
       "publicPackages": ["talli_backend.modules.banking.public"],
       "routes": [
+        "/api/v1/banking/connections",
+        "/api/v1/banking/connections/{connection_id}/callback",
+        "/api/v1/banking/connections/{connection_id}/revoke",
+        "/api/v1/banking/connections/{connection_id}/accounts/{account_id}/syncs",
+        "/api/v1/banking/source-files/previews",
+        "/api/v1/banking/source-files/{source_file_id}/acceptance",
         "/api/v1/banking/statement-imports",
         "/api/v1/banking/transactions",
         "/api/v1/banking/suggestion-acceptances"
@@ -106,7 +112,7 @@
   "technicalOwnership": {
     "schemas": ["backend_system", "public"],
     "tables": ["backend_system.banking_command_receipts", "backend_system.banking_migration_reconciliations", "backend_system.banking_migration_runs", "backend_system.banking_migration_source_rows", "backend_system.ledger_command_receipts", "backend_system.ledger_cursor_signing_keys", "backend_system.ledger_migration_quarantine", "backend_system.ledger_migration_reconciliations", "backend_system.ledger_migration_runs", "backend_system.ledger_migration_source_rows", "backend_system.ledger_workflow_receipts", "public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql", "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql", "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql", "supabase/migrations/20260828102000_banking_connections.sql"],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
   },
   "infrastructure": {

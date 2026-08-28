@@ -35,9 +35,9 @@
       ],
       "plannedEvidence": [
         {"path": "apps/backend/tests/test_banking_provider_contract.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_contract.py"},
-        {"path": "tests/banking_connection_database_runtime.test.mjs", "command": "npm run test:banking-connection-lifecycle"}
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:banking-database-lifecycle"}
       ],
-      "status": "planned"
+      "status": "local-evidence-passed"
     },
     {
       "id": "GH-189-A2",
@@ -50,7 +50,7 @@
         {"path": "apps/backend/tests/test_banking_provider_adapters.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_adapters.py"},
         {"path": "apps/backend/tests/fixtures/banking-providers", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_adapters.py"}
       ],
-      "status": "planned"
+      "status": "local-evidence-passed"
     },
     {
       "id": "GH-189-A3",
@@ -60,9 +60,9 @@
       ],
       "plannedEvidence": [
         {"path": "apps/backend/tests/test_banking_sync.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_sync.py"},
-        {"path": "tests/banking_connection_database_runtime.test.mjs", "command": "npm run test:banking-connection-lifecycle"}
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:banking-database-lifecycle"}
       ],
-      "status": "planned"
+      "status": "local-workflows-passed-provider-activation-pending"
     },
     {
       "id": "GH-189-A4",
@@ -74,7 +74,7 @@
         {"path": "apps/backend/tests/test_banking_file_fallback.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_file_fallback.py"},
         {"path": "apps/backend/tests/fixtures/banking-files", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_file_fallback.py"}
       ],
-      "status": "planned"
+      "status": "local-evidence-passed"
     },
     {
       "id": "GH-189-A5",
@@ -87,7 +87,7 @@
         {"path": "apps/backend/tests/test_banking_workflow.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_workflow.py"},
         {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"}
       ],
-      "status": "planned"
+      "status": "local-evidence-passed"
     },
     {
       "id": "GH-189-A6",
@@ -100,7 +100,7 @@
         {"path": "apps/web/tests/banking-connection-presentation.test.mjs", "command": "npm run test:boundary-web"},
         {"path": "tests/browser_owner_annual_loop.mjs", "command": "npm run test:browser-owner"}
       ],
-      "status": "planned"
+      "status": "local-browser-passed-provider-activation-pending"
     },
     {
       "id": "GH-189-A7",
@@ -110,10 +110,11 @@
         {"url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866", "version": "launch lanes 8 and 9, 2026-08-26"}
       ],
       "plannedEvidence": [
-        {"path": "tests/banking_connection_database_runtime.test.mjs", "command": "npm run test:supabase:local"},
-        {"path": "apps/backend/tests/test_banking_operations.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_operations.py"}
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:supabase:local"},
+        {"path": "apps/backend/tests/test_banking_sync.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_sync.py"},
+        {"path": "tests/browser_company_onboarding.mjs", "command": "npm run test:browser-owner"}
       ],
-      "status": "planned"
+      "status": "local-evidence-passed"
     },
     {
       "id": "GH-189-A8",
@@ -125,7 +126,7 @@
       "plannedEvidence": [
         {"path": "architecture/evidence/customer-ready-gates/<revision>.json", "command": "npm run gate:customer-ready"}
       ],
-      "status": "planned"
+      "status": "pending-immutable-release-gate"
     },
     {
       "id": "GH-189-A9",
@@ -140,5 +141,5 @@
       "status": "external-evidence-required"
     }
   ],
-  "closeState": "open-local-implementation-in-progress"
+  "closeState": "open-external-provider-evidence-required"
 }

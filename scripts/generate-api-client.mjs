@@ -62,6 +62,13 @@ const ledgerOperations = {
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
 const bankingOperations = {
+  listConnections: ["/api/v1/banking/connections", "get", "bankingListConnections"],
+  startConnection: ["/api/v1/banking/connections", "post", "bankingStartConnection"],
+  completeConnection: ["/api/v1/banking/connections/{connection_id}/callback", "get", "bankingCompleteConnection"],
+  revokeConnection: ["/api/v1/banking/connections/{connection_id}/revoke", "post", "bankingRevokeConnection"],
+  syncAccount: ["/api/v1/banking/connections/{connection_id}/accounts/{account_id}/syncs", "post", "bankingSyncAccount"],
+  previewSourceFile: ["/api/v1/banking/source-files/previews", "post", "bankingPreviewSourceFile"],
+  acceptSourceFile: ["/api/v1/banking/source-files/{source_file_id}/acceptance", "post", "bankingAcceptSourceFile"],
   importStatement: ["/api/v1/banking/statement-imports", "post", "bankingImportStatement"],
   listTransactions: ["/api/v1/banking/transactions", "get", "bankingListTransactions"],
   acceptSuggestion: ["/api/v1/banking/suggestion-acceptances", "post", "bankingAcceptSuggestion"],
@@ -343,17 +350,30 @@ const ledgerSchemas = Object.fromEntries([
   "TaxSettlementKind",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
+  "AcceptBankFileWire",
   "AcceptBankSuggestionWire",
   "AcceptedBankSuggestionWire",
+  "BankAccountWire",
+  "BankConnectionActionWire",
+  "BankConnectionListWire",
+  "BankConnectionWire",
+  "BankConsentRedirectWire",
+  "BankFileColumnMappingWire",
+  "BankFilePreviewResultWire",
+  "BankFilePreviewWire",
   "BankStatementImportResultWire",
   "BankStatementImportWire",
   "BankSuggestionAcceptancePageWire",
   "BankSuggestionKind",
   "BankSuggestionWire",
+  "BankSyncMode",
+  "BankSyncResultWire",
+  "BankSyncWire",
   "BankTransactionPageWire",
   "BankTransactionWire",
   "BankingPageWire",
   "SupportedBankDataFormat",
+  "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
@@ -512,6 +532,19 @@ export interface BankingListRequest extends TalliRequestOptions {
   limit?: number;
 }
 
+export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  code?: string;
+  state?: string;
+  resourceId?: string;
+  result?: string;
+}
+
+export interface BankingConnectionListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
 }
@@ -564,6 +597,40 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
+  }
+
+  async function executeEmpty(
+    url: string,
+    method: string,
+    request: TalliMutationOptions,
+    body: unknown,
+  ): Promise<void> {
+    const response = await fetchImplementation(url, {
+      body: JSON.stringify(body),
+      cache: "no-store",
+      headers: {
+        Accept: "application/json, application/problem+json",
+        ["Content-Type"]: "application/json",
+        ...options.headers,
+        ...request.headers,
+        ["Idempotency-Key"]: request.idempotencyKey,
+        ...(request.requestId === undefined
+          ? {}
+          : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
+      },
+      method,
+      signal: request.signal,
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      const candidate = contentType.includes("application/problem+json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+      throw new TalliApiError(
+        response.status,
+        isProblemDetails(candidate) ? candidate : undefined,
+      );
+    }
   }
 
   async function executeLedgerWriter(
@@ -1215,6 +1282,109 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<BankStatementImportResultWire> {
       return executeJson(
         \`\${baseUrl}/api/v1/banking/statement-imports\`,
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingStartConnection(
+      body: StartBankConnectionWire,
+      request: TalliMutationOptions,
+    ): Promise<BankConsentRedirectWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections",
+        "POST",
+        request,
+        body,
+        isBankConsentRedirectWire,
+      );
+    },
+
+    async bankingListConnections(
+      request: BankingConnectionListRequest,
+    ): Promise<BankConnectionListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionListWire,
+      );
+    },
+
+    async bankingCompleteConnection(
+      connectionId: string,
+      request: BankingConnectionCallbackRequest,
+    ): Promise<BankConnectionWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      if (request.code !== undefined) query.set("code", request.code);
+      if (request.state !== undefined) query.set("state", request.state);
+      if (request.resourceId !== undefined) query.set("resource_id", request.resourceId);
+      if (request.result !== undefined) query.set("result", request.result);
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/callback?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionWire,
+      );
+    },
+
+    async bankingRevokeConnection(
+      connectionId: string,
+      body: BankConnectionActionWire,
+      request: TalliMutationOptions,
+    ): Promise<void> {
+      return executeEmpty(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/revoke",
+        "POST",
+        request,
+        body,
+      );
+    },
+
+    async bankingSyncAccount(
+      connectionId: string,
+      accountId: string,
+      body: BankSyncWire,
+      request: TalliMutationOptions,
+    ): Promise<BankSyncResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId)
+          + "/accounts/" + encodeURIComponent(accountId) + "/syncs",
+        "POST",
+        request,
+        body,
+        isBankSyncResultWire,
+      );
+    },
+
+    async bankingPreviewSourceFile(
+      body: BankFilePreviewWire,
+      request: TalliMutationOptions,
+    ): Promise<BankFilePreviewResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/previews",
+        "POST",
+        request,
+        body,
+        isBankFilePreviewResultWire,
+      );
+    },
+
+    async bankingAcceptSourceFile(
+      sourceFileId: string,
+      body: AcceptBankFileWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/" + encodeURIComponent(sourceFileId) + "/acceptance",
         "POST",
         request,
         body,

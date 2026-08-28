@@ -4,9 +4,11 @@ import test from "node:test";
 import { TalliApiError } from "@talli/talli-api-client";
 
 import {
+  acceptBankSourceFile,
   bankingActionErrorMessage,
   bankingOutcomeMayBeUnknown,
   loadBankTransactions,
+  previewBankSourceFile,
   presentBankSuggestionAcceptances,
   presentBankTransactions,
 } from "../features/banking/index.ts";
@@ -58,6 +60,65 @@ test("banking transport follows opaque pages through the generated client", asyn
     const headers = new Headers(calls[0].request.headers);
     assert.equal(headers.get("Authorization"), "Bearer session-token");
     assert.equal(headers.get("X-Request-ID"), "bank-list-test");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("bank file transport persists a backend preview before explicit acceptance", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const calls = [];
+  globalThis.fetch = async (url, request) => {
+    calls.push({ url: String(url), request });
+    if (String(url).endsWith("/previews")) {
+      return Response.json({
+        sourceFileId: "60000000-0000-0000-0000-000000000006",
+        documentSha256: "a".repeat(64),
+        accountMask: null,
+        intervalStart: "2026-01-02",
+        intervalEnd: "2026-01-02",
+        currency: "NOK",
+        openingBalance: null,
+        closingBalance: null,
+        transactionCount: 1,
+        duplicateCount: 0,
+        correctionCount: 0,
+        ignoredCount: 0,
+        replayed: false,
+      });
+    }
+    return Response.json({ importedCount: 1, duplicateCount: 0, replayed: false });
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  try {
+    const preview = await previewBankSourceFile("session-token", {
+      companyId,
+      incomeYear: 2026,
+      sourceFileId: "60000000-0000-0000-0000-000000000006",
+      accountId: "70000000-0000-0000-0000-000000000007",
+      dataFormat: "CSV",
+      filename: "statement.csv",
+      content: "date,text,amount\n2026-01-02,Annual fee,-89\n",
+      columnMapping: {
+        bookingDate: "date",
+        text: "text",
+        amount: "amount",
+      },
+    }, "banking-preview-route-0001");
+    const accepted = await acceptBankSourceFile(
+      "session-token",
+      preview.sourceFileId,
+      { companyId, incomeYear: 2026, documentSha256: preview.documentSha256 },
+      "banking-accept-route-0001",
+    );
+    assert.equal(accepted.importedCount, 1);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].url, /source-files\/previews$/u);
+    assert.match(calls[1].url, /source-files\/60000000-0000-0000-0000-000000000006\/acceptance$/u);
+    assert.equal(JSON.parse(calls[1].request.body).documentSha256, "a".repeat(64));
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;

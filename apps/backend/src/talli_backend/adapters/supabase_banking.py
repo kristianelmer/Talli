@@ -26,8 +26,21 @@ from talli_backend.application.banking_workflow import BankingApplication
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.modules.banking.public import (
     AcceptBankSuggestionCommand,
+    AcceptBankFileCommand,
     AcceptedBankSuggestion,
     AccountingEntryReference,
+    BankAccount,
+    BankAccountId,
+    BankAccountStatus,
+    BankConnection,
+    BankConnectionList,
+    BankConnectionId,
+    BankConnectionStatus,
+    BankConnectorId,
+    BankConsentRedirect,
+    BankFilePreview,
+    BankFilePreviewCommand,
+    BankProviderConnection,
     BankStatementImportResult,
     BankSuggestion,
     BankSuggestionAcceptanceId,
@@ -36,15 +49,25 @@ from talli_backend.modules.banking.public import (
     BankTransaction,
     BankTransactionId,
     BankTransactionPage,
+    BankSyncAttemptId,
+    BankSyncCommand,
+    BankSyncContext,
+    BankSyncPageResult,
+    BankSyncResult,
+    BankSourceFileId,
     BankingCursor,
     BankingError,
     BankingErrorCode,
     BankingPage,
     BankingPersistence,
     ExternalActionReference,
+    CompleteBankConnectionCommand,
     ImportBankStatementCommand,
     ImportedBankTransaction,
     PreparedBankSuggestion,
+    PersistedBankFilePreview,
+    RevokeBankConnectionCommand,
+    StartBankConnectionCommand,
     banking_persistence_adapter,
 )
 from talli_backend.modules.ledger.service import LedgerService
@@ -65,6 +88,8 @@ from talli_backend.shared.kernel import (
 class BankingSupabaseConfiguration(LedgerSupabaseConfiguration):
     """Banking-specific environment binding for the shared verified-actor client."""
 
+    encryption_key: str = ""
+
 
 def _actor(value: object) -> ActorId:
     return ActorId(ActorKind.USER, UserId(str(value)))
@@ -72,6 +97,14 @@ def _actor(value: object) -> ActorId:
 
 def _timestamp(value: object) -> Timestamp:
     return Timestamp(datetime.fromisoformat(str(value).replace("Z", "+00:00")))
+
+
+def _optional_timestamp(value: object) -> Timestamp | None:
+    return _timestamp(value) if value is not None else None
+
+
+def _optional_date(value: object) -> LocalDate | None:
+    return LocalDate(date.fromisoformat(str(value))) if value else None
 
 
 def _banking_error(message: str) -> BankingError:
@@ -93,6 +126,18 @@ def _banking_error(message: str) -> BankingError:
             BankingError.precondition_failed(
                 BankingErrorCode.COMPANY_YEAR_NOT_ADMITTED
             ),
+        ),
+        (
+            "banking_consent_callback_invalid",
+            BankingError.invalid_input(BankingErrorCode.CONSENT_CALLBACK_INVALID),
+        ),
+        (
+            "banking_provider_response_invalid",
+            BankingError.invalid_input(BankingErrorCode.PROVIDER_RESPONSE_INVALID),
+        ),
+        (
+            "banking_connection_not_available",
+            BankingError.precondition_failed(BankingErrorCode.CONSENT_EXPIRED),
         ),
         ("banking_transaction_not_found", BankingError.not_found()),
         (
@@ -132,6 +177,65 @@ def _command_payload(command: AcceptBankSuggestionCommand) -> dict[str, object]:
     }
 
 
+def _connection_payload(
+    command: StartBankConnectionCommand | CompleteBankConnectionCommand,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "connectionId": str(command.connection_id),
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
+    if isinstance(command, StartBankConnectionCommand):
+        payload.update(
+            connectorId=str(command.connector_id),
+            bankKey=command.bank_key,
+        )
+    else:
+        payload["callbackState"] = (
+            command.callback_parameters.get("state")
+            or command.callback_parameters.get("resource_id")
+            or ""
+        )
+    return payload
+
+
+def _sync_payload(command: BankSyncCommand) -> dict[str, object]:
+    return {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "connectionId": str(command.connection_id),
+        "accountId": str(command.account_id),
+        "dateFrom": command.date_from.value.isoformat(),
+        "dateTo": command.date_to.value.isoformat(),
+        "mode": command.mode.value,
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
+
+
+def _file_payload(
+    command: BankFilePreviewCommand | AcceptBankFileCommand,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "sourceFileId": str(command.source_file_id),
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
+    if isinstance(command, BankFilePreviewCommand):
+        payload.update(
+            accountId=str(command.account_id),
+            dataFormat=command.data_format.value,
+            filename=command.filename,
+        )
+    else:
+        payload["documentSha256"] = command.document_sha256
+    return payload
+
+
 class _BankingOperations:
     actor_id: ActorId
 
@@ -139,6 +243,421 @@ class _BankingOperations:
         self, query: str, parameters: tuple[object, ...]
     ) -> list[Mapping[str, object]]:
         raise NotImplementedError
+
+    def _require_actor(self, actor_id: ActorId) -> None:
+        if actor_id != self.actor_id:
+            raise BankingError.forbidden()
+
+    @staticmethod
+    def _result(rows: list[Mapping[str, object]]) -> Mapping[str, object]:
+        result = rows[0].get("result") if len(rows) == 1 else None
+        if not isinstance(result, Mapping):
+            raise BankingError.unavailable()
+        return result
+
+    @staticmethod
+    def _connection(value: Mapping[str, object]) -> BankConnection:
+        raw_accounts = value.get("accounts")
+        if not isinstance(raw_accounts, list):
+            raise BankingError.unavailable()
+        connection_id = BankConnectionId(str(value["connectionId"]))
+        accounts = tuple(
+            BankAccount(
+                account_id=BankAccountId(str(item["accountId"])),
+                connection_id=connection_id,
+                masked_account=str(item["maskedAccount"]),
+                currency=str(item["currency"]),
+                account_kind=str(item["accountKind"]),
+                display_name=str(item.get("displayName") or ""),
+                status=BankAccountStatus(str(item["status"])),
+                earliest_covered_date=_optional_date(item.get("earliestCoveredDate")),
+                latest_covered_date=_optional_date(item.get("latestCoveredDate")),
+                last_success_at=_optional_timestamp(item.get("lastSuccessAt")),
+            )
+            for item in raw_accounts
+            if isinstance(item, Mapping)
+        )
+        if len(accounts) != len(raw_accounts):
+            raise BankingError.unavailable()
+        return BankConnection(
+            connection_id=connection_id,
+            company_id=CompanyId(str(value["companyId"])),
+            connector_id=BankConnectorId(str(value["connectorId"])),
+            status=BankConnectionStatus(str(value["status"])),
+            consent_expires_on=_optional_date(value.get("consentExpiresOn")),
+            accounts=accounts,
+            last_success_at=_optional_timestamp(value.get("lastSuccessAt")),
+            last_failure_code=(
+                str(value["lastFailureCode"])
+                if value.get("lastFailureCode") is not None
+                else None
+            ),
+        )
+
+    async def begin_connection(self, command: StartBankConnectionCommand) -> None:
+        self._require_actor(command.actor_id)
+        await self._banking_rows(
+            "select banking.begin_connection_v1(%s::jsonb, %s::text) as result",
+            (
+                json.dumps(_connection_payload(command), separators=(",", ":")),
+                str(self.actor_id.subject),
+            ),
+        )
+
+    async def get_connection_completion_replay(
+        self,
+        command: CompleteBankConnectionCommand,
+    ) -> BankConnection | None:
+        self._require_actor(command.actor_id)
+        connections = await self.list_connections(
+            actor_id=command.actor_id,
+            company_id=command.company_id,
+            correlation_id=command.correlation_id,
+        )
+        return next(
+            (
+                connection
+                for connection in connections.items
+                if connection.connection_id == command.connection_id
+                and connection.status is BankConnectionStatus.ACTIVE
+            ),
+            None,
+        )
+
+    async def list_connections(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+    ) -> BankConnectionList:
+        _ = correlation_id
+        self._require_actor(actor_id)
+        rows = await self._banking_rows(
+            "select banking.list_connections_v1("
+            "%s::uuid, %s::text) as result",
+            (str(company_id), str(self.actor_id.subject)),
+        )
+        result = rows[0].get("result") if len(rows) == 1 else None
+        if not isinstance(result, list):
+            raise BankingError.unavailable()
+        return BankConnectionList(
+            tuple(
+                self._connection(item)
+                for item in result
+                if isinstance(item, Mapping)
+            )
+        )
+
+    async def record_consent_redirect(
+        self,
+        command: StartBankConnectionCommand,
+        redirect: BankConsentRedirect,
+    ) -> BankConsentRedirect:
+        self._require_actor(command.actor_id)
+        await self._banking_rows(
+            "select banking.record_consent_redirect_v1("
+            "%s::uuid, %s::uuid, %s::text, %s::text)",
+            (
+                str(command.connection_id),
+                str(command.company_id),
+                redirect.state,
+                str(self.actor_id.subject),
+            ),
+        )
+        return redirect
+
+    async def complete_connection(
+        self,
+        command: CompleteBankConnectionCommand,
+        provider_connection: BankProviderConnection,
+    ) -> BankConnection:
+        self._require_actor(command.actor_id)
+        provider_payload = {
+            "connectorId": str(provider_connection.connector_id),
+            "adapterConnectionReference": (
+                provider_connection.adapter_connection_reference
+            ),
+            "consentExpiresOn": (
+                provider_connection.consent_expires_on.value.isoformat()
+                if provider_connection.consent_expires_on
+                else None
+            ),
+            "accounts": [
+                {
+                    "adapterReference": item.adapter_account_reference,
+                    "maskedAccount": item.masked_account,
+                    "currency": item.currency,
+                    "accountKind": item.account_kind,
+                    "displayName": item.display_name,
+                }
+                for item in provider_connection.accounts
+            ],
+        }
+        rows = await self._provider_rows(
+            "select banking.complete_connection_v1("
+            "%s::jsonb, %s::jsonb, %s::text, %s::text) as result",
+            (
+                json.dumps(_connection_payload(command), separators=(",", ":")),
+                json.dumps(provider_payload, separators=(",", ":")),
+                str(self.actor_id.subject),
+                self._encryption_key,
+            ),
+        )
+        return self._connection(self._result(rows))
+
+    async def fail_connection(
+        self,
+        command: StartBankConnectionCommand | CompleteBankConnectionCommand,
+        *,
+        error_code: str,
+    ) -> None:
+        self._require_actor(command.actor_id)
+        await self._banking_rows(
+            "select banking.fail_connection_v1("
+            "%s::uuid, %s::uuid, %s::text, %s::text)",
+            (
+                str(command.connection_id),
+                str(command.company_id),
+                error_code,
+                str(self.actor_id.subject),
+            ),
+        )
+
+    async def begin_revocation(self, command: RevokeBankConnectionCommand) -> str:
+        self._require_actor(command.actor_id)
+        rows = await self._provider_rows(
+            "select banking.begin_connection_revocation_v1("
+            "%s::uuid, %s::uuid, %s::text, %s::text) as result",
+            (
+                str(command.connection_id),
+                str(command.company_id),
+                str(self.actor_id.subject),
+                self._encryption_key,
+            ),
+        )
+        result = rows[0].get("result") if len(rows) == 1 else None
+        if not isinstance(result, str) or not result:
+            raise BankingError.unavailable()
+        return result
+
+    async def complete_revocation(self, command: RevokeBankConnectionCommand) -> None:
+        self._require_actor(command.actor_id)
+        await self._banking_rows(
+            "select banking.complete_connection_revocation_v1("
+            "%s::uuid, %s::uuid, %s::text)",
+            (
+                str(command.connection_id),
+                str(command.company_id),
+                str(self.actor_id.subject),
+            ),
+        )
+
+    async def prepare_sync(self, command: BankSyncCommand) -> BankSyncContext:
+        self._require_actor(command.actor_id)
+        rows = await self._provider_rows(
+            "select banking.prepare_sync_v1("
+            "%s::jsonb, %s::text, %s::text) as result",
+            (
+                json.dumps(_sync_payload(command), separators=(",", ":")),
+                str(self.actor_id.subject),
+                self._encryption_key,
+            ),
+        )
+        result = self._result(rows)
+        replayed_result = None
+        if bool(result.get("replayed")):
+            replayed_result = BankSyncResult(
+                attempt_id=BankSyncAttemptId(str(result["attemptId"])),
+                page_count=int(result["pageCount"]),
+                imported_count=int(result["importedCount"]),
+                updated_count=int(result["updatedCount"]),
+                duplicate_count=int(result["duplicateCount"]),
+                replayed=True,
+            )
+        return BankSyncContext(
+            attempt_id=BankSyncAttemptId(str(result["attemptId"])),
+            connector_id=BankConnectorId(str(result["connectorId"])),
+            adapter_connection_reference=str(
+                result["adapterConnectionReference"]
+            ),
+            adapter_account_reference=str(result["adapterAccountReference"]),
+            resume_cursor=(
+                str(result["resumeCursor"])
+                if result.get("resumeCursor") is not None
+                else None
+            ),
+            replayed_result=replayed_result,
+        )
+
+    async def apply_sync_page(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        transactions: tuple[ImportedBankTransaction, ...],
+        next_cursor: str | None,
+    ) -> BankSyncPageResult:
+        self._require_actor(command.actor_id)
+        page = [
+            {
+                "transactionDate": item.transaction_date.value.isoformat(),
+                "valueDate": item.value_date.value.isoformat()
+                if item.value_date
+                else None,
+                "text": item.text,
+                "amount": str(item.amount.amount),
+                "balance": str(item.balance.amount) if item.balance else None,
+                "sourceHash": item.source_hash,
+                "state": item.state.value,
+                "adapterReference": item.adapter_transaction_reference,
+            }
+            for item in transactions
+        ]
+        rows = await self._provider_rows(
+            "select banking.apply_sync_page_v1("
+            "%s::jsonb, %s::uuid, %s::jsonb, %s::text, %s::text, %s::text) as result",
+            (
+                json.dumps(_sync_payload(command), separators=(",", ":")),
+                str(context.attempt_id),
+                json.dumps(page, separators=(",", ":")),
+                next_cursor,
+                str(self.actor_id.subject),
+                self._encryption_key,
+            ),
+        )
+        result = self._result(rows)
+        return BankSyncPageResult(
+            imported_count=int(result["importedCount"]),
+            updated_count=int(result["updatedCount"]),
+            duplicate_count=int(result["duplicateCount"]),
+        )
+
+    async def complete_sync(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        pages: int,
+        imported_count: int,
+        updated_count: int,
+        duplicate_count: int,
+    ) -> BankSyncResult:
+        self._require_actor(command.actor_id)
+        _ = pages, imported_count, updated_count, duplicate_count
+        rows = await self._banking_rows(
+            "select banking.complete_sync_v1("
+            "%s::jsonb, %s::uuid, %s::text) as result",
+            (
+                json.dumps(_sync_payload(command), separators=(",", ":")),
+                str(context.attempt_id),
+                str(self.actor_id.subject),
+            ),
+        )
+        result = self._result(rows)
+        return BankSyncResult(
+            attempt_id=BankSyncAttemptId(str(result["attemptId"])),
+            page_count=int(result["pageCount"]),
+            imported_count=int(result["importedCount"]),
+            updated_count=int(result["updatedCount"]),
+            duplicate_count=int(result["duplicateCount"]),
+            replayed=bool(result.get("replayed")),
+        )
+
+    async def fail_sync(
+        self,
+        command: BankSyncCommand,
+        *,
+        context: BankSyncContext,
+        error_code: str,
+    ) -> None:
+        self._require_actor(command.actor_id)
+        await self._banking_rows(
+            "select banking.fail_sync_v1("
+            "%s::jsonb, %s::uuid, %s::text, %s::text)",
+            (
+                json.dumps(_sync_payload(command), separators=(",", ":")),
+                str(context.attempt_id),
+                error_code,
+                str(self.actor_id.subject),
+            ),
+        )
+
+    async def persist_file_preview(
+        self,
+        command: BankFilePreviewCommand,
+        preview: BankFilePreview,
+    ) -> PersistedBankFilePreview:
+        self._require_actor(command.actor_id)
+        preview_payload = {
+            "documentSha256": preview.document_sha256,
+            "accountMask": preview.account_mask,
+            "intervalStart": preview.interval_start.value.isoformat(),
+            "intervalEnd": preview.interval_end.value.isoformat(),
+            "currency": preview.currency,
+            "openingBalance": str(preview.opening_balance.amount)
+            if preview.opening_balance
+            else None,
+            "closingBalance": str(preview.closing_balance.amount)
+            if preview.closing_balance
+            else None,
+            "transactionCount": preview.transaction_count,
+            "duplicateCount": preview.duplicate_count,
+            "correctionCount": preview.correction_count,
+            "ignoredCount": preview.ignored_count,
+            "transactions": [
+                {
+                    "transactionDate": item.transaction_date.value.isoformat(),
+                    "valueDate": item.value_date.value.isoformat()
+                    if item.value_date
+                    else None,
+                    "text": item.text,
+                    "amount": str(item.amount.amount),
+                    "balance": str(item.balance.amount) if item.balance else None,
+                    "sourceHash": item.source_hash,
+                    "state": item.state.value,
+                }
+                for item in preview.transactions
+            ],
+        }
+        rows = await self._provider_rows(
+            "select banking.preview_source_file_v1("
+            "%s::jsonb, %s::jsonb, %s::text, %s::text, %s::text) as result",
+            (
+                json.dumps(_file_payload(command), separators=(",", ":")),
+                json.dumps(preview_payload, separators=(",", ":")),
+                command.content,
+                str(self.actor_id.subject),
+                self._encryption_key,
+            ),
+        )
+        result = self._result(rows)
+        return PersistedBankFilePreview(
+            source_file_id=BankSourceFileId(str(result["sourceFileId"])),
+            preview=preview,
+            replayed=bool(result.get("replayed")),
+        )
+
+    async def accept_file(
+        self,
+        command: AcceptBankFileCommand,
+    ) -> BankStatementImportResult:
+        self._require_actor(command.actor_id)
+        rows = await self._banking_rows(
+            "select banking.accept_source_file_v1("
+            "%s::jsonb, %s::text) as result",
+            (
+                json.dumps(_file_payload(command), separators=(",", ":")),
+                str(self.actor_id.subject),
+            ),
+        )
+        result = self._result(rows)
+        return BankStatementImportResult(
+            imported_count=int(result["importedCount"]),
+            duplicate_count=int(result["duplicateCount"]),
+            transactions=(),
+            replayed=bool(result.get("replayed")),
+        )
 
     async def import_transactions(
         self,
@@ -325,13 +844,31 @@ class _BankingOperations:
 
 @banking_persistence_adapter(BankingPersistence)
 class SupabaseBankingSession(_BankingOperations):
-    def __init__(self, database_url: str, verified: _VerifiedActor) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        verified: _VerifiedActor,
+        encryption_key: str = "",
+    ) -> None:
         self._database_url = database_url
         self._verified = verified
+        self._encryption_key = encryption_key
         self.actor_id = verified.actor_id
 
     async def _banking_rows(self, query, parameters):
+        return await self._rows_with_role("banking_executor", query, parameters)
+
+    async def _provider_rows(self, query, parameters):
+        if not self._encryption_key:
+            raise BankingError.unavailable()
+        return await self._rows_with_role(
+            "banking_provider_executor", query, parameters
+        )
+
+    async def _rows_with_role(self, role, query, parameters):
         if not self._database_url:
+            raise BankingError.unavailable()
+        if role not in {"banking_executor", "banking_provider_executor"}:
             raise BankingError.unavailable()
         try:
             async with await psycopg.AsyncConnection.connect(
@@ -339,7 +876,7 @@ class SupabaseBankingSession(_BankingOperations):
                 connect_timeout=5,
                 row_factory=dict_row,
             ) as connection, connection.transaction():
-                await connection.execute("set local role banking_executor")
+                await connection.execute(f"set local role {role}")
                 await connection.execute(
                     "select pg_catalog.set_config("
                     "'talli.verified_actor_id', %s, true)",
@@ -412,6 +949,7 @@ class SupabaseBankingAdapter(SupabaseLedgerAdapter):
                     "TALLI_BANKING_DATABASE_URL",
                     os.environ.get("TALLI_LEDGER_DATABASE_URL", ""),
                 ),
+                encryption_key=os.environ.get("TALLI_BANKING_ENCRYPTION_KEY", ""),
             )
         )
 
@@ -420,7 +958,11 @@ class SupabaseBankingAdapter(SupabaseLedgerAdapter):
             verified = await self._verified_actor(access_token)
         except LedgerAuthenticationError:
             raise BankingAuthenticationError from None
-        return SupabaseBankingSession(self._configuration.database_url, verified)
+        return SupabaseBankingSession(
+            self._configuration.database_url,
+            verified,
+            self._configuration.encryption_key,
+        )
 
 
 def compose_banking_application(

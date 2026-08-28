@@ -3,7 +3,12 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
-from talli_backend.modules.banking.public import BankingPersistence
+from talli_backend.modules.banking.public import (
+    BankConnectionPersistence,
+    BankFilePersistence,
+    BankingPersistence,
+    BankSyncPersistence,
+)
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
 
@@ -17,7 +22,13 @@ class BankingWorkflowTransaction(BankingPersistence, LedgerPersistence, Protocol
     def actor_id(self) -> ActorId: ...
 
 
-class AuthenticatedBankingSession(BankingPersistence, Protocol):
+class AuthenticatedBankingSession(
+    BankingPersistence,
+    BankConnectionPersistence,
+    BankFilePersistence,
+    BankSyncPersistence,
+    Protocol,
+):
     @property
     def actor_id(self) -> ActorId: ...
 

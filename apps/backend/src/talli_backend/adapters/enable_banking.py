@@ -51,17 +51,17 @@ class EnableBankingAdapter:
     def __init__(self, *, transport: BankProviderHttpTransport, authorization: str) -> None:
         self._transport = transport
         self._authorization = required_text(authorization, maximum=8192)
-        self._states: dict[str, str] = {}
-        self._sessions: dict[str, str] = {}
+
+    @staticmethod
+    def _state(connection_id: object, company_id: object) -> str:
+        return hashlib.sha256(f"{connection_id}|{company_id}".encode()).hexdigest()
 
     @property
     def _headers(self) -> dict[str, str]:
         return {"Authorization": self._authorization, "Accept": "application/json"}
 
     async def begin_consent(self, request: BeginBankConsentRequest) -> BankConsentRedirect:
-        state = hashlib.sha256(
-            f"{request.connection_id}|{request.company_id}|{request.bank_key}".encode()
-        ).hexdigest()
+        state = self._state(request.connection_id, request.company_id)
         body = successful_body(
             await self._transport.request(
                 method="POST",
@@ -76,16 +76,14 @@ class EnableBankingAdapter:
                 },
             )
         )
-        self._states[str(request.connection_id)] = state
         return BankConsentRedirect(
             redirect_url=required_text(body.get("url") or body.get("authorizationUri")),
             state=state,
         )
 
     async def complete_consent(self, request: CompleteBankConsentRequest) -> BankProviderConnection:
-        key = str(request.connection_id)
-        state = self._states.get(key)
-        if state is None or request.callback_parameters.get("state") != state:
+        state = self._state(request.connection_id, request.company_id)
+        if request.callback_parameters.get("state") != state:
             raise provider_error(BankingErrorCode.CONSENT_CALLBACK_INVALID)
         body = successful_body(
             await self._transport.request(
@@ -96,12 +94,12 @@ class EnableBankingAdapter:
             )
         )
         session_id = required_text(body.get("session_id") or body.get("sessionId"))
-        self._sessions[key] = session_id
         access = _mapping(body.get("access", {}))
         accounts = tuple(self._account(_mapping(raw)) for raw in _sequence(body.get("accounts")))
         return BankProviderConnection(
             connection_id=request.connection_id,
             connector_id=self.connector_id,
+            adapter_connection_reference=session_id,
             consent_expires_on=optional_date(access.get("valid_until") or access.get("validUntil")),
             accounts=accounts,
         )
@@ -123,8 +121,6 @@ class EnableBankingAdapter:
     async def fetch_transactions(
         self, request: FetchBankTransactionsRequest
     ) -> BankProviderTransactionPage:
-        if str(request.connection_id) not in self._sessions:
-            raise provider_error(BankingErrorCode.CONSENT_EXPIRED)
         query = {
             "date_from": request.date_from.value.isoformat(),
             "date_to": request.date_to.value.isoformat(),
@@ -169,18 +165,29 @@ class EnableBankingAdapter:
             amount=amount_value,
             balance=(money(balance.get("amount"), currency=balance.get("currency")) if balance is not None else None),
             state=transaction_state(raw.get("status") or "booked"),
+            bank_reference=(
+                required_text(
+                    raw.get("reference_number")
+                    or raw.get("referenceNumber")
+                    or raw.get("entry_reference")
+                    or raw.get("entryReference"),
+                    maximum=1024,
+                )
+                if (
+                    raw.get("reference_number")
+                    or raw.get("referenceNumber")
+                    or raw.get("entry_reference")
+                    or raw.get("entryReference")
+                )
+                else None
+            ),
         )
 
     async def revoke_consent(self, request: RevokeBankConsentRequest) -> None:
-        key = str(request.connection_id)
-        self._states.pop(key, None)
-        session_id = self._sessions.pop(key, None)
-        if session_id is None:
-            return
         successful_body(
             await self._transport.request(
                 method="DELETE",
-                path=f"/api/v1/sessions/{session_id}",
+                path=f"/api/v1/sessions/{request.adapter_connection_reference}",
                 headers=self._headers,
             )
         )

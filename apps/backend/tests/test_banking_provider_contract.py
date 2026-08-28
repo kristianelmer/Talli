@@ -57,6 +57,7 @@ def test_provider_contract_normalizes_accounts_and_transaction_pages() -> None:
     connection = BankProviderConnection(
         connection_id=CONNECTION_ID,
         connector_id=BankConnectorId("fixture-connector"),
+        adapter_connection_reference="opaque-connection-ref",
         consent_expires_on=LocalDate(date(2027, 2, 24)),
         accounts=(
             BankProviderAccount(
@@ -92,6 +93,7 @@ def test_sync_request_keeps_schedule_and_pagination_explicit() -> None:
     request = FetchBankTransactionsRequest(
         connection_id=CONNECTION_ID,
         company_id=COMPANY_ID,
+        adapter_connection_reference="opaque-connection-ref",
         adapter_account_reference="opaque-account-ref",
         date_from=LocalDate(date(2026, 1, 1)),
         date_to=LocalDate(date(2026, 12, 31)),
@@ -108,4 +110,3 @@ def test_sync_request_keeps_schedule_and_pagination_explicit() -> None:
     assert request.cursor is None
     assert request.mode is BankSyncMode.INITIAL_BACKFILL
     assert callback.callback_parameters == {"code": "opaque-code", "state": "opaque-state"}
-

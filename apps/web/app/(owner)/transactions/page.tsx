@@ -15,6 +15,9 @@ import {
 import { ownerCopy } from "../../lib/copy";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { BankImport } from "./BankImport";
+import { BankConnections } from "./BankConnections";
+import { loadBankConnections, presentBankConnections } from "../../../features/banking";
+import { getCurrentSessionAccessToken } from "../../lib/supabase/auth-session";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,16 @@ type TransactionsPageProps = {
     posted?: string;
     imported?: string;
     bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
+    bankActionOperationId?: string;
+    bankActionTargetId?: string;
+    bankSynced?: string;
+    bankDisconnected?: string;
+    bankConnected?: string;
     suggestionOperationId?: string;
     suggestionBankTransactionId?: string;
     adminCostOperationId?: string;
@@ -79,6 +92,14 @@ export default async function TransactionsPage({
     );
   }
 
+  const accessToken = await getCurrentSessionAccessToken();
+  const bankConnections = accessToken
+    ? await loadBankConnections(accessToken, primaryCompany.id).then(
+        (response) => presentBankConnections(response.items, primaryIncomeYear),
+        () => [],
+      )
+    : [];
+
   const companyTransactions = data.transactions.filter(
     (transaction) => transaction.company_id === primaryCompany.id,
   );
@@ -104,8 +125,19 @@ export default async function TransactionsPage({
       </div>
 
       {query?.imported ? <Banner variant="success">{t.imported}</Banner> : null}
+      {query?.bankSynced ? <Banner variant="success">Bankkontoen er oppdatert.</Banner> : null}
+      {query?.bankDisconnected ? <Banner variant="success">Banktilkoblingen er koblet fra.</Banner> : null}
+      {query?.bankConnected ? <Banner variant="success">Banktilkoblingen er klar.</Banner> : null}
       {query?.posted ? <Banner variant="success">{t.posted}</Banner> : null}
       {query?.error ? <Banner variant="danger">{query.error}</Banner> : null}
+
+      <BankConnections
+        connections={bankConnections}
+        companyId={primaryCompany.id}
+        incomeYear={primaryIncomeYear}
+        retryOperationId={query?.bankActionOperationId}
+        retryTargetId={query?.bankActionTargetId}
+      />
 
       <section className="txSection">
         <BankImport
@@ -113,6 +145,13 @@ export default async function TransactionsPage({
           incomeYear={primaryIncomeYear}
           returnTo={RETURN_TO}
           retryOperationId={query?.bankImportOperationId}
+          retryAccountId={query?.bankImportAccountId}
+          persistedPreview={query?.bankPreviewSourceFileId && query.bankPreviewDocumentSha256 ? {
+            sourceFileId: query.bankPreviewSourceFileId,
+            documentSha256: query.bankPreviewDocumentSha256,
+            transactionCount: Number(query.bankPreviewTransactionCount ?? "0"),
+            operationId: query.bankPreviewOperationId,
+          } : undefined}
         />
       </section>
 

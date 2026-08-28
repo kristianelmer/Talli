@@ -756,6 +756,11 @@ export const ownerCopy = {
         `${count} banktransaksjoner er registrert.`,
       cta: "Importer",
       pending: "Importerer …",
+      persistedPreviewTitle: "Kontoutskriften er klar til kontroll",
+      persistedPreviewBody: (n: number) =>
+        `${n} ${n === 1 ? "transaksjon er" : "transaksjoner er"} lest inn. Ingenting importeres før du bekrefter.`,
+      acceptCta: "Bekreft og importer",
+      acceptPending: "Importerer …",
       finish: "Fullfør og gå til oversikt",
       skip: "Hopp over",
     },
@@ -1381,6 +1386,11 @@ export const ownerCopy = {
       previewEmpty: "Last opp CSV-en for å se en forhåndsvisning.",
       previewCount: (n: number) =>
         `${n} ${n === 1 ? "transaksjon" : "transaksjoner"} klar til import`,
+      persistedPreviewTitle: "Kontoutskriften er klar til kontroll",
+      persistedPreviewBody: (n: number) =>
+        `${n} ${n === 1 ? "transaksjon er" : "transaksjoner er"} lest inn. Ingenting importeres før du bekrefter.`,
+      acceptCta: "Bekreft og importer",
+      acceptPending: "Importerer …",
       moreRows: (n: number) => `+ ${n} flere`,
       missingColumns:
         "CSV-en mangler kolonnene date, text og amount. Sjekk den første linjen.",

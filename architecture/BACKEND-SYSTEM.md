@@ -5,7 +5,7 @@
 -->
 
 <!-- architecture-inventory
-{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql","supabase/migrations/20260828100500_banking_workflows.sql","supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql"],"technicalTables":["backend_system.banking_command_receipts","backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
+{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql","supabase/migrations/20260828100500_banking_workflows.sql","supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql","supabase/migrations/20260828102000_banking_connections.sql"],"technicalTables":["backend_system.banking_command_receipts","backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
 -->
 
 <!-- architecture-inventory
@@ -17,7 +17,7 @@
 -->
 
 <!-- architecture-inventory
-{"routes":["/api/v1/banking/statement-imports","/api/v1/banking/suggestion-acceptances","/api/v1/banking/transactions"],"workflowPurposes":["banking-reconciliation=>Authenticates one verified actor and runs bank-statement import, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts."],"workflows":["banking-reconciliation"]}
+{"routes":["/api/v1/banking/connections","/api/v1/banking/connections/{connection_id}/accounts/{account_id}/syncs","/api/v1/banking/connections/{connection_id}/callback","/api/v1/banking/connections/{connection_id}/revoke","/api/v1/banking/source-files/previews","/api/v1/banking/source-files/{source_file_id}/acceptance","/api/v1/banking/statement-imports","/api/v1/banking/suggestion-acceptances","/api/v1/banking/transactions"],"workflowPurposes":["banking-reconciliation=>Authenticates one verified actor and runs read-only consent, revocation, durable account sync and recovery, preview-first CSV/CAMT.053 fallback, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts."],"workflows":["banking-reconciliation"]}
 -->
 
 <!-- architecture-inventory
@@ -104,10 +104,13 @@ data or filing behavior until #151. The application-layer compatibility adapter
 translates both intents only inside this workflow's active transaction.
 
 The `banking-reconciliation` workflow serves
-`/api/v1/banking/statement-imports`, `/api/v1/banking/transactions`, and both
-methods on `/api/v1/banking/suggestion-acceptances`. It authenticates a single
-verified actor, delegates statement parsing, deduplication, suggestion policy,
-and cursor reads to `talli_backend.modules.banking.public`, and coordinates an
+the banking connection start/callback/revoke routes, per-account sync route,
+source-file preview/acceptance routes, `/api/v1/banking/statement-imports`,
+`/api/v1/banking/transactions`, and both methods on
+`/api/v1/banking/suggestion-acceptances`. It authenticates a single verified
+actor, delegates consent, durable checkpointing, file parsing, deduplication,
+suggestion policy, and cursor reads to
+`talli_backend.modules.banking.public`, and coordinates an
 accepted suggestion with its ledger posting inside one request-bound database
 transaction. The web sends only source facts and the canonical expected
 suggestion; it cannot choose ledger accounts or lines.
@@ -156,6 +159,10 @@ acceptances are projected into their frozen legacy relations, and the
 ledger-owned acceptance projector copies the exact already-posted entry lines.
 It cannot select an account or admit a canonical command, and contract removes
 the projector, grants, policies, triggers, and legacy storage together.
+`supabase/migrations/20260828102000_banking_connections.sql` adds forced-RLS
+connection, account, sync, coverage, provenance, and encrypted source-file
+state. It commits each provider page with its encrypted cursor, keeps provider
+facts outside ledger, and requires a persisted file preview before acceptance.
 
 The backend system owns the deny-by-default `public.launch_signoffs` operational
 control state. It also owns `public.company_access_command_receipts` and

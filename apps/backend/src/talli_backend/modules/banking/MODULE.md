@@ -1,12 +1,14 @@
 # Banking backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["banking.suggestion_acceptances","banking.transactions"],"ports":["BankDataProvider","BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
+{"dependencies":[],"ownedTables":["banking.accounts","banking.connections","banking.coverage_intervals","banking.source_files","banking.suggestion_acceptances","banking.sync_attempts","banking.transaction_sources","banking.transactions"],"ports":["BankDataProvider","BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
 -->
 
 ## Purpose and ownership
 
-`banking` owns bank statement capture, canonical duplicate identity,
+`banking` owns read-only consent and revocation, canonical bank accounts,
+durable sync attempts and coverage gaps, preview-first CSV/CAMT.053 evidence,
+bank statement capture, canonical duplicate identity,
 deterministic account-free suggestions, explicit acceptance, reconciliation
 state, and bank-provider source ports. The expand migration
 `supabase/migrations/20260828100000_banking_capability.sql` creates canonical
@@ -17,6 +19,14 @@ During that rollback window, a trigger-depth-only backend-system projection
 keeps the frozen legacy acceptance/archive row exact. Its ledger-owned function
 copies only the already-linked entry lines, contains no suggestion or account
 selection rule, and is removed by the #140 contract artifact.
+
+`supabase/migrations/20260828102000_banking_connections.sql` adds forced-RLS
+`banking.connections`, `banking.accounts`, `banking.coverage_intervals`,
+`banking.sync_attempts`, `banking.source_files`, and
+`banking.transaction_sources`. Provider connection/account identifiers,
+pagination cursors, and original files are encrypted at rest; stable hashes are
+retained for deduplication and evidence. Page writes and checkpoints commit
+atomically, and no provider or file function writes ledger data.
 
 ## Public interface
 
@@ -44,6 +54,20 @@ facts. `BankConnectionId` remains canonical; `BankConnectorId` is a visible
 connector label rather than provider business identity. `BankSyncMode` keeps
 initial, scheduled, owner-requested, annual-close, and recovery reads explicit,
 while `BankTransactionState` preserves pending, booked, and reversed facts.
+`StartBankConnectionCommand`, `CompleteBankConnectionCommand`, and
+`RevokeBankConnectionCommand` keep consent lifecycle intent explicit.
+`BankSyncCommand` and `BankSyncContext` carry provider-neutral recovery state.
+`BankSyncAttemptId`, `BankSyncPageResult`, and `BankSyncResult` expose only
+checkpoint identity and authoritative counts. `BankSyncPersistence` is the
+durable sync seam.
+`BankFilePreviewCommand` and `AcceptBankFileCommand` enforce separate preview
+and acceptance steps; `BankFilePreview` preserves the source digest, interval,
+balances, row counts, and normalized facts without importing them.
+`BankSourceFileId`, `BankFileColumnMapping`, `PersistedBankFilePreview`, and
+`BankFilePersistence` keep file evidence and confirmation explicit.
+`BankAccountId`, `BankAccountStatus`, `BankAccount`, `BankConnectionStatus`,
+`BankConnectionList`, and `BankConnectionPersistence` describe canonical accounts and consent state
+without exposing provider credentials.
 
 ## Ports and workflow seam
 

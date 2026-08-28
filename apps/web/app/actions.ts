@@ -97,10 +97,13 @@ import {
   revokeCompanyInvitation,
 } from "../features/company-access";
 import {
+  acceptBankSourceFile,
   acceptBankSuggestion,
   bankingActionErrorMessage,
   bankingOutcomeMayBeUnknown,
-  importBankStatement,
+  previewBankSourceFile,
+  revokeBankConnection,
+  syncBankAccount,
   type BankSuggestionKind,
 } from "../features/banking";
 import {
@@ -1663,15 +1666,39 @@ export async function importBankCsv(formData: FormData) {
   }
 
   const operationId = requiredFormUuid(formData, "operationId");
+  const accountId = requiredFormUuid(formData, "accountId");
   const companyId = requiredFormUuid(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const csvText = formString(formData, "csvText");
+  const csvHeaders = new Set(
+    (csvText.split(/\r?\n/u, 1)[0] ?? "")
+      .split(",")
+      .map((header) => header.trim().toLowerCase()),
+  );
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  let preview: Awaited<ReturnType<typeof previewBankSourceFile>>;
   try {
-    await importBankStatement(
+    preview = await previewBankSourceFile(
       accessToken,
-      { companyId, incomeYear, dataFormat: "CSV", statementText: csvText },
+      {
+        companyId,
+        incomeYear,
+        sourceFileId: operationId,
+        accountId,
+        dataFormat: "CSV",
+        filename: "statement.csv",
+        content: csvText,
+        columnMapping: {
+          bookingDate: "date",
+          valueDate: csvHeaders.has("value_date") ? "value_date" : null,
+          text: "text",
+          amount: "amount",
+          balance: csvHeaders.has("balance") ? "balance" : null,
+          reference: csvHeaders.has("reference") ? "reference" : null,
+          state: csvHeaders.has("status") ? "status" : null,
+        },
+      },
       operationId,
       operationId,
     );
@@ -1680,6 +1707,7 @@ export async function importBankCsv(formData: FormData) {
     redirect(ownerPathWithQuery(returnTo, {
       error: bankingActionErrorMessage(error),
       bankImportOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      bankImportAccountId: outcomeMayBeUnknown ? accountId : undefined,
     }));
   }
   // #155 owns the remaining audit facade. Until that serialized stage, retain
@@ -1692,9 +1720,118 @@ export async function importBankCsv(formData: FormData) {
     .eq("action", "bank_csv_imported")
     .order("created_at", { ascending: false })
     .limit(1);
+  redirect(ownerPathWithQuery(returnTo, {
+    bankPreviewSourceFileId: preview.sourceFileId,
+    bankPreviewDocumentSha256: preview.documentSha256,
+    bankPreviewTransactionCount: String(preview.transactionCount),
+    bankPreviewOperationId: operationId,
+  }));
+}
 
+export async function acceptBankCsvPreview(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) failTo(returnTo, "Innlogging kreves.");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const sourceFileId = requiredFormUuid(formData, "sourceFileId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const documentSha256 = formString(formData, "documentSha256");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await acceptBankSourceFile(
+      accessToken,
+      sourceFileId,
+      { companyId, incomeYear, documentSha256 },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = bankingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: bankingActionErrorMessage(error),
+      bankPreviewSourceFileId: sourceFileId,
+      bankPreviewDocumentSha256: documentSha256,
+      bankPreviewTransactionCount: formString(formData, "transactionCount"),
+      bankPreviewOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
+  }
   revalidatePath("/");
   redirect(returnTo === "/transactions" ? "/transactions?imported=1" : returnTo);
+}
+
+export async function syncBankConnectionAccount(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  const operationId = requiredFormUuid(formData, "operationId");
+  const connectionId = requiredFormUuid(formData, "connectionId");
+  const accountId = requiredFormUuid(formData, "accountId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const connectorId = formString(formData, "connectorId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await syncBankAccount(
+      accessToken,
+      connectionId,
+      accountId,
+      {
+        companyId,
+        connectorId,
+        incomeYear,
+        dateFrom: `${incomeYear}-01-01`,
+        dateTo: `${incomeYear}-12-31`,
+        mode: "ON_DEMAND",
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = bankingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: bankingActionErrorMessage(error),
+      bankActionOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      bankActionTargetId: outcomeMayBeUnknown ? accountId : undefined,
+    }));
+  }
+  revalidatePath(returnTo);
+  redirect(ownerPathWithQuery(returnTo, { bankSynced: "1" }));
+}
+
+export async function disconnectBankConnection(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  const operationId = requiredFormUuid(formData, "operationId");
+  const connectionId = requiredFormUuid(formData, "connectionId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const connectorId = formString(formData, "connectorId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await revokeBankConnection(
+      accessToken,
+      connectionId,
+      { companyId, connectorId, incomeYear },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = bankingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: bankingActionErrorMessage(error),
+      bankActionOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      bankActionTargetId: outcomeMayBeUnknown ? connectionId : undefined,
+    }));
+  }
+  revalidatePath(returnTo);
+  redirect(ownerPathWithQuery(returnTo, { bankDisconnected: "1" }));
 }
 
 export async function acceptBankTransactionSuggestion(formData: FormData) {

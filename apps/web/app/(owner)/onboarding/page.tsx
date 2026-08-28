@@ -16,6 +16,11 @@ type OnboardingProps = {
   searchParams?: Promise<{
     error?: string;
     bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
     newYearOperationId?: string;
     step?: string;
   }>;
@@ -91,6 +96,13 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
           incomeYear={year}
           importedCount={transactions.length}
           retryOperationId={params?.bankImportOperationId}
+          retryAccountId={params?.bankImportAccountId}
+          persistedPreview={params?.bankPreviewSourceFileId && params.bankPreviewDocumentSha256 ? {
+            sourceFileId: params.bankPreviewSourceFileId,
+            documentSha256: params.bankPreviewDocumentSha256,
+            transactionCount: Number(params.bankPreviewTransactionCount ?? "0"),
+            operationId: params.bankPreviewOperationId,
+          } : undefined}
         />
       ) : null}
     </WizardShell>
