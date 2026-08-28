@@ -237,8 +237,9 @@ digest its source-owned result consumed. The service and database independently
 require all seven declarations to match the current immutable reconstruction
 fact set, and the database stores the derived digest beside each append-only
 source record ID, revision, and result hash. This is a receiving-contract
-binding, not proof that the source owner derived its result correctly; #188
-still requires actual source-owned cross-output facts and reconciliation.
+binding, not proof that the source owner derived its result correctly; #199
+requires actual source-owned cross-output facts and reconciliation after every
+canonical source owner and output exists.
 Historical close evidence without the binding remains readable but is not
 current.
 

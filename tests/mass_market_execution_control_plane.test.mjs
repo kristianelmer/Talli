@@ -10,6 +10,10 @@ const issue188Requirements = JSON.parse(readFileSync(
   new URL("../architecture/evidence/issues/188/requirements.json", import.meta.url),
   "utf8",
 ));
+const issue140Requirements = JSON.parse(readFileSync(
+  new URL("../architecture/evidence/issues/140/requirements.json", import.meta.url),
+  "utf8",
+));
 
 const route = [
   188, 140, 189, 141, 142, 143, 190, 147, 144, 145, 148, 191, 137, 192, 150,
@@ -95,6 +99,33 @@ test("#188 has a complete executable planned criterion ledger before claim", () 
     "npm run gate:customer-ready",
     "npm run gate:customer-ready -- --previous <R1>",
   ]);
+});
+
+test("#140 has a complete executable planned criterion ledger before product edits", () => {
+  assert.equal(issue140Requirements.issue, "#140");
+  assert.equal(issue140Requirements.criteria.length, 6);
+  assert.deepEqual(
+    issue140Requirements.entryBlockers.map(({ issue, observedState }) => [issue, observedState]),
+    [["#188", "CLOSED"], ["#139", "CLOSED"]],
+  );
+  assert.deepEqual(
+    issue140Requirements.criteria.map(({ id }) => id),
+    Array.from({ length: 6 }, (_, index) => `GH-140-A${index + 1}`),
+  );
+  for (const criterion of issue140Requirements.criteria) {
+    assert.ok(criterion.requirement.length > 0, `${criterion.id} has no requirement`);
+    assert.ok(criterion.expectedResult.length > 0, `${criterion.id} has no expected result`);
+    assert.ok(criterion.sources.length > 0, `${criterion.id} has no source/version`);
+    assert.ok(
+      criterion.sources.every((source) => source.version && (source.url || source.path)),
+      `${criterion.id} has an unpinned source descriptor`,
+    );
+    assert.ok(criterion.plannedEvidence.length > 0, `${criterion.id} has no planned evidence`);
+    assert.ok(
+      criterion.plannedEvidence.every((evidence) => evidence.path && evidence.command),
+      `${criterion.id} has an incomplete evidence mapping`,
+    );
+  }
 });
 
 test("the control plane blocks premature banking, validation, spend, and external effects", () => {
