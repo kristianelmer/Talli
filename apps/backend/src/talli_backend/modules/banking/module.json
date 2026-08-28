@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "banking",
+  "path": "apps/backend/src/talli_backend/modules/banking",
+  "owner": "backend:banking",
+  "purpose": "Own bank statement capture, canonical duplicate identity, deterministic account-free suggestions, explicit acceptance, reconciliation state, and bank-provider source ports.",
+  "documentation": "apps/backend/src/talli_backend/modules/banking/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.banking.public",
+  "exports": {
+    "commands": ["AcceptBankSuggestionCommand", "BankingCommand", "BankingCommands", "ImportBankStatementCommand"],
+    "queries": ["AcceptedBankSuggestion", "BankStatementImportResult", "BankSuggestionAcceptancePage", "BankTransaction", "BankTransactionPage", "BankingQueries", "PreparedBankSuggestion"],
+    "events": [],
+    "errors": ["BankingError", "BankingErrorCode"],
+    "identifiers": ["AccountingEntryReference", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankTransactionId", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ImportedBankTransaction", "SupportedBankDataFormat", "banking_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [
+    {
+      "name": "BankingPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.banking.public.BankingPersistence",
+      "registrationDecorator": "talli_backend.modules.banking.public.banking_persistence_adapter",
+      "adapters": []
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "csv", "dataclasses", "datetime", "decimal", "enum", "hashlib", "io", "re", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid"],
+  "forbiddenResponsibilities": [
+    "Ledger accounts, entry lines, balance enforcement, posting policy, or period locks",
+    "Provider-triggered accounting writes or provider-specific types in the public contract",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, or web transport types in the public contract",
+    "Authentication, company membership, investment, governance, tax, or filing policy"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_banking_public_contract.py",
+    "policy": "apps/backend/tests/test_banking.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": ["compat-banking-persistence"]
+}
