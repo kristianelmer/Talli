@@ -2,7 +2,15 @@
   "schemaVersion": "1.0",
   "issue": "#189",
   "source": "https://github.com/kristianelmer/Talli/issues/189",
-  "sourceCheckedAt": "2026-08-28T00:00:00Z",
+  "sourceCheckedAt": "2026-08-28T12:59:00Z",
+  "completeGates": [
+    {
+      "revision": "c2690097c3dc4e00a3d86b867a625ed5812840af",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/c2690097c3dc4e00a3d86b867a625ed5812840af.json",
+      "verdict": "pass"
+    }
+  ],
   "route": {
     "predecessor": "#140",
     "predecessorState": "CLOSED",
@@ -124,9 +132,12 @@
         {"path": "docs/architecture/mass-market-execution-control-plane.md", "version": "ticket boundary ledger checked 2026-08-28"}
       ],
       "plannedEvidence": [
-        {"path": "architecture/evidence/customer-ready-gates/<revision>.json", "command": "npm run gate:customer-ready"}
+        {"path": "architecture/evidence/customer-ready-gates/c2690097c3dc4e00a3d86b867a625ed5812840af.json", "command": "npm run gate:customer-ready"}
       ],
-      "status": "pending-immutable-release-gate"
+      "observedEvidence": [
+        "Immutable customer-ready gate passed on c2690097c3dc4e00a3d86b867a625ed5812840af: credential scan, typecheck, architecture, 440 backend + 106 web + 36 contract boundary tests, web/backend builds, boundary smoke, launch rehearsal, production dependency audit, fresh database isolation, 17/17 browser-owner checks, and clean-worktree validation."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-189-A9",
