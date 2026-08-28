@@ -199,7 +199,7 @@ test("database isolation runs the complete ledger contract lifecycle", () => {
   assert.match(databaseHarness, /npm run test:ledger-database-lifecycle/u);
   assert.equal(
     packageJson.scripts["test:ledger-database-lifecycle"],
-    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_database_runtime.test.mjs",
+    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_full_year_database_runtime.test.mjs tests/ledger_supported_patterns_database_runtime.test.mjs tests/ledger_opening_position_rebuild_schema.test.mjs tests/ledger_corrections_database_runtime.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs tests/ledger_database_runtime.test.mjs",
   );
   assert.match(databaseHarness, /prepare-isolated-supabase-workdir\.mjs/u);
   assert.match(databaseHarness, /supabase start --workdir "\$isolated_workdir"/u);
