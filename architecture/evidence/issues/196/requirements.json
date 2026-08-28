@@ -97,10 +97,20 @@
         {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"}
       ],
       "status": "local-stop-rules-passed"
+    },
+    {
+      "id": "GH-196-A9",
+      "requirement": "No deployment, tracker provider, ad purchase, or customer contact is authorized or performed by this issue.",
+      "plannedEvidence": [
+        {"path": ".github/workflows/release-gate.yml", "command": "gh run list --branch codex/issue-196-successor-01a048d1 --limit 5 --json databaseId,status,conclusion,event,headSha,url"},
+        {"path": "architecture/evidence/customer-ready-gates/99c845b332522998278827510a7d30220a2a3137.json", "command": "jq -e '.executor == \"local-script\" and .verdict == \"pass\"' architecture/evidence/customer-ready-gates/99c845b332522998278827510a7d30220a2a3137.json"}
+      ],
+      "status": "negative-authority-proof-passed-no-deployment-tracker-ad-purchase-or-customer-contact"
     }
   ],
   "boundaryValidation": {
     "checkedAt": "2026-08-28T17:36:52.884Z",
+    "humanDecisionPackage": "docs/legal/marketing-measurement-decision-draft.md",
     "immutableGate": {
       "sourceRevision": "99c845b332522998278827510a7d30220a2a3137",
       "evidenceCommit": "928f9d36c32d18031d1583639dcf387c13ca33c2",
