@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     "årsregnskap",
   ],
   applicationName: "Talli",
+  referrer: "no-referrer",
   authors: [{ name: "ELMER WELFIS", url: "https://talli.no" }],
   creator: "ELMER WELFIS",
   publisher: "ELMER WELFIS",

@@ -1,7 +1,7 @@
 # Public acquisition web feature
 
 <!-- architecture-inventory
-{"apiOperations":[],"dependencies":[],"publicEntryPoints":["@/features/public-acquisition","apps/web/features/public-acquisition","apps/web/features/public-acquisition/index.ts","apps/web/features/public-acquisition/PublicPage"],"routes":["/","/passer-talli","/pris","/hjelp","/sikkerhet","/status","/api/marketing-events"]}
+{"apiOperations":["marketingMeasurementGetReport","marketingMeasurementRecordEvent","marketingMeasurementWithdrawSession"],"dependencies":[],"publicEntryPoints":["@/features/public-acquisition","@/features/public-acquisition/server","apps/web/features/public-acquisition","apps/web/features/public-acquisition/MarketingConsent","apps/web/features/public-acquisition/MarketingEvent","apps/web/features/public-acquisition/measurement-client","apps/web/features/public-acquisition/PublicPage","apps/web/features/public-acquisition/index.ts","apps/web/features/public-acquisition/server.ts"],"routes":["/","/passer-talli","/pris","/hjelp","/sikkerhet","/status","/api/marketing-events"]}
 -->
 
 ## Purpose

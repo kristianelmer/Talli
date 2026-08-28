@@ -1,6 +1,10 @@
 # Backend system boundary
 
 <!-- architecture-inventory
+{"adapterBindingModes":["MarketingMeasurementGateway=>private generated-client transport and SET-only restricted PostgreSQL functions"],"adapterBindingOwners":["MarketingMeasurementGateway=>backend-system"],"adapterBindings":["MarketingMeasurementGateway=>talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter"],"adapterDependencies":["talli_backend.modules.marketing_measurement.public"],"ports":["MarketingMeasurementGateway"],"publicPackages":["talli_backend.modules.marketing_measurement.public"],"routes":["/api/v1/marketing-measurement/events","/api/v1/marketing-measurement/report","/api/v1/marketing-measurement/withdrawals"],"technicalMigrations":["supabase/migrations/20260828103000_marketing_funnel_measurement.sql"],"technicalTables":["backend_system.marketing_funnel_events","backend_system.marketing_funnel_withdrawals"],"transportDependencies":["asyncio","os","secrets","talli_backend.adapters.supabase_marketing_measurement","talli_backend.modules.marketing_measurement.public"],"workflowDependencies":["talli_backend.modules.marketing_measurement.public"],"workflowPurposes":["marketing-funnel-measurement=>Accepts only consented bounded anonymous funnel codes through a private server transport, deletes withdrawn raw sessions, and returns aggregate-only reports to independently verified active operators."],"workflows":["marketing-funnel-measurement"]}
+-->
+
+<!-- architecture-inventory
 {"technicalMigrations":["supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql"]}
 -->
 
@@ -21,7 +25,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
+{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, bounded anonymous measurement, and event delivery only; they own no accounting, filing, billing, eligibility, acquisition-spend, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
 -->
 
 <!-- architecture-inventory
@@ -52,6 +56,17 @@ The `system-boundary-tracer` workflow serves
 `/api/v1/system-boundary/tracer` and may call only
 `talli_backend.modules.system_boundary.public`. `main.py` is the single FastAPI
 composition root; it does not become a business capability.
+
+The `marketing-funnel-measurement` workflow serves
+`/api/v1/marketing-measurement/events`,
+`/api/v1/marketing-measurement/withdrawals`, and
+`/api/v1/marketing-measurement/report` through
+`talli_backend.modules.marketing_measurement.public`. Ingest and withdrawal
+require the private server-to-server generated-client transport. Reports also
+require a separately verified active company-access operator, and the database
+rechecks that actor before returning aggregate counts, rates, medians, support,
+refund, unsupported-exit, and completion signals. No raw session report or
+campaign-spend input exists.
 
 The `company-access-context` workflow serves `/api/v1/company-access/context`
 and calls only `talli_backend.modules.company_access.public`. It translates a
@@ -175,6 +190,15 @@ control state. It also owns `public.company_access_command_receipts` and
 `backend_system.ledger_migration_reconciliations` as cutover evidence, and
 `public.notification_outbox` as technical event-delivery state. These tables own
 no accounting, filing, billing, or authorization policy.
+It also owns `backend_system.marketing_funnel_events` as bounded anonymous
+measurement state and `backend_system.marketing_funnel_withdrawals` as a
+30-minute replay tombstone, both installed by
+`supabase/migrations/20260828103000_marketing_funnel_measurement.sql`. These
+tables store no business facts or authorization decision, accept only exact
+enums or irreversible session hashes, close an anonymous session after 30
+minutes, and expose only security-definer ingest/withdrawal/aggregate functions
+to separate SET-only roles. The backend maintenance loop purges expired events
+and tombstones at startup and at least hourly while the service is running.
 Their migrations are `supabase/migrations/0001_authenticated_workspace.sql` and
 `supabase/migrations/20260801090000_company_access_invitations.sql`, extended by
 `supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql`
@@ -204,6 +228,10 @@ processing. `SystemBoundaryTransport` is bound only to
 backend-only authenticated and restricted-Postgres
 `talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter`;
 `CompanyRegistryGateway` is bound to the bounded HTTPS public-registry adapter.
+`MarketingMeasurementGateway` is bound to
+`talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter`
+using private generated-client transport and SET-only restricted PostgreSQL
+functions.
 
 ## Allowed dependencies and change rule
 

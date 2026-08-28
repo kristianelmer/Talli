@@ -985,6 +985,46 @@ export interface StartBankConnectionWire {
   returnUrl: string;
 }
 
+export interface MarketingFunnelReportResponse {
+  counts: Record<string, number>;
+  medianSeconds: Record<string, number | number | null>;
+  rates: Record<string, number | number | null>;
+  repeatedSignals: MarketingRepeatedSignalWire[];
+  supportBySurface: Record<string, number>;
+  windowEnd: string;
+  windowStart: string;
+}
+
+export interface MarketingMeasurementEventResponse {
+  accepted: true;
+  duplicate: boolean;
+}
+
+export interface MarketingMeasurementEventWire {
+  anonymousSessionHash: string;
+  campaignSource: "direct" | "organic" | "community" | "partner" | "approved_campaign" | "unknown";
+  clientEventId: string;
+  consentVersion: "marketing-analytics-v1";
+  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "terms_accept" | "checkout_start" | "purchase_complete" | "purchase_failed" | "company_year_started" | "bank_connected" | "year_ready" | "filing_accepted" | "company_year_complete" | "support_contact" | "unsupported_exit" | "refund_started" | "refund_completed";
+  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "payment_declined" | "provider_unavailable" | "technical_failure" | "rf1086" | "company_tax" | "annual_accounts" | "eligibility_help" | "signup_help" | "checkout_help" | "banking_help" | "year_close_help" | "filing_help" | "refund_help" | "other_help" | "customer_changed_mind" | "talli_should_have_blocked" | "talli_delivery_failure" | "new_unsupported_condition" | "customer_uncured_evidence" | null;
+  surface: "homepage" | "eligibility" | "signup" | "checkout" | "workspace" | "banking" | "year_close" | "filing" | "support" | "refund";
+}
+
+export interface MarketingMeasurementWithdrawalRequest {
+  anonymousSessionHash: string;
+}
+
+export interface MarketingMeasurementWithdrawalResponse {
+  deletedEventCount: number;
+}
+
+export interface MarketingRepeatedSignalWire {
+  count: number;
+  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "terms_accept" | "checkout_start" | "purchase_complete" | "purchase_failed" | "company_year_started" | "bank_connected" | "year_ready" | "filing_accepted" | "company_year_complete" | "support_contact" | "unsupported_exit" | "refund_started" | "refund_completed";
+  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "payment_declined" | "provider_unavailable" | "technical_failure" | "rf1086" | "company_tax" | "annual_accounts" | "eligibility_help" | "signup_help" | "checkout_help" | "banking_help" | "year_close_help" | "filing_help" | "refund_help" | "other_help" | "customer_changed_mind" | "talli_should_have_blocked" | "talli_delivery_failure" | "new_unsupported_condition" | "customer_uncured_evidence";
+  surface: "homepage" | "eligibility" | "signup" | "checkout" | "workspace" | "banking" | "year_close" | "filing" | "support" | "refund";
+}
+
 export interface ProblemDetails {
   code: string;
   detail: string;
@@ -2300,6 +2340,70 @@ function isStartBankConnectionWire(value: unknown): value is StartBankConnection
   );
 }
 
+function isMarketingFunnelReportResponse(value: unknown): value is MarketingFunnelReportResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["counts","medianSeconds","rates","repeatedSignals","supportBySurface","windowEnd","windowStart"]) &&
+    isRecord(value.counts) && Object.values(value.counts).every((item) => typeof item === "number" && Number.isInteger(item)) &&
+    isRecord(value.medianSeconds) && Object.values(value.medianSeconds).every((item) => (typeof item === "number" && Number.isFinite(item) || typeof item === "number" && Number.isInteger(item) || item === null)) &&
+    isRecord(value.rates) && Object.values(value.rates).every((item) => (typeof item === "number" && Number.isFinite(item) || typeof item === "number" && Number.isInteger(item) || item === null)) &&
+    Array.isArray(value.repeatedSignals) && value.repeatedSignals.every((item) => isMarketingRepeatedSignalWire(item)) &&
+    isRecord(value.supportBySurface) && Object.values(value.supportBySurface).every((item) => typeof item === "number" && Number.isInteger(item)) &&
+    isDateTime(value.windowEnd) &&
+    isDateTime(value.windowStart)
+  );
+}
+
+function isMarketingMeasurementEventResponse(value: unknown): value is MarketingMeasurementEventResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accepted","duplicate"]) &&
+    value.accepted === true &&
+    typeof value.duplicate === "boolean"
+  );
+}
+
+function isMarketingMeasurementEventWire(value: unknown): value is MarketingMeasurementEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["anonymousSessionHash","campaignSource","clientEventId","consentVersion","event","reason","surface"]) &&
+    (typeof value.anonymousSessionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.anonymousSessionHash)) &&
+    (value.campaignSource === "direct" || value.campaignSource === "organic" || value.campaignSource === "community" || value.campaignSource === "partner" || value.campaignSource === "approved_campaign" || value.campaignSource === "unknown") &&
+    isUuid(value.clientEventId) &&
+    value.consentVersion === "marketing-analytics-v1" &&
+    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "terms_accept" || value.event === "checkout_start" || value.event === "purchase_complete" || value.event === "purchase_failed" || value.event === "company_year_started" || value.event === "bank_connected" || value.event === "year_ready" || value.event === "filing_accepted" || value.event === "company_year_complete" || value.event === "support_contact" || value.event === "unsupported_exit" || value.event === "refund_started" || value.event === "refund_completed") &&
+    ((value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "payment_declined" || value.reason === "provider_unavailable" || value.reason === "technical_failure" || value.reason === "rf1086" || value.reason === "company_tax" || value.reason === "annual_accounts" || value.reason === "eligibility_help" || value.reason === "signup_help" || value.reason === "checkout_help" || value.reason === "banking_help" || value.reason === "year_close_help" || value.reason === "filing_help" || value.reason === "refund_help" || value.reason === "other_help" || value.reason === "customer_changed_mind" || value.reason === "talli_should_have_blocked" || value.reason === "talli_delivery_failure" || value.reason === "new_unsupported_condition" || value.reason === "customer_uncured_evidence") || value.reason === null) &&
+    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup" || value.surface === "checkout" || value.surface === "workspace" || value.surface === "banking" || value.surface === "year_close" || value.surface === "filing" || value.surface === "support" || value.surface === "refund")
+  );
+}
+
+function isMarketingMeasurementWithdrawalRequest(value: unknown): value is MarketingMeasurementWithdrawalRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["anonymousSessionHash"]) &&
+    (typeof value.anonymousSessionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.anonymousSessionHash))
+  );
+}
+
+function isMarketingMeasurementWithdrawalResponse(value: unknown): value is MarketingMeasurementWithdrawalResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["deletedEventCount"]) &&
+    (typeof value.deletedEventCount === "number" && Number.isInteger(value.deletedEventCount) && value.deletedEventCount >= 0)
+  );
+}
+
+function isMarketingRepeatedSignalWire(value: unknown): value is MarketingRepeatedSignalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["count","event","reason","surface"]) &&
+    (typeof value.count === "number" && Number.isInteger(value.count) && value.count >= 2) &&
+    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "terms_accept" || value.event === "checkout_start" || value.event === "purchase_complete" || value.event === "purchase_failed" || value.event === "company_year_started" || value.event === "bank_connected" || value.event === "year_ready" || value.event === "filing_accepted" || value.event === "company_year_complete" || value.event === "support_contact" || value.event === "unsupported_exit" || value.event === "refund_started" || value.event === "refund_completed") &&
+    (value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "payment_declined" || value.reason === "provider_unavailable" || value.reason === "technical_failure" || value.reason === "rf1086" || value.reason === "company_tax" || value.reason === "annual_accounts" || value.reason === "eligibility_help" || value.reason === "signup_help" || value.reason === "checkout_help" || value.reason === "banking_help" || value.reason === "year_close_help" || value.reason === "filing_help" || value.reason === "refund_help" || value.reason === "other_help" || value.reason === "customer_changed_mind" || value.reason === "talli_should_have_blocked" || value.reason === "talli_delivery_failure" || value.reason === "new_unsupported_condition" || value.reason === "customer_uncured_evidence") &&
+    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup" || value.surface === "checkout" || value.surface === "workspace" || value.surface === "banking" || value.surface === "year_close" || value.surface === "filing" || value.surface === "support" || value.surface === "refund")
+  );
+}
+
 function isProblemDetails(value: unknown): value is ProblemDetails {
   return (
     isRecord(value) &&
@@ -2387,6 +2491,10 @@ export interface BankingConnectionListRequest extends TalliRequestOptions {
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
+}
+
+export interface MarketingMeasurementReportRequest extends TalliRequestOptions {
+  windowDays?: number;
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -3274,6 +3382,47 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isBankSuggestionAcceptancePageWire,
+      );
+    },
+
+    async marketingMeasurementRecordEvent(
+      body: MarketingMeasurementEventWire,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementEventResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/marketing-measurement/events`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementEventResponse,
+      );
+    },
+
+    async marketingMeasurementWithdrawSession(
+      body: MarketingMeasurementWithdrawalRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementWithdrawalResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/marketing-measurement/withdrawals`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementWithdrawalResponse,
+      );
+    },
+
+    async marketingMeasurementGetReport(
+      request: MarketingMeasurementReportRequest = {},
+    ): Promise<MarketingFunnelReportResponse> {
+      const query = new URLSearchParams();
+      if (request.windowDays !== undefined) query.set("window_days", String(request.windowDays));
+      const suffix = query.size ? `?${query}` : "";
+      return executeJson(
+        `${baseUrl}/api/v1/marketing-measurement/report${suffix}`,
+        "GET",
+        request,
+        undefined,
+        isMarketingFunnelReportResponse,
       );
     },
   };

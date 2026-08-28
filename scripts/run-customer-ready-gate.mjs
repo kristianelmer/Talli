@@ -82,10 +82,13 @@ try {
     execute("boundary", "npm run test:boundary", "npm", ["run", "test:boundary"]),
     execute(
       "build-web",
-      "TALLI_BACKEND_URL=http://127.0.0.1:8000 npm run build:web",
-      "npm",
-      ["run", "build:web"],
-      { TALLI_BACKEND_URL: "http://127.0.0.1:8000" },
+      "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "bash",
+      ["-lc", "npm run build:web && npm run test:browser-public-acquisition:built"],
+      {
+        TALLI_BACKEND_URL: "http://127.0.0.1:8000",
+        TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY: "customer-ready-local-measurement-key",
+      },
     ),
     execute("build-backend", "npm run build:backend", "npm", ["run", "build:backend"]),
     execute("boundary-smoke", "npm run test:boundary-smoke", "npm", ["run", "test:boundary-smoke"]),

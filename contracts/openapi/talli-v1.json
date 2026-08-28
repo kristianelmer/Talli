@@ -4591,6 +4591,384 @@
         "title": "LedgerWriterResultWire",
         "type": "object"
       },
+      "MarketingFunnelReportResponse": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "home_view",
+                "eligibility_start",
+                "provisional_supported",
+                "provisional_clarify",
+                "provisional_blocked",
+                "definitive_eligible",
+                "definitive_blocked",
+                "signup_start",
+                "terms_accept",
+                "checkout_start",
+                "purchase_complete",
+                "purchase_failed",
+                "company_year_started",
+                "bank_connected",
+                "year_ready",
+                "filing_accepted",
+                "company_year_complete",
+                "support_contact",
+                "unsupported_exit",
+                "refund_started",
+                "refund_completed"
+              ]
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "medianSeconds": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Medianseconds",
+            "type": "object"
+          },
+          "rates": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Rates",
+            "type": "object"
+          },
+          "repeatedSignals": {
+            "items": {
+              "$ref": "#/components/schemas/MarketingRepeatedSignalWire"
+            },
+            "title": "Repeatedsignals",
+            "type": "array"
+          },
+          "supportBySurface": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "homepage",
+                "eligibility",
+                "signup",
+                "checkout",
+                "workspace",
+                "banking",
+                "year_close",
+                "filing",
+                "support",
+                "refund"
+              ]
+            },
+            "title": "Supportbysurface",
+            "type": "object"
+          },
+          "windowEnd": {
+            "format": "date-time",
+            "title": "Windowend",
+            "type": "string"
+          },
+          "windowStart": {
+            "format": "date-time",
+            "title": "Windowstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "windowStart",
+          "windowEnd",
+          "counts",
+          "rates",
+          "medianSeconds",
+          "supportBySurface",
+          "repeatedSignals"
+        ],
+        "title": "MarketingFunnelReportResponse",
+        "type": "object"
+      },
+      "MarketingMeasurementEventResponse": {
+        "properties": {
+          "accepted": {
+            "const": true,
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted",
+          "duplicate"
+        ],
+        "title": "MarketingMeasurementEventResponse",
+        "type": "object"
+      },
+      "MarketingMeasurementEventWire": {
+        "additionalProperties": false,
+        "properties": {
+          "anonymousSessionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Anonymoussessionhash",
+            "type": "string"
+          },
+          "campaignSource": {
+            "enum": [
+              "direct",
+              "organic",
+              "community",
+              "partner",
+              "approved_campaign",
+              "unknown"
+            ],
+            "title": "Campaignsource",
+            "type": "string"
+          },
+          "clientEventId": {
+            "format": "uuid",
+            "title": "Clienteventid",
+            "type": "string"
+          },
+          "consentVersion": {
+            "const": "marketing-analytics-v1",
+            "title": "Consentversion",
+            "type": "string"
+          },
+          "event": {
+            "enum": [
+              "home_view",
+              "eligibility_start",
+              "provisional_supported",
+              "provisional_clarify",
+              "provisional_blocked",
+              "definitive_eligible",
+              "definitive_blocked",
+              "signup_start",
+              "terms_accept",
+              "checkout_start",
+              "purchase_complete",
+              "purchase_failed",
+              "company_year_started",
+              "bank_connected",
+              "year_ready",
+              "filing_accepted",
+              "company_year_complete",
+              "support_contact",
+              "unsupported_exit",
+              "refund_started",
+              "refund_completed"
+            ],
+            "title": "Event",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "unknown_material_facts",
+                  "unsupported_company",
+                  "unsupported_activity",
+                  "missing_required_facts",
+                  "payment_declined",
+                  "provider_unavailable",
+                  "technical_failure",
+                  "rf1086",
+                  "company_tax",
+                  "annual_accounts",
+                  "eligibility_help",
+                  "signup_help",
+                  "checkout_help",
+                  "banking_help",
+                  "year_close_help",
+                  "filing_help",
+                  "refund_help",
+                  "other_help",
+                  "customer_changed_mind",
+                  "talli_should_have_blocked",
+                  "talli_delivery_failure",
+                  "new_unsupported_condition",
+                  "customer_uncured_evidence"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "surface": {
+            "enum": [
+              "homepage",
+              "eligibility",
+              "signup",
+              "checkout",
+              "workspace",
+              "banking",
+              "year_close",
+              "filing",
+              "support",
+              "refund"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientEventId",
+          "anonymousSessionHash",
+          "consentVersion",
+          "event",
+          "reason",
+          "surface",
+          "campaignSource"
+        ],
+        "title": "MarketingMeasurementEventWire",
+        "type": "object"
+      },
+      "MarketingMeasurementWithdrawalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "anonymousSessionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Anonymoussessionhash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anonymousSessionHash"
+        ],
+        "title": "MarketingMeasurementWithdrawalRequest",
+        "type": "object"
+      },
+      "MarketingMeasurementWithdrawalResponse": {
+        "properties": {
+          "deletedEventCount": {
+            "minimum": 0.0,
+            "title": "Deletedeventcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deletedEventCount"
+        ],
+        "title": "MarketingMeasurementWithdrawalResponse",
+        "type": "object"
+      },
+      "MarketingRepeatedSignalWire": {
+        "properties": {
+          "count": {
+            "minimum": 2.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "event": {
+            "enum": [
+              "home_view",
+              "eligibility_start",
+              "provisional_supported",
+              "provisional_clarify",
+              "provisional_blocked",
+              "definitive_eligible",
+              "definitive_blocked",
+              "signup_start",
+              "terms_accept",
+              "checkout_start",
+              "purchase_complete",
+              "purchase_failed",
+              "company_year_started",
+              "bank_connected",
+              "year_ready",
+              "filing_accepted",
+              "company_year_complete",
+              "support_contact",
+              "unsupported_exit",
+              "refund_started",
+              "refund_completed"
+            ],
+            "title": "Event",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "unknown_material_facts",
+              "unsupported_company",
+              "unsupported_activity",
+              "missing_required_facts",
+              "payment_declined",
+              "provider_unavailable",
+              "technical_failure",
+              "rf1086",
+              "company_tax",
+              "annual_accounts",
+              "eligibility_help",
+              "signup_help",
+              "checkout_help",
+              "banking_help",
+              "year_close_help",
+              "filing_help",
+              "refund_help",
+              "other_help",
+              "customer_changed_mind",
+              "talli_should_have_blocked",
+              "talli_delivery_failure",
+              "new_unsupported_condition",
+              "customer_uncured_evidence"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "surface": {
+            "enum": [
+              "homepage",
+              "eligibility",
+              "signup",
+              "checkout",
+              "workspace",
+              "banking",
+              "year_close",
+              "filing",
+              "support",
+              "refund"
+            ],
+            "title": "Surface",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "surface",
+          "reason",
+          "count"
+        ],
+        "title": "MarketingRepeatedSignalWire",
+        "type": "object"
+      },
       "NewYearOpeningEntryWire": {
         "properties": {
           "companyId": {
@@ -5527,6 +5905,11 @@
       "bearerAuth": {
         "scheme": "bearer",
         "type": "http"
+      },
+      "marketingMeasurementKey": {
+        "in": "header",
+        "name": "X-Talli-Marketing-Measurement-Key",
+        "type": "apiKey"
       }
     }
   },
@@ -27559,6 +27942,754 @@
         "summary": "Record Ledger Tax Settlement",
         "tags": [
           "ledger-workflows"
+        ]
+      }
+    },
+    "/api/v1/marketing-measurement/events": {
+      "post": {
+        "operationId": "marketingMeasurementRecordEvent",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingMeasurementEventWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMeasurementEventResponse"
+                }
+              }
+            },
+            "description": "The consented event was accepted or replayed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "marketingMeasurementKey": []
+          }
+        ],
+        "summary": "Record Marketing Measurement Event",
+        "tags": [
+          "marketing-measurement"
+        ]
+      }
+    },
+    "/api/v1/marketing-measurement/report": {
+      "get": {
+        "operationId": "marketingMeasurementGetReport",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window_days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "title": "Window Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingFunnelReportResponse"
+                }
+              }
+            },
+            "description": "Aggregate-only marketing funnel report.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": [],
+            "marketingMeasurementKey": []
+          }
+        ],
+        "summary": "Get Marketing Measurement Report",
+        "tags": [
+          "marketing-measurement"
+        ]
+      }
+    },
+    "/api/v1/marketing-measurement/withdrawals": {
+      "post": {
+        "operationId": "marketingMeasurementWithdrawSession",
+        "parameters": [
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingMeasurementWithdrawalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketingMeasurementWithdrawalResponse"
+                }
+              }
+            },
+            "description": "The anonymous session was removed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Marketing measurement request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "marketingMeasurementKey": []
+          }
+        ],
+        "summary": "Withdraw Marketing Measurement Session",
+        "tags": [
+          "marketing-measurement"
         ]
       }
     },

@@ -11,6 +11,16 @@
       "routes": ["/api/v1/system-boundary/tracer"]
     },
     {
+      "name": "marketing-funnel-measurement",
+      "purpose": "Accepts only consented bounded anonymous funnel codes through a private server transport, deletes withdrawn raw sessions, and returns aggregate-only reports to independently verified active operators.",
+      "publicPackages": ["talli_backend.modules.marketing_measurement.public"],
+      "routes": [
+        "/api/v1/marketing-measurement/events",
+        "/api/v1/marketing-measurement/withdrawals",
+        "/api/v1/marketing-measurement/report"
+      ]
+    },
+    {
       "name": "company-access-context",
       "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
@@ -111,9 +121,9 @@
   },
   "technicalOwnership": {
     "schemas": ["backend_system", "public"],
-    "tables": ["backend_system.banking_command_receipts", "backend_system.banking_migration_reconciliations", "backend_system.banking_migration_runs", "backend_system.banking_migration_source_rows", "backend_system.ledger_command_receipts", "backend_system.ledger_cursor_signing_keys", "backend_system.ledger_migration_quarantine", "backend_system.ledger_migration_reconciliations", "backend_system.ledger_migration_runs", "backend_system.ledger_migration_source_rows", "backend_system.ledger_workflow_receipts", "public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
-    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql", "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql", "supabase/migrations/20260828102000_banking_connections.sql"],
-    "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, and event delivery only; they own no accounting, filing, billing, or authorization decision."
+    "tables": ["backend_system.banking_command_receipts", "backend_system.banking_migration_reconciliations", "backend_system.banking_migration_runs", "backend_system.banking_migration_source_rows", "backend_system.ledger_command_receipts", "backend_system.ledger_cursor_signing_keys", "backend_system.ledger_migration_quarantine", "backend_system.ledger_migration_reconciliations", "backend_system.ledger_migration_runs", "backend_system.ledger_migration_source_rows", "backend_system.ledger_workflow_receipts", "backend_system.marketing_funnel_events", "backend_system.marketing_funnel_withdrawals", "public.company_access_command_receipts", "public.launch_signoffs", "public.notification_outbox"],
+    "migrations": ["supabase/migrations/0001_authenticated_workspace.sql", "supabase/migrations/20260801090000_company_access_invitations.sql", "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql", "supabase/migrations/20260826100000_company_access_onboarding.sql", "supabase/migrations/20260826110000_company_year_admission.sql", "supabase/migrations/20260827100000_ledger_capability.sql", "supabase/migrations/20260827100500_ledger_writer_coordinators.sql", "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql", "supabase/migrations/20260827103000_ledger_corrections.sql", "supabase/migrations/20260827104000_ledger_company_year_close.sql", "supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql", "supabase/migrations/20260828100000_banking_capability.sql", "supabase/migrations/20260828100500_banking_workflows.sql", "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql", "supabase/migrations/20260828102000_banking_connections.sql", "supabase/migrations/20260828103000_marketing_funnel_measurement.sql"],
+    "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded anonymous measurement, and event delivery only; they own no accounting, filing, billing, eligibility, acquisition-spend, or authorization decision."
   },
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",
@@ -128,6 +138,12 @@
       "adapter": "talli_backend.main.create_app",
       "owner": "backend-system",
       "mode": "in-process FastAPI composition"
+    },
+    {
+      "port": "MarketingMeasurementGateway",
+      "adapter": "talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter",
+      "owner": "backend-system",
+      "mode": "private generated-client transport and SET-only restricted PostgreSQL functions"
     },
     {
       "port": "CompanyAccessGateway",
@@ -167,8 +183,8 @@
     }
   ],
   "allowedDependencies": {
-    "transport": ["__future__", "re", "collections", "datetime", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_banking", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
-    "workflows": ["talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
-    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "hashlib", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.adapters.bank_provider_http", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.banking_workflow", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "typing", "urllib.error", "urllib.parse", "urllib.request"]
+    "transport": ["__future__", "asyncio", "re", "collections", "datetime", "os", "secrets", "typing", "uuid", "fastapi", "fastapi.security", "pydantic", "starlette", "talli_backend.adapters.brreg_company_registry", "talli_backend.adapters.supabase_banking", "talli_backend.adapters.supabase_company_access", "talli_backend.adapters.supabase_ledger", "talli_backend.adapters.supabase_marketing_measurement", "talli_backend.application.banking_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.marketing_measurement.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public", "talli_backend.openapi", "talli_backend.shared.kernel"],
+    "workflows": ["talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.marketing_measurement.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.modules.system_boundary.public"],
+    "adapters": ["__future__", "asyncio", "base64", "collections.abc", "dataclasses", "datetime", "decimal", "hashlib", "ipaddress", "json", "os", "psycopg", "psycopg.rows", "re", "talli_backend.adapters.bank_provider_http", "talli_backend.adapters.supabase_ledger", "talli_backend.application.banking_session", "talli_backend.application.banking_workflow", "talli_backend.application.ledger_session", "talli_backend.application.ledger_workflow", "talli_backend.application.opening_snapshot_compatibility", "talli_backend.modules.banking.public", "talli_backend.modules.company_access.public", "talli_backend.modules.ledger.public", "talli_backend.modules.ledger.service", "talli_backend.modules.marketing_measurement.public", "talli_backend.modules.shareholder_register_filing.public", "talli_backend.shared.kernel", "typing", "urllib.error", "urllib.parse", "urllib.request"]
   }
 }

@@ -49,6 +49,14 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:marketing-funnel-measurement",
+      "imports": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:marketing_measurement"
+    },
+    {
       "from": "backend-system:new-year-start",
       "imports": [
         "talli_backend.modules.ledger.public"
@@ -75,6 +83,7 @@
   ],
   "generatedBy": "scripts/check-architecture.mjs",
   "modules": [
+    "backend-system:marketing_measurement",
     "backend-system:system_boundary",
     "backend:banking",
     "backend:company_access",
@@ -131,6 +140,14 @@
     {
       "owner": "backend-system",
       "table": "backend_system.ledger_workflow_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_events"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_withdrawals"
     },
     {
       "owner": "backend-system",

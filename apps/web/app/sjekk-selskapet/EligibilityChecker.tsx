@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import type { EligibilityDecisionResponse } from "../../features/company-access";
+import { MarketingEvent } from "../../features/public-acquisition/MarketingEvent";
+import { queueMarketingMeasurementEvent } from "../../features/public-acquisition/measurement-client";
 import { Banner, Button, LinkButton, SubmitButton } from "../components/ui";
 import {
   definitiveEligibilityAction,
@@ -41,52 +43,66 @@ function Result({ result }: { result: EligibilityDecisionResponse }) {
 
   if (result.decision === "supported" && result.companyYearPromise) {
     return (
-      <section className={styles.result} aria-labelledby="eligibility-result-title">
-        <p className={styles.eyebrow}>Passer for Talli</p>
-        <h2 id="eligibility-result-title" ref={headingRef} tabIndex={-1}>
-          {result.publicFacts.name} kan bruke Talli
-        </h2>
-        <PublicFacts result={result} />
-        <p>
-          Selskapsåret {result.accountingYear} bygges komplett fra 1. januar. Tidligere år er
-          ikke med.
-        </p>
-        <div className={styles.primaryAction}>
-          <LinkButton href="/signup?next=%2Fonboarding" block>
-            Opprett konto og godta
-          </LinkButton>
-        </div>
-        <p className={styles.secondaryLink}>
-          Har du konto? <Link href="/login?next=%2Fonboarding">Logg inn</Link>
-        </p>
-      </section>
+      <>
+        <MarketingEvent event="definitive_eligible" surface="eligibility" />
+        <section className={styles.result} aria-labelledby="eligibility-result-title">
+          <p className={styles.eyebrow}>Passer for Talli</p>
+          <h2 id="eligibility-result-title" ref={headingRef} tabIndex={-1}>
+            {result.publicFacts.name} kan bruke Talli
+          </h2>
+          <PublicFacts result={result} />
+          <p>
+            Selskapsåret {result.accountingYear} bygges komplett fra 1. januar. Tidligere år er
+            ikke med.
+          </p>
+          <div className={styles.primaryAction}>
+            <LinkButton
+              href="/signup?next=%2Fonboarding"
+              block
+              onClick={() => queueMarketingMeasurementEvent("signup_start", "signup")}
+            >
+              Opprett konto og godta
+            </LinkButton>
+          </div>
+          <p className={styles.secondaryLink}>
+            Har du konto? <Link href="/login?next=%2Fonboarding">Logg inn</Link>
+          </p>
+        </section>
+      </>
     );
   }
   const title = result.decision === "blocked" ? "Talli passer ikke for dette året" : "Dette må avklares først";
   return (
-    <section className={styles.result} aria-labelledby="eligibility-result-title">
-      <p className={styles.eyebrow}>
-        {result.provisional
-          ? "Foreløpig svar · Utenfor grensen"
-          : result.decision === "blocked"
-            ? "Utenfor grensen"
-            : "Må avklares"}
-      </p>
-      <h2 id="eligibility-result-title" ref={headingRef} tabIndex={-1}>{title}</h2>
-      <PublicFacts result={result} />
-      {result.provisional ? (
-        <p>Dette er et foreløpig svar basert bare på offentlige opplysninger.</p>
-      ) : null}
-      {result.reasonExplanations.length > 0 ? (
-        <ul aria-label="Hvorfor du ikke kan gå videre">
-          {result.reasonExplanations.map((explanation) => (
-            <li key={explanation}>{explanation}</li>
-          ))}
-        </ul>
-      ) : null}
-      <p>{result.nextStep}</p>
-      <a className={styles.restartLink} href="/sjekk-selskapet">Start på nytt</a>
-    </section>
+    <>
+      <MarketingEvent
+        event={result.provisional ? "provisional_blocked" : "definitive_blocked"}
+        surface="eligibility"
+        reason={result.decision === "clarify" ? "unknown_material_facts" : "unsupported_company"}
+      />
+      <section className={styles.result} aria-labelledby="eligibility-result-title">
+        <p className={styles.eyebrow}>
+          {result.provisional
+            ? "Foreløpig svar · Utenfor grensen"
+            : result.decision === "blocked"
+              ? "Utenfor grensen"
+              : "Må avklares"}
+        </p>
+        <h2 id="eligibility-result-title" ref={headingRef} tabIndex={-1}>{title}</h2>
+        <PublicFacts result={result} />
+        {result.provisional ? (
+          <p>Dette er et foreløpig svar basert bare på offentlige opplysninger.</p>
+        ) : null}
+        {result.reasonExplanations.length > 0 ? (
+          <ul aria-label="Hvorfor du ikke kan gå videre">
+            {result.reasonExplanations.map((explanation) => (
+              <li key={explanation}>{explanation}</li>
+            ))}
+          </ul>
+        ) : null}
+        <p>{result.nextStep}</p>
+        <a className={styles.restartLink} href="/sjekk-selskapet">Start på nytt</a>
+      </section>
+    </>
   );
 }
 
@@ -187,6 +203,13 @@ export function EligibilityChecker() {
   if (precheckState.result) {
     return (
       <>
+        <MarketingEvent
+          event={precheckState.result.decision === "supported"
+            ? "provisional_supported"
+            : "provisional_clarify"}
+          surface="eligibility"
+          reason={precheckState.result.decision === "clarify" ? "missing_required_facts" : null}
+        />
         <Banner variant="info" title="Foreløpig svar">
           Offentlige opplysninger ser riktige ut. Svaret er ikke endelig før spørsmålene er ferdige.
         </Banner>

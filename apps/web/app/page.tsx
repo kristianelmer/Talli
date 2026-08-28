@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { publicRecruitmentOffer as c } from "../features/public-acquisition";
+import { MarketingConsent } from "../features/public-acquisition/MarketingConsent";
 import { LinkButton } from "./components/ui";
 import styles from "./page.module.css";
 
@@ -60,7 +61,13 @@ export default function Home() {
           <h1 className={styles.title} id="home-title">{c.title}</h1>
           <p className={styles.lede}>{c.supportingLine}</p>
           <div className={styles.primaryAction}>
-            <LinkButton href={c.primaryAction.href} variant="primary" size="lg">
+            <LinkButton
+              href={c.primaryAction.href}
+              variant="primary"
+              size="lg"
+              data-marketing-event="eligibility_start"
+              data-marketing-surface="eligibility"
+            >
               {c.primaryAction.label}
             </LinkButton>
           </div>
@@ -145,7 +152,13 @@ export default function Home() {
         <section className={styles.finalAction} aria-labelledby="final-action-title">
           <h2 id="final-action-title">{c.finalTitle}</h2>
           <p>{c.finalBody}</p>
-          <LinkButton href={c.primaryAction.href} variant="secondary" size="lg">
+          <LinkButton
+            href={c.primaryAction.href}
+            variant="secondary"
+            size="lg"
+            data-marketing-event="eligibility_start"
+            data-marketing-surface="eligibility"
+          >
             {c.primaryAction.label}
           </LinkButton>
         </section>
@@ -167,6 +180,7 @@ export default function Home() {
           <span>© 2026 Talli</span>
         </div>
       </footer>
+      <MarketingConsent />
     </div>
   );
 }

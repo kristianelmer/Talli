@@ -78,6 +78,23 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const marketingMeasurementOperations = {
+  recordEvent: [
+    "/api/v1/marketing-measurement/events",
+    "post",
+    "marketingMeasurementRecordEvent",
+  ],
+  withdrawSession: [
+    "/api/v1/marketing-measurement/withdrawals",
+    "post",
+    "marketingMeasurementWithdrawSession",
+  ],
+  getReport: [
+    "/api/v1/marketing-measurement/report",
+    "get",
+    "marketingMeasurementGetReport",
+  ],
+};
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
   throw new Error(`Expected systemBoundaryGetTracerStatus at ${path}`);
@@ -96,6 +113,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(ledger
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(bankingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(marketingMeasurementOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -375,6 +397,14 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const marketingMeasurementSchemas = Object.fromEntries([
+  "MarketingFunnelReportResponse",
+  "MarketingMeasurementEventResponse",
+  "MarketingMeasurementEventWire",
+  "MarketingMeasurementWithdrawalRequest",
+  "MarketingMeasurementWithdrawalResponse",
+  "MarketingRepeatedSignalWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
 );
@@ -393,6 +423,8 @@ ${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, s
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${renderInterface("ProblemDetails", problemSchema)}
 
@@ -472,6 +504,8 @@ ${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${renderGuard("ProblemDetails", problemSchema)}
 
 export class TalliApiError extends Error {
@@ -547,6 +581,10 @@ export interface BankingConnectionListRequest extends TalliRequestOptions {
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
+}
+
+export interface MarketingMeasurementReportRequest extends TalliRequestOptions {
+  windowDays?: number;
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -1434,6 +1472,47 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isBankSuggestionAcceptancePageWire,
+      );
+    },
+
+    async marketingMeasurementRecordEvent(
+      body: MarketingMeasurementEventWire,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementEventResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/events\`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementEventResponse,
+      );
+    },
+
+    async marketingMeasurementWithdrawSession(
+      body: MarketingMeasurementWithdrawalRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementWithdrawalResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/withdrawals\`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementWithdrawalResponse,
+      );
+    },
+
+    async marketingMeasurementGetReport(
+      request: MarketingMeasurementReportRequest = {},
+    ): Promise<MarketingFunnelReportResponse> {
+      const query = new URLSearchParams();
+      if (request.windowDays !== undefined) query.set("window_days", String(request.windowDays));
+      const suffix = query.size ? \`?\${query}\` : "";
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/report\${suffix}\`,
+        "GET",
+        request,
+        undefined,
+        isMarketingFunnelReportResponse,
       );
     },
   };

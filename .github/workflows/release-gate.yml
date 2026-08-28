@@ -131,6 +131,9 @@ jobs:
           TALLI_PYTHON_BIN: .venv/bin/python
         run: npm run test:supabase:local
 
+      - name: Prove the rendered public acquisition journey
+        run: npm run test:browser-public-acquisition
+
   release-gate:
     name: Release gate
     if: ${{ always() }}

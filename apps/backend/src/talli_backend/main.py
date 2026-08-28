@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import os
 import re
+import secrets
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, TypeVar, cast
@@ -9,7 +12,7 @@ from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -19,6 +22,19 @@ from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAd
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.adapters.supabase_marketing_measurement import (
+    SupabaseMarketingMeasurementAdapter,
+)
+from talli_backend.modules.marketing_measurement.public import (
+    MarketingCampaignSource,
+    MarketingEventName,
+    MarketingFunnelReport,
+    MarketingMeasurementError,
+    MarketingMeasurementEvent,
+    MarketingMeasurementGateway,
+    MarketingReasonCode,
+    MarketingSurface,
+)
 from talli_backend.application.banking_session import (
     AuthenticatedBankingSession,
     BankingAuthenticationError,
@@ -197,6 +213,12 @@ REQUEST_ID_PARAMETER = {
 }
 BEARER_AUTH = HTTPBearer(scheme_name="bearerAuth", auto_error=False)
 BEARER_DEPENDENCY = Depends(BEARER_AUTH)
+MARKETING_MEASUREMENT_KEY_AUTH = APIKeyHeader(
+    name="X-Talli-Marketing-Measurement-Key",
+    scheme_name="marketingMeasurementKey",
+    auto_error=False,
+)
+MARKETING_MEASUREMENT_KEY_DEPENDENCY = Depends(MARKETING_MEASUREMENT_KEY_AUTH)
 ResponseT = TypeVar("ResponseT")
 
 
@@ -231,6 +253,130 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+MARKETING_REASONS_BY_EVENT: dict[MarketingEventName, tuple[MarketingReasonCode, ...]] = {
+    "provisional_clarify": ("unknown_material_facts", "missing_required_facts"),
+    "provisional_blocked": ("unsupported_company", "unsupported_activity"),
+    "definitive_blocked": (
+        "unknown_material_facts",
+        "unsupported_company",
+        "unsupported_activity",
+        "missing_required_facts",
+    ),
+    "purchase_failed": ("payment_declined", "provider_unavailable", "technical_failure"),
+    "filing_accepted": ("rf1086", "company_tax", "annual_accounts"),
+    "support_contact": (
+        "eligibility_help",
+        "signup_help",
+        "checkout_help",
+        "banking_help",
+        "year_close_help",
+        "filing_help",
+        "refund_help",
+        "other_help",
+    ),
+    "unsupported_exit": (
+        "unknown_material_facts",
+        "unsupported_company",
+        "unsupported_activity",
+        "new_unsupported_condition",
+    ),
+    "refund_started": (
+        "customer_changed_mind",
+        "talli_should_have_blocked",
+        "talli_delivery_failure",
+        "new_unsupported_condition",
+        "customer_uncured_evidence",
+    ),
+    "refund_completed": (
+        "customer_changed_mind",
+        "talli_should_have_blocked",
+        "talli_delivery_failure",
+        "new_unsupported_condition",
+        "customer_uncured_evidence",
+    ),
+}
+
+
+class MarketingMeasurementEventWire(StrictTransportModel):
+    client_event_id: UUID
+    anonymous_session_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    consent_version: Literal["marketing-analytics-v1"]
+    event: MarketingEventName
+    reason: MarketingReasonCode | None
+    surface: MarketingSurface
+    campaign_source: MarketingCampaignSource
+
+    @model_validator(mode="after")
+    def reason_matches_event(self) -> MarketingMeasurementEventWire:
+        reasons = MARKETING_REASONS_BY_EVENT.get(self.event)
+        if (reasons is None and self.reason is not None) or (
+            reasons is not None and self.reason not in reasons
+        ):
+            raise ValueError("invalid bounded reason for marketing event")
+        return self
+
+    def to_domain(self) -> MarketingMeasurementEvent:
+        return MarketingMeasurementEvent(
+            client_event_id=self.client_event_id,
+            anonymous_session_hash=self.anonymous_session_hash,
+            consent_version=self.consent_version,
+            event=self.event,
+            reason=self.reason,
+            surface=self.surface,
+            campaign_source=self.campaign_source,
+        )
+
+
+class MarketingMeasurementEventResponse(TransportModel):
+    accepted: Literal[True]
+    duplicate: bool
+
+
+class MarketingMeasurementWithdrawalRequest(StrictTransportModel):
+    anonymous_session_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class MarketingMeasurementWithdrawalResponse(TransportModel):
+    deleted_event_count: int = Field(ge=0)
+
+
+class MarketingRepeatedSignalWire(TransportModel):
+    event: MarketingEventName
+    surface: MarketingSurface
+    reason: MarketingReasonCode
+    count: int = Field(ge=2)
+
+
+class MarketingFunnelReportResponse(TransportModel):
+    window_start: datetime
+    window_end: datetime
+    counts: dict[MarketingEventName, int]
+    rates: dict[str, float | int | None]
+    median_seconds: dict[str, float | int | None]
+    support_by_surface: dict[MarketingSurface, int]
+    repeated_signals: list[MarketingRepeatedSignalWire]
+
+    @classmethod
+    def from_domain(cls, report: MarketingFunnelReport) -> MarketingFunnelReportResponse:
+        return cls(
+            window_start=report.window_start,
+            window_end=report.window_end,
+            counts=report.counts,
+            rates=report.rates,
+            median_seconds=report.median_seconds,
+            support_by_surface=report.support_by_surface,
+            repeated_signals=[
+                MarketingRepeatedSignalWire(
+                    event=signal.event,
+                    surface=signal.surface,
+                    reason=signal.reason,
+                    count=signal.count,
+                )
+                for signal in report.repeated_signals
+            ],
+        )
 
 
 class LedgerMoneyWire(StrictTransportModel):
@@ -1246,6 +1392,8 @@ def create_app(
     ledger_session_factory: LedgerSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
+    marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
+    marketing_measurement_internal_key: str | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="Talli API",
@@ -1268,6 +1416,43 @@ def create_app(
     ledger_application = compose_ledger_application(ledger_session_factory)
     banking_application = compose_banking_application(banking_session_factory)
     provider_registry = dict(banking_providers or {})
+    measurement_gateway = (
+        marketing_measurement_gateway
+        if marketing_measurement_gateway is not None
+        else SupabaseMarketingMeasurementAdapter.from_environment()
+    )
+    measurement_internal_key = (
+        marketing_measurement_internal_key
+        if marketing_measurement_internal_key is not None
+        else os.environ.get("TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY", "")
+    )
+    measurement_maintenance_task: asyncio.Task[None] | None = None
+
+    async def maintain_marketing_measurement_retention() -> None:
+        while True:
+            try:
+                await measurement_gateway.purge()
+            except MarketingMeasurementError:
+                pass
+            await asyncio.sleep(3_600)
+
+    async def start_marketing_measurement_maintenance() -> None:
+        nonlocal measurement_maintenance_task
+        measurement_maintenance_task = asyncio.create_task(
+            maintain_marketing_measurement_retention()
+        )
+
+    async def stop_marketing_measurement_maintenance() -> None:
+        if measurement_maintenance_task is None:
+            return
+        measurement_maintenance_task.cancel()
+        try:
+            await measurement_maintenance_task
+        except asyncio.CancelledError:
+            pass
+
+    application.add_event_handler("startup", start_marketing_measurement_maintenance)
+    application.add_event_handler("shutdown", stop_marketing_measurement_maintenance)
 
     def banking_provider(connector_id: BankConnectorId) -> BankDataProvider:
         provider = provider_registry.get(str(connector_id))
@@ -1311,6 +1496,24 @@ def create_app(
             )
         return credentials.credentials
 
+    def require_marketing_measurement_transport(provided_key: str | None) -> None:
+        if len(measurement_internal_key) < 32:
+            raise ApiProblem(
+                status=503,
+                code="MARKETING_MEASUREMENT_UNAVAILABLE",
+                title="Marketing measurement unavailable",
+                detail="Marketing measurement is temporarily unavailable.",
+            )
+        if provided_key is None or not secrets.compare_digest(
+            provided_key, measurement_internal_key
+        ):
+            raise ApiProblem(
+                status=403,
+                code="MARKETING_MEASUREMENT_TRANSPORT_REQUIRED",
+                title="Marketing measurement transport required",
+                detail="The private marketing measurement transport is required.",
+            )
+
     async def company_access_call(call: Awaitable[ResponseT]) -> ResponseT:
         try:
             return await call
@@ -1319,6 +1522,17 @@ def create_app(
                 status=error.status,
                 code=error.code,
                 title=error.title,
+                detail=error.detail,
+            ) from None
+
+    async def marketing_measurement_call(call: Awaitable[ResponseT]) -> ResponseT:
+        try:
+            return await call
+        except MarketingMeasurementError as error:
+            raise ApiProblem(
+                status=error.status,
+                code=error.code,
+                title="Marketing measurement request failed",
                 detail=error.detail,
             ) from None
 
@@ -1492,6 +1706,102 @@ def create_app(
             service="talli-backend",
             status=SYSTEM_BOUNDARY_AVAILABLE,
         )
+
+    marketing_measurement_errors: Any = {
+        status: {
+            "description": "Marketing measurement request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (401, 403, 422, 503)
+    }
+
+    @application.post(
+        "/api/v1/marketing-measurement/events",
+        operation_id="marketingMeasurementRecordEvent",
+        response_model=MarketingMeasurementEventResponse,
+        status_code=202,
+        responses={
+            202: {
+                "description": "The consented event was accepted or replayed.",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: marketing_measurement_errors[status] for status in (403, 422, 503)},
+        tags=["marketing-measurement"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_marketing_measurement_event(
+        command: MarketingMeasurementEventWire,
+        internal_key: str | None = MARKETING_MEASUREMENT_KEY_DEPENDENCY,
+    ) -> MarketingMeasurementEventResponse:
+        require_marketing_measurement_transport(internal_key)
+        inserted = await marketing_measurement_call(
+            measurement_gateway.record(command.to_domain())
+        )
+        return MarketingMeasurementEventResponse(
+            accepted=True,
+            duplicate=not inserted,
+        )
+
+    @application.post(
+        "/api/v1/marketing-measurement/withdrawals",
+        operation_id="marketingMeasurementWithdrawSession",
+        response_model=MarketingMeasurementWithdrawalResponse,
+        responses={
+            200: {
+                "description": "The anonymous session was removed.",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {status: marketing_measurement_errors[status] for status in (403, 422, 503)},
+        tags=["marketing-measurement"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def withdraw_marketing_measurement_session(
+        command: MarketingMeasurementWithdrawalRequest,
+        internal_key: str | None = MARKETING_MEASUREMENT_KEY_DEPENDENCY,
+    ) -> MarketingMeasurementWithdrawalResponse:
+        require_marketing_measurement_transport(internal_key)
+        deleted = await marketing_measurement_call(
+            measurement_gateway.withdraw(command.anonymous_session_hash)
+        )
+        return MarketingMeasurementWithdrawalResponse(deleted_event_count=deleted)
+
+    @application.get(
+        "/api/v1/marketing-measurement/report",
+        operation_id="marketingMeasurementGetReport",
+        response_model=MarketingFunnelReportResponse,
+        responses={
+            200: {
+                "description": "Aggregate-only marketing funnel report.",
+                "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            }
+        }
+        | {
+            status: marketing_measurement_errors[status]
+            for status in (401, 403, 422, 503)
+        },
+        tags=["marketing-measurement"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def get_marketing_measurement_report(
+        window_days: int = Query(default=30, ge=1, le=90),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+        internal_key: str | None = MARKETING_MEASUREMENT_KEY_DEPENDENCY,
+    ) -> MarketingFunnelReportResponse:
+        require_marketing_measurement_transport(internal_key)
+        access_token = bearer_token(credentials)
+        await company_access_call(company_access_service.operator_context(access_token))
+        actor_id = await company_access_call(gateway.session_subject(access_token))
+        report = await marketing_measurement_call(
+            measurement_gateway.report(actor_id, window_days)
+        )
+        return MarketingFunnelReportResponse.from_domain(report)
 
     @application.get(
         "/api/v1/company-access/context",
@@ -3297,6 +3607,24 @@ def create_app(
             {"status": "ready"},
             headers={"Cache-Control": "no-store"},
         )
+
+    generated_openapi = application.openapi
+
+    def openapi_with_exact_marketing_security() -> dict[str, Any]:
+        contract = generated_openapi()
+        paths = contract["paths"]
+        paths["/api/v1/marketing-measurement/events"]["post"]["security"] = [
+            {"marketingMeasurementKey": []}
+        ]
+        paths["/api/v1/marketing-measurement/withdrawals"]["post"]["security"] = [
+            {"marketingMeasurementKey": []}
+        ]
+        paths["/api/v1/marketing-measurement/report"]["get"]["security"] = [
+            {"bearerAuth": [], "marketingMeasurementKey": []}
+        ]
+        return contract
+
+    application.openapi = openapi_with_exact_marketing_security  # type: ignore[method-assign]
 
     @application.get("/api/v1/openapi.json", include_in_schema=False)
     async def served_openapi() -> Response:

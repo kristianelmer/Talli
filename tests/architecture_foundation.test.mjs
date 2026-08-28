@@ -213,6 +213,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
 
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.evidence.modules, [
+    "backend-system:marketing_measurement",
     "backend-system:system_boundary",
     "backend:banking",
     "backend:company_access",
@@ -260,6 +261,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.ledger.public"],
       kind: "workflow",
       to: "backend:ledger",
+    },
+    {
+      from: "backend-system:marketing-funnel-measurement",
+      imports: ["talli_backend.modules.marketing_measurement.public"],
+      kind: "workflow",
+      to: "backend-system:marketing_measurement",
     },
     {
       from: "backend-system:new-year-start",

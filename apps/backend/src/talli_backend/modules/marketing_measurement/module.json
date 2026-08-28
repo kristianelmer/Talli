@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-technical-module",
+  "name": "marketing_measurement",
+  "path": "apps/backend/src/talli_backend/modules/marketing_measurement",
+  "owner": "backend-system:marketing_measurement",
+  "purpose": "Own the bounded anonymous measurement contract and restricted persistence port without owning acquisition, billing, eligibility, launch, or personal-data policy.",
+  "documentation": "apps/backend/src/talli_backend/modules/marketing_measurement/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.marketing_measurement.public",
+  "exports": {
+    "commands": ["MarketingMeasurementEvent"],
+    "queries": ["MarketingFunnelReport", "MarketingRepeatedSignal"],
+    "events": [],
+    "errors": ["MarketingMeasurementError"],
+    "identifiers": ["MarketingMeasurementGateway", "marketing_measurement_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [
+    {
+      "name": "MarketingMeasurementGateway",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.marketing_measurement.public.MarketingMeasurementGateway",
+      "registrationDecorator": "talli_backend.modules.marketing_measurement.public.marketing_measurement_adapter",
+      "adapters": ["talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Eligibility, billing, acquisition, campaign-spend, or launch policy",
+    "Personal, company, financial, document, bank, URL, user-agent, IP-address, or free-text storage",
+    "Browser consent state or public presentation",
+    "Provider selection or activation"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_marketing_measurement_api.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

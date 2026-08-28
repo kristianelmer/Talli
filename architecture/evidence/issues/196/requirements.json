@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#196",
   "source": "https://github.com/kristianelmer/Talli/issues/196",
-  "sourceCheckedAt": "2026-08-28T13:10:00Z",
+  "sourceCheckedAt": "2026-08-28T16:41:50Z",
   "route": {
     "entryGate": "#187",
     "entryGateState": "CLOSED",
@@ -32,7 +32,7 @@
         {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"},
         {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"}
       ],
-      "status": "local-static-evidence-passed"
+      "status": "local-rendered-evidence-passed"
     },
     {
       "id": "GH-196-A2",
@@ -59,16 +59,17 @@
         {"path": "apps/web/features/public-acquisition/measurement.ts", "command": "npm run test:boundary-web"},
         {"path": "tests/marketing_measurement_database_runtime.test.mjs", "command": "npm run test:marketing-measurement"}
       ],
-      "status": "pending-measurement-slice"
+      "status": "local-consent-endpoint-database-and-retention-evidence-passed"
     },
     {
       "id": "GH-196-A5",
       "requirement": "Every required funnel event and bounded reason code can be recorded through a first-party provider-neutral endpoint and reported as aggregate conversion, timing, error/help, refund/unsupported, and completion metrics without cross-site identifiers.",
       "plannedEvidence": [
         {"path": "apps/web/app/api/marketing-events/route.ts", "command": "npm run test:boundary-web"},
-        {"path": "apps/web/app/(operator)/operator/marketing/page.tsx", "command": "npm run test:browser-public-acquisition"}
+        {"path": "apps/web/app/(operator)/operator/marketing/page.tsx", "command": "npm run test:boundary-web"},
+        {"path": "tests/marketing_measurement_database_runtime.test.mjs", "command": "npm run test:marketing-measurement-database"}
       ],
-      "status": "pending-measurement-slice"
+      "status": "partial-long-lived-cohort-rates-and-median-require-separate-privacy-reviewed-aggregate-projection"
     },
     {
       "id": "GH-196-A6",
@@ -86,7 +87,7 @@
         {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"},
         {"path": "architecture/evidence/customer-ready-gates/<revision>.json", "command": "npm run gate:customer-ready"}
       ],
-      "status": "pending-browser-accessibility-performance-evidence"
+      "status": "local-rendered-evidence-passed-founder-legal-launch-signoff-remains-external"
     },
     {
       "id": "GH-196-A8",
@@ -99,16 +100,32 @@
     }
   ],
   "boundaryValidation": {
-    "checkedAt": "2026-08-28T13:18:09Z",
+    "checkedAt": "2026-08-28T16:41:50Z",
     "commands": [
-      "npm run check:architecture",
+      "node scripts/check-architecture.mjs --write-evidence",
       "npm run typecheck",
-      "node --test apps/web/tests/public-acquisition.test.mjs apps/web/tests/launch-copy.test.mjs",
-      "npm run build:web"
+      "npm run test:boundary-web",
+      "npm run test:boundary-contract",
+      "npm run test:boundary-backend",
+      "npm run test:marketing-measurement",
+      "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local",
+      "node --test tests/architecture_foundation.test.mjs",
+      "npm run build:web && npm run test:browser-public-acquisition:built",
+      "npm run build:backend"
     ],
-    "focusedTests": {"passed": 8, "failed": 0},
-    "renderedRouteChecks": ["/", "/passer-talli", "/pris", "/hjelp", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
+    "focusedTests": {
+      "backend": {"passed": 447, "skipped": 1, "failed": 0},
+      "webBoundary": {"passed": 123, "failed": 0},
+      "contractBoundary": {"passed": 36, "failed": 0},
+      "architectureFoundation": {"passed": 50, "failed": 0},
+      "marketingWeb": {"passed": 9, "failed": 0},
+      "marketingBackend": {"passed": 7, "failed": 0},
+      "marketingDatabase": {"passed": 1, "failed": 0},
+      "renderedBrowser": {"passed": 1, "failed": 0},
+      "supabaseIsolation": {"passed": true, "failed": 0}
+    },
+    "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
     "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
   },
-  "closeState": "open-implementation-and-local-evidence"
+  "closeState": "open-external-founder-legal-signoff-and-long-lived-aggregate-projection-decision"
 }
