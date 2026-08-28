@@ -70,6 +70,10 @@ class WorkflowTransaction:
             created_at=NOW,
         )
 
+    async def get_suggestion_acceptance_replay(self, command):
+        self.events.append("banking:replay")
+        return None
+
     async def complete_suggestion_acceptance(
         self, command, *, prepared, accounting_entry_id
     ):
@@ -131,6 +135,7 @@ def test_acceptance_composes_banking_and_ledger_public_interfaces_atomically() -
     assert result.accounting_entry_id == AccountingEntryReference(str(ENTRY_ID))
     assert persistence.events == [
         "transaction:begin",
+        "banking:replay",
         "banking:prepare",
         "ledger:post",
         "banking:complete",

@@ -67,6 +67,9 @@ class BankingSession:
             raise BankingError.forbidden()
         async with self._persistence.transaction() as transaction:
             banking = BankingService(transaction)
+            replay = await banking.get_suggestion_acceptance_replay(command)
+            if replay is not None:
+                return replay
             prepared = await banking.prepare_suggestion_acceptance(command)
             posted = await self._ledger_facade_factory(
                 transaction

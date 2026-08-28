@@ -5,7 +5,7 @@
 -->
 
 <!-- architecture-inventory
-{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql"],"technicalTables":["backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
+{"technicalMigrations":["supabase/migrations/20260828100000_banking_capability.sql","supabase/migrations/20260828100500_banking_workflows.sql"],"technicalTables":["backend_system.banking_command_receipts","backend_system.banking_migration_reconciliations","backend_system.banking_migration_runs","backend_system.banking_migration_source_rows"]}
 -->
 
 <!-- architecture-inventory
@@ -114,11 +114,14 @@ capability package; ledger owns only posting and lock behavior.
 ## Operational and technical ownership
 
 The banking expand stage adds immutable technical migration evidence in
+`backend_system.banking_command_receipts`,
 `backend_system.banking_migration_runs`,
 `backend_system.banking_migration_source_rows`, and
 `backend_system.banking_migration_reconciliations`. These records prove the
 exact-ID, count, and canonical-hash transfer performed by
-`supabase/migrations/20260828100000_banking_capability.sql`; they contain no
+`supabase/migrations/20260828100000_banking_capability.sql` and durable import
+idempotency installed by
+`supabase/migrations/20260828100500_banking_workflows.sql`; they contain no
 banking classification or accounting policy.
 
 The backend system owns the deny-by-default `public.launch_signoffs` operational

@@ -294,6 +294,10 @@ class BankingPersistence(Protocol):
         self, command: AcceptBankSuggestionCommand
     ) -> BankTransaction: ...
 
+    async def get_suggestion_acceptance_replay(
+        self, command: AcceptBankSuggestionCommand
+    ) -> AcceptedBankSuggestion | None: ...
+
     async def complete_suggestion_acceptance(
         self,
         command: AcceptBankSuggestionCommand,
@@ -346,6 +350,10 @@ class BankingCommands(Protocol):
     async def prepare_suggestion_acceptance(
         self, command: AcceptBankSuggestionCommand
     ) -> PreparedBankSuggestion: ...
+
+    async def get_suggestion_acceptance_replay(
+        self, command: AcceptBankSuggestionCommand
+    ) -> AcceptedBankSuggestion | None: ...
 
     async def complete_suggestion_acceptance(
         self,

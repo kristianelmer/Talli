@@ -4,6 +4,7 @@
   "ownershipPolicy": "capability owners are authoritative",
   "compatibilityAdapterRegistry": "architecture/compatibility.json",
   "tables": [
+    { "name": "backend_system.banking_command_receipts", "kind": "technical" },
     { "name": "backend_system.banking_migration_reconciliations", "kind": "technical" },
     { "name": "backend_system.banking_migration_runs", "kind": "technical" },
     { "name": "backend_system.banking_migration_source_rows", "kind": "technical" },

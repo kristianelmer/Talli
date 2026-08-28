@@ -183,6 +183,11 @@ class BankingService:
             raise BankingError.precondition_failed(BankingErrorCode.SUGGESTION_STALE)
         return PreparedBankSuggestion(transaction=transaction, suggestion=suggestion)
 
+    async def get_suggestion_acceptance_replay(
+        self, command: AcceptBankSuggestionCommand
+    ) -> AcceptedBankSuggestion | None:
+        return await self._persistence.get_suggestion_acceptance_replay(command)
+
     async def complete_suggestion_acceptance(
         self,
         command: AcceptBankSuggestionCommand,

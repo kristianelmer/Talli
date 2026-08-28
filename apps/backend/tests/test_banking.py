@@ -59,6 +59,9 @@ class BankingPersistenceStub:
         assert self.transaction is not None
         return self.transaction
 
+    async def get_suggestion_acceptance_replay(self, command: object):
+        return None
+
 
 def transaction(text: str, amount: str, *, matched: bool = False) -> BankTransaction:
     return BankTransaction(
