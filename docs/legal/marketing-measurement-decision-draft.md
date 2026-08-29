@@ -8,7 +8,7 @@ Issue: #196
 Last checked: 2026-08-29
 
 Current implementation evidence: source revision
-`99c845b332522998278827510a7d30220a2a3137`
+`a43a0d24db65001741356fdd9fffc8ea6c442aef`
 
 This document separates official-source requirements from product-design
 inference. It does not approve publication, change the digest-pinned privacy
@@ -146,7 +146,7 @@ truthfully link a months-long company-year lifecycle.
 ## Implementation-Derived Data Inventory
 
 This inventory is derived from source revision
-`99c845b332522998278827510a7d30220a2a3137`. It describes application-controlled
+`a43a0d24db65001741356fdd9fffc8ea6c442aef`. It describes application-controlled
 behavior only. It does not establish what a deployed CDN, hosting platform,
 database provider, proxy, backup system or incident tool logs or retains.
 
