@@ -87,9 +87,9 @@
       "requirement": "Rendered public and signup/checkout-shell journeys pass copy, keyboard, focus, labels/status, contrast, 200% zoom/reflow, 390px mobile, performance, and no-horizontal-overflow gates.",
       "plannedEvidence": [
         {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"},
-        {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition:built"}
+        {"path": "architecture/evidence/customer-ready-gates/13667d8f848101c8c93eea7c6329e09a8a347dcd.json", "command": "jq -e '.verdict == \"pass\" and .revision == \"13667d8f848101c8c93eea7c6329e09a8a347dcd\"' architecture/evidence/customer-ready-gates/13667d8f848101c8c93eea7c6329e09a8a347dcd.json"}
       ],
-      "status": "current-local-rendered-evidence-passed-immutable-successor-gate-pending"
+      "status": "local-rendered-evidence-and-immutable-successor-gate-passed"
     },
     {
       "id": "GH-196-A8",
@@ -138,7 +138,7 @@
     }
   },
   "boundaryValidation": {
-    "checkedAt": "2026-08-29T08:25:04Z",
+    "checkedAt": "2026-08-29T08:43:54.317Z",
     "humanDecisionPackage": "docs/legal/marketing-measurement-decision-draft.md",
     "priorImmutableGate": {
       "sourceRevision": "99c845b332522998278827510a7d30220a2a3137",
@@ -149,8 +149,13 @@
       "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff"
     },
     "currentImmutableGate": {
-      "sourceRevision": null,
-      "verdict": "pending-clean-successor-gate"
+      "sourceRevision": "13667d8f848101c8c93eea7c6329e09a8a347dcd",
+      "evidenceCommit": "e2601cc5d4d632a6e28633c7d4babafd19945d0f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "executedAt": "2026-08-29T08:43:54.317Z",
+      "transcriptDigest": "sha256:9433d7eb41a6f701a216a7e725568de1c4d56b0ea057347c44fec77a86d384ca",
+      "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff"
     },
     "commands": [
       "node scripts/check-architecture.mjs --write-evidence",
@@ -184,5 +189,5 @@
     "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
     "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
   },
-  "closeState": "open-current-immutable-gate-hosted-privacy-legal-deployment-and-cost-clearance-pending"
+  "closeState": "open-hosted-privacy-legal-deployment-and-cost-clearance-pending"
 }
