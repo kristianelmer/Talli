@@ -1,14 +1,34 @@
 # Marketing Measurement Decision Draft
 
-Status: decision aid for founder/legal/privacy review; not approved legal text  
-Issue: #196  
-Last checked: 2026-08-28  
+Status: founder product direction approved; exact text still requires legal/privacy review
+
+Issue: #196
+
+Last checked: 2026-08-29
+
 Current implementation evidence: source revision
 `99c845b332522998278827510a7d30220a2a3137`
 
 This document separates official-source requirements from product-design
 inference. It does not approve publication, change the digest-pinned privacy
 notice, authorize tracking, or replace legal review.
+
+## Recorded Founder Product Decision
+
+Kristian Elmer approved the recommended **no longitudinal marketing cohort for
+launch** direction on 2026-08-29. This approval means:
+
+- the optional marketing session remains limited to 30 minutes;
+- marketing measurement is not joined to an account, company, purchase,
+  company-year, support case or refund;
+- later operational outcomes may be reported only as separately governed coarse
+  totals, without source attribution or a reversible cohort key; and
+- source-attributed company-year/refund rates and purchase-to-completion timing
+  remain `null`.
+
+This is a product-minimization decision. It is not approval of the exact notice,
+the processor schedule, a legal classification, publication, deployment or
+activation. Those gates remain below.
 
 ## Current Implemented Boundary
 
@@ -95,9 +115,9 @@ The following are product/legal-review findings inferred from those sources:
   but the approved notice must distinguish raw-event deletion from any
   separately lawful logs, backups or irreversibly anonymized aggregates.
 
-## Recommended Founder Decision
+## Approved Founder Product Direction
 
-Choose **no longitudinal marketing cohort for launch**:
+The approved direction is **no longitudinal marketing cohort for launch**:
 
 - keep the current 30-minute consented measurement session;
 - keep company-year, purchase, service, support and refund records in their
@@ -137,8 +157,10 @@ and deletion burden and is not recommended for launch.
 
 ## Proposed Additive Notice Section
 
-The following Norwegian text is a review draft only. Bracketed facts must be
-verified against the actual deployed provider contracts and configuration.
+The following Norwegian text is the exact candidate for legal/privacy review. It
+contains no provider name or location claim because the production processor
+schedule is not yet verified. That schedule must be completed and approved before
+publication.
 
 > ### Frivillig måling av den offentlige kundereisen
 >
@@ -159,14 +181,36 @@ verified against the actual deployed provider contracts and configuration.
 > Talli ber om sletting av råhendelsene for den tilfeldige økten. Tilbaketrekking
 > påvirker ikke lovligheten av behandling som skjedde før samtykket ble trukket.
 >
-> Opplysningene behandles av Talli og de verifiserte leverandørene som drifter
-> [database/hosting/logging]. Endelig leverandørliste, behandlingssteder og
-> eventuelle overføringsgrunnlag må godkjennes mot produksjonsavtalene før
-> publisering. Målingen brukes ikke til automatiserte avgjørelser eller
-> individuell profilering.
+> Opplysningene behandles av ELMER WELFIS og databehandlere som leverer database,
+> hosting og nødvendig teknisk logging. Navn, behandlingssteder, lagringstider og
+> eventuelle overføringsgrunnlag skal stå i den gjeldende leverandøroversikten i
+> denne personvernerklæringen før målingen tas i bruk. Målingen brukes ikke til
+> automatiserte avgjørelser eller individuell profilering.
 >
 > Du kan kontakte post@talli.no om innsyn, retting, sletting, begrensning eller
 > andre personvernspørsmål, og du kan klage til Datatilsynet.
+
+## Exact First-Layer Consent Candidate
+
+This is the exact short-form candidate to review together with the full section:
+
+> **Hjelp oss forbedre selskapsjekken**
+>
+> Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten
+> lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter
+> og faste koder for hendelse, steg, kilde og årsak. Den inneholder ikke navn,
+> e-post, organisasjonsnummer, sideadresse, fritekst, bank-, dokument- eller
+> regnskapsdata. Råhendelser slettes senest etter 90 dager.
+>
+> Ingenting valgfritt lagres eller sendes før du velger «Tillat bruksmåling».
+> Talli virker på samme måte hvis du velger «Nei takk». Du kan trekke samtykket
+> tilbake når som helst. Les mer i personvernerklæringen.
+
+Controls, with equal visual prominence and one action each:
+
+- `Tillat bruksmåling`
+- `Nei takk`
+- `Les personvernerklæringen` → `/personvern`
 
 ## Founder/Legal/Privacy Signoff Checklist
 
@@ -193,8 +237,8 @@ verified against the actual deployed provider contracts and configuration.
       access role from current production contracts and configuration.
 - [ ] Verify that URLs, query strings, raw payloads and identifiers do not leak
       into application, proxy, platform or provider logs.
-- [ ] Choose explicitly: no longitudinal marketing cohort, restricted aggregate
-      join, or durable consented bridge.
+- [x] Choose explicitly: no longitudinal marketing cohort for launch (founder
+      product decision recorded 2026-08-29).
 - [ ] Record approver names/roles, date, approved notice and consent digests,
       conditions, review/expiry date and launch/no-launch decision.
 
