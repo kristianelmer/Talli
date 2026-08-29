@@ -7,6 +7,7 @@ import {
   isMarketingConsentActive,
   loadPendingMarketingWithdrawal,
   loadMarketingConsent,
+  marketingConsentFirstLayerText,
   marketingConsentVersion,
   marketingEventNames,
   marketingSessionLifetimeMilliseconds,
@@ -383,7 +384,8 @@ test("consent presentation uses accurate session wording and equal choices", asy
     "utf8",
   );
 
-  assert.match(component, /tilfeldig økt-ID/u);
+  assert.match(marketingConsentFirstLayerText, /tilfeldig økt-ID/u);
+  assert.match(component, /marketingConsentFirstLayerText/u);
   assert.match(component, /Tillat bruksmåling/u);
   assert.doesNotMatch(
     component,
