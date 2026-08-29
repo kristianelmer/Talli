@@ -91,3 +91,28 @@ activation, live account data or spend was authorized.
 
 These receipts prove delivery only. They do not prove coverage, price, contract
 acceptance, production readiness or any `bank_aisp` pass criterion.
+
+### Additional lower-cost candidates
+
+Founder-approved, non-binding enquiries were sent from `post@talli.no` through
+Apple Mail on 2026-08-29 between 05:16 and 05:19 UTC to the providers' official
+published email routes:
+
+- GoCardless Bank Account Data: `help@gocardless.com`, subject “Norway
+  business-account AIS-only coverage and low-volume production pricing — Talli”.
+  GoCardless returned delivery ticket `4436853` and stated an expected response
+  time of one to two business days.
+- Open Payments: `hello@openpayments.io`, subject “AIS-only Norway business-bank
+  coverage and production pricing — Talli”.
+- Aritma: `hello@aritma.com`, subject “AIS-only licensed-provider role, Norway
+  bank coverage and pricing — Talli”. The enquiry makes any quote conditional on
+  Aritma confirming that it—not Talli—would be the customer-facing regulated AISP
+  without bilateral bank agreements.
+
+All three messages required account-information-only production service, no
+payment bundle, no NOK 10,000 setup fee, the fixed and per-company limits above,
+and complete pricing at 1, 25 and 100 connected companies. They expressly
+authorized no signup, activation, contract, live account connection or spend.
+The Mail Sent folder contains all three messages. The GoCardless ticket proves
+receipt only; the two Sent records prove dispatch only. None proves coverage,
+price, regulatory role, production readiness or any `bank_aisp` pass criterion.

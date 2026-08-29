@@ -1,6 +1,7 @@
 # Cheaper Bank-Data Provider Options
 
-Status: preliminary primary-source screen; no provider is selected or authorized
+Status: preliminary primary-source screen; three non-binding RFIs sent; no
+provider is selected or authorized
 
 Date: 2026-08-29
 
@@ -78,3 +79,11 @@ two pointed questions:
 
 Do not change the implementation choice until the two original replies and these
 additional quotes can be compared on the same evidence checklist.
+
+## Enquiry Status
+
+The recommended RFIs were sent from `post@talli.no` on 2026-08-29 to GoCardless,
+Open Payments and Aritma. GoCardless acknowledged receipt as ticket `4436853`.
+Open Payments and Aritma are evidenced in the Mail Sent folder. See
+`docs/research/bank-provider-rfi-2026-08-29.md` for the exact dispatch record and
+limits. No reply or sent-message record is treated as a selection or pass.
