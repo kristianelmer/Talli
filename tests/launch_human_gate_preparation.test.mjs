@@ -14,6 +14,20 @@ const preIntakePack = readFileSync(
   new URL("../docs/launch/representative-validation-pre-intake-pack.md", import.meta.url),
   "utf8",
 );
+const consentProofMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const observationMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829074916_validation_observation_authority.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 test("measurement decision inventories application-controlled data without hosted overclaims", () => {
   for (const required of [
@@ -26,7 +40,8 @@ test("measurement decision inventories application-controlled data without hoste
     /90 days/u,
     /marketing_funnel_withdrawals/u,
     /30 minutes/u,
-    /There is no separate durable consent-action record/u,
+    /Private forced-RLS release and append-only action tables/u,
+    /No release is approved or provisioned/u,
     /Backups, provider logs and recipients/u,
   ]) {
     assert.match(measurementDecision, required);
@@ -34,8 +49,30 @@ test("measurement decision inventories application-controlled data without hoste
   assert.match(measurementDecision, /pseudonymous\/personal pending/u);
   assert.match(measurementDecision, /must remain explicitly pending/iu);
   assert.match(measurementDecision, /not “anonym måling”/u);
-  assert.match(measurementDecision, /requires at least five observations/u);
+  assert.match(measurementDecision, /require five distinct session hashes/u);
   assert.doesNotMatch(measurementDecision, /hosted facts (?:are|were) approved/iu);
+});
+
+test("consent proof remains exact-release-bound and inactive without human approval", () => {
+  for (const required of [
+    /create table backend_system\.marketing_measurement_releases/u,
+    /create table backend_system\.marketing_consent_actions/u,
+    /force row level security/u,
+    /p_first_layer_notice_sha256/u,
+    /p_privacy_notice_sha256/u,
+    /p_release_sha256/u,
+    /v_now \+ interval '30 minutes'/u,
+    /status = 'approved'/u,
+  ]) {
+    assert.match(consentProofMigration, required);
+  }
+
+  assert.match(
+    consentProofMigration,
+    /No release is approved or activated by this migration/u,
+  );
+  assert.match(measurementDecision, /current contradictory 2026-07-15 notice cannot activate/u);
+  assert.match(measurementDecision, /exact copy, retention and legal\/privacy activation remain pending/u);
 });
 
 test("validation plan links preparation without opening intake", () => {
@@ -70,6 +107,21 @@ test("founder-approved pilot observation direction stays separate and fails clos
 
   assert.match(preIntakePack, /Design approved; implementation\/activation blocked/u);
   assert.match(preIntakePack, /no public request can re-enable it/u);
+
+  for (const required of [
+    /mode text not null default 'off'/u,
+    /create table backend_system\.validation_runs/u,
+    /create table backend_system\.validation_pilot_entitlements/u,
+    /validation_observation_entitlement_inactive/u,
+    /validation_observation_launch_status_v1/u,
+    /mode = 'off' and active_entitlements = 0/u,
+  ]) {
+    assert.match(observationMigration, required);
+  }
+  assert.match(
+    observationMigration,
+    /provisions no run, entitlement, reviewer, participant or event/u,
+  );
 });
 
 test("pre-intake pack stays blank, protected-store-first and fail closed", () => {

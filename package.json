@@ -68,7 +68,7 @@
     "test:production-filing-guide": "node --test tests/production_filing_action_guide.test.mjs",
     "test:launch-copy": "node --experimental-strip-types --test tests/launch_copy.test.mjs",
     "test:launch-signoff": "node --experimental-strip-types --test tests/launch_signoff.test.mjs",
-    "test:legal-policy": "node --test tests/legal_policy_pack.test.mjs",
+    "test:legal-policy": "node --test tests/legal_policy_pack.test.mjs tests/launch_human_gate_preparation.test.mjs",
     "test:marketing-measurement": "uv run --project apps/backend pytest apps/backend/tests/test_marketing_measurement_api.py -q && node --experimental-strip-types --test apps/web/tests/marketing-measurement.test.mjs && npm run test:marketing-measurement-database",
     "test:marketing-measurement-database": "node --test tests/marketing_measurement_database_runtime.test.mjs tests/marketing_consent_proof_database_runtime.test.mjs",
     "test:validation-observation": "uv run --project apps/backend pytest apps/backend/tests/test_validation_observation.py apps/backend/tests/test_supabase_validation_observation.py -q && node --test tests/validation_observation_database_runtime.test.mjs",

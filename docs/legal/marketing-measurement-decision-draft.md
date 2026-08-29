@@ -7,8 +7,9 @@ Issue: #196
 
 Last checked: 2026-08-29
 
-Current implementation evidence: source revision
-`a43a0d24db65001741356fdd9fffc8ea6c442aef`
+Current implementation baseline: source revision
+`b8c635538ea382e639ec54af09a34aee3981ef32`; the #196 evidence ledger binds
+the later immutable-gate source and evidence revisions.
 
 This document separates official-source requirements from product-design
 inference. It does not approve publication, change the digest-pinned privacy
