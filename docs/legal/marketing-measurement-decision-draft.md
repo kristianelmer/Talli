@@ -130,8 +130,8 @@ The current local implementation:
 - stores a consent record and random session identifier in `sessionStorage`
   only after an affirmative choice;
 - links one allowlisted event sequence for at most 30 minutes;
-- sends bounded event, surface, source, reason and consent-version fields to a
-  first-party endpoint;
+- sends bounded public-check/onboarding event, surface, source, reason and
+  consent-version fields to a first-party endpoint;
 - rejects personal, company, financial, document, page-address and free-text
   fields;
 - retains raw measurement rows for no more than 90 days;
@@ -139,14 +139,29 @@ The current local implementation:
   tombstone so late requests cannot recreate withdrawn rows; and
 - exposes aggregates rather than raw identifiers to operators.
 
+The backend now fails closed unless a separately provisioned approved release
+matches the exact first-layer version/digest, full privacy-notice version/digest
+and released-workflow SHA-256. The first accepted event creates a private,
+server-timestamped consent grant; the 30-minute window begins at that time.
+Withdrawal is appended to the same proof journal and stops recreation. No
+approved release row is created by migration or application startup, so the
+current contradictory 2026-07-15 notice cannot activate collection.
+
+The invited-pilot observer is also implemented as a separate backend-system
+stream. It is exact-off by default, database-authoritative for approved run,
+subject-bound entitlement, start, expiry, revocation and withdrawal, and accepts
+only bounded `V-01` through `V-12` evidence after a settled normal product
+outcome. Its writer error is contained. Migration and startup create no run,
+entitlement, reviewer, participant mapping or observation.
+
 The implementation intentionally returns `null` for company-year completion,
 refund and purchase-to-completion cohort measures. A 30-minute session cannot
 truthfully link a months-long company-year lifecycle.
 
 ## Implementation-Derived Data Inventory
 
-This inventory is derived from source revision
-`a43a0d24db65001741356fdd9fffc8ea6c442aef`. It describes application-controlled
+This inventory is refreshed with the #196 successor implementation and is bound
+to the exact local source/evidence revisions in the issue ledger. It describes application-controlled
 behavior only. It does not establish what a deployed CDN, hosting platform,
 database provider, proxy, backup system or incident tool logs or retains.
 
@@ -155,13 +170,13 @@ database provider, proxy, backup system or incident tool logs or retains.
 | Browser consent state | `sessionStorage` key `talli.marketing-consent.v1` contains consent version, random UUID session ID, allowlisted campaign source, expiry timestamp and whether `home_view` was queued. It is created only after affirmative consent. | One browser tab; expires after 30 minutes and is removed by expiry or withdrawal. | Implemented and tested. Treat the UUID as pseudonymous/personal pending the Recital 26 assessment. |
 | Browser withdrawal retry | `sessionStorage` key `talli.marketing-withdrawal.v1` contains only the random session UUID while deletion confirmation is pending. | Removed after confirmed deletion; otherwise retained in the tab for retry. | Implemented and tested. Legal review must confirm the retry state is strictly necessary for honoring withdrawal and how long an abandoned tab may retain it. |
 | Campaign input | The application reads only the `source` query parameter and maps it to `organic`, `community`, `partner`, `approved_campaign`, `direct` or `unknown`. The raw value and full page URL are not included in the measurement payload. | The bounded value follows the 30-minute session and event retention below. | Application minimization is implemented. Deployed access logs may still contain the original URL/query and remain unverified. Campaign URLs must never contain identity or company data. |
-| Same-origin browser request | POST payload fields are `clientEventId`, `anonymousSessionId`, literal `consent: true`, `consentVersion`, bounded `event`, nullable bounded `reason`, bounded `surface` and bounded `campaignSource`. Withdrawal sends only the session UUID. Bodies are JSON and limited to 2,048 bytes. | Sent only after consent to `/api/marketing-events`; responses are `no-store`. | Implemented and tested. The application rejects unknown fields, free text, page address and personal/company/financial/document fields. |
+| Same-origin browser request | POST payload fields are `clientEventId`, `anonymousSessionId`, literal `consent: true`, `consentVersion`, bounded public-check/onboarding `event`, nullable bounded `reason`, bounded `surface` and bounded `campaignSource`. Withdrawal sends only the session UUID. Bodies are JSON and limited to 2,048 bytes. | Sent only after consent to `/api/marketing-events`; responses are `no-store`. | Implemented and tested. The application rejects unknown fields, free text, page address and personal/company/financial/document fields. |
 | HTTP/runtime metadata | The Next route checks Origin, Content-Type and Content-Length. The application does not read or persist IP address, User-Agent, Referer, cookies or account identity for measurement. | Unknown at CDN, hosting, proxy, runtime and security-log layers. | Must be verified from deployed configuration and contracts. “Not used by application code” is not a no-log claim. |
-| Internal transport | The Next server hashes the random session UUID with SHA-256 and sends the hash, client event UUID, consent version and bounded event/reason/surface/source through the generated client to the FastAPI backend. An internal server key authenticates this hop. | Request-time only unless infrastructure logs it. | Implemented and tested. Raw UUID should remain at the browser/Next boundary; log redaction and secret handling require deployed verification. |
+| Internal transport | The Next server hashes the random session UUID with SHA-256 and adds the exact first-layer version/digest, configured privacy-notice version/digest and release SHA-256 before sending the bounded event through the generated client. An internal server key authenticates this hop. | Request-time only unless infrastructure logs it. | Implemented and tested. Missing or malformed binding fails closed. Raw UUID remains at the browser/Next boundary; log redaction and secret handling require deployed verification. |
 | Raw database event | Private `backend_system.marketing_funnel_events` rows contain an identity key, client event UUID, 64-character session hash, consent version, event, reason, surface, source, receive time and expiry time. Direct `anon`, `authenticated` and `service_role` access is revoked; forced RLS applies. | Each row expires no later than 90 days after receipt; purge runs during ingest/report/maintenance. Only restricted ingest/report roles execute typed functions. | Local database/runtime evidence passed. Hosted migration, backup copies, privileged access and purge scheduling/monitoring remain separate gates. |
 | Withdrawal tombstone | Private `backend_system.marketing_funnel_withdrawals` contains session hash, withdrawal time and expiry. Withdrawal deletes matching raw events before writing/updating the tombstone. | Tombstone lifetime is at most 30 minutes and is purged by the same maintenance function. | Implemented and tested. It prevents a late request from recreating the withdrawn session during the active window. |
-| Operator report | Counts by bounded event, short-session conversion/unsupported rates, one short-session median, support counts by surface and repeated bounded reason signals. Raw session hashes and event rows are not returned. Company-year/refund/long-cycle fields remain `null`. | Computed from live retained rows; no separate report table is implemented. Operator access requires verified active-operator status. | Implemented and tested. Founder-approved repeated-signal suppression now requires at least five observations. Broader report privacy review remains required before activation. |
-| Consent evidence | Each accepted event carries `marketing-analytics-v1`; the browser consent object records version and expiry. There is no separate durable consent-action record binding the exact first-layer/full-notice digest to the action. | Browser state lasts at most 30 minutes; event rows at most 90 days. | Insufficient for a final demonstrability claim until legal/privacy review approves a minimized proof design and the released notice digest/version is bound and tested. |
+| Operator report | Counts cover only the bounded public check/onboarding session. Purchase, account, company-year, support, refund and filing activity is rejected and never joined. Repeated reason signals require five distinct session hashes. | Computed from live retained rows. Operator access requires verified active-operator status. | Implemented and tested. Longitudinal and acquisition-cost fields remain `null`; broader report privacy review remains required before activation. |
+| Consent evidence | Private forced-RLS release and append-only action tables bind grant/withdrawal, server receive time, consent version, exact first-layer/full-notice versions and SHA-256 digests, and released-workflow SHA-256. | The grant expires after 30 minutes from server receipt. Raw and proof retention are taken only from a separately approved release, within hard maxima. | Technical mechanism and real PostgreSQL evidence passed. No release is approved or provisioned; exact copy, retention and legal/privacy activation remain pending. |
 | Backups, provider logs and recipients | No application source establishes production backup retention, CDN/platform/database log fields, processor identities, processing regions or transfer mechanisms. | Unknown. | Must remain explicitly pending until checked against the exact deployed services, settings and contracts. |
 
 ### Data-flow boundary
@@ -373,7 +388,7 @@ Controls, with equal visual prominence and one action each:
 - [ ] Record approver names/roles, date, approved notice and consent digests,
       conditions, review/expiry date and launch/no-launch decision.
 
-## Implementation Only After Approval
+## Activation and Approved Notice Publication
 
 An approved notice change requires at least:
 

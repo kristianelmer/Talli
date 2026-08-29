@@ -4607,19 +4607,7 @@
                 "definitive_eligible",
                 "definitive_blocked",
                 "signup_start",
-                "terms_accept",
-                "checkout_start",
-                "purchase_complete",
-                "purchase_failed",
-                "company_year_started",
-                "bank_connected",
-                "year_ready",
-                "filing_accepted",
-                "company_year_complete",
-                "support_contact",
-                "unsupported_exit",
-                "refund_started",
-                "refund_completed"
+                "unsupported_exit"
               ]
             },
             "title": "Counts",
@@ -4674,14 +4662,7 @@
               "enum": [
                 "homepage",
                 "eligibility",
-                "signup",
-                "checkout",
-                "workspace",
-                "banking",
-                "year_close",
-                "filing",
-                "support",
-                "refund"
+                "signup"
               ]
             },
             "title": "Supportbysurface",
@@ -4769,21 +4750,29 @@
               "definitive_eligible",
               "definitive_blocked",
               "signup_start",
-              "terms_accept",
-              "checkout_start",
-              "purchase_complete",
-              "purchase_failed",
-              "company_year_started",
-              "bank_connected",
-              "year_ready",
-              "filing_accepted",
-              "company_year_complete",
-              "support_contact",
-              "unsupported_exit",
-              "refund_started",
-              "refund_completed"
+              "unsupported_exit"
             ],
             "title": "Event",
+            "type": "string"
+          },
+          "firstLayerNoticeSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Firstlayernoticesha256",
+            "type": "string"
+          },
+          "firstLayerNoticeVersion": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "title": "Firstlayernoticeversion",
+            "type": "string"
+          },
+          "privacyNoticeSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Privacynoticesha256",
+            "type": "string"
+          },
+          "privacyNoticeVersion": {
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+            "title": "Privacynoticeversion",
             "type": "string"
           },
           "reason": {
@@ -4794,25 +4783,7 @@
                   "unsupported_company",
                   "unsupported_activity",
                   "missing_required_facts",
-                  "payment_declined",
-                  "provider_unavailable",
-                  "technical_failure",
-                  "rf1086",
-                  "company_tax",
-                  "annual_accounts",
-                  "eligibility_help",
-                  "signup_help",
-                  "checkout_help",
-                  "banking_help",
-                  "year_close_help",
-                  "filing_help",
-                  "refund_help",
-                  "other_help",
-                  "customer_changed_mind",
-                  "talli_should_have_blocked",
-                  "talli_delivery_failure",
-                  "new_unsupported_condition",
-                  "customer_uncured_evidence"
+                  "new_unsupported_condition"
                 ],
                 "type": "string"
               },
@@ -4822,18 +4793,16 @@
             ],
             "title": "Reason"
           },
+          "releaseSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Releasesha256",
+            "type": "string"
+          },
           "surface": {
             "enum": [
               "homepage",
               "eligibility",
-              "signup",
-              "checkout",
-              "workspace",
-              "banking",
-              "year_close",
-              "filing",
-              "support",
-              "refund"
+              "signup"
             ],
             "title": "Surface",
             "type": "string"
@@ -4843,6 +4812,11 @@
           "clientEventId",
           "anonymousSessionHash",
           "consentVersion",
+          "firstLayerNoticeVersion",
+          "firstLayerNoticeSha256",
+          "privacyNoticeVersion",
+          "privacyNoticeSha256",
+          "releaseSha256",
           "event",
           "reason",
           "surface",
@@ -4883,7 +4857,7 @@
       "MarketingRepeatedSignalWire": {
         "properties": {
           "count": {
-            "minimum": 2.0,
+            "minimum": 5.0,
             "title": "Count",
             "type": "integer"
           },
@@ -4897,19 +4871,7 @@
               "definitive_eligible",
               "definitive_blocked",
               "signup_start",
-              "terms_accept",
-              "checkout_start",
-              "purchase_complete",
-              "purchase_failed",
-              "company_year_started",
-              "bank_connected",
-              "year_ready",
-              "filing_accepted",
-              "company_year_complete",
-              "support_contact",
-              "unsupported_exit",
-              "refund_started",
-              "refund_completed"
+              "unsupported_exit"
             ],
             "title": "Event",
             "type": "string"
@@ -4920,25 +4882,7 @@
               "unsupported_company",
               "unsupported_activity",
               "missing_required_facts",
-              "payment_declined",
-              "provider_unavailable",
-              "technical_failure",
-              "rf1086",
-              "company_tax",
-              "annual_accounts",
-              "eligibility_help",
-              "signup_help",
-              "checkout_help",
-              "banking_help",
-              "year_close_help",
-              "filing_help",
-              "refund_help",
-              "other_help",
-              "customer_changed_mind",
-              "talli_should_have_blocked",
-              "talli_delivery_failure",
-              "new_unsupported_condition",
-              "customer_uncured_evidence"
+              "new_unsupported_condition"
             ],
             "title": "Reason",
             "type": "string"
@@ -4947,14 +4891,7 @@
             "enum": [
               "homepage",
               "eligibility",
-              "signup",
-              "checkout",
-              "workspace",
-              "banking",
-              "year_close",
-              "filing",
-              "support",
-              "refund"
+              "signup"
             ],
             "title": "Surface",
             "type": "string"

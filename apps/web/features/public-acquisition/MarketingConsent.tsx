@@ -6,6 +6,7 @@ import {
   grantMarketingConsent,
   loadMarketingConsent,
   loadPendingMarketingWithdrawal,
+  marketingConsentFirstLayerText,
   removeMarketingConsent,
   removePendingMarketingWithdrawal,
   savePendingMarketingWithdrawal,
@@ -101,7 +102,7 @@ export function MarketingConsent() {
     setConsentState("granted");
     setNotice(
       homeViewRecorded
-        ? "Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen."
+        ? "Valget er lagret for denne fanen. Måling lagres bare når den viste personvernversjonen er godkjent og aktiv."
         : "Samtykket er lagret, men måleforespørselen kunne ikke sendes.",
     );
   }
@@ -144,17 +145,10 @@ export function MarketingConsent() {
       <div className={styles.copy}>
         <strong id="marketing-consent-title">Hjelp oss forbedre selskapsjekken</strong>
         {consentState === "prompt" ? (
-          <p>
-            Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten
-            lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter
-            og faste koder, uten navn, e-post, organisasjonsnummer, fritekst, sideadresse,
-            bank-, dokument- eller regnskapsdata. Råhendelser slettes senest etter 90
-            dager. Ingenting valgfritt lagres eller sendes før du velger «Tillat
-            bruksmåling», og Talli virker på samme måte hvis du velger «Nei takk».
-          </p>
+          <p>{marketingConsentFirstLayerText}</p>
         ) : (
           <p>{notice || (consentState === "granted"
-            ? "Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen."
+            ? "Valget er lagret for denne fanen. Måling lagres bare når den viste personvernversjonen er godkjent og aktiv."
             : "Frivillig bruksmåling er slått av.")}</p>
         )}
       </div>

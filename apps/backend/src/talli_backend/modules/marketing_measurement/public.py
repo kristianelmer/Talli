@@ -18,31 +18,12 @@ MARKETING_EVENT_NAMES: Final = (
     "definitive_eligible",
     "definitive_blocked",
     "signup_start",
-    "terms_accept",
-    "checkout_start",
-    "purchase_complete",
-    "purchase_failed",
-    "company_year_started",
-    "bank_connected",
-    "year_ready",
-    "filing_accepted",
-    "company_year_complete",
-    "support_contact",
     "unsupported_exit",
-    "refund_started",
-    "refund_completed",
 )
 MARKETING_SURFACES: Final = (
     "homepage",
     "eligibility",
     "signup",
-    "checkout",
-    "workspace",
-    "banking",
-    "year_close",
-    "filing",
-    "support",
-    "refund",
 )
 MARKETING_CAMPAIGN_SOURCES: Final = (
     "direct",
@@ -57,25 +38,7 @@ MARKETING_REASON_CODES: Final = (
     "unsupported_company",
     "unsupported_activity",
     "missing_required_facts",
-    "payment_declined",
-    "provider_unavailable",
-    "technical_failure",
-    "rf1086",
-    "company_tax",
-    "annual_accounts",
-    "eligibility_help",
-    "signup_help",
-    "checkout_help",
-    "banking_help",
-    "year_close_help",
-    "filing_help",
-    "refund_help",
-    "other_help",
-    "customer_changed_mind",
-    "talli_should_have_blocked",
-    "talli_delivery_failure",
     "new_unsupported_condition",
-    "customer_uncured_evidence",
 )
 
 MarketingEventName = Literal[
@@ -87,31 +50,12 @@ MarketingEventName = Literal[
     "definitive_eligible",
     "definitive_blocked",
     "signup_start",
-    "terms_accept",
-    "checkout_start",
-    "purchase_complete",
-    "purchase_failed",
-    "company_year_started",
-    "bank_connected",
-    "year_ready",
-    "filing_accepted",
-    "company_year_complete",
-    "support_contact",
     "unsupported_exit",
-    "refund_started",
-    "refund_completed",
 ]
 MarketingSurface = Literal[
     "homepage",
     "eligibility",
     "signup",
-    "checkout",
-    "workspace",
-    "banking",
-    "year_close",
-    "filing",
-    "support",
-    "refund",
 ]
 MarketingCampaignSource = Literal[
     "direct", "organic", "community", "partner", "approved_campaign", "unknown"
@@ -121,25 +65,7 @@ MarketingReasonCode = Literal[
     "unsupported_company",
     "unsupported_activity",
     "missing_required_facts",
-    "payment_declined",
-    "provider_unavailable",
-    "technical_failure",
-    "rf1086",
-    "company_tax",
-    "annual_accounts",
-    "eligibility_help",
-    "signup_help",
-    "checkout_help",
-    "banking_help",
-    "year_close_help",
-    "filing_help",
-    "refund_help",
-    "other_help",
-    "customer_changed_mind",
-    "talli_should_have_blocked",
-    "talli_delivery_failure",
     "new_unsupported_condition",
-    "customer_uncured_evidence",
 ]
 
 
@@ -148,6 +74,11 @@ class MarketingMeasurementEvent:
     client_event_id: UUID
     anonymous_session_hash: str
     consent_version: Literal["marketing-analytics-v1"]
+    first_layer_notice_version: str
+    first_layer_notice_sha256: str
+    privacy_notice_version: str
+    privacy_notice_sha256: str
+    release_sha256: str
     event: MarketingEventName
     reason: MarketingReasonCode | None
     surface: MarketingSurface

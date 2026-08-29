@@ -137,7 +137,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   await waitFor(() => backendRequests.some((request) => request.body.event === "home_view"));
   await desktop.getByRole("complementary", { name: "Hjelp oss forbedre selskapsjekken" })
     .locator("[aria-live='polite']")
-    .getByText("Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen.")
+    .getByText("Valget er lagret for denne fanen. Måling lagres bare når den viste personvernversjonen er godkjent og aktiv.")
     .waitFor();
   assert.equal(await desktop.evaluate(() => sessionStorage.length), 1);
   const homeEvent = backendRequests.find((request) => request.body.event === "home_view");
@@ -147,12 +147,22 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
     "clientEventId",
     "consentVersion",
     "event",
+    "firstLayerNoticeSha256",
+    "firstLayerNoticeVersion",
+    "privacyNoticeSha256",
+    "privacyNoticeVersion",
     "reason",
+    "releaseSha256",
     "surface",
   ]);
   assert.match(homeEvent.body.anonymousSessionHash, /^[a-f0-9]{64}$/u);
   assert.equal("anonymousSessionId" in homeEvent.body, false);
   assert.equal(homeEvent.body.consentVersion, "marketing-analytics-v1");
+  assert.equal(homeEvent.body.firstLayerNoticeVersion, "candidate-2026-08-29");
+  assert.match(homeEvent.body.firstLayerNoticeSha256, /^[a-f0-9]{64}$/u);
+  assert.equal(homeEvent.body.privacyNoticeVersion, "unapproved");
+  assert.equal(homeEvent.body.privacyNoticeSha256, "unapproved");
+  assert.equal(homeEvent.body.releaseSha256, "unapproved");
   assert.equal(homeEvent.body.campaignSource, "community");
   assert.equal(homeEvent.headers.referer, undefined, "measurement leaked the landing URL");
 

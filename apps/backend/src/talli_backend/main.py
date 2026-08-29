@@ -4,10 +4,11 @@ import asyncio
 import os
 import re
 import secrets
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, TypeVar, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -25,6 +26,9 @@ from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.adapters.supabase_marketing_measurement import (
     SupabaseMarketingMeasurementAdapter,
 )
+from talli_backend.adapters.supabase_validation_observation import (
+    SupabaseValidationObservationAdapter,
+)
 from talli_backend.modules.marketing_measurement.public import (
     MarketingCampaignSource,
     MarketingEventName,
@@ -34,6 +38,11 @@ from talli_backend.modules.marketing_measurement.public import (
     MarketingMeasurementGateway,
     MarketingReasonCode,
     MarketingSurface,
+)
+from talli_backend.modules.validation_observation.public import (
+    BoundedValidationObservation,
+    PassiveValidationObserver,
+    ValidationObservationConfiguration,
 )
 from talli_backend.application.banking_session import (
     AuthenticatedBankingSession,
@@ -264,37 +273,11 @@ MARKETING_REASONS_BY_EVENT: dict[MarketingEventName, tuple[MarketingReasonCode, 
         "unsupported_activity",
         "missing_required_facts",
     ),
-    "purchase_failed": ("payment_declined", "provider_unavailable", "technical_failure"),
-    "filing_accepted": ("rf1086", "company_tax", "annual_accounts"),
-    "support_contact": (
-        "eligibility_help",
-        "signup_help",
-        "checkout_help",
-        "banking_help",
-        "year_close_help",
-        "filing_help",
-        "refund_help",
-        "other_help",
-    ),
     "unsupported_exit": (
         "unknown_material_facts",
         "unsupported_company",
         "unsupported_activity",
         "new_unsupported_condition",
-    ),
-    "refund_started": (
-        "customer_changed_mind",
-        "talli_should_have_blocked",
-        "talli_delivery_failure",
-        "new_unsupported_condition",
-        "customer_uncured_evidence",
-    ),
-    "refund_completed": (
-        "customer_changed_mind",
-        "talli_should_have_blocked",
-        "talli_delivery_failure",
-        "new_unsupported_condition",
-        "customer_uncured_evidence",
     ),
 }
 
@@ -303,6 +286,11 @@ class MarketingMeasurementEventWire(StrictTransportModel):
     client_event_id: UUID
     anonymous_session_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     consent_version: Literal["marketing-analytics-v1"]
+    first_layer_notice_version: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,63}$")
+    first_layer_notice_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    privacy_notice_version: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]{0,63}$")
+    privacy_notice_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    release_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     event: MarketingEventName
     reason: MarketingReasonCode | None
     surface: MarketingSurface
@@ -322,6 +310,11 @@ class MarketingMeasurementEventWire(StrictTransportModel):
             client_event_id=self.client_event_id,
             anonymous_session_hash=self.anonymous_session_hash,
             consent_version=self.consent_version,
+            first_layer_notice_version=self.first_layer_notice_version,
+            first_layer_notice_sha256=self.first_layer_notice_sha256,
+            privacy_notice_version=self.privacy_notice_version,
+            privacy_notice_sha256=self.privacy_notice_sha256,
+            release_sha256=self.release_sha256,
             event=self.event,
             reason=self.reason,
             surface=self.surface,
@@ -346,7 +339,7 @@ class MarketingRepeatedSignalWire(TransportModel):
     event: MarketingEventName
     surface: MarketingSurface
     reason: MarketingReasonCode
-    count: int = Field(ge=2)
+    count: int = Field(ge=5)
 
 
 class MarketingFunnelReportResponse(TransportModel):
@@ -1394,6 +1387,7 @@ def create_app(
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
+    validation_observer: PassiveValidationObserver | None = None,
 ) -> FastAPI:
     application = FastAPI(
         title="Talli API",
@@ -1427,6 +1421,26 @@ def create_app(
         else os.environ.get("TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY", "")
     )
     measurement_maintenance_task: asyncio.Task[None] | None = None
+    passive_validation_observer = validation_observer or PassiveValidationObserver(
+        ValidationObservationConfiguration.from_values(
+            requested_mode=os.environ.get("TALLI_VALIDATION_OBSERVATION_MODE"),
+            product_mode=os.environ.get("TALLI_PRODUCT_MODE"),
+            entitlement_id=os.environ.get(
+                "TALLI_VALIDATION_PILOT_ENTITLEMENT_ID"
+            ),
+            approved_run_id=os.environ.get("TALLI_VALIDATION_APPROVED_RUN_ID"),
+            starts_at=os.environ.get("TALLI_VALIDATION_OBSERVATION_STARTS_AT"),
+            expires_at=os.environ.get("TALLI_VALIDATION_OBSERVATION_EXPIRES_AT"),
+            release_sha256=os.environ.get("TALLI_RELEASE_SHA256"),
+            participant_information_sha256=os.environ.get(
+                "TALLI_VALIDATION_PARTICIPANT_INFORMATION_SHA256"
+            ),
+            subject_binding_key=os.environ.get(
+                "TALLI_VALIDATION_SUBJECT_BINDING_KEY"
+            ),
+        ),
+        SupabaseValidationObservationAdapter.from_environment(),
+    )
 
     async def maintain_marketing_measurement_retention() -> None:
         while True:
@@ -1921,11 +1935,38 @@ def create_app(
         command: CompanyYearAdmissionRequest,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyYearAdmissionResponse:
-        return await company_access_call(
+        started_at = time.perf_counter()
+        result = await company_access_call(
             company_access_service.admit_company_year(
                 bearer_token(credentials), command
             )
         )
+        await passive_validation_observer.after_outcome(
+            subject_identifier=str(result.company_id),
+            observation=BoundedValidationObservation(
+                observation_id=uuid5(
+                    NAMESPACE_URL,
+                    (
+                        "urn:talli:validation:company-year-admission:"
+                        f"{command.operation_id}:completed"
+                    ),
+                ),
+                task="company_year_admission",
+                state="completed",
+                stage="onboarding",
+                reason="none",
+                elapsed_milliseconds=min(
+                    int((time.perf_counter() - started_at) * 1000), 86_400_000
+                ),
+                intervention_type="none",
+                intervention_count=0,
+                intervention_milliseconds=0,
+                difference_classification="none",
+                rerun_result="not_required",
+                package_outcome="not_applicable",
+            ),
+        )
+        return result
 
     @application.post(
         (

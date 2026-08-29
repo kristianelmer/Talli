@@ -1,4 +1,7 @@
 export const marketingConsentVersion = "marketing-analytics-v1" as const;
+export const marketingConsentFirstLayerVersion = "candidate-2026-08-29" as const;
+export const marketingConsentFirstLayerText =
+  "Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter og faste koder, uten navn, e-post, organisasjonsnummer, fritekst, sideadresse, bank-, dokument- eller regnskapsdata. Råhendelser slettes senest etter 90 dager. Ingenting valgfritt lagres eller sendes før du velger «Tillat bruksmåling», og Talli virker på samme måte hvis du velger «Nei takk».";
 export const marketingSessionLifetimeMilliseconds = 30 * 60 * 1_000;
 export const marketingSessionStorageKey = "talli.marketing-consent.v1";
 export const marketingPendingWithdrawalStorageKey = "talli.marketing-withdrawal.v1";
@@ -12,32 +15,13 @@ export const marketingEventNames = [
   "definitive_eligible",
   "definitive_blocked",
   "signup_start",
-  "terms_accept",
-  "checkout_start",
-  "purchase_complete",
-  "purchase_failed",
-  "company_year_started",
-  "bank_connected",
-  "year_ready",
-  "filing_accepted",
-  "company_year_complete",
-  "support_contact",
   "unsupported_exit",
-  "refund_started",
-  "refund_completed",
 ] as const;
 
 export const marketingSurfaces = [
   "homepage",
   "eligibility",
   "signup",
-  "checkout",
-  "workspace",
-  "banking",
-  "year_close",
-  "filing",
-  "support",
-  "refund",
 ] as const;
 
 export const marketingCampaignSources = [
@@ -54,25 +38,7 @@ export const marketingReasonCodes = [
   "unsupported_company",
   "unsupported_activity",
   "missing_required_facts",
-  "payment_declined",
-  "provider_unavailable",
-  "technical_failure",
-  "rf1086",
-  "company_tax",
-  "annual_accounts",
-  "eligibility_help",
-  "signup_help",
-  "checkout_help",
-  "banking_help",
-  "year_close_help",
-  "filing_help",
-  "refund_help",
-  "other_help",
-  "customer_changed_mind",
-  "talli_should_have_blocked",
-  "talli_delivery_failure",
   "new_unsupported_condition",
-  "customer_uncured_evidence",
 ] as const;
 
 export type MarketingEventName = (typeof marketingEventNames)[number];
@@ -125,37 +91,11 @@ const reasonsByEvent: Partial<Record<MarketingEventName, readonly MarketingReaso
     "unsupported_activity",
     "missing_required_facts",
   ],
-  purchase_failed: ["payment_declined", "provider_unavailable", "technical_failure"],
-  filing_accepted: ["rf1086", "company_tax", "annual_accounts"],
-  support_contact: [
-    "eligibility_help",
-    "signup_help",
-    "checkout_help",
-    "banking_help",
-    "year_close_help",
-    "filing_help",
-    "refund_help",
-    "other_help",
-  ],
   unsupported_exit: [
     "unknown_material_facts",
     "unsupported_company",
     "unsupported_activity",
     "new_unsupported_condition",
-  ],
-  refund_started: [
-    "customer_changed_mind",
-    "talli_should_have_blocked",
-    "talli_delivery_failure",
-    "new_unsupported_condition",
-    "customer_uncured_evidence",
-  ],
-  refund_completed: [
-    "customer_changed_mind",
-    "talli_should_have_blocked",
-    "talli_delivery_failure",
-    "new_unsupported_condition",
-    "customer_uncured_evidence",
   ],
 };
 

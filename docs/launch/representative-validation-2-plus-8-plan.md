@@ -38,7 +38,7 @@ observer on or off. There are no pilot-only shortcuts, mock outcomes, relaxed
 checks or alternate product branches. The setting controls only a passive
 bounded log written after the normal product outcome.
 
-The future implementation must be deny-by-default with only `off` and
+The technical implementation is deny-by-default with only `off` and
 `invited-pilot` states. `invited-pilot` must require a server-side named pilot
 entitlement, approved validation run ID and automatic expiry. It must not be
 enabled by a URL, browser setting or client-supplied request field. Full public
@@ -61,6 +61,16 @@ source attribution in this evaluation stream. Participant information,
 agreement, retention, access, withdrawal, export and deletion behavior must be
 approved before observation starts. This mode remains blocked by the same entry
 gate as all named pilot data.
+
+Current source implements the passive backend port, restricted PostgreSQL
+writer, private run/entitlement/reviewer/observation state, start/expiry,
+revocation/withdrawal, bounded vocabulary, idempotency, approved-retention
+input, and launch-status query. Migration and startup create no active authority
+or named data. Real PostgreSQL and FastAPI parity tests cover default-off
+authority, writer failure, response/business-state/external-call equivalence,
+and public request rejection. Hosted isolation, exact participant information
+and retention approval, named reviewers, protected mapping, completeness
+matrix, backup/delete behavior and deployment evidence remain entry gates.
 
 An observation-write failure must not change, roll back, retry or hide the
 product result. It makes the affected test evidence incomplete, so the evidence

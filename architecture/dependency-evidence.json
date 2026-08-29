@@ -73,6 +73,14 @@
       "to": "backend:shareholder_register_filing"
     },
     {
+      "from": "backend-system:passive-validation-observation",
+      "imports": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:validation_observation"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
@@ -85,6 +93,7 @@
   "modules": [
     "backend-system:marketing_measurement",
     "backend-system:system_boundary",
+    "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
     "backend:ledger",
@@ -143,11 +152,39 @@
     },
     {
       "owner": "backend-system",
+      "table": "backend_system.marketing_consent_actions"
+    },
+    {
+      "owner": "backend-system",
       "table": "backend_system.marketing_funnel_events"
     },
     {
       "owner": "backend-system",
       "table": "backend_system.marketing_funnel_withdrawals"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observation_control"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_pilot_entitlements"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_reviewers"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_runs"
     },
     {
       "owner": "backend-system",

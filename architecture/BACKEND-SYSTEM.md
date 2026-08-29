@@ -5,6 +5,14 @@
 -->
 
 <!-- architecture-inventory
+{"adapterBindingModes":["ValidationObservationGateway=>passive post-outcome writer through one SET-only restricted PostgreSQL function"],"adapterBindingOwners":["ValidationObservationGateway=>backend-system"],"adapterBindings":["ValidationObservationGateway=>talli_backend.adapters.supabase_validation_observation.SupabaseValidationObservationAdapter"],"adapterDependencies":["talli_backend.modules.validation_observation.public"],"ports":["ValidationObservationGateway"],"publicPackages":["talli_backend.modules.validation_observation.public"],"routes":["/api/v1/company-access/company-year-admissions"],"technicalMigrations":["supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql","supabase/migrations/20260829074916_validation_observation_authority.sql"],"technicalTables":["backend_system.validation_observation_control","backend_system.validation_observations","backend_system.validation_pilot_entitlements","backend_system.validation_reviewers","backend_system.validation_runs"],"transportDependencies":["talli_backend.adapters.supabase_validation_observation","talli_backend.modules.validation_observation.public","time"],"workflowDependencies":["talli_backend.modules.validation_observation.public"],"workflowPurposes":["passive-validation-observation=>After an admitted company-year outcome is settled, optionally writes one bounded invited-validation record through database-authoritative run and entitlement controls without changing the product response, business state or external calls."],"workflows":["passive-validation-observation"]}
+-->
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql"],"technicalTables":["backend_system.marketing_consent_actions","backend_system.marketing_measurement_releases"]}
+-->
+
+<!-- architecture-inventory
 {"technicalMigrations":["supabase/migrations/20260827109000_ledger_opening_position_rebuild.sql"]}
 -->
 
@@ -25,7 +33,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, bounded anonymous measurement, and event delivery only; they own no accounting, filing, billing, eligibility, acquisition-spend, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
+{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing, eligibility, acquisition-spend, product-behavior, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
 -->
 
 <!-- architecture-inventory
@@ -67,6 +75,15 @@ require a separately verified active company-access operator, and the database
 rechecks that actor before returning aggregate counts, rates, medians, support,
 refund, unsupported-exit, and completion signals. No raw session report or
 campaign-spend input exists.
+
+The `passive-validation-observation` workflow adds no public control route. Only
+after the normal company-year admission result and its persistence and registry
+work have settled may composition call
+`talli_backend.modules.validation_observation.public`. Exact off mode makes no
+call. Invited mode sends one bounded command through the restricted adapter;
+PostgreSQL rechecks its own mode, approved run, release and participant-notice
+digests, subject-bound entitlement, start, expiry, revocation and withdrawal.
+Writer failure cannot alter, retry, roll back or hide the admission result.
 
 The `company-access-context` workflow serves `/api/v1/company-access/context`
 and calls only `talli_backend.modules.company_access.public`. It translates a
@@ -199,6 +216,25 @@ enums or irreversible session hashes, close an anonymous session after 30
 minutes, and expose only security-definer ingest/withdrawal/aggregate functions
 to separate SET-only roles. The backend maintenance loop purges expired events
 and tombstones at startup and at least hourly while the service is running.
+The five-session disclosure correction is installed by
+`supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql`.
+Durable server-stamped grants and withdrawals, exact first-layer/privacy/release
+digest binding, an explicit human-provisioned release gate, and public-session-
+only reporting are installed by
+`supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql`.
+That migration creates no approved release. It revokes the legacy unproved
+ingest/report functions from runtime roles, anchors the 30-minute window to the
+grant receive time, and counts five distinct sessions rather than five events.
+
+The backend system also owns the five private validation-observation tables.
+`validation_observation_control` starts at `off`; migration and startup create no
+run, entitlement, reviewer, participant mapping or observation.
+`validation_runs`, `validation_pilot_entitlements`, `validation_reviewers` and
+`validation_observations` are forced-RLS technical state installed by
+`supabase/migrations/20260829074916_validation_observation_authority.sql`.
+Separate SET-only roles provision authority, write bounded observations, review
+one run, purge expired rows, and inspect launch-off status. The application
+backend receives only the writer role.
 Their migrations are `supabase/migrations/0001_authenticated_workspace.sql` and
 `supabase/migrations/20260801090000_company_access_invitations.sql`, extended by
 `supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql`
@@ -232,6 +268,9 @@ backend-only authenticated and restricted-Postgres
 `talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter`
 using private generated-client transport and SET-only restricted PostgreSQL
 functions.
+`ValidationObservationGateway` is bound to
+`talli_backend.adapters.supabase_validation_observation.SupabaseValidationObservationAdapter`
+and may execute only the one typed passive-writer function.
 
 ## Allowed dependencies and change rule
 

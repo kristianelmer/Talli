@@ -1,6 +1,8 @@
 import base64
+import copy
 import json
 from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -10,6 +12,10 @@ from talli_backend.main import create_app
 from talli_backend.modules.company_access.public import (
     CompanyYearAdmissionGatewayCommand,
     CompanyYearEligibilityRecheckGatewayCommand,
+)
+from talli_backend.modules.validation_observation.public import (
+    PassiveValidationObserver,
+    ValidationObservationConfiguration,
 )
 
 
@@ -133,11 +139,57 @@ class AdmissionGatewayStub:
 
 
 def public_client(
-    *, entity_type: str = "AS", status_text: str = "aktiv"
+    *,
+    entity_type: str = "AS",
+    status_text: str = "aktiv",
+    validation_observer: object | None = None,
 ) -> tuple[TestClient, AdmissionGatewayStub, CompanyRegistryStub]:
     gateway = AdmissionGatewayStub()
     registry = CompanyRegistryStub(entity_type=entity_type, status_text=status_text)
-    return TestClient(create_app(gateway, registry)), gateway, registry
+    return (
+        TestClient(
+            create_app(
+                gateway,
+                registry,
+                validation_observer=validation_observer,
+            )
+        ),
+        gateway,
+        registry,
+    )
+
+
+class ValidationObservationGatewayStub:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.commands = []
+
+    async def record(self, command: object) -> bool:
+        self.commands.append(command)
+        if self.fail:
+            raise RuntimeError("observer unavailable")
+        return True
+
+
+def validation_observer(
+    gateway: ValidationObservationGatewayStub, *, enabled: bool
+) -> PassiveValidationObserver:
+    now = datetime(2026, 8, 29, 12, 0, tzinfo=UTC)
+    return PassiveValidationObserver(
+        ValidationObservationConfiguration.from_values(
+            requested_mode="invited-pilot" if enabled else "off",
+            product_mode="prelaunch-validation",
+            entitlement_id="10000000-0000-4000-8000-000000000001",
+            approved_run_id="V2P8-20260829-LOCAL",
+            starts_at=(now - timedelta(minutes=1)).isoformat(),
+            expires_at=(now + timedelta(days=1)).isoformat(),
+            release_sha256="a" * 64,
+            participant_information_sha256="b" * 64,
+            subject_binding_key="local-test-key-with-at-least-32-bytes",
+            now=now,
+        ),
+        gateway,
+    )
 
 
 def precheck(client: TestClient) -> dict[str, object]:
@@ -441,6 +493,73 @@ def test_supported_admission_rechecks_and_writes_one_immutable_company_year_comm
     assert command.privacy_notice_version == "2026-07-15"
     assert command.privacy_notice_sha256 == PRIVACY_SHA256
     assert str(command.verified_actor) == "00000000-0000-0000-0000-000000000044"
+
+
+def test_admission_is_exactly_equivalent_with_observer_off_on_or_failing() -> None:
+    transcripts = []
+    observer_gateways = []
+    for enabled, failing in ((False, False), (True, False), (True, True)):
+        observer_gateway = ValidationObservationGatewayStub(fail=failing)
+        observer_gateways.append(observer_gateway)
+        client, business_gateway, registry = public_client(
+            validation_observer=validation_observer(
+                observer_gateway, enabled=enabled
+            )
+        )
+        accepted = definitive(client, precheck(client))
+
+        response = client.post(
+            "/api/v1/company-access/company-year-admissions",
+            headers={
+                "Authorization": f"Bearer {access_token()}",
+                "X-Request-ID": "40000000-0000-4000-8000-000000000099",
+            },
+            json=admission_request(accepted),
+        )
+        transcripts.append(
+            {
+                "status": response.status_code,
+                "body": response.content,
+                "headers": dict(response.headers),
+                "business": copy.deepcopy(business_gateway.calls),
+                "external": copy.deepcopy(registry.calls),
+            }
+        )
+
+    assert transcripts[0] == transcripts[1] == transcripts[2]
+    assert observer_gateways[0].commands == []
+    assert len(observer_gateways[1].commands) == 1
+    assert len(observer_gateways[2].commands) == 1
+    command = observer_gateways[1].commands[0]
+    assert command.observation.task == "company_year_admission"
+    assert command.observation.state == "completed"
+    assert command.observation.stage == "onboarding"
+    assert not hasattr(command, "company_id")
+    assert not hasattr(command.observation, "free_text")
+
+
+def test_public_request_cannot_supply_any_observation_authority() -> None:
+    observer_gateway = ValidationObservationGatewayStub()
+    client, business_gateway, _registry = public_client(
+        validation_observer=validation_observer(observer_gateway, enabled=True)
+    )
+    accepted = definitive(client, precheck(client))
+    request = admission_request(accepted) | {
+        "validationObservationMode": "invited-pilot",
+        "validationRunId": "V2P8-20260829-LOCAL",
+        "pilotEntitlementId": "10000000-0000-4000-8000-000000000001",
+        "validationCaseCode": "V-01",
+    }
+
+    response = client.post(
+        "/api/v1/company-access/company-year-admissions",
+        headers={"Authorization": f"Bearer {access_token()}"},
+        json=request,
+    )
+
+    assert response.status_code == 422
+    assert business_gateway.calls == []
+    assert observer_gateway.commands == []
 
 
 def test_admission_exact_retry_replays_before_registry_lookup() -> None:

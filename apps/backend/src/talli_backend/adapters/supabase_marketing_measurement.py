@@ -152,7 +152,9 @@ class SupabaseMarketingMeasurementAdapter(MarketingMeasurementGateway):
                     for code in (
                         "marketing_measurement_invalid_",
                         "marketing_measurement_consent_required",
+                        "marketing_measurement_consent_binding_mismatch",
                         "marketing_measurement_consent_withdrawn",
+                        "marketing_measurement_release_required",
                         "marketing_measurement_session_expired",
                         "marketing_measurement_event_id_conflict",
                         "marketing_measurement_operator_required",
@@ -167,14 +169,19 @@ class SupabaseMarketingMeasurementAdapter(MarketingMeasurementGateway):
         value = await self._scalar(
             role="marketing_measurement_ingest_executor",
             query="""
-                select backend_system.record_marketing_funnel_event_v1(
-                  %s, %s, %s, %s, %s, %s, %s
+                select backend_system.record_marketing_funnel_event_v2(
+                  %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 ) as inserted
             """,
             parameters=(
                 event.client_event_id,
                 event.anonymous_session_hash,
                 event.consent_version,
+                event.first_layer_notice_version,
+                event.first_layer_notice_sha256,
+                event.privacy_notice_version,
+                event.privacy_notice_sha256,
+                event.release_sha256,
                 event.event,
                 event.reason,
                 event.surface,
@@ -189,7 +196,7 @@ class SupabaseMarketingMeasurementAdapter(MarketingMeasurementGateway):
         value = await self._scalar(
             role="marketing_measurement_ingest_executor",
             query="""
-                select backend_system.withdraw_marketing_funnel_session_v1(%s) as deleted
+                select backend_system.withdraw_marketing_funnel_session_v2(%s) as deleted
             """,
             parameters=(anonymous_session_hash,),
         )
@@ -200,7 +207,7 @@ class SupabaseMarketingMeasurementAdapter(MarketingMeasurementGateway):
     async def purge(self) -> int:
         value = await self._scalar(
             role="marketing_measurement_ingest_executor",
-            query="select backend_system.purge_expired_marketing_funnel_events_v1() as deleted",
+            query="select backend_system.purge_marketing_measurement_v2() as deleted",
             parameters=(),
         )
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -210,7 +217,7 @@ class SupabaseMarketingMeasurementAdapter(MarketingMeasurementGateway):
     async def report(self, actor_id: str, window_days: int) -> MarketingFunnelReport:
         value = await self._scalar(
             role="marketing_measurement_report_executor",
-            query="select backend_system.report_marketing_funnel_v1(%s) as report",
+            query="select backend_system.report_marketing_funnel_v2(%s) as report",
             parameters=(window_days,),
             actor_id=actor_id,
         )

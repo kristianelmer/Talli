@@ -62,6 +62,7 @@ TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
 npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
 npm run test:marketing-measurement-database
+npm run test:validation-observation
 
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \

@@ -1005,9 +1005,14 @@ export interface MarketingMeasurementEventWire {
   campaignSource: "direct" | "organic" | "community" | "partner" | "approved_campaign" | "unknown";
   clientEventId: string;
   consentVersion: "marketing-analytics-v1";
-  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "terms_accept" | "checkout_start" | "purchase_complete" | "purchase_failed" | "company_year_started" | "bank_connected" | "year_ready" | "filing_accepted" | "company_year_complete" | "support_contact" | "unsupported_exit" | "refund_started" | "refund_completed";
-  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "payment_declined" | "provider_unavailable" | "technical_failure" | "rf1086" | "company_tax" | "annual_accounts" | "eligibility_help" | "signup_help" | "checkout_help" | "banking_help" | "year_close_help" | "filing_help" | "refund_help" | "other_help" | "customer_changed_mind" | "talli_should_have_blocked" | "talli_delivery_failure" | "new_unsupported_condition" | "customer_uncured_evidence" | null;
-  surface: "homepage" | "eligibility" | "signup" | "checkout" | "workspace" | "banking" | "year_close" | "filing" | "support" | "refund";
+  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "unsupported_exit";
+  firstLayerNoticeSha256: string;
+  firstLayerNoticeVersion: string;
+  privacyNoticeSha256: string;
+  privacyNoticeVersion: string;
+  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "new_unsupported_condition" | null;
+  releaseSha256: string;
+  surface: "homepage" | "eligibility" | "signup";
 }
 
 export interface MarketingMeasurementWithdrawalRequest {
@@ -1020,9 +1025,9 @@ export interface MarketingMeasurementWithdrawalResponse {
 
 export interface MarketingRepeatedSignalWire {
   count: number;
-  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "terms_accept" | "checkout_start" | "purchase_complete" | "purchase_failed" | "company_year_started" | "bank_connected" | "year_ready" | "filing_accepted" | "company_year_complete" | "support_contact" | "unsupported_exit" | "refund_started" | "refund_completed";
-  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "payment_declined" | "provider_unavailable" | "technical_failure" | "rf1086" | "company_tax" | "annual_accounts" | "eligibility_help" | "signup_help" | "checkout_help" | "banking_help" | "year_close_help" | "filing_help" | "refund_help" | "other_help" | "customer_changed_mind" | "talli_should_have_blocked" | "talli_delivery_failure" | "new_unsupported_condition" | "customer_uncured_evidence";
-  surface: "homepage" | "eligibility" | "signup" | "checkout" | "workspace" | "banking" | "year_close" | "filing" | "support" | "refund";
+  event: "home_view" | "eligibility_start" | "provisional_supported" | "provisional_clarify" | "provisional_blocked" | "definitive_eligible" | "definitive_blocked" | "signup_start" | "unsupported_exit";
+  reason: "unknown_material_facts" | "unsupported_company" | "unsupported_activity" | "missing_required_facts" | "new_unsupported_condition";
+  surface: "homepage" | "eligibility" | "signup";
 }
 
 export interface ProblemDetails {
@@ -2366,14 +2371,19 @@ function isMarketingMeasurementEventResponse(value: unknown): value is Marketing
 function isMarketingMeasurementEventWire(value: unknown): value is MarketingMeasurementEventWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["anonymousSessionHash","campaignSource","clientEventId","consentVersion","event","reason","surface"]) &&
+    hasOnlyProperties(value, ["anonymousSessionHash","campaignSource","clientEventId","consentVersion","event","firstLayerNoticeSha256","firstLayerNoticeVersion","privacyNoticeSha256","privacyNoticeVersion","reason","releaseSha256","surface"]) &&
     (typeof value.anonymousSessionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.anonymousSessionHash)) &&
     (value.campaignSource === "direct" || value.campaignSource === "organic" || value.campaignSource === "community" || value.campaignSource === "partner" || value.campaignSource === "approved_campaign" || value.campaignSource === "unknown") &&
     isUuid(value.clientEventId) &&
     value.consentVersion === "marketing-analytics-v1" &&
-    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "terms_accept" || value.event === "checkout_start" || value.event === "purchase_complete" || value.event === "purchase_failed" || value.event === "company_year_started" || value.event === "bank_connected" || value.event === "year_ready" || value.event === "filing_accepted" || value.event === "company_year_complete" || value.event === "support_contact" || value.event === "unsupported_exit" || value.event === "refund_started" || value.event === "refund_completed") &&
-    ((value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "payment_declined" || value.reason === "provider_unavailable" || value.reason === "technical_failure" || value.reason === "rf1086" || value.reason === "company_tax" || value.reason === "annual_accounts" || value.reason === "eligibility_help" || value.reason === "signup_help" || value.reason === "checkout_help" || value.reason === "banking_help" || value.reason === "year_close_help" || value.reason === "filing_help" || value.reason === "refund_help" || value.reason === "other_help" || value.reason === "customer_changed_mind" || value.reason === "talli_should_have_blocked" || value.reason === "talli_delivery_failure" || value.reason === "new_unsupported_condition" || value.reason === "customer_uncured_evidence") || value.reason === null) &&
-    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup" || value.surface === "checkout" || value.surface === "workspace" || value.surface === "banking" || value.surface === "year_close" || value.surface === "filing" || value.surface === "support" || value.surface === "refund")
+    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "unsupported_exit") &&
+    (typeof value.firstLayerNoticeSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.firstLayerNoticeSha256)) &&
+    (typeof value.firstLayerNoticeVersion === "string" && new RegExp("^[a-z0-9][a-z0-9._-]{0,63}$", "u").test(value.firstLayerNoticeVersion)) &&
+    (typeof value.privacyNoticeSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.privacyNoticeSha256)) &&
+    (typeof value.privacyNoticeVersion === "string" && new RegExp("^[a-z0-9][a-z0-9._-]{0,63}$", "u").test(value.privacyNoticeVersion)) &&
+    ((value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "new_unsupported_condition") || value.reason === null) &&
+    (typeof value.releaseSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.releaseSha256)) &&
+    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup")
   );
 }
 
@@ -2397,10 +2407,10 @@ function isMarketingRepeatedSignalWire(value: unknown): value is MarketingRepeat
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["count","event","reason","surface"]) &&
-    (typeof value.count === "number" && Number.isInteger(value.count) && value.count >= 2) &&
-    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "terms_accept" || value.event === "checkout_start" || value.event === "purchase_complete" || value.event === "purchase_failed" || value.event === "company_year_started" || value.event === "bank_connected" || value.event === "year_ready" || value.event === "filing_accepted" || value.event === "company_year_complete" || value.event === "support_contact" || value.event === "unsupported_exit" || value.event === "refund_started" || value.event === "refund_completed") &&
-    (value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "payment_declined" || value.reason === "provider_unavailable" || value.reason === "technical_failure" || value.reason === "rf1086" || value.reason === "company_tax" || value.reason === "annual_accounts" || value.reason === "eligibility_help" || value.reason === "signup_help" || value.reason === "checkout_help" || value.reason === "banking_help" || value.reason === "year_close_help" || value.reason === "filing_help" || value.reason === "refund_help" || value.reason === "other_help" || value.reason === "customer_changed_mind" || value.reason === "talli_should_have_blocked" || value.reason === "talli_delivery_failure" || value.reason === "new_unsupported_condition" || value.reason === "customer_uncured_evidence") &&
-    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup" || value.surface === "checkout" || value.surface === "workspace" || value.surface === "banking" || value.surface === "year_close" || value.surface === "filing" || value.surface === "support" || value.surface === "refund")
+    (typeof value.count === "number" && Number.isInteger(value.count) && value.count >= 5) &&
+    (value.event === "home_view" || value.event === "eligibility_start" || value.event === "provisional_supported" || value.event === "provisional_clarify" || value.event === "provisional_blocked" || value.event === "definitive_eligible" || value.event === "definitive_blocked" || value.event === "signup_start" || value.event === "unsupported_exit") &&
+    (value.reason === "unknown_material_facts" || value.reason === "unsupported_company" || value.reason === "unsupported_activity" || value.reason === "missing_required_facts" || value.reason === "new_unsupported_condition") &&
+    (value.surface === "homepage" || value.surface === "eligibility" || value.surface === "signup")
   );
 }
 

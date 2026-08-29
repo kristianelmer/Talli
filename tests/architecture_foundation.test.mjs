@@ -215,6 +215,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   assert.deepEqual(result.evidence.modules, [
     "backend-system:marketing_measurement",
     "backend-system:system_boundary",
+    "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
     "backend:ledger",
@@ -279,6 +280,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.shareholder_register_filing.public"],
       kind: "workflow",
       to: "backend:shareholder_register_filing",
+    },
+    {
+      from: "backend-system:passive-validation-observation",
+      imports: ["talli_backend.modules.validation_observation.public"],
+      kind: "workflow",
+      to: "backend-system:validation_observation",
     },
     {
       from: "backend-system:system-boundary-tracer",

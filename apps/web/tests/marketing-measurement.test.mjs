@@ -21,10 +21,6 @@ import {
   createMarketingEventHandler,
   createMarketingWithdrawalHandler,
 } from "../features/public-acquisition/endpoint.ts";
-import {
-  deriveValidationObservationRuntime,
-  validationObservationRuntimeFromEnvironment,
-} from "../features/public-acquisition/validation-observation.ts";
 
 test("consented anonymous funnel events accept only the bounded public vocabulary", () => {
   const event = parseMarketingEvent({
@@ -32,20 +28,20 @@ test("consented anonymous funnel events accept only the bounded public vocabular
     anonymousSessionId: "22222222-2222-4222-8222-222222222222",
     consent: true,
     consentVersion: marketingConsentVersion,
-    event: "filing_accepted",
-    reason: "annual_accounts",
-    surface: "filing",
+    event: "provisional_clarify",
+    reason: "missing_required_facts",
+    surface: "eligibility",
     campaignSource: "direct",
   });
 
-  assert.equal(marketingEventNames.length, 21);
+  assert.equal(marketingEventNames.length, 9);
   assert.deepEqual(event, {
     clientEventId: "11111111-1111-4111-8111-111111111111",
     anonymousSessionId: "22222222-2222-4222-8222-222222222222",
     consentVersion: "marketing-analytics-v1",
-    event: "filing_accepted",
-    reason: "annual_accounts",
-    surface: "filing",
+    event: "provisional_clarify",
+    reason: "missing_required_facts",
+    surface: "eligibility",
     campaignSource: "direct",
   });
 
@@ -62,7 +58,7 @@ test("consented anonymous funnel events accept only the bounded public vocabular
     /marketing_measurement_reason_invalid/u,
   );
   assert.throws(
-    () => parseMarketingEvent({ ...event, consent: true, event: "home_view", reason: "annual_accounts" }),
+    () => parseMarketingEvent({ ...event, consent: true, event: "home_view", reason: "missing_required_facts" }),
     /marketing_measurement_reason_not_allowed/u,
   );
 });
@@ -111,6 +107,11 @@ test("the generated backend client receives only an irreversible session hash", 
   const transport = createMarketingMeasurementTransport({
     baseUrl: "https://backend.talli.no",
     internalKey: "m".repeat(32),
+    noticeBinding: {
+      privacyNoticeVersion: "2026-08-29-candidate",
+      privacyNoticeSha256: "b".repeat(64),
+      releaseSha256: "c".repeat(64),
+    },
     async fetch(url, init) {
       requests.push({ url: String(url), init });
       return Response.json({ accepted: true, duplicate: false }, { status: 202 });
@@ -135,6 +136,11 @@ test("the generated backend client receives only an irreversible session hash", 
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.anonymousSessionId, undefined);
   assert.equal(body.anonymousSessionHash, "fbfe405ca65f6275b98fdeb81ceb4df23903cb9138435c28458e161b27313455");
+  assert.equal(body.firstLayerNoticeVersion, "candidate-2026-08-29");
+  assert.match(body.firstLayerNoticeSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(body.privacyNoticeVersion, "2026-08-29-candidate");
+  assert.equal(body.privacyNoticeSha256, "b".repeat(64));
+  assert.equal(body.releaseSha256, "c".repeat(64));
   assert.equal(requests[0].init.body.includes(anonymousSessionId), false);
 });
 
@@ -356,57 +362,15 @@ test("the operator view consumes aggregate report fields without exposing raw id
 
   for (const aggregate of [
     "report.counts",
-    "report.rates.home_to_purchase",
-    "report.rates.eligibility_to_purchase",
-    "report.rates.company_year_completion",
-    "report.rates.refund",
     "report.rates.unsupported",
-    "report.medianSeconds.home_to_purchase",
-    "report.medianSeconds.company_year_completion",
-    "report.supportBySurface",
     "report.repeatedSignals",
   ]) {
     assert.match(page, new RegExp(aggregate.replaceAll(".", "\\."), "u"));
   }
   assert.doesNotMatch(page, /anonymousSession(?:Id|Hash)|clientEventId/u);
+  assert.doesNotMatch(page, /report\.rates\.(?:home_to_purchase|eligibility_to_purchase|company_year_completion|refund)/u);
+  assert.match(page, /Ingen konto- eller kjøpskohort/u);
   assert.match(page, /Ingen\s+rå økter, personer, selskaper eller fritekst/u);
-});
-
-test("invited-pilot observation is server-configured, expiring, and impossible at full launch", () => {
-  const now = Date.parse("2026-08-29T08:00:00Z");
-  const approved = {
-    requestedMode: "invited-pilot",
-    publicAcquisitionMode: "recruitment",
-    pilotEntitlementId: "11111111-1111-4111-8111-111111111111",
-    approvedRunId: "V2P8-20260829-ALPHA1",
-    expiresAt: "2026-09-29T08:00:00Z",
-    now,
-  };
-
-  assert.deepEqual(deriveValidationObservationRuntime(approved), {
-    mode: "invited-pilot",
-    pilotEntitlementId: approved.pilotEntitlementId,
-    approvedRunId: approved.approvedRunId,
-    expiresAt: approved.expiresAt,
-    blockingReasons: [],
-  });
-
-  const fullLaunch = deriveValidationObservationRuntime({
-    ...approved,
-    publicAcquisitionMode: "launch",
-  });
-  assert.equal(fullLaunch.mode, "off");
-  assert.ok(fullLaunch.blockingReasons.includes("full-launch:forbidden"));
-  assert.equal(fullLaunch.pilotEntitlementId, null);
-
-  const expired = deriveValidationObservationRuntime({
-    ...approved,
-    expiresAt: "2026-08-29T07:59:59Z",
-  });
-  assert.equal(expired.mode, "off");
-  assert.ok(expired.blockingReasons.includes("expiry:missing-or-expired"));
-
-  assert.equal(validationObservationRuntimeFromEnvironment({}, now).mode, "off");
 });
 
 test("consent presentation uses accurate session wording and equal choices", async () => {

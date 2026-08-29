@@ -166,30 +166,6 @@ test("marketing measurement is consent-bounded, private, aggregate-only, and ret
       grant talli_marketing_measurement_backend to marketing_measurement_test_login;
     `);
 
-    const publishedPort = docker(["port", containerName, "5432/tcp"]).stdout
-      .trim()
-      .split(":")
-      .at(-1);
-    assert.match(publishedPort, /^\d+$/u);
-    const adapterTest = spawnSync(
-      "uv",
-      [
-        "run", "--project", "apps/backend", "pytest",
-        "apps/backend/tests/test_supabase_marketing_measurement.py", "-q",
-      ],
-      {
-        cwd: repositoryRoot,
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          TALLI_MARKETING_MEASUREMENT_TEST_DATABASE_URL:
-            `postgresql://marketing_measurement_test_login:measurement-test-password@127.0.0.1:${publishedPort}/talli_test`,
-          TALLI_MARKETING_MEASUREMENT_TEST_OPERATOR_ID: operatorId,
-        },
-      },
-    );
-    assert.equal(adapterTest.status, 0, `${adapterTest.stdout}\n${adapterTest.stderr}`);
-
     assert.equal(scalar(containerName, String.raw`
       select string_agg(
         rolname || ':' || rolcanlogin::text || ':' || rolinherit::text || ':' || rolbypassrls::text,

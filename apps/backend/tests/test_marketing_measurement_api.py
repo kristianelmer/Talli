@@ -57,7 +57,7 @@ class MarketingMeasurementGatewayStub(MarketingMeasurementGateway):
         return MarketingFunnelReport(
             window_start="2026-08-01T00:00:00Z",
             window_end="2026-08-31T00:00:00Z",
-            counts={"home_view": 10, "purchase_complete": 2},
+            counts={"home_view": 10, "signup_start": 2},
             rates={
                 "home_to_purchase": 0.2,
                 "eligibility_to_purchase": 0.25,
@@ -73,10 +73,10 @@ class MarketingMeasurementGatewayStub(MarketingMeasurementGateway):
             support_by_surface={"eligibility": 3},
             repeated_signals=(
                 MarketingRepeatedSignal(
-                    event="support_contact",
+                    event="provisional_clarify",
                     surface="eligibility",
-                    reason="eligibility_help",
-                    count=3,
+                    reason="missing_required_facts",
+                    count=5,
                 ),
             ),
         )
@@ -97,6 +97,11 @@ def event_payload() -> dict[str, object]:
         "clientEventId": "10000000-0000-4000-8000-000000000001",
         "anonymousSessionHash": SESSION_HASH,
         "consentVersion": "marketing-analytics-v1",
+        "firstLayerNoticeVersion": "candidate-2026-08-29",
+        "firstLayerNoticeSha256": "a" * 64,
+        "privacyNoticeVersion": "2026-08-29-candidate",
+        "privacyNoticeSha256": "b" * 64,
+        "releaseSha256": "c" * 64,
         "event": "home_view",
         "reason": None,
         "surface": "homepage",
@@ -133,8 +138,8 @@ def test_record_endpoint_rejects_unknown_fields_and_invalid_reason_pairs() -> No
     client, measurement = measurement_client()
     extra = event_payload() | {"email": "must-not-cross@example.test"}
     invalid_reason = event_payload() | {
-        "event": "support_contact",
-        "surface": "support",
+        "event": "provisional_clarify",
+        "surface": "eligibility",
         "reason": "a free-text explanation",
     }
 
@@ -149,6 +154,22 @@ def test_record_endpoint_rejects_unknown_fields_and_invalid_reason_pairs() -> No
 
     assert extra_response.status_code == 422
     assert reason_response.status_code == 422
+    assert measurement.events == []
+
+
+def test_record_endpoint_rejects_missing_or_malformed_notice_binding() -> None:
+    client, measurement = measurement_client()
+    missing = event_payload()
+    missing.pop("privacyNoticeSha256")
+    malformed = event_payload() | {"releaseSha256": "not-a-release-digest"}
+
+    for payload in (missing, malformed):
+        response = client.post(
+            "/api/v1/marketing-measurement/events",
+            headers=INTERNAL_HEADERS,
+            json=payload,
+        )
+        assert response.status_code == 422
     assert measurement.events == []
 
 
@@ -187,13 +208,13 @@ def test_report_requires_both_internal_transport_and_active_operator() -> None:
     assert no_operator.status_code == 403
     assert no_operator.json()["code"] == "OPERATOR_ACCESS_REQUIRED"
     assert response.status_code == 200
-    assert response.json()["counts"] == {"home_view": 10, "purchase_complete": 2}
+    assert response.json()["counts"] == {"home_view": 10, "signup_start": 2}
     assert response.json()["rates"]["acquisition_cost_minor"] is None
     assert response.json()["repeatedSignals"] == [{
-        "event": "support_contact",
+        "event": "provisional_clarify",
         "surface": "eligibility",
-        "reason": "eligibility_help",
-        "count": 3,
+        "reason": "missing_required_facts",
+        "count": 5,
     }]
     assert measurement.report_actor_ids == ["00000000-0000-0000-0000-000000000011"]
 

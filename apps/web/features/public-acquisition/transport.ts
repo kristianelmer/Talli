@@ -6,7 +6,11 @@ import {
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
-import type { MarketingEvent } from "./measurement.ts";
+import {
+  marketingConsentFirstLayerText,
+  marketingConsentFirstLayerVersion,
+  type MarketingEvent,
+} from "./measurement.ts";
 
 const requestTimeoutMilliseconds = 10_000;
 
@@ -14,6 +18,11 @@ type TransportOptions = {
   baseUrl: string;
   internalKey: string;
   fetch?: typeof globalThis.fetch;
+  noticeBinding: {
+    privacyNoticeVersion: string;
+    privacyNoticeSha256: string;
+    releaseSha256: string;
+  };
 };
 
 function anonymousSessionHash(anonymousSessionId: string): string {
@@ -39,6 +48,13 @@ export function createMarketingMeasurementTransport(options: TransportOptions) {
           clientEventId: event.clientEventId,
           anonymousSessionHash: anonymousSessionHash(event.anonymousSessionId),
           consentVersion: event.consentVersion,
+          firstLayerNoticeVersion: marketingConsentFirstLayerVersion,
+          firstLayerNoticeSha256: createHash("sha256")
+            .update(marketingConsentFirstLayerText, "utf8")
+            .digest("hex"),
+          privacyNoticeVersion: options.noticeBinding.privacyNoticeVersion,
+          privacyNoticeSha256: options.noticeBinding.privacyNoticeSha256,
+          releaseSha256: options.noticeBinding.releaseSha256,
           event: event.event,
           reason: event.reason,
           surface: event.surface,
@@ -80,5 +96,12 @@ export function marketingMeasurementTransportFromEnvironment() {
   return createMarketingMeasurementTransport({
     baseUrl: backendBaseUrl(),
     internalKey: process.env.TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY ?? "",
+    noticeBinding: {
+      privacyNoticeVersion:
+        process.env.TALLI_MARKETING_PRIVACY_NOTICE_VERSION ?? "unapproved",
+      privacyNoticeSha256:
+        process.env.TALLI_MARKETING_PRIVACY_NOTICE_SHA256 ?? "unapproved",
+      releaseSha256: process.env.TALLI_RELEASE_SHA256 ?? "unapproved",
+    },
   });
 }

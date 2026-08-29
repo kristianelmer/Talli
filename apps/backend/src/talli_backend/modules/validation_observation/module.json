@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-technical-module",
+  "name": "validation_observation",
+  "path": "apps/backend/src/talli_backend/modules/validation_observation",
+  "owner": "backend-system:validation_observation",
+  "purpose": "Own the fail-closed, passive and bounded invited-validation observation port without changing product behavior or storing participant identity.",
+  "documentation": "apps/backend/src/talli_backend/modules/validation_observation/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.validation_observation.public",
+  "exports": {
+    "commands": ["BoundedValidationObservation", "AuthorizedValidationObservation"],
+    "queries": [],
+    "events": [],
+    "errors": ["ValidationObservationError"],
+    "identifiers": ["ValidationObservationGateway", "validation_observation_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [
+    {
+      "name": "ValidationObservationGateway",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.validation_observation.public.ValidationObservationGateway",
+      "registrationDecorator": "talli_backend.modules.validation_observation.public.validation_observation_adapter",
+      "adapters": ["talli_backend.adapters.supabase_validation_observation.SupabaseValidationObservationAdapter"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "asyncio", "collections.abc", "dataclasses", "datetime", "hashlib", "hmac", "re", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Product behavior, authorization, eligibility, accounting, filing, provider, billing, or launch decisions",
+    "Identity, contact, organization, financial, document, bank, URL, source-attribution, or free-text storage",
+    "Browser mode, entitlement, run, case-code, or observation authority",
+    "Participant recruitment, legal approval, provider activation, filing, or spend"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_validation_observation.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}
