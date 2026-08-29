@@ -1,6 +1,7 @@
 # Marketing Measurement Decision Draft
 
-Status: founder product direction approved; exact text still requires legal/privacy review
+Status: founder product directions approved; exact text and deployed facts still
+require legal/privacy review
 
 Issue: #196
 
@@ -29,6 +30,98 @@ launch** direction on 2026-08-29. This approval means:
 This is a product-minimization decision. It is not approval of the exact notice,
 the processor schedule, a legal classification, publication, deployment or
 activation. Those gates remain below.
+
+## Recorded Founder Checklist Decision
+
+On 2026-08-29 Kristian Elmer approved the product direction for all twelve
+plain-language review points presented for this measurement boundary:
+
+- use measurement only to learn where the public company check and onboarding
+  succeed or stop;
+- keep the service fully usable after refusal and do nothing optional before
+  affirmative consent;
+- keep the public measurement payload to a random session identifier and fixed,
+  bounded event fields, with no name, email, organization number, free text,
+  documents, bank, accounting or financial data;
+- describe the identifier as a random session ID rather than claiming the
+  measurement is anonymous;
+- keep the browser session at 30 minutes, raw events at no more than 90 days and
+  the withdrawal tombstone at no more than 30 minutes;
+- add a minimized consent proof containing time, consent/notice version and
+  digest, and the random session hash, without an account or company link;
+- stop collection and request raw-session deletion on withdrawal, with a safe
+  retry if the first deletion request fails;
+- suppress repeated-signal reporting below five separate sessions rather than
+  the previously implemented threshold of two;
+- give acceptance and refusal equal visual prominence and one action each;
+- never link public marketing measurement to account, company, purchase,
+  company-year, support or refund data;
+- keep activation blocked until the exact deployed provider, logging, backup,
+  region, recipient, transfer and privileged-access facts have been verified;
+  and
+- identify ELMER WELFIS / Talli as controller and `post@talli.no` as the privacy
+  contact, subject to the final legal-name/contact and DPO applicability check.
+
+This records founder product choices and required launch conditions. It does not
+assert that the provider facts have been verified, approve a legal
+classification, approve the exact notice text/digests, or authorize activation.
+
+## Temporary Invited-Pilot Evaluation Mode
+
+Kristian also approved a separate, higher-resolution evaluation mode for the
+first invited testing phase so Talli can determine whether the product works
+sufficiently. This is validation evidence, not an expansion of public marketing
+analytics, and it must be disabled for full public launch.
+
+The implementation and operating design must enforce all of these conditions:
+
+- the pilot runs the exact normal production product: the same build, routes,
+  screens, calculations, eligibility rules, authorization checks, capability
+  gates, provider adapters and error behavior; there is no test-product branch;
+- the setting controls only whether a passive observer writes a bounded log
+  after a normal product outcome; it cannot unlock, block, alter, retry, replace
+  or simulate a product action;
+- mode is deny-by-default and has only `off` and `invited-pilot` states;
+- `invited-pilot` requires a server-side named pilot entitlement, an approved
+  validation run ID, a start time and a mandatory expiry; a browser flag, query
+  parameter or client request cannot enable it;
+- evidence uses case codes `V-01` through `V-12`; any mapping to a participant or
+  company stays only in the approved protected participant register and never in
+  the public marketing-measurement store;
+- the bounded evaluation record may capture critical task started/completed/
+  failed/blocked state, step and reason code, elapsed duration, intervention
+  count/type/duration, defect or difference classification, rerun result and
+  final filing-package outcome;
+- the evaluation stream must not contain names, email addresses, organization
+  numbers, free text, document contents, filenames, bank/account facts, ledger
+  values, exact monetary amounts or source marketing attribution;
+- invited participants receive the exact validation information and agreement
+  before the mode observes their work, including purpose, fields, retention,
+  withdrawal, export and deletion expectations;
+- raw pilot observations have a separately approved retention period, access is
+  limited to named validation reviewers, and reporting uses the approved case
+  matrix rather than public marketing reports;
+- an observation-write failure never changes, rolls back or hides the normal
+  product result. It marks that test observation incomplete and must be resolved
+  or rerun before the affected acceptance can pass;
+- withdrawal stops new observation and follows the protected-register deletion
+  workflow without weakening legal-hold or incident obligations; and
+- the full-launch gate must prove the mode is `off`, all pilot entitlements are
+  expired or revoked, no public request can enable it, and disabling it preserves
+  only the evidence whose retention was explicitly approved.
+
+Before pilot intake, an equivalence test must run the same representative normal
+product actions with observation `off` and `invited-pilot` and prove identical
+product responses, persisted business state and external calls. The sole permitted
+difference is the additional bounded observation-log write. Turning the setting
+off for full launch therefore removes only that write, not product functionality.
+
+The 2+8 validation plan defines whether the product is sufficient: every
+critical journey completes, at least 90% of core tasks complete without help,
+median support is below 30 minutes per company-year, and no unexplained material
+difference, duplicate or incident remains. The temporary mode may gather the
+bounded observations needed for those decisions; it must not silently invent a
+different success standard.
 
 ## Current Implemented Boundary
 
@@ -67,7 +160,7 @@ database provider, proxy, backup system or incident tool logs or retains.
 | Internal transport | The Next server hashes the random session UUID with SHA-256 and sends the hash, client event UUID, consent version and bounded event/reason/surface/source through the generated client to the FastAPI backend. An internal server key authenticates this hop. | Request-time only unless infrastructure logs it. | Implemented and tested. Raw UUID should remain at the browser/Next boundary; log redaction and secret handling require deployed verification. |
 | Raw database event | Private `backend_system.marketing_funnel_events` rows contain an identity key, client event UUID, 64-character session hash, consent version, event, reason, surface, source, receive time and expiry time. Direct `anon`, `authenticated` and `service_role` access is revoked; forced RLS applies. | Each row expires no later than 90 days after receipt; purge runs during ingest/report/maintenance. Only restricted ingest/report roles execute typed functions. | Local database/runtime evidence passed. Hosted migration, backup copies, privileged access and purge scheduling/monitoring remain separate gates. |
 | Withdrawal tombstone | Private `backend_system.marketing_funnel_withdrawals` contains session hash, withdrawal time and expiry. Withdrawal deletes matching raw events before writing/updating the tombstone. | Tombstone lifetime is at most 30 minutes and is purged by the same maintenance function. | Implemented and tested. It prevents a late request from recreating the withdrawn session during the active window. |
-| Operator report | Counts by bounded event, short-session conversion/unsupported rates, one short-session median, support counts by surface and repeated bounded reason signals. Raw session hashes and event rows are not returned. Company-year/refund/long-cycle fields remain `null`. | Computed from live retained rows; no separate report table is implemented. Operator access requires verified active-operator status. | Implemented and tested. Repeated signals currently appear from count two; privacy review must approve or raise the small-cell threshold before activation. |
+| Operator report | Counts by bounded event, short-session conversion/unsupported rates, one short-session median, support counts by surface and repeated bounded reason signals. Raw session hashes and event rows are not returned. Company-year/refund/long-cycle fields remain `null`. | Computed from live retained rows; no separate report table is implemented. Operator access requires verified active-operator status. | Implemented and tested. Founder-approved repeated-signal suppression now requires at least five observations. Broader report privacy review remains required before activation. |
 | Consent evidence | Each accepted event carries `marketing-analytics-v1`; the browser consent object records version and expiry. There is no separate durable consent-action record binding the exact first-layer/full-notice digest to the action. | Browser state lasts at most 30 minutes; event rows at most 90 days. | Insufficient for a final demonstrability claim until legal/privacy review approves a minimized proof design and the released notice digest/version is bound and tested. |
 | Backups, provider logs and recipients | No application source establishes production backup retention, CDN/platform/database log fields, processor identities, processing regions or transfer mechanisms. | Unknown. | Must remain explicitly pending until checked against the exact deployed services, settings and contracts. |
 
@@ -274,6 +367,9 @@ Controls, with equal visual prominence and one action each:
       into application, proxy, platform or provider logs.
 - [x] Choose explicitly: no longitudinal marketing cohort for launch (founder
       product decision recorded 2026-08-29).
+- [x] Approve the temporary higher-resolution invited-pilot evaluation direction,
+      with protected case-code evidence and a hard `off` requirement for full
+      public launch (founder product decision recorded 2026-08-29).
 - [ ] Record approver names/roles, date, approved notice and consent digests,
       conditions, review/expiry date and launch/no-launch decision.
 

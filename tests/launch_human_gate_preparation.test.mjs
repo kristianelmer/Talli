@@ -34,12 +34,42 @@ test("measurement decision inventories application-controlled data without hoste
   assert.match(measurementDecision, /pseudonymous\/personal pending/u);
   assert.match(measurementDecision, /must remain explicitly pending/iu);
   assert.match(measurementDecision, /not “anonym måling”/u);
+  assert.match(measurementDecision, /requires at least five observations/u);
   assert.doesNotMatch(measurementDecision, /hosted facts (?:are|were) approved/iu);
 });
 
 test("validation plan links preparation without opening intake", () => {
   assert.match(validationPlan, /representative-validation-pre-intake-pack\.md/u);
   assert.match(validationPlan, /does not open this entry gate, claim #197 or authorize/u);
+});
+
+test("founder-approved pilot observation direction stays separate and fails closed for launch", () => {
+  for (const required of [
+    /Temporary Invited-Pilot Evaluation Mode/u,
+    /only `off` and `invited-pilot` states/u,
+    /server-side named pilot entitlement/u,
+    /V-01` through `V-12/u,
+    /must be disabled for full public launch/u,
+    /there is no test-product branch/u,
+    /sole permitted\s+difference is the additional bounded observation-log write/u,
+    /at least 90% of core tasks/u,
+  ]) {
+    assert.match(measurementDecision, required);
+  }
+
+  for (const required of [
+    /Temporary Higher-Resolution Observation Mode/u,
+    /must not be\s+enabled by a URL, browser setting or client-supplied request field/u,
+    /marketing\s+source attribution/u,
+    /exact normal production product/u,
+    /sole permitted difference/u,
+    /proven `off` before full public launch/u,
+  ]) {
+    assert.match(validationPlan, required);
+  }
+
+  assert.match(preIntakePack, /Design approved; implementation\/activation blocked/u);
+  assert.match(preIntakePack, /no public request can re-enable it/u);
 });
 
 test("pre-intake pack stays blank, protected-store-first and fail closed", () => {

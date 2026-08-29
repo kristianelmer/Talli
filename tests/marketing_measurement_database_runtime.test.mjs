@@ -7,6 +7,7 @@ import test from "node:test";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const migration = "/repo/supabase/migrations/20260828103000_marketing_funnel_measurement.sql";
+const thresholdMigration = "/repo/supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql";
 const localMigration = new URL(
   "../supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
   import.meta.url,
@@ -158,6 +159,7 @@ test("marketing measurement is consent-bounded, private, aggregate-only, and ret
 
     psql(containerName, [], bootstrapSql);
     psql(containerName, ["--file", migration]);
+    psql(containerName, ["--file", thresholdMigration]);
     psql(containerName, [], String.raw`
       create role marketing_measurement_test_login
         login password 'measurement-test-password' noinherit nobypassrls;
@@ -333,6 +335,28 @@ test("marketing measurement is consent-bounded, private, aggregate-only, and ret
     assert.deepEqual(report.repeated_signals, []);
     assert.equal(JSON.stringify(report).includes(firstSessionHash), false);
     assert.equal(JSON.stringify(report).includes(homeEventId), false);
+
+    for (let index = 0; index < 5; index += 1) {
+      assert.equal(scalar(containerName, recordSql({
+        clientEventId: `40000000-0000-4000-8000-00000000000${index}`,
+        sessionHash: String(index + 1).repeat(64),
+        event: "support_contact",
+        reason: "'eligibility_help'",
+        surface: "eligibility",
+      })), "t");
+      const thresholdReport = JSON.parse(scalar(containerName, String.raw`
+        begin;
+        set local role marketing_measurement_report_executor;
+        select pg_catalog.set_config('talli.verified_actor_id', '${operatorId}', true);
+        select backend_system.report_marketing_funnel_v1(30);
+        commit;
+      `));
+      assert.equal(
+        thresholdReport.repeated_signals.length,
+        index < 4 ? 0 : 1,
+        "repeated signals must remain suppressed until five observations",
+      );
+    }
 
     const outsiderReport = psqlFailure(containerName, String.raw`
       begin;

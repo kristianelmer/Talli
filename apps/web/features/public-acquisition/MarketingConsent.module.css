@@ -59,15 +59,21 @@
   outline-offset: 3px;
 }
 
-.primary {
-  background: var(--color-brand);
-  color: #fff;
-}
-
 .secondary {
   background: transparent;
   border-color: var(--color-border) !important;
   color: var(--color-text);
+}
+
+.choice {
+  background: var(--color-surface);
+  border-color: var(--color-brand-strong) !important;
+  color: var(--color-brand-strong);
+  min-width: 142px;
+}
+
+.choice:hover {
+  background: var(--color-surface-muted);
 }
 
 .actions a {

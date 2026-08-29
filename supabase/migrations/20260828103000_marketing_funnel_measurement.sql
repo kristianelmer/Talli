@@ -476,7 +476,7 @@ begin
     where received_at >= v_from and received_at <= v_to
       and retained_until > v_to and reason_code is not null
     group by event_name, surface, reason_code
-    having pg_catalog.count(*) >= 2
+    having pg_catalog.count(*) >= 5
   ) signals;
 
   with session_stages as (

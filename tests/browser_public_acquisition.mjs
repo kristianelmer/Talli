@@ -127,17 +127,17 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
         : "";
     });
     keyboardOrder.push(focused.trim());
-    if (focused.includes("Tillat anonym måling")) break;
+    if (focused.includes("Tillat bruksmåling")) break;
   }
   assert.ok(keyboardOrder.some((label) => label.includes("Sjekk selskapet gratis")));
-  assert.ok(keyboardOrder.at(-1)?.includes("Tillat anonym måling"));
+  assert.ok(keyboardOrder.at(-1)?.includes("Tillat bruksmåling"));
   assert.equal(await focusedControlHasVisibleOutline(desktop), true);
 
   await desktop.keyboard.press("Enter");
   await waitFor(() => backendRequests.some((request) => request.body.event === "home_view"));
-  await desktop.getByRole("complementary", { name: "Frivillig, anonym bruksmåling" })
+  await desktop.getByRole("complementary", { name: "Hjelp oss forbedre selskapsjekken" })
     .locator("[aria-live='polite']")
-    .getByText("Anonym bruksmåling er slått på for denne fanen.")
+    .getByText("Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen.")
     .waitFor();
   assert.equal(await desktop.evaluate(() => sessionStorage.length), 1);
   const homeEvent = backendRequests.find((request) => request.body.event === "home_view");
@@ -194,9 +194,9 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   await desktop.goto(baseUrl);
   await desktop.getByRole("button", { name: "Trekk samtykke og slett økten" }).click();
   await waitFor(() => backendRequests.some((request) => request.path.endsWith("/withdrawals")));
-  await desktop.getByRole("complementary", { name: "Frivillig, anonym bruksmåling" })
+  await desktop.getByRole("complementary", { name: "Hjelp oss forbedre selskapsjekken" })
     .locator("[aria-live='polite']")
-    .getByText("Samtykket er trukket, og den anonyme økten er slettet.")
+    .getByText("Samtykket er trukket, og økten med tilfeldig ID er slettet.")
     .waitFor();
   assert.equal(await desktop.evaluate(() => sessionStorage.length), 0);
 

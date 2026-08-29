@@ -21,6 +21,10 @@ import {
   createMarketingEventHandler,
   createMarketingWithdrawalHandler,
 } from "../features/public-acquisition/endpoint.ts";
+import {
+  deriveValidationObservationRuntime,
+  validationObservationRuntimeFromEnvironment,
+} from "../features/public-acquisition/validation-observation.ts";
 
 test("consented anonymous funnel events accept only the bounded public vocabulary", () => {
   const event = parseMarketingEvent({
@@ -366,4 +370,61 @@ test("the operator view consumes aggregate report fields without exposing raw id
   }
   assert.doesNotMatch(page, /anonymousSession(?:Id|Hash)|clientEventId/u);
   assert.match(page, /Ingen\s+rå økter, personer, selskaper eller fritekst/u);
+});
+
+test("invited-pilot observation is server-configured, expiring, and impossible at full launch", () => {
+  const now = Date.parse("2026-08-29T08:00:00Z");
+  const approved = {
+    requestedMode: "invited-pilot",
+    publicAcquisitionMode: "recruitment",
+    pilotEntitlementId: "11111111-1111-4111-8111-111111111111",
+    approvedRunId: "V2P8-20260829-ALPHA1",
+    expiresAt: "2026-09-29T08:00:00Z",
+    now,
+  };
+
+  assert.deepEqual(deriveValidationObservationRuntime(approved), {
+    mode: "invited-pilot",
+    pilotEntitlementId: approved.pilotEntitlementId,
+    approvedRunId: approved.approvedRunId,
+    expiresAt: approved.expiresAt,
+    blockingReasons: [],
+  });
+
+  const fullLaunch = deriveValidationObservationRuntime({
+    ...approved,
+    publicAcquisitionMode: "launch",
+  });
+  assert.equal(fullLaunch.mode, "off");
+  assert.ok(fullLaunch.blockingReasons.includes("full-launch:forbidden"));
+  assert.equal(fullLaunch.pilotEntitlementId, null);
+
+  const expired = deriveValidationObservationRuntime({
+    ...approved,
+    expiresAt: "2026-08-29T07:59:59Z",
+  });
+  assert.equal(expired.mode, "off");
+  assert.ok(expired.blockingReasons.includes("expiry:missing-or-expired"));
+
+  assert.equal(validationObservationRuntimeFromEnvironment({}, now).mode, "off");
+});
+
+test("consent presentation uses accurate session wording and equal choices", async () => {
+  const component = await readFile(
+    new URL("../features/public-acquisition/MarketingConsent.tsx", import.meta.url),
+    "utf8",
+  );
+  const stylesheet = await readFile(
+    new URL("../features/public-acquisition/MarketingConsent.module.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(component, /tilfeldig økt-ID/u);
+  assert.match(component, /Tillat bruksmåling/u);
+  assert.doesNotMatch(
+    component,
+    /Anonym bruksmåling|anonym måling|anonyme økten|anonym bruksmåling/u,
+  );
+  assert.equal((component.match(/className=\{styles\.choice\}/gu) ?? []).length, 2);
+  assert.match(stylesheet, /\.choice\s*\{/u);
 });

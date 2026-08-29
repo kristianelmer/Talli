@@ -36,6 +36,7 @@ date, review/expiry date and `approved` decision before the dependent action.
 | Participant information and terms | **Draft/pending** | Plain-language validation purpose, scope, confidentiality, independence, support, withdrawal, export, deletion, retention, incident, exit and no-accounting-service boundaries are versioned and approved. |
 | Business Terms and DPA | **Draft/pending human review** | Current versions/digests are approved and an authorized company representative can accept them with immutable evidence. |
 | Controller/processor and privacy basis | **Pending** | Purpose-by-purpose roles, bases, data categories, recipients, rights and retention are approved for the validation program and the exact deployed stack. |
+| Temporary pilot observation mode | **Design approved; implementation/activation blocked** | The exact normal product is proven behaviorally identical with observation on/off; the only difference is a bounded post-outcome log write. Server-side named pilot entitlement, approved run ID, automatic expiry, protected case-code evidence and launch-time `off` proof are implemented and reviewed. A URL, browser state or client field cannot enable it. |
 | Protected participant register | **Not selected** | A named human-controlled store with least privilege, MFA, audit, backup, retention and deletion is approved. Git/issues/chat are forbidden stores. |
 | Hosted tenant isolation/private storage | **Pending current target evidence** | Owner/member/outsider tests and private-object access checks pass against the exact target and are signed by the security reviewer. |
 | MFA and privileged/operator access | **Pending current target evidence** | Enrollment, recovery, fresh step-up, least-privilege operator access and audit are rehearsed and approved. |
@@ -112,6 +113,9 @@ messages or combinations that make a company reasonably identifiable.
 | Participant authority/agreements | `verified`, `blocked` |
 | Data receipt | `not-started`, `complete`, `withdrawn` |
 | Outcome | `not-started`, `passed`, `failed`, `stopped` |
+| Observation mode | `off`, `invited-pilot` |
+| Pilot entitlement | `verified`, `expired`, `revoked`, `blocked` |
+| Approved run ID | bounded non-identifying run code, or `blocked` |
 
 ### Difference register
 
@@ -157,6 +161,11 @@ narrative or affected data into the repository.
    approved saturation rules require it.
 8. Record named human conclusions and immutable redacted evidence only after the
    underlying protected records are complete.
+9. Before full public launch, prove the observation mode is `off`, every pilot
+   entitlement is expired or revoked and no public request can re-enable it.
+10. Compare observation `off` and `invited-pilot` on the same representative
+    normal actions; product responses, business writes and external calls must be
+    identical, with only the bounded observation-log write added.
 
 ## Automatic Stop Rules
 

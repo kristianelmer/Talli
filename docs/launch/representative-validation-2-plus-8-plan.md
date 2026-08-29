@@ -25,6 +25,50 @@ The no-contact preparation materials are in
 local checks in that pack does not open this entry gate, claim #197 or authorize
 outreach or data intake.
 
+## Temporary Higher-Resolution Observation Mode
+
+The founder approved a separate test-only observation mode for the invited 2+8
+validation run. Its purpose is to produce a definitive product-sufficiency
+decision, not to enlarge public marketing analytics.
+
+The invited pilot uses the exact normal production product. The build, UI,
+eligibility and accounting rules, authorization, capability gates, provider
+adapters, persistence, errors and customer workflow must be identical with the
+observer on or off. There are no pilot-only shortcuts, mock outcomes, relaxed
+checks or alternate product branches. The setting controls only a passive
+bounded log written after the normal product outcome.
+
+The future implementation must be deny-by-default with only `off` and
+`invited-pilot` states. `invited-pilot` must require a server-side named pilot
+entitlement, approved validation run ID and automatic expiry. It must not be
+enabled by a URL, browser setting or client-supplied request field. Full public
+launch requires immutable evidence that the mode is `off` and every pilot
+entitlement has expired or been revoked.
+
+Use `V-01` through `V-12` in evaluation records. The identity mapping remains in
+the approved protected participant register. Bounded observations may record:
+
+- critical task started, completed, failed or blocked;
+- bounded stage and reason codes;
+- elapsed task time;
+- intervention type, count and duration;
+- difference/defect classification and rerun result; and
+- bounded final package outcome for RF-1086, company tax and annual accounts.
+
+Do not put identity, contact details, organization number, free text, document or
+bank contents, filenames, ledger values, exact monetary amounts, or marketing
+source attribution in this evaluation stream. Participant information,
+agreement, retention, access, withdrawal, export and deletion behavior must be
+approved before observation starts. This mode remains blocked by the same entry
+gate as all named pilot data.
+
+An observation-write failure must not change, roll back, retry or hide the
+product result. It makes the affected test evidence incomplete, so the evidence
+must be recovered or the normal action rerun before acceptance. Before intake,
+run the same representative actions with observation `off` and `invited-pilot`;
+responses, business-state writes and external calls must match exactly, with the
+bounded observation-log write as the sole permitted difference.
+
 ## Phase 1 — Two Anchors
 
 Use two overlapping eligible cases:
@@ -69,6 +113,8 @@ ten completed company-years.
 - Talli staff/agents exercise no customer-specific accounting judgment.
 - Zero unexplained material differences, incidents or duplicates remain.
 - Genuine final outcomes exist for RF-1086, company tax and annual accounts.
+- The temporary observation mode supplies a complete bounded case matrix for the
+  decision and is proven `off` before full public launch.
 
 Extend to 12 company-years if any accepted pattern is covered only once, a
 difference remains unstable, or support/confusion thresholds are not settled.

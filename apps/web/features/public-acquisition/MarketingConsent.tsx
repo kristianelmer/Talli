@@ -40,7 +40,7 @@ export function MarketingConsent() {
       removeMarketingConsent(window.sessionStorage);
       setPendingWithdrawal(pending);
       setConsentState("declined");
-      setNotice("Måling er slått av. Sletting av den anonyme økten prøves på nytt.");
+      setNotice("Måling er slått av. Sletting av økten med tilfeldig ID prøves på nytt.");
       void submitWithdrawal(pending);
       return;
     }
@@ -82,7 +82,7 @@ export function MarketingConsent() {
       removeMarketingConsent(window.sessionStorage);
       setSession(null);
       setConsentState("prompt");
-      setNotice("Den anonyme måleøkten er utløpt. Ny måling krever nytt samtykke.");
+      setNotice("Måleøkten med tilfeldig ID er utløpt. Ny måling krever nytt samtykke.");
     }, remainingMilliseconds);
     return () => window.clearTimeout(expiryTimer);
   }, [session]);
@@ -101,7 +101,7 @@ export function MarketingConsent() {
     setConsentState("granted");
     setNotice(
       homeViewRecorded
-        ? "Anonym bruksmåling er slått på for denne fanen."
+        ? "Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen."
         : "Samtykket er lagret, men måleforespørselen kunne ikke sendes.",
     );
   }
@@ -110,7 +110,7 @@ export function MarketingConsent() {
     removeMarketingConsent(window.sessionStorage);
     setSession(null);
     setConsentState("declined");
-    setNotice("Anonym bruksmåling er slått av.");
+    setNotice("Frivillig bruksmåling er slått av.");
   }
 
   async function submitWithdrawal(anonymousSessionId: string) {
@@ -119,7 +119,7 @@ export function MarketingConsent() {
       if (!withdrawn) throw new Error("marketing_measurement_withdrawal_failed");
       removePendingMarketingWithdrawal(window.sessionStorage);
       setPendingWithdrawal(null);
-      setNotice("Samtykket er trukket, og den anonyme økten er slettet.");
+      setNotice("Samtykket er trukket, og økten med tilfeldig ID er slettet.");
     } catch {
       setPendingWithdrawal(anonymousSessionId);
       setNotice("Måling er slått av, men sletting kunne ikke bekreftes. Prøv igjen.");
@@ -133,7 +133,7 @@ export function MarketingConsent() {
     setSession(null);
     setPendingWithdrawal(session.anonymousSessionId);
     setConsentState("declined");
-    setNotice("Måling er slått av. Sletter den anonyme økten …");
+    setNotice("Måling er slått av. Sletter økten med tilfeldig ID …");
     void submitWithdrawal(session.anonymousSessionId);
   }
 
@@ -142,19 +142,20 @@ export function MarketingConsent() {
   return (
     <aside className={styles.panel} aria-labelledby="marketing-consent-title">
       <div className={styles.copy}>
-        <strong id="marketing-consent-title">Frivillig, anonym bruksmåling</strong>
+        <strong id="marketing-consent-title">Hjelp oss forbedre selskapsjekken</strong>
         {consentState === "prompt" ? (
           <p>
-            Talli kan sende faste hendelseskoder uten navn, e-post, organisasjonsnummer,
-            fritekst eller sideadresse. En tilfeldig økt kobler hendelser i høyst 30
-            minutter. De faste hendelsene slettes senest etter 90 dager, eller når du
-            trekker samtykket i denne fanen. Ingenting lagres eller sendes før du velger
-            «Tillat».
+            Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten
+            lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter
+            og faste koder, uten navn, e-post, organisasjonsnummer, fritekst, sideadresse,
+            bank-, dokument- eller regnskapsdata. Råhendelser slettes senest etter 90
+            dager. Ingenting valgfritt lagres eller sendes før du velger «Tillat
+            bruksmåling», og Talli virker på samme måte hvis du velger «Nei takk».
           </p>
         ) : (
           <p>{notice || (consentState === "granted"
-            ? "Anonym bruksmåling er slått på for denne fanen."
-            : "Anonym bruksmåling er slått av.")}</p>
+            ? "Frivillig bruksmåling med tilfeldig økt-ID er slått på for denne fanen."
+            : "Frivillig bruksmåling er slått av.")}</p>
         )}
       </div>
       <div className={styles.actions}>
@@ -172,10 +173,10 @@ export function MarketingConsent() {
           </button>
         ) : (
           <>
-            <button className={styles.primary} type="button" onClick={grant}>
-              Tillat anonym måling
+            <button className={styles.choice} type="button" onClick={grant}>
+              Tillat bruksmåling
             </button>
-            <button className={styles.secondary} type="button" onClick={decline}>
+            <button className={styles.choice} type="button" onClick={decline}>
               Nei takk
             </button>
           </>
