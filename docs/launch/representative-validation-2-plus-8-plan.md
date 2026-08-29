@@ -20,6 +20,11 @@ participant terms/DPA, lawful channel, hosted isolation/storage, MFA, logging,
 backup/restore, retention/export/delete, incident handling and named contacts are
 approved and current. Provider calls, charges and filings keep their own gates.
 
+The no-contact preparation materials are in
+`representative-validation-pre-intake-pack.md`. Completing blank templates or
+local checks in that pack does not open this entry gate, claim #197 or authorize
+outreach or data intake.
+
 ## Phase 1 — Two Anchors
 
 Use two overlapping eligible cases:

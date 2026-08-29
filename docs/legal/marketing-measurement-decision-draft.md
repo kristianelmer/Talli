@@ -50,6 +50,38 @@ The implementation intentionally returns `null` for company-year completion,
 refund and purchase-to-completion cohort measures. A 30-minute session cannot
 truthfully link a months-long company-year lifecycle.
 
+## Implementation-Derived Data Inventory
+
+This inventory is derived from source revision
+`99c845b332522998278827510a7d30220a2a3137`. It describes application-controlled
+behavior only. It does not establish what a deployed CDN, hosting platform,
+database provider, proxy, backup system or incident tool logs or retains.
+
+| Layer | Application-controlled fields and behavior | Retention / access | Review state |
+| --- | --- | --- | --- |
+| Browser consent state | `sessionStorage` key `talli.marketing-consent.v1` contains consent version, random UUID session ID, allowlisted campaign source, expiry timestamp and whether `home_view` was queued. It is created only after affirmative consent. | One browser tab; expires after 30 minutes and is removed by expiry or withdrawal. | Implemented and tested. Treat the UUID as pseudonymous/personal pending the Recital 26 assessment. |
+| Browser withdrawal retry | `sessionStorage` key `talli.marketing-withdrawal.v1` contains only the random session UUID while deletion confirmation is pending. | Removed after confirmed deletion; otherwise retained in the tab for retry. | Implemented and tested. Legal review must confirm the retry state is strictly necessary for honoring withdrawal and how long an abandoned tab may retain it. |
+| Campaign input | The application reads only the `source` query parameter and maps it to `organic`, `community`, `partner`, `approved_campaign`, `direct` or `unknown`. The raw value and full page URL are not included in the measurement payload. | The bounded value follows the 30-minute session and event retention below. | Application minimization is implemented. Deployed access logs may still contain the original URL/query and remain unverified. Campaign URLs must never contain identity or company data. |
+| Same-origin browser request | POST payload fields are `clientEventId`, `anonymousSessionId`, literal `consent: true`, `consentVersion`, bounded `event`, nullable bounded `reason`, bounded `surface` and bounded `campaignSource`. Withdrawal sends only the session UUID. Bodies are JSON and limited to 2,048 bytes. | Sent only after consent to `/api/marketing-events`; responses are `no-store`. | Implemented and tested. The application rejects unknown fields, free text, page address and personal/company/financial/document fields. |
+| HTTP/runtime metadata | The Next route checks Origin, Content-Type and Content-Length. The application does not read or persist IP address, User-Agent, Referer, cookies or account identity for measurement. | Unknown at CDN, hosting, proxy, runtime and security-log layers. | Must be verified from deployed configuration and contracts. “Not used by application code” is not a no-log claim. |
+| Internal transport | The Next server hashes the random session UUID with SHA-256 and sends the hash, client event UUID, consent version and bounded event/reason/surface/source through the generated client to the FastAPI backend. An internal server key authenticates this hop. | Request-time only unless infrastructure logs it. | Implemented and tested. Raw UUID should remain at the browser/Next boundary; log redaction and secret handling require deployed verification. |
+| Raw database event | Private `backend_system.marketing_funnel_events` rows contain an identity key, client event UUID, 64-character session hash, consent version, event, reason, surface, source, receive time and expiry time. Direct `anon`, `authenticated` and `service_role` access is revoked; forced RLS applies. | Each row expires no later than 90 days after receipt; purge runs during ingest/report/maintenance. Only restricted ingest/report roles execute typed functions. | Local database/runtime evidence passed. Hosted migration, backup copies, privileged access and purge scheduling/monitoring remain separate gates. |
+| Withdrawal tombstone | Private `backend_system.marketing_funnel_withdrawals` contains session hash, withdrawal time and expiry. Withdrawal deletes matching raw events before writing/updating the tombstone. | Tombstone lifetime is at most 30 minutes and is purged by the same maintenance function. | Implemented and tested. It prevents a late request from recreating the withdrawn session during the active window. |
+| Operator report | Counts by bounded event, short-session conversion/unsupported rates, one short-session median, support counts by surface and repeated bounded reason signals. Raw session hashes and event rows are not returned. Company-year/refund/long-cycle fields remain `null`. | Computed from live retained rows; no separate report table is implemented. Operator access requires verified active-operator status. | Implemented and tested. Repeated signals currently appear from count two; privacy review must approve or raise the small-cell threshold before activation. |
+| Consent evidence | Each accepted event carries `marketing-analytics-v1`; the browser consent object records version and expiry. There is no separate durable consent-action record binding the exact first-layer/full-notice digest to the action. | Browser state lasts at most 30 minutes; event rows at most 90 days. | Insufficient for a final demonstrability claim until legal/privacy review approves a minimized proof design and the released notice digest/version is bound and tested. |
+| Backups, provider logs and recipients | No application source establishes production backup retention, CDN/platform/database log fields, processor identities, processing regions or transfer mechanisms. | Unknown. | Must remain explicitly pending until checked against the exact deployed services, settings and contracts. |
+
+### Data-flow boundary
+
+`browser tab → same-origin Next route → generated internal API client → FastAPI
+backend → private PostgreSQL functions/table → aggregate-only operator view`
+
+No application-controlled step joins the session to login, account, company,
+purchase, support case, refund, filing or company-year identity. This statement
+does not extend to unverified infrastructure logs. Until the hosted facts and
+Recital 26 assessment are approved, customer-facing copy must use “frivillig
+bruksmåling med tilfeldig økt-ID”, not “anonym måling”.
+
 ## Official-Source Requirements
 
 These are source findings, not product recommendations:
@@ -216,8 +248,11 @@ Controls, with equal visual prominence and one action each:
 
 - [ ] Confirm the controller's legal name, contact route and DPO/contact if
       applicable.
-- [ ] Inventory browser keys, IDs, payload fields, HTTP metadata and logs,
-      database rows, reports, backups, recipients and processors.
+- [x] Inventory application-controlled browser keys, IDs, payload fields,
+      database rows, reports, retention and access paths in the table above.
+- [ ] Confirm deployed HTTP/CDN/proxy/runtime/database logs, backups, recipients,
+      processors, regions, transfers and privileged access against current
+      settings and contracts; application source cannot prove these facts.
 - [ ] Classify each layer as anonymous, pseudonymous or personal through a
       written Recital 26 singling-out/reidentification assessment.
 - [ ] Approve one precise purpose and lawful basis for every event, report and
