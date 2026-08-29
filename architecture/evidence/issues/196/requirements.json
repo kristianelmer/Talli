@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#196",
   "source": "https://github.com/kristianelmer/Talli/issues/196",
-  "sourceCheckedAt": "2026-08-29T08:25:04Z",
+  "sourceCheckedAt": "2026-08-29T09:05:26Z",
   "route": {
     "entryGate": "#187",
     "entryGateState": "CLOSED",
@@ -17,10 +17,11 @@
       "first-party privacy-minimized funnel measurement and aggregate operator evidence",
       "backend-owned passive invited-pilot observer, private run and entitlement authority, and launch-off evidence",
       "fail-closed durable consent-proof mechanics without approving or activating a notice release",
+      "ordinary GitHub publication and protected Vercel Preview deployment under the standing owner no-cost authority",
       "local copy, SEO, accessibility, performance, mobile, security, and release gates"
     ],
     "externalNotAuthorized": [
-      "deployment or public launch",
+      "production deployment or public launch",
       "tracker or payment-provider activation",
       "checkout, charge, refund, or paid advertising",
       "customer contact, outreach, named-company intake, or production data"
@@ -103,12 +104,12 @@
     },
     {
       "id": "GH-196-A9",
-      "requirement": "No implementation deployment, tracker provider, ad purchase, or customer contact is authorized; automated previews must be inventoried and successor pushes held behind the deployment and possible-charge gate.",
+      "requirement": "No production/public deployment, tracker provider, ad purchase, or customer contact is authorized; ordinary protected Vercel Previews are inventoried under the standing owner no-cost authority.",
       "plannedEvidence": [
         {"path": ".github/workflows/release-gate.yml", "command": "gh api 'repos/kristianelmer/Talli/deployments?per_page=100'"},
         {"path": "architecture/evidence/issues/196/requirements.json", "command": "verify GitHub App deployments as well as Actions before any no-deployment claim"}
       ],
-      "status": "corrected-successful-vercel-preview-6153403669-exists-for-00a29ce-no-tracker-ad-purchase-customer-contact-or-successor-implementation-push"
+      "status": "protected-successor-preview-6154166446-passed-for-b3ae370c-no-production-launch-tracker-ad-purchase-or-customer-contact"
     }
   ],
   "founderDecisionAddenda": {
@@ -126,16 +127,33 @@
     ],
     "observerState": "migration and startup create no run, entitlement, reviewer, participant mapping or observation; hosted participant information, retention, mapping, reviewer and deletion approvals remain external",
     "consentProofState": "mechanism passed against real PostgreSQL; no approved notice/release row exists and current 2026-07-15 privacy notice remains activation-blocking",
-    "deploymentFact": {
-      "provider": "Vercel GitHub App",
-      "deploymentId": 6153403669,
-      "sourceRevision": "00a29ce376a6db7016a452e029afeccaf4f7acc9",
-      "environment": "Preview",
-      "state": "success",
-      "createdAt": "2026-08-29T07:15:05Z",
-      "targetUrl": "https://talli-j5vyuxf1g-kristianelmers-projects.vercel.app",
-      "successorAction": "no visit, deployment action or post-implementation push; future push held behind possible-charge/deployment approval"
-    }
+    "ownerAuthority": {
+      "source": "AGENTS.md",
+      "revision": "b3ae370c010ad60be1ebd957a111e85ef92d46a0",
+      "scope": "ordinary GitHub operations and automatic Vercel Preview deployments are free and pre-authorized; explicit paid checkout, plan upgrade, add-on or displayed monetary charge remains gated"
+    },
+    "deploymentFacts": [
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": 6153403669,
+        "sourceRevision": "00a29ce376a6db7016a452e029afeccaf4f7acc9",
+        "environment": "Preview",
+        "state": "success",
+        "createdAt": "2026-08-29T07:15:05Z",
+        "targetUrl": "https://talli-j5vyuxf1g-kristianelmers-projects.vercel.app"
+      },
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": 6154166446,
+        "sourceRevision": "b3ae370c010ad60be1ebd957a111e85ef92d46a0",
+        "environment": "Preview",
+        "state": "success",
+        "createdAt": "2026-08-29T09:03:53Z",
+        "targetUrl": "https://talli-i5xajiw85-kristianelmers-projects.vercel.app",
+        "protectionVerification": "anonymous HTTP and the available in-app browser redirect to Vercel login; application routes were not claimed as anonymously rendered"
+      }
+    ],
+    "deploymentEvidenceBoundary": "the protected implementation Preview is durable evidence for the published branch; later ledger-only commits may create additional Preview receipts recorded on the owning issue without changing the tested implementation revision"
   },
   "boundaryValidation": {
     "checkedAt": "2026-08-29T08:43:54.317Z",
@@ -189,5 +207,5 @@
     "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
     "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
   },
-  "closeState": "open-hosted-privacy-legal-deployment-and-cost-clearance-pending"
+  "closeState": "open-hosted-privacy-legal-and-production-launch-clearance-pending"
 }
