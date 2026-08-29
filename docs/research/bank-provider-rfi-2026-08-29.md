@@ -26,7 +26,8 @@ consent renewal/revocation, pending/booked/corrected transaction behavior,
 production onboarding, SLA/support/incidents, security assurance, GDPR roles,
 DPA/subprocessors/regions/transfers/retention, and termination/export/deletion/
 migration assistance. Quote all setup, minimum, account/call, overage, support,
-indexation, term and exit charges at 1, 25 and 100 connected companies.
+indexation, term and exit charges at 1, 25 and 100 connected companies. Lead with
+the lowest viable production option: NOK 10,000 is not viable for us.
 
 This request does not authorize signup, activation, a contract, live account data
 or spending. Please reply to post@talli.no with the current coverage matrix,
@@ -63,7 +64,8 @@ Any offer exceeding a limit requires a new explicit founder decision:
 
 - at most NOK 300 all-in per connected company/year;
 - at most NOK 2,000 fixed recurring cost/month before 100 paying companies;
-- at most NOK 10,000 one-time setup/onboarding;
+- NOK 10,000 one-time setup/onboarding is rejected; the viable amount must be
+  materially lower, with no-setup or the lowest available setup option preferred;
 - VAT assessed separately; and
 - no long lock-in, punitive validation exit or unbounded call/overage exposure.
 
@@ -73,3 +75,19 @@ Neonomics remains the first-adapter candidate and Enable Banking the conforming
 fallback. Neither is production-approved from public material or an RFI response.
 The selected provider must pass the same written, contractual and representative
 real-company evidence on one current configuration before `bank_aisp` can pass.
+
+## Enquiry Delivery Evidence
+
+Both founder-approved, non-binding enquiries were submitted through the providers'
+official sales forms on 2026-08-29 at approximately 05:00 UTC. They used Kristian
+Bollæren Ellefsen Elmer, `post@talli.no`, `ELMER WELFIS / Talli`, and the short
+message above, including the clarified NOK 10,000 rejection. No signup, contract,
+activation, live account data or spend was authorized.
+
+- Neonomics displayed: “Thanks for reaching out - we'll try to get back to you
+  within 3 working days”. Its reCAPTCHA was completed with founder authorization.
+- Enable Banking redirected to its meeting page with submission receipt
+  `230b6227-66b4-4f92-af79-4cbc3a68fe41`.
+
+These receipts prove delivery only. They do not prove coverage, price, contract
+acceptance, production readiness or any `bank_aisp` pass criterion.
