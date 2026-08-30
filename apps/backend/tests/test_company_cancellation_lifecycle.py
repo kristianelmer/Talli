@@ -29,6 +29,7 @@ from talli_backend.modules.company_access.public import (
 COMPANY_ID = "10000000-0000-0000-0000-000000000001"
 CANCELLATION_ID = "50000000-0000-0000-0000-000000000001"
 OPERATION_ID = "40000000-0000-0000-0000-000000000001"
+SUPPORT_CASE_ID = "70000000-0000-4000-8000-000000000007"
 OWNER_ID = "00000000-0000-0000-0000-000000000011"
 
 
@@ -293,7 +294,7 @@ def test_admin_review_contract_binds_exact_revision_operation_and_evidence() -> 
     client = TestClient(create_app(gateway))
     response = client.post(
         f"/api/v1/company-access/cancellations/{CANCELLATION_ID}/reviews",
-        headers=headers(),
+        headers={**headers(), "X-Support-Case-ID": SUPPORT_CASE_ID},
         json={
             "operationId": OPERATION_ID,
             "companyId": COMPANY_ID,
@@ -318,6 +319,7 @@ def test_admin_review_contract_binds_exact_revision_operation_and_evidence() -> 
     command = gateway.calls[-1][1]
     assert isinstance(command, ReviewCompanyDeletionGatewayCommand)
     assert command.cancellation_id == CANCELLATION_ID
+    assert command.support_case_id == SUPPORT_CASE_ID
 
 
 def test_review_rejects_blank_evidence_and_owner_cannot_turn_not_found_into_forbidden() -> None:
@@ -325,7 +327,7 @@ def test_review_rejects_blank_evidence_and_owner_cannot_turn_not_found_into_forb
     client = TestClient(create_app(gateway))
     blank = client.post(
         f"/api/v1/company-access/cancellations/{CANCELLATION_ID}/reviews",
-        headers=headers(),
+        headers={**headers(), "X-Support-Case-ID": SUPPORT_CASE_ID},
         json={
             "operationId": OPERATION_ID,
             "companyId": COMPANY_ID,
@@ -339,7 +341,7 @@ def test_review_rejects_blank_evidence_and_owner_cannot_turn_not_found_into_forb
     gateway.hidden = True
     concealed = client.post(
         f"/api/v1/company-access/cancellations/{CANCELLATION_ID}/reviews",
-        headers=headers(),
+        headers={**headers(), "X-Support-Case-ID": SUPPORT_CASE_ID},
         json={
             "operationId": OPERATION_ID,
             "companyId": COMPANY_ID,
@@ -350,6 +352,24 @@ def test_review_rejects_blank_evidence_and_owner_cannot_turn_not_found_into_forb
     )
     assert concealed.status_code == 404
     assert concealed.json()["code"] == "COMPANY_ACCESS_NOT_FOUND"
+
+
+def test_deletion_review_requires_the_exact_support_case_header() -> None:
+    gateway = LifecycleGatewayStub()
+    response = TestClient(create_app(gateway)).post(
+        f"/api/v1/company-access/cancellations/{CANCELLATION_ID}/reviews",
+        headers=headers(),
+        json={
+            "operationId": OPERATION_ID,
+            "companyId": COMPANY_ID,
+            "expectedUpdatedAt": "2026-08-08T10:30:00Z",
+            "decision": "approved",
+            "evidenceReference": "legal-review/case-161",
+        },
+    )
+
+    assert response.status_code == 422
+    assert gateway.calls == []
 
 
 def test_owner_finalizes_only_through_revision_bound_idempotent_command() -> None:
@@ -473,9 +493,98 @@ def test_adapter_reconciles_unknown_cancellation_outcome_before_retry() -> None:
     assert result == LifecycleGatewayStub._cancellation()
     assert calls[1][0] == "company_access_reconcile_cancellation_operation"
     assert calls[1][1] == {
-        **body,
+        "p_operation_id": OPERATION_ID,
         "p_command_name": "request_cancellation",
+        "p_company_id": COMPANY_ID,
+        "p_support_case_id": None,
+        "p_cancellation_id": None,
+        "p_income_year": 2025,
+        "p_reason": "Customer requested cancellation",
+        "p_expected_updated_at": None,
+        "p_decision": None,
+        "p_evidence_reference": None,
     }
+
+
+@pytest.mark.parametrize(
+    ("function_name", "body", "command_name"),
+    [
+        (
+            "company_access_resume_cancellation",
+            {
+                "p_operation_id": OPERATION_ID,
+                "p_cancellation_id": CANCELLATION_ID,
+                "p_company_id": COMPANY_ID,
+                "p_income_year": 2025,
+                "p_expected_updated_at": "2026-08-08T10:30:00Z",
+            },
+            "resume_cancellation",
+        ),
+        (
+            "company_access_review_deletion",
+            {
+                "p_operation_id": OPERATION_ID,
+                "p_support_case_id": SUPPORT_CASE_ID,
+                "p_cancellation_id": CANCELLATION_ID,
+                "p_company_id": COMPANY_ID,
+                "p_expected_updated_at": "2026-08-08T10:30:00Z",
+                "p_decision": "approved",
+                "p_evidence_reference": "legal-review/case-161",
+            },
+            "review_deletion",
+        ),
+        (
+            "company_access_finalize_deletion",
+            {
+                "p_operation_id": OPERATION_ID,
+                "p_cancellation_id": CANCELLATION_ID,
+                "p_company_id": COMPANY_ID,
+                "p_expected_updated_at": "2026-08-08T11:00:00Z",
+            },
+            "finalize_deletion",
+        ),
+    ],
+)
+def test_adapter_reconciliation_passes_every_optional_argument_explicitly(
+    function_name: str,
+    body: Mapping[str, object],
+    command_name: str,
+) -> None:
+    adapter = SupabaseCompanyAccessAdapter(
+        SupabaseConfiguration(url="http://127.0.0.1:1", anon_key="anon-test-key")
+    )
+    calls: list[tuple[str, Mapping[str, object]]] = []
+
+    async def request(
+        _token: str,
+        called_function: str,
+        called_body: Mapping[str, object],
+        **_kwargs: object,
+    ) -> list[Mapping[str, object]]:
+        calls.append((called_function, called_body))
+        return [{"found": False, "result": None}]
+
+    adapter._database_rpc_rows = request  # type: ignore[method-assign]
+    state, row = asyncio.run(
+        adapter._reconcile_cancellation("bearer", function_name, body)
+    )
+
+    assert (state, row) == ("absent", None)
+    assert calls == [(
+        "company_access_reconcile_cancellation_operation",
+        {
+            "p_operation_id": OPERATION_ID,
+            "p_command_name": command_name,
+            "p_company_id": COMPANY_ID,
+            "p_support_case_id": body.get("p_support_case_id"),
+            "p_cancellation_id": body.get("p_cancellation_id"),
+            "p_income_year": body.get("p_income_year"),
+            "p_reason": body.get("p_reason"),
+            "p_expected_updated_at": body.get("p_expected_updated_at"),
+            "p_decision": body.get("p_decision"),
+            "p_evidence_reference": body.get("p_evidence_reference"),
+        },
+    )]
 
 
 @pytest.mark.parametrize("reconciliation", [

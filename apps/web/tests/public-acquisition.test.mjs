@@ -100,7 +100,7 @@ test("the static homepage renders every required offer field in the approved ord
 test("the recruitment homepage presents the approved annual offer exactly", () => {
   assert.equal(
     publicRecruitmentOffer.priceLine,
-    "NOK 1,490 inkl. mva. per selskapsår. Banktilkobling og alle tre innsendingene er inkludert.",
+    "NOK 1 490 per selskapsår. Merverdiavgift er inkludert når den gjelder etter loven. Banktilkobling og alle tre innsendingene er inkludert.",
   );
   assert.deepEqual(publicRecruitmentOffer.filings, [
     "Aksjonærregisteroppgaven (RF-1086)",
@@ -109,11 +109,11 @@ test("the recruitment homepage presents the approved annual offer exactly", () =
   ]);
   assert.equal(
     publicRecruitmentOffer.refundPromise,
-    "Full refusjon innen 30 dager etter første kjøp når ingen produksjonsinnsending er sendt. Hvis Talli godtar en sak som skulle vært stoppet, eller Talli eller en leverandør ikke kan fullføre det lovede selskapsåret, refunderes hele beløpet automatisk.",
+    "Hvis Talli bekrefter at selskapsåret støttes, men ikke kan fullføre det på grunn av feil i Tallis egen logikk eller tilkobling, får kunden hele beløpet tilbake. Betaling er ikke åpnet nå.",
   );
   assert.equal(
     publicRecruitmentOffer.operator,
-    "Talli drives av ELMER WELFIS, org.nr. 930 835 978. Kontakt: post@talli.no.",
+    "Talli drives av ELMER WELFIS, org.nr. 930 835 978, Fjøsangerveien 32D, 5053 Bergen. Kontakt: post@talli.no.",
   );
   assert.equal(
     publicRecruitmentOffer.nonAffiliation,

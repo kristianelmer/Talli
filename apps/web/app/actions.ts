@@ -88,12 +88,15 @@ import {
   finalizeCompanyDeletion as finalizeCompanyDeletionThroughApi,
   completeInvitationSideEffect,
   createCompanyInvitation,
+  grantOperatorSupportAccess,
   listPendingInvitationSideEffects,
   reacceptCompanyAgreementThroughApi,
+  openOperatorSupportCase,
   resendCompanyInvitation,
   requestCompanyCancellation as requestCompanyCancellationThroughApi,
   resumeCompanyCancellation as resumeCompanyCancellationThroughApi,
   reviewCompanyDeletion as reviewCompanyDeletionThroughApi,
+  revokeOperatorSupportAccess,
   revokeCompanyInvitation,
 } from "../features/company-access";
 import {
@@ -3205,14 +3208,15 @@ export async function reviewCompanyDeletion(formData: FormData) {
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
   const operationId = requiredFormUuid(formData, "operationId");
+  const supportCaseId = requiredFormUuid(formData, "supportCaseId");
   const cancellationId = formString(formData, "cancellationId");
   const companyId = formString(formData, "companyId");
   const expectedUpdatedAt = formString(formData, "expectedUpdatedAt");
   const decision = formString(formData, "decision") as "approved" | "rejected";
   const evidenceReference = formString(formData, "evidenceReference");
-  const command = { command: "review" as const, operationId, cancellationId, companyId, expectedUpdatedAt, decision, evidenceReference };
+  const command = { command: "review" as const, operationId, supportCaseId, cancellationId, companyId, expectedUpdatedAt, decision, evidenceReference };
   try {
-    await reviewCompanyDeletionThroughApi(accessToken, cancellationId, {
+    await reviewCompanyDeletionThroughApi(accessToken, cancellationId, supportCaseId, {
       operationId,
       companyId,
       expectedUpdatedAt,
@@ -3228,7 +3232,63 @@ export async function reviewCompanyDeletion(formData: FormData) {
   }
   await clearPendingCancellationOperation();
   revalidatePath("/operator");
-  redirect("/operator");
+  redirect(`/operator?supportCase=${encodeURIComponent(supportCaseId)}`);
+}
+
+export async function grantSupportAccess(formData: FormData) {
+  if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const operatorUserId = requiredFormUuid(formData, "operatorUserId");
+  const reason = formString(formData, "reason") as
+    | "customer_request" | "security_incident" | "service_recovery" | "legal_obligation";
+  const scopes = formData.getAll("scopes").map(String) as Array<
+    "profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production"
+  >;
+  const startsAt = formString(formData, "startsAt");
+  const expiresAt = formString(formData, "expiresAt");
+  let grantedCaseId: string;
+  try {
+    const response = await grantOperatorSupportAccess(accessToken, {
+      operationId, companyId, operatorUserId, reason, scopes, startsAt, expiresAt,
+    });
+    grantedCaseId = response.grant.caseId;
+  } catch (error) {
+    redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_grant_failed")}`);
+  }
+  redirect(`/operator?grant=created&supportCase=${encodeURIComponent(grantedCaseId)}`);
+}
+
+export async function openSupportCase(formData: FormData) {
+  if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const caseId = requiredFormUuid(formData, "supportCaseId");
+  try {
+    await openOperatorSupportCase(accessToken, caseId, { operationId });
+  } catch (error) {
+    redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_case_open_failed")}`);
+  }
+  redirect(`/operator?supportCase=${encodeURIComponent(caseId)}`);
+}
+
+export async function revokeSupportAccess(formData: FormData) {
+  if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const caseId = requiredFormUuid(formData, "supportCaseId");
+  const reason = formString(formData, "reason") as
+    | "case_closed" | "access_no_longer_needed" | "operator_removed" | "security_response" | "grant_replaced";
+  try {
+    await revokeOperatorSupportAccess(accessToken, caseId, { operationId, reason });
+  } catch (error) {
+    redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
+  }
+  redirect("/operator?grant=revoked");
 }
 
 export async function activateBillingSubscription(formData: FormData) {

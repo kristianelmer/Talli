@@ -18,7 +18,10 @@ const companyAccessOperations = {
   reacceptAgreement: ["/api/v1/company-access/agreements/reaccept", "post", "companyAccessReacceptAgreement"],
   getCompanyRecord: ["/api/v1/company-access/companies/{company_id}", "get", "companyAccessGetCompanyRecord"],
   getOperatorContext: ["/api/v1/company-access/operator-context", "get", "companyAccessGetOperatorContext"],
-  searchOperatorCompanies: ["/api/v1/company-access/operator-companies", "get", "companyAccessSearchOperatorCompanies"],
+  grantSupportAccess: ["/api/v1/company-access/operator-support-grants", "post", "companyAccessGrantSupportAccess"],
+  revokeSupportAccess: ["/api/v1/company-access/operator-support-grants/{case_id}/revocations", "post", "companyAccessRevokeSupportAccess"],
+  openSupportCase: ["/api/v1/company-access/operator-support-cases/{case_id}/openings", "post", "companyAccessOpenSupportCase"],
+  readSupportCase: ["/api/v1/company-access/operator-support-cases/{case_id}", "get", "companyAccessReadSupportCase"],
   listInvitations: ["/api/v1/company-access/invitations", "get", "companyAccessListInvitations"],
   createInvitation: ["/api/v1/company-access/invitations", "post", "companyAccessCreateInvitation"],
   lookupInvitation: ["/api/v1/company-access/invitations/lookup", "post", "companyAccessLookupInvitation"],
@@ -294,8 +297,14 @@ const additionalSchemas = Object.fromEntries([
   "CompanyAccessRecord",
   "CompanyAccessRecordResponse",
   "OperatorContextResponse",
-  "OperatorCompanyRecord",
-  "OperatorCompanySearchResponse",
+  "GrantSupportAccessRequest",
+  "RevokeSupportAccessRequest",
+  "OpenSupportCaseRequest",
+  "SupportAccessGrant",
+  "SupportAccessGrantResponse",
+  "SupportCaseOpening",
+  "SupportCaseOpeningResponse",
+  "SupportCaseSnapshotResponse",
   "AcceptCompanyInvitationRequest",
   "CreateCompanyInvitationRequest",
   "InvitationLookup",
@@ -486,8 +495,11 @@ ${[
   "CompanyAccessRecord",
   "CompanyAccessRecordResponse",
   "OperatorContextResponse",
-  "OperatorCompanyRecord",
-  "OperatorCompanySearchResponse",
+  "SupportAccessGrant",
+  "SupportAccessGrantResponse",
+  "SupportCaseOpening",
+  "SupportCaseOpeningResponse",
+  "SupportCaseSnapshotResponse",
   "InvitationLookup",
   "InvitationSideEffectContinuation",
   "InvitationSideEffectContinuationList",
@@ -874,17 +886,57 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async companyAccessSearchOperatorCompanies(
-      query: string,
+    async companyAccessGrantSupportAccess(
+      body: GrantSupportAccessRequest,
       request: TalliRequestOptions = {},
-    ): Promise<OperatorCompanySearchResponse> {
-      const search = new URLSearchParams({ query });
+    ): Promise<SupportAccessGrantResponse> {
       return executeJson(
-        \`\${baseUrl}/api/v1/company-access/operator-companies?\${search}\`,
+        \`\${baseUrl}/api/v1/company-access/operator-support-grants\`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessRevokeSupportAccess(
+      caseId: string,
+      body: RevokeSupportAccessRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportAccessGrantResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-grants/\${encodeURIComponent(caseId)}/revocations\`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessOpenSupportCase(
+      caseId: string,
+      body: OpenSupportCaseRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseOpeningResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-cases/\${encodeURIComponent(caseId)}/openings\`,
+        "POST",
+        request,
+        body,
+        isSupportCaseOpeningResponse,
+      );
+    },
+
+    async companyAccessReadSupportCase(
+      caseId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseSnapshotResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-cases/\${encodeURIComponent(caseId)}\`,
         "GET",
         request,
         undefined,
-        isOperatorCompanySearchResponse,
+        isSupportCaseSnapshotResponse,
       );
     },
 
@@ -1051,13 +1103,17 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyAccessReviewDeletion(
       cancellationId: string,
+      supportCaseId: string,
       body: ReviewCompanyDeletionRequest,
       request: TalliRequestOptions = {},
     ): Promise<CompanyDeletionReviewResponse> {
       return executeJson(
         \`\${baseUrl}/api/v1/company-access/cancellations/\${encodeURIComponent(cancellationId)}/reviews\`,
         "POST",
-        request,
+        {
+          ...request,
+          headers: { ...request.headers, "X-Support-Case-ID": supportCaseId },
+        },
         body,
         isCompanyDeletionReviewResponse,
       );

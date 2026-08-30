@@ -80,10 +80,10 @@ export interface CompanyMembershipResponse {
 
 export interface CompanyOnboardingRequest {
   agreementAccepted: true;
-  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
-  businessTermsVersion: "2026-07-17";
-  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
-  dpaVersion: "2026-07-17";
+  businessTermsSha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04";
+  businessTermsVersion: "2026-08-30";
+  dpaSha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a";
+  dpaVersion: "2026-08-30";
   orgNumber: string;
 }
 
@@ -95,11 +95,11 @@ export interface CompanyOnboardingResponse {
 
 export interface CompanyAgreementAcceptanceRequest {
   agreementAccepted: true;
-  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
-  businessTermsVersion: "2026-07-17";
+  businessTermsSha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04";
+  businessTermsVersion: "2026-08-30";
   companyId: string;
-  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
-  dpaVersion: "2026-07-17";
+  dpaSha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a";
+  dpaVersion: "2026-08-30";
 }
 
 export interface CompanyAgreementAcceptanceResponse {
@@ -169,13 +169,13 @@ export interface CompanyYearAdmissionRequest {
   agreementAccepted: true;
   answers: Record<string, "yes" | "no" | "unknown">;
   authorityAccepted: true;
-  businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543";
-  businessTermsVersion: "2026-07-17";
+  businessTermsSha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04";
+  businessTermsVersion: "2026-08-30";
   capabilityManifestSha256: string;
   capabilityManifestVersion: string;
   companyYearPromiseAccepted: true;
-  dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c";
-  dpaVersion: "2026-07-17";
+  dpaSha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a";
+  dpaVersion: "2026-08-30";
   expectedPublicFactsSha256: string;
   operationId: string;
   orgNumber: string;
@@ -247,24 +247,61 @@ export interface OperatorContextResponse {
   role: "support" | "admin";
 }
 
-export interface OperatorCompanyRecord {
-  address: string;
-  city: string;
-  createdAt: string;
-  createdBy: string;
-  entityType: string;
-  id: string;
-  identityConfirmedAt: string | null;
-  identityLockedAt: string | null;
-  name: string;
-  orgNumber: string;
-  postalCode: string;
-  source: string;
-  statusText: string;
+export interface GrantSupportAccessRequest {
+  companyId: string;
+  expiresAt: string;
+  operationId: string;
+  operatorUserId: string;
+  reason: "customer_request" | "security_incident" | "service_recovery" | "legal_obligation";
+  scopes: ("profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production")[];
+  startsAt: string;
 }
 
-export interface OperatorCompanySearchResponse {
-  companies: OperatorCompanyRecord[];
+export interface RevokeSupportAccessRequest {
+  operationId: string;
+  reason: "case_closed" | "access_no_longer_needed" | "operator_removed" | "security_response" | "grant_replaced";
+}
+
+export interface OpenSupportCaseRequest {
+  operationId: string;
+}
+
+export interface SupportAccessGrant {
+  caseId: string;
+  companyId: string;
+  expiresAt: string;
+  grantedAt: string;
+  grantedBy: string;
+  operatorUserId: string;
+  reason: "customer_request" | "security_incident" | "service_recovery" | "legal_obligation";
+  revocationReason: "case_closed" | "access_no_longer_needed" | "operator_removed" | "security_response" | "grant_replaced" | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  scopes: ("profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production")[];
+  startsAt: string;
+}
+
+export interface SupportAccessGrantResponse {
+  grant: SupportAccessGrant;
+}
+
+export interface SupportCaseOpening {
+  caseId: string;
+  companyId: string;
+  openedAt: string;
+  openedBy: string;
+  operationId: string;
+}
+
+export interface SupportCaseOpeningResponse {
+  opening: SupportCaseOpening;
+}
+
+export interface SupportCaseSnapshotResponse {
+  caseId: string;
+  companyId: string;
+  resources: Record<string, Record<string, unknown>[]>;
+  scopes: ("profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production")[];
 }
 
 export interface AcceptCompanyInvitationRequest {
@@ -1343,31 +1380,61 @@ function isOperatorContextResponse(value: unknown): value is OperatorContextResp
   );
 }
 
-function isOperatorCompanyRecord(value: unknown): value is OperatorCompanyRecord {
+function isSupportAccessGrant(value: unknown): value is SupportAccessGrant {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","source","statusText"]) &&
-    typeof value.address === "string" &&
-    typeof value.city === "string" &&
-    typeof value.createdAt === "string" &&
-    typeof value.createdBy === "string" &&
-    typeof value.entityType === "string" &&
-    typeof value.id === "string" &&
-    (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
-    (typeof value.identityLockedAt === "string" || value.identityLockedAt === null) &&
-    typeof value.name === "string" &&
-    typeof value.orgNumber === "string" &&
-    typeof value.postalCode === "string" &&
-    typeof value.source === "string" &&
-    typeof value.statusText === "string"
+    hasOnlyProperties(value, ["caseId","companyId","expiresAt","grantedAt","grantedBy","operatorUserId","reason","revocationReason","revokedAt","revokedBy","scopes","startsAt"]) &&
+    isUuid(value.caseId) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.expiresAt) &&
+    isDateTime(value.grantedAt) &&
+    isUuid(value.grantedBy) &&
+    isUuid(value.operatorUserId) &&
+    (value.reason === "customer_request" || value.reason === "security_incident" || value.reason === "service_recovery" || value.reason === "legal_obligation") &&
+    ((value.revocationReason === "case_closed" || value.revocationReason === "access_no_longer_needed" || value.revocationReason === "operator_removed" || value.revocationReason === "security_response" || value.revocationReason === "grant_replaced") || value.revocationReason === null) &&
+    (isDateTime(value.revokedAt) || value.revokedAt === null) &&
+    (isUuid(value.revokedBy) || value.revokedBy === null) &&
+    Array.isArray(value.scopes) && value.scopes.every((item) => (item === "profile" || item === "filing" || item === "billing" || item === "audit" || item === "cancellation" || item === "authority" || item === "documents" || item === "production")) &&
+    isDateTime(value.startsAt)
   );
 }
 
-function isOperatorCompanySearchResponse(value: unknown): value is OperatorCompanySearchResponse {
+function isSupportAccessGrantResponse(value: unknown): value is SupportAccessGrantResponse {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["companies"]) &&
-    Array.isArray(value.companies) && value.companies.every((item) => isOperatorCompanyRecord(item))
+    hasOnlyProperties(value, ["grant"]) &&
+    isSupportAccessGrant(value.grant)
+  );
+}
+
+function isSupportCaseOpening(value: unknown): value is SupportCaseOpening {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseId","companyId","openedAt","openedBy","operationId"]) &&
+    isUuid(value.caseId) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.openedAt) &&
+    isUuid(value.openedBy) &&
+    isUuid(value.operationId)
+  );
+}
+
+function isSupportCaseOpeningResponse(value: unknown): value is SupportCaseOpeningResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["opening"]) &&
+    isSupportCaseOpening(value.opening)
+  );
+}
+
+function isSupportCaseSnapshotResponse(value: unknown): value is SupportCaseSnapshotResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseId","companyId","resources","scopes"]) &&
+    isUuid(value.caseId) &&
+    isUuid(value.companyId) &&
+    isRecord(value.resources) && Object.values(value.resources).every((item) => Array.isArray(item) && item.every((item) => isRecord(item))) &&
+    Array.isArray(value.scopes) && value.scopes.every((item) => (item === "profile" || item === "filing" || item === "billing" || item === "audit" || item === "cancellation" || item === "authority" || item === "documents" || item === "production"))
   );
 }
 
@@ -2794,17 +2861,57 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async companyAccessSearchOperatorCompanies(
-      query: string,
+    async companyAccessGrantSupportAccess(
+      body: GrantSupportAccessRequest,
       request: TalliRequestOptions = {},
-    ): Promise<OperatorCompanySearchResponse> {
-      const search = new URLSearchParams({ query });
+    ): Promise<SupportAccessGrantResponse> {
       return executeJson(
-        `${baseUrl}/api/v1/company-access/operator-companies?${search}`,
+        `${baseUrl}/api/v1/company-access/operator-support-grants`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessRevokeSupportAccess(
+      caseId: string,
+      body: RevokeSupportAccessRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportAccessGrantResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-support-grants/${encodeURIComponent(caseId)}/revocations`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessOpenSupportCase(
+      caseId: string,
+      body: OpenSupportCaseRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseOpeningResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-support-cases/${encodeURIComponent(caseId)}/openings`,
+        "POST",
+        request,
+        body,
+        isSupportCaseOpeningResponse,
+      );
+    },
+
+    async companyAccessReadSupportCase(
+      caseId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseSnapshotResponse> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-support-cases/${encodeURIComponent(caseId)}`,
         "GET",
         request,
         undefined,
-        isOperatorCompanySearchResponse,
+        isSupportCaseSnapshotResponse,
       );
     },
 
@@ -2971,13 +3078,17 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyAccessReviewDeletion(
       cancellationId: string,
+      supportCaseId: string,
       body: ReviewCompanyDeletionRequest,
       request: TalliRequestOptions = {},
     ): Promise<CompanyDeletionReviewResponse> {
       return executeJson(
         `${baseUrl}/api/v1/company-access/cancellations/${encodeURIComponent(cancellationId)}/reviews`,
         "POST",
-        request,
+        {
+          ...request,
+          headers: { ...request.headers, "X-Support-Case-ID": supportCaseId },
+        },
         body,
         isCompanyDeletionReviewResponse,
       );

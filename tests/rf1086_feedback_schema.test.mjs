@@ -14,6 +14,13 @@ const rollback = await readFile(
   new URL("../supabase/rollback/rf1086_feedback_reconciliation.sql", import.meta.url),
   "utf8",
 ).catch(() => "");
+const supportAccessCutover = await readFile(
+  new URL(
+    "../supabase/migrations/20260830091341_case_bound_support_access.sql",
+    import.meta.url,
+  ),
+  "utf8",
+).catch(() => "");
 
 function isLocalDatabase() {
   if (!process.env.DATABASE_URL) return false;
@@ -688,6 +695,12 @@ test(
       }
       for (const user of users) {
         await collectCleanupError(() => assertNoCleanupError(admin.auth.admin.deleteUser(user.id)), cleanupErrors);
+      }
+      if (supportAccessCutover) {
+        await collectCleanupError(
+          () => database.query(supportAccessCutover),
+          cleanupErrors,
+        );
       }
       await collectCleanupError(() => database.end(), cleanupErrors);
     }

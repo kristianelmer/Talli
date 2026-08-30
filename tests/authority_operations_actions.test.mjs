@@ -19,7 +19,7 @@ const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url
 const server = readFileSync(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8");
 const authorityQuery = server.slice(
   server.indexOf("export async function listAuthorityOperations"),
-  server.indexOf("export async function searchOperatorSupportDashboard"),
+  server.indexOf("export async function readOperatorSupportDashboard"),
 );
 
 test("authority operation is admin-only, AAL2-gated, exact, and service-audited", () => {

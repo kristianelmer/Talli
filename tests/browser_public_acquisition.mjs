@@ -158,7 +158,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   assert.match(homeEvent.body.anonymousSessionHash, /^[a-f0-9]{64}$/u);
   assert.equal("anonymousSessionId" in homeEvent.body, false);
   assert.equal(homeEvent.body.consentVersion, "marketing-analytics-v1");
-  assert.equal(homeEvent.body.firstLayerNoticeVersion, "candidate-2026-08-29");
+  assert.equal(homeEvent.body.firstLayerNoticeVersion, "2026-08-30");
   assert.match(homeEvent.body.firstLayerNoticeSha256, /^[a-f0-9]{64}$/u);
   assert.equal(homeEvent.body.privacyNoticeVersion, "unapproved");
   assert.equal(homeEvent.body.privacyNoticeSha256, "unapproved");

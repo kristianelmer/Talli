@@ -28,9 +28,11 @@ from talli_backend.modules.company_access.public import (
     CompanyYearEligibilityRecheckGatewayCommand,
     CreateInvitationGatewayCommand,
     FinalizeCompanyDeletionGatewayCommand,
+    GrantSupportAccessRequest,
     InvitationIdentityGatewayCommand,
     InvitationMutationGatewayCommand,
     RequestCompanyCancellationGatewayCommand,
+    RevokeSupportAccessRequest,
     ResendInvitationGatewayCommand,
     ResumeCompanyCancellationGatewayCommand,
     ReviewCompanyDeletionGatewayCommand,
@@ -249,6 +251,27 @@ class SupabaseCompanyAccessAdapter:
                 raise self._unavailable() from None
             except psycopg.DatabaseError as error:
                 message = str(error)
+                if "support_access_not_available" in message:
+                    raise CompanyAccessError(
+                        status=404,
+                        code="COMPANY_ACCESS_NOT_FOUND",
+                        title="Company access not found",
+                        detail="The requested company access resource was not found.",
+                    ) from None
+                if "support_access_invalid_request" in message:
+                    raise CompanyAccessError(
+                        status=422,
+                        code="REQUEST_VALIDATION_FAILED",
+                        title="Request validation failed",
+                        detail="The request did not satisfy the support-access policy.",
+                    ) from None
+                if "support_access_operation_conflict" in message:
+                    raise CompanyAccessError(
+                        status=409,
+                        code="COMPANY_ACCESS_CONFLICT",
+                        title="Company access conflict",
+                        detail="The operation ID was already used with different support-access input.",
+                    ) from None
                 if "company_access_not_found" in message or "invitation_not_found" in message:
                     invitation = "invitation_not_found" in message
                     raise CompanyAccessError(
@@ -390,24 +413,52 @@ class SupabaseCompanyAccessAdapter:
         )
         return rows[0] if rows else None
 
-    async def search_operator_companies(
-        self, access_token: str, query: str
-    ) -> list[Mapping[str, object]]:
-        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        pattern = f"%{escaped}%"
-        return await self._database_rows(
+    async def grant_support_access(
+        self, access_token: str, command: GrantSupportAccessRequest
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
             access_token,
-            """
-            select id, org_number, name, entity_type, address, postal_code, city,
-              status_text, source, created_by, identity_confirmed_at,
-              identity_locked_at, created_at
-            from public.companies
-            where org_number ilike %s escape '\\'
-               or name ilike %s escape '\\'
-            order by created_at desc
-            limit 10
-            """,
-            (pattern, pattern),
+            "company_access_grant_support_access",
+            {
+                "p_operation_id": command.operation_id,
+                "p_company_id": command.company_id,
+                "p_operator_user_id": command.operator_user_id,
+                "p_reason": command.reason,
+                "p_scopes": command.scopes,
+                "p_starts_at": command.starts_at,
+                "p_expires_at": command.expires_at,
+            },
+        )
+
+    async def revoke_support_access(
+        self, access_token: str, case_id: str, command: RevokeSupportAccessRequest
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_revoke_support_access",
+            {
+                "p_operation_id": command.operation_id,
+                "p_case_id": case_id,
+                "p_revocation_reason": command.reason,
+            },
+        )
+
+    async def open_support_case(
+        self, access_token: str, case_id: str, operation_id: str
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_open_support_case",
+            {"p_operation_id": operation_id, "p_case_id": case_id},
+        )
+
+    async def read_support_case(
+        self, access_token: str, case_id: str
+    ) -> Mapping[str, object] | None:
+        return await self._rpc_row(
+            access_token,
+            "company_access_read_support_case",
+            {"p_case_id": case_id},
         )
 
     async def admit_company_year(
@@ -761,6 +812,7 @@ class SupabaseCompanyAccessAdapter:
             "company_access_review_deletion",
             {
                 "p_operation_id": command.operation_id,
+                "p_support_case_id": command.support_case_id,
                 "p_cancellation_id": command.cancellation_id,
                 "p_company_id": command.company_id,
                 "p_expected_updated_at": command.expected_updated_at,
@@ -852,6 +904,10 @@ class SupabaseCompanyAccessAdapter:
             "company_access_review_deletion",
             "company_access_finalize_deletion",
             "company_access_reconcile_cancellation_operation",
+            "company_access_grant_support_access",
+            "company_access_revoke_support_access",
+            "company_access_open_support_case",
+            "company_access_read_support_case",
         }
         if function_name not in allowed:
             raise ValueError("unsupported company-access database function")
@@ -904,11 +960,18 @@ class SupabaseCompanyAccessAdapter:
             "company_access_review_deletion": "review_deletion",
             "company_access_finalize_deletion": "finalize_deletion",
         }
-        reconcile_body = dict(body)
-        reconcile_body["p_command_name"] = command_names[function_name]
-        ordered = {"p_operation_id": reconcile_body.pop("p_operation_id")}
-        ordered["p_command_name"] = reconcile_body.pop("p_command_name")
-        ordered.update(reconcile_body)
+        ordered = {
+            "p_operation_id": body["p_operation_id"],
+            "p_command_name": command_names[function_name],
+            "p_company_id": body["p_company_id"],
+            "p_support_case_id": body.get("p_support_case_id"),
+            "p_cancellation_id": body.get("p_cancellation_id"),
+            "p_income_year": body.get("p_income_year"),
+            "p_reason": body.get("p_reason"),
+            "p_expected_updated_at": body.get("p_expected_updated_at"),
+            "p_decision": body.get("p_decision"),
+            "p_evidence_reference": body.get("p_evidence_reference"),
+        }
         response = await self._database_rpc_rows(
             access_token,
             "company_access_reconcile_cancellation_operation",

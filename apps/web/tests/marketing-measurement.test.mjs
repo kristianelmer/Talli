@@ -109,8 +109,8 @@ test("the generated backend client receives only an irreversible session hash", 
     baseUrl: "https://backend.talli.no",
     internalKey: "m".repeat(32),
     noticeBinding: {
-      privacyNoticeVersion: "2026-08-29-candidate",
-      privacyNoticeSha256: "b".repeat(64),
+      privacyNoticeVersion: "2026-08-30",
+      privacyNoticeSha256: "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de",
       releaseSha256: "c".repeat(64),
     },
     async fetch(url, init) {
@@ -137,10 +137,10 @@ test("the generated backend client receives only an irreversible session hash", 
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.anonymousSessionId, undefined);
   assert.equal(body.anonymousSessionHash, "fbfe405ca65f6275b98fdeb81ceb4df23903cb9138435c28458e161b27313455");
-  assert.equal(body.firstLayerNoticeVersion, "candidate-2026-08-29");
+  assert.equal(body.firstLayerNoticeVersion, "2026-08-30");
   assert.match(body.firstLayerNoticeSha256, /^[0-9a-f]{64}$/u);
-  assert.equal(body.privacyNoticeVersion, "2026-08-29-candidate");
-  assert.equal(body.privacyNoticeSha256, "b".repeat(64));
+  assert.equal(body.privacyNoticeVersion, "2026-08-30");
+  assert.equal(body.privacyNoticeSha256, "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de");
   assert.equal(body.releaseSha256, "c".repeat(64));
   assert.equal(requests[0].init.body.includes(anonymousSessionId), false);
 });

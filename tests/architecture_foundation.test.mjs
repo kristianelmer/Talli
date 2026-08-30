@@ -1881,7 +1881,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
   assert.equal(expected.size, baseline.records.length);
 
   assert.equal(registry.records.length, 14);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 160);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 154);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1909,6 +1909,56 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-tax-settlement-persistence",
     ]),
   );
+});
+
+test("#200 removes the exact six support-search scopes atomically without changing the frozen baseline", () => {
+  const registry = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility.json", import.meta.url),
+    "utf8",
+  ));
+  const baseline = JSON.parse(readFileSync(
+    new URL("../architecture/compatibility-baseline.json", import.meta.url),
+    "utf8",
+  ));
+  const key = (record, scope) => [record.id, scope.path, scope.rule, scope.resource, scope.operation].join("\0");
+  const supportResources = new Set([
+    "table:billing_accounts",
+    "table:billing_payment_events",
+    "table:filing_readiness_snapshots",
+    "table:authority_permissions",
+    "table:filing_submissions",
+    "table:audit_events",
+  ]);
+  const isSupportSearch = (scope) => scope.path === "apps/web/app/lib/supabase/server.ts"
+    && scope.rule === "direct-web-business-persistence"
+    && scope.operation === "searchOperatorSupportDashboard"
+    && supportResources.has(scope.resource);
+  const frozen = baseline.records.flatMap((record) => record.scopes
+    .filter(isSupportSearch)
+    .map((scope) => key(record, scope)));
+  const active = registry.records.flatMap((record) => record.scopes
+    .filter(isSupportSearch)
+    .map((scope) => key(record, scope)));
+
+  assert.equal(frozen.length, 6);
+  assert.equal(new Set(frozen).size, 6);
+  assert.deepEqual(active, []);
+
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-support-amendment-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  try {
+    const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
+    const partial = JSON.parse(readFileSync(compatibilityPath, "utf8"));
+    const [recordId, path, rule, resource, operation] = frozen[0].split("\0");
+    partial.records.find((record) => record.id === recordId).scopes.push({ path, rule, resource, operation });
+    writeFileSync(compatibilityPath, `${JSON.stringify(partial, null, 2)}\n`);
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    assert.match(errors, /support security amendment must remove all six #200 scopes together/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("company cancellation lifecycle is capability-owned with no direct-web compatibility", () => {

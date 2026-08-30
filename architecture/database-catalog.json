@@ -102,6 +102,9 @@
     { "name": "public.production_filing_events", "kind": "legacy-business" },
     { "name": "public.production_filing_submissions", "kind": "legacy-business" },
     { "name": "public.production_pilot_entitlements", "kind": "legacy-business" },
+    { "name": "public.support_access_grants", "kind": "capability-business", "owner": "backend:company_access" },
+    { "name": "public.support_access_operation_receipts", "kind": "capability-business", "owner": "backend:company_access" },
+    { "name": "public.support_case_openings", "kind": "capability-business", "owner": "backend:company_access" },
     { "name": "public.support_operators", "kind": "capability-business", "owner": "backend:company_access" },
     { "name": "public.system_user_requests", "kind": "legacy-business" }
   ]

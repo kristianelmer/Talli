@@ -1,16 +1,18 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import type {
-  YearEndInterviewAnswers,
-} from "../annual-data";
+import {
+  createClient,
+  type SupabaseClient,
+  type User,
+} from "@supabase/supabase-js";
+import type { YearEndInterviewAnswers } from "../annual-data";
 import type {
   AnnualReadinessIssue,
   AnnualReadinessStatus,
 } from "../annual-readiness";
 import type { CompanyCancellationRow } from "../cancellation";
 import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
-import { assertOperatorSearchAllowed, buildOperatorSupportSummaries } from "../operator-support";
+import { buildOperatorSupportSummaries } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
   Rf1086SubmittedPayloadReference,
@@ -27,8 +29,7 @@ import {
 } from "../../../features/banking";
 import {
   loadOperatorContext,
-  presentOperatorCompanyRecord,
-  searchOperatorCompanyRecords,
+  readOperatorSupportCase,
   type CompanyRegistryPresentation,
 } from "../../../features/company-access";
 import {
@@ -43,7 +44,9 @@ import {
 } from "../../../features/ledger";
 
 async function backendAccessToken(supabase: SupabaseClient) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.access_token ?? null;
 }
 
@@ -83,7 +86,12 @@ export type AuthorityOperationRow = {
   request_hash: string;
   result_code: string;
   authority_http_status: number | null;
-  metadata: { systemId?: string; clientId?: string; right?: string; callbackPath?: string };
+  metadata: {
+    systemId?: string;
+    clientId?: string;
+    right?: string;
+    callbackPath?: string;
+  };
   created_at: string;
   completed_at: string | null;
 };
@@ -297,8 +305,10 @@ export type FilingSubmissionRow = {
   receipt_id: string | null;
   feedback_document_ids: string[];
   feedback_items: FilingSubmissionFeedbackItem[];
-  receipt_metadata: Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | null;
-  submitted_payload_ref: Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | null;
+  receipt_metadata:
+    Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | null;
+  submitted_payload_ref:
+    Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | null;
   submitted_payload: Rf1086SubmittedPayloadSnapshot | null;
   authority_confirmed_at: string | null;
   preview_confirmed_at: string | null;
@@ -377,12 +387,26 @@ export type ProductionFilingSubmissionRow = {
   payload_hash: string;
   adapter_version: string;
   environment: "production";
-  status: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  status:
+    | "approved"
+    | "sending"
+    | "received"
+    | "processing"
+    | "accepted"
+    | "rejected"
+    | "action_required"
+    | "unknown";
   authority_references: Record<string, string>;
   failure_class: string | null;
   supersedes_submission_id: string | null;
   submitted_by: string;
-  feedback_state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  feedback_state:
+    | "sent"
+    | "processing"
+    | "accepted"
+    | "rejected"
+    | "action_required"
+    | "unknown";
   feedback_artifact_count: number;
   feedback_last_checked_at: string | null;
   feedback_last_changed_at: string | null;
@@ -397,7 +421,12 @@ export type ProductionFeedbackArtifactRow = {
   company_id: string;
   submission_id: string;
   document_id: string;
-  content_type: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  content_type:
+    | "application/xml"
+    | "text/xml"
+    | "application/pdf"
+    | "text/plain"
+    | "application/octet-stream";
   byte_length: number;
   sha256: string;
   retrieved_at: string;
@@ -547,7 +576,8 @@ export type BillingPaymentEventRow = {
   provider: string;
   provider_reference: string;
   idempotency_key: string;
-  kind: "subscription" | "subscription_cancellation" | "filing_package" | "refund";
+  kind:
+    "subscription" | "subscription_cancellation" | "filing_package" | "refund";
   status: "created" | "succeeded" | "failed" | "refunded" | "canceled";
   amount_nok: number;
   income_year: number | null;
@@ -687,7 +717,11 @@ export async function listDocumentsForCompanies(companyIds: string[]) {
 
 export async function listOpeningSetups(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { setups: [] as OpeningBalanceSetupRow[], shareholders: [] as OpeningShareholderRow[], error: null };
+    return {
+      setups: [] as OpeningBalanceSetupRow[],
+      shareholders: [] as OpeningShareholderRow[],
+      error: null,
+    };
   }
   const supabase = await createSupabaseServerClient();
   const accessToken = await backendAccessToken(supabase);
@@ -718,12 +752,16 @@ export async function listPeriodLocks(companyIds: string[]) {
   }
   const supabase = await createSupabaseServerClient();
   const accessToken = await backendAccessToken(supabase);
-  if (!accessToken) return { locks: [] as PeriodLockRow[], error: "Innlogging kreves." };
+  if (!accessToken)
+    return { locks: [] as PeriodLockRow[], error: "Innlogging kreves." };
   try {
     const locks = await loadLedgerPeriodLocks(accessToken, companyIds);
     return { locks: presentLedgerPeriodLocks(locks), error: null };
   } catch {
-    return { locks: [] as PeriodLockRow[], error: "Periodesperrer kunne ikke lastes." };
+    return {
+      locks: [] as PeriodLockRow[],
+      error: "Periodesperrer kunne ikke lastes.",
+    };
   }
 }
 
@@ -847,12 +885,18 @@ export async function listFilingSubmissions(companyIds: string[]) {
   };
 }
 
-function productionPilotSchemaUnavailable(errors: Array<{ code?: string; message?: string } | null>) {
-  return errors.some((error) => error != null && (
-    error.code === "PGRST205"
-    || error.code === "42P01"
-    || /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(error.message ?? "")
-  ));
+function productionPilotSchemaUnavailable(
+  errors: Array<{ code?: string; message?: string } | null>,
+) {
+  return errors.some(
+    (error) =>
+      error != null &&
+      (error.code === "PGRST205" ||
+        error.code === "42P01" ||
+        /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(
+          error.message ?? "",
+        )),
+  );
 }
 
 export async function listSystemUserRequests(
@@ -931,14 +975,23 @@ export async function listBankTransactions(companyIds: string[]) {
   }
   const supabase = await createSupabaseServerClient();
   const accessToken = await backendAccessToken(supabase);
-  if (!accessToken) return { transactions: [] as BankTransactionRow[], error: "Innlogging kreves." };
+  if (!accessToken)
+    return {
+      transactions: [] as BankTransactionRow[],
+      error: "Innlogging kreves.",
+    };
   try {
     const transactions = presentBankTransactions(
       await loadBankTransactions(accessToken, companyIds),
-    ).sort((left, right) => right.transaction_date.localeCompare(left.transaction_date));
+    ).sort((left, right) =>
+      right.transaction_date.localeCompare(left.transaction_date),
+    );
     return { transactions, error: null };
   } catch {
-    return { transactions: [] as BankTransactionRow[], error: "Kunne ikke laste bankbevegelser." };
+    return {
+      transactions: [] as BankTransactionRow[],
+      error: "Kunne ikke laste bankbevegelser.",
+    };
   }
 }
 
@@ -948,14 +1001,21 @@ export async function listBankSuggestionAcceptances(companyIds: string[]) {
   }
   const supabase = await createSupabaseServerClient();
   const accessToken = await backendAccessToken(supabase);
-  if (!accessToken) return { acceptances: [] as BankSuggestionAcceptanceRow[], error: "Innlogging kreves." };
+  if (!accessToken)
+    return {
+      acceptances: [] as BankSuggestionAcceptanceRow[],
+      error: "Innlogging kreves.",
+    };
   try {
     const acceptances = presentBankSuggestionAcceptances(
       await loadBankSuggestionAcceptances(accessToken, companyIds),
     ).sort((left, right) => right.accepted_at.localeCompare(left.accepted_at));
     return { acceptances, error: null };
   } catch {
-    return { acceptances: [] as BankSuggestionAcceptanceRow[], error: "Kunne ikke laste bankforslag." };
+    return {
+      acceptances: [] as BankSuggestionAcceptanceRow[],
+      error: "Kunne ikke laste bankforslag.",
+    };
   }
 }
 
@@ -1034,12 +1094,16 @@ export async function listLedgerEntries(companyIds: string[]) {
   }
   const supabase = await createSupabaseServerClient();
   const accessToken = await backendAccessToken(supabase);
-  if (!accessToken) return { entries: [] as LedgerEntryRow[], error: "Innlogging kreves." };
+  if (!accessToken)
+    return { entries: [] as LedgerEntryRow[], error: "Innlogging kreves." };
   try {
     const entries = await loadLedgerEntries(accessToken, companyIds);
     return { entries: presentLedgerEntries(entries), error: null };
   } catch {
-    return { entries: [] as LedgerEntryRow[], error: "Hovedboken kunne ikke lastes." };
+    return {
+      entries: [] as LedgerEntryRow[],
+      error: "Hovedboken kunne ikke lastes.",
+    };
   }
 }
 
@@ -1166,18 +1230,30 @@ export async function listNotificationOutbox(companyIds: string[]) {
 
 export async function listLaunchSignoffs(actorId?: string | null) {
   if (!hasSupabaseEnv() || !actorId) {
-    return { launchSignoffs: [] as LaunchSignoffRow[], isOperator: false, isAdminOperator: false, error: null };
+    return {
+      launchSignoffs: [] as LaunchSignoffRow[],
+      isOperator: false,
+      isAdminOperator: false,
+      error: null,
+    };
   }
   const supabase = await createSupabaseServerClient();
   const operator = (await backendOperatorSession(supabase))?.operator ?? null;
   const isOperator = Boolean(operator);
   const isAdminOperator = operator?.role === "admin";
   if (!isOperator) {
-    return { launchSignoffs: [] as LaunchSignoffRow[], isOperator, isAdminOperator, error: null };
+    return {
+      launchSignoffs: [] as LaunchSignoffRow[],
+      isOperator,
+      isAdminOperator,
+      error: null,
+    };
   }
   const { data, error } = await supabase
     .from("launch_signoffs")
-    .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
+    .select(
+      "key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at",
+    )
     .order("updated_at", { ascending: false });
 
   return {
@@ -1190,14 +1266,26 @@ export async function listLaunchSignoffs(actorId?: string | null) {
 
 export async function listAuthorityOperations(actorId?: string | null) {
   if (!hasSupabaseEnv() || !actorId) {
-    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+    return {
+      operations: [] as AuthorityOperationRow[],
+      isAdminOperator: false,
+      error: null,
+    };
   }
   const supabase = await createSupabaseServerClient();
   const operator = (await backendOperatorSession(supabase))?.operator ?? null;
   if (!operator || operator.role !== "admin") {
-    return { operations: [] as AuthorityOperationRow[], isAdminOperator: false, error: null };
+    return {
+      operations: [] as AuthorityOperationRow[],
+      isAdminOperator: false,
+      error: null,
+    };
   }
-  const { data, error } = await supabase.from("authority_operations").select("*").order("created_at", { ascending: false }).limit(10);
+  const { data, error } = await supabase
+    .from("authority_operations")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(10);
   return {
     operations: (data ?? []) as AuthorityOperationRow[],
     isAdminOperator: true,
@@ -1205,7 +1293,10 @@ export async function listAuthorityOperations(actorId?: string | null) {
   };
 }
 
-export async function searchOperatorSupportDashboard(query: string, actorId?: string | null) {
+export async function readOperatorSupportDashboard(
+  caseId: string,
+  actorId?: string | null,
+) {
   if (!hasSupabaseEnv() || !actorId) {
     return { summaries: [], isOperator: false, error: null };
   }
@@ -1213,95 +1304,35 @@ export async function searchOperatorSupportDashboard(query: string, actorId?: st
   const operatorSession = await backendOperatorSession(supabase);
   const operator = operatorSession?.operator ?? null;
   const isOperator = Boolean(operator);
+  let resources: Record<string, Array<Record<string, unknown>>>;
   try {
-    assertOperatorSearchAllowed({ isOperator, query });
-  } catch (error) {
-    return {
-      summaries: [],
-      isOperator,
-      error: error instanceof Error ? error.message : "operator_search_failed",
-    };
-  }
-
-  const normalized = query.trim();
-  let companyRows: CompanyWorkspaceRow[];
-  try {
-    if (!operatorSession) throw new Error("operator_search_failed");
-    companyRows = (await searchOperatorCompanyRecords(
-      operatorSession.accessToken,
-      normalized,
-    )).companies.map(presentOperatorCompanyRecord);
+    if (!operatorSession) throw new Error("support_case_read_failed");
+    resources = (
+      await readOperatorSupportCase(operatorSession.accessToken, caseId)
+    ).resources;
   } catch {
-    return { summaries: [], isOperator, error: "operator_search_failed" };
+    return { summaries: [], isOperator, error: "support_case_read_failed" };
   }
-  const companyIds = companyRows.map((company) => company.id);
-  if (!companyIds.length) {
-    return { summaries: [], isOperator, error: null };
-  }
-
-  const [
-    { data: readinessSnapshots },
-    { data: submissions },
-    { data: authorityPermissions },
-    { data: billingAccounts },
-    { data: billingPaymentEvents },
-    { data: auditEvents },
-  ] = await Promise.all([
-    supabase
-      .from("filing_readiness_snapshots")
-      .select("id, company_id, income_year, obligation, status, ready, hard_blocks, warnings, accepted_warnings, evaluated_at, created_by, updated_at")
-      .in("company_id", companyIds),
-    supabase
-      .from("filing_submissions")
-      .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
-      .in("company_id", companyIds)
-      .order("updated_at", { ascending: false }),
-    supabase
-      .from("authority_permissions")
-      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
-      .in("company_id", companyIds),
-    supabase
-      .from("billing_accounts")
-      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at")
-      .in("company_id", companyIds),
-    supabase
-      .from("billing_payment_events")
-      .select("id, company_id, provider, provider_reference, idempotency_key, kind, status, amount_nok, income_year, payload, created_by, created_at")
-      .in("company_id", companyIds),
-    supabase
-      .from("audit_events")
-      .select("id, company_id, actor_id, category, action, message, created_at")
-      .in("company_id", companyIds)
-      .order("created_at", { ascending: false })
-      .limit(50),
-  ]);
-
-  const { cancellations, error: cancellationLifecycleError } = await (
-    await import("../company-access-cancellation")
-  ).listCompanyCancellationLifecycle(companyIds);
-
-  await supabase.from("audit_events").insert(
-    companyIds.map((companyId) => ({
-      company_id: companyId,
-      actor_id: actorId,
-      category: "support",
-      action: "operator_dashboard_viewed",
-      message: `Operator dashboard searched for ${normalized}.`,
-    })),
-  );
 
   return {
     summaries: buildOperatorSupportSummaries({
-      companies: companyRows,
-      readinessSnapshots: (readinessSnapshots ?? []) as FilingReadinessSnapshotRow[],
-      submissions: (submissions ?? []) as FilingSubmissionRow[],
-      authorityPermissions: (authorityPermissions ?? []) as AuthorityPermissionRow[],
-      billingAccounts: (billingAccounts ?? []) as BillingAccountRow[],
-      billingPaymentEvents: (billingPaymentEvents ?? []) as BillingPaymentEventRow[],
-      cancellations: (cancellations ?? []) as CompanyCancellationRow[],
-      auditEvents: auditEvents ?? [],
+      companies: (resources.companies ?? []) as CompanyWorkspaceRow[],
+      readinessSnapshots: (resources.filing_readiness_snapshots ??
+        []) as FilingReadinessSnapshotRow[],
+      submissions: (resources.filing_submissions ??
+        []) as FilingSubmissionRow[],
+      authorityPermissions: (resources.authority_permissions ??
+        []) as AuthorityPermissionRow[],
+      billingAccounts: (resources.billing_accounts ??
+        []) as BillingAccountRow[],
+      billingPaymentEvents: (resources.billing_payment_events ??
+        []) as BillingPaymentEventRow[],
+      cancellations: (resources.company_cancellations ??
+        []) as CompanyCancellationRow[],
+      auditEvents: (resources.audit_events ??
+        []) as import("../operator-support").SupportAuditRow[],
     }),
     isOperator,
-    error: cancellationLifecycleError ?? null,
+    error: null,
   };
 }

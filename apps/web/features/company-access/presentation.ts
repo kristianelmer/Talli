@@ -2,7 +2,6 @@ import {
   TalliApiError,
   type CompanyAccessRecord,
   type CompanyContext,
-  type OperatorCompanyRecord,
 } from "@talli/talli-api-client";
 
 export function companyAccessActionErrorMessage(error: unknown) {
@@ -93,7 +92,7 @@ export type AcceptedMembershipCompanyPresentation = CompanyRegistryPresentation 
 };
 
 function presentCompanyRegistry(
-  company: CompanyContext | CompanyAccessRecord | OperatorCompanyRecord,
+  company: CompanyContext | CompanyAccessRecord,
 ): CompanyRegistryPresentation {
   return {
     id: company.id,
@@ -132,10 +131,4 @@ export function presentCompanyAccessRecord(
   company: CompanyAccessRecord,
 ): AcceptedMembershipCompanyPresentation {
   return { ...presentCompanyRegistry(company), role: company.role };
-}
-
-export function presentOperatorCompanyRecord(
-  company: OperatorCompanyRecord,
-): CompanyRegistryPresentation {
-  return presentCompanyRegistry(company);
 }

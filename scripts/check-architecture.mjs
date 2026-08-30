@@ -96,6 +96,20 @@ const LEDGER_ATOMIC_COORDINATOR_RELOCATION = Object.freeze({
     "compat-audit-persistence\0table:audit_events\0recordTaxSettlement",
   ]),
 });
+const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
+  issue: "#200",
+  path: "apps/web/app/lib/supabase/server.ts",
+  operation: "searchOperatorSupportDashboard",
+  minimumCapability: "investments",
+  scopes: new Set([
+    "compat-billing-persistence\0table:billing_accounts\0searchOperatorSupportDashboard",
+    "compat-billing-persistence\0table:billing_payment_events\0searchOperatorSupportDashboard",
+    "compat-annual-compliance-persistence\0table:filing_readiness_snapshots\0searchOperatorSupportDashboard",
+    "compat-rf1086-persistence\0table:authority_permissions\0searchOperatorSupportDashboard",
+    "compat-rf1086-persistence\0table:filing_submissions\0searchOperatorSupportDashboard",
+    "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
+  ]),
+});
 
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
@@ -1854,6 +1868,43 @@ export function validateCompatibilityRegistry(path, {
     }
     atomicLedgerRelocationOperations.add(operationKey);
   }
+  const supportSecurityOperationKey = compatibilityOperationKey(
+    SUPPORT_CASE_SECURITY_AMENDMENT.path,
+    SUPPORT_CASE_SECURITY_AMENDMENT.operation,
+  );
+  const supportSecurityRemoved = removedScopesByOperation.get(supportSecurityOperationKey) ?? [];
+  const supportSecurityAttempted = supportSecurityRemoved.some(({ record, scope }) => (
+    SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(supportSecurityScopeKey(record.id, scope))
+  ));
+  const supportSecurityMinimumIndex = stageIndexes.get(
+    SUPPORT_CASE_SECURITY_AMENDMENT.minimumCapability,
+  );
+  const supportSecurityStageAuthorized = currentStageIndex !== undefined
+    && supportSecurityMinimumIndex !== undefined
+    && currentStageIndex >= supportSecurityMinimumIndex;
+  let supportSecurityAtomic = false;
+  if (supportSecurityAttempted) {
+    if (!supportSecurityStageAuthorized) {
+      errors.push(
+        `${operationLabel(supportSecurityOperationKey)} support security amendment is authorized only by #200 at investments or later`,
+      );
+    } else {
+      const retainedApprovedScope = registry.records
+        .filter((entry) => entry.kind === "legacy-facade")
+        .some((entry) => (entry.scopes ?? []).some((scope) => (
+          SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
+            supportSecurityScopeKey(entry.id, scope),
+          )
+        )));
+      if (retainedApprovedScope) {
+        errors.push(
+          `${operationLabel(supportSecurityOperationKey)} support security amendment must remove all six #200 scopes together`,
+        );
+      } else {
+        supportSecurityAtomic = true;
+      }
+    }
+  }
   const currentOperationAnalyses = new Map();
   const currentOperationAnalysis = (scope) => {
     const operationKey = compatibilityOperationKey(scope.path, scope.operation);
@@ -1942,7 +1993,13 @@ export function validateCompatibilityRegistry(path, {
           currentCapability,
           ...exitedCapabilities,
         ].map((capability) => `backend:${capability}`));
-        if (!atomicLedgerRelocation && !authorizedResourceOwners.has(scopeResourceOwner)) {
+        const supportSecurityRemoval = supportSecurityAtomic
+          && operationKey === supportSecurityOperationKey
+          && SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
+            supportSecurityScopeKey(record.id, scope),
+          );
+        if (!atomicLedgerRelocation && !supportSecurityRemoval
+          && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
           );
@@ -2231,6 +2288,14 @@ function compatibilityOperationKey(path, operation) {
 function ledgerRelocationScopeKey(recordId, scope) {
   if (scope.path !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.path
     || scope.rule !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.rule) {
+    return undefined;
+  }
+  return [recordId, scope.resource, scope.operation].join("\u0000");
+}
+
+function supportSecurityScopeKey(recordId, scope) {
+  if (scope.path !== SUPPORT_CASE_SECURITY_AMENDMENT.path
+    || scope.rule !== "direct-web-business-persistence") {
     return undefined;
   }
   return [recordId, scope.resource, scope.operation].join("\u0000");

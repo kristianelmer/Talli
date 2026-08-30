@@ -155,14 +155,14 @@ class CompanyAccessGatewayStub:
         return [
             {
                 "company_id": company_id,
-                "business_terms_version": "2026-07-17",
-                "business_terms_effective_date": "2026-07-17",
+                "business_terms_version": "2026-08-30",
+                "business_terms_effective_date": "2026-08-30",
                 "business_terms_path": "/vilkar",
-                "business_terms_sha256": "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
-                "dpa_version": "2026-07-17",
-                "dpa_effective_date": "2026-07-17",
+                "business_terms_sha256": "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04",
+                "dpa_version": "2026-08-30",
+                "dpa_effective_date": "2026-08-30",
                 "dpa_path": "/databehandleravtale",
-                "dpa_sha256": "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+                "dpa_sha256": "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a",
                 "authority_statement_version": "authority-v1",
                 "acceptance_method": "in_app_clickwrap",
             }
@@ -469,8 +469,8 @@ def test_company_context_accepts_uuid_values_returned_by_psycopg() -> None:
             return [
                 {
                     **row,
-                    "business_terms_effective_date": date(2026, 7, 17),
-                    "dpa_effective_date": date(2026, 7, 17),
+                    "business_terms_effective_date": date(2026, 8, 30),
+                    "dpa_effective_date": date(2026, 8, 30),
                 }
                 for row in rows
             ]
@@ -741,7 +741,9 @@ def test_all_company_access_business_reads_use_the_verified_backend_database() -
             "bearer", ["10000000-0000-0000-0000-000000000001"]
         )
         await adapter.support_operator("bearer", "actor")
-        await adapter.search_operator_companies("bearer", "Holding")
+        await adapter.read_support_case(
+            "bearer", "70000000-0000-4000-8000-000000000007"
+        )
         await adapter.invitations("bearer", "10000000-0000-0000-0000-000000000001")
         await adapter.company_memberships(
             "bearer", "10000000-0000-0000-0000-000000000001"

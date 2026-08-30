@@ -1,21 +1,21 @@
 # Talli Privacy Policy Draft
 
-Status: draft for founder/legal/security review
-Last updated: 2026-07-17
-Blocks: #72 remains open until the required human approvals are recorded
+Status: founder/accountable-owner position approved; hosted facts and release digest pending
+Last updated: 2026-08-30
+Blocks: #72 remains open until hosted facts, final digests, and remaining pack decisions are recorded
 
 ## Controller
 
-ELMER WELFIS, org.nr. 930 835 978 is the controller for account administration,
-service security, legal compliance, and its own business records. This role
-boundary and the final purpose-by-purpose legal bases require legal/privacy
-review before publication.
+ELMER WELFIS, org.nr. 930 835 978, is the controller for limited processing used
+for account and access administration, service security, support, optional
+public measurement, billing, legal compliance, and its own business records.
+Privacy contact: `post@talli.no`. Registered address: Fjøsangerveien 32D, 5053
+Bergen, Norway.
 
-For business customers, the customer company is expected to be controller for
-personal data in its own company, shareholder, accounting-document, and filing
-content. ELMER WELFIS/Talli is expected to act as processor when it handles that
-data on the customer's documented instructions under `dpa-draft.md`. The final
-controller/processor allocation remains subject to legal review.
+For business customers, the customer company is controller for personal data in
+its company, shareholder, accounting-document, narrow-ledger, and filing
+content. ELMER WELFIS/Talli acts as processor when it handles that content on the
+customer's documented instructions under `dpa-draft.md`.
 
 ## Data Talli Processes
 
@@ -27,7 +27,8 @@ Talli processes data needed to operate a holding-first accounting and filing app
 - accounting data: ledger entries, holding actions, bank CSV rows, opening balances;
 - documents: accounting source documents, storage keys, metadata, signed download events;
 - filing data: previews, validation issues, overrides, confirmations, submissions, receipts;
-- billing data: plan, subscription state, filing-package state, refund eligibility;
+- billing data: company-year subscription, renewal choice, payment state, and
+  refund eligibility;
 - audit logs: security, role, document, ledger, billing, filing, and support-relevant events;
 - authority feedback and receipts when the relevant filing capability is enabled.
 
@@ -62,20 +63,57 @@ before named-company processing begins.
 
 ## Legal Basis for Processing
 
-The intended GDPR article 6 bases, subject to final purpose-by-purpose review,
-are:
+The GDPR article 6 bases for ELMER WELFIS's own controller processing are:
 
-- **Contract (art. 6(1)(b))** for processing needed to provide requested account
-  and service functions;
+- **Legitimate interests (art. 6(1)(f))** for proportionate account and access
+  administration for a business customer, service security, fraud and abuse
+  prevention, service integrity, support, and ordinary business administration;
 - **Legal obligation (art. 6(1)(c))** for records that applicable law requires
   ELMER WELFIS to retain;
-- **Legitimate interests (art. 6(1)(f))** for proportionate security, fraud and
-  abuse prevention, service integrity, and business administration; and
-- **Consent (art. 6(1)(a))** for optional processing that specifically relies on
-  consent, which may be withdrawn.
+- **Consent (art. 6(1)(a))** for the optional public company-check and onboarding
+  measurement described below. Consent may be withdrawn at any time.
 
-The legal/privacy reviewer must confirm the correct controller, purpose, basis,
-necessity, balancing, notice, and retention for each activity before publication.
+For customer-controlled content, the customer determines its legal basis and
+documents its instructions in the DPA. Talli must not silently reuse that
+content for its own purpose.
+
+Talli does not sell customer data. Talli does not use company, accounting,
+bank, document, or filing data for advertising.
+
+## Optional Public Measurement
+
+If a visitor chooses `Tillat bruksmåling`, ELMER WELFIS uses voluntary
+measurement only to see where the public company check and onboarding succeed or
+stop. Talli processes a consent version, random session and event IDs, fixed
+event, step, source and reason codes, and timestamps. This information is
+pseudonymous personal data; Talli does not call it anonymous.
+
+The measurement does not include a name, email, organization number, free text,
+page address, accounting data, bank data, document information, account,
+company, purchase, company-year, support, refund, or filing link. Nothing
+optional is stored or sent before consent. Refusal has equal prominence and does
+not reduce the service. The random session lasts no more than 30 minutes. Raw
+events and minimized consent proof are deleted no later than 90 days after
+receipt. The withdrawal tombstone lasts no more than 30 minutes.
+
+A visitor can withdraw consent in the same interface. New collection stops at
+once and Talli requests deletion of the raw session, with a safe retry if the
+first request cannot be confirmed. Withdrawal does not affect processing that
+was lawful before withdrawal. Provider logs and backups follow their verified
+published periods and cannot be described until those facts are confirmed.
+
+## Invited-Pilot Observation
+
+An invited pilot uses the normal Talli product. A separate passive observer may
+write a limited validation record after the normal product result. It must not
+change, retry, hide, replace, or otherwise affect that result. Participants
+receive the exact pilot information and agreement before observation starts.
+
+Raw pilot observations are deleted no later than 90 days after receipt. The
+separate protected participant register is deleted 12 months after validation
+ends, unless a documented incident or legal requirement needs longer storage.
+Access is limited to named validation reviewers. Full public launch requires
+the observer to be off and every pilot permission to be expired or removed.
 
 ## Processors and External Services
 
@@ -97,12 +135,20 @@ available to affected customers before the transfer begins.
 
 ## Retention
 
-Accounting documentation, filing receipts, billing records, and audit trails may
-need retention after cancellation. Retention must be mapped to the applicable
-controller, purpose, and legal duty. User-requested deletion must not silently
-remove material that law requires the responsible controller to retain. See
-`docs/legal/retention-delete-export-policy-draft.md`; exact periods and role
-allocation remain subject to legal review.
+Customer-controlled content is returned or deleted at the customer's documented
+choice after the agreed access/export period, unless a legal duty applies
+directly to Talli or the customer instructs a lawful retention period. The
+customer's bookkeeping duty is not a general right for Talli to retain unrelated
+copies. Talli keeps its own billing and legal records only for their applicable
+legal period. See `docs/legal/retention-delete-export-policy-draft.md`.
+
+## Data Protection Officer Assessment
+
+ELMER WELFIS does not appoint a formal data protection officer at launch. Talli
+is not a public authority, does not conduct large-scale systematic monitoring,
+and does not make large-scale processing of sensitive or criminal data a core
+activity. The accountable owner reviews and records this assessment each year
+and after a material product or scale change.
 
 ## User Rights
 
@@ -114,12 +160,13 @@ legal retention duty.
 Users may lodge a complaint with the Norwegian Data Protection Authority
 (Datatilsynet) if they believe personal data is processed unlawfully.
 
-## Required Human Review Before Publication
+## Approval and Remaining Evidence
 
-- Legal/privacy reviewer approves the controller/processor boundary, each
-  purpose and legal basis, retention, rights, and transfer wording.
-- Founder confirms the actual provider list and customer-facing commitments.
-- Security reviewer confirms access and security statements against current
-  hosted tenant-isolation, private-storage, backup, restore, and audit evidence.
+- Kristian Elmer approved the role, basis, measurement, retention, and DPO
+  decisions as founder and accountable owner on 2026-08-30. AI-assisted research
+  informed the decision and is not professional legal advice.
+- The accountable owner must confirm the actual provider list and hosted access
+  and security statements against current tenant-isolation, private-storage,
+  backup, restore, logging, purge, and audit evidence.
 - Provider regions, transfer bases, certifications, and hosted controls remain
   pending until current production verification is recorded.

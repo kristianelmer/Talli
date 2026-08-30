@@ -10,7 +10,6 @@ import {
 import {
   presentCompanyAccessRecord,
   presentCompanyAccessContext,
-  presentOperatorCompanyRecord,
 } from "../features/company-access/presentation.ts";
 import {
   BackendConfigurationError,
@@ -167,7 +166,7 @@ test("the company-access app boundary owns its presentation model instead of a S
   assert.match(source, /presentCompanyAccessContext/);
   assert.match(presentation, /export type CompanyAccessPresentation/);
   assert.match(presentation, /CompanyAccessRecord/);
-  assert.match(presentation, /OperatorCompanyRecord/);
+  assert.doesNotMatch(presentation, /OperatorCompanyRecord/);
   assert.match(presentation, /role: "owner";/);
   assert.match(presentation, /currentAgreementAccepted: boolean;/);
   assert.match(presentation, /admittedAccountingYear: number \| null;/);
@@ -206,7 +205,7 @@ test("owner context preserves the admitted company-year and current safety gate"
   );
 });
 
-test("company record presentations map generated camel-case contracts to existing web registry facts", () => {
+test("company record presentation maps the generated camel-case contract to existing web registry facts", () => {
   const company = {
     id: "company-1",
     orgNumber: "314159265",
@@ -238,21 +237,6 @@ test("company record presentations map generated camel-case contracts to existin
     identity_locked_at: null,
     created_at: "2026-08-26T08:00:00Z",
     role: "reviewer",
-  });
-  assert.deepEqual(presentOperatorCompanyRecord(company), {
-    id: "company-1",
-    org_number: "314159265",
-    name: "Talli Holding AS",
-    entity_type: "AS",
-    address: "Testveien 1",
-    postal_code: "0150",
-    city: "Oslo",
-    status_text: "Registrert",
-    source: "Brønnøysundregistrene",
-    created_by: "owner-1",
-    identity_confirmed_at: "2026-08-26T08:00:00Z",
-    identity_locked_at: null,
-    created_at: "2026-08-26T08:00:00Z",
   });
 });
 

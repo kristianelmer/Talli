@@ -36,7 +36,7 @@ const companyYearPromise = {
 } as const;
 
 const refundPromise =
-  "Full refusjon innen 30 dager etter første kjøp når ingen produksjonsinnsending er sendt. Hvis Talli godtar en sak som skulle vært stoppet, eller Talli eller en leverandør ikke kan fullføre det lovede selskapsåret, refunderes hele beløpet automatisk.";
+  "Hvis Talli bekrefter at selskapsåret støttes, men ikke kan fullføre det på grunn av feil i Tallis egen logikk eller tilkobling, får kunden hele beløpet tilbake. Betaling er ikke åpnet nå.";
 
 const proofLinks = [
   { label: "Se selskapsgrensen", href: "/passer-talli" },
@@ -85,7 +85,7 @@ const faq = [
   {
     question: "Hva koster det, og hvordan fungerer fornyelse og oppsigelse?",
     answer:
-      "Prisen er NOK 1,490 inkl. mva. per selskapsår. Automatisk fornyelse krever eget samtykke, og oppsigelse kan gjøres når som helst. Betaling er ikke åpnet nå.",
+      "Prisen er NOK 1 490 per selskapsår. Merverdiavgift er inkludert når den gjelder etter loven. Betaling, automatisk fornyelse og belastning er ikke åpnet. Eventuelle fremtidige regler vises tydelig før kunden kan betale.",
   },
   {
     question: "Hvordan fungerer refusjon?",
@@ -94,7 +94,7 @@ const faq = [
   {
     question: "Hvordan håndterer Talli sikkerhet, personvern og hjelp?",
     answer:
-      "Talli bruker bare data som trengs for tjenesten og sender ikke person-, selskaps- eller finansdata til markedsanalyse. Les personvernerklæringen eller kontakt post@talli.no.",
+      "Talli bruker bare data som trengs for tjenesten. Frivillig bruksmåling krever et eget ja og kobles ikke til konto, selskap, bank, regnskap, dokumenter eller innsendinger. Les personvernerklæringen eller kontakt post@talli.no.",
   },
 ] as const;
 
@@ -154,7 +154,7 @@ export const publicRecruitmentOffer = {
   ],
   priceTitle: "Én pris når betaling åpner",
   priceLine:
-    "NOK 1,490 inkl. mva. per selskapsår. Banktilkobling og alle tre innsendingene er inkludert.",
+    "NOK 1 490 per selskapsår. Merverdiavgift er inkludert når den gjelder etter loven. Banktilkobling og alle tre innsendingene er inkludert.",
   priceRestriction:
     "Du kan ikke bestille eller betale nå. Betaling åpner først etter full lanseringsklarering.",
   refundTitle: "Trygg vei ut",
@@ -169,7 +169,7 @@ export const publicRecruitmentOffer = {
   finalBody:
     "Du får et tydelig foreløpig svar, og ingen konto eller betaling kreves. Den endelige sjekken må være ferdig før du kan gå videre.",
   operator:
-    "Talli drives av ELMER WELFIS, org.nr. 930 835 978. Kontakt: post@talli.no.",
+    "Talli drives av ELMER WELFIS, org.nr. 930 835 978, Fjøsangerveien 32D, 5053 Bergen. Kontakt: post@talli.no.",
   nonAffiliation:
     "Talli er ikke tilknyttet, godkjent av eller drevet av Fiken, Altinn, Skatteetaten eller Brønnøysundregistrene.",
 } as const;

@@ -15,16 +15,19 @@ or cheaper alternative. If the cost is uncertain, treat the action as potentiall
 chargeable and ask before proceeding. General authorization to continue, deploy,
 or finish the product is not authorization to spend money.
 
-### GitHub and Vercel standing no-cost authority
+### GitHub, Vercel, and Supabase standing no-cost authority
 
-Kristian has confirmed that ordinary GitHub and Vercel operations for Talli are
-free and pre-authorized. Git pushes, GitHub API/issue/Actions use, and automatic
-Vercel Preview deployments do not trigger the cost-approval gate and must not
-pause autonomous work.
+Kristian has confirmed that ordinary GitHub, Vercel, and Supabase operations for
+Talli are free and pre-authorized. Git pushes, GitHub API/issue/Actions use,
+automatic Vercel Preview deployments, and ordinary operations against the
+owner-designated Talli Supabase organization/project do not trigger the
+cost-approval gate and must not pause autonomous work.
 
 Treat this as a standing owner rule until Kristian explicitly revokes it. Only a
 provider flow that explicitly presents a paid purchase, plan upgrade, add-on, or
-monetary charge requires separate cost approval.
+monetary charge requires separate cost approval. Never infer the Talli Supabase
+target from a different organization or project; verify the exact owner-designated
+target before applying hosted changes.
 
 ## Agent skills
 

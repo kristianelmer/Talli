@@ -1,7 +1,7 @@
 export const marketingConsentVersion = "marketing-analytics-v1" as const;
-export const marketingConsentFirstLayerVersion = "candidate-2026-08-29" as const;
+export const marketingConsentFirstLayerVersion = "2026-08-30" as const;
 export const marketingConsentFirstLayerText =
-  "Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter og faste koder, uten navn, e-post, organisasjonsnummer, fritekst, sideadresse, bank-, dokument- eller regnskapsdata. Råhendelser slettes senest etter 90 dager. Ingenting valgfritt lagres eller sendes før du velger «Tillat bruksmåling», og Talli virker på samme måte hvis du velger «Nei takk».";
+  "Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter og faste koder for hendelse, steg, kilde og årsak. Den inneholder ikke navn, e-post, organisasjonsnummer, sideadresse, fritekst, bank-, dokument- eller regnskapsdata. Råhendelser og minimumsbeviset for samtykke slettes senest etter 90 dager. Ingenting valgfritt lagres eller sendes før du velger «Tillat bruksmåling». Talli virker på samme måte hvis du velger «Nei takk», og du kan trekke samtykket tilbake når som helst.";
 export const marketingSessionLifetimeMilliseconds = 30 * 60 * 1_000;
 export const marketingSessionStorageKey = "talli.marketing-consent.v1";
 export const marketingPendingWithdrawalStorageKey = "talli.marketing-withdrawal.v1";

@@ -132,15 +132,20 @@ from talli_backend.modules.company_access.public import (
     EligibilityDefinitiveRequest,
     EligibilityPrecheckRequest,
     FinalizeCompanyDeletionRequest,
+    GrantSupportAccessRequest,
     InvitationLookup,
     InvitationSideEffectCompletion,
     InvitationSideEffectContinuationList,
     InvitationTokenRequest,
-    OperatorCompanySearchResponse,
+    OpenSupportCaseRequest,
     OperatorContextResponse,
+    RevokeSupportAccessRequest,
     RequestCompanyCancellationRequest,
     ResumeCompanyCancellationRequest,
     ReviewCompanyDeletionRequest,
+    SupportAccessGrantResponse,
+    SupportCaseOpeningResponse,
+    SupportCaseSnapshotResponse,
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
@@ -2076,22 +2081,81 @@ def create_app(
             company_access_service.operator_context(bearer_token(credentials))
         )
 
-    @application.get(
-        "/api/v1/company-access/operator-companies",
-        operation_id="companyAccessSearchOperatorCompanies",
-        response_model=OperatorCompanySearchResponse,
-        responses={200: {"description": "Bounded operator company search."} | company_access_success}
+    @application.post(
+        "/api/v1/company-access/operator-support-grants",
+        operation_id="companyAccessGrantSupportAccess",
+        response_model=SupportAccessGrantResponse,
+        status_code=201,
+        responses={201: {"description": "Case-bound support access granted."} | company_access_success}
         | company_access_errors,
         tags=["company-access"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
-    async def search_company_access_operator_companies(
-        query: str,
+    async def grant_company_access_operator_support(
+        command: GrantSupportAccessRequest,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> OperatorCompanySearchResponse:
+    ) -> SupportAccessGrantResponse:
         return await company_access_call(
-            company_access_service.search_operator_companies(
-                bearer_token(credentials), query=query
+            company_access_service.grant_support_access(bearer_token(credentials), command)
+        )
+
+    @application.post(
+        "/api/v1/company-access/operator-support-grants/{case_id}/revocations",
+        operation_id="companyAccessRevokeSupportAccess",
+        response_model=SupportAccessGrantResponse,
+        responses={200: {"description": "Case-bound support access revoked."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def revoke_company_access_operator_support(
+        case_id: UUID,
+        command: RevokeSupportAccessRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SupportAccessGrantResponse:
+        return await company_access_call(
+            company_access_service.revoke_support_access(
+                bearer_token(credentials), case_id, command
+            )
+        )
+
+    @application.post(
+        "/api/v1/company-access/operator-support-cases/{case_id}/openings",
+        operation_id="companyAccessOpenSupportCase",
+        response_model=SupportCaseOpeningResponse,
+        status_code=201,
+        responses={201: {"description": "Support case opened with durable audit evidence."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def open_company_access_operator_support_case(
+        case_id: UUID,
+        command: OpenSupportCaseRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SupportCaseOpeningResponse:
+        return await company_access_call(
+            company_access_service.open_support_case(
+                bearer_token(credentials), case_id, command
+            )
+        )
+
+    @application.get(
+        "/api/v1/company-access/operator-support-cases/{case_id}",
+        operation_id="companyAccessReadSupportCase",
+        response_model=SupportCaseSnapshotResponse,
+        responses={200: {"description": "Read-only case-bound support snapshot."} | company_access_success}
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_company_access_operator_support_case(
+        case_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SupportCaseSnapshotResponse:
+        return await company_access_call(
+            company_access_service.read_support_case(
+                bearer_token(credentials), case_id=case_id
             )
         )
 
@@ -2326,11 +2390,12 @@ def create_app(
     async def review_company_deletion(
         cancellation_id: UUID,
         command: ReviewCompanyDeletionRequest,
+        support_case_id: UUID = Header(alias="X-Support-Case-ID"),
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CompanyDeletionReviewResponse:
         return await company_access_call(
             company_access_service.review_deletion(
-                bearer_token(credentials), cancellation_id, command
+                bearer_token(credentials), cancellation_id, support_case_id, command
             )
         )
 

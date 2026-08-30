@@ -1,19 +1,24 @@
 # Marketing Measurement Decision Draft
 
-Status: founder product directions approved; exact text and deployed facts still
-require legal/privacy review
+Status: founder/accountable-owner legal and privacy decision approved; deployed
+facts, version migration, and immutable release evidence still pending
 
 Issue: #196
 
-Last checked: 2026-08-29
+Last checked: 2026-08-30
 
-Current implementation baseline: source revision
-`b8c635538ea382e639ec54af09a34aee3981ef32`; the #196 evidence ledger binds
-the later immutable-gate source and evidence revisions.
+Historical implementation baseline reviewed: source revision
+`b8c635538ea382e639ec54af09a34aee3981ef32`. The exact integrated 2026-08-30
+copy revision and immutable release evidence must be recorded after the
+separate agreement-version migration is complete.
 
 This document separates official-source requirements from product-design
-inference. It does not approve publication, change the digest-pinned privacy
-notice, authorize tracking, or replace legal review.
+inference. Kristian Elmer approved the exact business and privacy direction on
+2026-08-30 as founder and accountable owner. The review used AI-assisted legal
+and security research; it is not professional legal advice or an independent
+human certification. The canonical document and notice digests are recorded
+below. Publication and collection remain blocked until the hosted facts,
+version migration, integrated revision, and immutable release evidence pass.
 
 ## Recorded Founder Product Decision
 
@@ -31,6 +36,11 @@ launch** direction on 2026-08-29. This approval means:
 This is a product-minimization decision. It is not approval of the exact notice,
 the processor schedule, a legal classification, publication, deployment or
 activation. Those gates remain below.
+
+The later 2026-08-30 founder/accountable-owner decision approved the exact
+pseudonymous classification, notice direction, retention periods, DPO position,
+and code/public-no-customer-data boundary. It did not approve activation or
+hosted facts.
 
 ## Recorded Founder Checklist Decision
 
@@ -61,11 +71,16 @@ plain-language review points presented for this measurement boundary:
   region, recipient, transfer and privileged-access facts have been verified;
   and
 - identify ELMER WELFIS / Talli as controller and `post@talli.no` as the privacy
-  contact, subject to the final legal-name/contact and DPO applicability check.
+  contact. On 2026-08-30, Kristian approved no formal DPO at launch, with annual
+  and material-change reassessment.
 
 This records founder product choices and required launch conditions. It does not
 assert that the provider facts have been verified, approve a legal
 classification, approve the exact notice text/digests, or authorize activation.
+
+The 2026-08-30 decision supersedes only the still-open legal-classification and
+exact-copy parts of that 2026-08-29 checklist. Provider facts and activation
+remain unapproved.
 
 ## Temporary Invited-Pilot Evaluation Mode
 
@@ -92,16 +107,18 @@ The implementation and operating design must enforce all of these conditions:
 - the bounded evaluation record may capture critical task started/completed/
   failed/blocked state, step and reason code, elapsed duration, intervention
   count/type/duration, defect or difference classification, rerun result and
-  final filing-package outcome;
+  final supported company-year outcome;
 - the evaluation stream must not contain names, email addresses, organization
   numbers, free text, document contents, filenames, bank/account facts, ledger
   values, exact monetary amounts or source marketing attribution;
 - invited participants receive the exact validation information and agreement
   before the mode observes their work, including purpose, fields, retention,
   withdrawal, export and deletion expectations;
-- raw pilot observations have a separately approved retention period, access is
-  limited to named validation reviewers, and reporting uses the approved case
-  matrix rather than public marketing reports;
+- raw pilot observations are kept for no more than 90 days, access is limited
+  to named validation reviewers, and reporting uses the approved case matrix
+  rather than public marketing reports;
+- the protected participant register is kept for 12 months after validation
+  ends, unless a documented incident or legal requirement needs longer storage;
 - an observation-write failure never changes, rolls back or hides the normal
   product result. It marks that test observation incomplete and must be resolved
   or rerun before the affected acceptance can pass;
@@ -145,8 +162,9 @@ matches the exact first-layer version/digest, full privacy-notice version/digest
 and released-workflow SHA-256. The first accepted event creates a private,
 server-timestamped consent grant; the 30-minute window begins at that time.
 Withdrawal is appended to the same proof journal and stops recreation. No
-approved release row is created by migration or application startup, so the
-current contradictory 2026-07-15 notice cannot activate collection.
+approved release row is created by migration or application startup, so the new
+2026-08-30 notice cannot activate collection until a separate, exact release row
+is approved and provisioned.
 
 The invited-pilot observer is also implemented as a separate backend-system
 stream. It is exact-off by default, database-authoritative for approved run,
@@ -232,29 +250,25 @@ These are source findings, not product recommendations:
    [GDPR Articles 5–6](https://eur-lex.europa.eu/eli/reg/2016/679/oj) and
    [Datatilsynet purpose-limitation guidance](https://www.datatilsynet.no/rettigheter-og-plikter/personvernprinsippene/grunnleggende-personvernprinsipper/formalsbegrensning/).
 
-## Current Review Gaps
+## Current Review State
 
-The following are product/legal-review findings inferred from those sources:
+The local 2026-08-30 copy now resolves the earlier notice inconsistencies:
 
-- The public privacy notice currently says that Talli uses only necessary
-  cookies and no marketing tracking. That is inconsistent with the optional
-  measurement implementation even though measurement is consent-gated.
-- The label “anonym” has not been supported by a written Recital 26 assessment
-  covering session and event identifiers, timestamps, event sequences,
-  allowlisted source, IP/User-Agent exposure and platform/runtime logs. Until
-  that assessment passes, “frivillig bruksmåling med tilfeldig økt-ID” is the
-  safer description.
-- “Tillat anonym måling” uses the visually primary button while “Nei takk” uses
-  a secondary treatment. Both are one click, but legal review must confirm or
-  require equal visual prominence under Datatilsynet's guidance.
-- The first-layer copy states data exclusions and retention but does not state
-  the precise acquisition/onboarding measurement purpose.
-- The linked full notice does not enumerate the actual measurement fields,
-  processor/runtime-log boundary, consent basis, withdrawal effect or exact
-  retention.
-- Withdrawal is available wherever the global consent component is mounted,
-  but the approved notice must distinguish raw-event deletion from any
-  separately lawful logs, backups or irreversibly anonymized aggregates.
+- the public privacy notice describes the optional measurement instead of
+  claiming that only necessary cookies are used;
+- the copy calls the data pseudonymous and does not claim anonymity;
+- `Tillat bruksmåling` and `Nei takk` use the same visual treatment and one
+  action each;
+- the first layer states the public-check/onboarding purpose, main fields,
+  exclusions, 30-minute session, 90-day raw-event period, optional choice, and
+  no loss of service after refusal; and
+- the full notice states the consent basis, withdrawal effect, provider-fact
+  boundary, exact application retention, and no account/company joins.
+
+Deployed logs, backups, recipients, providers, regions, transfers, privileged
+access, automatic purge, exact publication revision, and release evidence remain
+unverified. The approved notice must not be activated until those facts and the
+immutable release gate are recorded.
 
 ## Approved Founder Product Direction
 
@@ -296,12 +310,13 @@ hashing a key, or exposing only aggregates does not by itself remove the legal
 and privacy review. A durable browser-to-company token has the highest linkage
 and deletion burden and is not recommended for launch.
 
-## Proposed Additive Notice Section
+## Approved Additive Notice Section
 
-The following Norwegian text is the exact candidate for legal/privacy review. It
-contains no provider name or location claim because the production processor
-schedule is not yet verified. That schedule must be completed and approved before
-publication.
+The following Norwegian text records the 2026-08-30 founder/accountable-owner
+decision. The canonical published text is in `apps/web/app/lib/copy.ts` and is
+bound to the version and digest below. It contains no provider name or location
+claim because the production processor schedule is not yet verified. That
+schedule must be completed before activation.
 
 > ### Frivillig måling av den offentlige kundereisen
 >
@@ -331,9 +346,10 @@ publication.
 > Du kan kontakte post@talli.no om innsyn, retting, sletting, begrensning eller
 > andre personvernspørsmål, og du kan klage til Datatilsynet.
 
-## Exact First-Layer Consent Candidate
+## Approved First-Layer Consent Text
 
-This is the exact short-form candidate to review together with the full section:
+This is the approved short-form direction. The exact canonical string and
+version are in `apps/web/features/public-acquisition/measurement.ts`:
 
 > **Hjelp oss forbedre selskapsjekken**
 >
@@ -355,28 +371,32 @@ Controls, with equal visual prominence and one action each:
 
 ## Founder/Legal/Privacy Signoff Checklist
 
-- [ ] Confirm the controller's legal name, contact route and DPO/contact if
-      applicable.
+- [x] Controller: ELMER WELFIS, org.nr. 930 835 978; privacy contact
+      `post@talli.no`; no formal DPO at launch, with annual/material-change
+      reassessment.
 - [x] Inventory application-controlled browser keys, IDs, payload fields,
       database rows, reports, retention and access paths in the table above.
 - [ ] Confirm deployed HTTP/CDN/proxy/runtime/database logs, backups, recipients,
       processors, regions, transfers and privileged access against current
       settings and contracts; application source cannot prove these facts.
-- [ ] Classify each layer as anonymous, pseudonymous or personal through a
-      written Recital 26 singling-out/reidentification assessment.
-- [ ] Approve one precise purpose and lawful basis for every event, report and
-      retention layer.
-- [ ] Record why each device access requires consent or satisfies a narrow
-      § 3-15 exception.
-- [ ] Approve the exact first-layer text and complete privacy-notice section.
-- [ ] Confirm refusal is as visible and easy as acceptance, service access does
+- [x] Treat the session ID, hash, timestamps, events and source codes as
+      pseudonymous personal data; do not claim anonymity. Hosted logs remain
+      pending below.
+- [x] Purpose: find where the public company check and onboarding succeed or
+      stop. Basis: consent for device access and subsequent measurement.
+- [x] Record that optional device access requires consent under § 3-15; no
+      strictly-necessary exception is claimed.
+- [x] Approve the exact first-layer text and additive privacy-notice section as
+      the founder/accountable-owner decision.
+- [x] Confirm refusal is as visible and easy as acceptance, service access does
       not depend on consent, and no optional storage/request precedes consent.
-- [ ] Approve a data-minimized consent proof binding time, action, consent
+- [x] Approve a data-minimized consent proof binding time, action, consent
       version, exact notice digest and released workflow.
-- [ ] Verify withdrawal is always findable, stops collection immediately,
+- [x] Verify in code/local evidence that withdrawal is always findable, stops collection immediately,
       retries deletion safely and has an approved deletion expectation.
-- [ ] Approve exact retention for events, tombstones, consent proof, logs,
-      backups and aggregates, with automated-purge evidence.
+- [x] Approve application retention: 90 days for raw events and minimized
+      consent proof; 30 minutes for the withdrawal tombstone. Hosted logs,
+      backups and automatic-purge evidence remain pending.
 - [ ] Name every processor/recipient, processing region, transfer mechanism and
       access role from current production contracts and configuration.
 - [ ] Verify that URLs, query strings, raw payloads and identifiers do not leak
@@ -384,10 +404,13 @@ Controls, with equal visual prominence and one action each:
 - [x] Choose explicitly: no longitudinal marketing cohort for launch (founder
       product decision recorded 2026-08-29).
 - [x] Approve the temporary higher-resolution invited-pilot evaluation direction,
-      with protected case-code evidence and a hard `off` requirement for full
-      public launch (founder product decision recorded 2026-08-29).
-- [ ] Record approver names/roles, date, approved notice and consent digests,
-      conditions, review/expiry date and launch/no-launch decision.
+      with protected case-code evidence, raw observations kept no more than 90
+      days, the protected participant register kept 12 months after validation,
+      and a hard `off` requirement for full public launch.
+- [x] Approver: Kristian Elmer, founder/accountable owner, 2026-08-30. Decision:
+      code/public-no-customer-data direction approved; real data and activation
+      remain blocked by the hosted conditions. Canonical notice and consent
+      versions/digests are recorded below; exact release evidence remains open.
 
 ## Activation and Approved Notice Publication
 
@@ -402,3 +425,18 @@ An approved notice change requires at least:
 - a new immutable release gate on the exact resulting revision.
 
 No existing acceptance or historical notice evidence may be rewritten.
+
+The canonical 2026-08-30 document bindings are:
+
+- Business Terms: version `2026-08-30`, SHA-256
+  `afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04`;
+- DPA: version `2026-08-30`, SHA-256
+  `1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a`;
+- Privacy Notice: version `2026-08-30`, SHA-256
+  `041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de`; and
+- first-layer measurement notice: version `2026-08-30`, SHA-256
+  `ae97c2c47622e0b6cbc9af083b5822dc8ac322f37c194b2c4967854df6496a6e`.
+
+These bindings are publication inputs, not an activation record. Hosted facts,
+the exact release revision, and the separately provisioned immutable release
+row remain fail-closed.

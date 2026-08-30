@@ -1,8 +1,8 @@
 # Talli Business Terms Draft
 
-Status: draft for founder/legal/security review
-Last updated: 2026-07-17
-Blocks: #72 remains open until the required human approvals are recorded
+Status: founder commercial decisions approved; liability cap and hosted facts pending
+Last updated: 2026-08-30
+Blocks: #72 remains open until the remaining pack decisions and evidence are recorded
 
 ## Parties and Business-Customer Scope
 
@@ -10,6 +10,11 @@ These Talli Business Terms are the general agreement between the company that
 explicitly accepts them (the customer) and ELMER WELFIS, org.nr. 930 835 978
 (the supplier). They apply only to business customers. The person accepting
 must be authorized to bind the named customer company.
+
+Supplier contact: ELMER WELFIS, Fjøsangerveien 32D, 5053 Bergen, Norway,
+`post@talli.no`. The supplier is registered in Enhetsregisteret and is not
+currently registered in Merverdiavgiftsregisteret. Public register and VAT
+information must be updated if that status changes.
 
 The Data Processing Agreement is incorporated into these Business Terms when
 the supplier processes personal data on the customer's behalf. If the two
@@ -82,23 +87,31 @@ marketed as completed live authority filing.
 
 ## Billing and Refunds
 
-The current price and payment state are shown in the customer's plan. A free
-plan creates no payment obligation. Before paid service is activated, its price
-and payment terms must be shown and the customer must complete the applicable
-activation.
+Talli uses one NOK 1,490 company-year subscription. The displayed total includes
+VAT only when VAT legally applies. There is no monthly base price, filing
+package, per-submission fee, setup fee, or automatically billed advisory work.
+A free plan creates no payment obligation. Before paid service is activated,
+Talli shows the exact company-year, price, terms, authority, supported scope,
+and safe-exit promise. The customer must pass definitive eligibility and
+complete the applicable activation.
 
-The following refund boundary remains subject to founder and legal review:
+One charge buys one company-year. Payment, automatic renewal, and charging are
+not enabled. Any future renewal, cancellation, and charging rules must be shown
+clearly and explicitly accepted before the customer can pay. At the end of paid
+access, the customer receives the approved read-only period and export path.
 
-- a filing package may be charged only after readiness passes;
-- unsupported cases must not be charged for a filing package; and
-- if Talli accepts a supported case and fails because of Talli filing logic or
-  integration, the filing package is refund-eligible.
+Refunds follow these rules:
 
-Refund eligibility does not cover customer-provided incorrect data, missing
-authority access, unsupported cases, missed deadlines outside Talli's control,
-or authority outages unless the supplier makes a separate written commitment.
-Payments, when paid billing is enabled, are processed by the displayed payment
-provider. Provider details require production re-confirmation before publication.
+- if Talli confirms that a company-year is supported but later cannot complete
+  it because of an error in Talli's own logic or connection, the customer
+  receives a full refund; and
+- incorrect customer data, missing evidence or authority, customer-controlled
+  missed deadlines, and authority outages outside Talli's control do not create
+  an automatic refund.
+
+Payment-provider identity, settlement timing, renewal, cancellation, and any
+additional refund rights require a separate approved decision before payment is
+enabled or those promises are published.
 
 ## Support Boundary
 
@@ -144,10 +157,12 @@ needed for a security risk, unlawful use, non-payment, or material breach, and
 may terminate for material breach after reasonable opportunity to cure where
 appropriate.
 
-Before access ends, the customer must export data and documents it must retain.
-After termination, personal data is handled under the Data Processing
-Agreement, applicable retention law, and available export and deletion
-procedures in `retention-delete-export-policy-draft.md`.
+Before access ends, Talli provides the approved read-only and company archive
+export period. After that period, Talli returns or deletes customer-controlled
+data according to the customer's documented choice and any legal duty that
+applies directly to Talli. The customer's own bookkeeping duty is not a general
+right for Talli to retain all customer data. Details are in the Data Processing
+Agreement and `retention-delete-export-policy-draft.md`.
 
 ## Changes to These Terms
 
@@ -171,12 +186,14 @@ accepted for that customer's company. This draft is not published and has no
 binding effect until the required founder/legal/security approvals and
 publication are recorded.
 
-## Required Human Review Before Publication
+## Approval and Remaining Decision
 
-- Founder approves the commercial terms and refund wording.
-- Legal reviewer approves the B2B scope, electronic acceptance, liability,
-  remedies, governing law, jurisdiction, and incorporation of the DPA.
-- Security reviewer confirms alignment with the final DPA, security measures,
-  incident policy, and current hosted evidence.
+- Kristian Elmer approved the B2B scope, electronic acceptance, annual offer,
+  narrow Talli-logic/connection refund, safe exit, Norwegian law, and
+  ordinary-court approach as founder and accountable owner on 2026-08-30.
+- A final liability cap remains undecided. This draft does not infer one.
+- Hosted provider and security facts must be confirmed before named-company use.
+- AI-assisted research informed the decision and is not professional legal or
+  security certification.
 - Launch reviewer confirms no claim conflicts with
   `docs/launch/clearance-checklist.md` or enables production filing.

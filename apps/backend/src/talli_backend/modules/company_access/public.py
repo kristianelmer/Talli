@@ -100,46 +100,105 @@ class OperatorContextResponse(CompanyAccessResponseModel):
     active: Literal[True]
 
 
-class OperatorCompanyRecord(CompanyAccessResponseModel):
-    id: str
-    org_number: str
-    name: str
-    entity_type: str
-    address: str
-    postal_code: str
-    city: str
-    status_text: str
-    source: str
-    created_by: str
-    identity_confirmed_at: str | None
-    identity_locked_at: str | None
-    created_at: str
+SupportAccessReason = Literal[
+    "customer_request", "security_incident", "service_recovery", "legal_obligation"
+]
+SupportAccessScope = Literal[
+    "profile",
+    "filing",
+    "billing",
+    "audit",
+    "cancellation",
+    "authority",
+    "documents",
+    "production",
+]
+SupportAccessRevocationReason = Literal[
+    "case_closed",
+    "access_no_longer_needed",
+    "operator_removed",
+    "security_response",
+    "grant_replaced",
+]
 
 
-class OperatorCompanySearchResponse(CompanyAccessResponseModel):
-    companies: list[OperatorCompanyRecord]
+class GrantSupportAccessRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    company_id: UUID
+    operator_user_id: UUID
+    reason: SupportAccessReason
+    scopes: list[SupportAccessScope] = Field(min_length=1, max_length=8)
+    starts_at: AwareDatetime
+    expires_at: AwareDatetime
 
 
-CURRENT_BUSINESS_TERMS_VERSION: Literal["2026-07-17"] = "2026-07-17"
-CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE: Literal["2026-07-17"] = "2026-07-17"
+class RevokeSupportAccessRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+    reason: SupportAccessRevocationReason
+
+
+class OpenSupportCaseRequest(CompanyAccessCommandModel):
+    operation_id: UUID
+
+
+class SupportAccessGrant(CompanyAccessResponseModel):
+    case_id: UUID
+    company_id: UUID
+    operator_user_id: UUID
+    reason: SupportAccessReason
+    scopes: list[SupportAccessScope]
+    starts_at: AwareDatetime
+    expires_at: AwareDatetime
+    granted_by: UUID
+    granted_at: AwareDatetime
+    revoked_at: AwareDatetime | None
+    revoked_by: UUID | None
+    revocation_reason: SupportAccessRevocationReason | None
+
+
+class SupportAccessGrantResponse(CompanyAccessResponseModel):
+    grant: SupportAccessGrant
+
+
+class SupportCaseOpening(CompanyAccessResponseModel):
+    operation_id: UUID
+    case_id: UUID
+    company_id: UUID
+    opened_by: UUID
+    opened_at: AwareDatetime
+
+
+class SupportCaseOpeningResponse(CompanyAccessResponseModel):
+    opening: SupportCaseOpening
+
+
+class SupportCaseSnapshotResponse(CompanyAccessResponseModel):
+    case_id: UUID
+    company_id: UUID
+    scopes: list[SupportAccessScope]
+    resources: dict[str, list[dict[str, object]]]
+
+
+CURRENT_BUSINESS_TERMS_VERSION: Literal["2026-08-30"] = "2026-08-30"
+CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE: Literal["2026-08-30"] = "2026-08-30"
 CURRENT_BUSINESS_TERMS_PATH: Literal["/vilkar"] = "/vilkar"
 CURRENT_BUSINESS_TERMS_SHA256: Literal[
-    "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
-] = "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
-CURRENT_DPA_VERSION: Literal["2026-07-17"] = "2026-07-17"
-CURRENT_DPA_EFFECTIVE_DATE: Literal["2026-07-17"] = "2026-07-17"
+    "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
+] = "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
+CURRENT_DPA_VERSION: Literal["2026-08-30"] = "2026-08-30"
+CURRENT_DPA_EFFECTIVE_DATE: Literal["2026-08-30"] = "2026-08-30"
 CURRENT_DPA_PATH: Literal["/databehandleravtale"] = "/databehandleravtale"
 CURRENT_DPA_SHA256: Literal[
-    "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
-] = "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+    "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
+] = "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
 CURRENT_AUTHORITY_STATEMENT_VERSION: Literal["authority-v1"] = "authority-v1"
 CURRENT_ACCEPTANCE_METHOD: Literal["in_app_clickwrap"] = "in_app_clickwrap"
-CURRENT_PRIVACY_NOTICE_VERSION: Literal["2026-07-15"] = "2026-07-15"
-CURRENT_PRIVACY_NOTICE_EFFECTIVE_DATE: Literal["2026-07-15"] = "2026-07-15"
+CURRENT_PRIVACY_NOTICE_VERSION: Literal["2026-08-30"] = "2026-08-30"
+CURRENT_PRIVACY_NOTICE_EFFECTIVE_DATE: Literal["2026-08-30"] = "2026-08-30"
 CURRENT_PRIVACY_NOTICE_PATH: Literal["/personvern"] = "/personvern"
 CURRENT_PRIVACY_NOTICE_SHA256: Literal[
-    "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
-] = "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+    "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de"
+] = "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de"
 
 
 def _canonical_sha256(value: object) -> str:
@@ -385,13 +444,13 @@ class CompanyYearEligibilityStateResponse(CompanyAccessResponseModel):
 
 class CurrentAgreementRequest(CompanyAccessCommandModel):
     agreement_accepted: Literal[True]
-    business_terms_version: Literal["2026-07-17"]
+    business_terms_version: Literal["2026-08-30"]
     business_terms_sha256: Literal[
-        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+        "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
     ]
-    dpa_version: Literal["2026-07-17"]
+    dpa_version: Literal["2026-08-30"]
     dpa_sha256: Literal[
-        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+        "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
     ]
 
 
@@ -456,25 +515,25 @@ class CompanyYearAdmissionGatewayCommand(CompanyAccessCommandModel):
     company_year_promise_sha256: str
     capability_manifest_version: Literal["2026.1"] = CURRENT_CAPABILITY_MANIFEST_VERSION
     capability_manifest_sha256: str = CURRENT_CAPABILITY_MANIFEST_SHA256
-    business_terms_version: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_VERSION
-    business_terms_effective_date: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
+    business_terms_version: Literal["2026-08-30"] = CURRENT_BUSINESS_TERMS_VERSION
+    business_terms_effective_date: Literal["2026-08-30"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
     business_terms_path: Literal["/vilkar"] = CURRENT_BUSINESS_TERMS_PATH
     business_terms_sha256: Literal[
-        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+        "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
     ] = CURRENT_BUSINESS_TERMS_SHA256
-    dpa_version: Literal["2026-07-17"] = CURRENT_DPA_VERSION
-    dpa_effective_date: Literal["2026-07-17"] = CURRENT_DPA_EFFECTIVE_DATE
+    dpa_version: Literal["2026-08-30"] = CURRENT_DPA_VERSION
+    dpa_effective_date: Literal["2026-08-30"] = CURRENT_DPA_EFFECTIVE_DATE
     dpa_path: Literal["/databehandleravtale"] = CURRENT_DPA_PATH
     dpa_sha256: Literal[
-        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+        "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
     ] = CURRENT_DPA_SHA256
-    privacy_notice_version: Literal["2026-07-15"] = CURRENT_PRIVACY_NOTICE_VERSION
+    privacy_notice_version: Literal["2026-08-30"] = CURRENT_PRIVACY_NOTICE_VERSION
     privacy_notice_effective_date: Literal[
-        "2026-07-15"
+        "2026-08-30"
     ] = CURRENT_PRIVACY_NOTICE_EFFECTIVE_DATE
     privacy_notice_path: Literal["/personvern"] = CURRENT_PRIVACY_NOTICE_PATH
     privacy_notice_sha256: Literal[
-        "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+        "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de"
     ] = CURRENT_PRIVACY_NOTICE_SHA256
     authority_statement_version: Literal["authority-v1"] = CURRENT_AUTHORITY_STATEMENT_VERSION
     acceptance_method: Literal["in_app_clickwrap"] = CURRENT_ACCEPTANCE_METHOD
@@ -509,17 +568,17 @@ class CompanyAgreementAcceptanceGatewayCommand(CompanyAccessCommandModel):
     company_id: UUID
     verified_actor: UUID
     verified_email: str
-    business_terms_version: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_VERSION
-    business_terms_effective_date: Literal["2026-07-17"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
+    business_terms_version: Literal["2026-08-30"] = CURRENT_BUSINESS_TERMS_VERSION
+    business_terms_effective_date: Literal["2026-08-30"] = CURRENT_BUSINESS_TERMS_EFFECTIVE_DATE
     business_terms_path: Literal["/vilkar"] = CURRENT_BUSINESS_TERMS_PATH
     business_terms_sha256: Literal[
-        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
+        "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
     ] = CURRENT_BUSINESS_TERMS_SHA256
-    dpa_version: Literal["2026-07-17"] = CURRENT_DPA_VERSION
-    dpa_effective_date: Literal["2026-07-17"] = CURRENT_DPA_EFFECTIVE_DATE
+    dpa_version: Literal["2026-08-30"] = CURRENT_DPA_VERSION
+    dpa_effective_date: Literal["2026-08-30"] = CURRENT_DPA_EFFECTIVE_DATE
     dpa_path: Literal["/databehandleravtale"] = CURRENT_DPA_PATH
     dpa_sha256: Literal[
-        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+        "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
     ] = CURRENT_DPA_SHA256
     authority_statement_version: Literal["authority-v1"] = CURRENT_AUTHORITY_STATEMENT_VERSION
     acceptance_method: Literal["in_app_clickwrap"] = CURRENT_ACCEPTANCE_METHOD
@@ -669,6 +728,7 @@ class RequestCompanyCancellationGatewayCommand(CompanyAccessCommandModel):
 
 class ReviewCompanyDeletionGatewayCommand(CompanyAccessCommandModel):
     operation_id: str
+    support_case_id: str
     cancellation_id: str
     company_id: str
     expected_updated_at: str
@@ -845,9 +905,21 @@ class CompanyAccessGateway(Protocol):
         self, access_token: str, subject: str
     ) -> Mapping[str, object] | None: ...
 
-    async def search_operator_companies(
-        self, access_token: str, query: str
-    ) -> list[Mapping[str, object]]: ...
+    async def grant_support_access(
+        self, access_token: str, command: GrantSupportAccessRequest
+    ) -> Mapping[str, object] | None: ...
+
+    async def revoke_support_access(
+        self, access_token: str, case_id: str, command: RevokeSupportAccessRequest
+    ) -> Mapping[str, object] | None: ...
+
+    async def open_support_case(
+        self, access_token: str, case_id: str, operation_id: str
+    ) -> Mapping[str, object] | None: ...
+
+    async def read_support_case(
+        self, access_token: str, case_id: str
+    ) -> Mapping[str, object] | None: ...
 
     async def admit_company_year(
         self, access_token: str, command: CompanyYearAdmissionGatewayCommand
@@ -1398,22 +1470,61 @@ class CompanyAccessService:
             role=cast(Literal["support", "admin"], role), active=True
         )
 
-    async def search_operator_companies(
-        self, access_token: str, *, query: str
-    ) -> OperatorCompanySearchResponse:
-        normalized = query.strip()
-        if len(normalized) < 2 or len(normalized) > 100:
-            raise CompanyAccessError(
-                status=422,
-                code="REQUEST_VALIDATION_FAILED",
-                title="Request validation failed",
-                detail="The operator search must contain between two and one hundred characters.",
-            )
-        await self.operator_context(access_token)
-        rows = await self._gateway.search_operator_companies(access_token, normalized)
-        return OperatorCompanySearchResponse(
-            companies=[_operator_company_record(row) for row in rows]
+    async def grant_support_access(
+        self, access_token: str, command: GrantSupportAccessRequest
+    ) -> SupportAccessGrantResponse:
+        context = await self.operator_context(access_token)
+        _require_fresh_mfa(access_token)
+        if context.role != "admin":
+            raise _company_access_not_found()
+        row = await self._gateway.grant_support_access(access_token, command)
+        if row is None:
+            raise _company_access_not_found()
+        return SupportAccessGrantResponse(grant=SupportAccessGrant.model_validate(row))
+
+    async def revoke_support_access(
+        self,
+        access_token: str,
+        case_id: UUID,
+        command: RevokeSupportAccessRequest,
+    ) -> SupportAccessGrantResponse:
+        context = await self.operator_context(access_token)
+        _require_fresh_mfa(access_token)
+        if context.role != "admin":
+            raise _company_access_not_found()
+        row = await self._gateway.revoke_support_access(
+            access_token, str(case_id), command
         )
+        if row is None:
+            raise _company_access_not_found()
+        return SupportAccessGrantResponse(grant=SupportAccessGrant.model_validate(row))
+
+    async def open_support_case(
+        self,
+        access_token: str,
+        case_id: UUID,
+        command: OpenSupportCaseRequest,
+    ) -> SupportCaseOpeningResponse:
+        await self.operator_context(access_token)
+        _require_fresh_mfa(access_token)
+        row = await self._gateway.open_support_case(
+            access_token, str(case_id), str(command.operation_id)
+        )
+        if row is None:
+            raise _company_access_not_found()
+        return SupportCaseOpeningResponse(
+            opening=SupportCaseOpening.model_validate(row)
+        )
+
+    async def read_support_case(
+        self, access_token: str, *, case_id: UUID
+    ) -> SupportCaseSnapshotResponse:
+        await self.operator_context(access_token)
+        _require_fresh_mfa(access_token)
+        row = await self._gateway.read_support_case(access_token, str(case_id))
+        if row is None:
+            raise _company_access_not_found()
+        return SupportCaseSnapshotResponse.model_validate(row)
 
     async def eligibility_precheck(
         self, command: EligibilityPrecheckRequest
@@ -2214,6 +2325,7 @@ class CompanyAccessService:
         self,
         access_token: str,
         cancellation_id: UUID,
+        support_case_id: UUID,
         command: ReviewCompanyDeletionRequest,
     ) -> CompanyDeletionReviewResponse:
         await self._gateway.session_subject(access_token)
@@ -2222,6 +2334,7 @@ class CompanyAccessService:
             access_token,
             ReviewCompanyDeletionGatewayCommand(
                 operation_id=str(command.operation_id),
+                support_case_id=str(support_case_id),
                 cancellation_id=str(cancellation_id),
                 company_id=str(command.company_id),
                 expected_updated_at=command.expected_updated_at.isoformat(),
@@ -2430,10 +2543,6 @@ def _company_access_record(
     )
 
 
-def _operator_company_record(row: Mapping[str, object]) -> OperatorCompanyRecord:
-    return OperatorCompanyRecord.model_validate(_company_record_values(row))
-
-
 def _normalize_email(email: str) -> str:
     normalized = email.strip().lower()
     if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized):
@@ -2613,6 +2722,7 @@ __all__ = [
     "EligibilityRecheckTrigger",
     "FinalizeCompanyDeletionGatewayCommand",
     "FinalizeCompanyDeletionRequest",
+    "GrantSupportAccessRequest",
     "InvitationLookup",
     "InvitationRole",
     "InvitationSideEffectCompletion",
@@ -2620,15 +2730,20 @@ __all__ = [
     "InvitationSideEffectContinuationList",
     "InvitationTokenRequest",
     "MembershipState",
-    "OperatorCompanyRecord",
-    "OperatorCompanySearchResponse",
+    "OpenSupportCaseRequest",
     "OperatorContextResponse",
+    "RevokeSupportAccessRequest",
     "RequestCompanyCancellationGatewayCommand",
     "RequestCompanyCancellationRequest",
     "ResumeCompanyCancellationGatewayCommand",
     "ResumeCompanyCancellationRequest",
     "ReviewCompanyDeletionGatewayCommand",
     "ReviewCompanyDeletionRequest",
+    "SupportAccessGrant",
+    "SupportAccessGrantResponse",
+    "SupportCaseOpening",
+    "SupportCaseOpeningResponse",
+    "SupportCaseSnapshotResponse",
     "company_access_adapter",
     "company_registry_adapter",
 ]

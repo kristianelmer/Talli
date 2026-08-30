@@ -42,6 +42,19 @@ Current evidence:
 
 Before production, repeat these tests against the real API/database/RLS layer, not only the local JSON store.
 
+### Support access
+
+An operator role does not give access to customer data. An admin with fresh MFA
+must issue a support grant for one operator, one company, and one opaque case
+reference. The admin selects only the data areas needed for that case. A grant
+can last for no more than eight hours. The database denies access before the
+start time, after expiry, after revocation, when MFA is stale, or for a data area
+that is not listed in the grant.
+
+Grant, revocation, and case-open events are written to the company audit log.
+The case reference must be an internal code and must not contain a customer
+name, email address, free-text problem description, or other personal data.
+
 ## Document Access
 
 Minimum required behavior:

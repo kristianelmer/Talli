@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import {
-  assertOperatorSearchAllowed,
-  buildOperatorSupportSummaries,
-} from "../apps/web/app/lib/operator-support.ts";
+import { buildOperatorSupportSummaries } from "../apps/web/app/lib/operator-support.ts";
 
-test("operator search denies non-operators and too-short queries", () => {
-  assert.throws(() => assertOperatorSearchAllowed({ isOperator: false, query: "314" }), /operator_access_required/);
-  assert.throws(() => assertOperatorSearchAllowed({ isOperator: true, query: "31" }), /operator_search_query_too_short/);
-  assert.doesNotThrow(() => assertOperatorSearchAllowed({ isOperator: true, query: "314" }));
+test("operator support exposes no legacy company-search seam", async () => {
+  const [support, server, page] = await Promise.all([
+    readFile(new URL("../apps/web/app/lib/operator-support.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(`${support}\n${server}\n${page}`, /assertOperatorSearchAllowed|searchOperatorCompanyRecords/u);
+  assert.match(server, /readOperatorSupportCase/u);
+  assert.match(page, /supportCaseId/u);
 });
 
 test("operator summary highlights filing, billing, refund, restore, and audit state", () => {

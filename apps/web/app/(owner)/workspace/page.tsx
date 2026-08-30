@@ -90,7 +90,6 @@ import {
   listNotificationOutbox,
   listOpeningSetups,
   listPeriodLocks,
-  searchOperatorSupportDashboard,
 } from "../../lib/supabase/server";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
@@ -101,7 +100,6 @@ import { BankImport } from "../transactions/BankImport";
 type WorkspaceProps = {
   searchParams?: Promise<{
     error?: string;
-    operatorOrg?: string;
     dividendPayment?: string;
     recovery?: string;
     lockOperationId?: string;

@@ -71,7 +71,7 @@ test("consent proof remains exact-release-bound and inactive without human appro
     consentProofMigration,
     /No release is approved or activated by this migration/u,
   );
-  assert.match(measurementDecision, /current contradictory 2026-07-15 notice cannot activate/u);
+  assert.match(measurementDecision, /2026-08-30 notice cannot activate collection/u);
   assert.match(measurementDecision, /exact copy, retention and legal\/privacy activation remain pending/u);
 });
 

@@ -28,6 +28,7 @@ const cancellation = {
   deletedAt: null,
   updatedAt: "2026-08-08T10:30:00Z",
 };
+const supportCaseId = "70000000-0000-4000-8000-000000000001";
 
 test("cancellation lifecycle transport uses generated operations with bearer and deadline", async () => {
   const originalFetch = globalThis.fetch;
@@ -73,7 +74,7 @@ test("cancellation lifecycle transport uses generated operations with bearer and
       incomeYear: 2025,
       expectedUpdatedAt: cancellation.updatedAt,
     });
-    await reviewCompanyDeletion("session-token", cancellation.id, {
+    await reviewCompanyDeletion("session-token", cancellation.id, supportCaseId, {
       operationId: "40000000-0000-0000-0000-000000000002",
       companyId: cancellation.companyId,
       expectedUpdatedAt: cancellation.updatedAt,
@@ -94,6 +95,9 @@ test("cancellation lifecycle transport uses generated operations with bearer and
   assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "POST", "POST", "POST", "POST"]);
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
+  assert.deepEqual(calls.map(({ init }) => new Headers(init.headers).get("X-Support-Case-ID")), [
+    null, null, null, supportCaseId, null,
+  ]);
   const transport = await readFile(
     new URL("../features/company-access/transport/company-access-cancellation.ts", import.meta.url),
     "utf8",
@@ -167,7 +171,7 @@ test("generated review decoder enforces evidence-reference length bounds", async
         review: { ...baseReview, evidenceReference },
       });
       await assert.rejects(
-        reviewCompanyDeletion("session-token", cancellation.id, {
+        reviewCompanyDeletion("session-token", cancellation.id, supportCaseId, {
           operationId: baseReview.operationId,
           companyId: cancellation.companyId,
           expectedUpdatedAt: cancellation.updatedAt,
@@ -226,6 +230,7 @@ test("actions preserve exact cancellation inputs for network and decoder failure
   const operation = {
     command: "review",
     operationId: "40000000-0000-0000-0000-000000000002",
+    supportCaseId,
     companyId: cancellation.companyId,
     cancellationId: cancellation.id,
     expectedUpdatedAt: cancellation.updatedAt,
@@ -260,6 +265,8 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(workspace, /!cancellationLifecycleError && !primaryCancellation && primaryCompanyId/u);
   assert.match(workspace, /!cancellationLifecycleError && primaryCancellation/u);
   assert.match(operator, /reviewCompanyDeletion/u);
+  assert.match(operator, /name="supportCaseId" type="hidden" value=\{supportCaseId\}/u);
+  assert.match(operator, /pendingCancellationOperation\.supportCaseId ===\s+supportCaseId/u);
   assert.match(operator, /!operatorDashboard\.error/u);
   assert.match(operator, /evidenceReference/u);
   assert.doesNotMatch(`${workspace}\n${operator}`, /retention hold|deletion review|pliktige records/iu);
@@ -269,8 +276,11 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(actions, /preservePendingCancellationOperation\(pending\)/u);
   assert.match(workspace, /pendingCancellationOperation\.operationId/u);
   assert.match(operator, /pendingCancellationOperation\.operationId/u);
-  assert.match(server, /error: cancellationLifecycleError/u);
-  assert.match(server, /error: cancellationLifecycleError \?\? null/u);
+  assert.match(server, /readOperatorSupportCase/u);
+  assert.match(server, /resources\.company_cancellations/u);
+  assert.doesNotMatch(server, /\.from\("company_cancellations"\)/u);
+  assert.match(actions, /requiredFormUuid\(formData, "supportCaseId"\)/u);
+  assert.match(actions, /reviewCompanyDeletionThroughApi\(accessToken, cancellationId, supportCaseId/u);
   assert.match(lifecycle, /getCurrentSessionAccessToken/u);
   assert.doesNotMatch(lifecycle, /supabase\.from|createSupabaseServerClient/u);
   assert.match(archiveRoute, /rpc\(\s*"company_archive_begin_export"/u);

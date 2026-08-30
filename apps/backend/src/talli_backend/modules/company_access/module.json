@@ -4,22 +4,22 @@
   "name": "company_access",
   "path": "apps/backend/src/talli_backend/modules/company_access",
   "owner": "backend:company_access",
-  "purpose": "Own the versioned Norwegian holding-company eligibility boundary, atomic company-year admission and immutable acceptance evidence, authenticated company access, member and operator context, invitation and cancellation lifecycles, non-owner membership administration, and support deletion review through a backend-only verified-actor RLS boundary.",
+  "purpose": "Own the versioned Norwegian holding-company eligibility boundary, atomic company-year admission and immutable acceptance evidence, authenticated company access, invitations and cancellations, and generated case-bound support authorization through a backend-only verified-actor RLS boundary.",
   "documentation": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
-    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "FinalizeCompanyDeletionRequest", "InvitationTokenRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "ReviewCompanyDeletionRequest"],
-    "queries": ["CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorCompanySearchResponse", "OperatorContextResponse"],
+    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "FinalizeCompanyDeletionRequest", "GrantSupportAccessRequest", "InvitationTokenRequest", "OpenSupportCaseRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "RevokeSupportAccessRequest", "ReviewCompanyDeletionRequest"],
+    "queries": ["CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "OperatorCompanyRecord", "company_access_adapter", "company_registry_adapter"]
+    "identifiers": ["CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
-    "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_operators"],
+    "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_access_grants", "public.support_access_operation_receipts", "public.support_case_openings", "public.support_operators"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260826110000_company_year_admission.sql"
+    "migrations": "supabase/migrations/20260830091341_case_bound_support_access.sql"
   },
   "ports": [
     {

@@ -42,11 +42,13 @@ export function requestCompanyCancellation(
 export function reviewCompanyDeletion(
   accessToken: string,
   cancellationId: string,
+  supportCaseId: string,
   command: ReviewCompanyDeletionRequest,
   requestId?: string,
 ) {
   return client(accessToken).companyAccessReviewDeletion(
     cancellationId,
+    supportCaseId,
     command,
     request(requestId),
   );

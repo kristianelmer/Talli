@@ -127,6 +127,14 @@ async function applyMigration() {
       "utf8",
     );
     await client.query(companyAccessContract);
+    // #200 is later than the staged invitation contract and is deliberately
+    // repeatable so this shared current-application rehearsal always restores
+    // the final case-bound support policy/function state.
+    const supportAccessCutover = await readFile(
+      "supabase/migrations/20260830091341_case_bound_support_access.sql",
+      "utf8",
+    );
+    await client.query(supportAccessCutover);
     const contractState = await client.query(String.raw`
       select not pg_catalog.has_table_privilege(
         'authenticated', 'public.company_invitations', 'INSERT'

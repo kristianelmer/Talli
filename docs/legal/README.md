@@ -1,7 +1,7 @@
 # Legal and Operational Policy Drafts
 
-Status: draft pack for #72  
-Last updated: 2026-07-17
+Status: founder/accountable-owner decisions approved; hosted facts and final release evidence pending
+Last updated: 2026-08-30
 
 Files:
 
@@ -10,11 +10,15 @@ Files:
 - `dpa-draft.md`
 - `retention-delete-export-policy-draft.md`
 - `incident-response-policy-draft.md`
+- `marketing-measurement-decision-draft.md`
+- `founder-legal-security-decision-2026-08-30.md`
 
-These drafts convert product decisions into reviewable policy text. They are not
-legal, founder, security, or production-filing approval. Issue #72 must remain
-open until the required reviewers record approval, dates, evidence, and any
-required changes.
+These drafts convert approved founder decisions into reviewable policy text.
+Kristian Elmer approved the business and privacy position on 2026-08-30 as
+founder and accountable owner. The review used AI-assisted legal and security
+research; it is not professional legal advice or an independent human
+certification. Issue #72 remains open until deployed provider/security facts,
+final document digests, and the remaining liability decision are recorded.
 
 ## Current Agreement Model
 
@@ -50,9 +54,11 @@ the company must accept.
 
 ## Decisions Preserved in the Draft Pack
 
-- The customer controls its company, shareholder, accounting-document, and
-  filing data; ELMER WELFIS/Talli acts as processor when providing the service
-  on documented instructions, subject to final legal review.
+- The customer controls personal data in its company, shareholder,
+  accounting-document, narrow-ledger, and filing content. ELMER WELFIS/Talli
+  acts as processor for that content on documented instructions.
+- ELMER WELFIS is controller for limited account, access, security, support,
+  billing, optional public-measurement, and own legal-record processing.
 - Archive export precedes cancellation. The customer is responsible for its
   exported copy, while lawful retention and deletion remain governed by the
   retention policy and final legal review.
@@ -60,8 +66,12 @@ the company must accept.
   default, time-bounded, request- or incident-gated, and audited.
 - Processor breach notification is without undue delay so the controller can
   assess its own notification duties.
-- Refund eligibility, liability/cap language, support boundaries, governing
-  law, and jurisdiction remain explicit review items.
+- The annual NOK 1,490 company-year, narrow Talli-logic/connection refund, and
+  safe-exit decisions from #177 replace the former monthly/filing-package model.
+  Renewal, cancellation, charging, provider, and settlement details remain
+  disabled and undecided.
+- Liability-cap language remains an explicit founder decision item; no amount is
+  inferred by this review.
 
 Earlier provider-region and international-transfer notes are not production
 facts. Subprocessor identity, role, location, certification, contract,
@@ -71,16 +81,15 @@ asserting unverified residency, SCC, DPF, certification, or security claims.
 
 ## Remaining Approval and Release Gates
 
-Before the legal pack is approved for a named company:
+Before the legal pack is released for a named company:
 
-- Founder approves commercial terms, refund wording, customer-facing
-  deletion/return obligations, and the final subprocessor list.
-- Legal reviewer approves electronic company acceptance, the B2B scope,
-  controller/processor boundary, Article 28 DPA, legal bases, retention,
-  liability/remedies, transfer wording, governing law, and jurisdiction.
-- Security reviewer confirms the technical and organizational measures,
+- Founder approval covers the recorded commercial, role, consent, retention,
+  DPO, acceptance, governing-law, and jurisdiction decisions.
+- The final liability cap still needs a founder decision.
+- The accountable owner must confirm the technical and organizational measures,
   support/operator access model, subprocessor facts, and security appendix
-  against current hosted evidence.
+  against current hosted evidence. AI agents may collect and test evidence but
+  must not be named as independent human professionals.
 
 Valid electronic acceptance does not by itself clear named-company beta entry.
 That gate also requires approved, current evidence for hosted tenant isolation,

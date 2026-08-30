@@ -330,23 +330,22 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
       active: true,
     }),
   );
-  await assertNoError(
-    admin.rpc("append_company_agreement_acceptance", {
-      p_actor_id: ownerId,
-      p_company_id: companyId,
-      p_business_terms_version: "2026-07-17",
-      p_business_terms_effective_date: "2026-07-17",
-      p_business_terms_path: "/vilkar",
-      p_business_terms_sha256:
-        "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
-      p_dpa_version: "2026-07-17",
-      p_dpa_effective_date: "2026-07-17",
-      p_dpa_path: "/databehandleravtale",
-      p_dpa_sha256:
-        "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
-      p_authority_statement_version: "authority-v1",
-      p_acceptance_method: "in_app_clickwrap",
-    }),
+  await database.query(
+    `insert into public.customer_agreement_acceptances(
+      company_id, accepted_by, customer_legal_name, customer_org_number,
+      business_terms_version, business_terms_effective_date,
+      business_terms_path, business_terms_sha256,
+      dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+      authority_statement_version, acceptance_method, accepted_at
+    ) values (
+      $1, $2, 'Talli Browser Holding AS', $3,
+      '2026-08-30', date '2026-08-30', '/vilkar',
+      'afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04',
+      '2026-08-30', date '2026-08-30', '/databehandleravtale',
+      '1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a',
+      'authority-v1', 'in_app_clickwrap', now()
+    )`,
+    [companyId, ownerId, orgNumber],
   );
   await assertNoError(
     admin.from("opening_balance_setups").insert({

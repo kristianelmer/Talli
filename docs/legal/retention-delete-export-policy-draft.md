@@ -1,8 +1,8 @@
 # Retention, Deletion, and Export Policy Draft
 
-Status: draft for founder/legal review  
-Last updated: 2026-06-27  
-Blocks: #72 remains open until human/legal signoff
+Status: founder/accountable-owner retention direction approved; hosted deletion evidence pending
+Last updated: 2026-08-30
+Blocks: #72 remains open until hosted retention, backup, purge, and deletion evidence is recorded
 
 ## Policy Goal
 
@@ -29,35 +29,47 @@ missing-object warnings.
 
 ## Archive Responsibility After Export
 
-Once a company archive has been exported to the customer, the customer/user is
-responsible for safekeeping that exported copy. Talli's own copy is kept only for as
-long as the retention classes below require, and Talli's copy may be deleted once the
-applicable retention hold expires. Talli does not warrant indefinite availability of a
-company's data after cancellation; the export is the customer's durable record.
+Once a company archive has been exported, the customer is responsible for
+safekeeping that copy. Talli provides the approved paid-access period followed by
+at least 90 days of read-only access and export. Talli then returns or deletes
+customer-controlled data according to the customer's documented choice, unless a
+legal duty applies directly to Talli or the customer gives a lawful documented
+retention instruction. The customer's bookkeeping duty is not a general reason
+for Talli to retain all customer data.
 
 ## Retention Classes
 
 | Data class | Default handling |
 | --- | --- |
-| Source documents and balance documentation | Retain minimum 5 years after end of accounting year (bokføringsloven § 13) before deletion. |
-| Filing payloads, feedback, receipts | Retain as filing evidence for minimum 5 years while statutory/accounting retention applies. |
-| Ledger, holding actions, opening balances | Retain with accounting records, minimum 5 years. |
+| Customer-controlled source documents and balance documentation | Return or delete after the agreed access/export period at the customer's documented choice. Retain only on a lawful customer instruction or a legal duty that applies directly to Talli. |
+| Customer-controlled filing payloads, feedback, receipts | Return or delete under the same rule; do not assume Talli has an independent five-year right. |
+| Customer-controlled narrow ledger, holding actions, opening balances | Return or delete under the same rule; the customer's exported company archive is its durable record. |
 | Audit/security logs | Retain long enough for security, dispute, and compliance evidence. |
 | Billing records | Retain as needed for accounting, tax, refund, and dispute handling (minimum 5 years). |
 | Invitations and notification outbox | Retain short operational history; redact/expire tokens where possible. |
 | Auth/account profile | Delete/anonymize when no longer needed, subject to retained company/audit references. |
+| Optional public-measurement browser session | No more than 30 minutes in one browser tab. |
+| Optional public-measurement raw events and minimized consent proof | No more than 90 days. |
+| Optional public-measurement withdrawal tombstone | No more than 30 minutes. |
+| Invited-pilot raw observations | No more than 90 days. |
+| Protected invited-pilot participant register | Delete 12 months after validation ends, unless an incident or legal requirement needs longer storage. |
 
-The 5-year floor reflects the Norwegian Bookkeeping Act (bokføringsloven § 13)
-minimum for primary accounting material. Longer periods or shorter periods for
-specific secondary documentation should be confirmed with the company accountant.
+The Norwegian Bookkeeping Act generally requires the bookkeeping entity to keep
+primary accounting material for five years after the end of the accounting year.
+From 1 January 2027, amended section 13 also requires specific review where
+bookkeeping and storage are entrusted to another provider. Talli must record the
+exact duty that applies to it before relying on that law for retention. It must
+not convert the customer's duty into an unrelated blanket hold.
 
 ## Deletion Rules
 
 - User-requested deletion must not silently remove statutory accounting records.
 - Company deletion requires fresh MFA/step-up and human security review.
 - Destructive deletion must be audited.
-- Cancelled companies should enter retention hold where legal retention applies.
-- Final deletion should happen only after retention hold expires or legal review approves.
+- A cancelled company enters retention hold only when a documented customer
+  instruction, direct legal duty, incident, or other recorded legal hold applies.
+- Final deletion happens after the approved export period, backup rotation, and
+  any documented hold expire.
 
 ## User Identifiers in Retained Audit Records
 
@@ -68,12 +80,15 @@ the audit trail internally consistent and linkable for investigation while no lo
 directly identifying the person. The mapping needed to re-identify, if any is kept, is
 held under restricted access and deleted when no longer legally necessary.
 
-## Required Human Review Before Publication
+## Approval and Remaining Evidence
 
-- [x] Confirm exact retention periods — minimum 5 years per bokføringsloven § 13.
-- [x] Confirm whether Talli or customer is responsible for retained archive after export —
-  customer is responsible for the exported copy; Talli's copy is deleted after the
-  retention hold expires.
+- [x] Confirm customer-content rule — return or delete after approved export at
+  the customer's choice; retain only on direct law or lawful instruction.
+- [x] Confirm measurement periods — 30-minute session, 90-day raw events and
+  consent proof, 30-minute withdrawal tombstone.
+- [x] Confirm pilot periods — 90-day raw observations and 12-month protected
+  participant register after validation ends, subject to incident/legal hold.
 - [x] Confirm deletion/anonymization approach for user ids in retained audit records —
   pseudonymize with a stable opaque token.
-- [ ] Confirm cancellation copy and support runbook.
+- [ ] Verify hosted backup rotation, automatic purge, deletion, and cancellation
+  runbook against the exact production systems.

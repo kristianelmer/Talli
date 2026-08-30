@@ -1,7 +1,7 @@
 # Company access backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_eligibility_assessments","public.company_invitations","public.company_memberships","public.company_year_acceptances","public.company_year_admissions","public.customer_agreement_acceptances","public.support_operators"],"ports":["CompanyAccessGateway","CompanyRegistryGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
+{"dependencies":[],"ownedTables":["public.companies","public.company_cancellations","public.company_deletion_reviews","public.company_eligibility_assessments","public.company_invitations","public.company_memberships","public.company_year_acceptances","public.company_year_admissions","public.customer_agreement_acceptances","public.support_access_grants","public.support_access_operation_receipts","public.support_case_openings","public.support_operators"],"ports":["CompanyAccessGateway","CompanyRegistryGateway"],"publicEntryPoints":["talli_backend.modules.company_access.public"]}
 -->
 
 ## Purpose
@@ -10,7 +10,7 @@
 check, definitive material-fact interview, immutable company-year admission and
 acceptance evidence, authenticated company access, frozen agreement acceptance
 and freshness, accepted-member company records, active operator
-context and bounded operator search, company invitations, reviewer/read-only
+context and generated case-bound support grant/revoke/open/read, company invitations, reviewer/read-only
 membership administration, and the cancellation-to-deletion lifecycle. It
 independently validates the Supabase session and matching bearer subject before
 installing a transaction-local actor context for restricted RLS execution.
@@ -21,9 +21,11 @@ It owns `public.companies`, `public.company_cancellations`,
 `public.company_deletion_reviews`, `public.company_invitations`,
 `public.company_memberships`, `public.company_eligibility_assessments`,
 `public.company_year_admissions`, `public.company_year_acceptances`,
-`public.customer_agreement_acceptances`, and `public.support_operators`, with
+`public.customer_agreement_acceptances`, `public.support_access_grants`,
+`public.support_access_operation_receipts`, `public.support_case_openings`, and
+`public.support_operators`, with
 the latest ownership migration declared as
-`20260826110000_company_year_admission.sql`. The backend system owns
+`20260830091341_case_bound_support_access.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
 not claim eligibility outside the immutable active manifest, own physical
 business-data deletion, or own unrestricted general operator workflows.
@@ -34,13 +36,14 @@ It must not use service-role access or bypass RLS for ordinary business calls.
 Import only `talli_backend.modules.company_access.public`.
 
 - Queries: owner-sensitive context, accepted-member company records, active
-  operator context and bounded search, provisional and definitive eligibility,
+  operator context and one opened case-bound snapshot, provisional and definitive eligibility,
   invitation/cancellation listing,
   membership listing, and actor-derived pending side-effect continuations
 - Commands: atomic company-year admission with eligibility plus current legal
   evidence, append-only company-year eligibility recheck, fail-closed legacy onboarding, owner agreement
   reacceptance, invite, accept, revoke, resend, reviewer/read-only membership
-  transitions, owner cancellation request/resume, independent deletion review,
+  transitions, owner cancellation request/resume, admin support grant/revoke,
+  explicit operator case opening, case-bound independent deletion review,
   and owner finalization
 - Error: `CompanyAccessError`
 - Ports: `CompanyAccessGateway` and `CompanyRegistryGateway`
@@ -61,8 +64,10 @@ Onboarding and the backend-only company read boundary add
 `CompanyOnboardingRequest`, `CompanyOnboardingResponse`,
 `CompanyAgreementAcceptanceRequest`, `CompanyAgreementAcceptanceResponse`,
 `CompanyAccessRecord`, `CompanyAccessRecordResponse`,
-`OperatorContextResponse`, `OperatorCompanyRecord`,
-`OperatorCompanySearchResponse`, `CompanyRegistryGateway`, and
+`OperatorContextResponse`, `GrantSupportAccessRequest`,
+`RevokeSupportAccessRequest`, `OpenSupportCaseRequest`,
+`SupportAccessGrantResponse`, `SupportCaseOpeningResponse`,
+`SupportCaseSnapshotResponse`, `CompanyRegistryGateway`, and
 `company_registry_adapter`.
 
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,

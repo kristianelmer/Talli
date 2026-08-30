@@ -4,14 +4,17 @@ import test from "node:test";
 import { TalliApiError } from "@talli/talli-api-client";
 
 import {
+  grantOperatorSupportAccess,
   loadCompanyAccessRecord,
   loadOperatorContext,
-  searchOperatorCompanyRecords,
+  openOperatorSupportCase,
+  readOperatorSupportCase,
+  revokeOperatorSupportAccess,
 } from "../features/company-access/transport/load-company-access-context.ts";
 import { listCompanyAccessContexts } from "../app/lib/company-access-context.ts";
 import { createSystemUserCallbackHandler } from "../app/auth/systembruker/confirm/route.ts";
 
-test("company records and operator access use authenticated generated-client queries", async () => {
+test("company records and case-bound operator access use authenticated generated-client operations", async () => {
   const originalFetch = globalThis.fetch;
   const originalUrl = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = "https://backend.example";
@@ -30,12 +33,31 @@ test("company records and operator access use authenticated generated-client que
   };
 
   try {
+    const caseId = "70000000-0000-4000-8000-000000000001";
     const results = await Promise.allSettled([
       loadCompanyAccessRecord("session-token", "company-1", "request-company"),
       loadOperatorContext("session-token", "request-operator"),
-      searchOperatorCompanyRecords("session-token", "  Rolig Holding  ", "request-search"),
+      grantOperatorSupportAccess("session-token", {
+        companyId: "10000000-0000-4000-8000-000000000001",
+        expiresAt: "2026-08-30T12:30:00Z",
+        operationId: "40000000-0000-4000-8000-000000000001",
+        operatorUserId: "20000000-0000-4000-8000-000000000001",
+        reason: "customer_request",
+        scopes: ["cancellation"],
+        startsAt: "2026-08-30T12:00:00Z",
+      }, "request-grant"),
+      revokeOperatorSupportAccess("session-token", caseId, {
+        operationId: "40000000-0000-4000-8000-000000000002",
+        reason: "case_closed",
+      }, "request-revoke"),
+      openOperatorSupportCase("session-token", caseId, {
+        operationId: "40000000-0000-4000-8000-000000000003",
+      }, "request-open"),
+      readOperatorSupportCase("session-token", caseId, "request-read"),
     ]);
-    assert.deepEqual(results.map(({ status }) => status), ["rejected", "rejected", "rejected"]);
+    assert.deepEqual(results.map(({ status }) => status), [
+      "rejected", "rejected", "rejected", "rejected", "rejected", "rejected",
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
@@ -45,15 +67,37 @@ test("company records and operator access use authenticated generated-client que
   assert.deepEqual(calls.map(({ url }) => url), [
     "https://backend.example/api/v1/company-access/companies/company-1",
     "https://backend.example/api/v1/company-access/operator-context",
-    "https://backend.example/api/v1/company-access/operator-companies?query=++Rolig+Holding++",
+    "https://backend.example/api/v1/company-access/operator-support-grants",
+    "https://backend.example/api/v1/company-access/operator-support-grants/70000000-0000-4000-8000-000000000001/revocations",
+    "https://backend.example/api/v1/company-access/operator-support-cases/70000000-0000-4000-8000-000000000001/openings",
+    "https://backend.example/api/v1/company-access/operator-support-cases/70000000-0000-4000-8000-000000000001",
   ]);
-  assert.ok(calls.every(({ init }) => init.method === "GET"));
+  assert.deepEqual(calls.map(({ init }) => init.method), ["GET", "GET", "POST", "POST", "POST", "GET"]);
   assert.ok(calls.every(({ init }) => new Headers(init.headers).get("Authorization") === "Bearer session-token"));
   assert.ok(calls.every(({ init }) => init.signal instanceof AbortSignal));
   assert.deepEqual(calls.map(({ init }) => new Headers(init.headers).get("X-Request-ID")), [
     "request-company",
     "request-operator",
-    "request-search",
+    "request-grant",
+    "request-revoke",
+    "request-open",
+    "request-read",
+  ]);
+  assert.deepEqual(calls.slice(2, 5).map(({ init }) => JSON.parse(init.body)), [
+    {
+      companyId: "10000000-0000-4000-8000-000000000001",
+      expiresAt: "2026-08-30T12:30:00Z",
+      operationId: "40000000-0000-4000-8000-000000000001",
+      operatorUserId: "20000000-0000-4000-8000-000000000001",
+      reason: "customer_request",
+      scopes: ["cancellation"],
+      startsAt: "2026-08-30T12:00:00Z",
+    },
+    {
+      operationId: "40000000-0000-4000-8000-000000000002",
+      reason: "case_closed",
+    },
+    { operationId: "40000000-0000-4000-8000-000000000003" },
   ]);
 });
 
@@ -211,6 +255,8 @@ test("every Stage 1 web consumer authorizes through company-access contracts", a
     "company_deletion_reviews",
     "step_up_events",
     "support_operators",
+    "support_access_grants",
+    "support_case_openings",
   ].join("|");
   const directTable = new RegExp(`\\.from\\(["'](?:${companyAccessTables})["']\\)`, "u");
   const directRpc = /\.rpc\(["'](?:company_access_[^"']+|create_company_workspace_with_acceptance|append_company_agreement_acceptance)["']/u;
@@ -242,7 +288,12 @@ test("every Stage 1 web consumer authorizes through company-access contracts", a
   assert.match(actions, /loadAcceptedMembershipCompany/u);
   assert.match(actions, /loadAuthorizedSupportOperator/u);
   assert.match(supabaseServer, /loadOperatorContext/u);
-  assert.match(supabaseServer, /searchOperatorCompanyRecords/u);
+  assert.match(supabaseServer, /readOperatorSupportCase/u);
+  assert.doesNotMatch(supabaseServer, /searchOperatorCompanyRecords/u);
+  const supportDashboard = supabaseServer.slice(
+    supabaseServer.indexOf("export async function readOperatorSupportDashboard"),
+  );
+  assert.doesNotMatch(supportDashboard, /\.from\(/u);
   assert.match(callbackRoute, /loadCompany\(companyId: string\)/u);
   assert.match(callbackRoute, /dependencies\.loadCompany\(request\.company_id\)/u);
   assert.match(previewRoute, /loadAcceptedMembershipCompany/u);

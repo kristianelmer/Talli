@@ -31,7 +31,7 @@ export default function PricingPage() {
   return (
     <PublicPage
       eyebrow="Én pris · ett selskapsår"
-      title="NOK 1,490 inkl. mva."
+      title="NOK 1 490 per selskapsår"
       lede="Når betaling åpner, dekker én årlig pris ett støttet holdingselskap, banktilkobling, hele kalenderåret og alle tre innsendingene."
     >
       <aside className={styles.notice} aria-label="Betalingsstatus">
@@ -40,6 +40,7 @@ export default function PricingPage() {
           aktiveres før alle produkt-, leverandør- og lanseringsporter er grønne.
         </p>
       </aside>
+      <p>Merverdiavgift er inkludert når den gjelder etter loven.</p>
       <section className={styles.section}>
         <h2>Dette inngår</h2>
         <ul>
@@ -55,7 +56,7 @@ export default function PricingPage() {
           <li>Den gratis sjekken gir først et tydelig foreløpig svar.</li>
           <li>Alle manglende fakta avklares og endelig selskapsårs-støtte bekreftes.</li>
           <li>Konto, organisasjonsmyndighet, vilkår, personvern/DPA og datakildesamtykke bekreftes.</li>
-          <li>Pris, fornyelsesdato, oppsigelse, refusjon og eget samtykke til gjentakende betaling vises.</li>
+          <li>Pris, refusjon og eventuelle regler for fornyelse, oppsigelse eller belastning vises tydelig og må godtas før betaling.</li>
         </ol>
         <div className={styles.actions}>
           {runtime.checkoutEnabled ? (
@@ -67,13 +68,11 @@ export default function PricingPage() {
         </div>
       </section>
       <section className={styles.section}>
-        <h2>Fornyelse, oppsigelse og refusjon</h2>
+        <h2>Refusjon og betaling</h2>
         <ul>
-          <li>Automatisk årsfornyelse krever eget samtykke; prisendring varsles minst 60 dager før.</li>
-          <li>Oppsigelse stopper neste fornyelse, men fjerner ikke allerede betalt tilgang.</li>
-          <li>Full refusjon innen 30 dager etter første kjøp hvis ingen produksjonsinnsending er sendt.</li>
-          <li>Full automatisk refusjon hvis Talli feilaktig godtar saken eller Talli/en leverandør ikke kan fullføre det lovede året.</li>
-          <li>En ny, genuint ustøttet kundesituasjon gir trygg stopp, eksport og forholdsmessig refusjon etter de godkjente vilkårene.</li>
+          <li>Betaling, automatisk fornyelse og belastning er ikke åpnet nå.</li>
+          <li>Hvis Talli bekrefter at året støttes, men ikke kan fullføre det på grunn av feil i Tallis egen logikk eller tilkobling, får kunden hele beløpet tilbake.</li>
+          <li>Feil i kundeopplysninger, manglende dokumentasjon eller fullmakt, frister kunden ikke følger, og avbrudd hos myndigheter utenfor Tallis kontroll gir ikke automatisk refusjon.</li>
         </ul>
       </section>
     </PublicPage>

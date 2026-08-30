@@ -19,9 +19,9 @@ from talli_backend.modules.validation_observation.public import (
 )
 
 
-BUSINESS_TERMS_SHA256 = "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
-DPA_SHA256 = "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
-PRIVACY_SHA256 = "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c"
+BUSINESS_TERMS_SHA256 = "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
+DPA_SHA256 = "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
+PRIVACY_SHA256 = "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de"
 CUSTOMER_CLAIMS = [
     "Komplett gjenoppbygging av selskapsåret fra 1. januar",
     "Bokføring gjennom hele selskapsåret",
@@ -243,11 +243,11 @@ def admission_request(definitive_result: Mapping[str, object]) -> dict[str, obje
         "authorityAccepted": True,
         "companyYearPromiseAccepted": True,
         "agreementAccepted": True,
-        "businessTermsVersion": "2026-07-17",
+        "businessTermsVersion": "2026-08-30",
         "businessTermsSha256": BUSINESS_TERMS_SHA256,
-        "dpaVersion": "2026-07-17",
+        "dpaVersion": "2026-08-30",
         "dpaSha256": DPA_SHA256,
-        "privacyNoticeVersion": "2026-07-15",
+        "privacyNoticeVersion": "2026-08-30",
         "privacyNoticeSha256": PRIVACY_SHA256,
     }
 
@@ -490,7 +490,7 @@ def test_supported_admission_rechecks_and_writes_one_immutable_company_year_comm
     assert command.reconstruct_from == "2026-01-01"
     assert command.public_facts_sha256 == accepted["publicFactsSha256"]
     assert command.answers_sha256 == accepted["answersSha256"]
-    assert command.privacy_notice_version == "2026-07-15"
+    assert command.privacy_notice_version == "2026-08-30"
     assert command.privacy_notice_sha256 == PRIVACY_SHA256
     assert str(command.verified_actor) == "00000000-0000-0000-0000-000000000044"
 
@@ -577,11 +577,11 @@ def test_admission_exact_retry_replays_before_registry_lookup() -> None:
         "capability_manifest_sha256": accepted["capabilityManifestSha256"],
         "public_facts_sha256": accepted["publicFactsSha256"],
         "answers": accepted["answers"],
-        "business_terms_version": "2026-07-17",
+        "business_terms_version": "2026-08-30",
         "business_terms_sha256": BUSINESS_TERMS_SHA256,
-        "dpa_version": "2026-07-17",
+        "dpa_version": "2026-08-30",
         "dpa_sha256": DPA_SHA256,
-        "privacy_notice_version": "2026-07-15",
+        "privacy_notice_version": "2026-08-30",
         "privacy_notice_sha256": PRIVACY_SHA256,
     }
 
@@ -612,11 +612,11 @@ def test_admission_operation_id_reuse_with_changed_answers_conflicts_without_pro
         "capability_manifest_sha256": accepted["capabilityManifestSha256"],
         "public_facts_sha256": accepted["publicFactsSha256"],
         "answers": {**accepted["answers"], "is_small_enterprise": "no"},
-        "business_terms_version": "2026-07-17",
+        "business_terms_version": "2026-08-30",
         "business_terms_sha256": BUSINESS_TERMS_SHA256,
-        "dpa_version": "2026-07-17",
+        "dpa_version": "2026-08-30",
         "dpa_sha256": DPA_SHA256,
-        "privacy_notice_version": "2026-07-15",
+        "privacy_notice_version": "2026-08-30",
         "privacy_notice_sha256": PRIVACY_SHA256,
     }
 
@@ -862,9 +862,9 @@ def test_legacy_as_only_onboarding_is_closed_instead_of_bypassing_eligibility() 
         json={
             "orgNumber": "314159265",
             "agreementAccepted": True,
-            "businessTermsVersion": "2026-07-17",
+            "businessTermsVersion": "2026-08-30",
             "businessTermsSha256": BUSINESS_TERMS_SHA256,
-            "dpaVersion": "2026-07-17",
+            "dpaVersion": "2026-08-30",
             "dpaSha256": DPA_SHA256,
         },
     )

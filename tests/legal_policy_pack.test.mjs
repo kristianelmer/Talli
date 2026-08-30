@@ -9,6 +9,10 @@ const docs = {
   retention: readFileSync(new URL("../docs/legal/retention-delete-export-policy-draft.md", import.meta.url), "utf8"),
   incident: readFileSync(new URL("../docs/legal/incident-response-policy-draft.md", import.meta.url), "utf8"),
   readme: readFileSync(new URL("../docs/legal/README.md", import.meta.url), "utf8"),
+  founderDecision: readFileSync(
+    new URL("../docs/legal/founder-legal-security-decision-2026-08-30.md", import.meta.url),
+    "utf8",
+  ),
   evidence: readFileSync(
     new URL("../docs/launch/evidence/production-e2e-verification-2026-07-16.md", import.meta.url),
     "utf8",
@@ -19,7 +23,9 @@ test("terms cover holding-first scope, unsupported cases, filing limits, refunds
   assert.match(docs.terms, /holding-first/i);
   assert.match(docs.terms, /VAT, payroll, invoicing/i);
   assert.match(docs.terms, /Direct Filing Limits/i);
-  assert.match(docs.terms, /refund-eligible/i);
+  assert.match(docs.terms, /error in Talli's own logic or connection/i);
+  assert.match(docs.terms, /receives a full refund/i);
+  assert.match(docs.terms, /authority outages outside Talli's control do not create\s+an automatic refund/i);
   assert.match(docs.terms, /does not guarantee/i);
   assert.match(docs.terms, /must not provide bespoke legal advice/i);
 });
@@ -48,7 +54,7 @@ test("privacy and pack metadata identify the supplier without transfer or hostin
   assert.doesNotMatch(docs.privacy, /EU region|stored in the EEA|covered by SCC|SCCs\/DPF|Data Privacy Framework/i);
   assert.match(docs.privacy, /must be verified against current production contracts and configuration/i);
   assert.match(docs.dpa, /not a certification or proof that\s+the current hosted environment has passed review/i);
-  assert.match(docs.dpa, /require security re-confirmation against current hosted/i);
+  assert.match(docs.dpa, /requires security re-confirmation\s+against the current hosted/i);
   assert.doesNotMatch(docs.dpa, /EU region|covered by SCC|SCCs\/DPF|Data Privacy Framework/i);
   assert.doesNotMatch(docs.readme, /continued use alone|not the sole evidence|when required/i);
   assert.match(docs.readme, /Every material new agreement version/i);
@@ -74,8 +80,8 @@ test("privacy policy and DPA cover launch-critical data and processor boundaries
   ]) {
     assert.match(docs.privacy, required);
   }
-  assert.match(docs.dpa, /customer company is expected to be controller/i);
-  assert.match(docs.dpa, /Talli is expected to be\s+processor/i);
+  assert.match(docs.dpa, /customer company is controller/i);
+  assert.match(docs.dpa, /Talli is\s+processor/i);
   assert.match(docs.dpa, /Subprocessors/i);
   assert.match(docs.dpa, /Deletion and Return/i);
 });
@@ -99,16 +105,34 @@ test("incident policy covers detection, containment, notification, filing incide
 
 test("incident policy names pre-incorporation roles and a customer notification approach", () => {
   assert.match(docs.incident, /Incident Roles/i);
-  assert.match(docs.incident, /holds all incident\s+roles/i);
+  assert.match(docs.incident, /holds all\s+incident\s+roles/i);
   assert.match(docs.incident, /Customer Notification Approach/i);
   assert.match(docs.incident, /Resend/);
 });
 
 test("retention policy fixes archive responsibility and audit-id pseudonymization", () => {
   assert.match(docs.retention, /Archive Responsibility After Export/i);
-  assert.match(docs.retention, /customer.*is\s+responsible for safekeeping/i);
+  assert.match(docs.retention, /customer[\s\S]*is\s+responsible for\s+safekeeping/i);
   assert.match(docs.retention, /User Identifiers in Retained Audit Records/i);
   assert.match(docs.retention, /pseudonymized/i);
+});
+
+test("founder decision records the approved AI-assisted boundary and real-data stop", () => {
+  assert.match(docs.founderDecision, /approved by Kristian Elmer/i);
+  assert.match(docs.founderDecision, /not professional legal advice/i);
+  assert.match(docs.founderDecision, /I do not approve real customer data until Talli has/i);
+  assert.match(docs.founderDecision, /This does not authorize spending/i);
+});
+
+test("legal pack uses the approved annual offer, role boundary, and measured retention", () => {
+  assert.match(docs.terms, /one NOK 1,490 company-year subscription/i);
+  assert.doesNotMatch(docs.terms, /a filing package may be charged/i);
+  assert.match(docs.privacy, /pseudonymous personal data/i);
+  assert.match(docs.privacy, /no more than 30 minutes/i);
+  assert.match(docs.privacy, /no later than 90 days/i);
+  assert.match(docs.retention, /Protected invited-pilot participant register/i);
+  assert.match(docs.retention, /12 months after validation ends/i);
+  assert.match(docs.privacy, /does not appoint a formal data protection officer/i);
 });
 
 test("privacy policy states a GDPR art. 6 legal basis and a least-privilege operator access model", () => {

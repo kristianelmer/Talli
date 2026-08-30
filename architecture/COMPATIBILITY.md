@@ -69,6 +69,30 @@ audit persistence into or out of a transaction and does not broaden policy,
 schema, provider, contract, capability, error, idempotency, retry, or
 risk-response behavior.
 
+## #200 case-bound support security amendment
+
+The owner approval in
+[#200 comment 5467952439](https://github.com/kristianelmer/Talli/issues/200#issuecomment-5467952439)
+adds one deletion-only exception while the serialized pointer is investments or
+later. It applies only to `apps/web/app/lib/supabase/server.ts`, operation
+`searchOperatorSupportDashboard`, rule `direct-web-business-persistence`, and
+these six exact record/resource tuples:
+
+- `compat-billing-persistence`: `table:billing_accounts` and
+  `table:billing_payment_events`
+- `compat-annual-compliance-persistence`:
+  `table:filing_readiness_snapshots`
+- `compat-rf1086-persistence`: `table:authority_permissions` and
+  `table:filing_submissions`
+- `compat-audit-persistence`: `table:audit_events`
+
+All six must disappear together. The immutable baseline remains byte-identical;
+the checker bypasses only the future-resource-owner timing check for these exact
+deletions. Current-source deletion, no-added-writer, frozen occurrence, baseline
+digest, stage serialization, and completed-gate checks remain mandatory. A
+partial deletion, different path/rule/resource/operation, pre-investments stage,
+retained browser call, or added persistence fails closed.
+
 ## Active-stage debt
 
 An `active-stage-debt` is new, bounded debt created only by the active migration

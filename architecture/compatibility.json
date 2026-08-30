@@ -299,18 +299,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
           "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "searchOperatorSupportDashboard"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
@@ -707,12 +695,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
           "operation": "listFilingReviewComments"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_readiness_snapshots",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
@@ -961,18 +943,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_filing_submissions",
           "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:authority_permissions",
-          "operation": "searchOperatorSupportDashboard"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_submissions",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
@@ -1183,12 +1153,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },

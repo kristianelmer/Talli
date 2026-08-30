@@ -179,6 +179,38 @@ cannot clear launch until #199 and the representative #197 evidence have passed.
 Cost, credential, named-data, production, filing, provider, and public-action
 guardrails are unchanged.
 
+## 2026-08-30 amendment: case-bound support security exception
+
+Kristian approved the exact security-only exception in
+[#200 comment 5467952439](https://github.com/kristianelmer/Talli/issues/200#issuecomment-5467952439).
+It does not advance or reopen a capability migration: the serialized pointer
+remains investments/#141. It authorizes `backend:company_access` to own a
+generated UUID support case, immutable command receipts, and durable explicit
+opening evidence, and to replace standing operator data access with one
+operator/company/reason/scope/time/fresh-MFA/opening boundary.
+
+The authorization seam covers exactly `public.companies`, `audit_events`,
+`company_cancellations`, `filing_submissions`, `filing_readiness_snapshots`,
+`billing_accounts`, `billing_payment_events`, `authority_permissions`,
+`authority_test_runs`, `system_user_requests`, `production_pilot_entitlements`,
+`filing_approval_snapshots`, `production_filing_submissions`,
+`production_filing_events`, `production_feedback_artifacts`, `documents`,
+`storage.objects`, and `company_deletion_reviews`. Those resources keep their
+existing capability ownership and business writers. Support grant, revoke,
+explicit POST open, read-only GET, and deletion review run only through the
+backend executor and generated client; authenticated browser policies and RPC
+execution are removed.
+
+The compatibility checker may delete only the six remaining frozen
+`searchOperatorSupportDashboard` scopes, atomically and without changing the
+immutable baseline: billing accounts/events, filing readiness, authority
+permissions, filing submissions, and audit events. The exception cannot add a
+writer, move product or accounting policy, change filing/billing/provider
+effects, alter public customer contracts, or broaden another operation. Fresh
+and upgrade migration, negative RLS, POST idempotency/audit, read-only GET,
+deletion-review parity, generated contract/browser, rollback/recutover, and two
+immutable complete-gate passes are required before hosted application.
+
 ## Canonical decision inputs
 
 - Repository prototype and manifest format: issue #130 and commit `1c38dc6d`.
@@ -189,6 +221,7 @@ guardrails are unchanged.
   `5434908084`.
 - Ledger/live-reconciliation acceptance split: issue #188 comment `5448715773`
   and issue #199.
+- Case-bound support security exception: issue #200 comment `5467952439`.
 
 ## Consequences
 

@@ -1,10 +1,13 @@
 export {
   BackendConfigurationError,
   companyAccessBackendBaseUrl,
+  grantOperatorSupportAccess,
   loadCompanyAccessRecord,
   loadCompanyAccessContext,
   loadOperatorContext,
-  searchOperatorCompanyRecords,
+  openOperatorSupportCase,
+  readOperatorSupportCase,
+  revokeOperatorSupportAccess,
   type BackendConfigurationErrorCode,
 } from "./transport/load-company-access-context.ts";
 export {
@@ -13,7 +16,6 @@ export {
   eligibilityAdmissionRestartRequired,
   presentCompanyAccessRecord,
   presentCompanyAccessContext,
-  presentOperatorCompanyRecord,
   type AcceptedMembershipCompanyPresentation,
   type CompanyAccessPresentation,
   type CompanyRegistryPresentation,

@@ -143,12 +143,12 @@ test("company-year admission is authenticated and carries the exact immutable bo
       authorityAccepted: true,
       companyYearPromiseAccepted: true,
       agreementAccepted: true,
-      businessTermsVersion: "2026-07-17",
-      businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
-      dpaVersion: "2026-07-17",
-      dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
-      privacyNoticeVersion: "2026-07-15",
-      privacyNoticeSha256: "4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c",
+      businessTermsVersion: "2026-08-30",
+      businessTermsSha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04",
+      dpaVersion: "2026-08-30",
+      dpaSha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a",
+      privacyNoticeVersion: "2026-08-30",
+      privacyNoticeSha256: "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de",
     }, "admission-request");
   } finally {
     globalThis.fetch = originalFetch;

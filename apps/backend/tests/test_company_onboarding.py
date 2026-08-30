@@ -18,8 +18,8 @@ from talli_backend.modules.company_access.public import (
     CompanyAgreementAcceptanceGatewayCommand,
 )
 
-BUSINESS_TERMS_SHA256 = "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543"
-DPA_SHA256 = "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c"
+BUSINESS_TERMS_SHA256 = "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04"
+DPA_SHA256 = "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a"
 
 
 def access_token() -> str:
@@ -30,9 +30,9 @@ def access_token() -> str:
 def agreement_evidence() -> dict[str, object]:
     return {
         "agreementAccepted": True,
-        "businessTermsVersion": "2026-07-17",
+        "businessTermsVersion": "2026-08-30",
         "businessTermsSha256": BUSINESS_TERMS_SHA256,
-        "dpaVersion": "2026-07-17",
+        "dpaVersion": "2026-08-30",
         "dpaSha256": DPA_SHA256,
     }
 
@@ -101,12 +101,6 @@ class OnboardingGatewayStub:
         if self.role not in {"support", "admin"}:
             return None
         return {"role": self.role, "active": True}
-
-    async def search_operator_companies(
-        self, access_token: str, query: str
-    ) -> list[Mapping[str, object]]:
-        self.calls.append(("search_operator_companies", query))
-        return await self.companies(access_token, ["10000000-0000-0000-0000-000000000001"])
 
     async def reaccept_agreement(
         self, _access_token: str, command: CompanyAgreementAcceptanceGatewayCommand
@@ -233,7 +227,7 @@ def test_accepted_member_reads_tenant_concealed_company_record() -> None:
     assert concealed.status_code == 404
 
 
-def test_operator_context_and_bounded_company_search_require_active_operator() -> None:
+def test_operator_context_requires_active_operator() -> None:
     gateway = OnboardingGatewayStub()
     client = TestClient(create_app(gateway, CompanyRegistryStub()))
     denied = client.get(
@@ -245,22 +239,8 @@ def test_operator_context_and_bounded_company_search_require_active_operator() -
         "/api/v1/company-access/operator-context",
         headers={"Authorization": f"Bearer {access_token()}"},
     )
-    search = client.get(
-        "/api/v1/company-access/operator-companies?query=++Rolig+Holding++",
-        headers={"Authorization": f"Bearer {access_token()}"},
-    )
-    too_short = client.get(
-        "/api/v1/company-access/operator-companies?query=R",
-        headers={"Authorization": f"Bearer {access_token()}"},
-    )
-
     assert denied.status_code == 403
     assert context.json() == {"role": "admin", "active": True}
-    assert search.status_code == 200
-    assert search.json()["companies"][0]["orgNumber"] == "314159265"
-    assert "role" not in search.json()["companies"][0]
-    assert gateway.calls[-1] == ("search_operator_companies", "Rolig Holding")
-    assert too_short.status_code == 422
 
 
 def test_atomic_rpc_retry_reuses_the_identical_admission_command() -> None:

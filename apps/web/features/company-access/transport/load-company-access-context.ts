@@ -1,4 +1,9 @@
-import { createTalliApiClient } from "@talli/talli-api-client";
+import {
+  createTalliApiClient,
+  type GrantSupportAccessRequest,
+  type OpenSupportCaseRequest,
+  type RevokeSupportAccessRequest,
+} from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
 export {
@@ -53,16 +58,63 @@ export async function loadOperatorContext(
   });
 }
 
-export async function searchOperatorCompanyRecords(
+export async function grantOperatorSupportAccess(
   accessToken: string,
-  query: string,
+  command: GrantSupportAccessRequest,
   requestId?: string,
 ) {
   const client = createTalliApiClient({
     baseUrl: backendBaseUrl(),
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  return client.companyAccessSearchOperatorCompanies(query, {
+  return client.companyAccessGrantSupportAccess(command, {
+    requestId,
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+export async function revokeOperatorSupportAccess(
+  accessToken: string,
+  caseId: string,
+  command: RevokeSupportAccessRequest,
+  requestId?: string,
+) {
+  const client = createTalliApiClient({
+    baseUrl: backendBaseUrl(),
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return client.companyAccessRevokeSupportAccess(caseId, command, {
+    requestId,
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+export async function openOperatorSupportCase(
+  accessToken: string,
+  caseId: string,
+  command: OpenSupportCaseRequest,
+  requestId?: string,
+) {
+  const client = createTalliApiClient({
+    baseUrl: backendBaseUrl(),
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return client.companyAccessOpenSupportCase(caseId, command, {
+    requestId,
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+export async function readOperatorSupportCase(
+  accessToken: string,
+  caseId: string,
+  requestId?: string,
+) {
+  const client = createTalliApiClient({
+    baseUrl: backendBaseUrl(),
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return client.companyAccessReadSupportCase(caseId, {
     requestId,
     signal: AbortSignal.timeout(10_000),
   });
