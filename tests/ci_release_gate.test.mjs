@@ -315,8 +315,9 @@ test("browser owner rehearsal includes executable owned-process lifecycle covera
   );
 });
 
-test("Vercel deploys the Next output produced by the root build", () => {
+test("Vercel deploys the Next output near the owner-designated database", () => {
   const config = JSON.parse(readFileSync(vercelConfigPath, "utf8"));
 
-  assert.deepEqual(config, { outputDirectory: "apps/web/.next" });
+  assert.equal(config.outputDirectory, "apps/web/.next");
+  assert.deepEqual(config.regions, ["dub1"]);
 });
