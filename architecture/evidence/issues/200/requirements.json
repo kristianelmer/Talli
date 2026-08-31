@@ -23,6 +23,14 @@
       "verdict": "pass",
       "checkCount": 11,
       "transcriptDigest": "sha256:b973455e76d2c11a4909d55aaae03e0723e2136e56c0484fe9fa71166e1ac878"
+    },
+    {
+      "revision": "ae9112d89f2e80646247907193ee54889a349f11",
+      "previousPassingRevision": "e0390826b7a3da0480d65552d1c630af951cd48b",
+      "evidencePath": "architecture/evidence/customer-ready-gates/ae9112d89f2e80646247907193ee54889a349f11.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:360796981d43081a7ffffe81e60641b3480c46c91e54c3735a94134cdf2b22f3"
     }
   ],
   "criteria": [
@@ -96,7 +104,7 @@
         {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
         {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"}
       ],
-      "status": "r1-passed-r2-and-hosted-evidence-pending"
+      "status": "two-linked-immutable-gates-passed-hosted-evidence-pending"
     }
   ],
   "localValidation": {
@@ -108,5 +116,5 @@
     "supabaseSuite": {"passed": 62, "failed": 0},
     "browserOwner": {"passed": 17, "failed": 0}
   },
-  "closeState": "open-r2-immutable-gate-and-hosted-apply-pending"
+  "closeState": "open-hosted-apply-and-verification-pending"
 }
