@@ -48,6 +48,15 @@ activation blocked**.
   region selection as a data-location control, not proof of regulatory compliance.
   Sources: [Vercel DPA](https://vercel.com/legal/dpa) and
   [Supabase regions](https://supabase.com/docs/guides/platform/regions).
+- Supabase now publishes a canonical, live **Version 1 — August 1, 2026** DPA
+  through its Legal Hub. Supabase's current Terms of Service define that document
+  as the DPA, incorporate it into the online Agreement and make the Agreement
+  effective through acceptance or use. This resolves the earlier document-
+  availability gap; it does not prove which legal person accepted the exact Talli
+  account's Agreement, that the accepter had authority to bind Talli, or that a
+  human reviewer accepts the DPA and transfer terms. Sources:
+  [Supabase DPA](https://supabase.com/legal/customer-resources/data-processing-addendum)
+  and [Terms of Service](https://supabase.com/terms).
 
 No spend is authorized by this package. The repository cost guardrail requires
 explicit approval before any upgrade or usage-based service is enabled.
@@ -168,19 +177,57 @@ Canonical evidence:
 
 ### 2.4 Supabase DPA and subprocessors
 
-Supabase's current security documentation says it offers EU-region hosting and a
-DPA for customers who need one. The indexed March 2026 DPA describes continuous
-processing for database/tooling services, customer-selected data categories,
-security duties, audit terms and a subprocessor schedule. Sources:
-[Supabase security](https://supabase.com/docs/guides/security) and
-[Supabase DPA dated March 2026](https://supabase.com/downloads/docs/Supabase%2BDPA%2B260317.pdf).
-
-The direct March 2026 PDF URL returned HTTP 404 during this research session even
-though it remained indexed on Supabase's domain. That availability mismatch means
-the repository should not treat the indexed text or an older PDF as an executed,
-current Talli DPA. A human must obtain the current executable document directly
-from Supabase, complete the Talli-specific processing schedule, verify the current
-subprocessor list and preserve the executed artifact plus digest.
+1. Supabase's canonical Legal Hub now links a live HTML DPA at
+   [`/legal/customer-resources/data-processing-addendum`](https://supabase.com/legal/customer-resources/data-processing-addendum).
+   It identifies itself as **Version 1 — August 1, 2026**, supplements and forms
+   part of the Supabase Terms of Service or another relevant customer agreement,
+   and is effective on the Agreement's effective date. The current Terms define
+   this URL as the “Data Processing Addendum,” state that the parties agree to
+   comply with it and incorporate it into the Agreement. The Terms state that the
+   Agreement becomes effective when the customer clicks acceptance or accesses or
+   uses the Services. Sources: [Legal Hub](https://supabase.com/legal),
+   [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum),
+   and [Terms of Service](https://supabase.com/terms).
+2. The DPA identifies Supabase Pte. Ltd. of Singapore as the contracting processor,
+   sets its customer fields by reference to the information associated with the
+   customer's Supabase account or other Agreement, and incorporates the 2021 EU
+   SCCs. It states that acceptance of the Agreement has the same effect as signing
+   the SCCs. It uses Modules Two or Three as applicable, Irish law and Irish courts
+   for the specified EU SCC provisions, and permits Supabase and subprocessors to
+   process anywhere they maintain facilities subject to its regional-processing
+   and transfer terms. Source:
+   [Supabase DPA](https://supabase.com/legal/customer-resources/data-processing-addendum).
+3. Supabase publishes a canonical
+   [Subprocessor List page](https://supabase.com/legal/customer-resources/subprocessor-list)
+   which currently links a two-page
+   [“Updated June 1, 2026” schedule](https://supabase.com/legal/subprocessor-list/June-1-2026.pdf).
+   The schedule contains 24 named subprocessors and a purpose for each, including
+   AWS and Google for hosting, Cloudflare/Fly.io/Vercel for hosting, Supabase Inc.
+   for support, Sentry and Braintrust for monitoring/tracing, OpenAI for natural-
+   language processing/generation, and providers used for support communications,
+   authentication, analytics, security, status and serverless data hosting. It
+   does **not** publish each subprocessor's processing country or facility location.
+4. The subprocessor landing page says it is updated as subprocessors change and
+   offers email-update subscriptions. Under DPA clause 6.3, a subscribed customer
+   receives at least 30 days' notice of proposed changes and must object within
+   five days after Supabase provides notice; an unresolved objection may permit
+   termination of the affected Services. Sources:
+   [Subprocessor List](https://supabase.com/legal/customer-resources/subprocessor-list)
+   and [DPA clause 6](https://supabase.com/legal/customer-resources/data-processing-addendum#6-sub-processors).
+5. Availability was rechecked on 2026-08-31 using direct first-party HTTP GETs.
+   The Legal Hub, canonical DPA, subprocessor landing page and June 1 schedule all
+   returned HTTP 200. The schedule's downloaded bytes had SHA-256
+   `e85324d3d26fd754755a8cbcf8ddf3f1e8b04f164eb4959a63e53f6aa3f5fa6d`.
+   The formerly indexed March 2026, August 5, 2025 and December 11, 2023 PDF
+   download URLs each returned HTTP 404. Those obsolete URLs are not the current
+   agreement surface and should not be used as evidence that the DPA is
+   unavailable.
+6. The canonical document resolves the **obtainability** question and provides an
+   online contractual incorporation route. It does not itself prove the exact
+   Talli account's customer identity, the authority of the person who accepted or
+   used the service, whether a separate agreement overrides the online terms, or
+   human approval of the transfer/subprocessor terms. Those remain account and
+   legal-review facts, not provider-document facts.
 
 ## 3. Inferences from the combined evidence
 
@@ -274,11 +321,15 @@ These decisions cannot be completed by technical evidence alone.
 
 - Determine Talli's controller/processor roles for each Vercel and Supabase data
   category, including service-generated data, support data, logs and backups.
-- Obtain and execute the current applicable DPAs. Confirm that Vercel's DPA becomes
-  applicable through the selected paid agreement and obtain a current executable
-  Supabase DPA rather than relying on the unavailable indexed PDF.
-- Review, approve and pin dated subprocessor schedules for both providers, including
-  purposes, countries, notice channels, objection windows and exit consequences.
+- Obtain and execute the current applicable Vercel DPA. For Supabase, verify and
+  preserve evidence that the exact Talli account's authorized legal customer is
+  bound by the current online Agreement and incorporated Version 1 DPA (or identify
+  any separate governing agreement); do not rely on the obsolete PDF URLs.
+- Review, approve and pin dated subprocessor schedules for both providers. For
+  Supabase, pin the June 1, 2026 schedule and its digest, subscribe the approved
+  legal contact to updates if authorized, and obtain or assess the missing country/
+  facility information alongside purposes, notice channels, objection windows and
+  exit consequences.
 - Determine whether the SCCs and any additional measures are sufficient for the
   actual Vercel/Supabase processing and support flows. Dublin function/database
   placement must not be treated as eliminating US or other onward processing.
@@ -322,8 +373,10 @@ This sequence is a recommendation, not an authorization:
 1. Preserve the current launch-off state and exact audit JSON.
 2. Obtain explicit cost authority for the selected plans/add-ons, or document the
    accepted free alternatives with owners and operational evidence.
-3. Obtain current executable DPAs and dated subprocessor schedules; complete human
-   legal/privacy/security review and preserve signed artifacts/digests.
+3. Obtain the applicable Vercel DPA and verify the exact Talli account/customer
+   acceptance path for Supabase's incorporated Version 1 DPA; pin dated
+   subprocessor schedules and complete human legal/privacy/security review,
+   preserving acceptance/account evidence, artifacts and digests.
 4. Obtain action-time confirmation, rotate Vercel's five database bindings to the
    exact Supabase project, and prove Preview/Production binding without revealing
    secrets.
@@ -363,6 +416,10 @@ Until those steps are evidenced, the correct #196 state is:
 - [Access Control](https://supabase.com/docs/guides/platform/access-control)
 - [Regions](https://supabase.com/docs/guides/platform/regions)
 - [Security and GDPR support](https://supabase.com/docs/guides/security)
+- [Legal Hub](https://supabase.com/legal)
+- [Terms of Service](https://supabase.com/terms)
+- [Data Processing Addendum, Version 1 — August 1, 2026](https://supabase.com/legal/customer-resources/data-processing-addendum)
+- [Current Subprocessor List landing page](https://supabase.com/legal/customer-resources/subprocessor-list)
+- [Subprocessor List — Updated June 1, 2026](https://supabase.com/legal/subprocessor-list/June-1-2026.pdf)
 - [Shared Responsibility Model](https://supabase.com/docs/guides/deployment/shared-responsibility-model)
 - [Secure data and secret handling](https://supabase.com/docs/guides/database/secure-data)
-- [Data Processing Addendum dated March 2026](https://supabase.com/downloads/docs/Supabase%2BDPA%2B260317.pdf)
