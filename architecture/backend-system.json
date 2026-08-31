@@ -105,6 +105,19 @@
       ]
     },
     {
+      "name": "investment-share-purchase",
+      "purpose": "Authenticates one verified actor, records a supported canonical share purchase and acquisition lot, posts the deterministic accounting entry through the ledger public contract in the same transaction, and serves tenant-concealed position and lot pages.",
+      "publicPackages": [
+        "talli_backend.modules.investments.public",
+        "talli_backend.modules.ledger.public"
+      ],
+      "routes": [
+        "/api/v1/investments/positions",
+        "/api/v1/investments/acquisition-lots",
+        "/api/v1/investments/share-purchases"
+      ]
+    },
+    {
       "name": "ledger-posting-and-period-control",
       "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract.",
       "publicPackages": ["talli_backend.modules.ledger.public"],
@@ -118,7 +131,6 @@
         "/api/v1/ledger/investment-dividends",
         "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/tax-settlements",
-        "/api/v1/ledger/investment-purchases",
         "/api/v1/ledger/investment-sales",
         "/api/v1/ledger/corporate-decisions/finalizations",
         "/api/v1/ledger/owner-dividends/payments",
@@ -229,6 +241,12 @@
       "mode": "request-scoped verified-actor restricted PostgreSQL adapter"
     },
     {
+      "port": "InvestmentsPersistence",
+      "adapter": "talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession",
+      "owner": "backend-system",
+      "mode": "request-scoped verified-actor restricted PostgreSQL adapter"
+    },
+    {
       "port": "BankingPersistence",
       "adapter": "talli_backend.adapters.supabase_banking.SupabaseBankingSession",
       "owner": "backend-system",
@@ -267,13 +285,16 @@
       "talli_backend.adapters.supabase_banking",
       "talli_backend.adapters.supabase_company_access",
       "talli_backend.adapters.supabase_ledger",
+      "talli_backend.adapters.supabase_investments",
       "talli_backend.adapters.supabase_marketing_measurement",
       "talli_backend.adapters.supabase_validation_observation",
       "talli_backend.application.banking_session",
+      "talli_backend.application.investments_session",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.marketing_measurement.public",
       "talli_backend.modules.shareholder_register_filing.public",
@@ -286,6 +307,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.marketing_measurement.public",
       "talli_backend.modules.shareholder_register_filing.public",
@@ -311,11 +333,14 @@
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
+      "talli_backend.application.investments_session",
+      "talli_backend.application.investments_workflow",
       "talli_backend.application.ledger_session",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.ledger.service",
       "talli_backend.modules.marketing_measurement.public",

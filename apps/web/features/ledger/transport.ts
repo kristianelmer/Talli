@@ -5,7 +5,6 @@ import {
   type LedgerCompanyYearCloseAssessmentWire,
   type LedgerEntryViewWire,
   type LedgerInvestmentDividendWire,
-  type LedgerInvestmentPurchaseWire,
   type LedgerInvestmentSaleWire,
   type LedgerLockPeriodWire,
   type LedgerManualJournalWire,
@@ -310,18 +309,6 @@ export function postLedgerTaxSettlement(
   requestId?: string,
 ) {
   return client(accessToken).ledgerPostTaxSettlement(
-    command,
-    mutationRequest(idempotencyKey, requestId),
-  );
-}
-
-export function postLedgerInvestmentPurchase(
-  accessToken: string,
-  command: LedgerInvestmentPurchaseWire,
-  idempotencyKey: string,
-  requestId?: string,
-) {
-  return client(accessToken).ledgerPostInvestmentPurchase(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

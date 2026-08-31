@@ -93,7 +93,7 @@
     "test:python-runtime": "node --experimental-strip-types --test tests/python_runtime.test.mjs",
     "test:rf1086:submission": "node --experimental-strip-types --test tests/rf1086_submission_persisted.test.mjs",
     "test:rf1086:production-pilot": "node --experimental-strip-types --test tests/production_pilot.test.mjs tests/production_approval.test.mjs tests/production_submission.test.mjs tests/controlled_production_beta_schema.test.mjs tests/rf1086_production.test.mjs tests/rf1086_production_environment.test.mjs tests/controlled_production_beta_actions.test.mjs tests/rf1086_production_runbook.test.mjs",
-    "test:share-purchase": "node --experimental-strip-types --test tests/share_purchase.test.mjs",
+    "test:share-purchase": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_investments.py apps/backend/tests/test_investments_public_contract.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py -q && node --test apps/web/tests/investments-presentation.test.mjs tests/investments_database_runtime.test.mjs",
     "test:share-sale": "node --experimental-strip-types --test tests/share_sale.test.mjs",
     "test:share-lots": "node --experimental-strip-types --test tests/share_lots.test.mjs",
     "test:investment-lots-schema": "node --test tests/investment_lots_schema.test.mjs",

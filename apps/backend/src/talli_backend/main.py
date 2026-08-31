@@ -23,6 +23,7 @@ from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAd
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
     SupabaseMarketingMeasurementAdapter,
 )
@@ -49,6 +50,10 @@ from talli_backend.application.banking_session import (
     BankingAuthenticationError,
     BankingSessionFactory,
 )
+from talli_backend.application.investments_session import (
+    InvestmentsAuthenticationError,
+    InvestmentsSessionFactory,
+)
 from talli_backend.application.ledger_workflow import (
     FinalizeCorporateDecisionCommand,
     LedgerAuthenticationError,
@@ -57,7 +62,6 @@ from talli_backend.application.ledger_workflow import (
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
     RecordInvestmentDividendCommand,
-    RecordInvestmentPurchaseFifoCommand,
     RecordInvestmentSaleFifoCommand,
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
@@ -192,6 +196,19 @@ from talli_backend.modules.ledger.public import (
     ReconstructionState,
     ShareholderLoanDirection,
     TaxSettlementKind,
+)
+from talli_backend.modules.investments.public import (
+    AcquisitionLotView,
+    InvestmentActionId,
+    InvestmentCursor,
+    InvestmentDocumentStatus,
+    InvestmentKind,
+    InvestmentLotHistoryStatus,
+    InvestmentPositionView,
+    InvestmentSourceReference,
+    InvestmentTaxTreatment,
+    InvestmentsError,
+    RecordSharePurchaseCommand,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -836,21 +853,74 @@ class LedgerTaxSettlementWire(LedgerCompanyYearWire):
     document_id: UUID | None = None
 
 
-class LedgerInvestmentPurchaseWire(LedgerCompanyYearWire):
+class InvestmentsSharePurchaseWire(LedgerCompanyYearWire):
     action_id: UUID
     investment_key: str = Field(min_length=1, max_length=255)
     investment_name: str = Field(min_length=1, max_length=255)
-    investment_kind: Literal["norwegian_private_company"]
-    tax_treatment: Literal["fritaksmetoden"]
+    investment_kind: InvestmentKind
+    tax_treatment: InvestmentTaxTreatment
     acquisition_date: date
     share_count: int = Field(gt=0, le=9_007_199_254_740_991)
     purchase_amount: LedgerMoneyWire
     org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
     bank_transaction_id: UUID | None = None
     document_id: UUID | None = None
-    document_status: Literal[
-        "attached", "missing_accepted_warning", "not_required"
-    ]
+    document_status: InvestmentDocumentStatus
+
+
+class InvestmentsSharePurchaseResultWire(TransportModel):
+    action_id: UUID
+    position_id: UUID
+    acquisition_lot_id: UUID
+    accounting_entry_id: UUID
+    position_created: bool
+    replayed: bool
+
+
+class InvestmentsPageWire(TransportModel):
+    next_cursor: str | None
+    has_more: bool
+
+
+class InvestmentPositionWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    investment_key: str
+    name: str
+    kind: InvestmentKind
+    tax_treatment: InvestmentTaxTreatment
+    org_number: str | None
+    share_count: int
+    cost_basis: LedgerMoneyWire
+    lot_history_status: InvestmentLotHistoryStatus
+    movement_count: int
+    created_by: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class InvestmentPositionPageWire(TransportModel):
+    items: list[InvestmentPositionWire]
+    page: InvestmentsPageWire
+
+
+class AcquisitionLotWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    position_id: UUID
+    acquisition_action_id: UUID
+    acquisition_date: date
+    original_share_count: int
+    remaining_share_count: int
+    original_cost_basis: LedgerMoneyWire
+    remaining_cost_basis: LedgerMoneyWire
+    created_by: UUID
+    created_at: datetime
+
+
+class AcquisitionLotPageWire(TransportModel):
+    items: list[AcquisitionLotWire]
+    page: InvestmentsPageWire
 
 
 class LedgerInvestmentSaleWire(LedgerCompanyYearWire):
@@ -1389,6 +1459,7 @@ def create_app(
     company_access_gateway: CompanyAccessGateway | None = None,
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
+    investments_session_factory: InvestmentsSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
@@ -1414,6 +1485,9 @@ def create_app(
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
+    investments_application = compose_investments_application(
+        investments_session_factory
+    )
     banking_application = compose_banking_application(banking_session_factory)
     provider_registry = dict(banking_providers or {})
     measurement_gateway = (
@@ -1597,6 +1671,50 @@ def create_app(
                 detail=error.message or "The opening snapshot could not be recorded.",
             ) from None
 
+    async def investments_call(
+        call: Callable[[], Awaitable[ResponseT]],
+    ) -> ResponseT:
+        try:
+            return await call()
+        except InvestmentsAuthenticationError:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        except InvestmentsError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Investments request failed",
+                detail=error.message
+                or "The investments request could not be completed.",
+            ) from None
+        except LedgerError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Investments accounting request failed",
+                detail=error.message
+                or "The investment accounting entry could not be completed.",
+            ) from None
     async def banking_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
         try:
             return await call()
@@ -1628,6 +1746,12 @@ def create_app(
             return factory()
         except (TypeError, ValueError, ShareholderRegisterFilingError):
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT") from None
+
+    def investments_input(factory: Callable[[], ResponseT]) -> ResponseT:
+        try:
+            return factory()
+        except (TypeError, ValueError, InvestmentsError):
+            raise InvestmentsError.invalid_input() from None
 
     def banking_input(factory: Callable[[], ResponseT]) -> ResponseT:
         try:
@@ -2481,6 +2605,199 @@ def create_app(
     ledger_success: dict[str, Any] = {
         "headers": {"X-Request-ID": REQUEST_ID_HEADER}
     }
+
+    investments_errors: Any = {
+        status: {
+            "description": "Investments request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (401, 403, 404, 409, 422, 503)
+    }
+    investments_success: dict[str, Any] = {
+        "headers": {"X-Request-ID": REQUEST_ID_HEADER}
+    }
+
+    def position_wire(value: InvestmentPositionView) -> InvestmentPositionWire:
+        return InvestmentPositionWire(
+            id=UUID(str(value.position_id)),
+            company_id=UUID(str(value.company_id)),
+            investment_key=value.investment_key,
+            name=value.name,
+            kind=value.kind,
+            tax_treatment=value.tax_treatment,
+            org_number=value.org_number,
+            share_count=value.share_count,
+            cost_basis=_money_wire(value.cost_basis),
+            lot_history_status=value.lot_history_status,
+            movement_count=value.movement_count,
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+            updated_at=value.updated_at.value,
+        )
+
+    def acquisition_lot_wire(value: AcquisitionLotView) -> AcquisitionLotWire:
+        return AcquisitionLotWire(
+            id=UUID(str(value.lot_id)),
+            company_id=UUID(str(value.company_id)),
+            position_id=UUID(str(value.position_id)),
+            acquisition_action_id=UUID(str(value.acquisition_action_id)),
+            acquisition_date=value.acquisition_date.value,
+            original_share_count=value.original_share_count,
+            remaining_share_count=value.remaining_share_count,
+            original_cost_basis=_money_wire(value.original_cost_basis),
+            remaining_cost_basis=_money_wire(value.remaining_cost_basis),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
+    @application.get(
+        "/api/v1/investments/positions",
+        operation_id="investmentsListPositions",
+        response_model=InvestmentPositionPageWire,
+        responses={200: {"description": "Visible investment positions."} | investments_success}
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_positions(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentPositionPageWire:
+        async def execute() -> InvestmentPositionPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_positions(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor
+                    else None
+                ),
+                limit=limit,
+            )
+            return InvestmentPositionPageWire(
+                items=[position_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
+
+    @application.get(
+        "/api/v1/investments/acquisition-lots",
+        operation_id="investmentsListAcquisitionLots",
+        response_model=AcquisitionLotPageWire,
+        responses={200: {"description": "Visible acquisition lots."} | investments_success}
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_acquisition_lots(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AcquisitionLotPageWire:
+        async def execute() -> AcquisitionLotPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_acquisition_lots(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor
+                    else None
+                ),
+                limit=limit,
+            )
+            return AcquisitionLotPageWire(
+                items=[acquisition_lot_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/share-purchases",
+        operation_id="investmentsRecordSharePurchase",
+        response_model=InvestmentsSharePurchaseResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Share purchase recorded atomically."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_investments_share_purchase(
+        request: Request,
+        command: InvestmentsSharePurchaseWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsSharePurchaseResultWire:
+        async def execute() -> InvestmentsSharePurchaseResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            domain = RecordSharePurchaseCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=CorrelationId(request.state.request_id),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                action_id=InvestmentActionId(str(command.action_id)),
+                investment_key=command.investment_key,
+                investment_name=command.investment_name,
+                investment_kind=command.investment_kind,
+                tax_treatment=command.tax_treatment,
+                acquisition_date=LocalDate(command.acquisition_date),
+                share_count=command.share_count,
+                purchase_amount=command.purchase_amount.to_domain(),
+                org_number=command.org_number,
+                bank_transaction_id=(
+                    InvestmentSourceReference(str(command.bank_transaction_id))
+                    if command.bank_transaction_id
+                    else None
+                ),
+                document_id=(
+                    InvestmentSourceReference(str(command.document_id))
+                    if command.document_id
+                    else None
+                ),
+                document_status=command.document_status,
+            )
+            result = await session.record_share_purchase(domain)
+            return InvestmentsSharePurchaseResultWire(
+                action_id=UUID(str(result.action_id)),
+                position_id=UUID(str(result.position_id)),
+                acquisition_lot_id=UUID(str(result.lot_id)),
+                accounting_entry_id=UUID(str(result.accounting_entry_id)),
+                position_created=result.position_created,
+                replayed=result.replayed,
+            )
+
+        return await investments_call(execute)
 
     banking_errors: Any = {
         status: {
@@ -3496,46 +3813,6 @@ def create_app(
             return ledger_writer_wire(
                 result, company_id=command.company_id, income_year=command.income_year,
                 expected_kind=LedgerEntryKind.TAX_SETTLEMENT,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/investment-purchases",
-        operation_id="ledgerPostInvestmentPurchase",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Investment purchase recorded atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_investment_purchase(
-        request: Request,
-        command: LedgerInvestmentPurchaseWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: RecordInvestmentPurchaseFifoCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
-                investment_key=command.investment_key, investment_name=command.investment_name,
-                investment_kind=command.investment_kind, tax_treatment=command.tax_treatment,
-                acquisition_date=LocalDate(command.acquisition_date), share_count=command.share_count,
-                purchase_amount=command.purchase_amount.to_domain(), org_number=command.org_number,
-                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
-                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
-                document_status=command.document_status,
-            ))
-            result = await session.record_investment_purchase_fifo(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.SHARE_PURCHASE,
             )
 
         return await ledger_call(execute)

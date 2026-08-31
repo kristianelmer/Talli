@@ -118,7 +118,6 @@ import {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerInvestmentDividend,
-  postLedgerInvestmentPurchase,
   postLedgerInvestmentSale,
   postLedgerManualJournal,
   postLedgerOwnerDividendPayment,
@@ -127,6 +126,11 @@ import {
   startNewYear,
   type NewYearShareholderWire,
 } from "../features/ledger";
+import {
+  investmentsActionErrorMessage,
+  investmentsOutcomeMayBeUnknown,
+  recordInvestmentSharePurchase,
+} from "../features/investments";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
 import {
@@ -205,7 +209,6 @@ import {
   SensitiveAction,
   SensitiveActionStepUpError,
 } from "./lib/security";
-import { SharePurchaseValidationError, validateSharePurchase } from "./lib/share-purchase";
 import {
   ShareholderLoanValidationError,
   validateShareholderLoan,
@@ -2106,64 +2109,37 @@ export async function recordSharePurchase(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const bankTransactionId = formString(formData, "bankTransactionId") || null;
-  const documentId = formString(formData, "documentId") || null;
-  let payload;
-  try {
-    payload = validateSharePurchase({
-      investmentKey: formString(formData, "investmentKey"),
-      investmentName: formString(formData, "investmentName"),
-      investmentKind: formString(formData, "investmentKind") as "norwegian_private_company" | "simple_listed_security",
-      taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant",
-      acquisitionDate: formString(formData, "acquisitionDate"),
-      shareCount: Number(formString(formData, "shareCount")),
-      purchaseAmount: Number(formString(formData, "purchaseAmount")),
-      orgNumber: formString(formData, "orgNumber") || null,
-      bankTransactionId,
-      documentId,
-      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
-    });
-  } catch (error) {
-    const message =
-      error instanceof SharePurchaseValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig aksjekjøp";
-    failTo(returnTo, message);
-  }
-
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await postLedgerInvestmentPurchase(
+    await recordInvestmentSharePurchase(
       accessToken,
       {
-        acquisitionDate: payload.acquisition_date,
+        acquisitionDate: formString(formData, "acquisitionDate"),
         actionId: operationId,
-        bankTransactionId,
+        bankTransactionId: formString(formData, "bankTransactionId") || null,
         companyId,
-        documentId,
-        documentStatus: payload.document_status,
+        documentId: formString(formData, "documentId") || null,
+        documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
         incomeYear,
-        investmentKey: payload.investment_key,
-        investmentKind: payload.investment_kind,
-        investmentName: payload.investment_name,
-        orgNumber: payload.org_number,
-        purchaseAmount: { amount: String(payload.purchase_amount), currency: "NOK" },
-        shareCount: payload.share_count,
-        taxTreatment: payload.tax_treatment,
+        investmentKey: formString(formData, "investmentKey"),
+        investmentKind: formString(formData, "investmentKind") as "norwegian_private_company",
+        investmentName: formString(formData, "investmentName"),
+        orgNumber: formString(formData, "orgNumber") || null,
+        purchaseAmount: { amount: formString(formData, "purchaseAmount"), currency: "NOK" },
+        shareCount: Number(formString(formData, "shareCount")),
+        taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden",
       },
       operationId,
       operationId,
     );
   } catch (error) {
-    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
     const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
       ? "/actions/share-purchase"
       : returnTo;
     redirect(ownerPathWithQuery(retryTarget, {
-      error: ledgerActionErrorMessage(error),
+      error: investmentsActionErrorMessage(error),
       sharePurchaseOperationId: outcomeMayBeUnknown ? operationId : undefined,
     }));
   }

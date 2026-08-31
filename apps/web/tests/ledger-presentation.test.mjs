@@ -1230,7 +1230,6 @@ test("all relocated ledger writers use the stable operation ID at the generated 
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["postLedgerInvestmentDividend", "actionId"],
-    recordSharePurchase: ["postLedgerInvestmentPurchase", "actionId"],
     recordShareSale: ["postLedgerInvestmentSale", "actionId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
     recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
@@ -1256,6 +1255,19 @@ test("all relocated ledger writers use the stable operation ID at the generated 
   }
 });
 
+test("share purchases use the investments generated boundary", () => {
+  const action = ledgerServerActionSource("recordSharePurchase");
+  assert.match(action, /await recordInvestmentSharePurchase\(/u);
+  assert.match(
+    action,
+    /recordInvestmentSharePurchase\([\s\S]*?operationId,[\s\S]*?operationId/u,
+  );
+  assert.match(action, /actionId: operationId/u);
+  assert.match(action, /investmentsOutcomeMayBeUnknown\(error\)/u);
+  assert.match(action, /investmentsActionErrorMessage\(error\)/u);
+  assert.doesNotMatch(action, /postLedgerInvestmentPurchase|validateSharePurchase/u);
+});
+
 test("committed retries reach the coordinator before mutable legacy state can reject them", () => {
   const suggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
   assert.doesNotMatch(suggestion, /matched_entry_id|matched_action_id|accepted_warning|suggestBankTransaction/u);
@@ -1273,7 +1285,6 @@ test("committed retries reach the coordinator before mutable legacy state can re
   for (const actionName of [
     "recordAdminCost",
     "recordDividendReceived",
-    "recordSharePurchase",
     "recordShareholderLoan",
     "recordTaxSettlement",
   ]) {
@@ -1286,7 +1297,6 @@ test("unknown ledger outcomes preserve only the scoped retry operation", () => {
   const retryFields = {
     recordAdminCost: ["adminCostOperationId", "adminCostBankTransactionId"],
     recordDividendReceived: ["dividendReceivedOperationId"],
-    recordSharePurchase: ["sharePurchaseOperationId"],
     recordShareSale: ["shareSaleOperationId"],
     finalizeCorporateDecision: ["finalizeDecisionOperationId"],
     recordOwnerDividendPayment: ["ownerDividendPaymentOperationId", "ownerDividendPaymentBankTransactionId"],
@@ -1299,6 +1309,11 @@ test("unknown ledger outcomes preserve only the scoped retry operation", () => {
     assert.match(action, /ledgerActionErrorMessage\(error\)/u, actionName);
     for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
   }
+
+  const purchase = ledgerServerActionSource("recordSharePurchase");
+  assert.match(purchase, /investmentsOutcomeMayBeUnknown\(error\)/u);
+  assert.match(purchase, /investmentsActionErrorMessage\(error\)/u);
+  assert.match(purchase, /sharePurchaseOperationId/u);
 
   const bankingSuggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
   assert.match(bankingSuggestion, /bankingOutcomeMayBeUnknown\(error\)/u);

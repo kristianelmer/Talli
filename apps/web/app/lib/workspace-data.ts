@@ -26,8 +26,6 @@ import {
   listFilingSubmissions,
   listProductionFilingState,
   listHoldingActions,
-  listInvestmentPositions,
-  listInvestmentLots,
   listInvestmentLotAllocations,
   listLedgerEntries,
   listNotificationOutbox,
@@ -37,6 +35,11 @@ import {
 import { listCompanyCancellationLifecycle } from "./company-access-cancellation";
 import { listCompanyAccessContexts } from "./company-access-context";
 import { listCompanyAccessAdministration } from "./company-access-administration";
+import {
+  listPresentedAcquisitionLots,
+  listPresentedInvestmentPositions,
+} from "../../features/investments";
+import { getCurrentSessionAccessToken } from "./supabase/auth-session";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -48,6 +51,7 @@ import { listCompanyAccessAdministration } from "./company-access-administration
  */
 export async function loadWorkspaceData() {
   const user = await getCurrentUser();
+  const accessToken = user ? await getCurrentSessionAccessToken() : null;
   const { companies, error } = user ? await listCompanyAccessContexts() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
@@ -93,8 +97,12 @@ export async function loadWorkspaceData() {
     ? await listBankSuggestionAcceptances(companies.map((company) => company.id))
     : { acceptances: [] };
   const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
-  const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
-  const { lots: investmentLots } = user ? await listInvestmentLots(companies.map((company) => company.id)) : { lots: [] };
+  const { positions } = accessToken
+    ? await listPresentedInvestmentPositions(accessToken, companies.map((company) => company.id))
+    : { positions: [] };
+  const { lots: investmentLots } = accessToken
+    ? await listPresentedAcquisitionLots(accessToken, companies.map((company) => company.id))
+    : { lots: [] };
   const { allocations: investmentLotAllocations } = user
     ? await listInvestmentLotAllocations(companies.map((company) => company.id))
     : { allocations: [] };

@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostInvestmentDividend","ledgerPostInvestmentPurchase","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostInvestmentDividend","ledgerPostInvestmentSale","ledgerPostManualJournal","ledgerPostOwnerDividendPayment","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary

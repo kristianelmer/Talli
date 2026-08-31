@@ -2046,7 +2046,6 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
         "investment_dividend",
         "shareholder_loan",
         "tax_settlement",
-        "investment_purchase_fifo",
         "investment_sale_fifo",
         "corporate_decision_finalization",
         "owner_dividend_payment",

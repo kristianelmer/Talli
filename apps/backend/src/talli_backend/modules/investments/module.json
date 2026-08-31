@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "investments",
+  "path": "apps/backend/src/talli_backend/modules/investments",
+  "owner": "backend:investments",
+  "purpose": "Own supported share-purchase policy, canonical investment positions, immutable acquisition lots, deterministic position movements, purchase replay, and purpose-specific investment queries.",
+  "documentation": "apps/backend/src/talli_backend/modules/investments/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.investments.public",
+  "exports": {
+    "commands": ["InvestmentsCommand", "InvestmentsCommands", "RecordSharePurchaseCommand"],
+    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentsQueries", "PreparedSharePurchase", "RecordedSharePurchase"],
+    "events": [],
+    "errors": ["InvestmentsError", "InvestmentsErrorCode"],
+    "identifiers": ["AccountingEntryReference", "AcquisitionLotId", "InvestmentActionId", "InvestmentCursor", "InvestmentDocumentStatus", "InvestmentKind", "InvestmentLotHistoryStatus", "InvestmentPositionId", "InvestmentSourceReference", "InvestmentTaxTreatment", "InvestmentsPersistence", "investments_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["investments"],
+    "tables": ["investments.acquisition_lots", "investments.positions", "investments.share_purchases"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations/20260831124939_investments_capability.sql"
+  },
+  "ports": [
+    {
+      "name": "InvestmentsPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.investments.public.InvestmentsPersistence",
+      "registrationDecorator": "talli_backend.modules.investments.public.investments_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "enum", "re", "talli_backend.shared.kernel", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
+    "Bank-provider selection, credentials, consent, live calls, or provider-specific types",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, or web transport types in the public contract",
+    "Share-sale FIFO allocation, received-dividend, tax, document, governance, filing, or archive policy in issue #141",
+    "Service-role access, RLS bypass, direct browser persistence, or a second investment writer"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_investments_public_contract.py",
+    "policy": "apps/backend/tests/test_investments.py",
+    "workflow": "apps/backend/tests/test_investments_workflow.py",
+    "database": "tests/investments_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

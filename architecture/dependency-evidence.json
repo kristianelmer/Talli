@@ -41,6 +41,22 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:investment-share-purchase",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:investment-share-purchase",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
       "from": "backend-system:ledger-posting-and-period-control",
       "imports": [
         "talli_backend.modules.ledger.public"
@@ -96,10 +112,12 @@
     "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
+    "backend:investments",
     "backend:ledger",
     "backend:shareholder_register_filing",
     "web:banking",
     "web:company-access",
+    "web:investments",
     "web:ledger",
     "web:public-acquisition",
     "web:system-boundary"

@@ -32,7 +32,6 @@ import {
   runRf1086SubmissionAdapter,
 } from "../apps/web/app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../apps/web/app/lib/review.ts";
-import { validateSharePurchase } from "../apps/web/app/lib/share-purchase.ts";
 import { validateShareSale } from "../apps/web/app/lib/share-sale.ts";
 import { shareholderLoanLedgerLines, validateShareholderLoan } from "../apps/web/app/lib/shareholder-loan.ts";
 import {
@@ -2342,20 +2341,6 @@ test(
     });
     assert.ok(outsiderDividendActionInsertError);
 
-    assert.throws(
-      () =>
-        validateSharePurchase({
-          investmentKey: "listed",
-          investmentName: "Listed ASA",
-          investmentKind: "simple_listed_security",
-          taxTreatment: "fritaksmetoden",
-          acquisitionDate: "2025-05-01",
-          shareCount: 100,
-          purchaseAmount: 50000,
-          documentStatus: "attached",
-        }),
-      (error) => error?.code === "unsupported_investment_kind",
-    );
     const purchaseDocumentId = randomUUID();
     const { error: purchaseDocumentError } = await owner.from("documents").insert({
       id: purchaseDocumentId,
@@ -2384,19 +2369,21 @@ test(
       .select("id, amount")
       .single();
     assert.ifError(purchaseBankTransactionError);
-    const purchasePayload = validateSharePurchase({
-      investmentKey: "portfolio-as",
-      investmentName: "Portfolio AS",
-      investmentKind: "norwegian_private_company",
-      taxTreatment: "fritaksmetoden",
-      acquisitionDate: "2025-05-01",
-      shareCount: 100,
-      purchaseAmount: 50000,
-      orgNumber: "999888777",
-      bankTransactionId: purchaseBankTransaction.id,
-      documentId: purchaseDocumentId,
-      documentStatus: "attached",
-    });
+    // This fixture exercises the still-frozen sale compatibility path. New
+    // purchase policy is owned and tested by the backend investments capability.
+    const purchasePayload = {
+      acquisition_date: "2025-05-01",
+      bank_transaction_id: purchaseBankTransaction.id,
+      document_id: purchaseDocumentId,
+      document_status: "attached",
+      investment_key: "portfolio-as",
+      investment_kind: "norwegian_private_company",
+      investment_name: "Portfolio AS",
+      org_number: "999888777",
+      purchase_amount: 50000,
+      share_count: 100,
+      tax_treatment: "fritaksmetoden",
+    };
     const purchaseActionId = randomUUID();
     const { data: purchaseWrite, error: purchaseWriteError } = await owner.rpc("record_share_purchase_fifo", {
       p_action_id: purchaseActionId,

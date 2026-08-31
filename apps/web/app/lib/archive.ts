@@ -15,11 +15,13 @@ import type {
   FilingSubmissionRow,
   HoldingActionRow,
   InvestmentLotAllocationRow,
-  InvestmentLotRow,
-  InvestmentPositionRow,
   OpeningBalanceSetupRow,
   OpeningShareholderRow,
 } from "./supabase/server";
+import type {
+  AcquisitionLotPresentation as InvestmentLotRow,
+  InvestmentPositionPresentation as InvestmentPositionRow,
+} from "../../features/investments";
 
 export type LedgerEntryRow = {
   id: string;

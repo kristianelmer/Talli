@@ -493,37 +493,6 @@ export type HoldingActionRow = {
   created_at: string;
 };
 
-export type InvestmentPositionRow = {
-  id: string;
-  company_id: string;
-  investment_key: string;
-  name: string;
-  kind: "norwegian_private_company";
-  tax_treatment: "fritaksmetoden";
-  org_number: string | null;
-  share_count: number;
-  cost_basis: number;
-  lot_history_status: "complete" | "needs_reconstruction";
-  movements: unknown[];
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type InvestmentLotRow = {
-  id: string;
-  company_id: string;
-  position_id: string;
-  acquisition_action_id: string;
-  acquisition_date: string;
-  original_share_count: number;
-  remaining_share_count: number;
-  original_cost_basis: number;
-  remaining_cost_basis: number;
-  created_by: string;
-  created_at: string;
-};
-
 export type InvestmentLotAllocationRow = {
   id: string;
   company_id: string;
@@ -1032,41 +1001,6 @@ export async function listHoldingActions(companyIds: string[]) {
 
   return {
     actions: (data ?? []) as HoldingActionRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listInvestmentPositions(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { positions: [] as InvestmentPositionRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("investment_positions")
-    .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, lot_history_status, movements, created_by, created_at, updated_at")
-    .in("company_id", companyIds)
-    .order("updated_at", { ascending: false });
-
-  return {
-    positions: (data ?? []) as InvestmentPositionRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listInvestmentLots(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { lots: [] as InvestmentLotRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("investment_lots")
-    .select("id, company_id, position_id, acquisition_action_id, acquisition_date, original_share_count, remaining_share_count, original_cost_basis, remaining_cost_basis, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("acquisition_date", { ascending: true })
-    .order("id", { ascending: true });
-
-  return {
-    lots: (data ?? []) as InvestmentLotRow[],
     error: error?.message ?? null,
   };
 }

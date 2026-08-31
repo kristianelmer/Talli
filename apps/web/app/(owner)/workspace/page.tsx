@@ -84,7 +84,6 @@ import {
   listFilingReviewComments,
   listFilingSubmissions,
   listHoldingActions,
-  listInvestmentPositions,
   listLaunchSignoffs,
   listLedgerEntries,
   listNotificationOutbox,
@@ -1888,15 +1887,12 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Investeringstype
                     <select name="investmentKind" defaultValue="norwegian_private_company">
                       <option value="norwegian_private_company">Norsk privat AS</option>
-                      <option value="simple_listed_security">Børsnotert/annet</option>
                     </select>
                   </label>
                   <label>
                     Skattebehandling
                     <select name="taxTreatment" defaultValue="fritaksmetoden">
                       <option value="fritaksmetoden">Fritaksmetoden</option>
-                      <option value="outside_fritaksmetoden">Utenfor fritaksmetoden</option>
-                      <option value="needs_accountant">Må vurderes</option>
                     </select>
                   </label>
                   <label>
@@ -1911,38 +1907,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Kjøpsbeløp
                     <input name="purchaseAmount" inputMode="decimal" placeholder="0" required />
                   </label>
-                  <label>
-                    Banktransaksjon
-                    <select name="bankTransactionId" defaultValue="">
-                      <option value="">Ingen bankmatch</option>
-                      {unmatchedTransactions
-                        .filter((transaction) => Number(transaction.amount) < 0)
-                        .map((transaction) => (
-                          <option key={transaction.id} value={transaction.id}>
-                            {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    Bilag
-                    <select name="documentId" defaultValue="">
-                      <option value="">Ingen bilagskobling</option>
-                      {documents.map((document) => (
-                        <option key={document.id} value={document.id}>
-                          {document.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="not_required">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
-                  </label>
+                  <input name="documentStatus" type="hidden" value="not_required" />
                   <button className="secondaryButton" type="submit">
                     Poster aksjekjøp
                   </button>

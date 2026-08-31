@@ -1,16 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { recordSharePurchase } from "../../../actions";
 import { SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
-import {
-  sharePurchaseLedgerLines,
-  validateSharePurchase,
-} from "../../../lib/share-purchase";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
-import { DocStatusSelect, SelectField, TextField } from "./fields";
+import { SelectField, TextField } from "./fields";
 
 type Props = { companyId: string; incomeYear: number; operationId?: string };
 
@@ -29,7 +24,6 @@ export function SharePurchaseWizard({
   const [acquisitionDate, setAcquisitionDate] = useState("");
   const [shareCount, setShareCount] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
-  const [documentStatus, setDocumentStatus] = useState("attached");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
@@ -38,48 +32,6 @@ export function SharePurchaseWizard({
     acquisitionDate.trim() !== "" &&
     shareCount.trim() !== "" &&
     purchaseAmount.trim() !== "";
-
-  const preview = useMemo<{ block: string | null; lines: LedgerLine[] | null }>(() => {
-    if (!ready) return { block: null, lines: null };
-    try {
-      const payload = validateSharePurchase({
-        investmentKey,
-        investmentName,
-        investmentKind: kind as
-          | "norwegian_private_company"
-          | "simple_listed_security",
-        taxTreatment: treatment as
-          | "fritaksmetoden"
-          | "outside_fritaksmetoden"
-          | "needs_accountant",
-        acquisitionDate,
-        shareCount: Number(shareCount),
-        purchaseAmount: Number(purchaseAmount),
-        orgNumber: orgNumber || null,
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-      });
-      return { block: null, lines: sharePurchaseLedgerLines(payload) };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig aksjekjøp",
-        lines: null,
-      };
-    }
-  }, [
-    ready,
-    investmentKey,
-    investmentName,
-    kind,
-    treatment,
-    acquisitionDate,
-    shareCount,
-    purchaseAmount,
-    orgNumber,
-    documentStatus,
-  ]);
 
   return (
     <form action={recordSharePurchase} className="wizardForm">
@@ -123,9 +75,6 @@ export function SharePurchaseWizard({
           <option value="norwegian_private_company">
             {a.investmentKind.norwegianPrivate}
           </option>
-          <option value="simple_listed_security">
-            {a.investmentKind.listed}
-          </option>
         </SelectField>
         <SelectField
           label={a.taxTreatment.label}
@@ -135,8 +84,6 @@ export function SharePurchaseWizard({
           required
         >
           <option value="fritaksmetoden">{a.taxTreatment.fritak}</option>
-          <option value="outside_fritaksmetoden">{a.taxTreatment.outside}</option>
-          <option value="needs_accountant">{a.taxTreatment.needsAccountant}</option>
         </SelectField>
       </div>
       <div className="fieldRow">
@@ -167,12 +114,10 @@ export function SharePurchaseWizard({
           inputMode="decimal"
           required
         />
-        <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
+        <input type="hidden" name="documentStatus" value="not_required" />
       </div>
 
-      <ActionPreview block={preview.block} lines={preview.lines} />
-
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

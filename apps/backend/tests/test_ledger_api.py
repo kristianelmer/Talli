@@ -251,18 +251,6 @@ class LedgerSessionStub:
     ) -> dict[str, object]:
         return await self._complete("tax_settlement", command, posted_entry, prepared)
 
-    async def prepare_investment_purchase_fifo(
-        self, command: object
-    ) -> dict[str, object]:
-        return await self._prepare("investment_purchase_fifo", command)
-
-    async def complete_investment_purchase_fifo(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]:
-        return await self._complete(
-            "investment_purchase_fifo", command, posted_entry, prepared
-        )
-
     async def prepare_investment_sale_fifo(
         self, command: object
     ) -> dict[str, object]:
@@ -502,7 +490,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
         "ledgerPostInvestmentDividend",
-        "ledgerPostInvestmentPurchase",
         "ledgerPostInvestmentSale",
         "ledgerPostManualJournal",
         "ledgerPostOwnerDividendPayment",
@@ -580,25 +567,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
                 "documentStatus": "attached",
                 "bankTransactionId": bank_id,
                 "documentId": document_id,
-            },
-        ),
-        (
-            "/api/v1/ledger/investment-purchases",
-            "SHARE_PURCHASE",
-            {
-                **common,
-                "actionId": operation_id,
-                "investmentKey": "example-as",
-                "investmentName": "Example AS",
-                "investmentKind": "norwegian_private_company",
-                "taxTreatment": "fritaksmetoden",
-                "acquisitionDate": "2026-04-15",
-                "shareCount": 10,
-                "purchaseAmount": money("125.50"),
-                "orgNumber": "123456789",
-                "bankTransactionId": bank_id,
-                "documentId": document_id,
-                "documentStatus": "attached",
             },
         ),
         (

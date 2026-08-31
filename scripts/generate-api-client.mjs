@@ -58,12 +58,28 @@ const ledgerOperations = {
   postInvestmentDividend: ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
   postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-  postInvestmentPurchase: ["/api/v1/ledger/investment-purchases", "post", "ledgerPostInvestmentPurchase"],
   postInvestmentSale: ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
   postOwnerDividendPayment: ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+};
+const investmentsOperations = {
+  listPositions: [
+    "/api/v1/investments/positions",
+    "get",
+    "investmentsListPositions",
+  ],
+  listAcquisitionLots: [
+    "/api/v1/investments/acquisition-lots",
+    "get",
+    "investmentsListAcquisitionLots",
+  ],
+  recordSharePurchase: [
+    "/api/v1/investments/share-purchases",
+    "post",
+    "investmentsRecordSharePurchase",
+  ],
 };
 const bankingOperations = {
   listConnections: ["/api/v1/banking/connections", "get", "bankingListConnections"],
@@ -112,6 +128,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(compan
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(ledgerOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(investmentsOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -361,7 +382,6 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerLineWire",
   "LedgerLockPeriodWire",
   "LedgerInvestmentDividendWire",
-  "LedgerInvestmentPurchaseWire",
   "LedgerInvestmentSaleWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
@@ -401,6 +421,19 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerWriterResultWire",
   "ReconstructionState",
   "TaxSettlementKind",
+].map((name) => [name, contract.components.schemas[name]]));
+const investmentsSchemas = Object.fromEntries([
+  "AcquisitionLotPageWire",
+  "AcquisitionLotWire",
+  "InvestmentDocumentStatus",
+  "InvestmentKind",
+  "InvestmentLotHistoryStatus",
+  "InvestmentTaxTreatment",
+  "InvestmentPositionPageWire",
+  "InvestmentPositionWire",
+  "InvestmentsPageWire",
+  "InvestmentsSharePurchaseResultWire",
+  "InvestmentsSharePurchaseWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
@@ -452,6 +485,8 @@ ${renderInterface("CompanyContextResponse", companyContextResponseSchema)}
 ${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(investmentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -557,6 +592,8 @@ ${[
 
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(investmentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
@@ -602,6 +639,12 @@ export interface LedgerListRequest extends TalliRequestOptions {
 
 export interface LedgerEntryListRequest extends LedgerListRequest {
   includeSource?: boolean;
+}
+
+export interface InvestmentsListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -1221,6 +1264,55 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async investmentsRecordSharePurchase(
+      body: InvestmentsSharePurchaseWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsSharePurchaseResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/share-purchases\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsSharePurchaseResultWire,
+      );
+      if (result.actionId !== body.actionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsListPositions(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentPositionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/positions?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentPositionPageWire,
+      );
+    },
+
+    async investmentsListAcquisitionLots(
+      request: InvestmentsListRequest,
+    ): Promise<AcquisitionLotPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/acquisition-lots?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isAcquisitionLotPageWire,
+      );
+    },
+
     async ledgerGetReconstructionAssessment(
       request: LedgerReconstructionRequest,
     ): Promise<LedgerReconstructionAssessmentWire> {
@@ -1348,18 +1440,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         request,
         "TAX_SETTLEMENT",
-      );
-    },
-
-    async ledgerPostInvestmentPurchase(
-      body: LedgerInvestmentPurchaseWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/investment-purchases",
-        body,
-        request,
-        "SHARE_PURCHASE",
       );
     },
 
