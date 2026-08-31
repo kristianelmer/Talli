@@ -3,6 +3,8 @@ import {
   type AcquisitionLotWire,
   type InvestmentsSharePurchaseResultWire,
   type InvestmentsSharePurchaseWire,
+  type InvestmentsShareSaleResultWire,
+  type InvestmentsShareSaleWire,
   type InvestmentPositionWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
@@ -49,6 +51,18 @@ export function recordInvestmentSharePurchase(
   requestId?: string,
 ): Promise<InvestmentsSharePurchaseResultWire> {
   return client(accessToken).investmentsRecordSharePurchase(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
+export function recordInvestmentShareSale(
+  accessToken: string,
+  command: InvestmentsShareSaleWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsShareSaleResultWire> {
+  return client(accessToken).investmentsRecordShareSale(command, {
     ...request(requestId),
     idempotencyKey,
   });

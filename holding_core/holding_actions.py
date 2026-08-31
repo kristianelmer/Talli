@@ -8,7 +8,6 @@ import uuid
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from holding_core.ledger import DraftEntry, LedgerLine
-from holding_core.investment_lots import AcquisitionLot, LotAllocation, allocate_fifo_share_sale
 
 
 Money = Annotated[float, Field(ge=0)]
@@ -66,6 +65,29 @@ class TaxTreatment(StrEnum):
 class InvestmentKind(StrEnum):
     NORWEGIAN_PRIVATE_COMPANY = "norwegian_private_company"
     SIMPLE_LISTED_SECURITY = "simple_listed_security"
+
+
+class AcquisitionLot(BaseModel):
+    """Passive legacy purchase projection; sale allocation is investments-owned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    acquisition_date: date
+    original_share_count: int = Field(gt=0)
+    remaining_share_count: int = Field(ge=0)
+    original_cost_basis: float = Field(gt=0)
+    remaining_cost_basis: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_residual(self) -> "AcquisitionLot":
+        if self.remaining_share_count > self.original_share_count:
+            raise ValueError("remaining shares cannot exceed original shares")
+        if self.remaining_cost_basis > self.original_cost_basis:
+            raise ValueError("remaining cost cannot exceed original cost")
+        if self.remaining_share_count == 0 and self.remaining_cost_basis != 0:
+            raise ValueError("an empty lot cannot retain cost basis")
+        return self
 
 
 class ShareholderLoanDirection(StrEnum):
@@ -203,44 +225,6 @@ class SharePurchaseResult(BaseModel):
     position: InvestmentPosition
 
 
-class ShareSaleInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_id: str
-    position: InvestmentPosition
-    sale_date: date
-    sold_share_count: Money
-    proceeds: Money
-    bank_matched: bool
-    document_status: DocumentStatus
-    acquisition_lots: tuple[AcquisitionLot, ...] = ()
-    currency: Literal["NOK"] = "NOK"
-    consideration_type: Literal["cash"] = "cash"
-
-    @model_validator(mode="after")
-    def validate_supported_sale(self) -> "ShareSaleInput":
-        if self.position.tax_treatment == TaxTreatment.NEEDS_ACCOUNTANT:
-            raise ValueError("unclear share sale tax treatment needs accountant review")
-        if self.sold_share_count <= 0:
-            raise ValueError("share sale requires sold shares")
-        if int(self.sold_share_count) != self.sold_share_count:
-            raise ValueError("sold share count must be a whole number")
-        if self.sold_share_count > self.position.share_count:
-            raise ValueError("share sale cannot sell more shares than the recorded position")
-        return self
-
-
-class ShareSaleResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    entry: DraftEntry
-    updated_position: InvestmentPosition
-    cost_basis_reduction: float
-    gain_or_loss: float
-    lot_allocations: tuple[LotAllocation, ...]
-    updated_lots: tuple[AcquisitionLot, ...]
-
-
 class ShareholderLoanInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -358,59 +342,6 @@ def build_share_purchase(data: SharePurchaseInput) -> SharePurchaseResult:
         ],
     )
     return SharePurchaseResult(entry=entry, position=position)
-
-
-def build_share_sale(data: ShareSaleInput) -> ShareSaleResult:
-    lots = data.acquisition_lots or data.position.acquisition_lots
-    fifo = allocate_fifo_share_sale(
-        lots=lots,
-        sale_date=data.sale_date,
-        sold_share_count=int(data.sold_share_count),
-    )
-    if (
-        fifo.remaining_share_count + data.sold_share_count != data.position.share_count
-        or round(fifo.remaining_cost_basis + fifo.cost_basis_reduction, 2) != round(data.position.cost_basis, 2)
-    ):
-        raise ValueError("lot_position_mismatch: acquisition lots do not match the investment position")
-    cost_reduction = fifo.cost_basis_reduction
-    gain_or_loss = round(data.proceeds - cost_reduction, 2)
-    updated_position = data.position.model_copy(
-        update={
-            "share_count": data.position.share_count - data.sold_share_count,
-            "cost_basis": fifo.remaining_cost_basis,
-            "acquisition_lots": fifo.updated_lots,
-        }
-    )
-    lines = [
-        _debit(Account.BANK, "Sale proceeds received in bank", data.proceeds),
-        _credit(Account.SHARE_INVESTMENTS, f"Cost basis reduction: {data.position.name}", cost_reduction),
-    ]
-    if gain_or_loss > 0:
-        lines.append(_credit(Account.DIVIDEND_RECEIVED, f"Share sale gain: {data.position.name}", gain_or_loss))
-    elif gain_or_loss < 0:
-        lines.append(_debit(Account.TAXABLE_INCOME_ADJUSTMENT, f"Share sale loss: {data.position.name}", abs(gain_or_loss)))
-    entry = DraftEntry(
-        company_id=data.company_id,
-        entry_date=data.sale_date,
-        memo=f"Share sale: {data.position.name}",
-        source=(
-            "holding_action:share_sale:"
-            f"investment:{data.position.id}:"
-            f"tax:{data.position.tax_treatment.value}:"
-            f"bank_matched:{str(data.bank_matched).lower()}:"
-            f"document:{data.document_status.value}:"
-            f"gain_or_loss:{gain_or_loss}"
-        ),
-        lines=lines,
-    )
-    return ShareSaleResult(
-        entry=entry,
-        updated_position=updated_position,
-        cost_basis_reduction=cost_reduction,
-        gain_or_loss=gain_or_loss,
-        lot_allocations=fifo.allocations,
-        updated_lots=fifo.updated_lots,
-    )
 
 
 def build_shareholder_loan(data: ShareholderLoanInput) -> DraftEntry:

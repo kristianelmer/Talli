@@ -1005,23 +1005,6 @@ export async function listHoldingActions(companyIds: string[]) {
   };
 }
 
-export async function listInvestmentLotAllocations(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { allocations: [] as InvestmentLotAllocationRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("investment_lot_allocations")
-    .select("id, company_id, position_id, lot_id, sale_action_id, allocated_share_count, allocated_cost_basis, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: true });
-
-  return {
-    allocations: (data ?? []) as InvestmentLotAllocationRow[],
-    error: error?.message ?? null,
-  };
-}
-
 export async function listLedgerEntries(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { entries: [] as LedgerEntryRow[], error: null };

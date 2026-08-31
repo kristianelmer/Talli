@@ -906,9 +906,8 @@ export const ownerCopy = {
       dateLabel: "Salgsdato",
       sharesLabel: "Antall solgte aksjer",
       proceedsLabel: "Salgsproveny (kr)",
-      gainLabel: "Beregnet gevinst",
-      lossLabel: "Beregnet tap",
-      remainingLabel: "Gjenstående aksjer",
+      fifoNote:
+        "Talli fordeler salget på de eldste anskaffelsespostene (FIFO) og beregner kostpris, gevinst eller tap når du bekrefter.",
       ofShares: (count: number) => `${count} aksjer tilgjengelig`,
     },
     dividendReceived: {

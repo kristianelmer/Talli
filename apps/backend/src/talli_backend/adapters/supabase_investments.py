@@ -44,8 +44,11 @@ from talli_backend.modules.investments.public import (
     InvestmentsErrorCode,
     InvestmentsPersistence,
     PreparedSharePurchase,
+    PreparedShareSale,
     RecordSharePurchaseCommand,
+    RecordShareSaleCommand,
     RecordedSharePurchase,
+    RecordedShareSale,
     investments_persistence_adapter,
 )
 from talli_backend.modules.ledger.public import LedgerError
@@ -53,13 +56,31 @@ from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, LocalDate
 
 
-def _request_payload(command: RecordSharePurchaseCommand) -> dict[str, object]:
-    return {
+def _request_payload(
+    command: RecordSharePurchaseCommand | RecordShareSaleCommand,
+) -> dict[str, object]:
+    common: dict[str, object] = {
         "companyId": str(command.company_id),
         "incomeYear": int(command.income_year),
         "actionId": str(command.action_id),
         "idempotencyKey": str(command.idempotency_key),
         "correlationId": str(command.correlation_id),
+        "bankTransactionId": (
+            str(command.bank_transaction_id) if command.bank_transaction_id else None
+        ),
+        "documentId": str(command.document_id) if command.document_id else None,
+        "documentStatus": command.document_status.value,
+    }
+    if isinstance(command, RecordShareSaleCommand):
+        return {
+            **common,
+            "positionId": str(command.position_id),
+            "saleDate": command.sale_date.value.isoformat(),
+            "soldShareCount": command.sold_share_count,
+            "proceeds": format(command.proceeds.amount, "f"),
+        }
+    return {
+        **common,
         "investmentKey": command.investment_key,
         "investmentName": command.investment_name,
         "investmentKind": command.investment_kind.value,
@@ -68,11 +89,6 @@ def _request_payload(command: RecordSharePurchaseCommand) -> dict[str, object]:
         "shareCount": command.share_count,
         "purchaseAmount": format(command.purchase_amount.amount, "f"),
         "orgNumber": command.org_number,
-        "bankTransactionId": (
-            str(command.bank_transaction_id) if command.bank_transaction_id else None
-        ),
-        "documentId": str(command.document_id) if command.document_id else None,
-        "documentStatus": command.document_status.value,
     }
 
 
@@ -321,7 +337,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     async def _investment_result(
         self,
         query: str,
-        command: RecordSharePurchaseCommand,
+        command: RecordSharePurchaseCommand | RecordShareSaleCommand,
         extra: tuple[object, ...] = (),
     ) -> Mapping[str, object] | None:
         if command.actor_id != self.actor_id:
@@ -399,6 +415,49 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
             raise InvestmentsError.unavailable()
         return _recorded(result)
 
+    async def get_share_sale_replay(
+        self, command: RecordShareSaleCommand
+    ) -> RecordedShareSale | None:
+        result = await self._investment_result(
+            "select investments.get_share_sale_replay_v1(%s::jsonb, %s::text) as result",
+            command,
+        )
+        return _recorded_sale(result) if result is not None else None
+
+    async def prepare_share_sale(
+        self, command: RecordShareSaleCommand
+    ) -> PreparedShareSale:
+        result = await self._investment_result(
+            "select investments.prepare_share_sale_v1(%s::jsonb, %s::text) as result",
+            command,
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return PreparedShareSale(
+            position_id=InvestmentPositionId(str(result["positionId"])),
+            investment_name=str(result["investmentName"]),
+            fifo_cost_basis_reduction=_money(result["fifoCostBasisReduction"]),
+        )
+
+    async def complete_share_sale(
+        self,
+        command: RecordShareSaleCommand,
+        *,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedShareSale:
+        result = await self._investment_result(
+            """
+            select investments.complete_share_sale_v1(
+              %s::jsonb, %s::uuid, %s::text
+            ) as result
+            """,
+            command,
+            (str(accounting_entry_id),),
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return _recorded_sale(result)
+
 
 def _recorded(value: Mapping[str, object]) -> RecordedSharePurchase:
     return RecordedSharePurchase(
@@ -407,6 +466,15 @@ def _recorded(value: Mapping[str, object]) -> RecordedSharePurchase:
         lot_id=AcquisitionLotId(str(value["lotId"])),
         accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
         position_created=bool(value["positionCreated"]),
+        replayed=bool(value["replayed"]),
+    )
+
+
+def _recorded_sale(value: Mapping[str, object]) -> RecordedShareSale:
+    return RecordedShareSale(
+        action_id=InvestmentActionId(str(value["actionId"])),
+        position_id=InvestmentPositionId(str(value["positionId"])),
+        accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
         replayed=bool(value["replayed"]),
     )
 

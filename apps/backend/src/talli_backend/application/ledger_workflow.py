@@ -54,7 +54,6 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostedLedgerEntry,
     PostInvestmentDividendCommand,
-    PostInvestmentSaleCommand,
     PostManualJournalCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
@@ -136,18 +135,6 @@ class RecordTaxSettlementCommand(LedgerCommand):
     document_status: str
     bank_transaction_id: LedgerSourceRecordId | None
     document_id: LedgerSourceRecordId | None
-
-
-@dataclass(frozen=True, slots=True)
-class RecordInvestmentSaleFifoCommand(LedgerCommand):
-    action_id: LedgerSourceRecordId
-    position_id: LedgerSourceRecordId
-    sale_date: LocalDate
-    sold_share_count: int
-    proceeds: Money
-    bank_transaction_id: LedgerSourceRecordId | None
-    document_id: LedgerSourceRecordId | None
-    document_status: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -708,41 +695,6 @@ class LedgerApplicationSession:
             )
             return LedgerWriterResult(posted, result, False)
 
-    async def record_investment_sale_fifo(
-        self, command: RecordInvestmentSaleFifoCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_investment_sale_fifo(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(replay, command, LedgerEntryKind.SHARE_SALE)
-            try:
-                investment_name = str(prepared["investmentName"])
-                fifo_cost = Money.nok(str(prepared["fifoCostBasisReduction"]))
-            except (KeyError, TypeError, ValueError):
-                raise LedgerError.unavailable() from None
-            posted = await self._facade_factory(transaction).post_investment_sale(
-                PostInvestmentSaleCommand(
-                    company_id=command.company_id,
-                    actor_id=command.actor_id,
-                    correlation_id=command.correlation_id,
-                    idempotency_key=command.idempotency_key,
-                    income_year=command.income_year,
-                    action_id=command.action_id,
-                    investment_name=investment_name,
-                    proceeds=command.proceeds,
-                    fifo_cost_basis_reduction=fifo_cost,
-                )
-            )
-            result = await transaction.complete_investment_sale_fifo(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def finalize_corporate_decision(
         self, command: FinalizeCorporateDecisionCommand
     ) -> LedgerWriterResult:
@@ -1001,7 +953,6 @@ __all__ = [
     "NewYearStartResult",
     "RecordAdministrativeCostCommand",
     "RecordInvestmentDividendCommand",
-    "RecordInvestmentSaleFifoCommand",
     "RecordOwnerDividendPaymentCommand",
     "RecordShareholderLoanCommand",
     "RecordTaxSettlementCommand",

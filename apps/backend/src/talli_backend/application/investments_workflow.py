@@ -15,7 +15,9 @@ from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     InvestmentsError,
     RecordSharePurchaseCommand,
+    RecordShareSaleCommand,
     RecordedSharePurchase,
+    RecordedShareSale,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
@@ -23,6 +25,7 @@ from talli_backend.modules.ledger.public import (
     LedgerPersistence,
     LedgerSourceRecordId,
     PostInvestmentPurchaseCommand,
+    PostInvestmentSaleCommand,
 )
 from talli_backend.shared.kernel import CompanyId, CorrelationId
 
@@ -71,6 +74,37 @@ class InvestmentsSession:
             return await investments.complete_share_purchase(
                 command,
                 prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def record_share_sale(
+        self, command: RecordShareSaleCommand
+    ) -> RecordedShareSale:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_share_sale_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_share_sale(command)
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).post_investment_sale(
+                PostInvestmentSaleCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=LedgerSourceRecordId(str(command.action_id)),
+                    investment_name=prepared.investment_name,
+                    proceeds=command.proceeds,
+                    fifo_cost_basis_reduction=prepared.fifo_cost_basis_reduction,
+                )
+            )
+            return await investments.complete_share_sale(
+                command,
                 accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
             )
 

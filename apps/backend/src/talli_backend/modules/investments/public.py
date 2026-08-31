@@ -168,6 +168,18 @@ class RecordSharePurchaseCommand(InvestmentsCommand):
 
 
 @dataclass(frozen=True, slots=True)
+class RecordShareSaleCommand(InvestmentsCommand):
+    action_id: InvestmentActionId
+    position_id: InvestmentPositionId
+    sale_date: LocalDate
+    sold_share_count: int
+    proceeds: Money
+    bank_transaction_id: InvestmentSourceReference | None
+    document_id: InvestmentSourceReference | None
+    document_status: InvestmentDocumentStatus
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedSharePurchase:
     position_id: InvestmentPositionId
     lot_id: AcquisitionLotId
@@ -177,12 +189,27 @@ class PreparedSharePurchase:
 
 
 @dataclass(frozen=True, slots=True)
+class PreparedShareSale:
+    position_id: InvestmentPositionId
+    investment_name: str
+    fifo_cost_basis_reduction: Money
+
+
+@dataclass(frozen=True, slots=True)
 class RecordedSharePurchase:
     action_id: InvestmentActionId
     position_id: InvestmentPositionId
     lot_id: AcquisitionLotId
     accounting_entry_id: AccountingEntryReference
     position_created: bool
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedShareSale:
+    action_id: InvestmentActionId
+    position_id: InvestmentPositionId
+    accounting_entry_id: AccountingEntryReference
     replayed: bool
 
 
@@ -261,6 +288,21 @@ class InvestmentsPersistence(Protocol):
         accounting_entry_id: AccountingEntryReference,
     ) -> RecordedSharePurchase: ...
 
+    async def prepare_share_sale(
+        self, command: RecordShareSaleCommand
+    ) -> PreparedShareSale: ...
+
+    async def get_share_sale_replay(
+        self, command: RecordShareSaleCommand
+    ) -> RecordedShareSale | None: ...
+
+    async def complete_share_sale(
+        self,
+        command: RecordShareSaleCommand,
+        *,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedShareSale: ...
+
 
 class InvestmentsCommands(Protocol):
     async def get_share_purchase_replay(
@@ -278,6 +320,21 @@ class InvestmentsCommands(Protocol):
         prepared: PreparedSharePurchase,
         accounting_entry_id: AccountingEntryReference,
     ) -> RecordedSharePurchase: ...
+
+    async def prepare_share_sale(
+        self, command: RecordShareSaleCommand
+    ) -> PreparedShareSale: ...
+
+    async def get_share_sale_replay(
+        self, command: RecordShareSaleCommand
+    ) -> RecordedShareSale | None: ...
+
+    async def complete_share_sale(
+        self,
+        command: RecordShareSaleCommand,
+        *,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedShareSale: ...
 
 
 class InvestmentsQueries(Protocol):
@@ -339,7 +396,10 @@ __all__ = [
     "InvestmentsPersistence",
     "InvestmentsQueries",
     "PreparedSharePurchase",
+    "PreparedShareSale",
     "RecordSharePurchaseCommand",
+    "RecordShareSaleCommand",
     "RecordedSharePurchase",
+    "RecordedShareSale",
     "investments_persistence_adapter",
 ]

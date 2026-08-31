@@ -26,7 +26,6 @@ import {
   listFilingSubmissions,
   listProductionFilingState,
   listHoldingActions,
-  listInvestmentLotAllocations,
   listLedgerEntries,
   listNotificationOutbox,
   listOpeningSetups,
@@ -103,9 +102,6 @@ export async function loadWorkspaceData() {
   const { lots: investmentLots } = accessToken
     ? await listPresentedAcquisitionLots(accessToken, companies.map((company) => company.id))
     : { lots: [] };
-  const { allocations: investmentLotAllocations } = user
-    ? await listInvestmentLotAllocations(companies.map((company) => company.id))
-    : { allocations: [] };
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const unmatchedTransactions = transactions.filter(
@@ -208,7 +204,6 @@ export async function loadWorkspaceData() {
     actions,
     positions,
     investmentLots,
-    investmentLotAllocations,
     entries,
     locks,
     primaryCompanyId,

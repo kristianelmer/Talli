@@ -27,20 +27,18 @@ from holding_core.annual import (
 from holding_core.billing import CompanyBillingAccount, assign_founder_pricing, assign_standard_pricing, production_filing_gate
 from holding_core.holding_actions import (
     AdminCostInput,
+    AcquisitionLot,
     DividendReceivedInput,
     InvestmentPosition,
     SharePurchaseInput,
-    ShareSaleInput,
     ShareholderLoanInput,
     TaxTreatment,
     build_admin_cost_entry,
     build_dividend_received,
     build_share_purchase,
-    build_share_sale,
     build_shareholder_loan,
 )
 from holding_core.ledger import DraftEntry, NarrowLedger, PostedEntry
-from holding_core.investment_lots import AcquisitionLot, LotAllocation
 
 
 class WorkspaceRole(StrEnum):
@@ -219,7 +217,6 @@ class InvestmentMovement(BaseModel):
     share_delta: float = 0
     cost_basis_delta: float = 0
     amount: float = 0
-    lot_allocations: tuple[LotAllocation, ...] = ()
 
 
 class InvestmentRegisterPosition(BaseModel):
@@ -667,7 +664,6 @@ def record_holding_action(
         AdminCostInput
         | DividendReceivedInput
         | SharePurchaseInput
-        | ShareSaleInput
         | ShareholderLoanInput
     ),
     document_ids: tuple[str, ...] = (),
@@ -679,24 +675,6 @@ def record_holding_action(
     action_id = str(uuid.uuid4())
     if isinstance(action_input, SharePurchaseInput) and action_input.purchase_reference is None:
         action_input = action_input.model_copy(update={"purchase_reference": action_id})
-    if isinstance(action_input, ShareSaleInput):
-        registered_position = next(
-            (position for position in workspace.investment_positions if position.id == action_input.position.id),
-            None,
-        )
-        if registered_position is not None:
-            action_input = action_input.model_copy(
-                update={
-                    "position": action_input.position.model_copy(
-                        update={
-                            "share_count": registered_position.share_count,
-                            "cost_basis": registered_position.cost_basis,
-                            "acquisition_lots": registered_position.acquisition_lots,
-                        }
-                    ),
-                    "acquisition_lots": registered_position.acquisition_lots,
-                }
-            )
     result = _build_action_entry(action_input)
     entry = result["entry"]
     ledger = NarrowLedger()
@@ -705,15 +683,6 @@ def record_holding_action(
     ledger.create_draft(entry)
     posted_entry = ledger.post(entry.id) if post else None
     action_payload = action_input.model_dump(mode="json")
-    if result["action_type"] == "share_sale":
-        sale_result = result["result"]
-        action_payload.update(
-            {
-                "cost_basis_reduction": sale_result.cost_basis_reduction,
-                "gain_or_loss": sale_result.gain_or_loss,
-                "lot_allocations": [allocation.model_dump(mode="json") for allocation in sale_result.lot_allocations],
-            }
-        )
     action = StructuredAction(
         id=action_id,
         company_id=company_id,
@@ -1082,9 +1051,6 @@ def _build_action_entry(action_input: Any) -> dict[str, Any]:
     if isinstance(action_input, SharePurchaseInput):
         result = build_share_purchase(action_input)
         return {"action_type": "share_purchase", "entry": result.entry, "result": result}
-    if isinstance(action_input, ShareSaleInput):
-        result = build_share_sale(action_input)
-        return {"action_type": "share_sale", "entry": result.entry, "result": result}
     if isinstance(action_input, ShareholderLoanInput):
         return {"action_type": "shareholder_loan", "entry": build_shareholder_loan(action_input)}
     raise TypeError("unsupported action input")
@@ -1138,33 +1104,6 @@ def _apply_investment_result(workspace: CompanyWorkspace, result: dict[str, Any]
             merged = True
         if not merged:
             positions.append(registered)
-        return workspace.model_copy(update={"investment_positions": tuple(positions)})
-    if result["action_type"] == "share_sale":
-        sale_result = result["result"]
-        positions: list[InvestmentRegisterPosition] = []
-        for position in workspace.investment_positions:
-            if position.id != sale_result.updated_position.id:
-                positions.append(position)
-                continue
-            movement = InvestmentMovement(
-                action_id=action.id,
-                movement_type="sale",
-                movement_date=date.fromisoformat(action.payload["sale_date"]),
-                share_delta=-float(action.payload["sold_share_count"]),
-                cost_basis_delta=round(sale_result.updated_position.cost_basis - position.cost_basis, 2),
-                amount=float(action.payload["proceeds"]),
-                lot_allocations=sale_result.lot_allocations,
-            )
-            positions.append(
-                position.model_copy(
-                    update={
-                        "share_count": sale_result.updated_position.share_count,
-                        "cost_basis": sale_result.updated_position.cost_basis,
-                        "movements": position.movements + (movement,),
-                        "acquisition_lots": sale_result.updated_lots,
-                    }
-                )
-            )
         return workspace.model_copy(update={"investment_positions": tuple(positions)})
     if result["action_type"] == "dividend_received":
         investment_id = action.payload["linked_investment_id"]

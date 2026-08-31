@@ -11,6 +11,7 @@ import {
   presentAcquisitionLots,
   presentInvestmentPositions,
   recordInvestmentSharePurchase,
+  recordInvestmentShareSale,
 } from "../features/investments/index.ts";
 
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -19,6 +20,7 @@ const positionId = "30000000-0000-0000-0000-000000000003";
 const actionId = "40000000-0000-0000-0000-000000000004";
 const lotId = "50000000-0000-0000-0000-000000000005";
 const entryId = "60000000-0000-0000-0000-000000000006";
+const saleActionId = "40000000-0000-0000-0000-000000000014";
 
 function position(overrides = {}) {
   return {
@@ -74,6 +76,14 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
         replayed: false,
       });
     }
+    if (path.endsWith("/share-sales")) {
+      return Response.json({
+        accountingEntryId: entryId,
+        actionId: saleActionId,
+        positionId,
+        replayed: false,
+      });
+    }
     if (path.includes("/positions")) {
       const next = path.includes("cursor=opaque-next") ? null : "opaque-next";
       return Response.json({
@@ -100,19 +110,35 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       shareCount: 100,
       taxTreatment: "fritaksmetoden",
     }, "purchase-idempotency", "purchase-request");
+    const recordedSale = await recordInvestmentShareSale("session-token", {
+      actionId: saleActionId,
+      companyId,
+      documentStatus: "not_required",
+      incomeYear: 2026,
+      positionId,
+      proceeds: { amount: "30000.00", currency: "NOK" },
+      saleDate: "2026-08-01",
+      soldShareCount: 40,
+    }, "sale-idempotency", "sale-request");
     const positions = await loadInvestmentPositions("session-token", [companyId], "position-request");
     const lots = await loadInvestmentAcquisitionLots("session-token", [companyId], "lot-request");
 
     assert.equal(recorded.accountingEntryId, entryId);
+    assert.equal(recordedSale.actionId, saleActionId);
     assert.deepEqual(positions, [position()]);
     assert.deepEqual(lots, [lot()]);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     assert.match(calls[0].url, /\/api\/v1\/investments\/share-purchases$/u);
-    assert.match(calls[2].url, /cursor=opaque-next/u);
+    assert.match(calls[1].url, /\/api\/v1\/investments\/share-sales$/u);
+    assert.match(calls[3].url, /cursor=opaque-next/u);
     const mutationHeaders = new Headers(calls[0].request.headers);
     assert.equal(mutationHeaders.get("Authorization"), "Bearer session-token");
     assert.equal(mutationHeaders.get("Idempotency-Key"), "purchase-idempotency");
     assert.equal(mutationHeaders.get("X-Request-ID"), "purchase-request");
+    const saleHeaders = new Headers(calls[1].request.headers);
+    assert.equal(saleHeaders.get("Authorization"), "Bearer session-token");
+    assert.equal(saleHeaders.get("Idempotency-Key"), "sale-idempotency");
+    assert.equal(saleHeaders.get("X-Request-ID"), "sale-request");
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;

@@ -62,7 +62,6 @@ from talli_backend.application.ledger_workflow import (
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
     RecordInvestmentDividendCommand,
-    RecordInvestmentSaleFifoCommand,
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
@@ -204,11 +203,13 @@ from talli_backend.modules.investments.public import (
     InvestmentDocumentStatus,
     InvestmentKind,
     InvestmentLotHistoryStatus,
+    InvestmentPositionId,
     InvestmentPositionView,
     InvestmentSourceReference,
     InvestmentTaxTreatment,
     InvestmentsError,
     RecordSharePurchaseCommand,
+    RecordShareSaleCommand,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -877,6 +878,24 @@ class InvestmentsSharePurchaseResultWire(TransportModel):
     replayed: bool
 
 
+class InvestmentsShareSaleWire(LedgerCompanyYearWire):
+    action_id: UUID
+    position_id: UUID
+    sale_date: date
+    sold_share_count: int = Field(gt=0, le=9_007_199_254_740_991)
+    proceeds: LedgerMoneyWire
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: InvestmentDocumentStatus
+
+
+class InvestmentsShareSaleResultWire(TransportModel):
+    action_id: UUID
+    position_id: UUID
+    accounting_entry_id: UUID
+    replayed: bool
+
+
 class InvestmentsPageWire(TransportModel):
     next_cursor: str | None
     has_more: bool
@@ -921,19 +940,6 @@ class AcquisitionLotWire(TransportModel):
 class AcquisitionLotPageWire(TransportModel):
     items: list[AcquisitionLotWire]
     page: InvestmentsPageWire
-
-
-class LedgerInvestmentSaleWire(LedgerCompanyYearWire):
-    action_id: UUID
-    position_id: UUID
-    sale_date: date
-    sold_share_count: int = Field(gt=0, le=9_007_199_254_740_991)
-    proceeds: LedgerMoneyWire
-    bank_transaction_id: UUID | None = None
-    document_id: UUID | None = None
-    document_status: Literal[
-        "attached", "missing_accepted_warning", "not_required"
-    ]
 
 
 class LedgerCorporateDecisionFinalizationWire(LedgerCompanyYearWire):
@@ -2809,6 +2815,62 @@ def create_app(
             request, command, idempotency_key, credentials
         )
 
+    @application.post(
+        "/api/v1/investments/share-sales",
+        operation_id="investmentsRecordShareSale",
+        response_model=InvestmentsShareSaleResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Share sale recorded atomically."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_investments_share_sale(
+        request: Request,
+        command: InvestmentsShareSaleWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsShareSaleResultWire:
+        async def execute() -> InvestmentsShareSaleResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            domain = RecordShareSaleCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=CorrelationId(request.state.request_id),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                action_id=InvestmentActionId(str(command.action_id)),
+                position_id=InvestmentPositionId(str(command.position_id)),
+                sale_date=LocalDate(command.sale_date),
+                sold_share_count=command.sold_share_count,
+                proceeds=command.proceeds.to_domain(),
+                bank_transaction_id=(
+                    InvestmentSourceReference(str(command.bank_transaction_id))
+                    if command.bank_transaction_id
+                    else None
+                ),
+                document_id=(
+                    InvestmentSourceReference(str(command.document_id))
+                    if command.document_id
+                    else None
+                ),
+                document_status=command.document_status,
+            )
+            result = await session.record_share_sale(domain)
+            return InvestmentsShareSaleResultWire(
+                action_id=UUID(str(result.action_id)),
+                position_id=UUID(str(result.position_id)),
+                accounting_entry_id=UUID(str(result.accounting_entry_id)),
+                replayed=result.replayed,
+            )
+
+        return await investments_call(execute)
+
     banking_errors: Any = {
         status: {
             "description": "Banking request failed.",
@@ -3823,44 +3885,6 @@ def create_app(
             return ledger_writer_wire(
                 result, company_id=command.company_id, income_year=command.income_year,
                 expected_kind=LedgerEntryKind.TAX_SETTLEMENT,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/investment-sales",
-        operation_id="ledgerPostInvestmentSale",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Investment sale recorded atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_investment_sale(
-        request: Request,
-        command: LedgerInvestmentSaleWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: RecordInvestmentSaleFifoCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
-                position_id=LedgerSourceRecordId(str(command.position_id)), sale_date=LocalDate(command.sale_date),
-                sold_share_count=command.sold_share_count, proceeds=command.proceeds.to_domain(),
-                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
-                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
-                document_status=command.document_status,
-            ))
-            result = await session.record_investment_sale_fifo(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.SHARE_SALE,
             )
 
         return await ledger_call(execute)

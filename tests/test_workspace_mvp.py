@@ -10,10 +10,8 @@ from holding_core.holding_actions import (
     AdminCostInput,
     DividendReceivedInput,
     DocumentStatus,
-    InvestmentPosition,
     InvestmentKind,
     SharePurchaseInput,
-    ShareSaleInput,
     ShareholderLoanDirection,
     ShareholderLoanInput,
     TaxTreatment,
@@ -166,25 +164,6 @@ class WorkspaceMvpTest(unittest.TestCase):
                 document_status=DocumentStatus.ATTACHED,
             )
             purchased = record_holding_action(store, "owner", "314259521", income_year=2025, action_input=purchase_input)
-            sale_position = InvestmentPosition(
-                id=purchased.investment_positions[0].id,
-                company_id="314259521",
-                name=purchased.investment_positions[0].name,
-                kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
-                tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                share_count=purchased.investment_positions[0].share_count,
-                cost_basis=purchased.investment_positions[0].cost_basis,
-            )
-            sale_input = ShareSaleInput(
-                company_id="314259521",
-                position=sale_position,
-                sale_date=date(2025, 6, 1),
-                sold_share_count=25,
-                proceeds=20000,
-                bank_matched=True,
-                document_status=DocumentStatus.ATTACHED,
-            )
-            sold = record_holding_action(store, "owner", "314259521", income_year=2025, action_input=sale_input)
             dividend = record_holding_action(
                 store,
                 "owner",
@@ -216,7 +195,7 @@ class WorkspaceMvpTest(unittest.TestCase):
             )
             locked = lock_period(store, "owner", "314259521", income_year=2025, reason="Filing preview approved")
 
-            self.assertEqual(sold.investment_positions[0].share_count, 75)
+            self.assertEqual(purchased.investment_positions[0].share_count, 100)
             self.assertEqual(dividend.investment_positions[0].movements[-1].movement_type, "dividend")
             self.assertEqual(len(overridden.filing_overrides), 1)
             self.assertEqual(len(locked.period_locks), 1)

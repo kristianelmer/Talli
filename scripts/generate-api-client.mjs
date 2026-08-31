@@ -58,7 +58,6 @@ const ledgerOperations = {
   postInvestmentDividend: ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
   postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-  postInvestmentSale: ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
   postOwnerDividendPayment: ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
@@ -79,6 +78,11 @@ const investmentsOperations = {
     "/api/v1/investments/share-purchases",
     "post",
     "investmentsRecordSharePurchase",
+  ],
+  recordShareSale: [
+    "/api/v1/investments/share-sales",
+    "post",
+    "investmentsRecordShareSale",
   ],
 };
 const bankingOperations = {
@@ -382,7 +386,6 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerLineWire",
   "LedgerLockPeriodWire",
   "LedgerInvestmentDividendWire",
-  "LedgerInvestmentSaleWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
   "LedgerFactReferenceWire",
@@ -434,6 +437,8 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsPageWire",
   "InvestmentsSharePurchaseResultWire",
   "InvestmentsSharePurchaseWire",
+  "InvestmentsShareSaleResultWire",
+  "InvestmentsShareSaleWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
@@ -1281,6 +1286,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordShareSale(
+      body: InvestmentsShareSaleWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsShareSaleResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/share-sales\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsShareSaleResultWire,
+      );
+      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsListPositions(
       request: InvestmentsListRequest,
     ): Promise<InvestmentPositionPageWire> {
@@ -1440,18 +1462,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         request,
         "TAX_SETTLEMENT",
-      );
-    },
-
-    async ledgerPostInvestmentSale(
-      body: LedgerInvestmentSaleWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/investment-sales",
-        body,
-        request,
-        "SHARE_SALE",
       );
     },
 

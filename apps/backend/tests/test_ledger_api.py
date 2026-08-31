@@ -251,23 +251,6 @@ class LedgerSessionStub:
     ) -> dict[str, object]:
         return await self._complete("tax_settlement", command, posted_entry, prepared)
 
-    async def prepare_investment_sale_fifo(
-        self, command: object
-    ) -> dict[str, object]:
-        return await self._prepare(
-            "investment_sale_fifo",
-            command,
-            investmentName="Example AS",
-            fifoCostBasisReduction="80.00",
-        )
-
-    async def complete_investment_sale_fifo(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]:
-        return await self._complete(
-            "investment_sale_fifo", command, posted_entry, prepared
-        )
-
     async def prepare_corporate_decision_finalization(
         self, command: object
     ) -> dict[str, object]:
@@ -490,7 +473,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
         "ledgerPostInvestmentDividend",
-        "ledgerPostInvestmentSale",
         "ledgerPostManualJournal",
         "ledgerPostOwnerDividendPayment",
         "ledgerPostShareholderLoan",
@@ -501,6 +483,7 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
     } <= operations
     assert not {
         "ledgerPostOwnerDividendDeclared",
+        "ledgerPostInvestmentSale",
         "ledgerPostStructuredEntry",
     } & operations
     assert not {
@@ -514,7 +497,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
     operation_id = "70000000-0000-4000-8000-000000000070"
     bank_id = "70000000-0000-4000-8000-000000000071"
     document_id = "70000000-0000-4000-8000-000000000072"
-    position_id = "70000000-0000-4000-8000-000000000073"
     decision_id = "70000000-0000-4000-8000-000000000074"
     set_id = "70000000-0000-4000-8000-000000000075"
     holding_action_id = "70000000-0000-4000-8000-000000000076"
@@ -567,21 +549,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
                 "documentStatus": "attached",
                 "bankTransactionId": bank_id,
                 "documentId": document_id,
-            },
-        ),
-        (
-            "/api/v1/ledger/investment-sales",
-            "SHARE_SALE",
-            {
-                **common,
-                "actionId": operation_id,
-                "positionId": position_id,
-                "saleDate": "2026-04-15",
-                "soldShareCount": 5,
-                "proceeds": money("125.50"),
-                "bankTransactionId": bank_id,
-                "documentId": document_id,
-                "documentStatus": "attached",
             },
         ),
         (

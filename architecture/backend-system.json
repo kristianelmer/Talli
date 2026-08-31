@@ -106,7 +106,7 @@
     },
     {
       "name": "investment-share-purchase",
-      "purpose": "Authenticates one verified actor, records a supported canonical share purchase and acquisition lot, posts the deterministic accounting entry through the ledger public contract in the same transaction, and serves tenant-concealed position and lot pages.",
+      "purpose": "Authenticates one verified actor, records supported canonical share purchases and FIFO share sales, posts deterministic accounting entries through the ledger public contract in the same transaction, and serves tenant-concealed position and lot pages.",
       "publicPackages": [
         "talli_backend.modules.investments.public",
         "talli_backend.modules.ledger.public"
@@ -114,7 +114,8 @@
       "routes": [
         "/api/v1/investments/positions",
         "/api/v1/investments/acquisition-lots",
-        "/api/v1/investments/share-purchases"
+        "/api/v1/investments/share-purchases",
+        "/api/v1/investments/share-sales"
       ]
     },
     {
@@ -131,7 +132,6 @@
         "/api/v1/ledger/investment-dividends",
         "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/tax-settlements",
-        "/api/v1/ledger/investment-sales",
         "/api/v1/ledger/corporate-decisions/finalizations",
         "/api/v1/ledger/owner-dividends/payments",
         "/api/v1/ledger/manual-journals"

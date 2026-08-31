@@ -2,6 +2,7 @@ export {
   loadInvestmentAcquisitionLots,
   loadInvestmentPositions,
   recordInvestmentSharePurchase,
+  recordInvestmentShareSale,
 } from "./transport.ts";
 export {
   investmentsActionErrorMessage,
@@ -14,6 +15,8 @@ export {
 export type {
   InvestmentsSharePurchaseResultWire,
   InvestmentsSharePurchaseWire,
+  InvestmentsShareSaleResultWire,
+  InvestmentsShareSaleWire,
 } from "@talli/talli-api-client";
 export {
   listPresentedAcquisitionLots,

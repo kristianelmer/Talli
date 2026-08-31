@@ -1894,8 +1894,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 13);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 152);
+  assert.equal(registry.records.length, 12);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 151);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1919,6 +1919,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-ledger-persistence",
       "compat-banking-persistence",
       "compat-investment-purchase-persistence",
+      "compat-investment-sale-persistence",
       "compat-owner-dividend-persistence",
       "compat-shareholder-loan-persistence",
       "compat-tax-settlement-persistence",

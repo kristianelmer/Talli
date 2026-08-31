@@ -20,7 +20,6 @@ from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.ledger_workflow import (
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordInvestmentSaleFifoCommand,
 )
 from talli_backend.application.opening_snapshot_compatibility import (
     LegacyOpeningSnapshotCursor,
@@ -1944,64 +1943,6 @@ def test_writer_prepare_serializes_exact_camel_case_business_facts() -> None:
     assert calls[0][1][1] == str(ACTOR_ID.subject)
 
 
-def test_writer_complete_binds_posted_entry_and_locked_fifo_facts() -> None:
-    transaction = bound_transaction()
-    calls: list[tuple[str, tuple[object, ...]]] = []
-
-    async def database_rows(
-        query: str, parameters: tuple[object, ...] = ()
-    ) -> list[dict[str, object]]:
-        calls.append((query, parameters))
-        return [{"result": {"actionId": "71000000-0000-0000-0000-000000000007"}}]
-
-    transaction._database_rows = database_rows  # type: ignore[method-assign]
-    sale = RecordInvestmentSaleFifoCommand(
-        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
-        actor_id=ACTOR_ID,
-        correlation_id=CorrelationId("writer-adapter-sale"),
-        idempotency_key=IdempotencyKey(
-            "32000000-0000-4000-8000-000000000003"
-        ),
-        income_year=IncomeYear(2026),
-        action_id=LedgerSourceRecordId(
-            "71000000-0000-0000-0000-000000000007"
-        ),
-        position_id=LedgerSourceRecordId(
-            "72000000-0000-0000-0000-000000000007"
-        ),
-        sale_date=LocalDate(date(2026, 8, 27)),
-        sold_share_count=10,
-        proceeds=Money.nok("12000"),
-        bank_transaction_id=None,
-        document_id=None,
-        document_status="not_required",
-    )
-    posted = PostedLedgerEntry(
-        entry_id=LedgerEntryId("40000000-0000-0000-0000-000000000004"),
-        company_id=sale.company_id,
-        income_year=sale.income_year,
-        entry_kind=LedgerEntryKind.SHARE_SALE,
-        posted_at=Timestamp(datetime(2026, 8, 27, 10, tzinfo=UTC)),
-        replayed=False,
-    )
-    prepared = {
-        "investmentName": "Eksempel AS",
-        "fifoCostBasisReduction": "10000.00",
-        "allocations": [{"lot_id": "73000000-0000-0000-0000-000000000007"}],
-    }
-
-    result = asyncio.run(
-        transaction.complete_investment_sale_fifo(sale, posted, prepared)
-    )
-
-    assert result["actionId"] == str(sale.action_id)
-    assert "backend_system.complete_investment_sale_fifo_v1" in calls[0][0]
-    assert json.loads(str(calls[0][1][0]))["soldShareCount"] == 10
-    assert calls[0][1][1] == str(posted.entry_id)
-    assert json.loads(str(calls[0][1][2])) == prepared
-    assert calls[0][1][3] == str(ACTOR_ID.subject)
-
-
 def test_writer_adapter_fails_closed_on_non_object_database_result() -> None:
     transaction = bound_transaction()
 
@@ -2046,7 +1987,6 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
         "investment_dividend",
         "shareholder_loan",
         "tax_settlement",
-        "investment_sale_fifo",
         "corporate_decision_finalization",
         "owner_dividend_payment",
     ):

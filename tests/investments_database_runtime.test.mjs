@@ -9,8 +9,11 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const dockerHost = process.env.TALLI_DOCKER_HOST;
 const investmentsMigration = "20260831124939_investments_capability.sql";
 const investmentsWorkflowMigration = "20260831131203_investments_share_purchase_workflow.sql";
+const investmentsSaleWorkflowMigration = "20260831162145_investments_share_sale_workflow.sql";
 const investmentsContractMigration = "20260831133000_investments_share_purchase_contract.sql";
 const investmentsRollbackMigration = "20260831133000_investments_share_purchase_contract.sql";
+const investmentsSaleContractMigration = "20260831170000_investments_share_sale_contract.sql";
+const investmentsSaleRollbackMigration = "20260831170000_investments_share_sale_contract.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -22,6 +25,9 @@ const newActionId = "20000000-0000-0000-0000-000000000012";
 const rollbackActionId = "20000000-0000-0000-0000-000000000013";
 const successorSaleActionId = "20000000-0000-0000-0000-000000000014";
 const recutoverActionId = "20000000-0000-0000-0000-000000000015";
+const oversaleActionId = "20000000-0000-0000-0000-000000000016";
+const failedSaleActionId = "20000000-0000-0000-0000-000000000017";
+const rollbackSaleActionId = "20000000-0000-0000-0000-000000000018";
 
 const bootstrapSql = String.raw`
 create role anon nologin;
@@ -117,7 +123,11 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       .filter((name) => name.endsWith(".sql"))
       .sort();
     for (const migration of migrations.filter((name) =>
-      ![investmentsMigration, investmentsWorkflowMigration].includes(name))) {
+      ![
+        investmentsMigration,
+        investmentsWorkflowMigration,
+        investmentsSaleWorkflowMigration,
+      ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
     psql(containerName, [], String.raw`
@@ -228,6 +238,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     `);
     psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsMigration}`]);
     psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsWorkflowMigration}`]);
+    psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsSaleWorkflowMigration}`]);
 
     assert.equal(scalar(containerName, String.raw`
       select
@@ -403,26 +414,73 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
             and message like '%Second AS%')::text;
     `), "1:1:1:1");
 
-    psql(containerName, [], String.raw`
-      begin;
-      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
-      update public.investment_lots
-      set remaining_share_count = 20, remaining_cost_basis = 400.00
-      where position_id = '${completedResult.positionId}';
-      update public.investment_positions
-      set share_count = 20, cost_basis = 400.00,
-          movements = movements || pg_catalog.jsonb_build_array(
-            pg_catalog.jsonb_build_object(
-              'action_id', '${successorSaleActionId}',
-              'movement_type', 'sale', 'movement_date', date '2026-06-01',
-              'share_delta', -5, 'cost_basis_delta', -100.00,
-              'amount', 120.00, 'gain_or_loss', 20.00
-            )
-          ), updated_at = pg_catalog.now()
-      where id = '${completedResult.positionId}';
-      commit;
-    `);
+    const saleRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: successorSaleActionId,
+      idempotencyKey: "sale-command-0001", correlationId: "sale-request-0001",
+      positionId: completedResult.positionId, saleDate: "2026-06-01",
+      soldShareCount: 5, proceeds: "120.00", bankTransactionId: null,
+      documentId: null, documentStatus: "not_required",
+    });
+    const completedSale = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select investments.prepare_share_sale_v1(
+          '${saleRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'sale-command-0001', '${companyId}', 2026, 'SHARE_SALE',
+          'Share sale: Second AS',
+          '[{"account":"1920","description":"Sale proceeds received in bank","debit":"120.00","credit":"0.00","currency":"NOK"},{"account":"1800","description":"Cost basis reduction: Second AS","debit":"0.00","credit":"100.00","currency":"NOK"},{"account":"8070","description":"Share sale gain: Second AS","debit":"0.00","credit":"20.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${successorSaleActionId}',
+          'sale-request-0001', '${ownerId}'
+        )
+      )
+      select investments.complete_share_sale_v1(
+        '${saleRequest}'::jsonb, posted.ledger_entry_id, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(completedSale.actionId, successorSaleActionId);
+    assert.equal(completedSale.positionId, completedResult.positionId);
+    const replayedSale = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      select investments.get_share_sale_replay_v1(
+        '${saleRequest}'::jsonb, '${ownerId}'
+      )::text;
+    `));
+    assert.equal(replayedSale.replayed, true);
+    assert.equal(replayedSale.accountingEntryId, completedSale.accountingEntryId);
+    assert.equal(scalar(containerName, String.raw`
+      select sale.sold_share_count::text || ':' ||
+        sale.fifo_cost_basis_reduction::text || ':' || sale.gain_or_loss::text || ':' ||
+        sale.remaining_share_count::text || ':' || sale.remaining_cost_basis::text || ':' ||
+        allocation.allocated_share_count::text || ':' ||
+        allocation.allocated_cost_basis::text || ':' ||
+        position.share_count::text || ':' || position.cost_basis::text || ':' ||
+        lot.remaining_share_count::text || ':' || lot.remaining_cost_basis::text
+      from investments.share_sales sale
+      join investments.share_sale_allocations allocation
+        on allocation.sale_action_id = sale.action_id
+      join investments.positions position on position.id = sale.position_id
+      join investments.acquisition_lots lot
+        on lot.id = allocation.acquisition_lot_id
+      where sale.action_id = '${successorSaleActionId}';
+    `), "5:100.00:20.00:20:400.00:5:100.00:20:400.00:20:400.00");
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from public.holding_actions
+          where id = '${successorSaleActionId}' and action_type = 'share_sale')::text || ':' ||
+        (select count(*) from public.investment_lot_allocations
+          where sale_action_id = '${successorSaleActionId}')::text || ':' ||
+        (select count(*) from ledger.entries
+          where id = '${completedSale.accountingEntryId}'
+            and entry_kind = 'SHARE_SALE'
+            and source_capability = 'INVESTMENTS')::text;
+    `), "1:1:1");
     assert.equal(scalar(containerName, String.raw`
       select position.share_count::text || ':' || position.cost_basis::text || ':' ||
         lot.remaining_share_count::text || ':' || lot.remaining_cost_basis::text
@@ -430,6 +488,85 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       join investments.acquisition_lots lot on lot.position_id = position.id
       where position.id = '${completedResult.positionId}';
     `), "20:400.00:20:400.00");
+
+    const oversaleRequest = JSON.stringify({
+      ...JSON.parse(saleRequest), actionId: oversaleActionId,
+      idempotencyKey: "sale-oversell-0001", correlationId: "sale-oversell",
+      soldShareCount: 21,
+    });
+    const oversale = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "-Atq",
+    ], { input: String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      select investments.prepare_share_sale_v1(
+        '${oversaleRequest}'::jsonb, '${ownerId}'
+      );
+      commit;
+    ` });
+    assert.notEqual(oversale.status, 0);
+    assert.match(oversale.stderr, /investments_invalid_input/u);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from investments.share_sales
+          where action_id = '${oversaleActionId}')::text || ':' ||
+        (select count(*) from ledger.entries
+          where source_record_id = '${oversaleActionId}')::text || ':' ||
+        (select share_count::text || ':' || cost_basis::text
+          from investments.positions where id = '${completedResult.positionId}');
+    `), "0:0:20:400.00");
+
+    const failedSaleRequest = JSON.stringify({
+      ...JSON.parse(saleRequest), actionId: failedSaleActionId,
+      idempotencyKey: "sale-failed-completion-0001",
+      correlationId: "sale-failed-completion", soldShareCount: 1,
+      proceeds: "25.00",
+    });
+    const failedSale = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "-Atq",
+    ], { input: String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      with prepared as materialized (
+        select investments.prepare_share_sale_v1(
+          '${failedSaleRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'sale-failed-completion-0001', '${companyId}', 2026, 'SHARE_SALE',
+          'Share sale: Second AS',
+          '[{"account":"1920","description":"Sale proceeds received in bank","debit":"25.00","credit":"0.00","currency":"NOK"},{"account":"1800","description":"Cost basis reduction: Second AS","debit":"0.00","credit":"20.00","currency":"NOK"},{"account":"8070","description":"Share sale gain: Second AS","debit":"0.00","credit":"5.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${failedSaleActionId}',
+          'sale-failed-completion', '${ownerId}'
+        )
+      )
+      select investments.complete_share_sale_v1(
+        '${failedSaleRequest}'::jsonb,
+        '90000000-0000-0000-0000-000000000009', '${ownerId}'
+      ) from prepared cross join posted;
+      commit;
+    ` });
+    assert.notEqual(failedSale.status, 0);
+    assert.match(failedSale.stderr, /investments_dependency_unavailable/u);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from investments.share_sales
+          where action_id = '${failedSaleActionId}')::text || ':' ||
+        (select count(*) from ledger.entries
+          where source_record_id = '${failedSaleActionId}')::text || ':' ||
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = 'sale-failed-completion-0001')::text || ':' ||
+        (select count(*) from public.holding_actions
+          where id = '${failedSaleActionId}')::text || ':' ||
+        (select share_count::text || ':' || cost_basis::text
+          from investments.positions where id = '${completedResult.positionId}');
+    `), "0:0:0:0:20:400.00");
 
     const rollbackRequest = JSON.stringify({
       ...JSON.parse(purchaseRequest), actionId: rollbackActionId,
@@ -529,6 +666,106 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
       )::text;
     `), "true:false");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsSaleContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_sale_fifo_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'backend_system.complete_investment_sale_fifo_v1(jsonb,uuid,jsonb,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'public.record_share_sale_fifo(uuid,uuid,integer,uuid,date,bigint,numeric,uuid,uuid,text)'
+        ) is null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_sale_v1(jsonb,text)', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'ledger_workflow_executor',
+          'investments.prepare_share_sale_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true:true:true:false");
+
+    for (let application = 0; application < 2; application += 1) {
+      psql(containerName, [
+        "--file", `/repo/supabase/rollback/${investmentsSaleRollbackMigration}`,
+      ]);
+    }
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_sale_fifo_v1(jsonb,text)'
+        ) is not null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'ledger_workflow_executor',
+          'backend_system.prepare_investment_sale_fifo_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_sale_v1(jsonb,text)', 'EXECUTE'
+        )::text || ':' ||
+        (select count(*) from pg_catalog.pg_trigger
+          where tgrelid = 'public.holding_actions'::regclass
+            and tgname = 'share_sales_sync_to_investments'
+            and not tgisinternal)::text;
+    `), "true:true:false:1");
+
+    const rollbackSaleRequest = JSON.stringify({
+      ...JSON.parse(saleRequest), actionId: rollbackSaleActionId,
+      idempotencyKey: "sale-rollback-restored-0001",
+      correlationId: "sale-rollback-restored", soldShareCount: 1,
+      proceeds: "25.00",
+    });
+    JSON.parse(scalar(containerName, String.raw`
+      set role ledger_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select backend_system.prepare_investment_sale_fifo_v1(
+          '${rollbackSaleRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'sale-rollback-restored-0001', '${companyId}', 2026, 'SHARE_SALE',
+          'Share sale: Second AS',
+          '[{"account":"1920","description":"Sale proceeds received in bank","debit":"25.00","credit":"0.00","currency":"NOK"},{"account":"1800","description":"Cost basis reduction: Second AS","debit":"0.00","credit":"20.00","currency":"NOK"},{"account":"8070","description":"Share sale gain: Second AS","debit":"0.00","credit":"5.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${rollbackSaleActionId}',
+          'sale-rollback-restored', '${ownerId}'
+        )
+      )
+      select backend_system.complete_investment_sale_fifo_v1(
+        '${rollbackSaleRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(scalar(containerName, String.raw`
+      select sale.legacy_imported::text || ':' ||
+        (sale.completed_at is not null)::text || ':' ||
+        position.share_count::text || ':' || position.cost_basis::text
+      from investments.share_sales sale
+      join investments.positions position on position.id = sale.position_id
+      where sale.action_id = '${rollbackSaleActionId}';
+    `), "true:true:19:380.00");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsSaleContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_sale_fifo_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_sale_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true");
 
     for (let application = 0; application < 2; application += 1) {
       psql(containerName, [

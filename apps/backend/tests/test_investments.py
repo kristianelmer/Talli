@@ -17,7 +17,9 @@ from talli_backend.modules.investments.public import (
     InvestmentSourceReference,
     InvestmentTaxTreatment,
     PreparedSharePurchase,
+    PreparedShareSale,
     RecordSharePurchaseCommand,
+    RecordShareSaleCommand,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.shared.kernel import (
@@ -34,14 +36,24 @@ from talli_backend.shared.kernel import (
 
 
 class InvestmentsPersistenceStub:
-    def __init__(self, prepared: PreparedSharePurchase) -> None:
+    def __init__(
+        self, prepared: PreparedSharePurchase | PreparedShareSale
+    ) -> None:
         self.prepared = prepared
-        self.command: RecordSharePurchaseCommand | None = None
+        self.command: RecordSharePurchaseCommand | RecordShareSaleCommand | None = None
 
     async def prepare_share_purchase(
         self, command: RecordSharePurchaseCommand
     ) -> PreparedSharePurchase:
         self.command = command
+        assert isinstance(self.prepared, PreparedSharePurchase)
+        return self.prepared
+
+    async def prepare_share_sale(
+        self, command: RecordShareSaleCommand
+    ) -> PreparedShareSale:
+        self.command = command
+        assert isinstance(self.prepared, PreparedShareSale)
         return self.prepared
 
 
@@ -68,6 +80,90 @@ def supported_purchase() -> RecordSharePurchaseCommand:
         document_id=None,
         document_status=InvestmentDocumentStatus.NOT_REQUIRED,
     )
+
+
+def supported_sale() -> RecordShareSaleCommand:
+    return RecordShareSaleCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ActorId(
+            ActorKind.USER,
+            UserId("20000000-0000-0000-0000-000000000002"),
+        ),
+        correlation_id=CorrelationId("investments-supported-sale"),
+        idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000013"),
+        income_year=IncomeYear(2026),
+        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000014"),
+        position_id=InvestmentPositionId(
+            "50000000-0000-0000-0000-000000000015"
+        ),
+        sale_date=LocalDate(date(2026, 6, 1)),
+        sold_share_count=4,
+        proceeds=Money.nok("75.00"),
+        bank_transaction_id=None,
+        document_id=None,
+        document_status=InvestmentDocumentStatus.NOT_REQUIRED,
+    )
+
+
+def test_supported_share_sale_is_prepared_through_investments_interface() -> None:
+    prepared = PreparedShareSale(
+        position_id=InvestmentPositionId(
+            "50000000-0000-0000-0000-000000000015"
+        ),
+        investment_name="Example AS",
+        fifo_cost_basis_reduction=Money.nok("50.20"),
+    )
+    persistence = InvestmentsPersistenceStub(prepared)
+
+    result = asyncio.run(
+        InvestmentsService(persistence).prepare_share_sale(supported_sale())
+    )
+
+    assert result == prepared
+    assert persistence.command == supported_sale()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"sold_share_count": 0},
+        {"sold_share_count": 1.5},
+        {"proceeds": Money.nok("0")},
+        {"sale_date": LocalDate(date(2025, 12, 31))},
+        {"document_status": "unknown"},
+        {"document_status": InvestmentDocumentStatus.ATTACHED},
+        {
+            "bank_transaction_id": InvestmentSourceReference(
+                "70000000-0000-0000-0000-000000000007"
+            )
+        },
+        {
+            "document_id": InvestmentSourceReference(
+                "80000000-0000-0000-0000-000000000008"
+            )
+        },
+    ],
+)
+def test_invalid_share_sale_facts_fail_before_persistence(
+    changes: dict[str, object],
+) -> None:
+    persistence = InvestmentsPersistenceStub(
+        PreparedShareSale(
+            position_id=supported_sale().position_id,
+            investment_name="Example AS",
+            fifo_cost_basis_reduction=Money.nok("50.20"),
+        )
+    )
+
+    with pytest.raises(InvestmentsError) as failure:
+        asyncio.run(
+            InvestmentsService(persistence).prepare_share_sale(
+                replace(supported_sale(), **changes)
+            )
+        )
+
+    assert failure.value.code == InvestmentsErrorCode.INVALID_INPUT.value
+    assert persistence.command is None
 
 
 def test_supported_share_purchase_is_normalized_and_prepared() -> None:

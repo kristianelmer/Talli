@@ -789,19 +789,6 @@ export interface LedgerInvestmentDividendWire {
   taxTreatment: "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant";
 }
 
-export interface LedgerInvestmentSaleWire {
-  actionId: string;
-  bankTransactionId?: string | null;
-  companyId: string;
-  documentId?: string | null;
-  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
-  incomeYear: number;
-  positionId: string;
-  proceeds: LedgerMoneyWire;
-  saleDate: string;
-  soldShareCount: number;
-}
-
 export interface LedgerManualJournalWire {
   companyId: string;
   incomeYear: number;
@@ -1143,6 +1130,26 @@ export interface InvestmentsSharePurchaseWire {
   purchaseAmount: LedgerMoneyWire;
   shareCount: number;
   taxTreatment: InvestmentTaxTreatment;
+}
+
+export interface InvestmentsShareSaleResultWire {
+  accountingEntryId: string;
+  actionId: string;
+  positionId: string;
+  replayed: boolean;
+}
+
+export interface InvestmentsShareSaleWire {
+  actionId: string;
+  bankTransactionId?: string | null;
+  companyId: string;
+  documentId?: string | null;
+  documentStatus: InvestmentDocumentStatus;
+  incomeYear: number;
+  positionId: string;
+  proceeds: LedgerMoneyWire;
+  saleDate: string;
+  soldShareCount: number;
 }
 
 export interface AcceptBankFileWire {
@@ -2342,23 +2349,6 @@ function isLedgerInvestmentDividendWire(value: unknown): value is LedgerInvestme
   );
 }
 
-function isLedgerInvestmentSaleWire(value: unknown): value is LedgerInvestmentSaleWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","documentId","documentStatus","incomeYear","positionId","proceeds","saleDate","soldShareCount"]) &&
-    isUuid(value.actionId) &&
-    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
-    isUuid(value.companyId) &&
-    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
-    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    isUuid(value.positionId) &&
-    isLedgerMoneyWire(value.proceeds) &&
-    typeof value.saleDate === "string" &&
-    (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) && value.soldShareCount <= 9007199254740991 && value.soldShareCount > 0)
-  );
-}
-
 function isLedgerManualJournalWire(value: unknown): value is LedgerManualJournalWire {
   return (
     isRecord(value) &&
@@ -2865,6 +2855,34 @@ function isInvestmentsSharePurchaseWire(value: unknown): value is InvestmentsSha
     isLedgerMoneyWire(value.purchaseAmount) &&
     (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 9007199254740991 && value.shareCount > 0) &&
     isInvestmentTaxTreatment(value.taxTreatment)
+  );
+}
+
+function isInvestmentsShareSaleResultWire(value: unknown): value is InvestmentsShareSaleResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","actionId","positionId","replayed"]) &&
+    isUuid(value.accountingEntryId) &&
+    isUuid(value.actionId) &&
+    isUuid(value.positionId) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isInvestmentsShareSaleWire(value: unknown): value is InvestmentsShareSaleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","documentId","documentStatus","incomeYear","positionId","proceeds","saleDate","soldShareCount"]) &&
+    isUuid(value.actionId) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    isInvestmentDocumentStatus(value.documentStatus) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.positionId) &&
+    isLedgerMoneyWire(value.proceeds) &&
+    typeof value.saleDate === "string" &&
+    (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) && value.soldShareCount <= 9007199254740991 && value.soldShareCount > 0)
   );
 }
 
@@ -3906,6 +3924,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordShareSale(
+      body: InvestmentsShareSaleWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsShareSaleResultWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/investments/share-sales`,
+        "POST",
+        request,
+        body,
+        isInvestmentsShareSaleResultWire,
+      );
+      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsListPositions(
       request: InvestmentsListRequest,
     ): Promise<InvestmentPositionPageWire> {
@@ -4065,18 +4100,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         request,
         "TAX_SETTLEMENT",
-      );
-    },
-
-    async ledgerPostInvestmentSale(
-      body: LedgerInvestmentSaleWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/investment-sales",
-        body,
-        request,
-        "SHARE_SALE",
       );
     },
 

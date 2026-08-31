@@ -119,7 +119,7 @@
       }
     ],
     "currentCapability": "investments",
-    "currentIssue": "#142",
+    "currentIssue": "#143",
     "status": "active",
     "exitedCapabilities": [
       "company_access",
@@ -299,28 +299,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
           "operation": "listProductionFilingState"
-        }
-      ]
-    },
-    {
-      "id": "compat-investment-sale-persistence",
-      "kind": "legacy-facade",
-      "capability": "investments",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#142",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:investments",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142.",
-      "scopes": [
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lot_allocations",
-          "operation": "listInvestmentLotAllocations"
         }
       ]
     },

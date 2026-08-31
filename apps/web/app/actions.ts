@@ -118,7 +118,6 @@ import {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerInvestmentDividend,
-  postLedgerInvestmentSale,
   postLedgerManualJournal,
   postLedgerOwnerDividendPayment,
   postLedgerShareholderLoan,
@@ -130,6 +129,7 @@ import {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
   recordInvestmentSharePurchase,
+  recordInvestmentShareSale,
 } from "../features/investments";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -2163,7 +2163,7 @@ export async function recordShareSale(formData: FormData) {
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await postLedgerInvestmentSale(
+    await recordInvestmentShareSale(
       accessToken,
       {
         actionId: operationId,
@@ -2184,12 +2184,12 @@ export async function recordShareSale(formData: FormData) {
       operationId,
     );
   } catch (error) {
-    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
     const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
       ? "/actions/share-sale"
       : returnTo;
     redirect(ownerPathWithQuery(retryTarget, {
-      error: ledgerActionErrorMessage(error),
+      error: investmentsActionErrorMessage(error),
       shareSaleOperationId: outcomeMayBeUnknown ? operationId : undefined,
     }));
   }

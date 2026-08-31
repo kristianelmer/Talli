@@ -89,7 +89,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
     ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
     ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-    ["/api/v1/ledger/investment-sales", "post", "ledgerPostInvestmentSale"],
     ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
     ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
     ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
@@ -127,7 +126,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     "LedgerInvestmentDividendWire",
     "LedgerShareholderLoanWire",
     "LedgerTaxSettlementWire",
-    "LedgerInvestmentSaleWire",
     "LedgerCorporateDecisionFinalizationWire",
     "LedgerOwnerDividendPaymentWire",
   ]) {
@@ -139,10 +137,11 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
   );
 });
 
-test("the committed contract gives investments its purchase and lot boundary", () => {
+test("the committed contract gives investments its purchase, sale, and lot interface", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   for (const [path, method, operationId] of [
     ["/api/v1/investments/share-purchases", "post", "investmentsRecordSharePurchase"],
+    ["/api/v1/investments/share-sales", "post", "investmentsRecordShareSale"],
     ["/api/v1/investments/positions", "get", "investmentsListPositions"],
     ["/api/v1/investments/acquisition-lots", "get", "investmentsListAcquisitionLots"],
   ]) {
@@ -153,8 +152,14 @@ test("the committed contract gives investments its purchase and lot boundary", (
   }
   assert.equal(contract.paths["/api/v1/ledger/investment-purchases"], undefined);
   assert.equal(contract.components.schemas.LedgerInvestmentPurchaseWire, undefined);
+  assert.equal(contract.paths["/api/v1/ledger/investment-sales"], undefined);
+  assert.equal(contract.components.schemas.LedgerInvestmentSaleWire, undefined);
   assert.equal(
     contract.components.schemas.InvestmentsSharePurchaseWire.properties.lines,
+    undefined,
+  );
+  assert.equal(
+    contract.components.schemas.InvestmentsShareSaleWire.properties.lines,
     undefined,
   );
 });

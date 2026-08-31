@@ -3321,6 +3321,116 @@
         "title": "InvestmentsSharePurchaseWire",
         "type": "object"
       },
+      "InvestmentsShareSaleResultWire": {
+        "properties": {
+          "accountingEntryId": {
+            "format": "uuid",
+            "title": "Accountingentryid",
+            "type": "string"
+          },
+          "actionId": {
+            "format": "uuid",
+            "title": "Actionid",
+            "type": "string"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "actionId",
+          "positionId",
+          "accountingEntryId",
+          "replayed"
+        ],
+        "title": "InvestmentsShareSaleResultWire",
+        "type": "object"
+      },
+      "InvestmentsShareSaleWire": {
+        "additionalProperties": false,
+        "properties": {
+          "actionId": {
+            "format": "uuid",
+            "title": "Actionid",
+            "type": "string"
+          },
+          "bankTransactionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banktransactionid"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentid"
+          },
+          "documentStatus": {
+            "$ref": "#/components/schemas/InvestmentDocumentStatus"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "proceeds": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "saleDate": {
+            "format": "date",
+            "title": "Saledate",
+            "type": "string"
+          },
+          "soldShareCount": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Soldsharecount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "actionId",
+          "positionId",
+          "saleDate",
+          "soldShareCount",
+          "proceeds",
+          "documentStatus"
+        ],
+        "title": "InvestmentsShareSaleWire",
+        "type": "object"
+      },
       "InvitationLookup": {
         "properties": {
           "companyName": {
@@ -4004,91 +4114,6 @@
           "documentStatus"
         ],
         "title": "LedgerInvestmentDividendWire",
-        "type": "object"
-      },
-      "LedgerInvestmentSaleWire": {
-        "additionalProperties": false,
-        "properties": {
-          "actionId": {
-            "format": "uuid",
-            "title": "Actionid",
-            "type": "string"
-          },
-          "bankTransactionId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Banktransactionid"
-          },
-          "companyId": {
-            "format": "uuid",
-            "title": "Companyid",
-            "type": "string"
-          },
-          "documentId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Documentid"
-          },
-          "documentStatus": {
-            "enum": [
-              "attached",
-              "missing_accepted_warning",
-              "not_required"
-            ],
-            "title": "Documentstatus",
-            "type": "string"
-          },
-          "incomeYear": {
-            "maximum": 2100.0,
-            "minimum": 2000.0,
-            "title": "Incomeyear",
-            "type": "integer"
-          },
-          "positionId": {
-            "format": "uuid",
-            "title": "Positionid",
-            "type": "string"
-          },
-          "proceeds": {
-            "$ref": "#/components/schemas/LedgerMoneyWire"
-          },
-          "saleDate": {
-            "format": "date",
-            "title": "Saledate",
-            "type": "string"
-          },
-          "soldShareCount": {
-            "exclusiveMinimum": 0.0,
-            "maximum": 9007199254740991.0,
-            "title": "Soldsharecount",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "companyId",
-          "incomeYear",
-          "actionId",
-          "positionId",
-          "saleDate",
-          "soldShareCount",
-          "proceeds",
-          "documentStatus"
-        ],
-        "title": "LedgerInvestmentSaleWire",
         "type": "object"
       },
       "LedgerLineWire": {
@@ -25509,6 +25534,420 @@
         ]
       }
     },
+    "/api/v1/investments/share-sales": {
+      "post": {
+        "operationId": "investmentsRecordShareSale",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsShareSaleWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsShareSaleResultWire"
+                }
+              }
+            },
+            "description": "Share sale recorded atomically.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record Investments Share Sale",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/ledger/administrative-costs": {
       "post": {
         "operationId": "ledgerPostAdministrativeCost",
@@ -27897,478 +28336,6 @@
           }
         ],
         "summary": "Record Ledger Investment Dividend",
-        "tags": [
-          "ledger-workflows"
-        ]
-      }
-    },
-    "/api/v1/ledger/investment-sales": {
-      "post": {
-        "operationId": "ledgerPostInvestmentSale",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 255,
-              "minLength": 16,
-              "title": "Idempotency-Key",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Optional caller-provided correlation identifier.",
-            "in": "header",
-            "name": "X-Request-ID",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LedgerInvestmentSaleWire"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LedgerWriterResultWire"
-                }
-              }
-            },
-            "description": "Investment sale recorded atomically.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "properties": {
-                    "code": {
-                      "title": "Code",
-                      "type": "string"
-                    },
-                    "detail": {
-                      "title": "Detail",
-                      "type": "string"
-                    },
-                    "instance": {
-                      "title": "Instance",
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "title": "Requestid",
-                      "type": "string"
-                    },
-                    "status": {
-                      "title": "Status",
-                      "type": "integer"
-                    },
-                    "title": {
-                      "title": "Title",
-                      "type": "string"
-                    },
-                    "type": {
-                      "title": "Type",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "detail",
-                    "instance",
-                    "code",
-                    "requestId"
-                  ],
-                  "title": "ProblemDetails",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Ledger request failed.",
-            "headers": {
-              "X-Request-ID": {
-                "description": "Correlation identifier for the request and response.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "summary": "Record Ledger Investment Sale",
         "tags": [
           "ledger-workflows"
         ]

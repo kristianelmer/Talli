@@ -19,6 +19,8 @@ from talli_backend.modules.investments.public import (
     InvestmentTaxTreatment,
     RecordedSharePurchase,
     PreparedSharePurchase,
+    PreparedShareSale,
+    RecordedShareSale,
 )
 from talli_backend.modules.ledger.public import LedgerEntryId, LedgerEntryKind, PostedLedgerEntry
 from talli_backend.shared.kernel import CompanyId, IncomeYear, LocalDate, Money, Timestamp
@@ -77,6 +79,25 @@ class InvestmentsSessionStub:
             lot_id=prepared.lot_id,
             accounting_entry_id=accounting_entry_id,
             position_created=True,
+            replayed=False,
+        )
+
+    async def get_share_sale_replay(self, command):
+        return None
+
+    async def prepare_share_sale(self, command):
+        self.commands.append(command)
+        return PreparedShareSale(
+            position_id=command.position_id,
+            investment_name="Example AS",
+            fifo_cost_basis_reduction=Money.nok("50.20"),
+        )
+
+    async def complete_share_sale(self, command, *, accounting_entry_id):
+        return RecordedShareSale(
+            action_id=command.action_id,
+            position_id=command.position_id,
+            accounting_entry_id=accounting_entry_id,
             replayed=False,
         )
 
@@ -160,6 +181,43 @@ def test_supported_share_purchase_uses_investments_http_contract() -> None:
     assert sessions.tokens == ["owner-token"]
     assert len(sessions.commands) == 1
     assert sessions.commands[0].investment_name == "Example AS"
+
+
+def test_supported_share_sale_uses_investments_http_contract() -> None:
+    sessions = InvestmentsSessionStub()
+    client = TestClient(create_app(investments_session_factory=sessions))
+
+    response = client.post(
+        "/api/v1/investments/share-sales",
+        headers={
+            "Authorization": "Bearer owner-token",
+            "Idempotency-Key": "30000000-0000-4000-8000-000000000013",
+            "X-Request-ID": "investments-supported-sale",
+        },
+        json={
+            "companyId": "10000000-0000-0000-0000-000000000001",
+            "incomeYear": 2026,
+            "actionId": "40000000-0000-0000-0000-000000000014",
+            "positionId": "50000000-0000-0000-0000-000000000015",
+            "saleDate": "2026-06-01",
+            "soldShareCount": 4,
+            "proceeds": {"amount": "75.00", "currency": "NOK"},
+            "bankTransactionId": None,
+            "documentId": None,
+            "documentStatus": "not_required",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json() == {
+        "actionId": "40000000-0000-0000-0000-000000000014",
+        "positionId": "50000000-0000-0000-0000-000000000015",
+        "accountingEntryId": "70000000-0000-0000-0000-000000000007",
+        "replayed": False,
+    }
+    assert sessions.tokens == ["owner-token"]
+    assert len(sessions.commands) == 1
+    assert sessions.commands[0].sold_share_count == 4
 
 
 def test_positions_and_lots_use_investments_query_contract() -> None:

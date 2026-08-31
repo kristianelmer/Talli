@@ -1230,7 +1230,6 @@ test("all relocated ledger writers use the stable operation ID at the generated 
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["postLedgerInvestmentDividend", "actionId"],
-    recordShareSale: ["postLedgerInvestmentSale", "actionId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
     recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
     recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
@@ -1255,7 +1254,7 @@ test("all relocated ledger writers use the stable operation ID at the generated 
   }
 });
 
-test("share purchases use the investments generated boundary", () => {
+test("share purchases and sales use the investments generated interface", () => {
   const action = ledgerServerActionSource("recordSharePurchase");
   assert.match(action, /await recordInvestmentSharePurchase\(/u);
   assert.match(
@@ -1266,6 +1265,31 @@ test("share purchases use the investments generated boundary", () => {
   assert.match(action, /investmentsOutcomeMayBeUnknown\(error\)/u);
   assert.match(action, /investmentsActionErrorMessage\(error\)/u);
   assert.doesNotMatch(action, /postLedgerInvestmentPurchase|validateSharePurchase/u);
+
+  const sale = ledgerServerActionSource("recordShareSale");
+  assert.match(sale, /await recordInvestmentShareSale\(/u);
+  assert.match(
+    sale,
+    /recordInvestmentShareSale\([\s\S]*?operationId,[\s\S]*?operationId/u,
+  );
+  assert.match(sale, /actionId: operationId/u);
+  assert.match(sale, /investmentsOutcomeMayBeUnknown\(error\)/u);
+  assert.match(sale, /investmentsActionErrorMessage\(error\)/u);
+  assert.doesNotMatch(sale, /postLedgerInvestmentSale|validateShareSale/u);
+});
+
+test("share-sale wizard submits intent without duplicating authoritative FIFO policy", () => {
+  const wizard = ledgerActionWizardSources.recordShareSale;
+  assert.doesNotMatch(
+    wizard,
+    /share-sale|share-lots|validateShareSale|shareSaleLedgerLines|acquisition_lots/u,
+  );
+  assert.match(
+    wizard,
+    /type="hidden" name="documentStatus" value="not_required"/u,
+  );
+  assert.match(wizard, /SubmitButton disabled=\{!ready\}/u);
+  assert.match(wizard, /c\.fifoNote/u);
 });
 
 test("committed retries reach the coordinator before mutable legacy state can reject them", () => {
@@ -1293,11 +1317,10 @@ test("committed retries reach the coordinator before mutable legacy state can re
   }
 });
 
-test("unknown ledger outcomes preserve only the scoped retry operation", () => {
+test("unknown coordinator outcomes preserve only the scoped retry operation", () => {
   const retryFields = {
     recordAdminCost: ["adminCostOperationId", "adminCostBankTransactionId"],
     recordDividendReceived: ["dividendReceivedOperationId"],
-    recordShareSale: ["shareSaleOperationId"],
     finalizeCorporateDecision: ["finalizeDecisionOperationId"],
     recordOwnerDividendPayment: ["ownerDividendPaymentOperationId", "ownerDividendPaymentBankTransactionId"],
     recordShareholderLoan: ["shareholderLoanOperationId"],
@@ -1310,10 +1333,15 @@ test("unknown ledger outcomes preserve only the scoped retry operation", () => {
     for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
   }
 
-  const purchase = ledgerServerActionSource("recordSharePurchase");
-  assert.match(purchase, /investmentsOutcomeMayBeUnknown\(error\)/u);
-  assert.match(purchase, /investmentsActionErrorMessage\(error\)/u);
-  assert.match(purchase, /sharePurchaseOperationId/u);
+  for (const [actionName, operationField] of [
+    ["recordSharePurchase", "sharePurchaseOperationId"],
+    ["recordShareSale", "shareSaleOperationId"],
+  ]) {
+    const action = ledgerServerActionSource(actionName);
+    assert.match(action, /investmentsOutcomeMayBeUnknown\(error\)/u, actionName);
+    assert.match(action, /investmentsActionErrorMessage\(error\)/u, actionName);
+    assert.match(action, new RegExp(operationField, "u"), actionName);
+  }
 
   const bankingSuggestion = ledgerServerActionSource("acceptBankTransactionSuggestion");
   assert.match(bankingSuggestion, /bankingOutcomeMayBeUnknown\(error\)/u);
