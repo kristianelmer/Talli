@@ -2,8 +2,21 @@
   "schemaVersion": "1.0",
   "issue": "#142",
   "source": "https://github.com/kristianelmer/Talli/issues/142",
-  "sourceCheckedAt": "2026-08-31T15:52:04Z",
-  "completeGates": [],
+  "sourceCheckedAt": "2026-08-31T17:48:33Z",
+  "completeGates": [
+    {
+      "revision": "17a69ba222b435360d4a0c7ff8ab10e6e6bf5f6e",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/17a69ba222b435360d4a0c7ff8ab10e6e6bf5f6e.json",
+      "verdict": "pass"
+    },
+    {
+      "revision": "e2ca9c8c1ed1228d1844497c04922bdc599b9589",
+      "previousPassingRevision": "17a69ba222b435360d4a0c7ff8ab10e6e6bf5f6e",
+      "evidencePath": "architecture/evidence/customer-ready-gates/e2ca9c8c1ed1228d1844497c04922bdc599b9589.json",
+      "verdict": "pass"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#141",
@@ -32,20 +45,26 @@
       "plannedEvidence": [
         {"path": "apps/backend/tests/test_investments.py", "command": "npm run test:share-sale"},
         {"path": "apps/backend/tests/test_investments_api.py", "command": "npm run test:boundary-backend"},
+        {"path": "apps/web/tests/investments-presentation.test.mjs", "command": "npm run test:boundary-web"},
         {"path": "tests/browser_owner_annual_loop.mjs", "command": "npm run test:browser-owner"}
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Both complete gates passed 505 backend, 126 web, and 37 contract boundary tests plus production builds and the 17/17 owner-browser gate; the web action submits through the generated investmentsRecordShareSale client and FastAPI returns the canonical persisted sale result."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-142-A2",
       "requirement": "FIFO allocations, remaining lots, and ledger effects match characterization fixtures.",
       "expectedResult": "One transaction locks canonical lots oldest-first with stable-ID tie breaking, persists cent-exact allocations and remaining balances, and posts the characterized gain/loss entry through ledger's public contract.",
       "plannedEvidence": [
-        {"path": "tests/share_sale.test.mjs", "command": "npm run test:share-sale"},
-        {"path": "tests/share_lots.test.mjs", "command": "npm run test:share-lots"},
+        {"path": "apps/backend/tests/test_investments_workflow.py", "command": "npm run test:share-sale"},
         {"path": "tests/investments_database_runtime.test.mjs", "command": "npm run test:investments-database-lifecycle"}
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "The canonical sale suite passed 30 backend and 36 web tests, and the real PostgreSQL 17 lifecycle passed 9/9 in both complete gates with FIFO order acquisition_date/id, a 5-share NOK 100.00 allocation, NOK 20.00 gain, and exact 20-share/NOK 400.00 residuals."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-142-A3",
@@ -55,7 +74,10 @@
         {"path": "apps/backend/tests/test_investments.py", "command": "npm run test:share-sale"},
         {"path": "tests/investments_database_runtime.test.mjs", "command": "npm run test:investments-database-lifecycle"}
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Policy and database tests reject zero/negative proceeds, invalid dates/counts, incomplete lot history, cross-tenant access, stale/reused identities, and overselling; a forced wrong-entry completion after a real ledger post rolls back the sale, allocations, position/lot changes, ledger entry, receipt, legacy action, and audit as one transaction."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-142-A4",
@@ -65,7 +87,10 @@
         {"path": "apps/backend/tests/test_investments_public_contract.py", "command": "npm run test:boundary-backend"},
         {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"}
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Public-contract, module-boundary, generated-client, role, RLS, and real database tests passed twice; purchase and sale share investments commands/persistence and the sale workflow invokes only ledger's PostInvestmentSaleCommand with opaque optional source references."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-142-A5",
@@ -74,10 +99,14 @@
       "plannedEvidence": [
         {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"},
         {"path": "tests/investments_capability_schema.test.mjs", "command": "npm run test:investments-database-lifecycle"},
-        {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"}
+        {"path": "architecture/evidence/customer-ready-gates/17a69ba222b435360d4a0c7ff8ab10e6e6bf5f6e.json", "command": "npm run gate:customer-ready"},
+        {"path": "architecture/evidence/customer-ready-gates/e2ca9c8c1ed1228d1844497c04922bdc599b9589.json", "command": "npm run gate:customer-ready -- --previous 17a69ba222b435360d4a0c7ff8ab10e6e6bf5f6e"}
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "The TypeScript sale/FIFO modules and legacy Python sale engine are deleted; the old ledger HTTP sale route, browser RPC, predecessor production names, and exact #142 allocation-read compatibility record are absent after reconciliation. Real PostgreSQL proves the predecessor remains executable during overlap and after repeat-safe rollback, then contracts cleanly again; both linked complete gates passed."
+      ],
+      "status": "passed"
     }
   ],
-  "closeState": "claimed-active"
+  "closeState": "complete"
 }
