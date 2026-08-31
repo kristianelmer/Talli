@@ -150,7 +150,13 @@ select
   not exists (
     select 1 from public.holding_actions earlier
     where earlier.action_type = 'share_purchase'
-      and earlier.payload ->> 'position_id' = action.payload ->> 'position_id'
+      and coalesce(
+        nullif(earlier.payload ->> 'position_id', '')::uuid,
+        (select earlier_position.id from investments.positions earlier_position
+         where earlier_position.company_id = earlier.company_id
+           and earlier_position.investment_key =
+             pg_catalog.btrim(earlier.payload ->> 'investment_key'))
+      ) = position.id
       and (earlier.created_at, earlier.id) < (action.created_at, action.id)
   ), true,
   action.payload ->> 'investment_key',
@@ -167,7 +173,15 @@ select
   case when action.ledger_entry_id is null then null else action.created_at end
 from public.holding_actions action
 join investments.positions position
-  on position.id = (action.payload ->> 'position_id')::uuid
+  on position.company_id = action.company_id
+  and (
+    position.id = nullif(action.payload ->> 'position_id', '')::uuid
+    or (
+      nullif(action.payload ->> 'position_id', '') is null
+      and position.investment_key =
+        pg_catalog.btrim(action.payload ->> 'investment_key')
+    )
+  )
 join investments.acquisition_lots lot
   on lot.id = (action.payload ->> 'acquisition_lot_id')::uuid
 where action.action_type = 'share_purchase';
@@ -622,6 +636,7 @@ select pg_catalog.set_config(
   'talli.investments_migration_principal', current_user, true
 );
 set local role ledger_store_owner;
+grant usage, create on schema ledger, backend_system to ledger_store_owner;
 do $investments_bridge_schema_authority$
 begin
   execute pg_catalog.format(
@@ -719,8 +734,15 @@ declare
   v_lot investments.acquisition_lots%rowtype;
 begin
   if new.action_type <> 'share_purchase' then return new; end if;
-  select * into v_position from investments.positions
-  where id = (new.payload ->> 'position_id')::uuid;
+  if nullif(new.payload ->> 'position_id', '') is null then
+    select * into v_position from investments.positions
+    where company_id = new.company_id
+      and investment_key = pg_catalog.btrim(new.payload ->> 'investment_key');
+  else
+    select * into v_position from investments.positions
+    where id = (new.payload ->> 'position_id')::uuid;
+  end if;
+  if not found then raise exception 'investments_dependency_unavailable'; end if;
   select * into v_lot from investments.acquisition_lots
   where id = (new.payload ->> 'acquisition_lot_id')::uuid;
   if not found then
@@ -739,12 +761,12 @@ begin
   ) values (
     new.id, new.company_id, new.income_year, null,
     pg_catalog.encode(extensions.digest(new.payload::text, 'sha256'), 'hex'),
-    (new.payload ->> 'position_id')::uuid,
+    v_position.id,
     (new.payload ->> 'acquisition_lot_id')::uuid,
     new.ledger_entry_id,
     not exists (
       select 1 from investments.share_purchases earlier
-      where earlier.position_id = (new.payload ->> 'position_id')::uuid
+      where earlier.position_id = v_position.id
     ),
     true,
     new.payload ->> 'investment_key',
@@ -877,6 +899,7 @@ begin
   );
 end
 $investments_bridge_schema_revoke$;
+revoke create on schema ledger, backend_system from ledger_store_owner;
 reset role;
 
 drop trigger if exists investment_positions_sync_to_investments

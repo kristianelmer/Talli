@@ -214,7 +214,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         risk_level, created_by
       ) values (
         '${actionId}', '${companyId}', 2026, 'share_purchase', '2026-04-15',
-        '{"investment_key":"example-as","investment_name":"Example AS","share_count":10,"purchase_amount":125.50,"position_id":"${positionId}","acquisition_lot_id":"${lotId}"}'::jsonb,
+        '{"investment_key":"example-as","investment_name":"Example AS","share_count":10,"purchase_amount":125.50,"acquisition_lot_id":"${lotId}"}'::jsonb,
         'ready', '${ownerId}'
       );
       insert into public.investment_lots (

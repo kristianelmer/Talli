@@ -42,6 +42,14 @@ test("expand and workflow keep predecessor and successor stores coherent", () =>
   assert.match(workflow, /sync_legacy_investment_lot_v1/iu);
   assert.match(workflow, /sync_legacy_share_purchase_v1/iu);
   assert.match(workflow, /mirror_investment_purchase_to_successor_v1/iu);
+  assert.match(
+    workflow,
+    /grant usage, create on schema ledger, backend_system to ledger_store_owner/iu,
+  );
+  assert.match(
+    workflow,
+    /revoke create on schema ledger, backend_system from ledger_store_owner/iu,
+  );
   assert.doesNotMatch(workflow, /drop function backend_system\.(?:prepare|complete)_investment_purchase_fifo_v1/iu);
 });
 

@@ -47,7 +47,13 @@ begin
       on source.id = target.action_id and source.action_type = 'share_purchase'
     where source.id is null
       or source.company_id <> target.company_id
-      or (source.payload ->> 'position_id')::uuid <> target.position_id
+      or coalesce(
+        nullif(source.payload ->> 'position_id', '')::uuid,
+        (select position.id from public.investment_positions position
+         where position.company_id = source.company_id
+           and position.investment_key =
+             pg_catalog.btrim(source.payload ->> 'investment_key'))
+      ) <> target.position_id
       or (source.payload ->> 'acquisition_lot_id')::uuid <> target.acquisition_lot_id
       or (source.payload ->> 'share_count')::bigint <> target.share_count
       or (source.payload ->> 'purchase_amount')::numeric <> target.purchase_amount

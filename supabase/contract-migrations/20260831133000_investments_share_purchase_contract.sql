@@ -164,7 +164,13 @@ begin
       action.id::text || ':' || pg_catalog.encode(extensions.digest(
         pg_catalog.jsonb_build_object(
           'accounting_entry_id', action.ledger_entry_id,
-          'position_id', (action.payload ->> 'position_id')::uuid,
+          'position_id', coalesce(
+            nullif(action.payload ->> 'position_id', '')::uuid,
+            (select position.id from public.investment_positions position
+             where position.company_id = action.company_id
+               and position.investment_key =
+                 pg_catalog.btrim(action.payload ->> 'investment_key'))
+          ),
           'acquisition_lot_id', (action.payload ->> 'acquisition_lot_id')::uuid,
           'share_count', (action.payload ->> 'share_count')::bigint,
           'purchase_amount', (action.payload ->> 'purchase_amount')::numeric
