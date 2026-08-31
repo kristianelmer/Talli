@@ -2809,26 +2809,6 @@ def create_app(
             request, command, idempotency_key, credentials
         )
 
-    @application.post(
-        "/api/v1/ledger/investment-purchases",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        include_in_schema=False,
-    )
-    async def record_investments_share_purchase_overlap_alias(
-        request: Request,
-        command: InvestmentsSharePurchaseWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        """Keep the immediately preceding web revision safe during deployment."""
-        result = await execute_investments_share_purchase(
-            request, command, idempotency_key, credentials
-        )
-        return LedgerWriterResultWire(posted_entry=None, replayed=result.replayed)
-
     banking_errors: Any = {
         status: {
             "description": "Banking request failed.",
