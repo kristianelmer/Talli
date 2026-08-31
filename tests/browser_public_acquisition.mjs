@@ -261,7 +261,7 @@ test("the production public journey is consent-silent, accessible, mobile-safe, 
   );
 
   for (const [path, heading] of [
-    ["/pris", "NOK 1,490 inkl. mva."],
+    ["/pris", "NOK 1 490 per selskapsår"],
     ["/hjelp", "Finn neste trygge steg"],
     ["/personvern", "Personvernerklæring"],
     ["/sikkerhet", "Stopp først når bevis mangler"],
