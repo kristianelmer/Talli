@@ -85,6 +85,22 @@ test("canonical investments tables are forced-RLS and runtime roles do not own t
 
 test("sale workflow owns FIFO persistence behind restricted investments functions", () => {
   const source = artifact(saleWorkflowPath, "share-sale workflow");
+  assert.match(
+    source,
+    /grant investments_store_owner, investments_executor, investments_workflow_executor, company_access_executor, ledger_store_owner to %I/iu,
+  );
+  assert.match(
+    source,
+    /revoke investments_store_owner, investments_executor, investments_workflow_executor, company_access_executor, ledger_store_owner from %I/iu,
+  );
+  assert.match(
+    source,
+    /grant usage, create on schema ledger, backend_system to ledger_store_owner/iu,
+  );
+  assert.match(
+    source,
+    /revoke create on schema ledger, backend_system from ledger_store_owner/iu,
+  );
   for (const table of ["share_sales", "share_sale_allocations"]) {
     assert.match(source, new RegExp(`create table investments\\.${table}`, "iu"));
     assert.match(source, new RegExp(

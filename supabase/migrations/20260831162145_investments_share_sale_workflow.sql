@@ -4,6 +4,34 @@
 
 begin;
 
+-- Supabase's migration principal is deliberately not a persistent member of
+-- the storage-owner roles. Borrow the same bounded memberships as the purchase
+-- workflow so locks and schema changes work in the hosted migrator, then revoke
+-- them before commit.
+do $investments_sale_migration_membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner, investments_executor, investments_workflow_executor, company_access_executor, ledger_store_owner to %I',
+    current_user
+  );
+end
+$investments_sale_migration_membership$;
+
+select pg_catalog.set_config(
+  'talli.investments_sale_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema ledger, backend_system to ledger_store_owner;
+do $investments_sale_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema ledger, backend_system to %I',
+    pg_catalog.current_setting('talli.investments_sale_migration_principal')
+  );
+end
+$investments_sale_schema_authority$;
+reset role;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:sale-cutover:v1', 0)
 );
@@ -792,5 +820,26 @@ to investments_workflow_executor;
 grant execute on function ledger.investment_sale_entry_matches_v1(uuid, uuid, uuid),
   backend_system.mirror_investment_sale_to_legacy_v1(uuid, uuid, uuid)
 to investments_store_owner;
+
+set local role ledger_store_owner;
+do $investments_sale_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema ledger, backend_system from %I',
+    pg_catalog.current_setting('talli.investments_sale_migration_principal')
+  );
+end
+$investments_sale_schema_authority_revoke$;
+revoke create on schema ledger, backend_system from ledger_store_owner;
+reset role;
+
+do $investments_sale_migration_membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner, investments_executor, investments_workflow_executor, company_access_executor, ledger_store_owner from %I',
+    current_user
+  );
+end
+$investments_sale_migration_membership_revoke$;
 
 commit;
