@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#189",
   "source": "https://github.com/kristianelmer/Talli/issues/189",
-  "sourceCheckedAt": "2026-08-28T12:59:00Z",
+  "sourceCheckedAt": "2026-08-31T07:15:00Z",
   "completeGates": [
     {
       "revision": "c2690097c3dc4e00a3d86b867a625ed5812840af",
@@ -26,10 +26,14 @@
       "automatic sync, consent, recovery, CSV and CAMT.053 workflows",
       "local contract, security, recovery, load, browser, mobile and release gates"
     ],
+    "authorizedExternalDiligence": [
+      "founder-approved non-binding written RFIs to Neonomics, Enable Banking, GoCardless, Open Payments and Aritma",
+      "read-only inspection and recording of provider replies without signup, activation, contract acceptance or spend"
+    ],
     "externalNotAuthorized": [
-      "provider contact, signup, activation or credentials",
+      "provider signup, activation or credentials",
       "live provider calls or customer bank consent/data",
-      "commercial contract, quote, purchase or fee",
+      "commercial contract acceptance, purchase or fee",
       "production deployment or production banking"
     ]
   },
@@ -149,8 +153,23 @@
       "plannedEvidence": [
         {"external": "Current signed provider, coverage, privacy, commercial, production and representative-company evidence with bank_aisp human signoff"}
       ],
-      "status": "external-evidence-required"
+      "observedEvidence": [
+        "Read-only mailbox audit at architecture/evidence/issues/189/provider-mailbox-audit-2026-08-31.json: GoCardless ticket 4436853 rejects standalone Bank Account Data for new customers and therefore fails Talli's AIS-only route; Aritma ticket 430965380298 is an automated receipt only; no substantive response was found for Neonomics, Enable Banking, Open Payments or Aritma."
+      ],
+      "status": "one-candidate-rejected-four-substantive-responses-and-complete-provider-evidence-pending"
     }
   ],
+  "externalDiligence": {
+    "mailboxAudit": "architecture/evidence/issues/189/provider-mailbox-audit-2026-08-31.json",
+    "goCardless": "rejected-for-current-route",
+    "awaitingSubstantiveResponse": [
+      "Neonomics",
+      "Enable Banking",
+      "Open Payments",
+      "Aritma"
+    ],
+    "providerSelected": false,
+    "bankAispGatePassed": false
+  },
   "closeState": "open-external-provider-evidence-required"
 }
