@@ -120,6 +120,7 @@
   "hostedAudit": {
     "checkedAt": "2026-08-31T06:58:45Z",
     "evidence": "architecture/evidence/issues/196/hosted-facts-2026-08-31.json",
+    "humanDecisionPackage": "docs/research/hosted-processors-transfer-backup-2026-08-31.md",
     "ownerDesignatedSupabaseTarget": "zwucumjvtpnyujqyzwkg/pkpyyxryfhfehrbhbynp",
     "databaseState": "ACTIVE_HEALTHY in eu-west-1; migrations 1-47 applied; validation observer off; zero active validation entitlements, releases, consent actions, marketing events, users, companies, memberships and storage objects",
     "currentPreview": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG at source 250c0c4ed648b4135338938b1dddd4e7647ea605 is READY in dub1",
