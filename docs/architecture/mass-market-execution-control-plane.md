@@ -1,7 +1,7 @@
 # Mass-market execution control plane
 
 Status: active execution control  
-Repository basis: 2026-08-27, task `01a041c1-afd5-72d3-a2c8-bed26603f267`, revision `3ec163ef`  
+Repository basis: 2026-08-31, task `01a0564b-8c6e-7691-8c08-2b3e7e7df038`, pre-amendment revision `e362006a`
 Artifact identity: the immutable Git commit containing this path, published and linked from #188  
 Authoritative queue: GitHub issue [#165](https://github.com/kristianelmer/Talli/issues/165) and its live child tickets  
 Mandatory preflight source: [#188 comment 5434701877](https://github.com/kristianelmer/Talli/issues/188#issuecomment-5434701877)
@@ -43,11 +43,11 @@ because a code ticket is complete.
 
 Completed prefix:
 
-`#186 → #138 → #187 → #139`
+`#186 → #138 → #187 → #139 → #188 → #140`
 
-Current serialized critical path:
+Current ADR-0013 serialized implementation path:
 
-`#188 → #140 → #189 → #141 → #142 → #143 → #190 → #147 → #144 → #145 → #148 → #191 → #137 → #192 → #150 → #151 → #146 → #152 → #153 → #193 → #149 → #194 → #155 → #156 → #157 → #195 → #199 → #154`
+`#141 → #142 → #143 → #190 → #147 → #144 → #145 → #148 → #191 → #137 → #192 → #150 → #151 → #146 → #152 → #153 → #193 → #149 → #194 → #155 → #156 → #157 → #195 → #199 → #154`
 
 Only one ADR-0013 business capability migration may be active. A post-migration
 mass-market slice immediately following a capability must finish before the next
@@ -56,6 +56,13 @@ accounts; it may not mutate two filing capabilities concurrently.
 
 Permitted overlap:
 
+- #189 is an independent external bank-provider clearance lane after #140. Its
+  provider-neutral local criteria A1–A8 are complete; its A9 written coverage,
+  licence, commercial, legal/privacy/security, reliability and human `bank_aisp`
+  evidence remains red. It may stay open while #141–#154 advance against only the
+  provider-neutral read-only banking public contract and hardened file fallback.
+  It must close before provider choice or activation, live bank use, #197's bank
+  tranche, any live-bank readiness claim, production banking, or #198 clearance.
 - #196 is a non-business-persistence public acquisition lane. It may change only
   truthful free-recruitment/precheck, presentation, help/legal/SEO, consent shell,
   and privacy-safe aggregate measurement. Checkout, live claims, deployment,
@@ -75,11 +82,13 @@ persistence, capability migrations, generated contracts, or shared integration
 files while the serialized owner is changing them. One integration owner merges
 and gates all bounded contributions.
 
-Live blocker audit at this snapshot: every edge in the critical path matches its
-GitHub `Blocked by` section; #139 is closed; #188 is the sole next claim; and the
-stale “completed prerequisite” suffix was removed from #141, #147, #137, #150,
-#149, #155 and #154 because each referenced prerequisite is still open. The
-remaining `ready-for-agent` labels do not override those edges.
+Live blocker audit at this snapshot: #140 is closed with two immutable complete
+gates, the architecture registry identifies `investments/#141` as the sole active
+capability stage, and #141 is the sole next implementation claim. #189 remains
+open as the independent external gate described above; its label or open state
+does not reopen banking or authorize provider-specific assumptions. Every later
+`Blocked by` edge remains serialized, and `ready-for-agent` labels do not override
+those edges.
 
 ## Ownership zones
 
@@ -229,9 +238,9 @@ deployment, outreach, claims, ads and unrestricted opening.
 | Ticket | Entry and exclusive zone | Output and acceptance evidence | Rollback, close, downstream, external gate |
 |---|---|---|---|
 | #188 | #139 closed; zone `L`. `architecture/compatibility.json` registry-enables banking/#140 as the next capability because its schema has no idle state, but open #188 route-blocks any #140 claim or banking migration; registry activation is not start authority | Ledger-owned full-year receiver/close contract, complete January-to-as-of coverage/gap topology, immutable economic/source/output bindings, and every #172 supported ledger pattern; `U C D W S X G G2` with typed downstream projection declarations | Block posting/close on gaps, unsupported cases, stale/unbound/mismatched facts or outputs; reverse rather than mutate; close only with official mappings, golden journals, receiving-contract facts and no duplicate rules. Actual canonical producer/calculator agreement is mandatory at #199. Then and only then claim #140. `local` |
-| #140 | #188 closed; active ADR-0013 stage `banking`; zone `B` | CSV import, dedupe, suggestions, explicit acceptance, reconciliation and atomic ledger workflow; `U C D W S X G G2` | Disable import/acceptance, preserve previous single banking writer, reconcile source/idempotency IDs; delete banking facade/legacy rules before exit. Then #189. `local` |
-| #189 | #140 exited; zone `B`, provider adapters only at system edge | Provider-neutral read-only port, Neonomics adapter, Enable Banking conformance fallback, sync/consent/recovery and CSV/CAMT.053; `U C D W S X O G` plus current licence/coverage/privacy/reliability/exit evidence | Kill bank sync without inventing postings; retain file fallback and read/export; reconcile gaps/unknown provider outcomes. Then #141. Local fakes are `local`; contracts/credentials/live calls are `credential cost production` |
-| #141 | #189 closed; active `investments` slice 1, zone `I` | Purchase validation, ledger workflow and acquisition lots; `U C D W X G` | Atomic no-partial-state rollback; reconcile lots to ledger source IDs; remove purchase facade/rules. Then #142. `local` |
+| #140 | #188 closed; active ADR-0013 stage `banking`; zone `B` | CSV import, dedupe, suggestions, explicit acceptance, reconciliation and atomic ledger workflow; `U C D W S X G G2` | Disable import/acceptance, preserve previous single banking writer, reconcile source/idempotency IDs; delete banking facade/legacy rules before exit. Then #141; #189 continues independently. `local` |
+| #189 | #140 exited; independent external provider-clearance lane, provider adapters only at system edge | Provider-neutral read-only port, local Neonomics/Enable conformance, sync/consent/recovery and CSV/CAMT.053 are complete; A9 still requires current written licence/coverage/commercial/legal/privacy/security/reliability/exit evidence and human `bank_aisp` signoff | Kill bank sync without inventing postings; retain file fallback and read/export; reconcile gaps/unknown provider outcomes. Does not block provider-neutral #141–#154, but must close before provider choice/activation, live bank use, #197 bank evidence, production banking or #198. Local fakes are `local`; provider contracts/credentials/live calls remain `credential cost production` |
+| #141 | #140 closed; architecture registry active at `investments/#141`; #189 A9 is independent; active `investments` slice 1, zone `I` | Purchase validation, ledger workflow and acquisition lots through provider-neutral evidence seams only; `U C D W X G` | Atomic no-partial-state rollback; reconcile lots to ledger source IDs; remove purchase facade/rules. No provider-specific dependency or live-bank readiness claim. Then #142. `local` |
 | #142 | #141 closed; same active zone `I` | Sale, FIFO allocation, gains/losses and remaining lots; `U C D W X G` | Reject oversell/invalid sale atomically; restore one investment writer; remove sale/FIFO facade. Then #143. `local` |
 | #143 | #142 closed; same active zone `I`, stage exit | Received dividends/participation exemption and complete investment cleanup; `U C D W S X G G2` | Fail unsupported treatment before persistence; rollback/recutover positions/lots/postings; delete final investment facade/RPCs. Then #190. `local` |
 | #190 | #143 exited; zone `I` | Complete domestic private/listed/fund purchase/sale/dividend/ownership patterns and reconciled filing facts; `U C D W S X G` | Hard-block foreign/crypto/derivative/reorganization/judgment cases; correct by owned reversals. Then #147. `local` |

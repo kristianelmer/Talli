@@ -16,10 +16,11 @@ const issue140Requirements = JSON.parse(readFileSync(
 ));
 
 const route = [
-  188, 140, 189, 141, 142, 143, 190, 147, 144, 145, 148, 191, 137, 192, 150,
+  141, 142, 143, 190, 147, 144, 145, 148, 191, 137, 192, 150,
   151, 146, 152, 153, 193, 149, 194, 155, 156, 157, 195, 199, 154,
 ];
-const parallelAndClearance = [196, 197, 198];
+const completedPrefix = [188, 140];
+const parallelAndClearance = [189, 196, 197, 198];
 const signoffs = [
   "architecture_migration_release",
   "seller_terms_pricing",
@@ -42,7 +43,7 @@ test("the live execution control plane pins the complete route and sole clearanc
     controlPlane,
     new RegExp(`\`${route.map((issue) => `#${issue}`).join(" → ")}\``),
   );
-  for (const issue of [...route, ...parallelAndClearance]) {
+  for (const issue of [...completedPrefix, ...route, ...parallelAndClearance]) {
     assert.equal(
       controlPlane.split("\n").filter((line) => (
         line.startsWith(`| #${issue} |`) && line.split("|").length === 6
@@ -55,6 +56,10 @@ test("the live execution control plane pins the complete route and sole clearanc
   assert.match(controlPlane, /only ticket that may record\s+unrestricted launch clearance/u);
   assert.match(controlPlane, /Actual canonical producer\/calculator agreement is mandatory at #199/u);
   assert.match(controlPlane, /archive\/SAF-T and final zero-difference acceptance after #199/u);
+  assert.match(controlPlane, /`#186 → #138 → #187 → #139 → #188 → #140`/u);
+  assert.match(controlPlane, /#189 is an independent external bank-provider clearance lane after #140/u);
+  assert.match(controlPlane, /Does not block provider-neutral #141–#154/u);
+  assert.match(controlPlane, /must close before provider choice\/activation, live bank use, #197 bank evidence, production banking or #198/u);
 });
 
 test("all #179 lanes, signoffs, freshness, and independent controls are explicit", () => {

@@ -5,6 +5,16 @@ Last audited: 2026-07-15
 Code baseline: `main` including PR #105 (merge `c796104`)
 Scope authority: `docs/remarks/holdingswift_produktkrav.md` and the approved PRDs  
 
+Precedence note (2026-08-31): this file preserves the historical July narrow
+customer-ready decisions, including CR-007. The later unrestricted-GA decision in
+GitHub #165 and `docs/architecture/mass-market-execution-control-plane.md` governs
+mass-market execution. A live licensed read-only bank connection remains mandatory
+for provider activation, the #197 bank tranche and #198 launch clearance, but the
+still-open external provider gate #189 does not block provider-neutral internal
+implementation of the ADR-0013 #141–#154 sequence or its hardened file fallback.
+Neither internal implementation nor file fallback is evidence of live-bank
+readiness.
+
 Founder decisions that resolve the launch-scope questions are recorded in
 [`2026-07-15-customer-ready-foundation-design.md`](../superpowers/specs/2026-07-15-customer-ready-foundation-design.md).
 The executable test-first sequence is recorded in

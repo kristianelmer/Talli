@@ -15,8 +15,21 @@
     "predecessor": "#140",
     "predecessorState": "CLOSED",
     "successor": "#141",
-    "successorClaimed": false,
+    "successorClosureDependsOnThisIssue": false,
+    "independentHardGates": [
+      "provider choice or activation",
+      "live bank use or readiness claims",
+      "#197 bank tranche",
+      "production banking",
+      "#198 unrestricted clearance"
+    ],
     "decisionSources": ["#168", "#172", "#174", "#179", "#180"]
+  },
+  "ownerRouteAmendment": {
+    "approvedBy": "Kristian Elmer",
+    "approvedAt": "2026-08-31",
+    "decision": "#189 remains open as an independent external provider gate but no longer blocks provider-neutral internal implementation of #141 through #154.",
+    "preservedBoundary": "A9 and bank_aisp remain red until current written provider and representative evidence receives human signoff; no provider selection, activation, live bank use, production claim or launch is inferred from internal implementation."
   },
   "executionBoundary": {
     "localAuthorized": [
@@ -35,7 +48,8 @@
       "live provider calls or customer bank consent/data",
       "commercial contract acceptance, purchase or fee",
       "production deployment or production banking"
-    ]
+    ],
+    "separateHostedCredentialAuthority": "Kristian authorized secure credential handling only between existing Supabase project pkpyyxryfhfehrbhbynp and Vercel project prj_1JJkOqzGBhn438IKHYADWiRbVGeZ; it does not authorize bank-provider credentials or live provider use."
   },
   "criteria": [
     {

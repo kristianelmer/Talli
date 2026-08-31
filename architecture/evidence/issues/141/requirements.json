@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#141",
+  "source": "https://github.com/kristianelmer/Talli/issues/141",
+  "sourceCheckedAt": "2026-08-31T12:02:05Z",
+  "completeGates": [],
+  "entryBlockers": [
+    {
+      "issue": "#140",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/140#issuecomment-5451659222"
+    }
+  ],
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksInternalImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "live bank use or readiness claims",
+      "#197 bank tranche",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "ownerAuthority": {
+    "approvedBy": "Kristian Elmer",
+    "approvedAt": "2026-08-31",
+    "scope": "Provider-neutral internal #141 implementation may proceed against the banking public contract and hardened file fallback while #189 remains open.",
+    "forbiddenInference": "Internal implementation and file fallback are not live-AISP evidence and authorize no provider choice, contract, activation, live call, customer bank consent/data, production use or public claim."
+  },
+  "criteria": [
+    {
+      "id": "GH-141-A1",
+      "requirement": "A supported share purchase completes through the web and FastAPI.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved investments stage resolution 2026-07-26"
+        },
+        {
+          "path": "docs/architecture/mass-market-execution-control-plane.md",
+          "version": "owner route amendment 2026-08-31"
+        }
+      ],
+      "expectedResult": "An authenticated owner submits the characterized supported purchase through the existing guided web flow and generated FastAPI client; one canonical investments workflow returns the persisted position/lot and bound ledger result without a direct web or provider write.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments.py apps/backend/tests/test_investments_api.py"
+        },
+        {
+          "path": "apps/web/tests/investments-presentation.test.mjs",
+          "command": "npm run test:boundary-web"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-141-A2",
+      "requirement": "Ledger entries and acquisition lots match existing deterministic fixtures.",
+      "sources": [
+        {
+          "path": "tests/share_purchase.test.mjs",
+          "version": "characterized legacy purchase posting fixture at claim"
+        },
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        }
+      ],
+      "expectedResult": "One request-bound backend workflow invokes investments and ledger public contracts in one short transaction, creates exactly one acquisition lot and deterministic posting with stable source/idempotency bindings, and matches the characterized NOK/date/quantity/account fixtures.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_workflow.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_workflow.py"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "node --test tests/investments_database_runtime.test.mjs"
+        },
+        {
+          "path": "apps/backend/tests/test_ledger.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger.py"
+        }
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-141-A3",
+      "requirement": "Invalid quantities, amounts, dates, or company scope fail without partial state.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "mandatory stage safety envelope 2026-07-26"
+        }
+      ],
+      "expectedResult": "Invalid, duplicate, stale, replay-conflicting, cross-tenant or locked-period commands return deterministic coded errors and create no position, lot, ledger, receipt or audit fragment; exact replay returns the prior result.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments.py apps/backend/tests/test_investments_workflow.py"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "node --test tests/investments_database_runtime.test.mjs"
+        }
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-141-A4",
+      "requirement": "Lot data is owned and exposed only through the declared backend module contract.",
+      "sources": [
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        },
+        {
+          "path": "architecture/database-catalog.json",
+          "version": "claim-time catalog"
+        }
+      ],
+      "expectedResult": "The investments module owns positions/lots and their queries/commands; other capabilities collaborate only through its public contract, the web uses the generated client, RLS conceals other tenants, and banking/file evidence cannot directly write investment or ledger state.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_public_contract.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_public_contract.py"
+        },
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "node --test tests/investments_database_runtime.test.mjs"
+        }
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-141-A5",
+      "requirement": "Duplicate TypeScript/SQL rules and active-slice compatibility code are removed.",
+      "sources": [
+        {
+          "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+          "version": "accepted plus amendments through 2026-08-30"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "version": "compat-investment-purchase-persistence with two remaining query scopes at claim"
+        },
+        {
+          "path": "architecture/compatibility-baseline.json",
+          "version": "immutable #185 investment-purchase baseline"
+        }
+      ],
+      "expectedResult": "One Python investments implementation remains; the legacy purchase RPC/rule and TypeScript purchase policy are removed, both remaining #141 query scopes disappear from the active compatibility registry with exact source proof, no new record/debt appears, and rollback/recutover plus the complete stage-slice gate pass.",
+      "plannedEvidence": [
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "tests/investment_lots_schema.test.mjs",
+          "command": "node --test tests/investment_lots_schema.test.mjs"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        }
+      ],
+      "status": "planned"
+    }
+  ],
+  "closeState": "open-not-yet-claimed"
+}

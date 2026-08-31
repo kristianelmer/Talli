@@ -7,8 +7,9 @@
     "entryGate": "#187",
     "entryGateState": "CLOSED",
     "parallelAuthority": "#165 and #180 explicitly permit this non-business public-acquisition lane after #187",
-    "serializedIssueStillOpen": "#189",
-    "serializedSuccessorClaimed": false
+    "activeSerializedCapability": "investments/#141",
+    "independentExternalGateStillOpen": "#189",
+    "ownerAmendment": "2026-08-31: #189 no longer blocks provider-neutral internal #141–#154 work, but remains mandatory for live bank use, #197 bank evidence and #198 clearance"
   },
   "executionBoundary": {
     "localAuthorized": [
