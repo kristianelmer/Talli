@@ -1229,7 +1229,7 @@ function ledgerServerActionSource(actionName) {
 test("all relocated ledger writers use the stable operation ID at the generated boundary", () => {
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
-    recordDividendReceived: ["postLedgerInvestmentDividend", "actionId"],
+    recordDividendReceived: ["recordInvestmentReceivedDividend", "actionId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
     recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
     recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
@@ -1320,7 +1320,6 @@ test("committed retries reach the coordinator before mutable legacy state can re
 test("unknown coordinator outcomes preserve only the scoped retry operation", () => {
   const retryFields = {
     recordAdminCost: ["adminCostOperationId", "adminCostBankTransactionId"],
-    recordDividendReceived: ["dividendReceivedOperationId"],
     finalizeCorporateDecision: ["finalizeDecisionOperationId"],
     recordOwnerDividendPayment: ["ownerDividendPaymentOperationId", "ownerDividendPaymentBankTransactionId"],
     recordShareholderLoan: ["shareholderLoanOperationId"],
@@ -1334,6 +1333,7 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   }
 
   for (const [actionName, operationField] of [
+    ["recordDividendReceived", "dividendReceivedOperationId"],
     ["recordSharePurchase", "sharePurchaseOperationId"],
     ["recordShareSale", "shareSaleOperationId"],
   ]) {
@@ -1351,7 +1351,6 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
 
   for (const actionName of [
     "recordAdminCost",
-    "recordDividendReceived",
     "recordShareholderLoan",
     "recordTaxSettlement",
   ]) {
@@ -1364,6 +1363,7 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   }
   for (const actionName of [
     "acceptBankTransactionSuggestion",
+    "recordDividendReceived",
     "recordSharePurchase",
     "recordShareSale",
     "finalizeCorporateDecision",

@@ -12,15 +12,24 @@ from talli_backend.modules.investments.public import (
     AcquisitionLotId,
     AcquisitionLotView,
     InvestmentKind,
+    InvestmentActivityKind,
+    InvestmentActivityPage,
+    InvestmentActivityView,
+    InvestmentDocumentStatus,
     InvestmentLotHistoryStatus,
     InvestmentPositionPage,
     InvestmentPositionId,
     InvestmentPositionView,
     InvestmentTaxTreatment,
+    PreparedReceivedDividend,
+    RecordedReceivedDividend,
     RecordedSharePurchase,
     PreparedSharePurchase,
     PreparedShareSale,
     RecordedShareSale,
+    ShareSaleAllocationId,
+    ShareSaleAllocationPage,
+    ShareSaleAllocationView,
 )
 from talli_backend.modules.ledger.public import LedgerEntryId, LedgerEntryKind, PostedLedgerEntry
 from talli_backend.shared.kernel import CompanyId, IncomeYear, LocalDate, Money, Timestamp
@@ -101,6 +110,29 @@ class InvestmentsSessionStub:
             replayed=False,
         )
 
+    async def get_received_dividend_replay(self, command):
+        return None
+
+    async def prepare_received_dividend(self, command, *, taxable_add_back):
+        self.commands.append(command)
+        return PreparedReceivedDividend(
+            position_id=command.position_id,
+            investment_name="Example AS",
+            paying_company_name=command.paying_company_name,
+            taxable_add_back=taxable_add_back,
+        )
+
+    async def complete_received_dividend(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        return RecordedReceivedDividend(
+            action_id=command.action_id,
+            position_id=command.position_id,
+            accounting_entry_id=accounting_entry_id,
+            taxable_add_back=prepared.taxable_add_back,
+            replayed=False,
+        )
+
     async def list_positions(self, **_query):
         return InvestmentPositionPage(
             items=(InvestmentPositionView(
@@ -112,9 +144,51 @@ class InvestmentsSessionStub:
                 org_number="123456789", share_count=10,
                 cost_basis=Money.nok("125.50"),
                 lot_history_status=InvestmentLotHistoryStatus.COMPLETE,
-                movement_count=1, created_by=self.actor_id,
+                movement_count=1,
+                movements=({"movement_type": "purchase"},),
+                created_by=self.actor_id,
                 created_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
                 updated_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
+            ),),
+            next_cursor=None,
+            has_more=False,
+        )
+
+    async def list_activity(self, **_query):
+        return InvestmentActivityPage(
+            items=(InvestmentActivityView(
+                activity_id=supported_purchase().action_id,
+                company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+                income_year=IncomeYear(2026),
+                activity_kind=InvestmentActivityKind.DIVIDEND_RECEIVED,
+                action_date=LocalDate(datetime(2026, 4, 15, tzinfo=UTC).date()),
+                position_id=InvestmentPositionId("50000000-0000-0000-0000-000000000005"),
+                investment_key="example-as",
+                investment_name="Example AS",
+                investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
+                tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
+                org_number="123456789",
+                acquisition_lot_id=None,
+                share_count=None,
+                purchase_amount=None,
+                sold_share_count=None,
+                proceeds=None,
+                fifo_cost_basis_reduction=None,
+                remaining_share_count=None,
+                remaining_cost_basis=None,
+                paying_company_name="Example AS",
+                declared_date=LocalDate(datetime(2026, 4, 1, tzinfo=UTC).date()),
+                gross_amount=Money.nok("125.50"),
+                taxable_add_back=Money.nok("3.77"),
+                gain_or_loss=None,
+                bank_transaction_id=None,
+                document_id=None,
+                document_status=InvestmentDocumentStatus.NOT_REQUIRED,
+                accounting_entry_id=AccountingEntryReference(
+                    "70000000-0000-0000-0000-000000000007"
+                ),
+                created_by=self.actor_id,
+                created_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
             ),),
             next_cursor=None,
             has_more=False,
@@ -131,6 +205,33 @@ class InvestmentsSessionStub:
                 original_share_count=10, remaining_share_count=10,
                 original_cost_basis=Money.nok("125.50"),
                 remaining_cost_basis=Money.nok("125.50"),
+                created_by=self.actor_id,
+                created_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
+            ),),
+            next_cursor=None,
+            has_more=False,
+        )
+
+    async def list_share_sale_allocations(self, **_query):
+        return ShareSaleAllocationPage(
+            items=(ShareSaleAllocationView(
+                allocation_id=ShareSaleAllocationId(
+                    "80000000-0000-0000-0000-000000000008"
+                ),
+                company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+                position_id=InvestmentPositionId(
+                    "50000000-0000-0000-0000-000000000005"
+                ),
+                lot_id=AcquisitionLotId(
+                    "60000000-0000-0000-0000-000000000006"
+                ),
+                sale_action_id=supported_purchase().action_id,
+                allocation_order=1,
+                acquisition_date=LocalDate(
+                    datetime(2026, 4, 15, tzinfo=UTC).date()
+                ),
+                allocated_share_count=4,
+                allocated_cost_basis=Money.nok("50.20"),
                 created_by=self.actor_id,
                 created_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
             ),),
@@ -220,6 +321,46 @@ def test_supported_share_sale_uses_investments_http_contract() -> None:
     assert sessions.commands[0].sold_share_count == 4
 
 
+def test_supported_received_dividend_uses_investments_http_contract() -> None:
+    sessions = InvestmentsSessionStub()
+    client = TestClient(create_app(investments_session_factory=sessions))
+
+    response = client.post(
+        "/api/v1/investments/received-dividends",
+        headers={
+            "Authorization": "Bearer owner-token",
+            "Idempotency-Key": "30000000-0000-4000-8000-000000000023",
+            "X-Request-ID": "investments-supported-dividend",
+        },
+        json={
+            "companyId": "10000000-0000-0000-0000-000000000001",
+            "incomeYear": 2026,
+            "actionId": "40000000-0000-0000-0000-000000000024",
+            "positionId": "50000000-0000-0000-0000-000000000025",
+            "payingCompanyName": "Example AS",
+            "declaredDate": "2026-04-01",
+            "paidDate": "2026-04-15",
+            "grossAmount": {"amount": "125.50", "currency": "NOK"},
+            "taxTreatment": "fritaksmetoden",
+            "bankTransactionId": None,
+            "documentId": None,
+            "documentStatus": "not_required",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json() == {
+        "actionId": "40000000-0000-0000-0000-000000000024",
+        "positionId": "50000000-0000-0000-0000-000000000025",
+        "accountingEntryId": "70000000-0000-0000-0000-000000000007",
+        "taxableAddBack": {"amount": "3.77", "currency": "NOK"},
+        "replayed": False,
+    }
+    assert sessions.tokens == ["owner-token"]
+    assert len(sessions.commands) == 1
+    assert sessions.commands[0].paying_company_name == "Example AS"
+
+
 def test_positions_and_lots_use_investments_query_contract() -> None:
     sessions = InvestmentsSessionStub()
     client = TestClient(create_app(investments_session_factory=sessions))
@@ -233,6 +374,10 @@ def test_positions_and_lots_use_investments_query_contract() -> None:
         "/api/v1/investments/acquisition-lots?companyId=10000000-0000-0000-0000-000000000001",
         headers=headers,
     )
+    allocations = client.get(
+        "/api/v1/investments/share-sale-allocations?companyId=10000000-0000-0000-0000-000000000001",
+        headers=headers,
+    )
 
     assert positions.status_code == 200, positions.text
     assert positions.json()["items"][0]["movementCount"] == 1
@@ -243,3 +388,16 @@ def test_positions_and_lots_use_investments_query_contract() -> None:
     assert lots.json()["items"][0]["acquisitionActionId"] == str(
         supported_purchase().action_id
     )
+    assert allocations.status_code == 200, allocations.text
+    assert allocations.json()["items"][0]["allocatedCostBasis"] == {
+        "amount": "50.20", "currency": "NOK"
+    }
+    activity = client.get(
+        "/api/v1/investments/activity?companyId=10000000-0000-0000-0000-000000000001",
+        headers=headers,
+    )
+    assert activity.status_code == 200, activity.text
+    assert activity.json()["items"][0]["activityKind"] == "dividend_received"
+    assert activity.json()["items"][0]["taxableAddBack"] == {
+        "amount": "3.77", "currency": "NOK"
+    }

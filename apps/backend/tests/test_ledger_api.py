@@ -219,18 +219,6 @@ class LedgerSessionStub:
         )
         return {}
 
-    async def prepare_investment_dividend(
-        self, command: object
-    ) -> dict[str, object]:
-        return await self._prepare("investment_dividend", command)
-
-    async def complete_investment_dividend(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]:
-        return await self._complete(
-            "investment_dividend", command, posted_entry, prepared
-        )
-
     async def prepare_shareholder_loan(
         self, command: object
     ) -> dict[str, object]:
@@ -472,7 +460,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerListPeriodLocks",
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
-        "ledgerPostInvestmentDividend",
         "ledgerPostManualJournal",
         "ledgerPostOwnerDividendPayment",
         "ledgerPostShareholderLoan",
@@ -503,23 +490,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
     decision_hash = "a" * 64
     common = {"companyId": str(COMPANY_ID), "incomeYear": 2026}
     cases = (
-        (
-            "/api/v1/ledger/investment-dividends",
-            "DIVIDEND_RECEIVED",
-            {
-                **common,
-                "actionId": operation_id,
-                "payingCompanyName": "Example AS",
-                "declaredDate": "2026-04-01",
-                "paidDate": "2026-04-15",
-                "grossAmount": money("125.50"),
-                "linkedInvestmentId": None,
-                "taxTreatment": "fritaksmetoden",
-                "bankTransactionId": bank_id,
-                "documentId": document_id,
-                "documentStatus": "attached",
-            },
-        ),
         (
             "/api/v1/ledger/shareholder-loans",
             "SHAREHOLDER_LOAN",

@@ -267,6 +267,19 @@ test("browser owner cleanup removes tracked sources before company and user", as
   assert.ok(calls.includes("delete from public.companies where id = $1"));
   assert.ok(calls.includes("set local role ledger_store_owner"));
   assert.ok(calls.includes("set local role ledger_workflow_store_owner"));
+  assert.ok(calls.includes("set local role investments_store_owner"));
+  for (const table of [
+    "share_sale_allocations",
+    "received_dividends",
+    "share_sales",
+    "share_purchases",
+    "acquisition_lots",
+    "positions",
+  ]) {
+    assert.ok(calls.includes(
+      `delete from investments.${table} where company_id = $1`,
+    ));
+  }
   for (const table of [
     "backend_system.ledger_command_receipts",
     "backend_system.ledger_workflow_receipts",

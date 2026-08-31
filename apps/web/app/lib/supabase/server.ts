@@ -493,18 +493,6 @@ export type HoldingActionRow = {
   created_at: string;
 };
 
-export type InvestmentLotAllocationRow = {
-  id: string;
-  company_id: string;
-  position_id: string;
-  lot_id: string;
-  sale_action_id: string;
-  allocated_share_count: number;
-  allocated_cost_basis: number;
-  created_by: string;
-  created_at: string;
-};
-
 export type FilingReviewCommentRow = {
   id: string;
   preview_id: string;
@@ -986,23 +974,6 @@ export async function listBankSuggestionAcceptances(companyIds: string[]) {
       error: "Kunne ikke laste bankforslag.",
     };
   }
-}
-
-export async function listHoldingActions(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { actions: [] as HoldingActionRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("holding_actions")
-    .select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("action_date", { ascending: false });
-
-  return {
-    actions: (data ?? []) as HoldingActionRow[],
-    error: error?.message ?? null,
-  };
 }
 
 export async function listLedgerEntries(companyIds: string[]) {

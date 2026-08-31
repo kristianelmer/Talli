@@ -303,28 +303,6 @@
       ]
     },
     {
-      "id": "compat-investment-stage-exit-persistence",
-      "kind": "legacy-facade",
-      "capability": "investments",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#143",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:investments",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove received-dividend and shared holding-action reads in #143.",
-      "scopes": [
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "listHoldingActions"
-        }
-      ]
-    },
-    {
       "id": "compat-documents-persistence",
       "kind": "legacy-facade",
       "capability": "documents",
@@ -1248,24 +1226,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lot_allocations",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lots",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_positions",
           "operation": "GET"
         },
         {

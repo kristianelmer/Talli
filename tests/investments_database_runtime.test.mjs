@@ -10,10 +10,15 @@ const dockerHost = process.env.TALLI_DOCKER_HOST;
 const investmentsMigration = "20260831124939_investments_capability.sql";
 const investmentsWorkflowMigration = "20260831131203_investments_share_purchase_workflow.sql";
 const investmentsSaleWorkflowMigration = "20260831162145_investments_share_sale_workflow.sql";
+const investmentsAllocationIdentityMigration = "20260831180000_investments_allocation_identity.sql";
+const investmentsDividendWorkflowMigration = "20260831182000_investments_received_dividend_workflow.sql";
 const investmentsContractMigration = "20260831133000_investments_share_purchase_contract.sql";
 const investmentsRollbackMigration = "20260831133000_investments_share_purchase_contract.sql";
 const investmentsSaleContractMigration = "20260831170000_investments_share_sale_contract.sql";
 const investmentsSaleRollbackMigration = "20260831170000_investments_share_sale_contract.sql";
+const investmentsDividendContractMigration = "20260831190000_investments_received_dividend_contract.sql";
+const investmentsDividendRollbackMigration = "20260831190000_investments_received_dividend_contract.sql";
+const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -28,6 +33,11 @@ const recutoverActionId = "20000000-0000-0000-0000-000000000015";
 const oversaleActionId = "20000000-0000-0000-0000-000000000016";
 const failedSaleActionId = "20000000-0000-0000-0000-000000000017";
 const rollbackSaleActionId = "20000000-0000-0000-0000-000000000018";
+const legacyDividendActionId = "20000000-0000-0000-0000-000000000019";
+const successorDividendActionId = "20000000-0000-0000-0000-000000000020";
+const failedDividendActionId = "20000000-0000-0000-0000-000000000021";
+const rollbackDividendActionId = "20000000-0000-0000-0000-000000000022";
+const stageExitActionId = "20000000-0000-0000-0000-000000000023";
 
 const bootstrapSql = String.raw`
 create role anon nologin;
@@ -127,6 +137,8 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsMigration,
         investmentsWorkflowMigration,
         investmentsSaleWorkflowMigration,
+        investmentsAllocationIdentityMigration,
+        investmentsDividendWorkflowMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -239,19 +251,60 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsMigration}`]);
     psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsWorkflowMigration}`]);
     psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsSaleWorkflowMigration}`]);
+    psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsAllocationIdentityMigration}`]);
+
+    const predecessorDividendRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: legacyDividendActionId,
+      idempotencyKey: "dividend-predecessor-0001", correlationId: "dividend-predecessor",
+      payingCompanyName: "Example AS", declaredDate: "2026-05-01",
+      paidDate: "2026-05-15", grossAmount: "100.00",
+      linkedInvestmentId: positionId, taxTreatment: "fritaksmetoden",
+      bankTransactionId: null, documentId: null, documentStatus: "not_required",
+    });
+    JSON.parse(scalar(containerName, String.raw`
+      set role ledger_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select backend_system.prepare_investment_dividend_v1(
+          '${predecessorDividendRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'dividend-predecessor-0001', '${companyId}', 2026,
+          'DIVIDEND_RECEIVED', 'Dividend received from Example AS',
+          '[{"account":"1920","description":"Dividend received in bank","debit":"100.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Dividend from Example AS","debit":"0.00","credit":"100.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${legacyDividendActionId}',
+          'dividend-predecessor', '${ownerId}'
+        )
+      )
+      select backend_system.complete_investment_dividend_v1(
+        '${predecessorDividendRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+
+    psql(containerName, ["--file", `/repo/supabase/migrations/${investmentsDividendWorkflowMigration}`]);
 
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.positions') is not null)::text || ':' ||
         (pg_catalog.to_regclass('investments.acquisition_lots') is not null)::text || ':' ||
         (pg_catalog.to_regclass('investments.share_purchases') is not null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.received_dividends') is not null)::text || ':' ||
         (pg_catalog.to_regprocedure('investments.prepare_share_purchase_v1(jsonb,text)') is not null)::text || ':' ||
         (select rolbypassrls::text from pg_catalog.pg_roles where rolname = 'investments_executor') || ':' ||
         (select relrowsecurity::text || ':' || relforcerowsecurity::text
          from pg_catalog.pg_class where oid = 'investments.positions'::regclass) || ':' ||
         pg_catalog.has_schema_privilege('authenticated', 'investments', 'usage')::text || ':' ||
         pg_catalog.has_table_privilege('service_role', 'investments.positions', 'select')::text;
-    `), "true:true:true:true:false:true:true:false:false");
+    `), "true:true:true:true:true:false:true:true:false:false");
+    assert.equal(scalar(containerName, String.raw`
+      select legacy_imported::text || ':' || gross_amount::text || ':' ||
+        taxable_add_back::text || ':' || position_id::text
+      from investments.received_dividends
+      where action_id = '${legacyDividendActionId}';
+    `), `true:100.00:3.00:${positionId}`);
     assert.equal(scalar(containerName, String.raw`
       set session authorization talli_ledger_backend;
       set role investments_workflow_executor;
@@ -568,6 +621,101 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           from investments.positions where id = '${completedResult.positionId}');
     `), "0:0:0:0:20:400.00");
 
+    const dividendRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: successorDividendActionId,
+      idempotencyKey: "dividend-command-0001", correlationId: "dividend-command",
+      positionId: completedResult.positionId, payingCompanyName: "Second AS",
+      declaredDate: "2026-06-10", paidDate: "2026-06-20",
+      grossAmount: "125.50", taxTreatment: "fritaksmetoden",
+      bankTransactionId: null, documentId: null, documentStatus: "not_required",
+      taxableAddBack: "3.77",
+    });
+    const completedDividend = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select investments.prepare_received_dividend_v1(
+          '${dividendRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'dividend-command-0001', '${companyId}', 2026,
+          'DIVIDEND_RECEIVED', 'Dividend received from Second AS',
+          '[{"account":"1920","description":"Dividend received in bank","debit":"125.50","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Dividend from Second AS","debit":"0.00","credit":"125.50","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${successorDividendActionId}',
+          'dividend-command', '${ownerId}'
+        )
+      )
+      select investments.complete_received_dividend_v1(
+        '${dividendRequest}'::jsonb, posted.ledger_entry_id, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(completedDividend.taxableAddBack, 3.77);
+    const replayedDividend = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      select investments.get_received_dividend_replay_v1(
+        '${dividendRequest}'::jsonb, '${ownerId}'
+      )::text;
+    `));
+    assert.equal(replayedDividend.replayed, true);
+    assert.equal(scalar(containerName, String.raw`
+      select dividend.gross_amount::text || ':' || dividend.taxable_add_back::text || ':' ||
+        entry.entry_kind || ':' || entry.source_capability || ':' ||
+        (select count(*) from public.holding_actions action
+          where action.id = dividend.action_id
+            and (action.payload ->> 'taxable_add_back')::numeric = 3.77)::text
+      from investments.received_dividends dividend
+      join ledger.entries entry on entry.id = dividend.accounting_entry_id
+      where dividend.action_id = '${successorDividendActionId}';
+    `), "125.50:3.77:DIVIDEND_RECEIVED:INVESTMENTS:1");
+
+    const failedDividendRequest = JSON.stringify({
+      ...JSON.parse(dividendRequest), actionId: failedDividendActionId,
+      idempotencyKey: "dividend-failed-0001", correlationId: "dividend-failed",
+      grossAmount: "50.00", taxableAddBack: "1.50",
+    });
+    const failedDividend = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "-Atq",
+    ], { input: String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      with prepared as materialized (
+        select investments.prepare_received_dividend_v1(
+          '${failedDividendRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'dividend-failed-0001', '${companyId}', 2026,
+          'DIVIDEND_RECEIVED', 'Dividend received from Second AS',
+          '[{"account":"1920","description":"Dividend received in bank","debit":"50.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Dividend from Second AS","debit":"0.00","credit":"50.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${failedDividendActionId}',
+          'dividend-failed', '${ownerId}'
+        )
+      )
+      select investments.complete_received_dividend_v1(
+        '${failedDividendRequest}'::jsonb,
+        '90000000-0000-0000-0000-000000000009', '${ownerId}'
+      ) from prepared cross join posted;
+      commit;
+    ` });
+    assert.notEqual(failedDividend.status, 0);
+    assert.match(failedDividend.stderr, /investments_dependency_unavailable/u);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from investments.received_dividends
+          where action_id = '${failedDividendActionId}')::text || ':' ||
+        (select count(*) from ledger.entries
+          where source_record_id = '${failedDividendActionId}')::text || ':' ||
+        (select count(*) from public.holding_actions
+          where id = '${failedDividendActionId}')::text;
+    `), "0:0:0");
+
     const rollbackRequest = JSON.stringify({
       ...JSON.parse(purchaseRequest), actionId: rollbackActionId,
       idempotencyKey: "purchase-command-0002", investmentKey: "rollback-as",
@@ -690,6 +838,100 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           'investments.prepare_share_sale_v1(jsonb,text)', 'EXECUTE'
         )::text;
     `), "true:true:true:true:false");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsDividendContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_dividend_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'backend_system.complete_investment_dividend_v1(jsonb,uuid,jsonb,text)'
+        ) is null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_dividend_v1(jsonb,text)', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'ledger_workflow_executor',
+          'investments.prepare_received_dividend_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true:true:false");
+
+    for (let application = 0; application < 2; application += 1) {
+      psql(containerName, [
+        "--file", `/repo/supabase/rollback/${investmentsDividendRollbackMigration}`,
+      ]);
+    }
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_dividend_v1(jsonb,text)'
+        ) is not null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'ledger_workflow_executor',
+          'backend_system.prepare_investment_dividend_v1(jsonb,text)', 'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_dividend_v1(jsonb,text)', 'EXECUTE'
+        )::text || ':' ||
+        (select count(*) from pg_catalog.pg_trigger
+          where tgrelid = 'public.holding_actions'::regclass
+            and tgname = 'received_dividends_sync_to_investments'
+            and not tgisinternal)::text;
+    `), "true:true:false:1");
+
+    const rollbackDividendRequest = JSON.stringify({
+      ...JSON.parse(predecessorDividendRequest), actionId: rollbackDividendActionId,
+      idempotencyKey: "dividend-rollback-0001", correlationId: "dividend-rollback",
+      linkedInvestmentId: completedResult.positionId, payingCompanyName: "Second AS",
+      grossAmount: "40.00",
+    });
+    JSON.parse(scalar(containerName, String.raw`
+      set role ledger_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select backend_system.prepare_investment_dividend_v1(
+          '${rollbackDividendRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'dividend-rollback-0001', '${companyId}', 2026,
+          'DIVIDEND_RECEIVED', 'Dividend received from Second AS',
+          '[{"account":"1920","description":"Dividend received in bank","debit":"40.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Dividend from Second AS","debit":"0.00","credit":"40.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${rollbackDividendActionId}',
+          'dividend-rollback', '${ownerId}'
+        )
+      )
+      select backend_system.complete_investment_dividend_v1(
+        '${rollbackDividendRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(scalar(containerName, String.raw`
+      select legacy_imported::text || ':' || gross_amount::text || ':' ||
+        taxable_add_back::text || ':' || (completed_at is not null)::text
+      from investments.received_dividends
+      where action_id = '${rollbackDividendActionId}';
+    `), "true:40.00:1.20:true");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsDividendContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_dividend_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_dividend_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true");
 
     for (let application = 0; application < 2; application += 1) {
       psql(containerName, [
@@ -836,6 +1078,115 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
         )::text;
     `), "true:true");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsStageExitMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('public.investment_positions') is null)::text || ':' ||
+        (pg_catalog.to_regclass('public.investment_lots') is null)::text || ':' ||
+        (pg_catalog.to_regclass('public.investment_lot_allocations') is null)::text || ':' ||
+        (select count(*) from public.holding_actions
+          where action_type in ('share_purchase', 'share_sale', 'dividend_received'))::text || ':' ||
+        (select count(*) from pg_catalog.pg_proc procedure
+          join pg_catalog.pg_namespace namespace on namespace.oid = procedure.pronamespace
+          where namespace.nspname = 'backend_system'
+            and procedure.proname ~ '(investment_(purchase|sale|dividend)|legacy_(investment|share_sale|received_dividend)|rollback_14)')::text;
+    `), "true:true:true:0:0");
+
+    const archiveGenerationBeforeStageExitWrite = Number(scalar(
+      containerName,
+      String.raw`
+        insert into public.company_archive_source_generations(company_id, income_year)
+        values ('${companyId}', 2026)
+        on conflict (company_id, income_year) do nothing;
+        select generation from public.company_archive_source_generations
+        where company_id = '${companyId}' and income_year = 2026;
+      `,
+    ));
+
+    const stageExitRequest = JSON.stringify({
+      ...JSON.parse(purchaseRequest), actionId: stageExitActionId,
+      idempotencyKey: "purchase-stage-exit-0001",
+      correlationId: "purchase-stage-exit",
+      shareCount: 2, purchaseAmount: "40.00",
+    });
+    const stageExitResult = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select investments.prepare_share_purchase_v1(
+          '${stageExitRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'purchase-stage-exit-0001', '${companyId}', 2026,
+          'SHARE_PURCHASE', 'Share purchase: Second AS',
+          '[{"account":"1800","description":"Investment in Second AS","debit":"40.00","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"40.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${stageExitActionId}',
+          'purchase-stage-exit', '${ownerId}'
+        )
+      )
+      select investments.complete_share_purchase_v1(
+        '${stageExitRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(stageExitResult.actionId, stageExitActionId);
+    const archiveGenerationAfterStageExitWrite = Number(scalar(
+      containerName,
+      String.raw`
+        select generation from public.company_archive_source_generations
+        where company_id = '${companyId}' and income_year = 2026;
+      `,
+    ));
+    assert.ok(
+      archiveGenerationAfterStageExitWrite > archiveGenerationBeforeStageExitWrite,
+      "canonical investment writes must invalidate an earlier archive generation",
+    );
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from investments.share_purchases
+          where action_id = '${stageExitActionId}'
+            and accounting_entry_id is not null)::text || ':' ||
+        (select count(*) from public.holding_actions
+          where id = '${stageExitActionId}')::text || ':' ||
+        (select count(*) from public.audit_events
+          where company_id = '${companyId}'
+            and action = 'share_purchase_recorded'
+            and message like '%Second AS%')::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "1:0:2:true");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsStageExitMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('public.investment_positions') is not null)::text || ':' ||
+        (select count(*) from public.investment_positions)::text || ':' ||
+        (select count(*) from public.investment_lots)::text || ':' ||
+        (select count(*) from public.investment_lot_allocations)::text || ':' ||
+        (select count(*) from public.holding_actions
+          where id = '${stageExitActionId}' and action_type = 'share_purchase')::text;
+    `), "true:4:5:2:1");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsStageExitMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('public.investment_positions') is null)::text || ':' ||
+        (pg_catalog.to_regclass('public.investment_lots') is null)::text || ':' ||
+        (pg_catalog.to_regclass('public.investment_lot_allocations') is null)::text || ':' ||
+        (select count(*) from public.holding_actions
+          where action_type in ('share_purchase', 'share_sale', 'dividend_received'))::text;
+    `), "true:true:true:0");
   } finally {
     docker(["rm", "--force", containerName]);
   }

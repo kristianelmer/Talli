@@ -750,7 +750,7 @@ class PostBankSuggestionOutcomeCommand(LedgerCommand):
 
 
 @dataclass(frozen=True, slots=True)
-class PostInvestmentDividendCommand(LedgerCommand):
+class PostReceivedDividendCommand(LedgerCommand):
     action_id: LedgerSourceRecordId
     paying_company_name: str
     gross_amount: Money
@@ -1746,8 +1746,8 @@ class LedgerCommands(Protocol):
         self, command: PostBankSuggestionOutcomeCommand
     ) -> PostedLedgerEntry: ...
 
-    async def post_investment_dividend(
-        self, command: PostInvestmentDividendCommand
+    async def post_received_dividend(
+        self, command: PostReceivedDividendCommand
     ) -> PostedLedgerEntry: ...
 
     async def post_investment_purchase(
@@ -1923,7 +1923,7 @@ __all__ = [
     "PeriodLockPage",
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
-    "PostInvestmentDividendCommand",
+    "PostReceivedDividendCommand",
     "PostInvestmentPurchaseCommand",
     "PostInvestmentSaleCommand",
     "PostManualJournalCommand",

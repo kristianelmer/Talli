@@ -11,13 +11,17 @@ from talli_backend.application.investments_session import (
 from talli_backend.modules.investments.public import (
     AcquisitionLotPage,
     InvestmentCursor,
+    InvestmentActivityPage,
     InvestmentPositionPage,
+    ShareSaleAllocationPage,
     AccountingEntryReference,
     InvestmentsError,
+    RecordReceivedDividendCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
     RecordedSharePurchase,
     RecordedShareSale,
+    RecordedReceivedDividend,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
@@ -26,6 +30,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
+    PostReceivedDividendCommand,
 )
 from talli_backend.shared.kernel import CompanyId, CorrelationId
 
@@ -72,6 +77,37 @@ class InvestmentsSession:
                 )
             )
             return await investments.complete_share_purchase(
+                command,
+                prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def record_received_dividend(
+        self, command: RecordReceivedDividendCommand
+    ) -> RecordedReceivedDividend:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_received_dividend_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_received_dividend(command)
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).post_received_dividend(
+                PostReceivedDividendCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=LedgerSourceRecordId(str(command.action_id)),
+                    paying_company_name=prepared.paying_company_name,
+                    gross_amount=command.gross_amount,
+                )
+            )
+            return await investments.complete_received_dividend(
                 command,
                 prepared=prepared,
                 accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
@@ -124,6 +160,22 @@ class InvestmentsSession:
             limit=limit,
         )
 
+    async def list_activity(
+        self,
+        *,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentActivityPage:
+        return await self._persistence.list_activity(
+            actor_id=self.actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            cursor=cursor,
+            limit=limit,
+        )
+
     async def list_acquisition_lots(
         self,
         *,
@@ -133,6 +185,22 @@ class InvestmentsSession:
         limit: int,
     ) -> AcquisitionLotPage:
         return await self._persistence.list_acquisition_lots(
+            actor_id=self.actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            cursor=cursor,
+            limit=limit,
+        )
+
+    async def list_share_sale_allocations(
+        self,
+        *,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> ShareSaleAllocationPage:
+        return await self._persistence.list_share_sale_allocations(
             actor_id=self.actor_id,
             company_ids=company_ids,
             correlation_id=correlation_id,

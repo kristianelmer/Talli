@@ -14,13 +14,13 @@ import type {
   FilingReviewCommentRow,
   FilingSubmissionRow,
   HoldingActionRow,
-  InvestmentLotAllocationRow,
   OpeningBalanceSetupRow,
   OpeningShareholderRow,
 } from "./supabase/server";
 import type {
   AcquisitionLotPresentation as InvestmentLotRow,
   InvestmentPositionPresentation as InvestmentPositionRow,
+  ShareSaleAllocationPresentation,
 } from "../../features/investments";
 
 export type LedgerEntryRow = {
@@ -61,7 +61,7 @@ export function buildPersistedCompanyArchive(input: {
   holdingActions?: HoldingActionRow[];
   investmentPositions?: InvestmentPositionRow[];
   investmentLots?: InvestmentLotRow[];
-  investmentLotAllocations?: InvestmentLotAllocationRow[];
+  investmentLotAllocations?: ShareSaleAllocationPresentation[];
   bankSuggestionAcceptances?: BankSuggestionAcceptanceRow[];
   billingAccounts?: BillingAccountRow[];
   authorityPermissions?: AuthorityPermissionRow[];

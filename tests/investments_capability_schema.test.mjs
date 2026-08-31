@@ -30,6 +30,26 @@ const saleRollbackPath = new URL(
   "../supabase/rollback/20260831170000_investments_share_sale_contract.sql",
   import.meta.url,
 );
+const dividendWorkflowPath = new URL(
+  "../supabase/migrations/20260831182000_investments_received_dividend_workflow.sql",
+  import.meta.url,
+);
+const dividendContractPath = new URL(
+  "../supabase/contract-migrations/20260831190000_investments_received_dividend_contract.sql",
+  import.meta.url,
+);
+const dividendRollbackPath = new URL(
+  "../supabase/rollback/20260831190000_investments_received_dividend_contract.sql",
+  import.meta.url,
+);
+const allocationIdentityPath = new URL(
+  "../supabase/migrations/20260831180000_investments_allocation_identity.sql",
+  import.meta.url,
+);
+const stageExitPath = new URL(
+  "../supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -187,4 +207,111 @@ test("sale rollback is non-destructive and recutover-safe", () => {
   assert.match(source, /investments_sale_rollback_sale_reconciliation_failed/iu);
   assert.match(source, /investments_sale_rollback_allocation_reconciliation_failed/iu);
   assert.doesNotMatch(source, /record_share_sale_fifo/iu);
+});
+
+test("received-dividend workflow owns policy persistence behind restricted functions", () => {
+  const source = artifact(dividendWorkflowPath, "received-dividend workflow");
+  assert.match(source, /create table investments\.received_dividends/iu);
+  assert.match(source, /alter table investments\.received_dividends force row level security/iu);
+  for (const routine of [
+    "received_dividend_fingerprint_v1",
+    "get_received_dividend_replay_v1",
+    "prepare_received_dividend_v1",
+    "complete_received_dividend_v1",
+  ]) {
+    assert.match(source, new RegExp(`function investments\\.${routine}`, "iu"));
+  }
+  assert.match(source, /sync_legacy_received_dividend_v1/iu);
+  assert.match(source, /mirror_received_dividend_to_legacy_v1/iu);
+  assert.match(source, /investment_dividend_entry_matches_v1/iu);
+  assert.match(source, /grant execute on function[\s\S]+investments\.prepare_received_dividend_v1/iu);
+  assert.doesNotMatch(source, /grant[^;]+investments\.received_dividends[^;]+(?:anon|authenticated|service_role)/iu);
+  assert.doesNotMatch(source, /drop function backend_system\.(?:prepare|complete)_investment_dividend_v1/iu);
+});
+
+test("received-dividend contract reconciles before predecessor removal", () => {
+  const source = artifact(dividendContractPath, "received-dividend contract");
+  assert.match(source, /CONTRACT RELEASE ARTIFACT:.*#143/iu);
+  assert.match(source, /investments_dividend_contract_reconciliation_failed/iu);
+  assert.match(source, /investments_dividend_contract_position_binding_failed/iu);
+  assert.match(source, /investments_dividend_contract_ledger_binding_failed/iu);
+  assert.match(source, /rename to rollback_143_prepare_investment_dividend_v1/iu);
+  assert.match(source, /rename to rollback_143_complete_investment_dividend_v1/iu);
+  const reconcileAt = source.search(/investments_dividend_contract_reconciliation_failed/iu);
+  const capsuleAt = source.search(/rename to rollback_143_prepare_investment_dividend_v1/iu);
+  assert.ok(reconcileAt >= 0 && capsuleAt > reconcileAt);
+});
+
+test("received-dividend rollback is non-destructive and recutover-safe", () => {
+  const source = artifact(dividendRollbackPath, "received-dividend rollback");
+  assert.match(source, /BOUNDED ROLLBACK ARTIFACT:.*#143/iu);
+  assert.doesNotMatch(source, /drop table|truncate/iu);
+  const disableAt = source.search(
+    /revoke execute on function investments\.get_received_dividend_replay_v1/iu,
+  );
+  const restoreAt = source.search(/rename to prepare_investment_dividend_v1/iu);
+  assert.ok(disableAt >= 0 && restoreAt > disableAt);
+  assert.match(source, /investments_dividend_rollback_reconciliation_failed/iu);
+});
+
+test("allocation identities remain stable across the overlap window", () => {
+  const source = artifact(allocationIdentityPath, "allocation identity");
+  assert.match(source, /alter table investments\.share_sale_allocations add column id uuid/iu);
+  assert.match(source, /set id = legacy\.id/iu);
+  assert.match(source, /investments_allocation_identity_reconciliation_failed/iu);
+  assert.match(source, /add constraint investments_share_sale_allocations_id_key unique \(id\)/iu);
+  assert.match(source, /align_legacy_share_sale_allocation_id_v1/iu);
+});
+
+test("complete stage exit reconciles before deleting every investment predecessor", () => {
+  const source = artifact(stageExitPath, "complete stage exit");
+  assert.match(source, /CONTRACT RELEASE ARTIFACT: complete investments stage exit, issue #143/iu);
+  for (const failure of [
+    "position_reconciliation_failed",
+    "lot_reconciliation_failed",
+    "allocation_reconciliation_failed",
+    "activity_reconciliation_failed",
+    "activity_count_failed",
+  ]) {
+    assert.match(source, new RegExp(`investments_stage_exit_${failure}`, "iu"));
+  }
+  const reconcileAt = source.search(/investments_stage_exit_position_reconciliation_failed/iu);
+  const deleteAt = source.search(/delete from public\.holding_actions/iu);
+  assert.ok(reconcileAt >= 0 && deleteAt > reconcileAt);
+  for (const table of [
+    "investment_lot_allocations",
+    "investment_lots",
+    "investment_positions",
+  ]) {
+    assert.match(source, new RegExp(`drop table if exists public\\.${table}`, "iu"));
+  }
+  assert.match(source, /drop function if exists backend_system\.rollback_141_/iu);
+  assert.match(source, /drop function if exists backend_system\.rollback_142_/iu);
+  assert.match(source, /drop function if exists backend_system\.rollback_143_/iu);
+  assert.match(source, /drop function if exists backend_system\.sync_legacy_/iu);
+  assert.match(source, /drop function if exists backend_system\.mirror_investment_/iu);
+  assert.match(source, /drop function if exists backend_system\.mirror_received_dividend_/iu);
+  assert.doesNotMatch(source, /drop table investments\./iu);
+});
+
+test("complete stage exit binds canonical investment writes to archive freshness", () => {
+  const source = artifact(stageExitPath, "complete stage exit");
+  const scopes = [
+    ["positions", "company"],
+    ["acquisition_lots", "company"],
+    ["share_purchases", "year"],
+    ["share_sales", "year"],
+    ["share_sale_allocations", "company"],
+    ["received_dividends", "year"],
+  ];
+
+  for (const [table, scope] of scopes) {
+    assert.match(
+      source,
+      new RegExp(
+        `before insert or update or delete on investments\\.${table} for each row\\s+execute function public\\.company_archive_track_source_write_v1\\('${scope}', 'company_id'\\)`,
+        "iu",
+      ),
+    );
+  }
 });

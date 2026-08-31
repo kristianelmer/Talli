@@ -53,7 +53,6 @@ from talli_backend.modules.ledger.public import (
     PeriodLockPage,
     PostAdministrativeCostCommand,
     PostedLedgerEntry,
-    PostInvestmentDividendCommand,
     PostManualJournalCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
@@ -96,20 +95,6 @@ class RecordAdministrativeCostCommand(LedgerCommand):
     amount: Money
     paid_date: LocalDate
     document_id: LedgerSourceRecordId | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class RecordInvestmentDividendCommand(LedgerCommand):
-    action_id: LedgerSourceRecordId
-    paying_company_name: str
-    declared_date: LocalDate
-    paid_date: LocalDate
-    gross_amount: Money
-    linked_investment_id: LedgerSourceRecordId | None
-    tax_treatment: str
-    bank_transaction_id: LedgerSourceRecordId | None
-    document_id: LedgerSourceRecordId | None
-    document_status: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -607,35 +592,6 @@ class LedgerApplicationSession:
                 replayed=False,
             )
 
-    async def record_investment_dividend(
-        self, command: RecordInvestmentDividendCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_investment_dividend(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(replay, command, LedgerEntryKind.DIVIDEND_RECEIVED)
-            posted = await self._facade_factory(transaction).post_investment_dividend(
-                PostInvestmentDividendCommand(
-                    company_id=command.company_id,
-                    actor_id=command.actor_id,
-                    correlation_id=command.correlation_id,
-                    idempotency_key=command.idempotency_key,
-                    income_year=command.income_year,
-                    action_id=command.action_id,
-                    paying_company_name=command.paying_company_name,
-                    gross_amount=command.gross_amount,
-                )
-            )
-            result = await transaction.complete_investment_dividend(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def record_shareholder_loan(
         self, command: RecordShareholderLoanCommand
     ) -> LedgerWriterResult:
@@ -952,7 +908,6 @@ __all__ = [
     "NewYearStartCommand",
     "NewYearStartResult",
     "RecordAdministrativeCostCommand",
-    "RecordInvestmentDividendCommand",
     "RecordOwnerDividendPaymentCommand",
     "RecordShareholderLoanCommand",
     "RecordTaxSettlementCommand",

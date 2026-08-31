@@ -5,6 +5,16 @@ import {
   presentLedgerEntriesForArchive,
 } from "../../../../../features/ledger";
 import {
+  loadInvestmentAcquisitionLots,
+  loadInvestmentActivity,
+  loadInvestmentPositions,
+  loadInvestmentShareSaleAllocations,
+  presentAcquisitionLots,
+  presentInvestmentActivity,
+  presentInvestmentPositions,
+  presentShareSaleAllocations,
+} from "../../../../../features/investments";
+import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
 } from "../../../../lib/archive";
@@ -45,6 +55,64 @@ async function loadArchiveLedgerEntries(
     };
   } catch {
     return { data: null, error: new Error("Ledger archive source unavailable.") };
+  }
+}
+
+async function loadArchiveInvestments(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+) {
+  try {
+    const [activity, positions, lots, allocations] = await Promise.all([
+      loadInvestmentActivity(accessToken, [companyId]),
+      loadInvestmentPositions(accessToken, [companyId]),
+      loadInvestmentAcquisitionLots(accessToken, [companyId]),
+      loadInvestmentShareSaleAllocations(accessToken, [companyId]),
+    ]);
+    const presentedActivity = presentInvestmentActivity(activity).map((item) => {
+      if (item.action_type !== "share_sale") return item;
+      return {
+        ...item,
+        payload: {
+          ...item.payload,
+          lot_allocations: allocations
+            .filter((allocation) => allocation.saleActionId === item.id)
+            .sort((left, right) => left.allocationOrder - right.allocationOrder)
+            .map((allocation) => ({
+              lot_id: allocation.lotId,
+              acquisition_date: allocation.acquisitionDate,
+              share_count: allocation.allocatedShareCount,
+              cost_basis: Number(allocation.allocatedCostBasis.amount),
+            })),
+        },
+      };
+    });
+    const presentedPositions = presentInvestmentPositions(positions);
+    const presentedLots = presentAcquisitionLots(lots);
+    const presentedAllocations = presentShareSaleAllocations(allocations);
+    const allRecords = [
+      ...presentedActivity,
+      ...presentedPositions,
+      ...presentedLots,
+      ...presentedAllocations,
+    ];
+    if (allRecords.some((record) => record.company_id !== companyId)) {
+      throw new Error("Investments query escaped the authorized company scope.");
+    }
+    return {
+      data: {
+        holdingActions: presentedActivity.filter(
+          (activityItem) => activityItem.income_year === incomeYear,
+        ),
+        positions: presentedPositions,
+        lots: presentedLots,
+        allocations: presentedAllocations,
+      },
+      error: null,
+    };
+  } catch {
+    return { data: null, error: new Error("Investments archive source unavailable.") };
   }
 }
 
@@ -158,18 +226,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .from("audit_events")
         .select("id, company_id, actor_id, category, action, message, created_at")
         .eq("company_id", companyId),
-      supabase
-        .from("investment_positions")
-        .select("id, company_id, investment_key, name, kind, tax_treatment, org_number, share_count, cost_basis, lot_history_status, movements, created_by, created_at, updated_at")
-        .eq("company_id", companyId),
-      supabase
-        .from("investment_lots")
-        .select("id, company_id, position_id, acquisition_action_id, acquisition_date, original_share_count, remaining_share_count, original_cost_basis, remaining_cost_basis, created_by, created_at")
-        .eq("company_id", companyId),
-      supabase
-        .from("investment_lot_allocations")
-        .select("id, company_id, position_id, lot_id, sale_action_id, allocated_share_count, allocated_cost_basis, created_by, created_at")
-        .eq("company_id", companyId),
+      loadArchiveInvestments(accessToken, companyId, incomeYear),
       supabase
         .from("bank_suggestion_acceptances")
         .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
@@ -206,8 +263,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   const [
     { data: setups }, { data: ledgerEntries }, { data: documents }, { data: previews },
     { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
-    { data: reviewComments }, { data: auditEvents }, { data: investmentPositions },
-    { data: investmentLots }, { data: investmentLotAllocations }, { data: bankSuggestionAcceptances },
+    { data: reviewComments }, { data: auditEvents }, { data: investments },
+    { data: bankSuggestionAcceptances },
     { data: corporateDecisions }, { data: corporateDocumentSets }, { data: corporateDocumentArtifacts },
     { data: corporateDocumentEvents }, { data: corporateDecisionFinalizations },
   ] = sourceResults;
@@ -230,10 +287,15 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     shareholders: shareholders ?? [],
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
-    holdingActions: holdingActions ?? [],
-    investmentPositions: investmentPositions ?? [],
-    investmentLots: investmentLots ?? [],
-    investmentLotAllocations: investmentLotAllocations ?? [],
+    holdingActions: [
+      ...(holdingActions ?? []).filter(
+        (action) => !["share_purchase", "share_sale", "dividend_received"].includes(action.action_type),
+      ),
+      ...(investments?.holdingActions ?? []),
+    ],
+    investmentPositions: investments?.positions ?? [],
+    investmentLots: investments?.lots ?? [],
+    investmentLotAllocations: investments?.allocations ?? [],
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
     authorityPermissions: authorityPermissions ?? [],

@@ -60,7 +60,6 @@ import {
 } from "../../lib/authority-permission";
 import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from "../../lib/launch-signoff";
 import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel, defaultReminderPreferences } from "../../lib/deadlines";
-import { summarizeDividendReceivedAnnualImpact } from "../../lib/dividend-received";
 import {
   deriveOpenDividendPayable,
   validateOwnerDividendPaymentInput,
@@ -83,7 +82,6 @@ import {
   listFilingReadinessSnapshots,
   listFilingReviewComments,
   listFilingSubmissions,
-  listHoldingActions,
   listLaunchSignoffs,
   listLedgerEntries,
   listNotificationOutbox,
@@ -1778,8 +1776,17 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="payingCompanyName" required />
                   </label>
                   <label>
-                    Investering-ID
-                    <input name="linkedInvestmentId" placeholder="Velg samme ID som investeringen" required />
+                    Investering
+                    <select name="positionId" defaultValue="" required>
+                      <option value="" disabled>Velg investering</option>
+                      {positions
+                        .filter((position) => position.company_id === primaryCompanyId)
+                        .map((position) => (
+                          <option key={position.id} value={position.id}>
+                            {position.name}
+                          </option>
+                        ))}
+                    </select>
                   </label>
                   <label>
                     Vedtaksdato
@@ -1793,46 +1800,9 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Brutto beløp
                     <input name="grossAmount" inputMode="decimal" placeholder="0" required />
                   </label>
-                  <label>
-                    Skattebehandling
-                    <select name="taxTreatment" defaultValue="fritaksmetoden">
-                      <option value="fritaksmetoden">Fritaksmetoden</option>
-                      <option value="outside_fritaksmetoden">Utenfor fritaksmetoden</option>
-                      <option value="needs_accountant">Må vurderes</option>
-                    </select>
-                  </label>
-                  <label>
-                    Banktransaksjon
-                    <select name="bankTransactionId" defaultValue="">
-                      <option value="">Ingen bankmatch</option>
-                      {unmatchedTransactions
-                        .filter((transaction) => Number(transaction.amount) > 0)
-                        .map((transaction) => (
-                          <option key={transaction.id} value={transaction.id}>
-                            {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    Bilag
-                    <select name="documentId" defaultValue="">
-                      <option value="">Ingen bilagskobling</option>
-                      {documents.map((document) => (
-                        <option key={document.id} value={document.id}>
-                          {document.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="not_required">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
-                  </label>
+                  <p className="fieldHint">
+                    Fritaksmetoden og tre prosent skattepliktig inntekt beregnes av investeringstjenesten.
+                  </p>
                   <button className="secondaryButton" type="submit">
                     Poster mottatt utbytte
                   </button>

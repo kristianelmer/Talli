@@ -62,7 +62,7 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostBankSuggestionOutcomeCommand,
     PostedLedgerEntry,
-    PostInvestmentDividendCommand,
+    PostReceivedDividendCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
     PostManualJournalCommand,
@@ -1686,8 +1686,8 @@ class LedgerService:
             source_record_id=command.acceptance_id,
         )
 
-    async def post_investment_dividend(
-        self, command: PostInvestmentDividendCommand
+    async def post_received_dividend(
+        self, command: PostReceivedDividendCommand
     ) -> PostedLedgerEntry:
         _positive(command.gross_amount, "LEDGER_INVALID_INPUT")
         lines = (

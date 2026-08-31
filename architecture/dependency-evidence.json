@@ -41,7 +41,7 @@
       "to": "backend:company_access"
     },
     {
-      "from": "backend-system:investment-share-purchase",
+      "from": "backend-system:investment-activity",
       "imports": [
         "talli_backend.modules.investments.public"
       ],
@@ -49,7 +49,7 @@
       "to": "backend:investments"
     },
     {
-      "from": "backend-system:investment-share-purchase",
+      "from": "backend-system:investment-activity",
       "imports": [
         "talli_backend.modules.ledger.public"
       ],

@@ -93,6 +93,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         execute pg_catalog.format(
           'grant banking_store_owner to %I', current_user
         );
+        execute pg_catalog.format(
+          'grant investments_store_owner to %I', current_user
+        );
       end
       $browser_owner_cleanup_authority$`);
     const bankingTables = [
@@ -168,6 +171,27 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       );
     }
     await database.query("reset role");
+    const investmentTables = [
+      "share_sale_allocations",
+      "received_dividends",
+      "share_sales",
+      "share_purchases",
+      "acquisition_lots",
+      "positions",
+    ];
+    await database.query("set local role investments_store_owner");
+    for (const table of investmentTables) {
+      await database.query(
+        `alter table investments.${table} no force row level security`,
+      );
+      await database.query(`delete from investments.${table} where company_id = $1`, [
+        companyId,
+      ]);
+      await database.query(
+        `alter table investments.${table} force row level security`,
+      );
+    }
+    await database.query("reset role");
     await database.query("set local role ledger_workflow_store_owner");
     await database.query(
       "alter table backend_system.ledger_workflow_receipts no force row level security",
@@ -190,6 +214,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         );
         execute pg_catalog.format(
           'revoke banking_store_owner from %I', current_user
+        );
+        execute pg_catalog.format(
+          'revoke investments_store_owner from %I', current_user
         );
       end
       $browser_owner_cleanup_authority$`);
@@ -238,6 +265,17 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "company_archive_export_attempts",
       "company_archive_source_generations",
     ]) {
+      if ([
+        "investment_lot_allocations",
+        "investment_lots",
+        "investment_positions",
+      ].includes(table)) {
+        const legacyTable = await database.query(
+          "select pg_catalog.to_regclass($1) is not null as present",
+          [`public.${table}`],
+        );
+        if (legacyTable?.rows?.[0]?.present === false) continue;
+      }
       await database.query(`delete from public.${table} where company_id = $1`, [
         companyId,
       ]);

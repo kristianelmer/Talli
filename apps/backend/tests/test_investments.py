@@ -16,8 +16,10 @@ from talli_backend.modules.investments.public import (
     InvestmentPositionId,
     InvestmentSourceReference,
     InvestmentTaxTreatment,
+    PreparedReceivedDividend,
     PreparedSharePurchase,
     PreparedShareSale,
+    RecordReceivedDividendCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
 )
@@ -37,10 +39,10 @@ from talli_backend.shared.kernel import (
 
 class InvestmentsPersistenceStub:
     def __init__(
-        self, prepared: PreparedSharePurchase | PreparedShareSale
+        self, prepared: PreparedSharePurchase | PreparedShareSale | PreparedReceivedDividend
     ) -> None:
         self.prepared = prepared
-        self.command: RecordSharePurchaseCommand | RecordShareSaleCommand | None = None
+        self.command: RecordSharePurchaseCommand | RecordShareSaleCommand | RecordReceivedDividendCommand | None = None
 
     async def prepare_share_purchase(
         self, command: RecordSharePurchaseCommand
@@ -54,6 +56,17 @@ class InvestmentsPersistenceStub:
     ) -> PreparedShareSale:
         self.command = command
         assert isinstance(self.prepared, PreparedShareSale)
+        return self.prepared
+
+    async def prepare_received_dividend(
+        self,
+        command: RecordReceivedDividendCommand,
+        *,
+        taxable_add_back: Money,
+    ) -> PreparedReceivedDividend:
+        self.command = command
+        assert isinstance(self.prepared, PreparedReceivedDividend)
+        assert taxable_add_back == Money.nok("3.77")
         return self.prepared
 
 
@@ -103,6 +116,96 @@ def supported_sale() -> RecordShareSaleCommand:
         document_id=None,
         document_status=InvestmentDocumentStatus.NOT_REQUIRED,
     )
+
+
+def supported_received_dividend() -> RecordReceivedDividendCommand:
+    return RecordReceivedDividendCommand(
+        company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+        actor_id=ActorId(
+            ActorKind.USER,
+            UserId("20000000-0000-0000-0000-000000000002"),
+        ),
+        correlation_id=CorrelationId("investments-supported-dividend"),
+        idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000023"),
+        income_year=IncomeYear(2026),
+        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000024"),
+        position_id=InvestmentPositionId(
+            "50000000-0000-0000-0000-000000000025"
+        ),
+        paying_company_name="  Example AS  ",
+        declared_date=LocalDate(date(2026, 4, 1)),
+        paid_date=LocalDate(date(2026, 4, 15)),
+        gross_amount=Money.nok("125.50"),
+        tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
+        bank_transaction_id=None,
+        document_id=None,
+        document_status=InvestmentDocumentStatus.NOT_REQUIRED,
+    )
+
+
+def test_supported_received_dividend_is_normalized_and_taxed_by_investments() -> None:
+    prepared = PreparedReceivedDividend(
+        position_id=supported_received_dividend().position_id,
+        investment_name="Example AS",
+        paying_company_name="Example AS",
+        taxable_add_back=Money.nok("3.77"),
+    )
+    persistence = InvestmentsPersistenceStub(prepared)
+
+    result = asyncio.run(
+        InvestmentsService(persistence).prepare_received_dividend(
+            supported_received_dividend()
+        )
+    )
+
+    assert result == prepared
+    assert persistence.command is not None
+    assert persistence.command.paying_company_name == "Example AS"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"paying_company_name": "  "},
+        {"gross_amount": Money.nok("0")},
+        {"declared_date": LocalDate(date(2025, 12, 31))},
+        {"paid_date": LocalDate(date(2025, 12, 31))},
+        {"tax_treatment": "outside_fritaksmetoden"},
+        {"document_status": "unknown"},
+        {"document_status": InvestmentDocumentStatus.ATTACHED},
+        {
+            "bank_transaction_id": InvestmentSourceReference(
+                "70000000-0000-0000-0000-000000000007"
+            )
+        },
+        {
+            "document_id": InvestmentSourceReference(
+                "80000000-0000-0000-0000-000000000008"
+            )
+        },
+    ],
+)
+def test_invalid_received_dividend_facts_fail_before_persistence(
+    changes: dict[str, object],
+) -> None:
+    persistence = InvestmentsPersistenceStub(
+        PreparedReceivedDividend(
+            position_id=supported_received_dividend().position_id,
+            investment_name="Example AS",
+            paying_company_name="Example AS",
+            taxable_add_back=Money.nok("3.77"),
+        )
+    )
+
+    with pytest.raises(InvestmentsError) as failure:
+        asyncio.run(
+            InvestmentsService(persistence).prepare_received_dividend(
+                replace(supported_received_dividend(), **changes)
+            )
+        )
+
+    assert failure.value.code == InvestmentsErrorCode.INVALID_INPUT.value
+    assert persistence.command is None
 
 
 def test_supported_share_sale_is_prepared_through_investments_interface() -> None:

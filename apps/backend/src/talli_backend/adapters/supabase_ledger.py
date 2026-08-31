@@ -26,7 +26,6 @@ from talli_backend.application.ledger_workflow import (
     LedgerSessionFactory,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordInvestmentDividendCommand,
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
@@ -372,19 +371,6 @@ def _writer_payload(command: LedgerCommand) -> dict[str, object]:
             amount=format(command.amount.amount, "f"),
             paidDate=command.paid_date.value.isoformat(),
             documentId=_optional_source(command.document_id),
-        )
-    elif isinstance(command, RecordInvestmentDividendCommand):
-        payload.update(
-            actionId=str(command.action_id),
-            payingCompanyName=command.paying_company_name,
-            declaredDate=command.declared_date.value.isoformat(),
-            paidDate=command.paid_date.value.isoformat(),
-            grossAmount=format(command.gross_amount.amount, "f"),
-            linkedInvestmentId=_optional_source(command.linked_investment_id),
-            taxTreatment=command.tax_treatment,
-            bankTransactionId=_optional_source(command.bank_transaction_id),
-            documentId=_optional_source(command.document_id),
-            documentStatus=command.document_status,
         )
     elif isinstance(command, RecordShareholderLoanCommand):
         direction = {
@@ -2309,29 +2295,6 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
         typed = self._writer_command(command, RecordAdministrativeCostCommand)
         return await self._complete_writer(
             "select backend_system.complete_administrative_cost_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
-            typed,
-            posted_entry,
-            prepared,
-        )
-
-    async def prepare_investment_dividend(
-        self, command: object
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, RecordInvestmentDividendCommand)
-        return await self._prepare_writer(
-            "select backend_system.prepare_investment_dividend_v1(%s::jsonb, %s::text) as result",
-            typed,
-        )
-
-    async def complete_investment_dividend(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry,
-        prepared: dict[str, object],
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, RecordInvestmentDividendCommand)
-        return await self._complete_writer(
-            "select backend_system.complete_investment_dividend_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
             typed,
             posted_entry,
             prepared,

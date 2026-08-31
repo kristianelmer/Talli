@@ -1,18 +1,13 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { recordDividendReceived } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
-import {
-  dividendReceivedLedgerLines,
-  validateDividendReceived,
-} from "../../../lib/dividend-received";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
-import { DocStatusSelect, SelectField, TextField } from "./fields";
+import { SelectField, TextField } from "./fields";
 
-export type DividendInvestment = { investment_key: string; name: string };
+export type DividendInvestment = { id: string; name: string };
 
 type Props = {
   companyId: string;
@@ -29,69 +24,18 @@ export function DividendReceivedWizard({
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.dividendReceived;
-
-  const [linkedInvestmentId, setLinkedInvestmentId] = useState("");
+  const [positionId, setPositionId] = useState("");
   const [payingCompanyName, setPayingCompanyName] = useState("");
   const [declaredDate, setDeclaredDate] = useState("");
   const [paidDate, setPaidDate] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
-  const [treatment, setTreatment] = useState("fritaksmetoden");
-  const [documentStatus, setDocumentStatus] = useState("attached");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
-
   const ready =
-    linkedInvestmentId.trim() !== "" &&
+    positionId.trim() !== "" &&
     payingCompanyName.trim() !== "" &&
     declaredDate.trim() !== "" &&
     paidDate.trim() !== "" &&
     grossAmount.trim() !== "";
-
-  const preview = useMemo<{
-    block: string | null;
-    lines: LedgerLine[] | null;
-    summary: ReactNode;
-  }>(() => {
-    if (!ready) return { block: null, lines: null, summary: null };
-    try {
-      const payload = validateDividendReceived({
-        payingCompanyName,
-        declaredDate,
-        paidDate,
-        grossAmount: Number(grossAmount),
-        linkedInvestmentId,
-        taxTreatment: treatment as
-          | "fritaksmetoden"
-          | "outside_fritaksmetoden"
-          | "needs_accountant",
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-      });
-      return {
-        block: null,
-        lines: dividendReceivedLedgerLines(payload),
-        summary: c.addBackNote(payload.taxable_add_back),
-      };
-    } catch (error) {
-      return {
-        block:
-          error instanceof Error ? error.message : "Ugyldig mottatt utbytte",
-        lines: null,
-        summary: null,
-      };
-    }
-  }, [
-    ready,
-    payingCompanyName,
-    declaredDate,
-    paidDate,
-    grossAmount,
-    linkedInvestmentId,
-    treatment,
-    documentStatus,
-    c,
-  ]);
 
   if (investments.length === 0) {
     return <Banner variant="info">{c.noInvestments}</Banner>;
@@ -103,19 +47,21 @@ export function DividendReceivedWizard({
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
+      <input type="hidden" name="taxTreatment" value="fritaksmetoden" />
+      <input type="hidden" name="documentStatus" value="not_required" />
 
       <SelectField
         label={c.investmentLabel}
-        name="linkedInvestmentId"
-        value={linkedInvestmentId}
-        onChange={setLinkedInvestmentId}
+        name="positionId"
+        value={positionId}
+        onChange={setPositionId}
         required
       >
         <option value="" disabled>
           {c.investmentPlaceholder}
         </option>
         {investments.map((investment) => (
-          <option key={investment.investment_key} value={investment.investment_key}>
+          <option key={investment.id} value={investment.id}>
             {investment.name}
           </option>
         ))}
@@ -147,36 +93,18 @@ export function DividendReceivedWizard({
           required
         />
       </div>
-      <div className="fieldRow">
-        <TextField
-          label={c.amountLabel}
-          name="grossAmount"
-          value={grossAmount}
-          onChange={setGrossAmount}
-          inputMode="decimal"
-          required
-        />
-        <SelectField
-          label={a.taxTreatment.label}
-          name="taxTreatment"
-          value={treatment}
-          onChange={setTreatment}
-          required
-        >
-          <option value="fritaksmetoden">{a.taxTreatment.fritak}</option>
-          <option value="outside_fritaksmetoden">{a.taxTreatment.outside}</option>
-          <option value="needs_accountant">{a.taxTreatment.needsAccountant}</option>
-        </SelectField>
-      </div>
-      <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
-
-      <ActionPreview
-        block={preview.block}
-        lines={preview.lines}
-        summary={preview.summary}
+      <TextField
+        label={c.amountLabel}
+        name="grossAmount"
+        value={grossAmount}
+        onChange={setGrossAmount}
+        inputMode="decimal"
+        required
       />
 
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <Banner variant="info">{c.policyNote}</Banner>
+
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

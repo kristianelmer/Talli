@@ -1863,7 +1863,6 @@ test("the immutable frozen inventory remains exact while the active registry is 
     ["compat-banking-persistence", ["banking", "#140", 10]],
     ["compat-investment-purchase-persistence", ["investments", "#141", 3]],
     ["compat-investment-sale-persistence", ["investments", "#142", 4]],
-    ["compat-investment-stage-exit-persistence", ["investments", "#143", 2]],
     ["compat-documents-persistence", ["documents", "#147", 15]],
     ["compat-owner-dividend-persistence", ["corporate_governance", "#144", 2]],
     ["compat-shareholder-loan-persistence", ["corporate_governance", "#145", 1]],

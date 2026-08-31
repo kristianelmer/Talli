@@ -774,21 +774,6 @@ export interface LedgerLockPeriodWire {
   reason: string;
 }
 
-export interface LedgerInvestmentDividendWire {
-  actionId: string;
-  bankTransactionId?: string | null;
-  companyId: string;
-  declaredDate: string;
-  documentId?: string | null;
-  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
-  grossAmount: LedgerMoneyWire;
-  incomeYear: number;
-  linkedInvestmentId?: string | null;
-  paidDate: string;
-  payingCompanyName: string;
-  taxTreatment: "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant";
-}
-
 export interface LedgerManualJournalWire {
   companyId: string;
   incomeYear: number;
@@ -1052,6 +1037,46 @@ export type ReconstructionState = "BLOCKED" | "READY";
 
 export type TaxSettlementKind = "payable" | "payment" | "refund";
 
+export type InvestmentActivityKind = "share_purchase" | "share_sale" | "dividend_received";
+
+export interface InvestmentActivityPageWire {
+  items: InvestmentActivityWire[];
+  page: InvestmentsPageWire;
+}
+
+export interface InvestmentActivityWire {
+  accountingEntryId: string | null;
+  acquisitionLotId: string | null;
+  actionDate: string;
+  activityKind: InvestmentActivityKind;
+  bankTransactionId: string | null;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  declaredDate: string | null;
+  documentId: string | null;
+  documentStatus: InvestmentDocumentStatus;
+  fifoCostBasisReduction: LedgerMoneyWire | null;
+  gainOrLoss: LedgerMoneyWire | null;
+  grossAmount: LedgerMoneyWire | null;
+  id: string;
+  incomeYear: number;
+  investmentKey: string;
+  investmentKind: InvestmentKind;
+  investmentName: string;
+  orgNumber: string | null;
+  payingCompanyName: string | null;
+  positionId: string;
+  proceeds: LedgerMoneyWire | null;
+  purchaseAmount: LedgerMoneyWire | null;
+  remainingCostBasis: LedgerMoneyWire | null;
+  remainingShareCount: number | null;
+  shareCount: number | null;
+  soldShareCount: number | null;
+  taxTreatment: InvestmentTaxTreatment;
+  taxableAddBack: LedgerMoneyWire | null;
+}
+
 export interface AcquisitionLotPageWire {
   items: AcquisitionLotWire[];
   page: InvestmentsPageWire;
@@ -1094,6 +1119,7 @@ export interface InvestmentPositionWire {
   kind: InvestmentKind;
   lotHistoryStatus: InvestmentLotHistoryStatus;
   movementCount: number;
+  movements: Record<string, unknown>[];
   name: string;
   orgNumber: string | null;
   shareCount: number;
@@ -1150,6 +1176,48 @@ export interface InvestmentsShareSaleWire {
   proceeds: LedgerMoneyWire;
   saleDate: string;
   soldShareCount: number;
+}
+
+export interface InvestmentsReceivedDividendResultWire {
+  accountingEntryId: string;
+  actionId: string;
+  positionId: string;
+  replayed: boolean;
+  taxableAddBack: LedgerMoneyWire;
+}
+
+export interface InvestmentsReceivedDividendWire {
+  actionId: string;
+  bankTransactionId?: string | null;
+  companyId: string;
+  declaredDate: string;
+  documentId?: string | null;
+  documentStatus: InvestmentDocumentStatus;
+  grossAmount: LedgerMoneyWire;
+  incomeYear: number;
+  paidDate: string;
+  payingCompanyName: string;
+  positionId: string;
+  taxTreatment: InvestmentTaxTreatment;
+}
+
+export interface ShareSaleAllocationPageWire {
+  items: ShareSaleAllocationWire[];
+  page: InvestmentsPageWire;
+}
+
+export interface ShareSaleAllocationWire {
+  acquisitionDate: string;
+  allocatedCostBasis: LedgerMoneyWire;
+  allocatedShareCount: number;
+  allocationOrder: number;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  id: string;
+  lotId: string;
+  positionId: string;
+  saleActionId: string;
 }
 
 export interface AcceptBankFileWire {
@@ -2330,25 +2398,6 @@ function isLedgerLockPeriodWire(value: unknown): value is LedgerLockPeriodWire {
   );
 }
 
-function isLedgerInvestmentDividendWire(value: unknown): value is LedgerInvestmentDividendWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","declaredDate","documentId","documentStatus","grossAmount","incomeYear","linkedInvestmentId","paidDate","payingCompanyName","taxTreatment"]) &&
-    isUuid(value.actionId) &&
-    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
-    isUuid(value.companyId) &&
-    typeof value.declaredDate === "string" &&
-    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
-    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
-    isLedgerMoneyWire(value.grossAmount) &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    (value.linkedInvestmentId === undefined || (isUuid(value.linkedInvestmentId) || value.linkedInvestmentId === null)) &&
-    typeof value.paidDate === "string" &&
-    (typeof value.payingCompanyName === "string" && value.payingCompanyName.length >= 1 && value.payingCompanyName.length <= 255) &&
-    (value.taxTreatment === "fritaksmetoden" || value.taxTreatment === "outside_fritaksmetoden" || value.taxTreatment === "needs_accountant")
-  );
-}
-
 function isLedgerManualJournalWire(value: unknown): value is LedgerManualJournalWire {
   return (
     isRecord(value) &&
@@ -2742,6 +2791,56 @@ function isTaxSettlementKind(value: unknown): value is TaxSettlementKind {
   return value === "payable" || value === "payment" || value === "refund";
 }
 
+function isInvestmentActivityKind(value: unknown): value is InvestmentActivityKind {
+  return value === "share_purchase" || value === "share_sale" || value === "dividend_received";
+}
+
+function isInvestmentActivityPageWire(value: unknown): value is InvestmentActivityPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isInvestmentActivityWire(item)) &&
+    isInvestmentsPageWire(value.page)
+  );
+}
+
+function isInvestmentActivityWire(value: unknown): value is InvestmentActivityWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","acquisitionLotId","actionDate","activityKind","bankTransactionId","companyId","createdAt","createdBy","declaredDate","documentId","documentStatus","fifoCostBasisReduction","gainOrLoss","grossAmount","id","incomeYear","investmentKey","investmentKind","investmentName","orgNumber","payingCompanyName","positionId","proceeds","purchaseAmount","remainingCostBasis","remainingShareCount","shareCount","soldShareCount","taxTreatment","taxableAddBack"]) &&
+    (isUuid(value.accountingEntryId) || value.accountingEntryId === null) &&
+    (isUuid(value.acquisitionLotId) || value.acquisitionLotId === null) &&
+    typeof value.actionDate === "string" &&
+    isInvestmentActivityKind(value.activityKind) &&
+    (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    (typeof value.declaredDate === "string" || value.declaredDate === null) &&
+    (isUuid(value.documentId) || value.documentId === null) &&
+    isInvestmentDocumentStatus(value.documentStatus) &&
+    (isLedgerMoneyWire(value.fifoCostBasisReduction) || value.fifoCostBasisReduction === null) &&
+    (isLedgerMoneyWire(value.gainOrLoss) || value.gainOrLoss === null) &&
+    (isLedgerMoneyWire(value.grossAmount) || value.grossAmount === null) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.investmentKey === "string" &&
+    isInvestmentKind(value.investmentKind) &&
+    typeof value.investmentName === "string" &&
+    (typeof value.orgNumber === "string" || value.orgNumber === null) &&
+    (typeof value.payingCompanyName === "string" || value.payingCompanyName === null) &&
+    isUuid(value.positionId) &&
+    (isLedgerMoneyWire(value.proceeds) || value.proceeds === null) &&
+    (isLedgerMoneyWire(value.purchaseAmount) || value.purchaseAmount === null) &&
+    (isLedgerMoneyWire(value.remainingCostBasis) || value.remainingCostBasis === null) &&
+    (typeof value.remainingShareCount === "number" && Number.isInteger(value.remainingShareCount) || value.remainingShareCount === null) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) || value.shareCount === null) &&
+    (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) || value.soldShareCount === null) &&
+    isInvestmentTaxTreatment(value.taxTreatment) &&
+    (isLedgerMoneyWire(value.taxableAddBack) || value.taxableAddBack === null)
+  );
+}
+
 function isAcquisitionLotPageWire(value: unknown): value is AcquisitionLotPageWire {
   return (
     isRecord(value) &&
@@ -2797,7 +2896,7 @@ function isInvestmentPositionPageWire(value: unknown): value is InvestmentPositi
 function isInvestmentPositionWire(value: unknown): value is InvestmentPositionWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["companyId","costBasis","createdAt","createdBy","id","investmentKey","kind","lotHistoryStatus","movementCount","name","orgNumber","shareCount","taxTreatment","updatedAt"]) &&
+    hasOnlyProperties(value, ["companyId","costBasis","createdAt","createdBy","id","investmentKey","kind","lotHistoryStatus","movementCount","movements","name","orgNumber","shareCount","taxTreatment","updatedAt"]) &&
     isUuid(value.companyId) &&
     isLedgerMoneyWire(value.costBasis) &&
     isDateTime(value.createdAt) &&
@@ -2807,6 +2906,7 @@ function isInvestmentPositionWire(value: unknown): value is InvestmentPositionWi
     isInvestmentKind(value.kind) &&
     isInvestmentLotHistoryStatus(value.lotHistoryStatus) &&
     typeof value.movementCount === "number" && Number.isInteger(value.movementCount) &&
+    Array.isArray(value.movements) && value.movements.every((item) => isRecord(item)) &&
     typeof value.name === "string" &&
     (typeof value.orgNumber === "string" || value.orgNumber === null) &&
     typeof value.shareCount === "number" && Number.isInteger(value.shareCount) &&
@@ -2883,6 +2983,64 @@ function isInvestmentsShareSaleWire(value: unknown): value is InvestmentsShareSa
     isLedgerMoneyWire(value.proceeds) &&
     typeof value.saleDate === "string" &&
     (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) && value.soldShareCount <= 9007199254740991 && value.soldShareCount > 0)
+  );
+}
+
+function isInvestmentsReceivedDividendResultWire(value: unknown): value is InvestmentsReceivedDividendResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","actionId","positionId","replayed","taxableAddBack"]) &&
+    isUuid(value.accountingEntryId) &&
+    isUuid(value.actionId) &&
+    isUuid(value.positionId) &&
+    typeof value.replayed === "boolean" &&
+    isLedgerMoneyWire(value.taxableAddBack)
+  );
+}
+
+function isInvestmentsReceivedDividendWire(value: unknown): value is InvestmentsReceivedDividendWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","bankTransactionId","companyId","declaredDate","documentId","documentStatus","grossAmount","incomeYear","paidDate","payingCompanyName","positionId","taxTreatment"]) &&
+    isUuid(value.actionId) &&
+    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    isUuid(value.companyId) &&
+    typeof value.declaredDate === "string" &&
+    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
+    isInvestmentDocumentStatus(value.documentStatus) &&
+    isLedgerMoneyWire(value.grossAmount) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.paidDate === "string" &&
+    (typeof value.payingCompanyName === "string" && value.payingCompanyName.length >= 1 && value.payingCompanyName.length <= 255) &&
+    isUuid(value.positionId) &&
+    isInvestmentTaxTreatment(value.taxTreatment)
+  );
+}
+
+function isShareSaleAllocationPageWire(value: unknown): value is ShareSaleAllocationPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isShareSaleAllocationWire(item)) &&
+    isInvestmentsPageWire(value.page)
+  );
+}
+
+function isShareSaleAllocationWire(value: unknown): value is ShareSaleAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acquisitionDate","allocatedCostBasis","allocatedShareCount","allocationOrder","companyId","createdAt","createdBy","id","lotId","positionId","saleActionId"]) &&
+    typeof value.acquisitionDate === "string" &&
+    isLedgerMoneyWire(value.allocatedCostBasis) &&
+    typeof value.allocatedShareCount === "number" && Number.isInteger(value.allocatedShareCount) &&
+    typeof value.allocationOrder === "number" && Number.isInteger(value.allocationOrder) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.id) &&
+    isUuid(value.lotId) &&
+    isUuid(value.positionId) &&
+    isUuid(value.saleActionId)
   );
 }
 
@@ -3941,6 +4099,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordReceivedDividend(
+      body: InvestmentsReceivedDividendWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsReceivedDividendResultWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/investments/received-dividends`,
+        "POST",
+        request,
+        body,
+        isInvestmentsReceivedDividendResultWire,
+      );
+      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsListPositions(
       request: InvestmentsListRequest,
     ): Promise<InvestmentPositionPageWire> {
@@ -3957,6 +4132,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async investmentsListActivity(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentActivityPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/investments/activity?${query}`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentActivityPageWire,
+      );
+    },
+
     async investmentsListAcquisitionLots(
       request: InvestmentsListRequest,
     ): Promise<AcquisitionLotPageWire> {
@@ -3970,6 +4161,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isAcquisitionLotPageWire,
+      );
+    },
+
+    async investmentsListShareSaleAllocations(
+      request: InvestmentsListRequest,
+    ): Promise<ShareSaleAllocationPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/investments/share-sale-allocations?${query}`,
+        "GET",
+        request,
+        undefined,
+        isShareSaleAllocationPageWire,
       );
     },
 
@@ -4065,18 +4272,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
-    },
-
-    async ledgerPostInvestmentDividend(
-      body: LedgerInvestmentDividendWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/investment-dividends",
-        body,
-        request,
-        "DIVIDEND_RECEIVED",
-      );
     },
 
     async ledgerPostShareholderLoan(

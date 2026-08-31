@@ -8,7 +8,7 @@
   "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.ledger.public",
   "exports": {
-    "commands": ["CloseCompanyYearCommand", "CorrectHoldingActionCommand", "LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentDividendCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RebuildCompanyYearOpeningCommand", "RecognizeHoldingActionCommand", "RecordReconstructionAssessmentCommand"],
+    "commands": ["CloseCompanyYearCommand", "CorrectHoldingActionCommand", "LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostReceivedDividendCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RebuildCompanyYearOpeningCommand", "RecognizeHoldingActionCommand", "RecordReconstructionAssessmentCommand"],
     "queries": ["CompanyYearCloseAssessment", "CorrectedLedgerEntries", "LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry", "ReconstructionAssessment", "ReconstructionEconomicFactCandidates", "ReconstructionEconomicFactSnapshot"],
     "events": [],
     "errors": ["LedgerError"],

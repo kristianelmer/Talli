@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 from enum import StrEnum
 from typing import Annotated, Literal
-import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -56,40 +55,6 @@ ADMIN_COST_ACCOUNT = {
 }
 
 
-class TaxTreatment(StrEnum):
-    FRITAKSMETODEN = "fritaksmetoden"
-    OUTSIDE_FRITAKSMETODEN = "outside_fritaksmetoden"
-    NEEDS_ACCOUNTANT = "needs_accountant"
-
-
-class InvestmentKind(StrEnum):
-    NORWEGIAN_PRIVATE_COMPANY = "norwegian_private_company"
-    SIMPLE_LISTED_SECURITY = "simple_listed_security"
-
-
-class AcquisitionLot(BaseModel):
-    """Passive legacy purchase projection; sale allocation is investments-owned."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: str = Field(min_length=1)
-    acquisition_date: date
-    original_share_count: int = Field(gt=0)
-    remaining_share_count: int = Field(ge=0)
-    original_cost_basis: float = Field(gt=0)
-    remaining_cost_basis: float = Field(ge=0)
-
-    @model_validator(mode="after")
-    def validate_residual(self) -> "AcquisitionLot":
-        if self.remaining_share_count > self.original_share_count:
-            raise ValueError("remaining shares cannot exceed original shares")
-        if self.remaining_cost_basis > self.original_cost_basis:
-            raise ValueError("remaining cost cannot exceed original cost")
-        if self.remaining_share_count == 0 and self.remaining_cost_basis != 0:
-            raise ValueError("an empty lot cannot retain cost basis")
-        return self
-
-
 class ShareholderLoanDirection(StrEnum):
     SHAREHOLDER_TO_COMPANY = "shareholder_to_company"
     COMPANY_TO_CORPORATE_SHAREHOLDER = "company_to_corporate_shareholder"
@@ -137,94 +102,6 @@ class AdminCostInput(BaseModel):
         return self
 
 
-class InvestmentPosition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: str
-    company_id: str
-    name: str
-    kind: InvestmentKind
-    tax_treatment: TaxTreatment
-    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
-    share_count: Money = 0
-    ownership_percent: Money | None = None
-    cost_basis: Money
-    acquisition_lots: tuple[AcquisitionLot, ...] = ()
-
-    @model_validator(mode="after")
-    def validate_supported_tax_treatment(self) -> "InvestmentPosition":
-        if self.tax_treatment == TaxTreatment.NEEDS_ACCOUNTANT:
-            raise ValueError("unclear investment tax treatment needs accountant review")
-        if int(self.share_count) != self.share_count:
-            raise ValueError("share count must be a whole number")
-        return self
-
-
-class DividendReceivedInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_id: str
-    declared_date: date
-    paid_date: date
-    gross_amount: Money
-    paying_company_name: str
-    linked_investment_id: str
-    tax_treatment: TaxTreatment
-    bank_matched: bool
-    document_status: DocumentStatus
-    currency: Literal["NOK"] = "NOK"
-
-    @model_validator(mode="after")
-    def validate_supported_dividend(self) -> "DividendReceivedInput":
-        if self.tax_treatment != TaxTreatment.FRITAKSMETODEN:
-            raise ValueError("dividend tax treatment is not supported for owner-managed filing")
-        return self
-
-
-class DividendReceivedResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    entry: DraftEntry
-    taxable_add_back: Money
-
-
-class SharePurchaseInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    company_id: str
-    investment_id: str
-    investment_name: str
-    investment_kind: InvestmentKind
-    tax_treatment: TaxTreatment
-    acquisition_date: date
-    share_count: Money = 0
-    ownership_percent: Money | None = None
-    purchase_amount: Money
-    bank_matched: bool
-    document_status: DocumentStatus
-    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
-    currency: Literal["NOK"] = "NOK"
-    consideration_type: Literal["cash"] = "cash"
-    purchase_reference: str | None = None
-
-    @model_validator(mode="after")
-    def validate_supported_purchase(self) -> "SharePurchaseInput":
-        if self.tax_treatment == TaxTreatment.NEEDS_ACCOUNTANT:
-            raise ValueError("unclear share purchase tax treatment needs accountant review")
-        if not self.share_count and self.ownership_percent is None:
-            raise ValueError("share purchase requires share count or ownership percent")
-        if int(self.share_count) != self.share_count or self.share_count <= 0:
-            raise ValueError("share purchase requires a positive whole share count")
-        return self
-
-
-class SharePurchaseResult(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    entry: DraftEntry
-    position: InvestmentPosition
-
-
 class ShareholderLoanInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -266,82 +143,6 @@ def build_opening_balance_entry(data: OpeningBalanceInput) -> DraftEntry:
         source="holding_action:opening_balance",
         lines=lines,
     )
-
-
-def build_dividend_received(data: DividendReceivedInput) -> DividendReceivedResult:
-    taxable_add_back = round(data.gross_amount * 0.03, 2)
-    entry = DraftEntry(
-        company_id=data.company_id,
-        entry_date=data.paid_date,
-        memo=f"Dividend received from {data.paying_company_name}",
-        source=(
-            "holding_action:dividend_received:"
-            f"investment:{data.linked_investment_id}:"
-            f"tax:{data.tax_treatment.value}:"
-            f"bank_matched:{str(data.bank_matched).lower()}:"
-            f"document:{data.document_status.value}:"
-            f"taxable_add_back:{taxable_add_back}"
-        ),
-        lines=[
-            _debit(Account.BANK, "Dividend received in bank", data.gross_amount),
-            _credit(Account.DIVIDEND_RECEIVED, f"Dividend from {data.paying_company_name}", data.gross_amount),
-        ],
-    )
-    return DividendReceivedResult(entry=entry, taxable_add_back=taxable_add_back)
-
-
-def build_share_purchase(data: SharePurchaseInput) -> SharePurchaseResult:
-    lot_id = data.purchase_reference or str(
-        uuid.uuid5(
-            uuid.NAMESPACE_URL,
-            ":".join(
-                (
-                    data.company_id,
-                    data.investment_id,
-                    data.acquisition_date.isoformat(),
-                    str(data.share_count),
-                    str(data.purchase_amount),
-                )
-            ),
-        )
-    )
-    acquisition_lot = AcquisitionLot(
-        id=lot_id,
-        acquisition_date=data.acquisition_date,
-        original_share_count=int(data.share_count),
-        remaining_share_count=int(data.share_count),
-        original_cost_basis=data.purchase_amount,
-        remaining_cost_basis=data.purchase_amount,
-    )
-    position = InvestmentPosition(
-        id=data.investment_id,
-        company_id=data.company_id,
-        name=data.investment_name,
-        kind=data.investment_kind,
-        tax_treatment=data.tax_treatment,
-        org_number=data.org_number,
-        share_count=data.share_count,
-        ownership_percent=data.ownership_percent,
-        cost_basis=data.purchase_amount,
-        acquisition_lots=(acquisition_lot,),
-    )
-    entry = DraftEntry(
-        company_id=data.company_id,
-        entry_date=data.acquisition_date,
-        memo=f"Share purchase: {data.investment_name}",
-        source=(
-            "holding_action:share_purchase:"
-            f"investment:{data.investment_id}:"
-            f"tax:{data.tax_treatment.value}:"
-            f"bank_matched:{str(data.bank_matched).lower()}:"
-            f"document:{data.document_status.value}"
-        ),
-        lines=[
-            _debit(Account.SHARE_INVESTMENTS, f"Investment in {data.investment_name}", data.purchase_amount),
-            _credit(Account.BANK, "Paid from bank", data.purchase_amount),
-        ],
-    )
-    return SharePurchaseResult(entry=entry, position=position)
 
 
 def build_shareholder_loan(data: ShareholderLoanInput) -> DraftEntry:

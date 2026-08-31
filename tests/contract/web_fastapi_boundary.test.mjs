@@ -86,7 +86,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
     ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
     ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
-    ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
     ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
     ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
     ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
@@ -105,6 +104,7 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     "/api/v1/ledger/opening-balances",
     "/api/v1/ledger/owner-dividends/declared",
     "/api/v1/ledger/structured-entries",
+    "/api/v1/ledger/investment-dividends",
   ]) {
     assert.equal(contract.paths[path], undefined);
   }
@@ -123,7 +123,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     true,
   );
   for (const schemaName of [
-    "LedgerInvestmentDividendWire",
     "LedgerShareholderLoanWire",
     "LedgerTaxSettlementWire",
     "LedgerCorporateDecisionFinalizationWire",
@@ -137,11 +136,13 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
   );
 });
 
-test("the committed contract gives investments its purchase, sale, and lot interface", () => {
+test("the committed contract gives investments its complete activity interface", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   for (const [path, method, operationId] of [
     ["/api/v1/investments/share-purchases", "post", "investmentsRecordSharePurchase"],
     ["/api/v1/investments/share-sales", "post", "investmentsRecordShareSale"],
+    ["/api/v1/investments/received-dividends", "post", "investmentsRecordReceivedDividend"],
+    ["/api/v1/investments/activity", "get", "investmentsListActivity"],
     ["/api/v1/investments/positions", "get", "investmentsListPositions"],
     ["/api/v1/investments/acquisition-lots", "get", "investmentsListAcquisitionLots"],
   ]) {

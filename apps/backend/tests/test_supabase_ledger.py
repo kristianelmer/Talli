@@ -61,7 +61,6 @@ from talli_backend.modules.ledger.public import (
     OpeningBankLoanComponent,
     OpeningPositionMode,
     OrdinaryBankLoanFacts,
-    PostedLedgerEntry,
     PostManualJournalCommand,
     RebuildCompanyYearOpeningCommand,
     RecognizeHoldingActionCommand,
@@ -83,7 +82,6 @@ from talli_backend.shared.kernel import (
     IncomeYear,
     LocalDate,
     Money,
-    Timestamp,
     UserId,
 )
 
@@ -1984,7 +1982,6 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
     ).read_text(encoding="utf-8")
     for operation in (
         "administrative_cost",
-        "investment_dividend",
         "shareholder_loan",
         "tax_settlement",
         "corporate_decision_finalization",
@@ -1994,6 +1991,8 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
         assert f"backend_system.complete_{operation}_v1" in source
     assert "backend_system.prepare_bank_transaction_suggestion_v1" not in source
     assert "backend_system.complete_bank_transaction_suggestion_v1" not in source
+    assert "backend_system.prepare_investment_dividend_v1" not in source
+    assert "backend_system.complete_investment_dividend_v1" not in source
 
 
 def test_adapter_never_uses_a_service_role_business_path() -> None:

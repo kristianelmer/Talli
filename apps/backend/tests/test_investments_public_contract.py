@@ -10,6 +10,7 @@ def test_share_commands_are_investment_owned_and_transport_free() -> None:
     from talli_backend.modules.investments.public import (
         RecordSharePurchaseCommand,
         RecordShareSaleCommand,
+        RecordReceivedDividendCommand,
     )
 
     source = Path(inspect.getsourcefile(public) or "").read_text(encoding="utf-8")
@@ -55,6 +56,23 @@ def test_share_commands_are_investment_owned_and_transport_free() -> None:
         "sale_date",
         "sold_share_count",
         "proceeds",
+        "bank_transaction_id",
+        "document_id",
+        "document_status",
+    }
+    assert set(RecordReceivedDividendCommand.__dataclass_fields__) == {
+        "company_id",
+        "actor_id",
+        "correlation_id",
+        "idempotency_key",
+        "income_year",
+        "action_id",
+        "position_id",
+        "paying_company_name",
+        "declared_date",
+        "paid_date",
+        "gross_amount",
+        "tax_treatment",
         "bank_transaction_id",
         "document_id",
         "document_status",

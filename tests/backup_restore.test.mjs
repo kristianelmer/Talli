@@ -133,7 +133,12 @@ test("backup manifest identifies launch-critical tables and object references", 
     "authority test runs must restore before their linked submissions",
   );
   assert.ok(manifest.launchCriticalTables.includes("audit_events"));
-  assert.ok(manifest.launchCriticalTables.includes("investment_lots"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.positions"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.acquisition_lots"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.share_purchases"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.share_sales"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.share_sale_allocations"));
+  assert.ok(manifest.launchCriticalTables.includes("investments.received_dividends"));
   assert.ok(manifest.launchCriticalTables.includes("bank_suggestion_acceptances"));
   assert.ok(manifest.launchCriticalTables.includes("corporate_decisions"));
   assert.ok(manifest.launchCriticalTables.includes("corporate_document_artifacts"));

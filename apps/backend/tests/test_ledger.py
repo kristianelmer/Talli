@@ -22,7 +22,7 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostBankSuggestionOutcomeCommand,
     PostedLedgerEntry,
-    PostInvestmentDividendCommand,
+    PostReceivedDividendCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
     PostManualJournalCommand,
@@ -266,14 +266,14 @@ def test_accepted_bank_suggestion_translates_authoritative_rule_to_ledger_policy
 
 def test_received_dividend_translates_investment_facts_without_source_lines() -> None:
     persistence = LedgerPersistenceStub()
-    command = PostInvestmentDividendCommand(
+    command = PostReceivedDividendCommand(
         **metadata(),
         action_id=LedgerSourceRecordId("72000000-0000-0000-0000-000000000007"),
         paying_company_name=" Eksempel Invest AS ",
         gross_amount=Money.nok("12500"),
     )
 
-    asyncio.run(LedgerService(persistence).post_investment_dividend(command))
+    asyncio.run(LedgerService(persistence).post_received_dividend(command))
 
     assert persistence.postings[0]["entry_kind"] is LedgerEntryKind.DIVIDEND_RECEIVED
     assert persistence.postings[0]["source_capability"] is LedgerSourceCapability.INVESTMENTS

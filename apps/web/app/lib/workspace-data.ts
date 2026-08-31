@@ -5,7 +5,6 @@ import {
   buildDeadlineReminderPlan,
   defaultReminderPreferences,
 } from "./deadlines";
-import { summarizeDividendReceivedAnnualImpact } from "./dividend-received";
 import { reviewChecklistStatus } from "./invitations";
 import { estimateAnnualTax } from "./tax-settlement";
 import {
@@ -25,7 +24,6 @@ import {
   listFilingReviewComments,
   listFilingSubmissions,
   listProductionFilingState,
-  listHoldingActions,
   listLedgerEntries,
   listNotificationOutbox,
   listOpeningSetups,
@@ -37,6 +35,8 @@ import { listCompanyAccessAdministration } from "./company-access-administration
 import {
   listPresentedAcquisitionLots,
   listPresentedInvestmentPositions,
+  listPresentedInvestmentActivity,
+  summarizeReceivedDividendAnnualImpact,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session";
 
@@ -95,7 +95,9 @@ export async function loadWorkspaceData() {
   const { acceptances: bankSuggestionAcceptances } = user
     ? await listBankSuggestionAcceptances(companies.map((company) => company.id))
     : { acceptances: [] };
-  const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
+  const { actions } = accessToken
+    ? await listPresentedInvestmentActivity(accessToken, companies.map((company) => company.id))
+    : { actions: [] };
   const { positions } = accessToken
     ? await listPresentedInvestmentPositions(accessToken, companies.map((company) => company.id))
     : { positions: [] };
@@ -109,14 +111,11 @@ export async function loadWorkspaceData() {
   );
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
   const taxSettlementEntries = entries.filter((entry) => entry.entry_type === "tax_settlement");
-  const taxSettlementActions = actions.filter((action) => action.action_type === "tax_settlement");
+  const taxSettlementActions = taxSettlementEntries;
   const primaryShareholders = shareholders.filter((shareholder) => shareholder.company_id === primaryCompanyId);
   const dividendReceivedActions = actions.filter((action) => action.action_type === "dividend_received");
-  const dividendAnnualImpact = summarizeDividendReceivedAnnualImpact(
-    dividendReceivedActions.map((action) => ({
-      action_type: action.action_type,
-      payload: action.payload as { gross_amount?: number; taxable_add_back?: number },
-    })),
+  const dividendAnnualImpact = summarizeReceivedDividendAnnualImpact(
+    dividendReceivedActions,
   );
   const manualJournalEntries = entries.filter((entry) => entry.entry_type === "manual_journal");
   const manualJournalWarnings = manualJournalEntries.flatMap((entry) => entry.risk_flags ?? []);

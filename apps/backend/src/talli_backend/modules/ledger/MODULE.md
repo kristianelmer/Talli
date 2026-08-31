@@ -56,7 +56,7 @@ never stores shareholders, share count, or nominal value in its public command.
 Import only `talli_backend.modules.ledger.public`.
 
 Command protocols expose only named ledger intents: opening balance,
-administrative cost, accepted bank suggestion, investment dividend/purchase/sale,
+administrative cost, accepted bank suggestion, received dividend, investment purchase/sale,
 owner-dividend declaration/payment, shareholder loan, tax settlement, manual
 journal, and period lock. Every command carries typed company, actor,
 correlation, idempotency, and income-year values from the minimal shared kernel.
@@ -78,13 +78,15 @@ closed phase and relationship values are `BankLoanEvent`, `InvestmentDividendPha
 `GroupContributionPerspective`. Callers cannot select an account, line,
 pattern, or rule version.
 
-The received-dividend receiver recognizes the final investee decision as a
-receivable and income, then settles that exact decision from the bank payment.
-The decision requires investments, documents, and company-tax facts; payment
-requires investments and banking facts plus either the immutable decision entry
-ID or the stable `DividendDecisionReferenceId` persisted by opening rebuild.
-The serialized persistence path permits one settlement per decision, including
-a later admitted company-year, and rejects payments before the decision plus
+The phase-linked received-dividend receiver recognizes the final investee
+decision as a receivable and income, then settles that exact decision from the
+bank payment. It is a ledger-owned accrual lifecycle distinct from the
+investments capability's supported cash-receipt command. The decision requires
+investments, documents, and company-tax facts; payment requires investments and
+banking facts plus either the immutable decision entry ID or the stable
+`DividendDecisionReferenceId` persisted by opening rebuild. The serialized
+persistence path permits one settlement per decision, including a later
+admitted company-year, and rejects payments before the decision plus
 cross-company, amount-mismatched, or replay-inconsistent linkage.
 
 The ordinary NOK bank-loan receiver requires one banking fact as primary and
@@ -185,7 +187,7 @@ posting remains locked.
 The command surface is `LedgerCommands`, `RecognizeHoldingActionCommand`,
 `CloseCompanyYearCommand`, `CorrectHoldingActionCommand`, `LockPeriodCommand`,
 `PostAdministrativeCostCommand`, `PostBankSuggestionOutcomeCommand`,
-`PostInvestmentDividendCommand`, `PostInvestmentPurchaseCommand`,
+`PostReceivedDividendCommand`, `PostInvestmentPurchaseCommand`,
 `PostInvestmentSaleCommand`, `PostManualJournalCommand`,
 `PostOwnerDividendDeclaredCommand`, `PostOwnerDividendPaymentCommand`,
 `PostShareholderLoanCommand`, `PostTaxSettlementCommand`, and the sole opening

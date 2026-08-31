@@ -16,13 +16,15 @@ import {
   listFilingReadinessSnapshots,
   listFilingReviewComments,
   listFilingSubmissions,
-  listHoldingActions,
   listLedgerEntries,
   listOpeningSetups,
   listPeriodLocks,
 } from "./supabase/server.ts";
 import { listCompanyAccessContexts } from "./company-access-context.ts";
-import { listPresentedInvestmentPositions } from "../../features/investments";
+import {
+  listPresentedInvestmentActivity,
+  listPresentedInvestmentPositions,
+} from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
@@ -68,7 +70,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listFilingSubmissions(companyIds),
     listFilingOverrides(companyIds),
     listBankTransactions(companyIds),
-    listHoldingActions(companyIds),
+    listPresentedInvestmentActivity(accessToken, companyIds),
     listPresentedInvestmentPositions(accessToken, companyIds),
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),

@@ -8,7 +8,6 @@ export {
   loadOpeningSnapshots,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
-  postLedgerInvestmentDividend,
   postLedgerManualJournal,
   postLedgerOwnerDividendPayment,
   postLedgerShareholderLoan,
@@ -36,7 +35,6 @@ export {
 export type {
   LedgerAdministrativeCostWire,
   LedgerCorporateDecisionFinalizationWire,
-  LedgerInvestmentDividendWire,
   LedgerLineWire,
   LedgerLockPeriodWire,
   LedgerManualJournalWire,

@@ -130,7 +130,7 @@ export default async function ActionPage({
           incomeYear={incomeYear}
           operationId={query?.dividendReceivedOperationId}
           investments={companyPositions.map((position) => ({
-            investment_key: position.investment_key,
+            id: position.id,
             name: position.name,
           }))}
         />

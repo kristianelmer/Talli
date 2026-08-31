@@ -55,7 +55,6 @@ const ledgerOperations = {
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
-  postInvestmentDividend: ["/api/v1/ledger/investment-dividends", "post", "ledgerPostInvestmentDividend"],
   postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
@@ -64,6 +63,11 @@ const ledgerOperations = {
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
 const investmentsOperations = {
+  listActivity: [
+    "/api/v1/investments/activity",
+    "get",
+    "investmentsListActivity",
+  ],
   listPositions: [
     "/api/v1/investments/positions",
     "get",
@@ -74,6 +78,11 @@ const investmentsOperations = {
     "get",
     "investmentsListAcquisitionLots",
   ],
+  listShareSaleAllocations: [
+    "/api/v1/investments/share-sale-allocations",
+    "get",
+    "investmentsListShareSaleAllocations",
+  ],
   recordSharePurchase: [
     "/api/v1/investments/share-purchases",
     "post",
@@ -83,6 +92,11 @@ const investmentsOperations = {
     "/api/v1/investments/share-sales",
     "post",
     "investmentsRecordShareSale",
+  ],
+  recordReceivedDividend: [
+    "/api/v1/investments/received-dividends",
+    "post",
+    "investmentsRecordReceivedDividend",
   ],
 };
 const bankingOperations = {
@@ -385,7 +399,6 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerEntryViewWire",
   "LedgerLineWire",
   "LedgerLockPeriodWire",
-  "LedgerInvestmentDividendWire",
   "LedgerManualJournalWire",
   "LedgerMoneyWire",
   "LedgerFactReferenceWire",
@@ -426,6 +439,9 @@ const ledgerSchemas = Object.fromEntries([
   "TaxSettlementKind",
 ].map((name) => [name, contract.components.schemas[name]]));
 const investmentsSchemas = Object.fromEntries([
+  "InvestmentActivityKind",
+  "InvestmentActivityPageWire",
+  "InvestmentActivityWire",
   "AcquisitionLotPageWire",
   "AcquisitionLotWire",
   "InvestmentDocumentStatus",
@@ -439,6 +455,10 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsSharePurchaseWire",
   "InvestmentsShareSaleResultWire",
   "InvestmentsShareSaleWire",
+  "InvestmentsReceivedDividendResultWire",
+  "InvestmentsReceivedDividendWire",
+  "ShareSaleAllocationPageWire",
+  "ShareSaleAllocationWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
@@ -1303,6 +1323,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordReceivedDividend(
+      body: InvestmentsReceivedDividendWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsReceivedDividendResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/received-dividends\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsReceivedDividendResultWire,
+      );
+      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsListPositions(
       request: InvestmentsListRequest,
     ): Promise<InvestmentPositionPageWire> {
@@ -1319,6 +1356,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async investmentsListActivity(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentActivityPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/activity?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentActivityPageWire,
+      );
+    },
+
     async investmentsListAcquisitionLots(
       request: InvestmentsListRequest,
     ): Promise<AcquisitionLotPageWire> {
@@ -1332,6 +1385,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isAcquisitionLotPageWire,
+      );
+    },
+
+    async investmentsListShareSaleAllocations(
+      request: InvestmentsListRequest,
+    ): Promise<ShareSaleAllocationPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/share-sale-allocations?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isShareSaleAllocationPageWire,
       );
     },
 
@@ -1427,18 +1496,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
-    },
-
-    async ledgerPostInvestmentDividend(
-      body: LedgerInvestmentDividendWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/investment-dividends",
-        body,
-        request,
-        "DIVIDEND_RECEIVED",
-      );
     },
 
     async ledgerPostShareholderLoan(

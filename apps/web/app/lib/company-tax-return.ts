@@ -159,6 +159,9 @@ export function companyTaxReturnPayloadFeedback(input: {
   if (input.annualData.answers.declared_owner_dividends) {
     feedback.push(block("tax_return_owner_dividend_review_required", "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding."));
   }
+  if (input.ledgerEntries.some((entry) => entry.entry_type === "shareholder_loan")) {
+    feedback.push(block("tax_return_shareholder_loan_review_required", "Aksjonærlån er utenfor automatisk skattemelding-løype."));
+  }
   if (
     input.annualData.answers.bought_or_sold_shares
     || input.holdingActions.some((action) => action.action_type === "share_purchase" || action.action_type === "share_sale")
@@ -172,9 +175,6 @@ export function companyTaxReturnPayloadFeedback(input: {
     const taxTreatment = String(action.payload.tax_treatment ?? "");
     if (["dividend_received", "share_purchase", "share_sale"].includes(action.action_type) && taxTreatment !== "fritaksmetoden") {
       feedback.push(block("tax_return_unclear_fritaksmetoden", "Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype."));
-    }
-    if (action.action_type === "shareholder_loan") {
-      feedback.push(block("tax_return_shareholder_loan_review_required", "Aksjonærlån er utenfor automatisk skattemelding-løype."));
     }
   }
   const manualWarnings = input.ledgerEntries.filter((entry) => entry.risk_flags.length > 0 && !entry.warning_accepted_at);

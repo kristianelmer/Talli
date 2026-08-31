@@ -73,8 +73,16 @@ export default async function YearEndPage() {
     ),
     bought_or_sold_shares: hasActionType("share_purchase", "share_sale"),
     received_dividends: hasActionType("dividend_received"),
-    declared_owner_dividends: hasActionType("dividend_to_owner"),
-    shareholder_loans: hasActionType("shareholder_loan"),
+    declared_owner_dividends: entries.some(
+      (entry) => entry.company_id === companyId
+        && entry.income_year === year
+        && entry.entry_type === "owner_dividend_declared",
+    ),
+    shareholder_loans: entries.some(
+      (entry) => entry.company_id === companyId
+        && entry.income_year === year
+        && entry.entry_type === "shareholder_loan",
+    ),
     paid_costs: entries.some(
       (entry) =>
         entry.company_id === companyId &&

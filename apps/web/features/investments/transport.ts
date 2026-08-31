@@ -5,7 +5,11 @@ import {
   type InvestmentsSharePurchaseWire,
   type InvestmentsShareSaleResultWire,
   type InvestmentsShareSaleWire,
+  type InvestmentsReceivedDividendResultWire,
+  type InvestmentsReceivedDividendWire,
   type InvestmentPositionWire,
+  type InvestmentActivityWire,
+  type ShareSaleAllocationWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -68,6 +72,18 @@ export function recordInvestmentShareSale(
   });
 }
 
+export function recordInvestmentReceivedDividend(
+  accessToken: string,
+  command: InvestmentsReceivedDividendWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsReceivedDividendResultWire> {
+  return client(accessToken).investmentsRecordReceivedDividend(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
 export function loadInvestmentPositions(
   accessToken: string,
   companyIds: readonly string[],
@@ -83,6 +99,21 @@ export function loadInvestmentPositions(
   }));
 }
 
+export function loadInvestmentActivity(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<InvestmentActivityWire[]> {
+  if (companyIds.length === 0) return Promise.resolve([]);
+  const api = client(accessToken);
+  return loadAllPages((cursor) => api.investmentsListActivity({
+    companyIds,
+    cursor,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+}
+
 export function loadInvestmentAcquisitionLots(
   accessToken: string,
   companyIds: readonly string[],
@@ -91,6 +122,21 @@ export function loadInvestmentAcquisitionLots(
   if (companyIds.length === 0) return Promise.resolve([]);
   const api = client(accessToken);
   return loadAllPages((cursor) => api.investmentsListAcquisitionLots({
+    companyIds,
+    cursor,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+}
+
+export function loadInvestmentShareSaleAllocations(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<ShareSaleAllocationWire[]> {
+  if (companyIds.length === 0) return Promise.resolve([]);
+  const api = client(accessToken);
+  return loadAllPages((cursor) => api.investmentsListShareSaleAllocations({
     companyIds,
     cursor,
     limit: PAGE_LIMIT,

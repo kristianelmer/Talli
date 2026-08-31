@@ -9,10 +9,12 @@ from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     AcquisitionLotId,
     InvestmentPositionId,
+    PreparedReceivedDividend,
     PreparedShareSale,
     PreparedSharePurchase,
     RecordedShareSale,
     RecordedSharePurchase,
+    RecordedReceivedDividend,
 )
 from talli_backend.modules.ledger.public import (
     LedgerEntryId,
@@ -21,7 +23,7 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.shared.kernel import IncomeYear, Money, Timestamp
 
-from test_investments import supported_purchase, supported_sale
+from test_investments import supported_purchase, supported_received_dividend, supported_sale
 
 
 POSITION_ID = InvestmentPositionId("50000000-0000-0000-0000-000000000005")
@@ -94,6 +96,31 @@ class SessionPersistence:
             replayed=False,
         )
 
+    async def get_received_dividend_replay(self, command):
+        self.events.append("investments:dividend-replay")
+        return None
+
+    async def prepare_received_dividend(self, command, *, taxable_add_back):
+        self.events.append("investments:dividend-prepare")
+        return PreparedReceivedDividend(
+            command.position_id,
+            "Example AS",
+            command.paying_company_name,
+            taxable_add_back,
+        )
+
+    async def complete_received_dividend(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:dividend-complete")
+        return RecordedReceivedDividend(
+            action_id=command.action_id,
+            position_id=command.position_id,
+            accounting_entry_id=accounting_entry_id,
+            taxable_add_back=prepared.taxable_add_back,
+            replayed=False,
+        )
+
 
 class LedgerFacade:
     def __init__(self, transaction: SessionPersistence) -> None:
@@ -122,6 +149,42 @@ class LedgerFacade:
             posted_at=NOW,
             replayed=False,
         )
+
+    async def post_received_dividend(self, command):
+        self.transaction.events.append("ledger:dividend-post")
+        self.transaction.posted_command = command
+        return PostedLedgerEntry(
+            entry_id=ENTRY_ID,
+            company_id=command.company_id,
+            income_year=IncomeYear(2026),
+            entry_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
+            posted_at=NOW,
+            replayed=False,
+        )
+
+
+def test_received_dividend_composes_investments_and_ledger_interfaces_atomically() -> None:
+    persistence = SessionPersistence()
+    command = supported_received_dividend()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade).record_received_dividend(command)
+    )
+
+    assert result.accounting_entry_id == AccountingEntryReference(str(ENTRY_ID))
+    assert result.position_id == command.position_id
+    assert result.taxable_add_back == Money.nok("3.77")
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:dividend-replay",
+        "investments:dividend-prepare",
+        "ledger:dividend-post",
+        "investments:dividend-complete",
+        "transaction:commit",
+    ]
+    assert persistence.posted_command.paying_company_name == "Example AS"
+    assert persistence.posted_command.gross_amount == Money.nok("125.50")
+    assert not hasattr(persistence.posted_command, "lines")
 
 
 def test_share_purchase_composes_investments_and_ledger_interfaces_atomically() -> None:

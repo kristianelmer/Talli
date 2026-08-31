@@ -61,7 +61,6 @@ from talli_backend.application.ledger_workflow import (
     LedgerWriterResult,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordInvestmentDividendCommand,
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
@@ -198,6 +197,8 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.modules.investments.public import (
     AcquisitionLotView,
+    InvestmentActivityKind,
+    InvestmentActivityView,
     InvestmentActionId,
     InvestmentCursor,
     InvestmentDocumentStatus,
@@ -208,8 +209,10 @@ from talli_backend.modules.investments.public import (
     InvestmentSourceReference,
     InvestmentTaxTreatment,
     InvestmentsError,
+    RecordReceivedDividendCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    ShareSaleAllocationView,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -808,23 +811,6 @@ class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
     document_id: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-class LedgerInvestmentDividendWire(LedgerCompanyYearWire):
-    action_id: UUID
-    paying_company_name: str = Field(min_length=1, max_length=255)
-    declared_date: date
-    paid_date: date
-    gross_amount: LedgerMoneyWire
-    linked_investment_id: UUID | None = None
-    tax_treatment: Literal[
-        "fritaksmetoden", "outside_fritaksmetoden", "needs_accountant"
-    ]
-    bank_transaction_id: UUID | None = None
-    document_id: UUID | None = None
-    document_status: Literal[
-        "attached", "missing_accepted_warning", "not_required"
-    ]
-
-
 class LedgerShareholderLoanWire(LedgerCompanyYearWire):
     action_id: UUID
     loan_date: date
@@ -896,6 +882,27 @@ class InvestmentsShareSaleResultWire(TransportModel):
     replayed: bool
 
 
+class InvestmentsReceivedDividendWire(LedgerCompanyYearWire):
+    action_id: UUID
+    position_id: UUID
+    paying_company_name: str = Field(min_length=1, max_length=255)
+    declared_date: date
+    paid_date: date
+    gross_amount: LedgerMoneyWire
+    tax_treatment: InvestmentTaxTreatment
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: InvestmentDocumentStatus
+
+
+class InvestmentsReceivedDividendResultWire(TransportModel):
+    action_id: UUID
+    position_id: UUID
+    accounting_entry_id: UUID
+    taxable_add_back: LedgerMoneyWire
+    replayed: bool
+
+
 class InvestmentsPageWire(TransportModel):
     next_cursor: str | None
     has_more: bool
@@ -913,6 +920,7 @@ class InvestmentPositionWire(TransportModel):
     cost_basis: LedgerMoneyWire
     lot_history_status: InvestmentLotHistoryStatus
     movement_count: int
+    movements: list[dict[str, Any]]
     created_by: UUID
     created_at: datetime
     updated_at: datetime
@@ -939,6 +947,63 @@ class AcquisitionLotWire(TransportModel):
 
 class AcquisitionLotPageWire(TransportModel):
     items: list[AcquisitionLotWire]
+    page: InvestmentsPageWire
+
+
+class InvestmentActivityWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    activity_kind: InvestmentActivityKind
+    action_date: date
+    position_id: UUID
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    tax_treatment: InvestmentTaxTreatment
+    org_number: str | None
+    acquisition_lot_id: UUID | None
+    share_count: int | None
+    purchase_amount: LedgerMoneyWire | None
+    sold_share_count: int | None
+    proceeds: LedgerMoneyWire | None
+    fifo_cost_basis_reduction: LedgerMoneyWire | None
+    remaining_share_count: int | None
+    remaining_cost_basis: LedgerMoneyWire | None
+    paying_company_name: str | None
+    declared_date: date | None
+    gross_amount: LedgerMoneyWire | None
+    taxable_add_back: LedgerMoneyWire | None
+    gain_or_loss: LedgerMoneyWire | None
+    bank_transaction_id: UUID | None
+    document_id: UUID | None
+    document_status: InvestmentDocumentStatus
+    accounting_entry_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class InvestmentActivityPageWire(TransportModel):
+    items: list[InvestmentActivityWire]
+    page: InvestmentsPageWire
+
+
+class ShareSaleAllocationWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    position_id: UUID
+    lot_id: UUID
+    sale_action_id: UUID
+    allocation_order: int
+    acquisition_date: date
+    allocated_share_count: int
+    allocated_cost_basis: LedgerMoneyWire
+    created_by: UUID
+    created_at: datetime
+
+
+class ShareSaleAllocationPageWire(TransportModel):
+    items: list[ShareSaleAllocationWire]
     page: InvestmentsPageWire
 
 
@@ -2641,6 +2706,7 @@ def create_app(
             cost_basis=_money_wire(value.cost_basis),
             lot_history_status=value.lot_history_status,
             movement_count=value.movement_count,
+            movements=[dict(movement) for movement in value.movements],
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
             updated_at=value.updated_at.value,
@@ -2660,6 +2726,120 @@ def create_app(
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
         )
+
+    def investment_activity_wire(value: InvestmentActivityView) -> InvestmentActivityWire:
+        return InvestmentActivityWire(
+            id=UUID(str(value.activity_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            activity_kind=value.activity_kind,
+            action_date=value.action_date.value,
+            position_id=UUID(str(value.position_id)),
+            investment_key=value.investment_key,
+            investment_name=value.investment_name,
+            investment_kind=value.investment_kind,
+            tax_treatment=value.tax_treatment,
+            org_number=value.org_number,
+            acquisition_lot_id=(
+                UUID(str(value.acquisition_lot_id))
+                if value.acquisition_lot_id else None
+            ),
+            share_count=value.share_count,
+            purchase_amount=(
+                _money_wire(value.purchase_amount) if value.purchase_amount else None
+            ),
+            sold_share_count=value.sold_share_count,
+            proceeds=_money_wire(value.proceeds) if value.proceeds else None,
+            fifo_cost_basis_reduction=(
+                _money_wire(value.fifo_cost_basis_reduction)
+                if value.fifo_cost_basis_reduction else None
+            ),
+            remaining_share_count=value.remaining_share_count,
+            remaining_cost_basis=(
+                _money_wire(value.remaining_cost_basis)
+                if value.remaining_cost_basis else None
+            ),
+            paying_company_name=value.paying_company_name,
+            declared_date=(
+                value.declared_date.value if value.declared_date else None
+            ),
+            gross_amount=_money_wire(value.gross_amount) if value.gross_amount else None,
+            taxable_add_back=(
+                _money_wire(value.taxable_add_back) if value.taxable_add_back else None
+            ),
+            gain_or_loss=_money_wire(value.gain_or_loss) if value.gain_or_loss else None,
+            bank_transaction_id=(
+                UUID(str(value.bank_transaction_id))
+                if value.bank_transaction_id else None
+            ),
+            document_id=(
+                UUID(str(value.document_id)) if value.document_id else None
+            ),
+            document_status=value.document_status,
+            accounting_entry_id=(
+                UUID(str(value.accounting_entry_id))
+                if value.accounting_entry_id else None
+            ),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
+    def share_sale_allocation_wire(
+        value: ShareSaleAllocationView,
+    ) -> ShareSaleAllocationWire:
+        return ShareSaleAllocationWire(
+            id=UUID(str(value.allocation_id)),
+            company_id=UUID(str(value.company_id)),
+            position_id=UUID(str(value.position_id)),
+            lot_id=UUID(str(value.lot_id)),
+            sale_action_id=UUID(str(value.sale_action_id)),
+            allocation_order=value.allocation_order,
+            acquisition_date=value.acquisition_date.value,
+            allocated_share_count=value.allocated_share_count,
+            allocated_cost_basis=_money_wire(value.allocated_cost_basis),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
+    @application.get(
+        "/api/v1/investments/activity",
+        operation_id="investmentsListActivity",
+        response_model=InvestmentActivityPageWire,
+        responses={200: {"description": "Visible canonical investment activity."} | investments_success}
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_activity(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentActivityPageWire:
+        async def execute() -> InvestmentActivityPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_activity(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor else None
+                ),
+                limit=limit,
+            )
+            return InvestmentActivityPageWire(
+                items=[investment_activity_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
 
     @application.get(
         "/api/v1/investments/positions",
@@ -2735,6 +2915,50 @@ def create_app(
             )
             return AcquisitionLotPageWire(
                 items=[acquisition_lot_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
+
+    @application.get(
+        "/api/v1/investments/share-sale-allocations",
+        operation_id="investmentsListShareSaleAllocations",
+        response_model=ShareSaleAllocationPageWire,
+        responses={
+            200: {"description": "Visible authoritative FIFO allocations."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_share_sale_allocations(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> ShareSaleAllocationPageWire:
+        async def execute() -> ShareSaleAllocationPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_share_sale_allocations(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor
+                    else None
+                ),
+                limit=limit,
+            )
+            return ShareSaleAllocationPageWire(
+                items=[share_sale_allocation_wire(item) for item in page.items],
                 page=InvestmentsPageWire(
                     next_cursor=str(page.next_cursor) if page.next_cursor else None,
                     has_more=page.has_more,
@@ -2866,6 +3090,65 @@ def create_app(
                 action_id=UUID(str(result.action_id)),
                 position_id=UUID(str(result.position_id)),
                 accounting_entry_id=UUID(str(result.accounting_entry_id)),
+                replayed=result.replayed,
+            )
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/received-dividends",
+        operation_id="investmentsRecordReceivedDividend",
+        response_model=InvestmentsReceivedDividendResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Received dividend recorded atomically."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_investments_received_dividend(
+        request: Request,
+        command: InvestmentsReceivedDividendWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsReceivedDividendResultWire:
+        async def execute() -> InvestmentsReceivedDividendResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            domain = RecordReceivedDividendCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=CorrelationId(request.state.request_id),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                action_id=InvestmentActionId(str(command.action_id)),
+                position_id=InvestmentPositionId(str(command.position_id)),
+                paying_company_name=command.paying_company_name,
+                declared_date=LocalDate(command.declared_date),
+                paid_date=LocalDate(command.paid_date),
+                gross_amount=command.gross_amount.to_domain(),
+                tax_treatment=command.tax_treatment,
+                bank_transaction_id=(
+                    InvestmentSourceReference(str(command.bank_transaction_id))
+                    if command.bank_transaction_id
+                    else None
+                ),
+                document_id=(
+                    InvestmentSourceReference(str(command.document_id))
+                    if command.document_id
+                    else None
+                ),
+                document_status=command.document_status,
+            )
+            result = await session.record_received_dividend(domain)
+            return InvestmentsReceivedDividendResultWire(
+                action_id=UUID(str(result.action_id)),
+                position_id=UUID(str(result.position_id)),
+                accounting_entry_id=UUID(str(result.accounting_entry_id)),
+                taxable_add_back=_money_wire(result.taxable_add_back),
                 replayed=result.replayed,
             )
 
@@ -3759,51 +4042,6 @@ def create_app(
                 entry_kind=result.entry_kind.value,
                 posted_at=result.posted_at.value,
                 replayed=result.replayed,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/investment-dividends",
-        operation_id="ledgerPostInvestmentDividend",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Investment dividend recorded atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_investment_dividend(
-        request: Request,
-        command: LedgerInvestmentDividendWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: RecordInvestmentDividendCommand(
-                company_id=CompanyId(str(command.company_id)),
-                actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request),
-                idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year),
-                action_id=LedgerSourceRecordId(str(command.action_id)),
-                paying_company_name=command.paying_company_name,
-                declared_date=LocalDate(command.declared_date),
-                paid_date=LocalDate(command.paid_date),
-                gross_amount=command.gross_amount.to_domain(),
-                linked_investment_id=(LedgerSourceRecordId(str(command.linked_investment_id)) if command.linked_investment_id else None),
-                tax_treatment=command.tax_treatment,
-                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
-                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
-                document_status=command.document_status,
-            ))
-            result = await session.record_investment_dividend(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
             )
 
         return await ledger_call(execute)

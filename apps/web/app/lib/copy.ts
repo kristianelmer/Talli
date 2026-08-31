@@ -923,6 +923,8 @@ export const ownerCopy = {
       amountLabel: "Brutto utbytte (kr)",
       addBackNote: (amount: number) =>
         `3 % av utbyttet (${amount} kr) legges til som skattepliktig inntekt under fritaksmetoden.`,
+      policyNote:
+        "Talli validerer fritaksmetoden, beregner 3 %-tillegget og viser den endelige posteringen etter registrering.",
     },
     ownerDividend: {
       title: "Utbytte til deg",

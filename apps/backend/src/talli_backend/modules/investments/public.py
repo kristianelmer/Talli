@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
 from uuid import UUID
 
@@ -75,6 +75,17 @@ class AcquisitionLotId:
 
 
 @dataclass(frozen=True, slots=True)
+class ShareSaleAllocationId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "share sale allocation id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class AccountingEntryReference:
     value: str
 
@@ -102,6 +113,12 @@ class InvestmentDocumentStatus(StrEnum):
 class InvestmentLotHistoryStatus(StrEnum):
     COMPLETE = "complete"
     NEEDS_RECONSTRUCTION = "needs_reconstruction"
+
+
+class InvestmentActivityKind(StrEnum):
+    SHARE_PURCHASE = "share_purchase"
+    SHARE_SALE = "share_sale"
+    DIVIDEND_RECEIVED = "dividend_received"
 
 
 class InvestmentsErrorCode(StrEnum):
@@ -180,6 +197,20 @@ class RecordShareSaleCommand(InvestmentsCommand):
 
 
 @dataclass(frozen=True, slots=True)
+class RecordReceivedDividendCommand(InvestmentsCommand):
+    action_id: InvestmentActionId
+    position_id: InvestmentPositionId
+    paying_company_name: str
+    declared_date: LocalDate
+    paid_date: LocalDate
+    gross_amount: Money
+    tax_treatment: InvestmentTaxTreatment
+    bank_transaction_id: InvestmentSourceReference | None
+    document_id: InvestmentSourceReference | None
+    document_status: InvestmentDocumentStatus
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedSharePurchase:
     position_id: InvestmentPositionId
     lot_id: AcquisitionLotId
@@ -193,6 +224,14 @@ class PreparedShareSale:
     position_id: InvestmentPositionId
     investment_name: str
     fifo_cost_basis_reduction: Money
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedReceivedDividend:
+    position_id: InvestmentPositionId
+    investment_name: str
+    paying_company_name: str
+    taxable_add_back: Money
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +249,15 @@ class RecordedShareSale:
     action_id: InvestmentActionId
     position_id: InvestmentPositionId
     accounting_entry_id: AccountingEntryReference
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedReceivedDividend:
+    action_id: InvestmentActionId
+    position_id: InvestmentPositionId
+    accounting_entry_id: AccountingEntryReference
+    taxable_add_back: Money
     replayed: bool
 
 
@@ -237,6 +285,7 @@ class InvestmentPositionView:
     cost_basis: Money
     lot_history_status: InvestmentLotHistoryStatus
     movement_count: int
+    movements: tuple[Mapping[str, object], ...]
     created_by: ActorId
     created_at: Timestamp
     updated_at: Timestamp
@@ -258,6 +307,55 @@ class AcquisitionLotView:
 
 
 @dataclass(frozen=True, slots=True)
+class InvestmentActivityView:
+    activity_id: InvestmentActionId
+    company_id: CompanyId
+    income_year: IncomeYear
+    activity_kind: InvestmentActivityKind
+    action_date: LocalDate
+    position_id: InvestmentPositionId
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    tax_treatment: InvestmentTaxTreatment
+    org_number: str | None
+    acquisition_lot_id: AcquisitionLotId | None
+    share_count: int | None
+    purchase_amount: Money | None
+    sold_share_count: int | None
+    proceeds: Money | None
+    fifo_cost_basis_reduction: Money | None
+    remaining_share_count: int | None
+    remaining_cost_basis: Money | None
+    paying_company_name: str | None
+    declared_date: LocalDate | None
+    gross_amount: Money | None
+    taxable_add_back: Money | None
+    gain_or_loss: Money | None
+    bank_transaction_id: InvestmentSourceReference | None
+    document_id: InvestmentSourceReference | None
+    document_status: InvestmentDocumentStatus
+    accounting_entry_id: AccountingEntryReference | None
+    created_by: ActorId
+    created_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class ShareSaleAllocationView:
+    allocation_id: ShareSaleAllocationId
+    company_id: CompanyId
+    position_id: InvestmentPositionId
+    lot_id: AcquisitionLotId
+    sale_action_id: InvestmentActionId
+    allocation_order: int
+    acquisition_date: LocalDate
+    allocated_share_count: int
+    allocated_cost_basis: Money
+    created_by: ActorId
+    created_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
 class InvestmentPositionPage:
     items: tuple[InvestmentPositionView, ...]
     next_cursor: InvestmentCursor | None
@@ -271,7 +369,40 @@ class AcquisitionLotPage:
     has_more: bool
 
 
+@dataclass(frozen=True, slots=True)
+class InvestmentActivityPage:
+    items: tuple[InvestmentActivityView, ...]
+    next_cursor: InvestmentCursor | None
+    has_more: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ShareSaleAllocationPage:
+    items: tuple[ShareSaleAllocationView, ...]
+    next_cursor: InvestmentCursor | None
+    has_more: bool
+
+
 class InvestmentsPersistence(Protocol):
+    async def get_received_dividend_replay(
+        self, command: RecordReceivedDividendCommand
+    ) -> RecordedReceivedDividend | None: ...
+
+    async def prepare_received_dividend(
+        self,
+        command: RecordReceivedDividendCommand,
+        *,
+        taxable_add_back: Money,
+    ) -> PreparedReceivedDividend: ...
+
+    async def complete_received_dividend(
+        self,
+        command: RecordReceivedDividendCommand,
+        *,
+        prepared: PreparedReceivedDividend,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedReceivedDividend: ...
+
     async def get_share_purchase_replay(
         self, command: RecordSharePurchaseCommand
     ) -> RecordedSharePurchase | None: ...
@@ -305,6 +436,25 @@ class InvestmentsPersistence(Protocol):
 
 
 class InvestmentsCommands(Protocol):
+    async def get_received_dividend_replay(
+        self, command: RecordReceivedDividendCommand
+    ) -> RecordedReceivedDividend | None: ...
+
+    async def prepare_received_dividend(
+        self,
+        command: RecordReceivedDividendCommand,
+        *,
+        taxable_add_back: Money,
+    ) -> PreparedReceivedDividend: ...
+
+    async def complete_received_dividend(
+        self,
+        command: RecordReceivedDividendCommand,
+        *,
+        prepared: PreparedReceivedDividend,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedReceivedDividend: ...
+
     async def get_share_purchase_replay(
         self, command: RecordSharePurchaseCommand
     ) -> RecordedSharePurchase | None: ...
@@ -338,6 +488,26 @@ class InvestmentsCommands(Protocol):
 
 
 class InvestmentsQueries(Protocol):
+    async def list_share_sale_allocations(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> ShareSaleAllocationPage: ...
+
+    async def list_activity(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentActivityPage: ...
+
     async def list_positions(
         self,
         *,
@@ -380,6 +550,9 @@ __all__ = [
     "AcquisitionLotId",
     "AcquisitionLotView",
     "InvestmentActionId",
+    "InvestmentActivityKind",
+    "InvestmentActivityPage",
+    "InvestmentActivityView",
     "InvestmentCursor",
     "InvestmentDocumentStatus",
     "InvestmentKind",
@@ -397,9 +570,15 @@ __all__ = [
     "InvestmentsQueries",
     "PreparedSharePurchase",
     "PreparedShareSale",
+    "PreparedReceivedDividend",
+    "RecordReceivedDividendCommand",
     "RecordSharePurchaseCommand",
     "RecordShareSaleCommand",
     "RecordedSharePurchase",
     "RecordedShareSale",
+    "RecordedReceivedDividend",
+    "ShareSaleAllocationId",
+    "ShareSaleAllocationPage",
+    "ShareSaleAllocationView",
     "investments_persistence_adapter",
 ]

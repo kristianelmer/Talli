@@ -76,10 +76,6 @@ import {
   uploadSignedCorporateArtifact,
   validateSignedCorporateArtifactUpload,
 } from "./lib/corporate-signed-artifacts";
-import {
-  DividendReceivedValidationError,
-  validateDividendReceived,
-} from "./lib/dividend-received";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/filing-overrides";
 import {
   acceptCompanyInvitation,
@@ -117,7 +113,6 @@ import {
   ledgerOutcomeMayBeUnknown,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
-  postLedgerInvestmentDividend,
   postLedgerManualJournal,
   postLedgerOwnerDividendPayment,
   postLedgerShareholderLoan,
@@ -128,8 +123,10 @@ import {
 import {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
+  listPresentedInvestmentActivity,
   recordInvestmentSharePurchase,
   recordInvestmentShareSale,
+  recordInvestmentReceivedDividend,
 } from "../features/investments";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -2010,89 +2007,39 @@ export async function recordDividendReceived(formData: FormData) {
   if (!hasSupabaseEnv()) {
     failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    failTo(returnTo, "Innlogging kreves.");
-  }
-
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const bankTransactionId = formString(formData, "bankTransactionId") || null;
-  const documentId = formString(formData, "documentId") || null;
-  let payload;
-  try {
-    payload = validateDividendReceived({
-      payingCompanyName: formString(formData, "payingCompanyName"),
-      declaredDate: formString(formData, "declaredDate"),
-      paidDate: formString(formData, "paidDate"),
-      grossAmount: Number(formString(formData, "grossAmount")),
-      linkedInvestmentId: formString(formData, "linkedInvestmentId"),
-      taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden" | "outside_fritaksmetoden" | "needs_accountant",
-      bankTransactionId,
-      documentId,
-      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
-    });
-  } catch (error) {
-    const message =
-      error instanceof DividendReceivedValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig mottatt utbytte";
-    failTo(returnTo, message);
-  }
-
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await postLedgerInvestmentDividend(
+    await recordInvestmentReceivedDividend(
       accessToken,
       {
         actionId: operationId,
-        bankTransactionId,
+        bankTransactionId: null,
         companyId,
-        declaredDate: payload.declared_date,
-        documentId,
-        documentStatus: payload.document_status,
-        grossAmount: { amount: String(payload.gross_amount), currency: "NOK" },
+        declaredDate: formString(formData, "declaredDate"),
+        documentId: null,
+        documentStatus: "not_required",
+        grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
         incomeYear,
-        linkedInvestmentId: payload.linked_investment_id,
-        paidDate: payload.paid_date,
-        payingCompanyName: payload.paying_company_name,
-        taxTreatment: payload.tax_treatment,
+        paidDate: formString(formData, "paidDate"),
+        payingCompanyName: formString(formData, "payingCompanyName"),
+        positionId: formString(formData, "positionId"),
+        taxTreatment: "fritaksmetoden",
       },
       operationId,
       operationId,
     );
   } catch (error) {
-    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
     const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
       ? "/actions/dividend-received"
       : returnTo;
     redirect(ownerPathWithQuery(retryTarget, {
-      error: ledgerActionErrorMessage(error),
+      error: investmentsActionErrorMessage(error),
       dividendReceivedOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
-  }
-
-  try {
-    await persistLedgerAudit(createInvitationSideEffectStore(supabase), {
-      operationId,
-      companyId,
-      actorId: user.id,
-      category: "ledger",
-      action: "dividend_received_recorded",
-      message: `Mottatt utbytte postert fra ${payload.paying_company_name} for ${incomeYear}.`,
-    });
-  } catch {
-    const retryTarget = returnTo === "/actions" ? "/actions/dividend-received" : returnTo;
-    redirect(ownerPathWithQuery(retryTarget, {
-      error: "Utbyttet ble postert, men kontrollsporet kunne ikke bekreftes. Prøv samme forespørsel igjen.",
-      dividendReceivedOperationId: operationId,
     }));
   }
 
@@ -3606,6 +3553,10 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
+    redirect("/workspace?error=Innlogging%20kreves");
+  }
   const company = await loadAcceptedMembershipCompany(companyId);
   if (!company) {
     redirect(`/workspace?error=${encodeURIComponent("Fant ikke selskap")}`);
@@ -3614,7 +3565,8 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   const [
     { data: setups, error: setupsError },
     { data: ledgerEntries, error: ledgerError },
-    { data: holdingActions, error: actionsError },
+    { data: legacyHoldingActions, error: legacyActionsError },
+    { data: investmentActions, error: investmentActionsError },
     { data: bankTransactions, error: bankError },
     { data: documents, error: documentsError },
     { data: overrides, error: overridesError },
@@ -3639,6 +3591,10 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error: error ? { message: error } : null,
     })),
     supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    listPresentedInvestmentActivity(accessToken, [companyId]).then(({ actions, error }) => ({
+      data: actions.filter((action) => action.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     listBankTransactions([companyId]).then(({ transactions, error }) => ({
       data: transactions.filter((transaction) => transaction.income_year === incomeYear),
       error: error ? { message: error } : null,
@@ -3663,7 +3619,8 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   const firstError =
     setupsError ||
     ledgerError ||
-    actionsError ||
+    legacyActionsError ||
+    investmentActionsError ||
     bankError ||
     documentsError ||
     overridesError ||
@@ -3681,6 +3638,13 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   if (firstError) {
     redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
+
+  const holdingActions = [
+    ...(legacyHoldingActions ?? []).filter(
+      (action) => !["share_purchase", "share_sale", "dividend_received"].includes(action.action_type),
+    ),
+    ...(investmentActions ?? []),
+  ];
 
   const annualCorporateDecision = (corporateDecisions ?? []).find(
     (decision) => decision.decision_kind === "annual_close",
@@ -3709,7 +3673,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     incomeYear,
     setups: setups ?? [],
     ledgerEntries: ledgerEntries ?? [],
-    holdingActions: holdingActions ?? [],
+    holdingActions,
     bankTransactions: bankTransactions ?? [],
     documents: documents ?? [],
     overrides: overrides ?? [],

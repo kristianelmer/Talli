@@ -83,7 +83,7 @@ def test_ledger_public_commands_are_owned_intents_not_generic_source_postings() 
         "PostBankSuggestionOutcomeCommand",
         "PostInvestmentPurchaseCommand",
         "PostInvestmentSaleCommand",
-        "PostInvestmentDividendCommand",
+        "PostReceivedDividendCommand",
         "PostOwnerDividendDeclaredCommand",
         "PostOwnerDividendPaymentCommand",
         "PostShareholderLoanCommand",
