@@ -9,15 +9,19 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const dockerHost = process.env.TALLI_DOCKER_HOST;
 const investmentsMigration = "20260831124939_investments_capability.sql";
 const investmentsWorkflowMigration = "20260831131203_investments_share_purchase_workflow.sql";
+const investmentsContractMigration = "20260831133000_investments_share_purchase_contract.sql";
+const investmentsRollbackMigration = "20260831133000_investments_share_purchase_contract.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
 const actionId = "20000000-0000-0000-0000-000000000002";
 const positionId = "30000000-0000-0000-0000-000000000003";
 const lotId = "40000000-0000-0000-0000-000000000004";
+const overlapActionId = "20000000-0000-0000-0000-000000000011";
 const newActionId = "20000000-0000-0000-0000-000000000012";
-const newEntryId = "70000000-0000-0000-0000-000000000017";
 const rollbackActionId = "20000000-0000-0000-0000-000000000013";
+const successorSaleActionId = "20000000-0000-0000-0000-000000000014";
+const recutoverActionId = "20000000-0000-0000-0000-000000000015";
 
 const bootstrapSql = String.raw`
 create role anon nologin;
@@ -122,13 +126,78 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         ('${outsiderId}', 'outsider@example.test');
       insert into public.companies (
         id, org_number, name, entity_type, address, postal_code, city,
-        status_text, source, created_by
+        status_text, source, created_by, identity_confirmed_at, identity_locked_at
       ) values (
         '${companyId}', '314159265', 'Investments AS', 'AS', 'One', '0150',
-        'Oslo', 'Active', 'test', '${ownerId}'
+        'Oslo', 'Active', 'test', '${ownerId}', pg_catalog.now(), pg_catalog.now()
       );
       insert into public.company_memberships (company_id, user_id, role, accepted_at)
       values ('${companyId}', '${ownerId}', 'owner', pg_catalog.now());
+      insert into public.customer_agreement_acceptances (
+        id, company_id, accepted_by, customer_legal_name, customer_org_number,
+        business_terms_version, business_terms_effective_date,
+        business_terms_path, business_terms_sha256,
+        dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+        authority_statement_version, acceptance_method, accepted_at
+      ) values (
+        '73000000-0000-0000-0000-000000000001', '${companyId}', '${ownerId}',
+        'Investments AS', '314159265', '2026-08-30', date '2026-08-30',
+        '/vilkar', 'afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04',
+        '2026-08-30', date '2026-08-30', '/databehandleravtale',
+        '1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a',
+        'authority-v1', 'in_app_clickwrap', pg_catalog.now()
+      );
+      insert into public.company_eligibility_assessments (
+        id, company_id, accounting_year, operation_id, trigger, decision,
+        capability_manifest, capability_manifest_version,
+        capability_manifest_sha256, public_facts, public_facts_sha256,
+        answers, answers_sha256, reason_codes, reason_explanations,
+        next_step_code, next_step, consequential_operations_allowed,
+        archive_export_available, evaluator_version, assessed_by, assessed_at
+      ) values (
+        '70000000-0000-0000-0000-000000000001', '${companyId}', 2026,
+        '70000000-0000-0000-0000-000000000002', 'initial_admission',
+        'supported', '{}'::jsonb, '2026.1',
+        '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+        '{}'::jsonb, repeat('a', 64), '{"supported":true}'::jsonb,
+        repeat('b', 64), '{}'::text[], '{}'::text[], 'CREATE_ACCOUNT_AND_ACCEPT',
+        'Test admission.', true, true, '2026.1', '${ownerId}', pg_catalog.now()
+      );
+      insert into public.company_year_admissions (
+        id, company_id, accounting_year, eligibility_assessment_id,
+        capability_manifest, capability_manifest_version,
+        capability_manifest_sha256, company_year_promise,
+        company_year_promise_sha256, reconstruct_from, admitted_by, admitted_at
+      ) values (
+        '71000000-0000-0000-0000-000000000001', '${companyId}', 2026,
+        '70000000-0000-0000-0000-000000000001', '{}'::jsonb, '2026.1',
+        '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+        '{}'::jsonb, repeat('c', 64), date '2026-01-01', '${ownerId}', pg_catalog.now()
+      );
+      insert into public.company_year_acceptances (
+        id, company_year_admission_id, company_id, accounting_year, accepted_by,
+        customer_legal_name, customer_org_number,
+        business_terms_version, business_terms_effective_date,
+        business_terms_path, business_terms_sha256,
+        dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+        privacy_notice_version, privacy_notice_effective_date,
+        privacy_notice_path, privacy_notice_sha256,
+        capability_manifest_version, capability_manifest_sha256,
+        authority_statement_version, acceptance_method, accepted_at
+      ) values (
+        '72000000-0000-0000-0000-000000000001',
+        '71000000-0000-0000-0000-000000000001', '${companyId}', 2026,
+        '${ownerId}', 'Investments AS', '314159265',
+        '2026-08-30', date '2026-08-30', '/vilkar',
+        'afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04',
+        '2026-08-30', date '2026-08-30', '/databehandleravtale',
+        '1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a',
+        '2026-08-30', date '2026-08-30', '/personvern',
+        '041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de',
+        '2026.1',
+        '9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de',
+        'authority-v1', 'in_app_clickwrap', pg_catalog.now()
+      );
       insert into public.investment_positions (
         id, company_id, investment_key, name, kind, tax_treatment, org_number,
         share_count, cost_basis, movements, lot_history_status, created_by
@@ -173,6 +242,11 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         pg_catalog.has_table_privilege('service_role', 'investments.positions', 'select')::text;
     `), "true:true:true:true:false:true:true:false:false");
     assert.equal(scalar(containerName, String.raw`
+      set session authorization talli_ledger_backend;
+      set role investments_workflow_executor;
+      select current_user || ':' || session_user;
+    `), "investments_workflow_executor:talli_ledger_backend");
+    assert.equal(scalar(containerName, String.raw`
       select position.id::text || ':' || position.investment_key || ':' ||
         position.share_count::text || ':' || position.cost_basis::text || ':' ||
         lot.id::text || ':' || lot.acquisition_action_id::text || ':' ||
@@ -183,7 +257,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     assert.equal(scalar(containerName, String.raw`
       set role investments_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}"}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
       select count(*) from investments.positions;
     `), "1");
     assert.equal(scalar(containerName, String.raw`
@@ -192,6 +266,56 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${outsiderId}"}', false);
       select count(*) from investments.positions;
     `), "0");
+
+    const overlapRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: overlapActionId,
+      idempotencyKey: "purchase-overlap-0001", correlationId: "overlap-request",
+      investmentKey: "overlap-as", investmentName: "Overlap AS",
+      investmentKind: "norwegian_private_company", taxTreatment: "fritaksmetoden",
+      acquisitionDate: "2026-05-10", shareCount: 3, purchaseAmount: "300.00",
+      orgNumber: null, bankTransactionId: null, documentId: null,
+      documentStatus: "not_required",
+    });
+    JSON.parse(scalar(containerName, String.raw`
+      set role ledger_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select backend_system.prepare_investment_purchase_fifo_v1(
+          '${overlapRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'purchase-overlap-0001', '${companyId}', 2026, 'SHARE_PURCHASE',
+          'Share purchase: Overlap AS',
+          '[{"account":"1800","description":"Investment in Overlap AS","debit":"300.00","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"300.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${overlapActionId}',
+          'overlap-request', '${ownerId}'
+        )
+      )
+      select backend_system.complete_investment_purchase_fifo_v1(
+        '${overlapRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(scalar(containerName, String.raw`
+      select purchase.legacy_imported::text || ':' ||
+        position.share_count::text || ':' || position.cost_basis::text || ':' ||
+        lot.remaining_share_count::text || ':' || lot.remaining_cost_basis::text
+      from investments.share_purchases purchase
+      join investments.positions position on position.id = purchase.position_id
+      join investments.acquisition_lots lot on lot.id = purchase.acquisition_lot_id
+      where purchase.action_id = '${overlapActionId}';
+    `), "true:3:300.00:3:300.00");
+    const overlapReplay = JSON.parse(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      select investments.get_share_purchase_replay_v1(
+        '${overlapRequest}'::jsonb, '${ownerId}'
+      )::text;
+    `));
+    assert.equal(overlapReplay.replayed, true);
 
     const purchaseRequest = JSON.stringify({
       companyId, incomeYear: 2026, actionId: newActionId,
@@ -205,29 +329,41 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     const completed = scalar(containerName, String.raw`
       set role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}"}', false);
-      with prepared as (
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
         select investments.prepare_share_purchase_v1(
           '${purchaseRequest}'::jsonb, '${ownerId}'
         ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'purchase-command-0001', '${companyId}', 2026, 'SHARE_PURCHASE',
+          'Share purchase: Second AS',
+          '[{"account":"1800","description":"Investment in Second AS","debit":"500.00","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"500.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${newActionId}',
+          'request-0001', '${ownerId}'
+        )
       )
       select investments.complete_share_purchase_v1(
-        '${purchaseRequest}'::jsonb, '${newEntryId}', prepared.value, '${ownerId}'
-      )::text from prepared;
+        '${purchaseRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
     `);
-    assert.equal(JSON.parse(completed).accountingEntryId, newEntryId);
-    assert.equal(scalar(containerName, String.raw`
+    const completedResult = JSON.parse(completed);
+    assert.match(completedResult.accountingEntryId, /^[0-9a-f-]{36}$/u);
+    const replayed = JSON.parse(scalar(containerName, String.raw`
       set role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}"}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
       select investments.get_share_purchase_replay_v1(
         '${purchaseRequest}'::jsonb, '${ownerId}'
-      ) ->> 'replayed';
-    `), "true");
+      )::text;
+    `));
+    assert.equal(replayed.replayed, true);
+    assert.equal(replayed.positionCreated, completedResult.positionCreated);
     assert.equal(scalar(containerName, String.raw`
       set role investments_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}"}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
       select purchase.share_count::text || ':' || purchase.purchase_amount::text || ':' ||
         position.share_count::text || ':' || position.cost_basis::text || ':' ||
         lot.original_share_count::text || ':' || lot.original_cost_basis::text
@@ -236,22 +372,100 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       join investments.acquisition_lots lot on lot.id = purchase.acquisition_lot_id
       where purchase.action_id = '${newActionId}';
     `), "25:500.00:25:500.00:25:500.00");
+    assert.equal(scalar(containerName, String.raw`
+      select entry.entry_kind || ':' || entry.source_capability || ':' ||
+        entry.source_record_id || ':' ||
+        (entry.lines -> 0 ->> 'account') || ':' ||
+        (entry.lines -> 1 ->> 'account') || ':' ||
+        (entry.lines -> 0 ->> 'debit') || ':' ||
+        (entry.lines -> 1 ->> 'credit')
+      from ledger.entries entry
+      join investments.share_purchases purchase
+        on purchase.accounting_entry_id = entry.id
+      where purchase.action_id = '${newActionId}';
+    `), `SHARE_PURCHASE:INVESTMENTS:${newActionId}:1800:1920:500.00:500.00`);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from public.holding_actions
+          where id = '${newActionId}' and action_type = 'share_purchase')::text || ':' ||
+        (select count(*) from public.investment_lots lot
+          join investments.share_purchases purchase
+            on purchase.acquisition_lot_id = lot.id
+          where purchase.action_id = '${newActionId}')::text || ':' ||
+        (select count(*) from public.investment_positions position
+          join investments.share_purchases purchase
+            on purchase.position_id = position.id
+          where purchase.action_id = '${newActionId}'
+            and position.share_count = 25 and position.cost_basis = 500.00)::text || ':' ||
+        (select count(*) from public.audit_events
+          where company_id = '${companyId}'
+            and action = 'share_purchase_recorded'
+            and message like '%Second AS%')::text;
+    `), "1:1:1:1");
+
+    psql(containerName, [], String.raw`
+      begin;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      update public.investment_lots
+      set remaining_share_count = 20, remaining_cost_basis = 400.00
+      where position_id = '${completedResult.positionId}';
+      update public.investment_positions
+      set share_count = 20, cost_basis = 400.00,
+          movements = movements || pg_catalog.jsonb_build_array(
+            pg_catalog.jsonb_build_object(
+              'action_id', '${successorSaleActionId}',
+              'movement_type', 'sale', 'movement_date', date '2026-06-01',
+              'share_delta', -5, 'cost_basis_delta', -100.00,
+              'amount', 120.00, 'gain_or_loss', 20.00
+            )
+          ), updated_at = pg_catalog.now()
+      where id = '${completedResult.positionId}';
+      commit;
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      select position.share_count::text || ':' || position.cost_basis::text || ':' ||
+        lot.remaining_share_count::text || ':' || lot.remaining_cost_basis::text
+      from investments.positions position
+      join investments.acquisition_lots lot on lot.position_id = position.id
+      where position.id = '${completedResult.positionId}';
+    `), "20:400.00:20:400.00");
 
     const rollbackRequest = JSON.stringify({
       ...JSON.parse(purchaseRequest), actionId: rollbackActionId,
       idempotencyKey: "purchase-command-0002", investmentKey: "rollback-as",
       investmentName: "Rollback AS", orgNumber: null,
     });
-    psql(containerName, [], String.raw`
+    const failedAfterLedger = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "-Atq",
+    ], { input: String.raw`
       begin;
       set local role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
-      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}"}', true);
-      select investments.prepare_share_purchase_v1(
-        '${rollbackRequest}'::jsonb, '${ownerId}'
-      );
-      rollback;
-    `);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      with prepared as materialized (
+        select investments.prepare_share_purchase_v1(
+          '${rollbackRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'purchase-command-0002', '${companyId}', 2026, 'SHARE_PURCHASE',
+          'Share purchase: Rollback AS',
+          '[{"account":"1800","description":"Investment in Rollback AS","debit":"500.00","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"500.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${rollbackActionId}',
+          'request-rollback', '${ownerId}'
+        )
+      )
+      select investments.complete_share_purchase_v1(
+        '${rollbackRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value || '{"lotId":"90000000-0000-0000-0000-000000000009"}'::jsonb,
+        '${ownerId}'
+      ) from prepared cross join posted;
+      commit;
+    ` });
+    assert.notEqual(failedAfterLedger.status, 0);
+    assert.match(failedAfterLedger.stderr, /investments_dependency_unavailable/u);
     assert.equal(scalar(containerName, String.raw`
       select count(*) from investments.share_purchases
       where action_id = '${rollbackActionId}';
@@ -260,6 +474,18 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       select count(*) from investments.positions
       where company_id = '${companyId}' and investment_key = 'rollback-as';
     `), "0");
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from ledger.entries
+          where source_capability = 'INVESTMENTS'
+            and source_record_id = '${rollbackActionId}')::text || ':' ||
+        (select count(*) from backend_system.ledger_command_receipts
+          where idempotency_key = 'purchase-command-0002')::text || ':' ||
+        (select count(*) from public.holding_actions
+          where id = '${rollbackActionId}')::text || ':' ||
+        (select count(*) from public.audit_events
+          where message like '%Rollback AS%')::text;
+    `), "0:0:0:0");
 
     const forbidden = docker([
       "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
@@ -278,6 +504,101 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       select count(*) from investments.share_purchases
       where action_id = '${rollbackActionId}';
     `), "0");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_purchase_fifo_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'backend_system.complete_investment_purchase_fifo_v1(jsonb,uuid,jsonb,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'public.record_share_purchase_fifo(uuid,uuid,integer,text,text,text,text,date,bigint,numeric,text,uuid,uuid,text)'
+        ) is null)::text;
+    `), "true:true:true");
+    assert.equal(scalar(containerName, String.raw`
+      select pg_catalog.has_function_privilege(
+        'investments_workflow_executor',
+        'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
+      )::text || ':' || pg_catalog.has_function_privilege(
+        'ledger_workflow_executor',
+        'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
+      )::text;
+    `), "true:false");
+
+    for (let application = 0; application < 2; application += 1) {
+      psql(containerName, [
+        "--file", `/repo/supabase/rollback/${investmentsRollbackMigration}`,
+      ]);
+    }
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_purchase_fifo_v1(jsonb,text)'
+        ) is not null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'ledger_workflow_executor',
+          'backend_system.prepare_investment_purchase_fifo_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true:false");
+
+    const rollbackRestoredRequest = JSON.stringify({
+      ...JSON.parse(purchaseRequest), actionId: recutoverActionId,
+      idempotencyKey: "purchase-rollback-restored-0001",
+      correlationId: "request-rollback-restored",
+      investmentKey: "rollback-restored-as",
+      investmentName: "Rollback Restored AS", orgNumber: null,
+    });
+    JSON.parse(scalar(containerName, String.raw`
+      set role ledger_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      with prepared as materialized (
+        select backend_system.prepare_investment_purchase_fifo_v1(
+          '${rollbackRestoredRequest}'::jsonb, '${ownerId}'
+        ) as value
+      ), posted as materialized (
+        select * from ledger.post_entry(
+          'purchase-rollback-restored-0001', '${companyId}', 2026,
+          'SHARE_PURCHASE', 'Share purchase: Rollback Restored AS',
+          '[{"account":"1800","description":"Investment in Rollback Restored AS","debit":"500.00","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"500.00","currency":"NOK"}]'::jsonb,
+          '[]'::jsonb, false, 'INVESTMENTS', '${recutoverActionId}',
+          'request-rollback-restored', '${ownerId}'
+        )
+      )
+      select backend_system.complete_investment_purchase_fifo_v1(
+        '${rollbackRestoredRequest}'::jsonb, posted.ledger_entry_id,
+        prepared.value, '${ownerId}'
+      )::text from prepared cross join posted;
+    `));
+    assert.equal(scalar(containerName, String.raw`
+      select legacy_imported::text || ':' || (completed_at is not null)::text
+      from investments.share_purchases
+      where action_id = '${recutoverActionId}';
+    `), "true:true");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/contract-migrations/${investmentsContractMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regprocedure(
+          'backend_system.prepare_investment_purchase_fifo_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_purchase_v1(jsonb,text)', 'EXECUTE'
+        )::text;
+    `), "true:true");
   } finally {
     docker(["rm", "--force", containerName]);
   }

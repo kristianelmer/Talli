@@ -11,9 +11,11 @@ positions, immutable acquisition lots, deterministic purchase movements, and
 purchase replay. The expand migration
 `supabase/migrations/20260831124939_investments_capability.sql` copies the exact
 legacy position and acquisition-lot identities into forced-RLS capability tables.
-The workflow migration adds canonical purchase receipts, then removes the legacy
-purchase coordinator. The legacy public tables remain frozen for the serialized
-sale slice and cannot receive new purchase writes.
+The workflow migration adds canonical purchase receipts and a bounded two-way
+overlap bridge so predecessor purchases and the still-serialized sale slice see
+the same stable position and lot identities. The separate contract artifact
+reconciles counts and typed hashes, removes the production predecessor names,
+and retains their exact implementation only as an ungranted rollback capsule.
 
 Issue #141 is investments slice 1 of 3. Share-sale FIFO allocation and received
 dividends remain frozen for their serialized slices; this module must not add or
@@ -66,8 +68,12 @@ live-bank readiness claim is part of this capability.
 
 ## Contract state
 
-The #141 contract step must reconcile stable IDs and values, cut the web to the
-generated investments client, remove the legacy purchase RPC and TypeScript
-purchase policy, delete the two exact #141 compatibility query scopes, and prove
-rollback/recutover plus two immutable complete customer-ready gates. #189 remains
-independently mandatory for every live-AISP and unrestricted-launch effect.
+The #141 contract step is
+`supabase/contract-migrations/20260831133000_investments_share_purchase_contract.sql`.
+Its bounded inverse is
+`supabase/rollback/20260831133000_investments_share_purchase_contract.sql`.
+The mandatory PostgreSQL rehearsal applies contract, rollback twice, writes
+through the restored predecessor, and reapplies contract. The web is cut to the
+generated investments client; the legacy browser RPC and TypeScript purchase
+policy are removed. #189 remains independently mandatory for every live-AISP
+and unrestricted-launch effect.

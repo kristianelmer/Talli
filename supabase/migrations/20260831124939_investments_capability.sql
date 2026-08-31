@@ -1,5 +1,7 @@
 -- Canonical investments capability expand migration (issue #141).
 
+begin;
+
 do $block$
 begin
   if not exists (select 1 from pg_catalog.pg_roles where rolname = 'investments_store_owner') then
@@ -10,6 +12,12 @@ begin
   end if;
 end
 $block$;
+
+select pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtextextended('talli:investments:purchase-cutover:v1', 0)
+);
+lock table public.investment_positions in share row exclusive mode;
+lock table public.investment_lots in share row exclusive mode;
 
 alter role investments_store_owner nologin noinherit nobypassrls;
 alter role investments_executor nologin noinherit nobypassrls;
@@ -26,6 +34,17 @@ $block$;
 create schema if not exists investments authorization investments_store_owner;
 revoke all on schema investments from public, anon, authenticated, service_role;
 grant usage on schema investments to investments_executor;
+
+do $investments_backend_membership$
+begin
+  if exists (
+    select 1 from pg_catalog.pg_roles where rolname = 'talli_ledger_backend'
+  ) then
+    grant investments_executor to talli_ledger_backend
+      with inherit false, set true;
+  end if;
+end
+$investments_backend_membership$;
 
 create table investments.positions (
   id uuid primary key default extensions.gen_random_uuid(),
@@ -124,14 +143,14 @@ on investments.positions for select to investments_executor
 using (public.company_access_is_accepted_member_v1(company_id));
 
 create policy investments_positions_owner_insert
-on investments.positions for insert to investments_executor
+on investments.positions for insert to investments_store_owner
 with check (
   created_by = public.company_access_auth_uid_v1()
   and public.company_access_is_accepted_owner_v1(company_id)
 );
 
 create policy investments_positions_owner_update
-on investments.positions for update to investments_executor
+on investments.positions for update to investments_store_owner
 using (public.company_access_is_accepted_owner_v1(company_id))
 with check (
   created_by = public.company_access_auth_uid_v1()
@@ -143,18 +162,22 @@ on investments.acquisition_lots for select to investments_executor
 using (public.company_access_is_accepted_member_v1(company_id));
 
 create policy investments_acquisition_lots_owner_insert
-on investments.acquisition_lots for insert to investments_executor
+on investments.acquisition_lots for insert to investments_store_owner
 with check (
   created_by = public.company_access_auth_uid_v1()
   and public.company_access_is_accepted_owner_v1(company_id)
 );
 
-grant select, insert, update on investments.positions to investments_executor;
-grant select, insert on investments.acquisition_lots to investments_executor;
+grant select on investments.positions, investments.acquisition_lots
+  to investments_executor;
+grant select, insert, update on investments.positions
+  to investments_store_owner;
+grant select, insert on investments.acquisition_lots
+  to investments_store_owner;
 grant execute on function public.company_access_auth_uid_v1(),
   public.company_access_is_accepted_owner_v1(uuid),
   public.company_access_is_accepted_member_v1(uuid)
-to investments_executor;
+to investments_executor, investments_store_owner;
 
 revoke all on investments.positions, investments.acquisition_lots
 from public, anon, authenticated, service_role;
@@ -167,3 +190,5 @@ begin
   );
 end
 $block$;
+
+commit;

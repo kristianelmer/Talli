@@ -162,6 +162,42 @@ def test_supported_share_purchase_uses_investments_http_contract() -> None:
     assert sessions.commands[0].investment_name == "Example AS"
 
 
+def test_previous_web_revision_uses_hidden_overlap_alias() -> None:
+    sessions = InvestmentsSessionStub()
+    client = TestClient(create_app(investments_session_factory=sessions))
+    command = supported_purchase()
+
+    response = client.post(
+        "/api/v1/ledger/investment-purchases",
+        headers={
+            "Authorization": "Bearer owner-token",
+            "Idempotency-Key": str(command.idempotency_key),
+            "X-Request-ID": str(command.correlation_id),
+        },
+        json={
+            "companyId": str(command.company_id),
+            "incomeYear": int(command.income_year),
+            "actionId": str(command.action_id),
+            "investmentKey": "example-as",
+            "investmentName": "Example AS",
+            "investmentKind": "norwegian_private_company",
+            "taxTreatment": "fritaksmetoden",
+            "acquisitionDate": "2026-04-15",
+            "shareCount": 10,
+            "purchaseAmount": {"amount": "125.50", "currency": "NOK"},
+            "orgNumber": "123456789",
+            "bankTransactionId": None,
+            "documentId": None,
+            "documentStatus": "not_required",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json() == {"postedEntry": None, "replayed": False}
+    assert "/api/v1/ledger/investment-purchases" not in client.app.openapi()["paths"]
+    assert len(sessions.commands) == 1
+
+
 def test_positions_and_lots_use_investments_query_contract() -> None:
     sessions = InvestmentsSessionStub()
     client = TestClient(create_app(investments_session_factory=sessions))
