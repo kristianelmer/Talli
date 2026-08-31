@@ -60,9 +60,56 @@ function artifact(path, phase) {
   return source;
 }
 
+function assertBoundedBackendSystemDdlAuthority(source, phase) {
+  assert.match(
+    source,
+    /grant (?=[^']*investments_store_owner)(?=[^']*ledger_store_owner)[^']+ to %I/iu,
+    `${phase} must acquire only the owning roles`,
+  );
+  assert.match(
+    source,
+    /grant usage, create on schema backend_system to ledger_store_owner/iu,
+    `${phase} must let the schema owner delegate hosted DDL authority`,
+  );
+  assert.match(
+    source,
+    /grant usage, create on schema backend_system to %I/iu,
+    `${phase} must grant the hosted migrator direct schema DDL authority`,
+  );
+  assert.match(
+    source,
+    /revoke create on schema backend_system from %I/iu,
+    `${phase} must revoke hosted migrator schema DDL authority`,
+  );
+  assert.match(
+    source,
+    /revoke create on schema backend_system from ledger_store_owner/iu,
+    `${phase} must restore the schema owner's runtime boundary`,
+  );
+  assert.match(
+    source,
+    /revoke (?=[^']*investments_store_owner)(?=[^']*ledger_store_owner)[^']+ from %I/iu,
+    `${phase} must release temporary owner-role membership`,
+  );
+}
+
 test("the complete local database gate includes the investments lifecycle", () => {
   const source = readFileSync(localGatePath, "utf8");
   assert.match(source, /npm run test:investments-database-lifecycle/iu);
+});
+
+test("contract and rollback artifacts bound hosted backend-system DDL authority", () => {
+  for (const [path, phase] of [
+    [contractPath, "share-purchase contract"],
+    [rollbackPath, "share-purchase rollback"],
+    [saleContractPath, "share-sale contract"],
+    [saleRollbackPath, "share-sale rollback"],
+    [dividendContractPath, "received-dividend contract"],
+    [dividendRollbackPath, "received-dividend rollback"],
+    [stageExitPath, "investments stage exit"],
+  ]) {
+    assertBoundedBackendSystemDdlAuthority(artifact(path, phase), phase);
+  }
 });
 
 test("expand and workflow keep predecessor and successor stores coherent", () => {
@@ -300,6 +347,22 @@ test("complete stage exit reconciles before deleting every investment predecesso
 
 test("complete stage exit binds canonical investment writes to archive freshness", () => {
   const source = artifact(stageExitPath, "complete stage exit");
+  assert.match(
+    source,
+    /grant investments_store_owner, ledger_store_owner, company_archive_projection_executor to %I/iu,
+  );
+  assert.match(
+    source,
+    /grant execute on function public\.company_archive_track_source_write_v1\(\) to %I/iu,
+  );
+  assert.match(
+    source,
+    /revoke execute on function public\.company_archive_track_source_write_v1\(\) from %I/iu,
+  );
+  assert.match(
+    source,
+    /revoke investments_store_owner, ledger_store_owner, company_archive_projection_executor from %I/iu,
+  );
   const scopes = [
     ["positions", "company"],
     ["acquisition_lots", "company"],

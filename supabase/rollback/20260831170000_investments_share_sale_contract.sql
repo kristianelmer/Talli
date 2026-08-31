@@ -4,6 +4,31 @@
 
 begin;
 
+do $investments_sale_rollback_authority$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner, ledger_store_owner to %I', current_user
+  );
+end
+$investments_sale_rollback_authority$;
+
+select pg_catalog.set_config(
+  'talli.investments_contract_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+do $investments_sale_rollback_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_sale_rollback_schema_authority$;
+reset role;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:sale-cutover:v1', 0)
 );
@@ -129,5 +154,27 @@ grant execute on function backend_system.prepare_investment_sale_fifo_v1(
 grant execute on function backend_system.complete_investment_sale_fifo_v1(
   jsonb, uuid, jsonb, text
 ) to ledger_workflow_executor;
+
+do $investments_sale_rollback_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_sale_rollback_schema_authority_revoke$;
+set local role ledger_store_owner;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
+
+do $investments_sale_rollback_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner, ledger_store_owner from %I', current_user
+  );
+end
+$investments_sale_rollback_authority_revoke$;
 
 commit;

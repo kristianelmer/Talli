@@ -6,10 +6,41 @@ begin;
 do $investments_stage_exit_membership$
 begin
   execute pg_catalog.format(
-    'grant investments_store_owner, ledger_store_owner to %I', current_user
+    'grant investments_store_owner, ledger_store_owner, company_archive_projection_executor to %I',
+    current_user
   );
 end
 $investments_stage_exit_membership$;
+
+select pg_catalog.set_config(
+  'talli.investments_contract_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+do $investments_stage_exit_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_stage_exit_schema_authority$;
+reset role;
+
+set local role company_archive_projection_executor;
+do $investments_stage_exit_archive_trigger_authority$
+begin
+  execute pg_catalog.format(
+    'grant execute on function public.company_archive_track_source_write_v1() to %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_stage_exit_archive_trigger_authority$;
+reset role;
 
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:stage-exit:v1', 0)
@@ -575,10 +606,38 @@ revoke select, insert, update on investments.positions,
   investments.received_dividends from ledger_store_owner;
 revoke usage on schema investments from ledger_store_owner;
 
+set local role company_archive_projection_executor;
+do $investments_stage_exit_archive_trigger_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke execute on function public.company_archive_track_source_write_v1() from %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_stage_exit_archive_trigger_authority_revoke$;
+reset role;
+
+do $investments_stage_exit_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_stage_exit_schema_authority_revoke$;
+set local role ledger_store_owner;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
+
 do $investments_stage_exit_revoke$
 begin
   execute pg_catalog.format(
-    'revoke investments_store_owner, ledger_store_owner from %I', current_user
+    'revoke investments_store_owner, ledger_store_owner, company_archive_projection_executor from %I',
+    current_user
   );
 end
 $investments_stage_exit_revoke$;

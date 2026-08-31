@@ -3,6 +3,31 @@
 
 begin;
 
+do $investments_dividend_contract_authority$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner, ledger_store_owner to %I', current_user
+  );
+end
+$investments_dividend_contract_authority$;
+
+select pg_catalog.set_config(
+  'talli.investments_contract_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+do $investments_dividend_contract_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_dividend_contract_schema_authority$;
+reset role;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:dividend-cutover:v1', 0)
 );
@@ -148,5 +173,27 @@ grant execute on function investments.prepare_received_dividend_v1(jsonb, text)
   to investments_workflow_executor;
 grant execute on function investments.complete_received_dividend_v1(jsonb, uuid, text)
   to investments_workflow_executor;
+
+do $investments_dividend_contract_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting(
+      'talli.investments_contract_migration_principal'
+    )
+  );
+end
+$investments_dividend_contract_schema_authority_revoke$;
+set local role ledger_store_owner;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
+
+do $investments_dividend_contract_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner, ledger_store_owner from %I', current_user
+  );
+end
+$investments_dividend_contract_authority_revoke$;
 
 commit;
