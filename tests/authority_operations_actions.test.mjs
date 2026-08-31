@@ -53,7 +53,10 @@ test("the server query is limited to recent redacted rows for active admins", ()
   assert.match(authorityQuery, /operator\.role !== "admin"/u);
   assert.doesNotMatch(authorityQuery, /from\("support_operators"\)/u);
   assert.match(authorityQuery, /from\("authority_operations"\)/u);
-  assert.match(authorityQuery, /order\("created_at", \{ ascending: false \}\)\.limit\(10\)/u);
+  assert.match(
+    authorityQuery,
+    /order\("created_at", \{ ascending: false \}\)\s*\.limit\(10\)/u,
+  );
   assert.doesNotMatch(authorityQuery, /private_key|access_token|assertion/iu);
 });
 
