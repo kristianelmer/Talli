@@ -1092,8 +1092,16 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (select count(*) from pg_catalog.pg_proc procedure
           join pg_catalog.pg_namespace namespace on namespace.oid = procedure.pronamespace
           where namespace.nspname = 'backend_system'
-            and procedure.proname ~ '(investment_(purchase|sale|dividend)|legacy_(investment|share_sale|received_dividend)|rollback_14)')::text;
-    `), "true:true:true:0:0");
+            and procedure.proname ~ '(investment_(purchase|sale|dividend)|legacy_(investment|share_sale|received_dividend)|rollback_14)')::text || ':' ||
+        (select count(*) from pg_catalog.pg_policies
+          where policyname in (
+            'investments successor mirrors actions',
+            'investments successor appends audit',
+            'investments_positions_workflow_insert',
+            'investments_positions_workflow_update',
+            'investments_lots_workflow_insert'
+          ))::text;
+    `), "true:true:true:0:0:0");
 
     const archiveGenerationBeforeStageExitWrite = Number(scalar(
       containerName,
@@ -1185,8 +1193,16 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (pg_catalog.to_regclass('public.investment_lots') is null)::text || ':' ||
         (pg_catalog.to_regclass('public.investment_lot_allocations') is null)::text || ':' ||
         (select count(*) from public.holding_actions
-          where action_type in ('share_purchase', 'share_sale', 'dividend_received'))::text;
-    `), "true:true:true:0");
+          where action_type in ('share_purchase', 'share_sale', 'dividend_received'))::text || ':' ||
+        (select count(*) from pg_catalog.pg_policies
+          where policyname in (
+            'investments successor mirrors actions',
+            'investments successor appends audit',
+            'investments_positions_workflow_insert',
+            'investments_positions_workflow_update',
+            'investments_lots_workflow_insert'
+          ))::text;
+    `), "true:true:true:0:0");
   } finally {
     docker(["rm", "--force", containerName]);
   }

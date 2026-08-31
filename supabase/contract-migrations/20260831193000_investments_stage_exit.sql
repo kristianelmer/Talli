@@ -497,6 +497,22 @@ drop policy if exists investments_share_sale_allocations_predecessor_overlap
 drop policy if exists investments_received_dividends_predecessor_overlap
   on investments.received_dividends;
 
+-- The predecessor bridge has no remaining investment action to mirror after
+-- stage exit. Remove its public policies and the exact duplicate canonical
+-- write policies so no overlap-only authorization artifact survives.
+drop policy if exists "investments successor mirrors actions"
+  on public.holding_actions;
+drop policy if exists "investments successor appends audit"
+  on public.audit_events;
+set local role investments_store_owner;
+drop policy if exists investments_positions_workflow_insert
+  on investments.positions;
+drop policy if exists investments_positions_workflow_update
+  on investments.positions;
+drop policy if exists investments_lots_workflow_insert
+  on investments.acquisition_lots;
+reset role;
+
 drop trigger if exists share_purchases_sync_to_investments
   on public.holding_actions;
 drop trigger if exists share_sales_sync_to_investments

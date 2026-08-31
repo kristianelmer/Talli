@@ -50,6 +50,10 @@ const stageExitPath = new URL(
   "../supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
   import.meta.url,
 );
+const stageExitPolicyCleanupPath = new URL(
+  "../supabase/contract-migrations/20260901001500_investments_stage_exit_policy_cleanup.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -343,6 +347,29 @@ test("complete stage exit reconciles before deleting every investment predecesso
   assert.match(source, /drop function if exists backend_system\.mirror_investment_/iu);
   assert.match(source, /drop function if exists backend_system\.mirror_received_dividend_/iu);
   assert.doesNotMatch(source, /drop table investments\./iu);
+});
+
+test("complete stage exit removes overlap-era and duplicate write policies", () => {
+  const stageExit = artifact(stageExitPath, "complete stage exit");
+  const hostedCleanup = artifact(
+    stageExitPolicyCleanupPath,
+    "hosted stage-exit policy cleanup",
+  );
+  const retiredPolicies = [
+    '"investments successor mirrors actions"',
+    '"investments successor appends audit"',
+    "investments_positions_workflow_insert",
+    "investments_positions_workflow_update",
+    "investments_lots_workflow_insert",
+  ];
+
+  for (const policy of retiredPolicies) {
+    const escaped = policy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    assert.match(stageExit, new RegExp(`drop policy if exists ${escaped}`, "iu"));
+    assert.match(hostedCleanup, new RegExp(`drop policy if exists ${escaped}`, "iu"));
+  }
+  assert.match(hostedCleanup, /grant investments_store_owner to %I/iu);
+  assert.match(hostedCleanup, /revoke investments_store_owner from %I/iu);
 });
 
 test("complete stage exit binds canonical investment writes to archive freshness", () => {
