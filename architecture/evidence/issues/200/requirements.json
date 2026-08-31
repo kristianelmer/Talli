@@ -11,7 +11,8 @@
       "organizationId": "zwucumjvtpnyujqyzwkg",
       "projectId": "pkpyyxryfhfehrbhbynp",
       "region": "eu-west-1",
-      "verifiedState": "ACTIVE_HEALTHY"
+      "verifiedState": "ACTIVE_HEALTHY",
+      "migrationState": "ordered-through-20260830091341_case_bound_support_access"
     },
     "legalMigrationGate": "20260830093000_current_legal_evidence remains unapplied until the #196 billing/publication condition is cleared"
   },
@@ -33,6 +34,14 @@
       "transcriptDigest": "sha256:360796981d43081a7ffffe81e60641b3480c46c91e54c3735a94134cdf2b22f3"
     }
   ],
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/200/hosted-verification.json",
+    "verdict": "pass",
+    "appliedMigrationCount": 47,
+    "protectedExpectedResourceCount": 18,
+    "standingOperatorPolicyCount": 0,
+    "legalMigrationApplied": false
+  },
   "criteria": [
     {
       "id": "GH-200-A1",
@@ -41,7 +50,7 @@
         {"path": "supabase/migrations/20260830091341_case_bound_support_access.sql", "command": "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local"},
         {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
       ],
-      "status": "local-fresh-database-and-rls-evidence-passed"
+      "status": "local-runtime-and-hosted-authorization-metadata-passed"
     },
     {
       "id": "GH-200-A2",
@@ -50,7 +59,7 @@
         {"path": "tests/support_access_schema.test.mjs", "command": "node --test tests/support_access_schema.test.mjs"},
         {"path": "contracts/openapi/talli-v1.json", "command": "npm run generate:openapi -- --check && npm run generate:api-client -- --check"}
       ],
-      "status": "local-contract-and-database-evidence-passed"
+      "status": "local-contract-and-hosted-exact-resource-evidence-passed"
     },
     {
       "id": "GH-200-A3",
@@ -59,7 +68,7 @@
         {"path": "apps/backend/tests/test_company_support_access.py", "command": "npm run test:boundary-backend"},
         {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
       ],
-      "status": "local-command-read-and-audit-evidence-passed"
+      "status": "local-command-runtime-and-hosted-privilege-evidence-passed"
     },
     {
       "id": "GH-200-A4",
@@ -68,7 +77,7 @@
         {"path": "apps/web/tests/company-access-cancellation.test.mjs", "command": "npm run test:boundary-web"},
         {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
       ],
-      "status": "local-mutation-parity-evidence-passed"
+      "status": "local-mutation-parity-and-hosted-policy-evidence-passed"
     },
     {
       "id": "GH-200-A5",
@@ -104,7 +113,7 @@
         {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
         {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"}
       ],
-      "status": "two-linked-immutable-gates-passed-hosted-evidence-pending"
+      "status": "two-linked-immutable-gates-and-exact-hosted-evidence-passed"
     }
   ],
   "localValidation": {
@@ -116,5 +125,5 @@
     "supabaseSuite": {"passed": 62, "failed": 0},
     "browserOwner": {"passed": 17, "failed": 0}
   },
-  "closeState": "open-hosted-apply-and-verification-pending"
+  "closeState": "open-preview-and-github-evidence-pending"
 }

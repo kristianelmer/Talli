@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#200",
+  "verifiedAt": "2026-08-31T06:36:50.49766Z",
+  "sourceRevision": "6f2b81ed639e2f28a2b080c08a7faff64ec36b30",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6"
+  },
+  "apply": {
+    "result": "pass",
+    "appliedMigrationCount": 47,
+    "appliedMigrationNames": [
+      "0001_authenticated_workspace",
+      "0002_fifo_investment_lots",
+      "0003_bank_rule_suggestions",
+      "0004_corporate_document_artifacts",
+      "0005_company_tax_feedback_persistence",
+      "20260714081443_explicit_data_api_grants",
+      "20260715084507_trusted_aal2_boundary",
+      "20260715120700_revoke_anonymous_mutation_rpcs",
+      "20260715143000_retention_safe_document_removal",
+      "20260715180000_controlled_production_beta",
+      "20260716110000_authority_operations",
+      "20260716125903_rf1086_system_user_requests",
+      "20260716140100_rf1086_systemregister_callback_operation",
+      "20260716155621_rf1086_feedback_reconciliation",
+      "20260717110000_customer_agreement_acceptances",
+      "20260717113000_restrict_customer_agreement_creation",
+      "20260717120000_existing_company_agreement_reacceptance",
+      "20260719090000_add_annual_full_time_equivalents",
+      "20260801090000_company_access_invitations",
+      "20260808120000_company_access_cancellation_lifecycle",
+      "20260826095900_company_access_policy_schema",
+      "20260826100000_company_access_onboarding",
+      "20260826110000_company_year_admission",
+      "20260827100000_ledger_capability",
+      "20260827100500_ledger_writer_coordinators",
+      "20260827101000_ledger_full_year_reconstruction",
+      "20260827102000_ledger_supported_patterns",
+      "20260827103000_ledger_corrections",
+      "20260827104000_ledger_company_year_close",
+      "20260827105000_ledger_received_dividend_lifecycle",
+      "20260827106000_ledger_bank_loan_lifecycle",
+      "20260827107000_ledger_cash_capital_increase_lifecycle",
+      "20260827108000_ledger_loss_coverage_capital_reduction_lifecycle",
+      "20260827109000_ledger_opening_position_rebuild",
+      "20260827109100_ledger_opening_position_acceptance",
+      "20260827109200_ledger_reconstruction_economic_facts",
+      "20260827109300_ledger_close_output_economic_facts",
+      "20260827109400_ledger_reconstruction_source_evidence",
+      "20260828100000_banking_capability",
+      "20260828100500_banking_workflows",
+      "20260828100600_banking_overlap_trigger_policy",
+      "20260828102000_banking_connections",
+      "20260828103000_marketing_funnel_measurement",
+      "20260829070411_marketing_measurement_small_cell_threshold",
+      "20260829074916_validation_observation_authority",
+      "20260829080345_marketing_measurement_consent_proof",
+      "20260830091341_case_bound_support_access"
+    ],
+    "lastAppliedMigration": "20260830091341_case_bound_support_access",
+    "deliberatelyUnappliedMigration": "20260830093000_current_legal_evidence",
+    "unappliedReason": "#196 billing/publication condition remains closed"
+  },
+  "verification": {
+    "migrationHistoryCount": 47,
+    "legalMigrationPresent": false,
+    "publicTables": {
+      "count": 53,
+      "rlsEnabled": 53,
+      "withoutRls": []
+    },
+    "exactSupportResources": {
+      "expected": 18,
+      "protected": 18,
+      "missing": []
+    },
+    "standingOperatorPolicies": 0,
+    "supportEvidenceTables": [
+      {
+        "table": "public.support_access_grants",
+        "rlsEnabled": true,
+        "rlsForced": true,
+        "rows": 0
+      },
+      {
+        "table": "public.support_access_operation_receipts",
+        "rlsEnabled": true,
+        "rlsForced": true,
+        "rows": 0
+      },
+      {
+        "table": "public.support_case_openings",
+        "rlsEnabled": true,
+        "rlsForced": true,
+        "rows": 0
+      }
+    ],
+    "supportFunctions": {
+      "expected": 4,
+      "owner": "company_access_executor",
+      "executorExecute": true,
+      "publicExecute": false,
+      "anonExecute": false,
+      "authenticatedExecute": false,
+      "serviceRoleExecute": false
+    },
+    "legalAuthority": {
+      "version20260830Active": false,
+      "version20260717StillActive": true
+    },
+    "hostedExecutorRuntimeProbe": {
+      "status": "not-available-through-connector",
+      "reason": "The hosted SQL connector session cannot SET ROLE company_access_executor; no data was written.",
+      "compensatingEvidence": [
+        "architecture/evidence/customer-ready-gates/e0390826b7a3da0480d65552d1c630af951cd48b.json",
+        "architecture/evidence/customer-ready-gates/ae9112d89f2e80646247907193ee54889a349f11.json"
+      ]
+    }
+  },
+  "advisors": {
+    "security": {
+      "total": 40,
+      "info": 5,
+      "warn": 35,
+      "supportSpecific": 0,
+      "blockingSupportFindings": 0,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 239,
+      "info": 230,
+      "warn": 9,
+      "supportRelatedInfo": 10,
+      "supportRelatedWarn": 1,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "note": "The hosted advisor applies newer repository-wide lints than the local CLI. The only support-related WARN is the intentional overlapping company_access_executor SELECT policy on public.documents; no support-specific security finding exists."
+  },
+  "verdict": "pass"
+}
