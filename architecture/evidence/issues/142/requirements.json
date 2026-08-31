@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#142",
+  "source": "https://github.com/kristianelmer/Talli/issues/142",
+  "sourceCheckedAt": "2026-08-31T15:52:04Z",
+  "completeGates": [],
+  "entryBlockers": [
+    {
+      "issue": "#141",
+      "requiredState": "CLOSED",
+      "observedState": "READY_TO_CLOSE",
+      "evidence": "architecture/evidence/issues/141/requirements.json"
+    }
+  ],
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksInternalImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "live bank use or readiness claims",
+      "#197 bank tranche",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-142-A1",
+      "requirement": "A supported share sale completes through the web and FastAPI.",
+      "expectedResult": "The guided owner sale flow uses the generated investments client and one authenticated investments workflow to persist the canonical sale result.",
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_investments.py", "command": "npm run test:share-sale"},
+        {"path": "apps/backend/tests/test_investments_api.py", "command": "npm run test:boundary-backend"},
+        {"path": "tests/browser_owner_annual_loop.mjs", "command": "npm run test:browser-owner"}
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-142-A2",
+      "requirement": "FIFO allocations, remaining lots, and ledger effects match characterization fixtures.",
+      "expectedResult": "One transaction locks canonical lots oldest-first with stable-ID tie breaking, persists cent-exact allocations and remaining balances, and posts the characterized gain/loss entry through ledger's public contract.",
+      "plannedEvidence": [
+        {"path": "tests/share_sale.test.mjs", "command": "npm run test:share-sale"},
+        {"path": "tests/share_lots.test.mjs", "command": "npm run test:share-lots"},
+        {"path": "tests/investments_database_runtime.test.mjs", "command": "npm run test:investments-database-lifecycle"}
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-142-A3",
+      "requirement": "Overselling and invalid sale data fail atomically.",
+      "expectedResult": "Oversale, incomplete lot history, invalid values, stale or duplicate commands, wrong tenant, and ledger failure produce coded errors and no allocation, lot, position, sale, ledger, receipt, bank-match, or audit fragment.",
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_investments.py", "command": "npm run test:share-sale"},
+        {"path": "tests/investments_database_runtime.test.mjs", "command": "npm run test:investments-database-lifecycle"}
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-142-A4",
+      "requirement": "Purchase and sale behavior collaborates internally within one investments capability and uses only approved external public contracts.",
+      "expectedResult": "Purchase and sale share the investments public vocabulary and persistence port; the backend workflow depends only on investments and ledger public contracts, with opaque provider-neutral bank/document references.",
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_investments_public_contract.py", "command": "npm run test:boundary-backend"},
+        {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"}
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-142-A5",
+      "requirement": "Duplicate TypeScript/SQL sale and FIFO rules plus active-slice compatibility code are removed.",
+      "expectedResult": "One Python investments implementation remains; legacy sale/FIFO RPCs, coordinators, TypeScript policy, and the exact #142 allocation-read compatibility scope are removed after reconciliation and rollback/recutover, without entering #143 early.",
+      "plannedEvidence": [
+        {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"},
+        {"path": "tests/investments_capability_schema.test.mjs", "command": "npm run test:investments-database-lifecycle"},
+        {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"}
+      ],
+      "status": "planned"
+    }
+  ],
+  "closeState": "open-not-yet-claimed"
+}

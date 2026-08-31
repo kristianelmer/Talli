@@ -3,7 +3,20 @@
   "issue": "#141",
   "source": "https://github.com/kristianelmer/Talli/issues/141",
   "sourceCheckedAt": "2026-08-31T12:02:05Z",
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "0ee32fd7a0b3dbc00cdf75c9df3fe77f24a13255",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/0ee32fd7a0b3dbc00cdf75c9df3fe77f24a13255.json",
+      "verdict": "pass"
+    },
+    {
+      "revision": "5e6e0e54c03ce1d5886d5177eb50810d2379e267",
+      "previousPassingRevision": "0ee32fd7a0b3dbc00cdf75c9df3fe77f24a13255",
+      "evidencePath": "architecture/evidence/customer-ready-gates/5e6e0e54c03ce1d5886d5177eb50810d2379e267.json",
+      "verdict": "pass"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#140",
@@ -59,7 +72,10 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "R1 and linked R2 passed the full boundary, production build, launch rehearsal, isolated Supabase, and 17/17 owner-browser gates; the guided web action uses the generated investments operation and FastAPI returns the canonical persisted result."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-141-A2",
@@ -89,7 +105,10 @@
           "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger.py"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "The investments lifecycle passed 6/6 in both complete gates, proving exact 1800/1920 posting values, stable action/position/lot/entry bindings, predecessor overlap, contract, rollback, and recutover."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-141-A3",
@@ -111,7 +130,10 @@
           "command": "node --test tests/investments_database_runtime.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Policy, workflow, API, and real PostgreSQL tests reject invalid and cross-tenant input; a forced completion failure after an actual ledger post leaves zero ledger entry, receipt, purchase, position, holding action, or audit fragment."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-141-A4",
@@ -141,7 +163,10 @@
           "command": "node --test tests/investments_database_runtime.test.mjs"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Architecture, public-contract, generated-client, forced-RLS, runtime-role, and tenant-concealment checks passed in both complete gates; investments owns positions, lots, purchases, and their only exposed commands/queries."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-141-A5",
@@ -179,8 +204,11 @@
           "command": "npm run gate:customer-ready"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Transition revision 68ba06a7 preserved mixed HTTP revisions without duplicating policy; f64e3ce4 removed the alias. The legacy browser RPC, ledger coordinator production names, TypeScript purchase policy, and both #141 compatibility scopes are absent; contract/rollback/recutover passed twice."
+      ],
+      "status": "passed"
     }
   ],
-  "closeState": "open-not-yet-claimed"
+  "closeState": "complete"
 }
