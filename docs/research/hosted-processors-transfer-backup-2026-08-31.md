@@ -157,20 +157,31 @@ Canonical evidence:
    backups. Database backups do not include Storage API object bodies—only their
    database metadata—so objects need a separate backup path. Source:
    [database backups](https://supabase.com/docs/guides/platform/backups).
-5. Supabase currently lists PITR from USD 100/month for seven days of recovery
+5. Supabase now documents a no-password temporary-access route for projects on
+   Postgres 17.6.1.081 or later. An Owner/Admin must first enforce incoming SSL,
+   enable temporary access, map a project member to an existing database role and
+   set any expiry/IP restrictions; the member's Personal Access Token is then used
+   as that role's database password. The exact Talli project reports Postgres
+   `17.6.1.166`, so it is version-eligible. This can provide a least-duration
+   credential for a manual `db dump` without resetting or disclosing the durable
+   database password, but enabling the feature and granting the role are still
+   privileged access mutations requiring explicit authorization. Sources:
+   [temporary access](https://supabase.com/docs/guides/platform/temporary-access)
+   and [feature announcement](https://supabase.com/changelog/46346-feature-preview-temporary-token-based-database-access).
+6. Supabase currently lists PITR from USD 100/month for seven days of recovery
    retention. PITR is optional and is not included in the USD 25/month Pro base.
    Sources: [database backups](https://supabase.com/docs/guides/platform/backups)
    and [pricing](https://supabase.com/pricing).
-6. Supabase Log Drains require Pro, Team or Enterprise. The current pricing page
+7. Supabase Log Drains require Pro, Team or Enterprise. The current pricing page
    lists an additional USD 60 per drain per project. Sources:
    [Log Drains](https://supabase.com/docs/guides/monitoring-and-debugging/log-drains)
    and [pricing](https://supabase.com/pricing).
-7. Supabase documents a shared-responsibility model: the customer remains
+8. Supabase documents a shared-responsibility model: the customer remains
    responsible for its account, access management, data, security controls and
    secret handling. Sources:
    [shared responsibility](https://supabase.com/docs/guides/deployment/shared-responsibility-model)
    and [secure data](https://supabase.com/docs/guides/database/secure-data).
-8. Each Supabase project has one primary region, and a specific `eu-west-1`
+9. Each Supabase project has one primary region, and a specific `eu-west-1`
    selection means West EU (Ireland) for primary project data. Supabase cautions
    that region selection is a data-location control, not regulatory-compliance
    proof. Source: [regions](https://supabase.com/docs/guides/platform/regions).
@@ -298,7 +309,10 @@ Free or cheaper paths that remain technically possible:
   off-site destination, define retention and deletion, and rehearse restoration.
   This may avoid the Supabase Pro fee, but credentials, automation, storage,
   monitoring and human operation still need an approved design; the destination
-  itself may have a cost.
+  itself may have a cost. For the database export, the exact Postgres 17 project
+  can use Supabase's temporary-access feature with a narrowly timed role grant and
+  PAT instead of resetting or disclosing the durable database password; that
+  privileged grant still needs explicit authorization and revocation evidence.
 - Move away from Vercel to a host whose current terms permit commercial use at no
   charge. No alternative host was evaluated in this package, so this is only a
   route to research, not an evidenced free substitute.
@@ -353,6 +367,9 @@ These decisions cannot be completed by technical evidence alone.
 - Authorize controlled rotation of all database-related Vercel secrets to the exact
   owner-designated Supabase project, then verify Preview and Production separately
   without exposing secret values.
+- For the Free-plan manual database backup, authorize either a narrowly timed
+  temporary-access role grant using an expiring PAT or another approved database
+  credential route; define who creates, handles and revokes that access.
 - Define RPO, RTO, maximum backup age, retention, restore destination, encryption,
   access review, deletion and evidence requirements for both Postgres and Storage
   object bodies.
