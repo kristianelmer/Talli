@@ -42,6 +42,12 @@
     "standingOperatorPolicyCount": 0,
     "legalMigrationApplied": false
   },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/200/preview-verification.json",
+    "sourceRevision": "6cab508da336d0f15c70d9cb99be606e36464bf4",
+    "deploymentId": "dpl_DBLBn8Hnpjgt5fkPiHhmhcFbrQXP",
+    "verdict": "pass"
+  },
   "criteria": [
     {
       "id": "GH-200-A1",
@@ -125,5 +131,5 @@
     "supabaseSuite": {"passed": 62, "failed": 0},
     "browserOwner": {"passed": 17, "failed": 0}
   },
-  "closeState": "open-preview-and-github-evidence-pending"
+  "closeState": "ready-for-github-evidence-and-issue-closure"
 }

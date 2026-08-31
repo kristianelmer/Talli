@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#200",
+  "verifiedAt": "2026-08-31T06:40:00Z",
+  "sourceRevision": "6cab508da336d0f15c70d9cb99be606e36464bf4",
+  "vercelProjectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "deploymentId": "dpl_DBLBn8Hnpjgt5fkPiHhmhcFbrQXP",
+  "environment": "Preview",
+  "state": "READY",
+  "buildDurationSeconds": 42,
+  "deploymentUrl": "https://talli-4knh2hp77-kristianelmers-projects.vercel.app",
+  "branchUrl": "https://talli-web-git-codex-issue-200-su-57c4c1-kristianelmers-projects.vercel.app",
+  "smoke": {
+    "result": "pass",
+    "finalUrl": "https://talli-4knh2hp77-kristianelmers-projects.vercel.app/",
+    "title": "Talli – regnskap og årsoppgjør for holdingselskap",
+    "primaryHeading": "Hele selskapsåret i ett rolig løp",
+    "approvedPriceCopyPresent": "NOK 1 490 per selskapsår",
+    "recruitmentModeCopyPresent": true,
+    "paymentDisabledCopyPresent": true
+  },
+  "verdict": "pass"
+}
