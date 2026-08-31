@@ -2459,7 +2459,10 @@ test(
 
     const taxEstimate = estimateAnnualTax({
       ledgerEntries: [{ entry_type: "admin_cost", lines: adminCostEntry.lines }],
-      holdingActions: [{ action_type: "dividend_received", payload: dividendPayload }],
+      holdingActions: [{
+        action_type: "dividend_received",
+        payload: { gross_amount: 1000, taxable_add_back: 30 },
+      }],
     });
     assert.equal(taxEstimate.status, "payable");
     assert.equal(taxEstimate.estimatedTax, 17.6);
@@ -2848,7 +2851,7 @@ test(
     assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
 
     const linkedRemoval = await owner.rpc("remove_unlinked_document", {
-      p_document_id: dividendDocumentId,
+      p_document_id: purchaseDocumentId,
     });
     assert.match(linkedRemoval.error?.message ?? "", /document_removal_evidence_linked/);
 

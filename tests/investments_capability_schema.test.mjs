@@ -261,6 +261,10 @@ test("allocation identities remain stable across the overlap window", () => {
   assert.match(source, /investments_allocation_identity_reconciliation_failed/iu);
   assert.match(source, /add constraint investments_share_sale_allocations_id_key unique \(id\)/iu);
   assert.match(source, /align_legacy_share_sale_allocation_id_v1/iu);
+  assert.match(source, /grant usage, create on schema backend_system to ledger_store_owner/iu);
+  assert.match(source, /grant usage, create on schema backend_system to %I/iu);
+  assert.match(source, /revoke create on schema backend_system from %I/iu);
+  assert.match(source, /revoke create on schema backend_system from ledger_store_owner/iu);
 });
 
 test("complete stage exit reconciles before deleting every investment predecessor", () => {

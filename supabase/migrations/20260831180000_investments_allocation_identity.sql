@@ -10,6 +10,23 @@ begin
 end
 $investments_allocation_identity_membership$;
 
+select pg_catalog.set_config(
+  'talli.investments_allocation_identity_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+do $investments_allocation_identity_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting(
+      'talli.investments_allocation_identity_migration_principal'
+    )
+  );
+end
+$investments_allocation_identity_schema_authority$;
+reset role;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:stage-exit:v1', 0)
 );
@@ -95,6 +112,20 @@ create trigger align_legacy_share_sale_allocation_id
 before insert on public.investment_lot_allocations
 for each row execute function
   backend_system.align_legacy_share_sale_allocation_id_v1();
+
+set local role ledger_store_owner;
+do $investments_allocation_identity_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting(
+      'talli.investments_allocation_identity_migration_principal'
+    )
+  );
+end
+$investments_allocation_identity_schema_authority_revoke$;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
 
 do $investments_allocation_identity_revoke$
 begin
