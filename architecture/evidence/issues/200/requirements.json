@@ -15,7 +15,16 @@
     },
     "legalMigrationGate": "20260830093000_current_legal_evidence remains unapplied until the #196 billing/publication condition is cleared"
   },
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "e0390826b7a3da0480d65552d1c630af951cd48b",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/e0390826b7a3da0480d65552d1c630af951cd48b.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:b973455e76d2c11a4909d55aaae03e0723e2136e56c0484fe9fa71166e1ac878"
+    }
+  ],
   "criteria": [
     {
       "id": "GH-200-A1",
@@ -87,7 +96,7 @@
         {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
         {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"}
       ],
-      "status": "pending-immutable-and-hosted-evidence"
+      "status": "r1-passed-r2-and-hosted-evidence-pending"
     }
   ],
   "localValidation": {
@@ -99,5 +108,5 @@
     "supabaseSuite": {"passed": 62, "failed": 0},
     "browserOwner": {"passed": 17, "failed": 0}
   },
-  "closeState": "open-two-immutable-gates-and-hosted-apply-pending"
+  "closeState": "open-r2-immutable-gate-and-hosted-apply-pending"
 }
