@@ -8,8 +8,8 @@
     {
       "issue": "#141",
       "requiredState": "CLOSED",
-      "observedState": "READY_TO_CLOSE",
-      "evidence": "architecture/evidence/issues/141/requirements.json"
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/141#issuecomment-5480889981"
     }
   ],
   "independentExternalGate": {
@@ -79,5 +79,5 @@
       "status": "planned"
     }
   ],
-  "closeState": "open-not-yet-claimed"
+  "closeState": "claimed-active"
 }
