@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#196",
   "source": "https://github.com/kristianelmer/Talli/issues/196",
-  "sourceCheckedAt": "2026-08-29T09:05:26Z",
+  "sourceCheckedAt": "2026-08-31T06:58:45Z",
   "route": {
     "entryGate": "#187",
     "entryGateState": "CLOSED",
@@ -100,7 +100,7 @@
         {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"},
         {"path": "tests/validation_observation_launch_off.test.mjs", "command": "npm run test:validation-observation-launch-off"}
       ],
-      "status": "local-stop-rules-and-source-launch-off-gate-passed-real-deployed-database-state-remains-external"
+      "status": "local-stop-rules-and-exact-owner-designated-hosted-target-launch-off-state-passed-public-activation-still-blocked"
     },
     {
       "id": "GH-196-A9",
@@ -109,13 +109,30 @@
         {"path": ".github/workflows/release-gate.yml", "command": "gh api 'repos/kristianelmer/Talli/deployments?per_page=100'"},
         {"path": "architecture/evidence/issues/196/requirements.json", "command": "verify GitHub App deployments as well as Actions before any no-deployment claim"}
       ],
-      "status": "protected-successor-preview-6154166446-passed-for-b3ae370c-no-production-launch-tracker-ad-purchase-or-customer-contact"
+      "status": "exact-250c0c4e-preview-ready-in-dub1-existing-public-production-remains-old-d331ee27-free-beta-no-new-production-launch-tracker-ad-purchase-or-customer-contact"
     }
   ],
   "founderDecisionAddenda": {
     "noLongitudinalMarketingCohort": "approved 2026-08-29 and enforced end-to-end by the narrowed TypeScript, Python, OpenAPI, generated client and v2 PostgreSQL report contract",
     "repeatedSignalThreshold": "five distinct random-session hashes, not five events",
     "invitedPilotObservation": "exact normal product with one passive post-outcome bounded writer; server and database authority only; full launch requires exact off and zero active entitlements"
+  },
+  "hostedAudit": {
+    "checkedAt": "2026-08-31T06:58:45Z",
+    "evidence": "architecture/evidence/issues/196/hosted-facts-2026-08-31.json",
+    "ownerDesignatedSupabaseTarget": "zwucumjvtpnyujqyzwkg/pkpyyxryfhfehrbhbynp",
+    "databaseState": "ACTIVE_HEALTHY in eu-west-1; migrations 1-47 applied; validation observer off; zero active validation entitlements, releases, consent actions, marketing events, users, companies, memberships and storage objects",
+    "currentPreview": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG at source 250c0c4ed648b4135338938b1dddd4e7647ea605 is READY in dub1",
+    "existingProduction": "talli.no still resolves to dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f at old source d331ee2717d1eeacef0d81db42b9d4fb5848b408 in iad1 and presents invitation-only free-beta copy",
+    "targetBinding": "unverified because five Vercel database variables were recorded before the owner-designated Supabase project existed and their sensitive values are write-only",
+    "unresolved": [
+      "action-time confirmation and controlled rotation for exact Supabase credentials in Vercel Preview and Production",
+      "commercial hosting authority because Vercel Hobby is not an unrestricted commercial-launch plan",
+      "database and storage backup plus restore rehearsal",
+      "processor, subprocessor and transfer review",
+      "human legal, privacy, security and production-launch clearance",
+      "legal migration serialization behind billing migration or proof that the legacy path is unreachable"
+    ]
   },
   "technicalSupplement": {
     "implementationRevision": "b8c635538ea382e639ec54af09a34aee3981ef32",
@@ -125,8 +142,8 @@
       {"path": "tests/validation_observation_database_runtime.test.mjs", "command": "npm run test:validation-observation"},
       {"path": "tests/validation_observation_launch_off.test.mjs", "command": "npm run test:validation-observation-launch-off"}
     ],
-    "observerState": "migration and startup create no run, entitlement, reviewer, participant mapping or observation; hosted participant information, retention, mapping, reviewer and deletion approvals remain external",
-    "consentProofState": "mechanism passed against real PostgreSQL; no approved notice/release row exists and current 2026-07-15 privacy notice remains activation-blocking",
+    "observerState": "migration and startup create no run, entitlement, reviewer, participant mapping or observation; exact hosted target also has observer mode off and zero runs, entitlements, reviewers and observations; participant information, retention, mapping, reviewer and deletion approvals remain external",
+    "consentProofState": "mechanism passed against real PostgreSQL; exact hosted target has zero marketing releases, consent actions and events; no approved notice/release row exists and current 2026-07-15 privacy notice remains activation-blocking",
     "ownerAuthority": {
       "source": "AGENTS.md",
       "revision": "b3ae370c010ad60be1ebd957a111e85ef92d46a0",
@@ -151,6 +168,16 @@
         "createdAt": "2026-08-29T09:03:53Z",
         "targetUrl": "https://talli-i5xajiw85-kristianelmers-projects.vercel.app",
         "protectionVerification": "anonymous HTTP and the available in-app browser redirect to Vercel login; application routes were not claimed as anonymously rendered"
+      },
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG",
+        "sourceRevision": "250c0c4ed648b4135338938b1dddd4e7647ea605",
+        "environment": "Preview",
+        "state": "READY",
+        "createdAt": "2026-08-31T06:57:36.131Z",
+        "region": "dub1",
+        "targetUrl": "https://talli-h0yr5k9cz-kristianelmers-projects.vercel.app"
       }
     ],
     "deploymentEvidenceBoundary": "the protected implementation Preview is durable evidence for the published branch; later ledger-only commits may create additional Preview receipts recorded on the owning issue without changing the tested implementation revision"
@@ -207,5 +234,5 @@
     "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
     "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
   },
-  "closeState": "open-hosted-privacy-legal-and-production-launch-clearance-pending"
+  "closeState": "open-sensitive-target-rewire-commercial-hosting-backup-restore-transfer-legal-security-and-production-launch-clearance-pending"
 }
