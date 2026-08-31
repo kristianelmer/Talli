@@ -216,8 +216,16 @@ Canonical evidence:
    and [DPA clause 6](https://supabase.com/legal/customer-resources/data-processing-addendum#6-sub-processors).
 5. Availability was rechecked on 2026-08-31 using direct first-party HTTP GETs.
    The Legal Hub, canonical DPA, subprocessor landing page and June 1 schedule all
-   returned HTTP 200. The schedule's downloaded bytes had SHA-256
+   returned HTTP 200. The canonical DPA response was 100,958 bytes with SHA-256
+   `1e7d3d3ad5d8b733dfd454ce72cacdcc30d245c93b2210606f1a97fc84d64e82`;
+   the Terms response was 121,656 bytes with SHA-256
+   `734b31aee9e424f276d68f2e747f879d80c744e1ba727a510fff692cbda9f34c`;
+   and the schedule's downloaded bytes had SHA-256
    `e85324d3d26fd754755a8cbcf8ddf3f1e8b04f164eb4959a63e53f6aa3f5fa6d`.
+   The two HTML hashes cover the complete raw HTTP response bodies as retrieved;
+   dynamic site markup can change independently of the displayed legal version,
+   so the version label and retrieval date remain the controlling human-readable
+   identifiers.
    The formerly indexed March 2026, August 5, 2025 and December 11, 2023 PDF
    download URLs each returned HTTP 404. Those obsolete URLs are not the current
    agreement surface and should not be used as evidence that the DPA is
