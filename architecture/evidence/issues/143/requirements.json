@@ -3,7 +3,24 @@
   "issue": "#143",
   "source": "https://github.com/kristianelmer/Talli/issues/143",
   "sourceCheckedAt": "2026-08-31T17:53:00Z",
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/027254ab93c35b102d9429b3965fcbbbb4f033a8.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:a98e1380336327528144332e27340bcd782c5cbf7424c5654654aded516c08ed"
+    },
+    {
+      "revision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+      "previousPassingRevision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+      "evidencePath": "architecture/evidence/customer-ready-gates/abfa5c767bb1453ea3ec02af0ca463884887e63c.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:1d054cea4d982f99e47110b29c29984b9b97d165ea555e6dffbd5b5d899944bc"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#142",
@@ -29,6 +46,24 @@
     "approvedAt": "2026-08-31",
     "scope": "Provider-neutral internal #143 implementation may use the banking, ledger, and investments public contracts while #189 remains open.",
     "forbiddenInference": "Internal implementation and file fallback are not live-AISP evidence and authorize no provider choice, contract, activation, live call, customer bank consent/data, production use, or public claim."
+  },
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/143/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 57,
+    "canonicalTableCount": 6,
+    "legacyInvestmentSurfaceRemaining": 0,
+    "investmentAdvisorWarnings": 0,
+    "legalMigrationApplied": false
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/143/preview-verification.json",
+    "sourceRevision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+    "githubDeploymentId": 6190659948,
+    "state": "SUCCESS",
+    "access": "protected-by-vercel-authentication",
+    "verdict": "pass"
   },
   "criteria": [
     {
@@ -59,7 +94,10 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Both final complete gates passed the generated-client, FastAPI, web, production-build, and 17/17 owner-browser seams. The persisted owner journey records the received dividend through investmentsRecordReceivedDividend and returns its canonical action and ledger-entry identity."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-143-A2",
@@ -85,7 +123,10 @@
           "command": "npm run test:investments-database-lifecycle"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "The 17/17 PostgreSQL 17 investments lifecycle and backend characterization pass twice with exact NOK 1920/8070 posting lines, two-decimal gross cash/income, and the current three-percent fritaksmetoden taxable add-back bound to one immutable action and ledger entry."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-143-A3",
@@ -107,7 +148,10 @@
           "command": "npm run test:investments-database-lifecycle"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Policy and real-database tests reject unsupported tax treatment, invalid amount/date/reference, wrong tenant, closed period, stale or reused identity, and forced dependency mismatch; every failing case leaves zero dividend, ledger, receipt, source-match, legacy-action, and audit fragments."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-143-A4",
@@ -129,7 +173,10 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Both complete gates passed the public-contract and architecture checks: investments owns validation, tax facts, persistence, positions/lots/allocations/activity reads, and the command workflow; ledger is called only through its public contract and bank/document inputs remain opaque optional identities."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-143-A5",
@@ -159,7 +206,10 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Legacy TypeScript and holding_core dividend policy, ledger-owned HTTP coordination, direct browser investment reads, old public investment tables/RPCs, rollback capsules, mirror helpers, overlap triggers, and five residual overlap policies are absent. Hosted migration 57 and the local rollback/recutover lifecycle leave one private forced-RLS investments store and zero stage debt."
+      ],
+      "status": "passed"
     },
     {
       "id": "GH-143-A6",
@@ -193,8 +243,11 @@
           "command": "npm run gate:customer-ready -- --previous <R1>"
         }
       ],
-      "status": "planned"
+      "observedEvidence": [
+        "Purchases, sales, dividends, positions, FIFO lots, stable allocations, exact rounding/errors, atomic ledger binding, role restrictions, repeat-safe rollback/recutover, archive invalidation, manifest/docs/catalog agreement, hosted reconciliation, and policy cleanup all pass. The final immutable gates 027254ab and abfa5c76 each passed all 11 checks before the serialized pointer advanced to documents/#147."
+      ],
+      "status": "passed"
     }
   ],
-  "closeState": "claimed-active"
+  "closeState": "complete"
 }

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#143",
+  "verifiedAt": "2026-08-31T22:23:00Z",
+  "sourceRevision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+  "githubDeploymentId": 6190659948,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "deploymentUrl": "https://talli-ho3okt9xs-kristianelmers-projects.vercel.app",
+  "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/9LEzGyZhLPAus6kzLqrN6KV4URNq",
+  "accessProbe": {
+    "httpStatus": 200,
+    "finalUrl": "https://vercel.com/login?next=%2Fsso-api%3Furl%3Dhttps%253A%252F%252Ftalli-ho3okt9xs-kristianelmers-projects.vercel.app%252F",
+    "result": "protected-by-vercel-authentication",
+    "applicationRenderingObserved": false
+  },
+  "compensatingVerification": {
+    "gateEvidence": "architecture/evidence/customer-ready-gates/abfa5c767bb1453ea3ec02af0ca463884887e63c.json",
+    "checks": [
+      "build-web",
+      "boundary-smoke",
+      "launch-rehearsal",
+      "database-isolation"
+    ],
+    "allExitCodes": 0
+  },
+  "note": "The exact immutable revision built successfully as a protected Preview. Anonymous HTTP is intentionally redirected to Vercel login, so this record does not claim an unauthenticated application-render smoke or public deployment.",
+  "verdict": "pass"
+}
