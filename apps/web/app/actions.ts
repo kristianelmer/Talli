@@ -98,6 +98,8 @@ import {
   reviewCompanyDeletion as reviewCompanyDeletionThroughApi,
   revokeOperatorSupportAccess,
   revokeCompanyInvitation,
+  type GrantSupportAccessRequest,
+  type RevokeSupportAccessRequest,
 } from "../features/company-access";
 import {
   acceptBankSourceFile,
@@ -237,6 +239,41 @@ function formRawString(formData: FormData, key: string) {
 function formStrings(formData: FormData, key: string) {
   return formData.getAll(key).map((value) => typeof value === "string" ? value.trim() : "");
 }
+
+function requiredFormChoice<const Choice extends string>(
+  formData: FormData,
+  key: string,
+  choices: readonly Choice[],
+): Choice {
+  const value = formString(formData, key);
+  const choice = choices.find((candidate) => candidate === value);
+  if (choice === undefined) throw new Error(`Ugyldig valg: ${key}.`);
+  return choice;
+}
+
+const supportAccessReasons = [
+  "customer_request",
+  "security_incident",
+  "service_recovery",
+  "legal_obligation",
+] as const satisfies readonly GrantSupportAccessRequest["reason"][];
+const supportAccessScopes = [
+  "profile",
+  "filing",
+  "billing",
+  "audit",
+  "cancellation",
+  "authority",
+  "documents",
+  "production",
+] as const satisfies readonly GrantSupportAccessRequest["scopes"][number][];
+const supportRevocationReasons = [
+  "case_closed",
+  "access_no_longer_needed",
+  "operator_removed",
+  "security_response",
+  "grant_replaced",
+] as const satisfies readonly RevokeSupportAccessRequest["reason"][];
 
 function currentAgreementCommand(formData: FormData, returnTo: string) {
   if (formString(formData, "agreementAccepted") !== "accepted") {
@@ -3242,11 +3279,12 @@ export async function grantSupportAccess(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = requiredFormUuid(formData, "companyId");
   const operatorUserId = requiredFormUuid(formData, "operatorUserId");
-  const reason = formString(formData, "reason") as
-    | "customer_request" | "security_incident" | "service_recovery" | "legal_obligation";
-  const scopes = formData.getAll("scopes").map(String) as Array<
-    "profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production"
-  >;
+  const reason = requiredFormChoice(formData, "reason", supportAccessReasons);
+  const scopes = formStrings(formData, "scopes").map((scope) => {
+    const value = supportAccessScopes.find((candidate) => candidate === scope);
+    if (value === undefined) throw new Error("Ugyldig valg: scopes.");
+    return value;
+  });
   const startsAt = formString(formData, "startsAt");
   const expiresAt = formString(formData, "expiresAt");
   let grantedCaseId: string;
@@ -3281,8 +3319,11 @@ export async function revokeSupportAccess(formData: FormData) {
   if (!accessToken) redirect("/operator?error=Innlogging%20kreves");
   const operationId = requiredFormUuid(formData, "operationId");
   const caseId = requiredFormUuid(formData, "supportCaseId");
-  const reason = formString(formData, "reason") as
-    | "case_closed" | "access_no_longer_needed" | "operator_removed" | "security_response" | "grant_replaced";
+  const reason = requiredFormChoice(
+    formData,
+    "reason",
+    supportRevocationReasons,
+  );
   try {
     await revokeOperatorSupportAccess(accessToken, caseId, { operationId, reason });
   } catch (error) {

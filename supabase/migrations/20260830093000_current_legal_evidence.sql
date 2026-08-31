@@ -88,25 +88,25 @@ begin
       '041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de');
     if v_rewritten <> v_definition then
       execute v_rewritten;
-    elsif pg_catalog.position(
+    elsif pg_catalog.strpos(
+      v_definition,
       'afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04'
-      in v_definition
     ) = 0 then
       raise exception 'legal_evidence_function_state_unknown:%', v_signature;
     end if;
-    if pg_catalog.position('2026-07-17' in v_rewritten) > 0
-      or pg_catalog.position('2026-07-15' in v_rewritten) > 0
-      or pg_catalog.position(
+    if pg_catalog.strpos(v_rewritten, '2026-07-17') > 0
+      or pg_catalog.strpos(v_rewritten, '2026-07-15') > 0
+      or pg_catalog.strpos(
+        v_rewritten,
         'f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543'
-        in v_rewritten
       ) > 0
-      or pg_catalog.position(
+      or pg_catalog.strpos(
+        v_rewritten,
         '083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c'
-        in v_rewritten
       ) > 0
-      or pg_catalog.position(
+      or pg_catalog.strpos(
+        v_rewritten,
         '4777d7b1bce8218219db06f40c255ca9ef6e0d5f1c84ccdc9b5616b75b9d472c'
-        in v_rewritten
       ) > 0
     then
       raise exception 'legal_evidence_predecessor_remains:%', v_signature;
@@ -115,6 +115,7 @@ begin
 end
 $rewrite_active_legal_functions$;
 
+grant create on schema public to company_access_executor;
 alter function public.company_access_reaccept_agreement(
   uuid, uuid, uuid, text, boolean, text, date, text, text,
   text, date, text, text, text, text
@@ -124,6 +125,7 @@ alter function public.company_access_admit_company_year(
   text,text,text,text,text,text,text,text,text,text,date,text,text,text,
   date,text,text,text,date,text,text,text,text
 ) owner to company_access_executor;
+revoke create on schema public from company_access_executor;
 
 set role company_access_executor;
 revoke all on function public.company_access_reaccept_agreement(

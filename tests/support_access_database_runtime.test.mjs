@@ -63,6 +63,26 @@ const resourcePolicies = new Map([
     "company access members read deletion reviews",
   ],
 ]);
+const supportResourceKeys = [
+  "companies",
+  "audit_events",
+  "company_cancellations",
+  "filing_submissions",
+  "filing_readiness_snapshots",
+  "billing_accounts",
+  "billing_payment_events",
+  "authority_permissions",
+  "authority_test_runs",
+  "system_user_requests",
+  "production_pilot_entitlements",
+  "filing_approval_snapshots",
+  "production_filing_submissions",
+  "production_filing_events",
+  "production_feedback_artifacts",
+  "documents",
+  "storage_objects",
+  "company_deletion_reviews",
+];
 
 const countedRelations = [
   ...resourcePolicies.keys(),
@@ -540,6 +560,11 @@ test(
       );
       assert.equal(readResult.company_id, companyA);
       assert.equal(readResult.resources.companies.length, 1);
+      assert.deepEqual(
+        Object.keys(readResult.resources).sort(),
+        [...supportResourceKeys].sort(),
+        "the generated read omitted an approved case-bound resource",
+      );
 
       await expectDatabaseError(
         database,

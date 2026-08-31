@@ -27,6 +27,40 @@ const webServer = readFileSync(
   new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url),
   "utf8",
 );
+const openApi = JSON.parse(
+  readFileSync(
+    new URL("../contracts/openapi/talli-v1.json", import.meta.url),
+    "utf8",
+  ),
+);
+const generatedClient = readFileSync(
+  new URL(
+    "../packages/talli-api-client/src/generated/client.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+const supportResourceKeys = [
+  "companies",
+  "auditEvents",
+  "companyCancellations",
+  "filingSubmissions",
+  "filingReadinessSnapshots",
+  "billingAccounts",
+  "billingPaymentEvents",
+  "authorityPermissions",
+  "authorityTestRuns",
+  "systemUserRequests",
+  "productionPilotEntitlements",
+  "filingApprovalSnapshots",
+  "productionFilingSubmissions",
+  "productionFilingEvents",
+  "productionFeedbackArtifacts",
+  "documents",
+  "storageObjects",
+  "companyDeletionReviews",
+];
 
 const supportFunctions = [
   "company_access_grant_support_access",
@@ -202,6 +236,28 @@ test("GET is a bounded read projection and only POST open creates opening/audit/
       /create or replace function public\.company_access_read_support_case\([\s\S]+?\$function\$\s*;/iu,
     )?.[0] ?? "";
   assert.match(read, /jsonb_build_object/iu);
+  for (const resource of [
+    "companies",
+    "audit_events",
+    "company_cancellations",
+    "filing_submissions",
+    "filing_readiness_snapshots",
+    "billing_accounts",
+    "billing_payment_events",
+    "authority_permissions",
+    "authority_test_runs",
+    "system_user_requests",
+    "production_pilot_entitlements",
+    "filing_approval_snapshots",
+    "production_filing_submissions",
+    "production_filing_events",
+    "production_feedback_artifacts",
+    "documents",
+    "storage_objects",
+    "company_deletion_reviews",
+  ]) {
+    assert.match(read, new RegExp(`'${resource}'`, "u"));
+  }
   assert.doesNotMatch(read, /insert into|update public|delete from/iu);
   const open =
     migration.match(
@@ -210,6 +266,25 @@ test("GET is a bounded read projection and only POST open creates opening/audit/
   assert.match(open, /insert into public\.support_case_openings/iu);
   assert.match(open, /'support_case_opened'/iu);
   assert.match(open, /insert into public\.support_access_operation_receipts/iu);
+});
+
+test("the generated support contract requires the exact typed 18-resource projection", () => {
+  const schema = openApi.components.schemas.SupportCaseResources;
+  const sortedResourceKeys = supportResourceKeys.toSorted();
+  assert.deepEqual(schema.required.toSorted(), sortedResourceKeys);
+  assert.deepEqual(Object.keys(schema.properties).toSorted(), sortedResourceKeys);
+  for (const resource of supportResourceKeys) {
+    assert.equal(schema.properties[resource].type, "array");
+    assert.ok(schema.properties[resource].items.$ref);
+  }
+  const generatedResources =
+    generatedClient.match(
+      /export interface SupportCaseResources \{[\s\S]+?\n\}/u,
+    )?.[0] ?? "";
+  for (const resource of supportResourceKeys) {
+    assert.match(generatedResources, new RegExp(`\\b${resource}:`, "u"));
+  }
+  assert.doesNotMatch(generatedResources, /Record<string/u);
 });
 
 test("deletion review and reconciliation require the exact support case", () => {

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#200",
+  "source": "https://github.com/kristianelmer/Talli/issues/200",
+  "sourceCheckedAt": "2026-08-31T06:11:14Z",
+  "ownerApproval": "https://github.com/kristianelmer/Talli/issues/200#issuecomment-5467952439",
+  "route": {
+    "authority": "security-only ADR-0013 amendment under #196",
+    "serializedMigrationState": "#141 remains unchanged",
+    "hostedTarget": {
+      "organizationId": "zwucumjvtpnyujqyzwkg",
+      "projectId": "pkpyyxryfhfehrbhbynp",
+      "region": "eu-west-1",
+      "verifiedState": "ACTIVE_HEALTHY"
+    },
+    "legalMigrationGate": "20260830093000_current_legal_evidence remains unapplied until the #196 billing/publication condition is cleared"
+  },
+  "completeGates": [],
+  "criteria": [
+    {
+      "id": "GH-200-A1",
+      "requirement": "Support access is generated-case, company, reason, exact-scope, operator, fresh-MFA, revocation and at-most-eight-hour bound; no standing customer-data search remains.",
+      "evidence": [
+        {"path": "supabase/migrations/20260830091341_case_bound_support_access.sql", "command": "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local"},
+        {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
+      ],
+      "status": "local-fresh-database-and-rls-evidence-passed"
+    },
+    {
+      "id": "GH-200-A2",
+      "requirement": "The exact eighteen enumerated resources are protected and returned only as a required generated typed projection; absent scopes return empty arrays.",
+      "evidence": [
+        {"path": "tests/support_access_schema.test.mjs", "command": "node --test tests/support_access_schema.test.mjs"},
+        {"path": "contracts/openapi/talli-v1.json", "command": "npm run generate:openapi -- --check && npm run generate:api-client -- --check"}
+      ],
+      "status": "local-contract-and-database-evidence-passed"
+    },
+    {
+      "id": "GH-200-A3",
+      "requirement": "Grant, revoke and explicit case opening are durable idempotent audited commands; GET/read is read-only and guessed, unopened or mismatched cases fail closed.",
+      "evidence": [
+        {"path": "apps/backend/tests/test_company_support_access.py", "command": "npm run test:boundary-backend"},
+        {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
+      ],
+      "status": "local-command-read-and-audit-evidence-passed"
+    },
+    {
+      "id": "GH-200-A4",
+      "requirement": "Cancellation and deletion administration use the same exact opened-case boundary and preserve durable reconciliation identity.",
+      "evidence": [
+        {"path": "apps/web/tests/company-access-cancellation.test.mjs", "command": "npm run test:boundary-web"},
+        {"path": "tests/support_access_database_runtime.test.mjs", "command": "npm run test:supabase"}
+      ],
+      "status": "local-mutation-parity-evidence-passed"
+    },
+    {
+      "id": "GH-200-A5",
+      "requirement": "OpenAPI, generated client, backend and web use typed case-bound contracts without handwritten resource DTOs or direct browser business persistence.",
+      "evidence": [
+        {"path": "packages/talli-api-client/src/generated/client.ts", "command": "npm run test:boundary-contract"},
+        {"path": "apps/web/app/lib/operator-support.ts", "command": "npm run test:boundary-web"}
+      ],
+      "status": "local-generated-boundary-evidence-passed"
+    },
+    {
+      "id": "GH-200-A6",
+      "requirement": "Rollback fails closed, preserves all support evidence, is repeatable, and the forward migration safely re-cuts over.",
+      "evidence": [
+        {"path": "supabase/rollback/20260830091341_case_bound_support_access.sql", "command": "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local"},
+        {"path": "tests/support_access_migration_lifecycle.test.mjs", "command": "npm run test:supabase"}
+      ],
+      "status": "local-rollback-twice-and-recutover-evidence-passed"
+    },
+    {
+      "id": "GH-200-A7",
+      "requirement": "Architecture and compatibility change only the approved support-search scopes and retain a safe deprecated always-empty v1 overlap response.",
+      "evidence": [
+        {"path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md", "command": "npm run check:architecture"},
+        {"path": "tests/architecture_foundation.test.mjs", "command": "node --test tests/architecture_foundation.test.mjs"}
+      ],
+      "status": "local-architecture-evidence-passed"
+    },
+    {
+      "id": "GH-200-A8",
+      "requirement": "Two linked immutable complete customer-ready gates pass before the ordered hosted migration chain is applied and verified on the exact owner-designated project.",
+      "evidence": [
+        {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
+        {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"}
+      ],
+      "status": "pending-immutable-and-hosted-evidence"
+    }
+  ],
+  "localValidation": {
+    "backendBoundary": {"passed": 476, "skipped": 2, "failed": 0},
+    "webBoundary": {"passed": 124, "failed": 0},
+    "contractBoundary": {"passed": 36, "failed": 0},
+    "architectureFoundation": {"passed": 51, "failed": 0},
+    "supabaseAdvisors": {"blocking": 0, "performanceWarnings": 9},
+    "supabaseSuite": {"passed": 62, "failed": 0},
+    "browserOwner": {"passed": 17, "failed": 0}
+  },
+  "closeState": "open-two-immutable-gates-and-hosted-apply-pending"
+}

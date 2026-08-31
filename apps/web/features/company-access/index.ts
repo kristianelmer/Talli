@@ -46,5 +46,10 @@ export {
   resumeCompanyCancellation,
   reviewCompanyDeletion,
 } from "./transport/company-access-cancellation.ts";
-export type { EligibilityDecisionResponse } from "@talli/talli-api-client";
+export type {
+  EligibilityDecisionResponse,
+  GrantSupportAccessRequest,
+  RevokeSupportAccessRequest,
+  SupportCaseResources,
+} from "@talli/talli-api-client";
 export type EligibilityAnswer = import("@talli/talli-api-client").EligibilityDecisionResponse["answers"][string];

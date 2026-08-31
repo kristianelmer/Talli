@@ -24,6 +24,30 @@ ADMIN_ID = "00000000-0000-4000-8000-000000000099"
 GRANT_OPERATION_ID = "40000000-0000-4000-8000-000000000001"
 OPEN_OPERATION_ID = "40000000-0000-4000-8000-000000000002"
 REVOKE_OPERATION_ID = "40000000-0000-4000-8000-000000000003"
+SUPPORT_RESOURCE_KEYS = (
+    "companies",
+    "audit_events",
+    "company_cancellations",
+    "filing_submissions",
+    "filing_readiness_snapshots",
+    "billing_accounts",
+    "billing_payment_events",
+    "authority_permissions",
+    "authority_test_runs",
+    "system_user_requests",
+    "production_pilot_entitlements",
+    "filing_approval_snapshots",
+    "production_filing_submissions",
+    "production_filing_events",
+    "production_feedback_artifacts",
+    "documents",
+    "storage_objects",
+    "company_deletion_reviews",
+)
+
+
+def support_resources() -> dict[str, list[dict[str, object]]]:
+    return {key: [] for key in SUPPORT_RESOURCE_KEYS}
 
 
 def access_token(*, aal: str = "aal2", mfa_age_seconds: int = 30) -> str:
@@ -104,15 +128,29 @@ class SupportAccessGatewayStub:
         self.calls.append(("read_support_case", case_id))
         if case_id != CASE_ID:
             return None
+        resources = support_resources()
+        resources["companies"] = [
+            {
+                "id": COMPANY_ID,
+                "org_number": "123456789",
+                "name": "Talli Holding AS",
+                "entity_type": "AS",
+                "address": "Testveien 1",
+                "postal_code": "0001",
+                "city": "Oslo",
+                "status_text": "Active",
+                "source": "brreg",
+                "created_by": ADMIN_ID,
+                "identity_confirmed_at": "2026-08-30T08:00:00Z",
+                "identity_locked_at": "2026-08-30T08:00:00Z",
+                "created_at": "2026-08-30T08:00:00Z",
+            }
+        ]
         return {
             "case_id": case_id,
             "company_id": COMPANY_ID,
             "scopes": ["profile", "audit", "cancellation"],
-            "resources": {
-                "companies": [{"id": COMPANY_ID, "name": "Talli Holding AS"}],
-                "audit_events": [],
-                "company_cancellations": [],
-            },
+            "resources": resources,
         }
 
     def __getattr__(self, _name: str):
@@ -201,6 +239,24 @@ def test_open_is_explicit_post_and_following_get_is_read_only() -> None:
     assert gateway.calls[len(calls_after_open):] == [("read_support_case", CASE_ID)]
 
 
+def test_deprecated_v1_company_search_overlap_is_authenticated_and_always_empty() -> None:
+    gateway = SupportAccessGatewayStub(role="support")
+    client = TestClient(create_app(gateway))
+
+    unauthenticated = client.get(
+        "/api/v1/company-access/operator-companies?query=Talli"
+    )
+    overlap = client.get(
+        "/api/v1/company-access/operator-companies?query=Talli",
+        headers=headers(),
+    )
+
+    assert unauthenticated.status_code == 401
+    assert overlap.status_code == 200
+    assert overlap.json() == {"companies": []}
+    assert gateway.calls == []
+
+
 def test_support_commands_fail_closed_for_role_mfa_and_guessed_case_id() -> None:
     non_admin = SupportAccessGatewayStub(role="support")
     non_admin_response = TestClient(create_app(non_admin)).post(
@@ -246,11 +302,12 @@ def test_adapter_maps_support_workflows_to_the_exact_executor_rpcs() -> None:
                 "opened_at": "2026-08-30T08:15:00Z",
             }
         if function_name == "company_access_read_support_case":
+            resources = support_resources()
             return {
                 "case_id": CASE_ID,
                 "company_id": COMPANY_ID,
                 "scopes": ["profile"],
-                "resources": {"companies": []},
+                "resources": resources,
             }
         return SupportAccessGatewayStub.grant(
             revoked=function_name == "company_access_revoke_support_access"

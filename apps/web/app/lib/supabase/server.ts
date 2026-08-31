@@ -1304,7 +1304,7 @@ export async function readOperatorSupportDashboard(
   const operatorSession = await backendOperatorSession(supabase);
   const operator = operatorSession?.operator ?? null;
   const isOperator = Boolean(operator);
-  let resources: Record<string, Array<Record<string, unknown>>>;
+  let resources: Awaited<ReturnType<typeof readOperatorSupportCase>>["resources"];
   try {
     if (!operatorSession) throw new Error("support_case_read_failed");
     resources = (
@@ -1315,23 +1315,7 @@ export async function readOperatorSupportDashboard(
   }
 
   return {
-    summaries: buildOperatorSupportSummaries({
-      companies: (resources.companies ?? []) as CompanyWorkspaceRow[],
-      readinessSnapshots: (resources.filing_readiness_snapshots ??
-        []) as FilingReadinessSnapshotRow[],
-      submissions: (resources.filing_submissions ??
-        []) as FilingSubmissionRow[],
-      authorityPermissions: (resources.authority_permissions ??
-        []) as AuthorityPermissionRow[],
-      billingAccounts: (resources.billing_accounts ??
-        []) as BillingAccountRow[],
-      billingPaymentEvents: (resources.billing_payment_events ??
-        []) as BillingPaymentEventRow[],
-      cancellations: (resources.company_cancellations ??
-        []) as CompanyCancellationRow[],
-      auditEvents: (resources.audit_events ??
-        []) as import("../operator-support").SupportAuditRow[],
-    }),
+    summaries: buildOperatorSupportSummaries(resources),
     isOperator,
     error: null,
   };

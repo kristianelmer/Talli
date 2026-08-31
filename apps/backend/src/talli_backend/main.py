@@ -138,6 +138,7 @@ from talli_backend.modules.company_access.public import (
     InvitationSideEffectContinuationList,
     InvitationTokenRequest,
     OpenSupportCaseRequest,
+    OperatorCompanySearchResponse,
     OperatorContextResponse,
     RevokeSupportAccessRequest,
     RequestCompanyCancellationRequest,
@@ -2080,6 +2081,34 @@ def create_app(
         return await company_access_call(
             company_access_service.operator_context(bearer_token(credentials))
         )
+
+    @application.get(
+        "/api/v1/company-access/operator-companies",
+        operation_id="companyAccessSearchOperatorCompanies",
+        response_model=OperatorCompanySearchResponse,
+        deprecated=True,
+        responses={
+            200: {
+                "description": (
+                    "Deprecated mixed-revision overlap. Customer-directory search is "
+                    "disabled and the result is always empty."
+                )
+            }
+            | company_access_success
+        }
+        | company_access_errors,
+        tags=["company-access"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def search_company_access_operator_companies_deprecated(
+        query: str,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> OperatorCompanySearchResponse:
+        del query
+        await company_access_call(
+            company_access_service.operator_context(bearer_token(credentials))
+        )
+        return OperatorCompanySearchResponse(companies=[])
 
     @application.post(
         "/api/v1/company-access/operator-support-grants",

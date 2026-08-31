@@ -247,6 +247,26 @@ export interface OperatorContextResponse {
   role: "support" | "admin";
 }
 
+export interface OperatorCompanyRecord {
+  address: string;
+  city: string;
+  createdAt: string;
+  createdBy: string;
+  entityType: string;
+  id: string;
+  identityConfirmedAt: string | null;
+  identityLockedAt: string | null;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  source: string;
+  statusText: string;
+}
+
+export interface OperatorCompanySearchResponse {
+  companies: OperatorCompanyRecord[];
+}
+
 export interface GrantSupportAccessRequest {
   companyId: string;
   expiresAt: string;
@@ -297,10 +317,234 @@ export interface SupportCaseOpeningResponse {
   opening: SupportCaseOpening;
 }
 
+export interface SupportCompanyResource {
+  address: string;
+  city: string;
+  createdAt: string;
+  createdBy: string;
+  entityType: string;
+  id: string;
+  identityConfirmedAt: string | null;
+  identityLockedAt: string | null;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  source: string;
+  statusText: string;
+}
+
+export interface SupportAuditEventResource {
+  action: string;
+  actorId: string;
+  category: string;
+  companyId: string;
+  createdAt: string;
+  id: string;
+  message: string;
+}
+
+export interface SupportCancellationResource {
+  companyId: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  evidence: Record<string, unknown>;
+  id: string;
+  reason: string;
+  requestedAt: string;
+  requestedBy: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  status: string;
+  updatedAt: string;
+}
+
+export interface SupportFilingSubmissionResource {
+  companyId: string;
+  filing: string;
+  id: string;
+  incomeYear: number;
+  status: string;
+  updatedAt: string;
+}
+
+export interface SupportFilingReadinessResource {
+  companyId: string;
+  hardBlocks: Record<string, unknown>[];
+  id: string;
+  incomeYear: number;
+  obligation: string;
+  ready: boolean;
+  status: string;
+  updatedAt: string;
+  warnings: Record<string, unknown>[];
+}
+
+export interface SupportBillingAccountResource {
+  companyId: string;
+  filingPackagePaid: boolean;
+  pricingPlan: string;
+  refundCompleted: boolean;
+  refundEligible: boolean;
+  refundProviderRef: string | null;
+  subscriptionActive: boolean;
+  updatedAt: string;
+}
+
+export interface SupportBillingPaymentEventResource {
+  amountNok: number;
+  companyId: string;
+  createdAt: string;
+  id: string;
+  kind: string;
+  provider: string;
+  status: string;
+}
+
+export interface SupportAuthorityPermissionResource {
+  companyId: string;
+  id: string;
+  obligation: string;
+  productionEnabled: boolean;
+  updatedAt: string;
+}
+
+export interface SupportAuthorityTestRunResource {
+  companyId: string;
+  environment: string;
+  id: string;
+  obligation: string;
+  recordedAt: string;
+  status: string;
+  testReference: string;
+}
+
+export interface SupportSystemUserRequestResource {
+  companyId: string;
+  failureCode: string | null;
+  id: string;
+  obligation: string;
+  requestedAt: string | null;
+  status: string;
+  updatedAt: string;
+}
+
+export interface SupportProductionPilotEntitlementResource {
+  caseProfile: string;
+  companyId: string;
+  expiresAt: string;
+  id: string;
+  incomeYear: number;
+  obligation: string;
+  startsAt: string;
+  status: string;
+  updatedAt: string;
+  userId: string;
+}
+
+export interface SupportFilingApprovalSnapshotResource {
+  adapterVersion: string;
+  approvedAt: string;
+  caseProfile: string;
+  companyId: string;
+  id: string;
+  incomeYear: number;
+  invalidatedAt: string | null;
+  manifestHash: string;
+  obligation: string;
+  payloadHash: string;
+}
+
+export interface SupportProductionFilingSubmissionResource {
+  adapterVersion: string;
+  caseProfile: string;
+  companyId: string;
+  createdAt: string;
+  failureClass: string | null;
+  id: string;
+  incomeYear: number;
+  obligation: string;
+  status: string;
+  updatedAt: string;
+}
+
+export interface SupportProductionFilingEventResource {
+  attempt: number;
+  createdAt: string;
+  failureClass: string | null;
+  id: string;
+  operationName: string;
+  operationState: string;
+  resultingStatus: string;
+  submissionId: string;
+}
+
+export interface SupportProductionFeedbackArtifactResource {
+  byteLength: number;
+  classification: string;
+  companyId: string;
+  contentType: string;
+  documentId: string;
+  id: string;
+  retrievedAt: string;
+  sha256: string;
+  submissionId: string;
+}
+
+export interface SupportDocumentResource {
+  companyId: string;
+  createdAt: string;
+  documentType: string;
+  id: string;
+  incomeYear: number;
+  linkedTo: string;
+  name: string;
+  retentionYears: number;
+  status: string;
+  storageKey: string;
+}
+
+export interface SupportStorageObjectResource {
+  bucketId: string;
+  createdAt: string;
+  id: string;
+  name: string;
+}
+
+export interface SupportDeletionReviewResource {
+  cancellationId: string;
+  companyId: string;
+  decision: string;
+  evidenceReference: string;
+  id: string;
+  reviewedAt: string;
+  supportCaseId: string;
+}
+
+export interface SupportCaseResources {
+  auditEvents: SupportAuditEventResource[];
+  authorityPermissions: SupportAuthorityPermissionResource[];
+  authorityTestRuns: SupportAuthorityTestRunResource[];
+  billingAccounts: SupportBillingAccountResource[];
+  billingPaymentEvents: SupportBillingPaymentEventResource[];
+  companies: SupportCompanyResource[];
+  companyCancellations: SupportCancellationResource[];
+  companyDeletionReviews: SupportDeletionReviewResource[];
+  documents: SupportDocumentResource[];
+  filingApprovalSnapshots: SupportFilingApprovalSnapshotResource[];
+  filingReadinessSnapshots: SupportFilingReadinessResource[];
+  filingSubmissions: SupportFilingSubmissionResource[];
+  productionFeedbackArtifacts: SupportProductionFeedbackArtifactResource[];
+  productionFilingEvents: SupportProductionFilingEventResource[];
+  productionFilingSubmissions: SupportProductionFilingSubmissionResource[];
+  productionPilotEntitlements: SupportProductionPilotEntitlementResource[];
+  storageObjects: SupportStorageObjectResource[];
+  systemUserRequests: SupportSystemUserRequestResource[];
+}
+
 export interface SupportCaseSnapshotResponse {
   caseId: string;
   companyId: string;
-  resources: Record<string, Record<string, unknown>[]>;
+  resources: SupportCaseResources;
   scopes: ("profile" | "filing" | "billing" | "audit" | "cancellation" | "authority" | "documents" | "production")[];
 }
 
@@ -1380,6 +1624,34 @@ function isOperatorContextResponse(value: unknown): value is OperatorContextResp
   );
 }
 
+function isOperatorCompanyRecord(value: unknown): value is OperatorCompanyRecord {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","source","statusText"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.createdBy === "string" &&
+    typeof value.entityType === "string" &&
+    typeof value.id === "string" &&
+    (typeof value.identityConfirmedAt === "string" || value.identityConfirmedAt === null) &&
+    (typeof value.identityLockedAt === "string" || value.identityLockedAt === null) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string" &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
+  );
+}
+
+function isOperatorCompanySearchResponse(value: unknown): value is OperatorCompanySearchResponse {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companies"]) &&
+    Array.isArray(value.companies) && value.companies.every((item) => isOperatorCompanyRecord(item))
+  );
+}
+
 function isSupportAccessGrant(value: unknown): value is SupportAccessGrant {
   return (
     isRecord(value) &&
@@ -1427,13 +1699,313 @@ function isSupportCaseOpeningResponse(value: unknown): value is SupportCaseOpeni
   );
 }
 
+function isSupportCompanyResource(value: unknown): value is SupportCompanyResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","createdAt","createdBy","entityType","id","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode","source","statusText"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.entityType === "string" &&
+    isUuid(value.id) &&
+    (isDateTime(value.identityConfirmedAt) || value.identityConfirmedAt === null) &&
+    (isDateTime(value.identityLockedAt) || value.identityLockedAt === null) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string" &&
+    typeof value.source === "string" &&
+    typeof value.statusText === "string"
+  );
+}
+
+function isSupportAuditEventResource(value: unknown): value is SupportAuditEventResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["action","actorId","category","companyId","createdAt","id","message"]) &&
+    typeof value.action === "string" &&
+    isUuid(value.actorId) &&
+    typeof value.category === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.id) &&
+    typeof value.message === "string"
+  );
+}
+
+function isSupportCancellationResource(value: unknown): value is SupportCancellationResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","deletedAt","deletedBy","evidence","id","reason","requestedAt","requestedBy","reviewedAt","reviewedBy","status","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    (isDateTime(value.deletedAt) || value.deletedAt === null) &&
+    (isUuid(value.deletedBy) || value.deletedBy === null) &&
+    isRecord(value.evidence) &&
+    isUuid(value.id) &&
+    typeof value.reason === "string" &&
+    isDateTime(value.requestedAt) &&
+    isUuid(value.requestedBy) &&
+    (isDateTime(value.reviewedAt) || value.reviewedAt === null) &&
+    (isUuid(value.reviewedBy) || value.reviewedBy === null) &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportFilingSubmissionResource(value: unknown): value is SupportFilingSubmissionResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","filing","id","incomeYear","status","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    typeof value.filing === "string" &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportFilingReadinessResource(value: unknown): value is SupportFilingReadinessResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","hardBlocks","id","incomeYear","obligation","ready","status","updatedAt","warnings"]) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.hardBlocks) && value.hardBlocks.every((item) => isRecord(item)) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.obligation === "string" &&
+    typeof value.ready === "boolean" &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt) &&
+    Array.isArray(value.warnings) && value.warnings.every((item) => isRecord(item))
+  );
+}
+
+function isSupportBillingAccountResource(value: unknown): value is SupportBillingAccountResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","filingPackagePaid","pricingPlan","refundCompleted","refundEligible","refundProviderRef","subscriptionActive","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    typeof value.filingPackagePaid === "boolean" &&
+    typeof value.pricingPlan === "string" &&
+    typeof value.refundCompleted === "boolean" &&
+    typeof value.refundEligible === "boolean" &&
+    (typeof value.refundProviderRef === "string" || value.refundProviderRef === null) &&
+    typeof value.subscriptionActive === "boolean" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportBillingPaymentEventResource(value: unknown): value is SupportBillingPaymentEventResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amountNok","companyId","createdAt","id","kind","provider","status"]) &&
+    typeof value.amountNok === "number" && Number.isInteger(value.amountNok) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.id) &&
+    typeof value.kind === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.status === "string"
+  );
+}
+
+function isSupportAuthorityPermissionResource(value: unknown): value is SupportAuthorityPermissionResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","id","obligation","productionEnabled","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.id) &&
+    typeof value.obligation === "string" &&
+    typeof value.productionEnabled === "boolean" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportAuthorityTestRunResource(value: unknown): value is SupportAuthorityTestRunResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","environment","id","obligation","recordedAt","status","testReference"]) &&
+    isUuid(value.companyId) &&
+    typeof value.environment === "string" &&
+    isUuid(value.id) &&
+    typeof value.obligation === "string" &&
+    isDateTime(value.recordedAt) &&
+    typeof value.status === "string" &&
+    typeof value.testReference === "string"
+  );
+}
+
+function isSupportSystemUserRequestResource(value: unknown): value is SupportSystemUserRequestResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","failureCode","id","obligation","requestedAt","status","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.failureCode === "string" || value.failureCode === null) &&
+    isUuid(value.id) &&
+    typeof value.obligation === "string" &&
+    (isDateTime(value.requestedAt) || value.requestedAt === null) &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportProductionPilotEntitlementResource(value: unknown): value is SupportProductionPilotEntitlementResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseProfile","companyId","expiresAt","id","incomeYear","obligation","startsAt","status","updatedAt","userId"]) &&
+    typeof value.caseProfile === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.expiresAt) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.obligation === "string" &&
+    isDateTime(value.startsAt) &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt) &&
+    isUuid(value.userId)
+  );
+}
+
+function isSupportFilingApprovalSnapshotResource(value: unknown): value is SupportFilingApprovalSnapshotResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterVersion","approvedAt","caseProfile","companyId","id","incomeYear","invalidatedAt","manifestHash","obligation","payloadHash"]) &&
+    typeof value.adapterVersion === "string" &&
+    isDateTime(value.approvedAt) &&
+    typeof value.caseProfile === "string" &&
+    isUuid(value.companyId) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (isDateTime(value.invalidatedAt) || value.invalidatedAt === null) &&
+    typeof value.manifestHash === "string" &&
+    typeof value.obligation === "string" &&
+    typeof value.payloadHash === "string"
+  );
+}
+
+function isSupportProductionFilingSubmissionResource(value: unknown): value is SupportProductionFilingSubmissionResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterVersion","caseProfile","companyId","createdAt","failureClass","id","incomeYear","obligation","status","updatedAt"]) &&
+    typeof value.adapterVersion === "string" &&
+    typeof value.caseProfile === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    (typeof value.failureClass === "string" || value.failureClass === null) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.obligation === "string" &&
+    typeof value.status === "string" &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isSupportProductionFilingEventResource(value: unknown): value is SupportProductionFilingEventResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["attempt","createdAt","failureClass","id","operationName","operationState","resultingStatus","submissionId"]) &&
+    typeof value.attempt === "number" && Number.isInteger(value.attempt) &&
+    isDateTime(value.createdAt) &&
+    (typeof value.failureClass === "string" || value.failureClass === null) &&
+    isUuid(value.id) &&
+    typeof value.operationName === "string" &&
+    typeof value.operationState === "string" &&
+    typeof value.resultingStatus === "string" &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isSupportProductionFeedbackArtifactResource(value: unknown): value is SupportProductionFeedbackArtifactResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","classification","companyId","contentType","documentId","id","retrievedAt","sha256","submissionId"]) &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    typeof value.classification === "string" &&
+    isUuid(value.companyId) &&
+    typeof value.contentType === "string" &&
+    isUuid(value.documentId) &&
+    isUuid(value.id) &&
+    isDateTime(value.retrievedAt) &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isSupportDocumentResource(value: unknown): value is SupportDocumentResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","documentType","id","incomeYear","linkedTo","name","retentionYears","status","storageKey"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    typeof value.documentType === "string" &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.linkedTo === "string" &&
+    typeof value.name === "string" &&
+    typeof value.retentionYears === "number" && Number.isInteger(value.retentionYears) &&
+    typeof value.status === "string" &&
+    typeof value.storageKey === "string"
+  );
+}
+
+function isSupportStorageObjectResource(value: unknown): value is SupportStorageObjectResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bucketId","createdAt","id","name"]) &&
+    typeof value.bucketId === "string" &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.id) &&
+    typeof value.name === "string"
+  );
+}
+
+function isSupportDeletionReviewResource(value: unknown): value is SupportDeletionReviewResource {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellationId","companyId","decision","evidenceReference","id","reviewedAt","supportCaseId"]) &&
+    isUuid(value.cancellationId) &&
+    isUuid(value.companyId) &&
+    typeof value.decision === "string" &&
+    typeof value.evidenceReference === "string" &&
+    isUuid(value.id) &&
+    isDateTime(value.reviewedAt) &&
+    isUuid(value.supportCaseId)
+  );
+}
+
+function isSupportCaseResources(value: unknown): value is SupportCaseResources {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["auditEvents","authorityPermissions","authorityTestRuns","billingAccounts","billingPaymentEvents","companies","companyCancellations","companyDeletionReviews","documents","filingApprovalSnapshots","filingReadinessSnapshots","filingSubmissions","productionFeedbackArtifacts","productionFilingEvents","productionFilingSubmissions","productionPilotEntitlements","storageObjects","systemUserRequests"]) &&
+    Array.isArray(value.auditEvents) && value.auditEvents.every((item) => isSupportAuditEventResource(item)) &&
+    Array.isArray(value.authorityPermissions) && value.authorityPermissions.every((item) => isSupportAuthorityPermissionResource(item)) &&
+    Array.isArray(value.authorityTestRuns) && value.authorityTestRuns.every((item) => isSupportAuthorityTestRunResource(item)) &&
+    Array.isArray(value.billingAccounts) && value.billingAccounts.every((item) => isSupportBillingAccountResource(item)) &&
+    Array.isArray(value.billingPaymentEvents) && value.billingPaymentEvents.every((item) => isSupportBillingPaymentEventResource(item)) &&
+    Array.isArray(value.companies) && value.companies.every((item) => isSupportCompanyResource(item)) &&
+    Array.isArray(value.companyCancellations) && value.companyCancellations.every((item) => isSupportCancellationResource(item)) &&
+    Array.isArray(value.companyDeletionReviews) && value.companyDeletionReviews.every((item) => isSupportDeletionReviewResource(item)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isSupportDocumentResource(item)) &&
+    Array.isArray(value.filingApprovalSnapshots) && value.filingApprovalSnapshots.every((item) => isSupportFilingApprovalSnapshotResource(item)) &&
+    Array.isArray(value.filingReadinessSnapshots) && value.filingReadinessSnapshots.every((item) => isSupportFilingReadinessResource(item)) &&
+    Array.isArray(value.filingSubmissions) && value.filingSubmissions.every((item) => isSupportFilingSubmissionResource(item)) &&
+    Array.isArray(value.productionFeedbackArtifacts) && value.productionFeedbackArtifacts.every((item) => isSupportProductionFeedbackArtifactResource(item)) &&
+    Array.isArray(value.productionFilingEvents) && value.productionFilingEvents.every((item) => isSupportProductionFilingEventResource(item)) &&
+    Array.isArray(value.productionFilingSubmissions) && value.productionFilingSubmissions.every((item) => isSupportProductionFilingSubmissionResource(item)) &&
+    Array.isArray(value.productionPilotEntitlements) && value.productionPilotEntitlements.every((item) => isSupportProductionPilotEntitlementResource(item)) &&
+    Array.isArray(value.storageObjects) && value.storageObjects.every((item) => isSupportStorageObjectResource(item)) &&
+    Array.isArray(value.systemUserRequests) && value.systemUserRequests.every((item) => isSupportSystemUserRequestResource(item))
+  );
+}
+
 function isSupportCaseSnapshotResponse(value: unknown): value is SupportCaseSnapshotResponse {
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["caseId","companyId","resources","scopes"]) &&
     isUuid(value.caseId) &&
     isUuid(value.companyId) &&
-    isRecord(value.resources) && Object.values(value.resources).every((item) => Array.isArray(item) && item.every((item) => isRecord(item))) &&
+    isSupportCaseResources(value.resources) &&
     Array.isArray(value.scopes) && value.scopes.every((item) => (item === "profile" || item === "filing" || item === "billing" || item === "audit" || item === "cancellation" || item === "authority" || item === "documents" || item === "production"))
   );
 }
@@ -2858,6 +3430,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isOperatorContextResponse,
+      );
+    },
+
+    async companyAccessSearchOperatorCompanies(
+      query: string,
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorCompanySearchResponse> {
+      const search = new URLSearchParams({ query });
+      return executeJson(
+        `${baseUrl}/api/v1/company-access/operator-companies?${search}`,
+        "GET",
+        request,
+        undefined,
+        isOperatorCompanySearchResponse,
       );
     },
 

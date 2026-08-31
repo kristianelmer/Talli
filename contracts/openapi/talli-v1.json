@@ -5567,6 +5567,111 @@
         "title": "OpeningPositionMode",
         "type": "string"
       },
+      "OperatorCompanyRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "title": "Createdby",
+            "type": "string"
+          },
+          "entityType": {
+            "title": "Entitytype",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "identityConfirmedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identityconfirmedat"
+          },
+          "identityLockedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identitylockedat"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orgNumber": {
+            "title": "Orgnumber",
+            "type": "string"
+          },
+          "postalCode": {
+            "title": "Postalcode",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "statusText": {
+            "title": "Statustext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgNumber",
+          "name",
+          "entityType",
+          "address",
+          "postalCode",
+          "city",
+          "statusText",
+          "source",
+          "createdBy",
+          "identityConfirmedAt",
+          "identityLockedAt",
+          "createdAt"
+        ],
+        "title": "OperatorCompanyRecord",
+        "type": "object"
+      },
+      "OperatorCompanySearchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorCompanyRecord"
+            },
+            "title": "Companies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "companies"
+        ],
+        "title": "OperatorCompanySearchResponse",
+        "type": "object"
+      },
       "OperatorContextResponse": {
         "additionalProperties": false,
         "properties": {
@@ -5941,6 +6046,350 @@
         "title": "SupportAccessGrantResponse",
         "type": "object"
       },
+      "SupportAuditEventResource": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actorId": {
+            "format": "uuid",
+            "title": "Actorid",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "actorId",
+          "category",
+          "action",
+          "message",
+          "createdAt"
+        ],
+        "title": "SupportAuditEventResource",
+        "type": "object"
+      },
+      "SupportAuthorityPermissionResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "productionEnabled": {
+            "title": "Productionenabled",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "obligation",
+          "productionEnabled",
+          "updatedAt"
+        ],
+        "title": "SupportAuthorityPermissionResource",
+        "type": "object"
+      },
+      "SupportAuthorityTestRunResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "testReference": {
+            "title": "Testreference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "obligation",
+          "environment",
+          "status",
+          "testReference",
+          "recordedAt"
+        ],
+        "title": "SupportAuthorityTestRunResource",
+        "type": "object"
+      },
+      "SupportBillingAccountResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "filingPackagePaid": {
+            "title": "Filingpackagepaid",
+            "type": "boolean"
+          },
+          "pricingPlan": {
+            "title": "Pricingplan",
+            "type": "string"
+          },
+          "refundCompleted": {
+            "title": "Refundcompleted",
+            "type": "boolean"
+          },
+          "refundEligible": {
+            "title": "Refundeligible",
+            "type": "boolean"
+          },
+          "refundProviderRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refundproviderref"
+          },
+          "subscriptionActive": {
+            "title": "Subscriptionactive",
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "pricingPlan",
+          "subscriptionActive",
+          "filingPackagePaid",
+          "refundEligible",
+          "refundCompleted",
+          "refundProviderRef",
+          "updatedAt"
+        ],
+        "title": "SupportBillingAccountResource",
+        "type": "object"
+      },
+      "SupportBillingPaymentEventResource": {
+        "additionalProperties": false,
+        "properties": {
+          "amountNok": {
+            "title": "Amountnok",
+            "type": "integer"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "provider",
+          "kind",
+          "status",
+          "amountNok",
+          "createdAt"
+        ],
+        "title": "SupportBillingPaymentEventResource",
+        "type": "object"
+      },
+      "SupportCancellationResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedat"
+          },
+          "deletedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletedby"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "title": "Requestedat",
+            "type": "string"
+          },
+          "requestedBy": {
+            "format": "uuid",
+            "title": "Requestedby",
+            "type": "string"
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewedat"
+          },
+          "reviewedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewedby"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "status",
+          "reason",
+          "evidence",
+          "requestedBy",
+          "requestedAt",
+          "reviewedBy",
+          "reviewedAt",
+          "deletedBy",
+          "deletedAt",
+          "updatedAt"
+        ],
+        "title": "SupportCancellationResource",
+        "type": "object"
+      },
       "SupportCaseOpening": {
         "additionalProperties": false,
         "properties": {
@@ -5993,6 +6442,159 @@
         "title": "SupportCaseOpeningResponse",
         "type": "object"
       },
+      "SupportCaseResources": {
+        "additionalProperties": false,
+        "properties": {
+          "auditEvents": {
+            "items": {
+              "$ref": "#/components/schemas/SupportAuditEventResource"
+            },
+            "title": "Auditevents",
+            "type": "array"
+          },
+          "authorityPermissions": {
+            "items": {
+              "$ref": "#/components/schemas/SupportAuthorityPermissionResource"
+            },
+            "title": "Authoritypermissions",
+            "type": "array"
+          },
+          "authorityTestRuns": {
+            "items": {
+              "$ref": "#/components/schemas/SupportAuthorityTestRunResource"
+            },
+            "title": "Authoritytestruns",
+            "type": "array"
+          },
+          "billingAccounts": {
+            "items": {
+              "$ref": "#/components/schemas/SupportBillingAccountResource"
+            },
+            "title": "Billingaccounts",
+            "type": "array"
+          },
+          "billingPaymentEvents": {
+            "items": {
+              "$ref": "#/components/schemas/SupportBillingPaymentEventResource"
+            },
+            "title": "Billingpaymentevents",
+            "type": "array"
+          },
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/SupportCompanyResource"
+            },
+            "title": "Companies",
+            "type": "array"
+          },
+          "companyCancellations": {
+            "items": {
+              "$ref": "#/components/schemas/SupportCancellationResource"
+            },
+            "title": "Companycancellations",
+            "type": "array"
+          },
+          "companyDeletionReviews": {
+            "items": {
+              "$ref": "#/components/schemas/SupportDeletionReviewResource"
+            },
+            "title": "Companydeletionreviews",
+            "type": "array"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/SupportDocumentResource"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "filingApprovalSnapshots": {
+            "items": {
+              "$ref": "#/components/schemas/SupportFilingApprovalSnapshotResource"
+            },
+            "title": "Filingapprovalsnapshots",
+            "type": "array"
+          },
+          "filingReadinessSnapshots": {
+            "items": {
+              "$ref": "#/components/schemas/SupportFilingReadinessResource"
+            },
+            "title": "Filingreadinesssnapshots",
+            "type": "array"
+          },
+          "filingSubmissions": {
+            "items": {
+              "$ref": "#/components/schemas/SupportFilingSubmissionResource"
+            },
+            "title": "Filingsubmissions",
+            "type": "array"
+          },
+          "productionFeedbackArtifacts": {
+            "items": {
+              "$ref": "#/components/schemas/SupportProductionFeedbackArtifactResource"
+            },
+            "title": "Productionfeedbackartifacts",
+            "type": "array"
+          },
+          "productionFilingEvents": {
+            "items": {
+              "$ref": "#/components/schemas/SupportProductionFilingEventResource"
+            },
+            "title": "Productionfilingevents",
+            "type": "array"
+          },
+          "productionFilingSubmissions": {
+            "items": {
+              "$ref": "#/components/schemas/SupportProductionFilingSubmissionResource"
+            },
+            "title": "Productionfilingsubmissions",
+            "type": "array"
+          },
+          "productionPilotEntitlements": {
+            "items": {
+              "$ref": "#/components/schemas/SupportProductionPilotEntitlementResource"
+            },
+            "title": "Productionpilotentitlements",
+            "type": "array"
+          },
+          "storageObjects": {
+            "items": {
+              "$ref": "#/components/schemas/SupportStorageObjectResource"
+            },
+            "title": "Storageobjects",
+            "type": "array"
+          },
+          "systemUserRequests": {
+            "items": {
+              "$ref": "#/components/schemas/SupportSystemUserRequestResource"
+            },
+            "title": "Systemuserrequests",
+            "type": "array"
+          }
+        },
+        "required": [
+          "companies",
+          "auditEvents",
+          "companyCancellations",
+          "filingSubmissions",
+          "filingReadinessSnapshots",
+          "billingAccounts",
+          "billingPaymentEvents",
+          "authorityPermissions",
+          "authorityTestRuns",
+          "systemUserRequests",
+          "productionPilotEntitlements",
+          "filingApprovalSnapshots",
+          "productionFilingSubmissions",
+          "productionFilingEvents",
+          "productionFeedbackArtifacts",
+          "documents",
+          "storageObjects",
+          "companyDeletionReviews"
+        ],
+        "title": "SupportCaseResources",
+        "type": "object"
+      },
       "SupportCaseSnapshotResponse": {
         "additionalProperties": false,
         "properties": {
@@ -6007,15 +6609,7 @@
             "type": "string"
           },
           "resources": {
-            "additionalProperties": {
-              "items": {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              "type": "array"
-            },
-            "title": "Resources",
-            "type": "object"
+            "$ref": "#/components/schemas/SupportCaseResources"
           },
           "scopes": {
             "items": {
@@ -6042,6 +6636,733 @@
           "resources"
         ],
         "title": "SupportCaseSnapshotResponse",
+        "type": "object"
+      },
+      "SupportCompanyResource": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "entityType": {
+            "title": "Entitytype",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "identityConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identityconfirmedat"
+          },
+          "identityLockedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identitylockedat"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orgNumber": {
+            "title": "Orgnumber",
+            "type": "string"
+          },
+          "postalCode": {
+            "title": "Postalcode",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "statusText": {
+            "title": "Statustext",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orgNumber",
+          "name",
+          "entityType",
+          "address",
+          "postalCode",
+          "city",
+          "statusText",
+          "source",
+          "createdBy",
+          "identityConfirmedAt",
+          "identityLockedAt",
+          "createdAt"
+        ],
+        "title": "SupportCompanyResource",
+        "type": "object"
+      },
+      "SupportDeletionReviewResource": {
+        "additionalProperties": false,
+        "properties": {
+          "cancellationId": {
+            "format": "uuid",
+            "title": "Cancellationid",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "evidenceReference": {
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "title": "Reviewedat",
+            "type": "string"
+          },
+          "supportCaseId": {
+            "format": "uuid",
+            "title": "Supportcaseid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cancellationId",
+          "companyId",
+          "decision",
+          "evidenceReference",
+          "reviewedAt",
+          "supportCaseId"
+        ],
+        "title": "SupportDeletionReviewResource",
+        "type": "object"
+      },
+      "SupportDocumentResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "documentType": {
+            "title": "Documenttype",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "linkedTo": {
+            "title": "Linkedto",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "retentionYears": {
+            "title": "Retentionyears",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storageKey": {
+            "title": "Storagekey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "documentType",
+          "name",
+          "linkedTo",
+          "status",
+          "retentionYears",
+          "storageKey",
+          "createdAt"
+        ],
+        "title": "SupportDocumentResource",
+        "type": "object"
+      },
+      "SupportFilingApprovalSnapshotResource": {
+        "additionalProperties": false,
+        "properties": {
+          "adapterVersion": {
+            "title": "Adapterversion",
+            "type": "string"
+          },
+          "approvedAt": {
+            "format": "date-time",
+            "title": "Approvedat",
+            "type": "string"
+          },
+          "caseProfile": {
+            "title": "Caseprofile",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "invalidatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidatedat"
+          },
+          "manifestHash": {
+            "title": "Manifesthash",
+            "type": "string"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "payloadHash": {
+            "title": "Payloadhash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "obligation",
+          "caseProfile",
+          "adapterVersion",
+          "payloadHash",
+          "manifestHash",
+          "approvedAt",
+          "invalidatedAt"
+        ],
+        "title": "SupportFilingApprovalSnapshotResource",
+        "type": "object"
+      },
+      "SupportFilingReadinessResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "hardBlocks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hardblocks",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "obligation",
+          "status",
+          "ready",
+          "hardBlocks",
+          "warnings",
+          "updatedAt"
+        ],
+        "title": "SupportFilingReadinessResource",
+        "type": "object"
+      },
+      "SupportFilingSubmissionResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "filing": {
+            "title": "Filing",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "filing",
+          "status",
+          "updatedAt"
+        ],
+        "title": "SupportFilingSubmissionResource",
+        "type": "object"
+      },
+      "SupportProductionFeedbackArtifactResource": {
+        "additionalProperties": false,
+        "properties": {
+          "byteLength": {
+            "title": "Bytelength",
+            "type": "integer"
+          },
+          "classification": {
+            "title": "Classification",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "contentType": {
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "documentId": {
+            "format": "uuid",
+            "title": "Documentid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "retrievedAt": {
+            "format": "date-time",
+            "title": "Retrievedat",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "submissionId": {
+            "format": "uuid",
+            "title": "Submissionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "submissionId",
+          "documentId",
+          "contentType",
+          "byteLength",
+          "sha256",
+          "retrievedAt",
+          "classification"
+        ],
+        "title": "SupportProductionFeedbackArtifactResource",
+        "type": "object"
+      },
+      "SupportProductionFilingEventResource": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "failureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureclass"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operationName": {
+            "title": "Operationname",
+            "type": "string"
+          },
+          "operationState": {
+            "title": "Operationstate",
+            "type": "string"
+          },
+          "resultingStatus": {
+            "title": "Resultingstatus",
+            "type": "string"
+          },
+          "submissionId": {
+            "format": "uuid",
+            "title": "Submissionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submissionId",
+          "operationName",
+          "operationState",
+          "attempt",
+          "failureClass",
+          "resultingStatus",
+          "createdAt"
+        ],
+        "title": "SupportProductionFilingEventResource",
+        "type": "object"
+      },
+      "SupportProductionFilingSubmissionResource": {
+        "additionalProperties": false,
+        "properties": {
+          "adapterVersion": {
+            "title": "Adapterversion",
+            "type": "string"
+          },
+          "caseProfile": {
+            "title": "Caseprofile",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "failureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureclass"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "obligation",
+          "caseProfile",
+          "adapterVersion",
+          "status",
+          "failureClass",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "SupportProductionFilingSubmissionResource",
+        "type": "object"
+      },
+      "SupportProductionPilotEntitlementResource": {
+        "additionalProperties": false,
+        "properties": {
+          "caseProfile": {
+            "title": "Caseprofile",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "title": "Startsat",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "userId",
+          "incomeYear",
+          "obligation",
+          "caseProfile",
+          "status",
+          "startsAt",
+          "expiresAt",
+          "updatedAt"
+        ],
+        "title": "SupportProductionPilotEntitlementResource",
+        "type": "object"
+      },
+      "SupportStorageObjectResource": {
+        "additionalProperties": false,
+        "properties": {
+          "bucketId": {
+            "title": "Bucketid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bucketId",
+          "name",
+          "createdAt"
+        ],
+        "title": "SupportStorageObjectResource",
+        "type": "object"
+      },
+      "SupportSystemUserRequestResource": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failurecode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "obligation": {
+            "title": "Obligation",
+            "type": "string"
+          },
+          "requestedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestedat"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "obligation",
+          "status",
+          "failureCode",
+          "requestedAt",
+          "updatedAt"
+        ],
+        "title": "SupportSystemUserRequestResource",
         "type": "object"
       },
       "SupportedBankDataFormat": {
@@ -20183,6 +21504,409 @@
           }
         ],
         "summary": "Onboard Company",
+        "tags": [
+          "company-access"
+        ]
+      }
+    },
+    "/api/v1/company-access/operator-companies": {
+      "get": {
+        "deprecated": true,
+        "operationId": "companyAccessSearchOperatorCompanies",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorCompanySearchResponse"
+                }
+              }
+            },
+            "description": "Deprecated mixed-revision overlap. Customer-directory search is disabled and the result is always empty.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Company access request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Search Company Access Operator Companies Deprecated",
         "tags": [
           "company-access"
         ]

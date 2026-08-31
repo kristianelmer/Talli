@@ -41,7 +41,7 @@
 -->
 
 <!-- architecture-inventory
-{"routes":["/api/v1/company-access/agreements/reaccept","/api/v1/company-access/companies/{company_id}","/api/v1/company-access/company-year-admissions","/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks","/api/v1/company-access/eligibility/definitive","/api/v1/company-access/eligibility/precheck","/api/v1/company-access/onboarding","/api/v1/company-access/operator-context","/api/v1/company-access/operator-support-cases/{case_id}","/api/v1/company-access/operator-support-cases/{case_id}/openings","/api/v1/company-access/operator-support-grants","/api/v1/company-access/operator-support-grants/{case_id}/revocations"],"technicalMigrations":["supabase/migrations/20260826100000_company_access_onboarding.sql","supabase/migrations/20260826110000_company_year_admission.sql","supabase/migrations/20260830091341_case_bound_support_access.sql","supabase/migrations/20260830093000_current_legal_evidence.sql"],"workflowPurposes":["company-access-onboarding-and-support=>Retains the fail-closed legacy onboarding response, runs agreement reacceptance and accepted-member lookup, and provides backend-only generated case-bound support grant, revoke, explicit open, and read workflows.","company-year-eligibility-and-admission=>Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package."],"workflows":["company-access-onboarding-and-support","company-year-eligibility-and-admission"]}
+{"routes":["/api/v1/company-access/agreements/reaccept","/api/v1/company-access/companies/{company_id}","/api/v1/company-access/company-year-admissions","/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks","/api/v1/company-access/eligibility/definitive","/api/v1/company-access/eligibility/precheck","/api/v1/company-access/onboarding","/api/v1/company-access/operator-companies","/api/v1/company-access/operator-context","/api/v1/company-access/operator-support-cases/{case_id}","/api/v1/company-access/operator-support-cases/{case_id}/openings","/api/v1/company-access/operator-support-grants","/api/v1/company-access/operator-support-grants/{case_id}/revocations"],"technicalMigrations":["supabase/migrations/20260826100000_company_access_onboarding.sql","supabase/migrations/20260826110000_company_year_admission.sql","supabase/migrations/20260830091341_case_bound_support_access.sql","supabase/migrations/20260830093000_current_legal_evidence.sql"],"workflowPurposes":["company-access-onboarding-and-support=>Retains the fail-closed legacy onboarding response, runs agreement reacceptance and accepted-member lookup, provides backend-only generated case-bound support grant, revoke, explicit open, and read workflows, and temporarily retains an authenticated always-empty deprecated operator-company search response for mixed-revision overlap.","company-year-eligibility-and-admission=>Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package."],"workflows":["company-access-onboarding-and-support","company-year-eligibility-and-admission"]}
 -->
 
 <!-- architecture-inventory
@@ -121,6 +121,7 @@ The `company-access-onboarding-and-support` workflow serves
 `/api/v1/company-access/agreements/reaccept`,
 `/api/v1/company-access/companies/{company_id}`,
 `/api/v1/company-access/operator-context`,
+`/api/v1/company-access/operator-companies`,
 `/api/v1/company-access/operator-support-grants`,
 `/api/v1/company-access/operator-support-grants/{case_id}/revocations`,
 `/api/v1/company-access/operator-support-cases/{case_id}/openings`, and
@@ -129,6 +130,9 @@ fails closed and cannot create a company; the workflow otherwise exposes
 agreement reacceptance and accepted-member company records. Support uses a
 backend-generated case UUID, explicit audited POST opening, read-only GET, exact
 company/scope/time/fresh-MFA RLS, and no direct browser table authority. The composition
+root retains the deprecated operator-company search only as an authenticated,
+always-empty mixed-revision response; it performs no directory lookup or customer-data
+read. The composition
 root injects `CompanyRegistryGateway` through
 `talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter`.
 

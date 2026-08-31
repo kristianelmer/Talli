@@ -8,7 +8,7 @@
 
 This feature carries the public provisional and definitive eligibility check,
 authenticated immutable company-year admission and safety rechecks, company and
-operator context, and bounded operator company search. It also carries
+operator context, and exact case-bound support reads. It also carries
 agreement reacceptance, invitation and reviewer/read-only membership administration,
 owner cancellation request/resume/finalization, and independent support deletion
 review through the committed generated client.
@@ -40,8 +40,10 @@ read access. The `before_payment` and `before_filing` triggers are generated
 contracts for their serialized capability migrations; this stage does not alter
 those future capability writers.
 Company facts and the caller's accepted membership role come from the
-tenant-concealed company-record operation. Operator authorization and bounded
-company discovery come from their generated operator operations.
+tenant-concealed company-record operation. Operator authorization and case-bound
+support data come from generated operator operations. The deprecated v1 company
+search remains only as an authenticated, always-empty mixed-revision overlap and
+never performs customer discovery.
 Invitation lookup/acceptance and owner administration use the same thin transport
 with ten-second deadlines and the root `@talli/talli-api-client` package.
 Cancellation request, legacy resume, and finalization use durable operation IDs

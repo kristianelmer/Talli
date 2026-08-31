@@ -243,9 +243,10 @@ test("actions preserve exact cancellation inputs for network and decoder failure
 });
 
 test("web cancellation lifecycle has no direct Supabase persistence or caller-owned proof", async () => {
-  const [actions, server, workspace, workspaceData, operator, lifecycle, archiveRoute] = await Promise.all([
+  const [actions, server, operatorSupport, workspace, workspaceData, operator, lifecycle, archiveRoute] = await Promise.all([
     readFile(new URL("../app/actions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/operator-support.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/(owner)/workspace/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/workspace-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/(operator)/operator/page.tsx", import.meta.url), "utf8"),
@@ -277,7 +278,8 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(workspace, /pendingCancellationOperation\.operationId/u);
   assert.match(operator, /pendingCancellationOperation\.operationId/u);
   assert.match(server, /readOperatorSupportCase/u);
-  assert.match(server, /resources\.company_cancellations/u);
+  assert.match(server, /buildOperatorSupportSummaries\(resources\)/u);
+  assert.match(operatorSupport, /resources\.companyCancellations/u);
   assert.doesNotMatch(server, /\.from\("company_cancellations"\)/u);
   assert.match(actions, /requiredFormUuid\(formData, "supportCaseId"\)/u);
   assert.match(actions, /reviewCompanyDeletionThroughApi\(accessToken, cancellationId, supportCaseId/u);

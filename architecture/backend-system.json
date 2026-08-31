@@ -45,13 +45,14 @@
     },
     {
       "name": "company-access-onboarding-and-support",
-      "purpose": "Retains the fail-closed legacy onboarding response, runs agreement reacceptance and accepted-member lookup, and provides backend-only generated case-bound support grant, revoke, explicit open, and read workflows.",
+      "purpose": "Retains the fail-closed legacy onboarding response, runs agreement reacceptance and accepted-member lookup, provides backend-only generated case-bound support grant, revoke, explicit open, and read workflows, and temporarily retains an authenticated always-empty deprecated operator-company search response for mixed-revision overlap.",
       "publicPackages": ["talli_backend.modules.company_access.public"],
       "routes": [
         "/api/v1/company-access/onboarding",
         "/api/v1/company-access/agreements/reaccept",
         "/api/v1/company-access/companies/{company_id}",
         "/api/v1/company-access/operator-context",
+        "/api/v1/company-access/operator-companies",
         "/api/v1/company-access/operator-support-grants",
         "/api/v1/company-access/operator-support-grants/{case_id}/revocations",
         "/api/v1/company-access/operator-support-cases/{case_id}/openings",

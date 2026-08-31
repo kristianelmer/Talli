@@ -100,6 +100,26 @@ class OperatorContextResponse(CompanyAccessResponseModel):
     active: Literal[True]
 
 
+class OperatorCompanyRecord(CompanyAccessResponseModel):
+    id: str
+    org_number: str
+    name: str
+    entity_type: str
+    address: str
+    postal_code: str
+    city: str
+    status_text: str
+    source: str
+    created_by: str
+    identity_confirmed_at: str | None
+    identity_locked_at: str | None
+    created_at: str
+
+
+class OperatorCompanySearchResponse(CompanyAccessResponseModel):
+    companies: list[OperatorCompanyRecord]
+
+
 SupportAccessReason = Literal[
     "customer_request", "security_incident", "service_recovery", "legal_obligation"
 ]
@@ -172,11 +192,235 @@ class SupportCaseOpeningResponse(CompanyAccessResponseModel):
     opening: SupportCaseOpening
 
 
+class SupportCompanyResource(CompanyAccessResponseModel):
+    id: UUID
+    org_number: str
+    name: str
+    entity_type: str
+    address: str
+    postal_code: str
+    city: str
+    status_text: str
+    source: str
+    created_by: UUID
+    identity_confirmed_at: AwareDatetime | None
+    identity_locked_at: AwareDatetime | None
+    created_at: AwareDatetime
+
+
+class SupportAuditEventResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    actor_id: UUID
+    category: str
+    action: str
+    message: str
+    created_at: AwareDatetime
+
+
+class SupportCancellationResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    status: str
+    reason: str
+    evidence: dict[str, object]
+    requested_by: UUID
+    requested_at: AwareDatetime
+    reviewed_by: UUID | None
+    reviewed_at: AwareDatetime | None
+    deleted_by: UUID | None
+    deleted_at: AwareDatetime | None
+    updated_at: AwareDatetime
+
+
+class SupportFilingSubmissionResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    filing: str
+    status: str
+    updated_at: AwareDatetime
+
+
+class SupportFilingReadinessResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    obligation: str
+    status: str
+    ready: bool
+    hard_blocks: list[dict[str, object]]
+    warnings: list[dict[str, object]]
+    updated_at: AwareDatetime
+
+
+class SupportBillingAccountResource(CompanyAccessResponseModel):
+    company_id: UUID
+    pricing_plan: str
+    subscription_active: bool
+    filing_package_paid: bool
+    refund_eligible: bool
+    refund_completed: bool
+    refund_provider_ref: str | None
+    updated_at: AwareDatetime
+
+
+class SupportBillingPaymentEventResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    provider: str
+    kind: str
+    status: str
+    amount_nok: int
+    created_at: AwareDatetime
+
+
+class SupportAuthorityPermissionResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    obligation: str
+    production_enabled: bool
+    updated_at: AwareDatetime
+
+
+class SupportAuthorityTestRunResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    obligation: str
+    environment: str
+    status: str
+    test_reference: str
+    recorded_at: AwareDatetime
+
+
+class SupportSystemUserRequestResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    obligation: str
+    status: str
+    failure_code: str | None
+    requested_at: AwareDatetime | None
+    updated_at: AwareDatetime
+
+
+class SupportProductionPilotEntitlementResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    user_id: UUID
+    income_year: int
+    obligation: str
+    case_profile: str
+    status: str
+    starts_at: AwareDatetime
+    expires_at: AwareDatetime
+    updated_at: AwareDatetime
+
+
+class SupportFilingApprovalSnapshotResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    obligation: str
+    case_profile: str
+    adapter_version: str
+    payload_hash: str
+    manifest_hash: str
+    approved_at: AwareDatetime
+    invalidated_at: AwareDatetime | None
+
+
+class SupportProductionFilingSubmissionResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    obligation: str
+    case_profile: str
+    adapter_version: str
+    status: str
+    failure_class: str | None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+
+class SupportProductionFilingEventResource(CompanyAccessResponseModel):
+    id: UUID
+    submission_id: UUID
+    operation_name: str
+    operation_state: str
+    attempt: int
+    failure_class: str | None
+    resulting_status: str
+    created_at: AwareDatetime
+
+
+class SupportProductionFeedbackArtifactResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    submission_id: UUID
+    document_id: UUID
+    content_type: str
+    byte_length: int
+    sha256: str
+    retrieved_at: AwareDatetime
+    classification: str
+
+
+class SupportDocumentResource(CompanyAccessResponseModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    document_type: str
+    name: str
+    linked_to: str
+    status: str
+    retention_years: int
+    storage_key: str
+    created_at: AwareDatetime
+
+
+class SupportStorageObjectResource(CompanyAccessResponseModel):
+    id: UUID
+    bucket_id: str
+    name: str
+    created_at: AwareDatetime
+
+
+class SupportDeletionReviewResource(CompanyAccessResponseModel):
+    id: UUID
+    cancellation_id: UUID
+    company_id: UUID
+    decision: str
+    evidence_reference: str
+    reviewed_at: AwareDatetime
+    support_case_id: UUID
+
+
+class SupportCaseResources(CompanyAccessResponseModel):
+    companies: list[SupportCompanyResource]
+    audit_events: list[SupportAuditEventResource]
+    company_cancellations: list[SupportCancellationResource]
+    filing_submissions: list[SupportFilingSubmissionResource]
+    filing_readiness_snapshots: list[SupportFilingReadinessResource]
+    billing_accounts: list[SupportBillingAccountResource]
+    billing_payment_events: list[SupportBillingPaymentEventResource]
+    authority_permissions: list[SupportAuthorityPermissionResource]
+    authority_test_runs: list[SupportAuthorityTestRunResource]
+    system_user_requests: list[SupportSystemUserRequestResource]
+    production_pilot_entitlements: list[SupportProductionPilotEntitlementResource]
+    filing_approval_snapshots: list[SupportFilingApprovalSnapshotResource]
+    production_filing_submissions: list[SupportProductionFilingSubmissionResource]
+    production_filing_events: list[SupportProductionFilingEventResource]
+    production_feedback_artifacts: list[SupportProductionFeedbackArtifactResource]
+    documents: list[SupportDocumentResource]
+    storage_objects: list[SupportStorageObjectResource]
+    company_deletion_reviews: list[SupportDeletionReviewResource]
+
+
 class SupportCaseSnapshotResponse(CompanyAccessResponseModel):
     case_id: UUID
     company_id: UUID
     scopes: list[SupportAccessScope]
-    resources: dict[str, list[dict[str, object]]]
+    resources: SupportCaseResources
 
 
 CURRENT_BUSINESS_TERMS_VERSION: Literal["2026-08-30"] = "2026-08-30"
@@ -2731,6 +2975,8 @@ __all__ = [
     "InvitationTokenRequest",
     "MembershipState",
     "OpenSupportCaseRequest",
+    "OperatorCompanyRecord",
+    "OperatorCompanySearchResponse",
     "OperatorContextResponse",
     "RevokeSupportAccessRequest",
     "RequestCompanyCancellationGatewayCommand",
@@ -2743,6 +2989,7 @@ __all__ = [
     "SupportAccessGrantResponse",
     "SupportCaseOpening",
     "SupportCaseOpeningResponse",
+    "SupportCaseResources",
     "SupportCaseSnapshotResponse",
     "company_access_adapter",
     "company_registry_adapter",

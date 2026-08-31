@@ -448,12 +448,101 @@ begin
         )) from public.authority_permissions a
         where a.company_id = v_grant.company_id
       ), '[]'::jsonb),
+      'authority_test_runs', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', a.id, 'company_id', a.company_id, 'obligation', a.obligation,
+          'environment', a.environment, 'status', a.status,
+          'test_reference', a.test_reference, 'recorded_at', a.recorded_at
+        ) order by a.recorded_at desc)
+        from public.authority_test_runs a where a.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'system_user_requests', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', s.id, 'company_id', s.company_id, 'obligation', s.obligation,
+          'status', s.status, 'failure_code', s.failure_code,
+          'requested_at', s.requested_at, 'updated_at', s.updated_at
+        ) order by s.updated_at desc)
+        from public.system_user_requests s where s.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'production_pilot_entitlements', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', p.id, 'company_id', p.company_id, 'user_id', p.user_id,
+          'income_year', p.income_year, 'obligation', p.obligation,
+          'case_profile', p.case_profile, 'status', p.status,
+          'starts_at', p.starts_at, 'expires_at', p.expires_at,
+          'updated_at', p.updated_at
+        ) order by p.updated_at desc)
+        from public.production_pilot_entitlements p
+        where p.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'filing_approval_snapshots', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', f.id, 'company_id', f.company_id, 'income_year', f.income_year,
+          'obligation', f.obligation, 'case_profile', f.case_profile,
+          'adapter_version', f.adapter_version, 'payload_hash', f.payload_hash,
+          'manifest_hash', f.manifest_hash, 'approved_at', f.approved_at,
+          'invalidated_at', f.invalidated_at
+        ) order by f.approved_at desc)
+        from public.filing_approval_snapshots f
+        where f.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'production_filing_submissions', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', p.id, 'company_id', p.company_id, 'income_year', p.income_year,
+          'obligation', p.obligation, 'case_profile', p.case_profile,
+          'adapter_version', p.adapter_version, 'status', p.status,
+          'failure_class', p.failure_class, 'created_at', p.created_at,
+          'updated_at', p.updated_at
+        ) order by p.updated_at desc)
+        from public.production_filing_submissions p
+        where p.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'production_filing_events', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', e.id, 'submission_id', e.submission_id,
+          'operation_name', e.operation_name, 'operation_state', e.operation_state,
+          'attempt', e.attempt, 'failure_class', e.failure_class,
+          'resulting_status', e.resulting_status, 'created_at', e.created_at
+        ) order by e.created_at desc)
+        from public.production_filing_events e
+        join public.production_filing_submissions p on p.id = e.submission_id
+        where p.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'production_feedback_artifacts', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', p.id, 'company_id', p.company_id, 'submission_id', p.submission_id,
+          'document_id', p.document_id, 'content_type', p.content_type,
+          'byte_length', p.byte_length, 'sha256', p.sha256,
+          'retrieved_at', p.retrieved_at, 'classification', p.classification
+        ) order by p.retrieved_at desc)
+        from public.production_feedback_artifacts p
+        where p.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'documents', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', d.id, 'company_id', d.company_id, 'income_year', d.income_year,
+          'document_type', d.document_type, 'name', d.name,
+          'linked_to', d.linked_to, 'status', d.status,
+          'retention_years', d.retention_years, 'storage_key', d.storage_key,
+          'created_at', d.created_at
+        ) order by d.created_at desc)
+        from public.documents d where d.company_id = v_grant.company_id
+      ), '[]'::jsonb),
+      'storage_objects', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', s.id, 'bucket_id', s.bucket_id, 'name', s.name,
+          'created_at', s.created_at
+        ) order by s.created_at desc)
+        from storage.objects s
+        where public.company_access_support_storage_company_id_v1(s.name)
+          = v_grant.company_id
+      ), '[]'::jsonb),
       'company_deletion_reviews', coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', d.id, 'cancellation_id', d.cancellation_id,
           'company_id', d.company_id, 'decision', d.decision,
           'evidence_reference', d.evidence_reference,
-          'reviewed_at', d.reviewed_at
+          'reviewed_at', d.reviewed_at, 'support_case_id', d.support_case_id
         )) from public.company_deletion_reviews d
         where d.company_id = v_grant.company_id
       ), '[]'::jsonb)

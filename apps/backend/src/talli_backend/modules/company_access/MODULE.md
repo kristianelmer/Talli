@@ -67,8 +67,13 @@ Onboarding and the backend-only company read boundary add
 `OperatorContextResponse`, `GrantSupportAccessRequest`,
 `RevokeSupportAccessRequest`, `OpenSupportCaseRequest`,
 `SupportAccessGrantResponse`, `SupportCaseOpeningResponse`,
-`SupportCaseSnapshotResponse`, `CompanyRegistryGateway`, and
+`SupportCaseResources`, `SupportCaseSnapshotResponse`, `CompanyRegistryGateway`, and
 `company_registry_adapter`.
+
+The previous v1 operator-company search shape remains temporarily as a deprecated,
+authenticated, always-empty mixed-revision overlap. It performs no customer-data
+query and is outside the active generated web surface; removing the shape requires
+the bounded API-major contraction governed by ADR-0012.
 
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
 `EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,

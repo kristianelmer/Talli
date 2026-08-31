@@ -30,11 +30,11 @@ test("eligibility, admission, and agreement operations are generated-client boun
       "get",
       "companyAccessGetOperatorContext",
     ],
-    [
-      "/api/v1/company-access/operator-companies",
-      "get",
-      "companyAccessSearchOperatorCompanies",
-    ],
+  ];
+  const deprecatedOverlap = [
+    "/api/v1/company-access/operator-companies",
+    "get",
+    "companyAccessSearchOperatorCompanies",
   ];
 
   for (const [path, method, operationId] of publicOperations) {
@@ -48,6 +48,11 @@ test("eligibility, admission, and agreement operations are generated-client boun
     assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
     assert.ok(operation?.responses["401"]?.content["application/problem+json"]);
   }
+  const [overlapPath, overlapMethod, overlapOperationId] = deprecatedOverlap;
+  const overlapOperation = contract.paths[overlapPath]?.[overlapMethod];
+  assert.equal(overlapOperation?.operationId, overlapOperationId);
+  assert.equal(overlapOperation?.deprecated, true);
+  assert.deepEqual(overlapOperation?.security, [{ bearerAuth: [] }]);
 
   const companyContext = contract.components.schemas.CompanyContext;
   assert.ok(companyContext.required.includes("currentAgreementAccepted"));
@@ -68,6 +73,8 @@ test("eligibility, admission, and agreement operations are generated-client boun
   for (const operationId of operations.map(([, , operation]) => operation)) {
     assert.ok(featureManifest.apiOperations.includes(operationId));
   }
+  assert.match(generatedClient, new RegExp(`async ${overlapOperationId}\\(`, "u"));
+  assert.ok(!featureManifest.apiOperations.includes(overlapOperationId));
   const legacy = contract.paths["/api/v1/company-access/onboarding"].post;
   assert.equal(legacy.operationId, "companyAccessOnboardCompany");
   assert.equal(legacy.deprecated, true);

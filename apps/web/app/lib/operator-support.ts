@@ -1,22 +1,4 @@
-import type {
-  AuthorityPermissionRow,
-  BillingAccountRow,
-  BillingPaymentEventRow,
-  CompanyWorkspaceRow,
-  FilingReadinessSnapshotRow,
-  FilingSubmissionRow,
-} from "./supabase/server";
-import type { CompanyCancellationRow } from "./cancellation";
-
-export type SupportAuditRow = {
-  id: string;
-  company_id: string;
-  actor_id: string | null;
-  category: string;
-  action: string;
-  message: string;
-  created_at: string;
-};
+import type { SupportCaseResources } from "@talli/talli-api-client";
 
 export type OperatorSupportSummary = {
   companyId: string;
@@ -34,35 +16,25 @@ export type OperatorSupportSummary = {
   cancellationUpdatedAt: string | null;
 };
 
-export function buildOperatorSupportSummaries(input: {
-  companies: CompanyWorkspaceRow[];
-  readinessSnapshots: FilingReadinessSnapshotRow[];
-  submissions: FilingSubmissionRow[];
-  authorityPermissions: AuthorityPermissionRow[];
-  billingAccounts: BillingAccountRow[];
-  billingPaymentEvents: BillingPaymentEventRow[];
-  cancellations: CompanyCancellationRow[];
-  auditEvents: SupportAuditRow[];
-}): OperatorSupportSummary[] {
-  return input.companies.map((company) => {
-    const readiness = input.readinessSnapshots.filter(
-      (snapshot) => snapshot.company_id === company.id,
+export function buildOperatorSupportSummaries(
+  resources: SupportCaseResources,
+): OperatorSupportSummary[] {
+  return resources.companies.map((company) => {
+    const readiness = resources.filingReadinessSnapshots.filter(
+      (snapshot) => snapshot.companyId === company.id,
     );
-    const submissions = input.submissions.filter(
-      (submission) => submission.company_id === company.id,
+    const submissions = resources.filingSubmissions.filter(
+      (submission) => submission.companyId === company.id,
     );
-    const billing = input.billingAccounts.find(
-      (account) => account.company_id === company.id,
+    const billing = resources.billingAccounts.find(
+      (account) => account.companyId === company.id,
     );
-    const cancellation = input.cancellations.find(
-      (item) => item.company_id === company.id,
+    const cancellation = resources.companyCancellations.find(
+      (item) => item.companyId === company.id,
     );
-    const paymentEvents = input.billingPaymentEvents.filter(
-      (event) => event.company_id === company.id,
-    );
-    const auditEvents = input.auditEvents
-      .filter((event) => event.company_id === company.id)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const auditEvents = resources.auditEvents
+      .filter((event) => event.companyId === company.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     const failedSubmission = submissions.find(
       (submission) => submission.status === "failed",
@@ -74,41 +46,42 @@ export function buildOperatorSupportSummaries(input: {
 
     return {
       companyId: company.id,
-      orgNumber: company.org_number,
+      orgNumber: company.orgNumber,
       companyName: company.name,
       filingStatus:
         failedSubmission?.status ?? latestSubmission?.status ?? "no_submission",
       readinessBlockCount: readiness.reduce(
-        (sum, snapshot) => sum + (snapshot.hard_blocks?.length ?? 0),
+        (sum, snapshot) => sum + snapshot.hardBlocks.length,
         0,
       ),
-      authorityProductionEnabled: input.authorityPermissions.filter(
+      authorityProductionEnabled: resources.authorityPermissions.filter(
         (permission) =>
-          permission.company_id === company.id && permission.production_enabled,
+          permission.companyId === company.id && permission.productionEnabled,
       ).length,
-      billingStatus: billing?.refund_completed
+      billingStatus: billing?.refundCompleted
         ? "refund_completed"
-        : billing?.refund_eligible
+        : billing?.refundEligible
           ? "refund_eligible"
-          : billing?.filing_package_paid
+          : billing?.filingPackagePaid
             ? "paid"
-            : billing?.subscription_active
+            : billing?.subscriptionActive
               ? "subscription_active"
               : "unpaid",
-      refundStatus: billing?.refund_completed
-        ? (billing.refund_provider_ref ?? "refund_completed")
-        : billing?.refund_eligible
+      refundStatus: billing?.refundCompleted
+        ? (billing.refundProviderRef ?? "refund_completed")
+        : billing?.refundEligible
           ? "refund_eligible"
           : "none",
       restoreStatus:
         missingRestoreEvidence ||
-        cancellation?.evidence?.missingDocumentIds?.length
+        (Array.isArray(cancellation?.evidence.missingDocumentIds) &&
+          cancellation.evidence.missingDocumentIds.length > 0)
           ? "missing_evidence"
           : "ok",
       recentAuditActions: auditEvents.slice(0, 5).map((event) => event.action),
       cancellationId: cancellation?.id ?? null,
       cancellationStatus: cancellation?.status ?? null,
-      cancellationUpdatedAt: cancellation?.updated_at ?? null,
+      cancellationUpdatedAt: cancellation?.updatedAt ?? null,
     };
   });
 }
