@@ -5,14 +5,28 @@ import { useState } from "react";
 import { recordSharePurchase } from "../../../actions";
 import { SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
 import { SelectField, TextField } from "./fields";
 
-type Props = { companyId: string; incomeYear: number; operationId?: string };
+type Props = {
+  companyId: string;
+  incomeYear: number;
+  operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
+};
 
 export function SharePurchaseWizard({
   companyId,
   incomeYear,
   operationId: initialOperationId,
+  bankTransactions,
+  documents,
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.sharePurchase;
@@ -28,7 +42,13 @@ export function SharePurchaseWizard({
   const [transactionCosts, setTransactionCosts] = useState("0");
   const [fundEquityRatio, setFundEquityRatio] = useState("");
   const [fundStatement, setFundStatement] = useState("");
-  const [evidenceReference, setEvidenceReference] = useState("");
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "linked_sources",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
@@ -37,7 +57,7 @@ export function SharePurchaseWizard({
     acquisitionDate.trim() !== "" &&
     shareCount.trim() !== "" &&
     purchaseAmount.trim() !== "" &&
-    evidenceReference.trim() !== "" &&
+    investmentEvidenceComplete(evidence) &&
     (kind !== "norwegian_private_company" || /^\d{9}$/.test(orgNumber)) &&
     (kind !== "norwegian_equity_fund"
       || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
@@ -186,13 +206,11 @@ export function SharePurchaseWizard({
           />
         </div>
       ) : null}
-      <TextField
-        label="Bilags- eller meglerreferanse"
-        name="evidenceReference"
-        value={evidenceReference}
-        onChange={setEvidenceReference}
-        helper="Ved manuell registrering lagres denne sammen med din attestasjon."
-        required
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
       />
 
       <SubmitButton disabled={!ready} pendingLabel={a.pending}>

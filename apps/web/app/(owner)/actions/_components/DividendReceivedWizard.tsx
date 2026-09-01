@@ -5,7 +5,13 @@ import { useState } from "react";
 import { recordDividendReceived } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
-import { SelectField, TextField } from "./fields";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
+import { CheckboxField, SelectField, TextField } from "./fields";
 
 export type DividendInvestment = {
   id: string;
@@ -18,6 +24,8 @@ type Props = {
   incomeYear: number;
   investments: DividendInvestment[];
   operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 };
 
 export function DividendReceivedWizard({
@@ -25,6 +33,8 @@ export function DividendReceivedWizard({
   incomeYear,
   investments,
   operationId: initialOperationId,
+  bankTransactions,
+  documents,
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.dividendReceived;
@@ -37,7 +47,14 @@ export function DividendReceivedWizard({
   const [ownershipBasisPoints, setOwnershipBasisPoints] = useState("");
   const [votingBasisPoints, setVotingBasisPoints] = useState("");
   const [groupEvidence, setGroupEvidence] = useState("");
-  const [evidenceReference, setEvidenceReference] = useState("");
+  const [lawfulDividendConfirmed, setLawfulDividendConfirmed] = useState(false);
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "linked_sources",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
   const selectedInvestment = investments.find((investment) => investment.id === positionId);
   const groupExceptionAvailable = selectedInvestment?.kind === "norwegian_private_company";
@@ -47,7 +64,8 @@ export function DividendReceivedWizard({
     declaredDate.trim() !== "" &&
     paidDate.trim() !== "" &&
     grossAmount.trim() !== "" &&
-    evidenceReference.trim() !== "" &&
+    lawfulDividendConfirmed &&
+    investmentEvidenceComplete(evidence) &&
     (!groupExceptionAvailable || !groupException || (
       ownershipBasisPoints.trim() !== "" && votingBasisPoints.trim() !== ""
       && groupEvidence.trim() !== ""
@@ -95,13 +113,6 @@ export function DividendReceivedWizard({
         name="payingCompanyName"
         value={payingCompanyName}
         onChange={setPayingCompanyName}
-        required
-      />
-      <TextField
-        label="Utbytte- eller bilagsreferanse"
-        name="evidenceReference"
-        value={evidenceReference}
-        onChange={setEvidenceReference}
         required
       />
       {groupExceptionAvailable ? (
@@ -174,6 +185,20 @@ export function DividendReceivedWizard({
         onChange={setGrossAmount}
         inputMode="decimal"
         required
+      />
+
+      <CheckboxField
+        label="Jeg bekrefter at utdelingen er et lovlig vedtatt kontantutbytte."
+        name="lawfulDividendConfirmed"
+        checked={lawfulDividendConfirmed}
+        onChange={setLawfulDividendConfirmed}
+        required
+      />
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
       />
 
       <Banner variant="info">{c.policyNote}</Banner>

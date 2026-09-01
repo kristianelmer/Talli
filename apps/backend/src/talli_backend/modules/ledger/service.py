@@ -98,7 +98,18 @@ from talli_backend.shared.kernel import (
 
 _ZERO = Money.nok("0.00")
 _SENSITIVE_MANUAL_ACCOUNTS = frozenset(
-    {"1370", "1800", "2000", "2050", "2255", "2800", "8070", "8090"}
+    {
+        "1370",
+        "1800",
+        "2000",
+        "2050",
+        "2255",
+        "2800",
+        "8070",
+        "8071",
+        "8090",
+        "8171",
+    }
 )
 _ADMINISTRATIVE_COST_ACCOUNTS = {
     AdministrativeCostCategory.BANK_FEE: "7770",
@@ -1822,7 +1833,7 @@ class LedgerService:
         if gain_or_loss > 0:
             lines += (
                 LedgerLine(
-                    "8070",
+                    "8071",
                     f"Share sale gain: {command.investment_name}",
                     _ZERO,
                     Money.nok(gain_or_loss),
@@ -1831,7 +1842,7 @@ class LedgerService:
         elif gain_or_loss < 0:
             lines += (
                 LedgerLine(
-                    "8090",
+                    "8171",
                     f"Share sale loss: {command.investment_name}",
                     Money.nok(abs(gain_or_loss)),
                     _ZERO,

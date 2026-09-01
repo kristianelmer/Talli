@@ -103,6 +103,7 @@ type CheckboxFieldProps = {
   name: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  required?: boolean;
 };
 
 export function CheckboxField({
@@ -110,13 +111,16 @@ export function CheckboxField({
   name,
   checked,
   onChange,
+  required = false,
 }: CheckboxFieldProps) {
   return (
     <label className="checkboxField">
       <input
         type="checkbox"
         name={name}
+        value="true"
         checked={checked}
+        required={required}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span>{label}</span>

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { TalliApiError } from "@talli/talli-api-client";
@@ -594,4 +595,44 @@ test("investments errors preserve retry identity only for unknown outcomes", () 
     investmentsActionErrorMessage(problem("INVESTMENTS_INVALID_INPUT")),
     "Kontroller opplysningene for aksjekjøpet.",
   );
+});
+
+test("investment actions require explicit owner and dividend attestations", () => {
+  const actionsSource = readFileSync(
+    new URL("../app/actions.ts", import.meta.url),
+    "utf8",
+  );
+  const wizardSources = [
+    "SharePurchaseWizard.tsx",
+    "ShareSaleWizard.tsx",
+    "DividendReceivedWizard.tsx",
+    "FundDistributionWizard.tsx",
+    "InvestmentCorrectionWizard.tsx",
+  ].map((fileName) => readFileSync(
+    new URL(`../app/(owner)/actions/_components/${fileName}`, import.meta.url),
+    "utf8",
+  ));
+  const evidenceFieldsSource = readFileSync(
+    new URL(
+      "../app/(owner)/actions/_components/InvestmentEvidenceFields.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.doesNotMatch(actionsSource, /lawfulDividendConfirmed:\s*true/u);
+  assert.doesNotMatch(actionsSource, /ownerAttested:\s*(?:true|![A-Za-z])/u);
+  assert.doesNotMatch(actionsSource, /owner-(?:entry|correction)/u);
+  assert.match(
+    actionsSource,
+    /lawfulDividendConfirmed:\s*formString\(formData, "lawfulDividendConfirmed"\) === "true"/u,
+  );
+  assert.match(
+    actionsSource,
+    /const ownerAttested = formString\(formData, field\("ownerAttested"\)\) === "true"/u,
+  );
+  assert.ok(wizardSources.every((source) => source.includes("InvestmentEvidenceFields")));
+  assert.match(evidenceFieldsSource, /fieldName\(fieldPrefix, "ownerAttested"\)/u);
+  assert.match(wizardSources[2], /name="lawfulDividendConfirmed"/u);
+  assert.match(wizardSources[4], /name="lawfulDividendConfirmed"/u);
 });

@@ -181,9 +181,9 @@ def test_share_sale_uses_only_the_private_investments_workflow_rpcs() -> None:
         "evidenceMode": "manual_fallback",
         "evidenceReference": "broker-note-example-sale",
         "ownerAttested": True,
-        "bankTransactionId": None,
-        "documentId": None,
-        "documentStatus": "missing_accepted_warning",
+        "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+        "documentId": "80000000-0000-0000-0000-000000000008",
+        "documentStatus": "attached",
         "netProceeds": "75.00",
         "evidenceDigest": prepared.evidence_digest,
     }
@@ -264,9 +264,9 @@ def test_received_dividend_uses_only_the_private_investments_workflow_rpcs() -> 
         "evidenceMode": "manual_fallback",
         "evidenceReference": "dividend-advice-example",
         "ownerAttested": True,
-        "bankTransactionId": None,
-        "documentId": None,
-        "documentStatus": "missing_accepted_warning",
+        "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+        "documentId": "80000000-0000-0000-0000-000000000008",
+        "documentStatus": "attached",
         "evidenceDigest": prepared.evidence_digest,
     }
 

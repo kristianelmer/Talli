@@ -20,6 +20,7 @@ const investmentsDividendContractMigration = "20260831190000_investments_receive
 const investmentsDividendRollbackMigration = "20260831190000_investments_received_dividend_contract.sql";
 const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql";
 const investmentsSupportedPatternsMigration = "20260901100000_investments_supported_patterns.sql";
+const investmentsCompleteManualEvidenceMigration = "20260901110000_investments_complete_manual_evidence.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -39,6 +40,8 @@ const successorDividendActionId = "20000000-0000-0000-0000-000000000020";
 const failedDividendActionId = "20000000-0000-0000-0000-000000000021";
 const rollbackDividendActionId = "20000000-0000-0000-0000-000000000022";
 const stageExitActionId = "20000000-0000-0000-0000-000000000023";
+const manualEvidenceBankId = "70000000-0000-0000-0000-000000000007";
+const manualEvidenceDocumentId = "80000000-0000-0000-0000-000000000008";
 
 const bootstrapSql = String.raw`
 create role anon nologin;
@@ -141,6 +144,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsAllocationIdentityMigration,
         investmentsDividendWorkflowMigration,
         investmentsSupportedPatternsMigration,
+        investmentsCompleteManualEvidenceMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1209,6 +1213,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsCompleteManualEvidenceMigration}`,
+    ]);
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.received_fund_distributions') is not null)::text || ':' ||
@@ -1230,6 +1237,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     `), "true:true:2:1:true");
 
     psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsCompleteManualEvidenceMigration}`,
+    ]);
+    psql(containerName, [
       "--file", `/repo/supabase/rollback/${investmentsSupportedPatternsMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
@@ -1250,6 +1260,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
 
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsCompleteManualEvidenceMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
       select
@@ -1288,9 +1301,18 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       orgNumber: null, fundEquityRatioBasisPoints: 6000,
       fundTaxStatementReference: "provider-tax-statement-2026-r1",
       evidenceMode: "manual_fallback", evidenceReference: "fund-contract-note-1",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning", evidenceDigest,
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached", evidenceDigest,
       calculationId: purchaseCalculationId,
+    });
+    const incompleteManualPurchaseRequest = JSON.stringify({
+      ...JSON.parse(fundPurchaseRequest),
+      actionId: "20000000-0000-0000-0000-000000000099",
+      idempotencyKey: "fund-purchase-incomplete-0001",
+      bankTransactionId: null,
+      documentId: null,
+      documentStatus: "missing_accepted_warning",
     });
     const fundSaleRequest = JSON.stringify({
       companyId, incomeYear: 2026, actionId: supportedFundSaleId,
@@ -1300,8 +1322,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       saleYearFundEquityRatioBasisPoints: 8000,
       fundTaxStatementReference: "provider-tax-statement-2026-r2",
       evidenceMode: "manual_fallback", evidenceReference: "fund-sale-note-1",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning", evidenceDigest,
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached", evidenceDigest,
     });
     const fundDistributionRequest = JSON.stringify({
       companyId, incomeYear: 2026, actionId: supportedFundDistributionId,
@@ -1312,14 +1335,28 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       openingFundEquityRatioBasisPoints: 5000,
       fundTaxStatementReference: "provider-tax-statement-2026-r3",
       evidenceMode: "manual_fallback", evidenceReference: "fund-distribution-note-1",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning", evidenceDigest,
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached", evidenceDigest,
     });
     psql(containerName, [], String.raw`
       begin;
       set local role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
       select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+
+      do $manual_evidence$
+      begin
+        begin
+          perform investments.prepare_share_purchase_v1(
+            '${incompleteManualPurchaseRequest}'::jsonb, '${ownerId}'
+          );
+          raise exception 'incomplete_manual_evidence_was_accepted';
+        exception when others then
+          if sqlerrm <> 'investments_invalid_input' then raise; end if;
+        end;
+      end
+      $manual_evidence$;
 
       create temporary table supported_purchase_prepared as
       select investments.prepare_share_purchase_v1(
@@ -1453,8 +1490,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       fundTaxStatementReference: "provider-tax-statement-2026-r4",
       evidenceMode: "manual_fallback",
       evidenceReference: "corrected-fund-distribution-note",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning",
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached",
     };
     const replacementFundDistributionRequest = JSON.stringify({
       ...replacementFundDistribution,
@@ -1473,8 +1511,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       reason: "Correct gross fund distribution amount",
       evidenceMode: "manual_fallback",
       evidenceReference: "fund-distribution-correction-evidence",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning",
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached",
       evidenceDigest,
       replacement: replacementFundDistribution,
     });
@@ -1576,8 +1615,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       replacementActivityKind: "share_sale",
       correctionDate: "2026-08-31", reason: "Deliberate rollback rehearsal",
       evidenceMode: "manual_fallback", evidenceReference: "rollback-evidence",
-      ownerAttested: true, bankTransactionId: null, documentId: null,
-      documentStatus: "missing_accepted_warning", evidenceDigest,
+      ownerAttested: true, bankTransactionId: manualEvidenceBankId,
+      documentId: manualEvidenceDocumentId,
+      documentStatus: "attached", evidenceDigest,
       replacement: { actionId: failedSaleReplacementId },
     });
     assert.equal(scalar(containerName, String.raw`

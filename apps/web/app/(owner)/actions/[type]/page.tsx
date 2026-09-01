@@ -70,6 +70,7 @@ export default async function ActionPage({
   const data = await loadWorkspaceData();
   const {
     companies,
+    documents,
     primaryCompanyId,
     primaryIncomeYear,
     positions,
@@ -79,6 +80,7 @@ export default async function ActionPage({
     setups,
     shareholders,
     entries,
+    transactions,
   } = data;
 
   const a = ownerCopy.actions;
@@ -105,6 +107,21 @@ export default async function ActionPage({
   const companyPositions = positions.filter(
     (position) => position.company_id === companyId,
   );
+  const investmentBankTransactions = transactions
+    .filter((transaction) => transaction.company_id === companyId
+      && transaction.income_year === incomeYear)
+    .map((transaction) => ({
+      id: transaction.id,
+      label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+    }));
+  const investmentDocuments = documents
+    .filter((document) => document.company_id === companyId
+      && document.income_year === incomeYear
+      && document.removed_at === null)
+    .map((document) => ({
+      id: document.id,
+      label: `${document.name} · ${document.document_type}`,
+    }));
   const head = a[COPY_KEY[type]] as { title: string; intro: string };
   const corporateDocumentsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true";
 
@@ -113,7 +130,9 @@ export default async function ActionPage({
     case "share-purchase":
       body = (
         <SharePurchaseWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
           operationId={query?.sharePurchaseOperationId}
         />
@@ -122,7 +141,9 @@ export default async function ActionPage({
     case "share-sale":
       body = (
         <ShareSaleWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
           operationId={query?.shareSaleOperationId}
           positions={companyPositions.map((position) => ({
@@ -138,7 +159,9 @@ export default async function ActionPage({
     case "dividend-received":
       body = (
         <DividendReceivedWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
           operationId={query?.dividendReceivedOperationId}
           investments={companyPositions
@@ -154,7 +177,9 @@ export default async function ActionPage({
     case "fund-distribution":
       body = (
         <FundDistributionWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
           operationId={query?.fundDistributionOperationId}
           investments={companyPositions
@@ -244,7 +269,9 @@ export default async function ActionPage({
         });
       body = (
         <InvestmentCorrectionWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
           activities={correctable}
           operationId={query?.investmentCorrectionOperationId}

@@ -5,6 +5,12 @@ import { useState } from "react";
 import { recordShareSale } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
 import { SelectField, TextField } from "./fields";
 
 export type SalePosition = {
@@ -20,6 +26,8 @@ type Props = {
   incomeYear: number;
   positions: SalePosition[];
   operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 };
 
 export function ShareSaleWizard({
@@ -27,6 +35,8 @@ export function ShareSaleWizard({
   incomeYear,
   positions,
   operationId: initialOperationId,
+  bankTransactions,
+  documents,
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.shareSale;
@@ -41,7 +51,13 @@ export function ShareSaleWizard({
   const [transactionCosts, setTransactionCosts] = useState("0");
   const [fundEquityRatio, setFundEquityRatio] = useState("");
   const [fundStatement, setFundStatement] = useState("");
-  const [evidenceReference, setEvidenceReference] = useState("");
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "linked_sources",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const selected = sellable.find((position) => position.id === positionId);
@@ -50,7 +66,7 @@ export function ShareSaleWizard({
     saleDate.trim() !== "" &&
     soldShareCount.trim() !== "" &&
     proceeds.trim() !== "" &&
-    evidenceReference.trim() !== "" &&
+    investmentEvidenceComplete(evidence) &&
     (selected?.kind !== "norwegian_equity_fund"
       || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
 
@@ -118,13 +134,6 @@ export function ShareSaleWizard({
           inputMode="decimal"
           required
         />
-        <TextField
-          label="Bilags- eller meglerreferanse"
-          name="evidenceReference"
-          value={evidenceReference}
-          onChange={setEvidenceReference}
-          required
-        />
       </div>
 
       {selected?.kind === "norwegian_equity_fund" ? (
@@ -148,6 +157,13 @@ export function ShareSaleWizard({
       ) : null}
 
       <Banner variant="info">{c.fifoNote}</Banner>
+
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
+      />
 
       <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}

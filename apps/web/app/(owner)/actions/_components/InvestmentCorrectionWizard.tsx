@@ -4,7 +4,13 @@ import { useState } from "react";
 
 import { correctInvestmentAction } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
-import { SelectField, TextField } from "./fields";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
+import { CheckboxField, SelectField, TextField } from "./fields";
 
 type ActivityKind =
   | "share_purchase"
@@ -62,6 +68,7 @@ function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivit
   const [groupEvidence, setGroupEvidence] = useState(
     activity.groupEvidenceReference ?? "",
   );
+  const [lawfulDividendConfirmed, setLawfulDividendConfirmed] = useState(false);
 
   return (
     <>
@@ -213,6 +220,15 @@ function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivit
       ) : activity.kind === "dividend_received" ? (
         <input type="hidden" name="groupExceptionClaimed" value="false" />
       ) : null}
+      {activity.kind === "dividend_received" ? (
+        <CheckboxField
+          label="Jeg bekrefter at erstatningsfaktaene gjelder et lovlig vedtatt kontantutbytte."
+          name="lawfulDividendConfirmed"
+          checked={lawfulDividendConfirmed}
+          onChange={setLawfulDividendConfirmed}
+          required
+        />
+      ) : null}
     </>
   );
 }
@@ -223,12 +239,16 @@ export function InvestmentCorrectionWizard({
   activities,
   operationId: initialOperationId,
   replacementActionId: initialReplacementActionId,
+  bankTransactions,
+  documents,
 }: {
   companyId: string;
   incomeYear: number;
   activities: CorrectableInvestmentActivity[];
   operationId?: string;
   replacementActionId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 }) {
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
   const [replacementActionId] = useState(
@@ -237,11 +257,24 @@ export function InvestmentCorrectionWizard({
   const [activityId, setActivityId] = useState("");
   const [correctionDate, setCorrectionDate] = useState("");
   const [reason, setReason] = useState("");
-  const [evidenceReference, setEvidenceReference] = useState("");
-  const [replacementEvidenceReference, setReplacementEvidenceReference] = useState("");
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "manual_fallback",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
+  const [replacementEvidence, setReplacementEvidence] = useState<InvestmentEvidenceState>({
+    mode: "manual_fallback",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
   const selected = activities.find((activity) => activity.id === activityId);
   const ready = Boolean(selected && correctionDate && reason.trim()
-    && evidenceReference.trim() && replacementEvidenceReference.trim());
+    && investmentEvidenceComplete(evidence)
+    && investmentEvidenceComplete(replacementEvidence));
 
   if (activities.length === 0) {
     return <Banner variant="info">Det finnes ingen ukorrigerte investeringshendelser.</Banner>;
@@ -290,22 +323,19 @@ export function InvestmentCorrectionWizard({
         onChange={setReason}
         required
       />
-      <div className="fieldRow">
-        <TextField
-          label="Dokumentasjon for korrigeringen"
-          name="evidenceReference"
-          value={evidenceReference}
-          onChange={setEvidenceReference}
-          required
-        />
-        <TextField
-          label="Dokumentasjon for nye fakta"
-          name="replacementEvidenceReference"
-          value={replacementEvidenceReference}
-          onChange={setReplacementEvidenceReference}
-          required
-        />
-      </div>
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
+      />
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={replacementEvidence}
+        onChange={setReplacementEvidence}
+        fieldPrefix="replacement"
+      />
       <Banner variant="warning">
         Originalposteringen slettes ikke. Talli lager en full reversering og en ny
         postering, og binder alle tre til samme uforanderlige kontrollspor.

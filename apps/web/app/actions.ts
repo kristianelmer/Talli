@@ -309,6 +309,39 @@ function requiredFormUuid(formData: FormData, key: string) {
   return value;
 }
 
+type InvestmentEvidencePrefix = "" | "replacement";
+
+function investmentEvidenceField(prefix: InvestmentEvidencePrefix, name: string) {
+  if (!prefix) return name;
+  return `${prefix}${name[0]?.toUpperCase() ?? ""}${name.slice(1)}`;
+}
+
+function requiredInvestmentEvidence(
+  formData: FormData,
+  prefix: InvestmentEvidencePrefix = "",
+) {
+  const field = (name: string) => investmentEvidenceField(prefix, name);
+  const evidenceMode = requiredFormChoice(
+    formData,
+    field("evidenceMode"),
+    ["linked_sources", "manual_fallback"] as const,
+  );
+  const evidenceReference = formString(formData, field("evidenceReference"));
+  const ownerAttested = formString(formData, field("ownerAttested")) === "true";
+  if (!evidenceReference || (evidenceMode === "linked_sources" && ownerAttested)
+    || (evidenceMode === "manual_fallback" && !ownerAttested)) {
+    throw new Error("Investeringsdokumentasjonen er ufullstendig.");
+  }
+  return {
+    bankTransactionId: requiredFormUuid(formData, field("bankTransactionId")),
+    documentId: requiredFormUuid(formData, field("documentId")),
+    documentStatus: "attached" as const,
+    evidenceMode,
+    evidenceReference,
+    ownerAttested,
+  };
+}
+
 function companyAccessInvitationWorkflow(input: {
   accessToken: string;
   actorId: string;
@@ -2019,6 +2052,7 @@ export async function recordDividendReceived(formData: FormData) {
     formData,
     "groupExceptionClaimed",
   ) === "true";
+  const evidence = requiredInvestmentEvidence(formData);
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2026,22 +2060,17 @@ export async function recordDividendReceived(formData: FormData) {
       accessToken,
       {
         actionId: operationId,
-        bankTransactionId: null,
         companyId,
         declaredDate: formString(formData, "declaredDate"),
-        documentId: null,
-        documentStatus: "missing_accepted_warning",
-        evidenceMode: "manual_fallback",
-        evidenceReference: formString(formData, "evidenceReference")
-          || `owner-entry:${operationId}`,
+        ...evidence,
         grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
         groupEvidenceReference: groupExceptionClaimed
           ? formString(formData, "groupEvidenceReference")
           : null,
         groupExceptionClaimed,
         incomeYear,
-        lawfulDividendConfirmed: true,
-        ownerAttested: true,
+        lawfulDividendConfirmed:
+          formString(formData, "lawfulDividendConfirmed") === "true",
         paidDate: formString(formData, "paidDate"),
         payingCompanyName: formString(formData, "payingCompanyName"),
         positionId: formString(formData, "positionId"),
@@ -2094,10 +2123,7 @@ export async function recordSharePurchase(formData: FormData) {
         ? "current_listed_share"
         : "other_long_term"
   )) as "subsidiary" | "associate" | "other_long_term" | "current_listed_share" | "current_fund";
-  const purchaseBankTransactionId = formString(formData, "bankTransactionId") || null;
-  const purchaseDocumentId = formString(formData, "documentId") || null;
-  const purchaseHasLinkedEvidence = purchaseBankTransactionId !== null
-    && purchaseDocumentId !== null;
+  const evidence = requiredInvestmentEvidence(formData);
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2107,19 +2133,8 @@ export async function recordSharePurchase(formData: FormData) {
         acquisitionDate: formString(formData, "acquisitionDate"),
         accountingClassification,
         actionId: operationId,
-        bankTransactionId: purchaseHasLinkedEvidence
-          ? purchaseBankTransactionId
-          : null,
         companyId,
-        documentId: purchaseHasLinkedEvidence ? purchaseDocumentId : null,
-        documentStatus: purchaseHasLinkedEvidence
-          ? "attached"
-          : "missing_accepted_warning",
-        evidenceMode: purchaseHasLinkedEvidence
-          ? "linked_sources"
-          : "manual_fallback",
-        evidenceReference: formString(formData, "evidenceReference")
-          || `owner-entry:${operationId}`,
+        ...evidence,
         fundEquityRatioBasisPoints: investmentKind === "norwegian_equity_fund"
           ? Number(formString(formData, "fundEquityRatioBasisPoints"))
           : null,
@@ -2130,7 +2145,6 @@ export async function recordSharePurchase(formData: FormData) {
         investmentKey: formString(formData, "investmentKey"),
         investmentKind,
         investmentName: formString(formData, "investmentName"),
-        ownerAttested: !purchaseHasLinkedEvidence,
         orgNumber: formString(formData, "orgNumber") || null,
         purchaseAmount: { amount: formString(formData, "purchaseAmount"), currency: "NOK" },
         shareCount: Number(formString(formData, "shareCount")),
@@ -2168,9 +2182,7 @@ export async function recordShareSale(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const positionId = formString(formData, "positionId");
-  const bankTransactionId = formString(formData, "bankTransactionId") || null;
-  const documentId = formString(formData, "documentId") || null;
-  const saleHasLinkedEvidence = bankTransactionId !== null && documentId !== null;
+  const evidence = requiredInvestmentEvidence(formData);
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2178,21 +2190,11 @@ export async function recordShareSale(formData: FormData) {
       accessToken,
       {
         actionId: operationId,
-        bankTransactionId: saleHasLinkedEvidence ? bankTransactionId : null,
         companyId,
-        documentId: saleHasLinkedEvidence ? documentId : null,
-        documentStatus: saleHasLinkedEvidence
-          ? "attached"
-          : "missing_accepted_warning",
-        evidenceMode: saleHasLinkedEvidence
-          ? "linked_sources"
-          : "manual_fallback",
-        evidenceReference: formString(formData, "evidenceReference")
-          || `owner-entry:${operationId}`,
+        ...evidence,
         fundTaxStatementReference:
           formString(formData, "fundTaxStatementReference") || null,
         incomeYear,
-        ownerAttested: !saleHasLinkedEvidence,
         positionId,
         proceeds: { amount: formString(formData, "proceeds"), currency: "NOK" },
         saleDate: formString(formData, "saleDate"),
@@ -2232,9 +2234,7 @@ export async function recordFundDistribution(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const bankTransactionId = formString(formData, "bankTransactionId") || null;
-  const documentId = formString(formData, "documentId") || null;
-  const hasLinkedEvidence = bankTransactionId !== null && documentId !== null;
+  const evidence = requiredInvestmentEvidence(formData);
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2259,15 +2259,7 @@ export async function recordFundDistribution(formData: FormData) {
           formData,
           "fundTaxStatementReference",
         ),
-        evidenceMode: hasLinkedEvidence ? "linked_sources" : "manual_fallback",
-        evidenceReference: formString(formData, "evidenceReference")
-          || `owner-entry:${operationId}`,
-        ownerAttested: !hasLinkedEvidence,
-        bankTransactionId: hasLinkedEvidence ? bankTransactionId : null,
-        documentId: hasLinkedEvidence ? documentId : null,
-        documentStatus: hasLinkedEvidence
-          ? "attached"
-          : "missing_accepted_warning",
+        ...evidence,
       },
       operationId,
       operationId,
@@ -2297,17 +2289,13 @@ export async function correctInvestmentAction(formData: FormData) {
     formData,
     "originalActivityKind",
   ) as InvestmentsCorrectionWire["originalActivityKind"];
+  const correctionEvidence = requiredInvestmentEvidence(formData);
+  const replacementEvidence = requiredInvestmentEvidence(formData, "replacement");
   const common = {
     actionId: replacementActionId,
     companyId,
     incomeYear,
-    evidenceMode: "manual_fallback" as const,
-    evidenceReference: formString(formData, "replacementEvidenceReference")
-      || `owner-correction-replacement:${replacementActionId}`,
-    ownerAttested: true,
-    bankTransactionId: null,
-    documentId: null,
-    documentStatus: "missing_accepted_warning" as const,
+    ...replacementEvidence,
   };
   let replacement: InvestmentsCorrectionWire["replacement"];
   if (originalActivityKind === "share_purchase") {
@@ -2369,7 +2357,8 @@ export async function correctInvestmentAction(formData: FormData) {
       paidDate: formString(formData, "actionDate"),
       grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
       taxTreatment: "fritaksmetoden",
-      lawfulDividendConfirmed: true,
+      lawfulDividendConfirmed:
+        formString(formData, "lawfulDividendConfirmed") === "true",
       groupExceptionClaimed,
       yearEndOwnershipBasisPoints: groupExceptionClaimed
         ? Number(formString(formData, "yearEndOwnershipBasisPoints")) : null,
@@ -2407,13 +2396,7 @@ export async function correctInvestmentAction(formData: FormData) {
         originalActivityKind,
         correctionDate: formString(formData, "correctionDate"),
         reason: formString(formData, "reason"),
-        evidenceMode: "manual_fallback",
-        evidenceReference: formString(formData, "evidenceReference")
-          || `owner-correction:${correctionId}`,
-        ownerAttested: true,
-        bankTransactionId: null,
-        documentId: null,
-        documentStatus: "missing_accepted_warning",
+        ...correctionEvidence,
         replacement,
       },
       correctionId,

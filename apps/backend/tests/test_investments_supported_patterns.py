@@ -220,9 +220,9 @@ def sale_command(
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="broker-contract-note-77",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
     )
 
 
@@ -306,6 +306,23 @@ def test_supported_domestic_purchase_capitalizes_book_and_tax_cost_and_binds_evi
     assert persistence.command.investment_name == "Nordic Investment"
 
 
+def test_manual_fallback_keeps_authoritative_sources_and_adds_owner_attestation() -> None:
+    persistence = SupportedPatternsPersistence()
+    command = replace(
+        purchase_command(),
+        evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
+        owner_attested=True,
+    )
+
+    result = asyncio.run(InvestmentsService(persistence).prepare_share_purchase(command))
+
+    assert result.purchase_amount == Money.nok("102.50")
+    assert persistence.command.bank_transaction_id == BANK_ID
+    assert persistence.command.document_id == DOCUMENT_ID
+    assert persistence.command.document_status is InvestmentDocumentStatus.ATTACHED
+    assert persistence.command.owner_attested is True
+
+
 def test_share_sale_keeps_book_and_tax_results_separate() -> None:
     persistence = SupportedPatternsPersistence(book_basis="80.00", tax_basis="82.00")
     result = asyncio.run(InvestmentsService(persistence).prepare_share_sale(sale_command()))
@@ -373,7 +390,7 @@ def test_fund_distribution_applies_statutory_thresholds(
         replace(purchase_command(), investment_kind="foreign_share"),
         purchase_command(kind=InvestmentKind.NORWEGIAN_EQUITY_FUND, classification=InvestmentAccountingClassification.CURRENT_FUND, investment_key="NO0000000002", org_number=None, fund_equity_ratio_basis_points=7_500),
         replace(purchase_command(), accounting_classification=InvestmentAccountingClassification.CURRENT_LISTED_SHARE),
-        replace(purchase_command(), evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK, owner_attested=False, bank_transaction_id=None, document_id=None, document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING),
+        replace(purchase_command(), evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK, owner_attested=True, bank_transaction_id=None, document_id=None, document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING),
         replace(purchase_command(), transaction_costs=Money.nok("-0.01")),
     ],
 )

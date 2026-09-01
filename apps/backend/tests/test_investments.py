@@ -48,6 +48,8 @@ from talli_backend.shared.kernel import (
 
 POSITION_ID = InvestmentPositionId("50000000-0000-0000-0000-000000000015")
 LOT_ID = AcquisitionLotId("60000000-0000-0000-0000-000000000006")
+BANK_ID = InvestmentSourceReference("70000000-0000-0000-0000-000000000007")
+DOCUMENT_ID = InvestmentSourceReference("80000000-0000-0000-0000-000000000008")
 
 
 def prepared_purchase() -> PreparedSharePurchase:
@@ -148,9 +150,9 @@ def supported_purchase() -> RecordSharePurchaseCommand:
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="broker-note-example-purchase",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
     )
 
 
@@ -172,9 +174,9 @@ def supported_sale() -> RecordShareSaleCommand:
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="broker-note-example-sale",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
     )
 
 
@@ -200,9 +202,9 @@ def supported_received_dividend() -> RecordReceivedDividendCommand:
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="dividend-advice-example",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
     )
 
 
@@ -224,9 +226,9 @@ def supported_received_fund_distribution() -> RecordReceivedFundDistributionComm
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="fund-distribution-advice-example",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
     )
 
 
@@ -261,9 +263,9 @@ def supported_investment_correction() -> CorrectInvestmentCommand:
         evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
         evidence_reference="correction-owner-evidence",
         owner_attested=True,
-        bank_transaction_id=None,
-        document_id=None,
-        document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+        bank_transaction_id=BANK_ID,
+        document_id=DOCUMENT_ID,
+        document_status=InvestmentDocumentStatus.ATTACHED,
         replacement=replacement,
     )
 
@@ -325,9 +327,9 @@ def test_supported_received_dividend_is_normalized_and_taxed_by_investments() ->
     {"tax_treatment": "outside_fritaksmetoden"},
     {"lawful_dividend_confirmed": False},
     {"document_status": "unknown"},
-    {"document_status": InvestmentDocumentStatus.ATTACHED},
-    {"bank_transaction_id": InvestmentSourceReference("70000000-0000-0000-0000-000000000007")},
-    {"document_id": InvestmentSourceReference("80000000-0000-0000-0000-000000000008")},
+        {"document_status": InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING},
+        {"bank_transaction_id": None},
+        {"document_id": None},
 ])
 def test_invalid_received_dividend_facts_fail_before_persistence(changes) -> None:
     persistence = InvestmentsPersistenceStub(prepared_dividend_facts())
@@ -350,9 +352,9 @@ def test_supported_share_sale_is_prepared_through_investments_interface() -> Non
 @pytest.mark.parametrize("changes", [
     {"sold_share_count": 0}, {"sold_share_count": 1.5}, {"proceeds": Money.nok("0")},
     {"sale_date": LocalDate(date(2025, 12, 31))}, {"document_status": "unknown"},
-    {"document_status": InvestmentDocumentStatus.ATTACHED},
-    {"bank_transaction_id": InvestmentSourceReference("70000000-0000-0000-0000-000000000007")},
-    {"document_id": InvestmentSourceReference("80000000-0000-0000-0000-000000000008")},
+        {"document_status": InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING},
+        {"bank_transaction_id": None},
+        {"document_id": None},
 ])
 def test_invalid_share_sale_facts_fail_before_persistence(changes) -> None:
     persistence = InvestmentsPersistenceStub(prepared_sale_facts())
@@ -377,9 +379,9 @@ def test_supported_share_purchase_is_normalized_and_prepared() -> None:
     {"acquisition_date": LocalDate(date(2025, 12, 31))}, {"investment_key": "  "},
     {"investment_name": "  "}, {"investment_kind": "simple_listed_security"},
     {"tax_treatment": "needs_accountant"}, {"org_number": "123"},
-    {"document_status": "unknown"}, {"document_status": InvestmentDocumentStatus.ATTACHED},
-    {"bank_transaction_id": InvestmentSourceReference("70000000-0000-0000-0000-000000000007")},
-    {"document_id": InvestmentSourceReference("80000000-0000-0000-0000-000000000008")},
+        {"document_status": "unknown"}, {"document_status": InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING},
+        {"bank_transaction_id": None},
+        {"document_id": None},
 ])
 def test_invalid_share_purchase_facts_fail_before_persistence(changes) -> None:
     persistence = InvestmentsPersistenceStub(prepared_purchase())

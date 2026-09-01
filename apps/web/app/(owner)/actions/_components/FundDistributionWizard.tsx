@@ -4,6 +4,12 @@ import { useState } from "react";
 
 import { recordFundDistribution } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
 import { SelectField, TextField } from "./fields";
 
 type FundInvestment = { id: string; name: string };
@@ -13,11 +19,15 @@ export function FundDistributionWizard({
   incomeYear,
   investments,
   operationId: initialOperationId,
+  bankTransactions,
+  documents,
 }: {
   companyId: string;
   incomeYear: number;
   investments: FundInvestment[];
   operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 }) {
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
   const [positionId, setPositionId] = useState("");
@@ -27,10 +37,16 @@ export function FundDistributionWizard({
   const [grossAmount, setGrossAmount] = useState("");
   const [equityRatio, setEquityRatio] = useState("");
   const [statementReference, setStatementReference] = useState("");
-  const [evidenceReference, setEvidenceReference] = useState("");
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "linked_sources",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
   const ready = Boolean(positionId && fundName.trim() && entitlementDate && paidDate
     && grossAmount.trim() && equityRatio.trim() && statementReference.trim()
-    && evidenceReference.trim());
+    && investmentEvidenceComplete(evidence));
 
   if (investments.length === 0) {
     return (
@@ -106,12 +122,11 @@ export function FundDistributionWizard({
           required
         />
       </div>
-      <TextField
-        label="Utbetalings- eller bilagsreferanse"
-        name="evidenceReference"
-        value={evidenceReference}
-        onChange={setEvidenceReference}
-        required
+      <InvestmentEvidenceFields
+        bankTransactions={bankTransactions}
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
       />
       <Banner variant="info">
         Aksjedelen behandles etter fritaksmetoden. Rentedelen inntektsføres fullt,

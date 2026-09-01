@@ -336,12 +336,12 @@ def test_share_purchase_translates_authoritative_investment_result() -> None:
         (
             Money.nok("120000"),
             Money.nok("100000"),
-            LedgerLine("8070", "Share sale gain: Eksempel Holding AS", Money.nok("0"), Money.nok("20000")),
+            LedgerLine("8071", "Share sale gain: Eksempel Holding AS", Money.nok("0"), Money.nok("20000")),
         ),
         (
             Money.nok("90000"),
             Money.nok("100000"),
-            LedgerLine("8090", "Share sale loss: Eksempel Holding AS", Money.nok("10000"), Money.nok("0")),
+            LedgerLine("8171", "Share sale loss: Eksempel Holding AS", Money.nok("10000"), Money.nok("0")),
         ),
         (Money.nok("100000"), Money.nok("100000"), None),
     ],

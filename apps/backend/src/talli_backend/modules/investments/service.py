@@ -103,10 +103,9 @@ def _normalize_evidence(command):
         )
     else:
         valid = (
-            command.bank_transaction_id is None
-            and command.document_id is None
-            and command.document_status
-            is InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING
+            command.bank_transaction_id is not None
+            and command.document_id is not None
+            and command.document_status is InvestmentDocumentStatus.ATTACHED
             and command.owner_attested
         )
     if not valid:

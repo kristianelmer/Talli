@@ -437,9 +437,9 @@ def test_supported_share_purchase_uses_investments_http_contract() -> None:
             "evidenceMode": "manual_fallback",
             "evidenceReference": "broker-note-example-purchase",
             "ownerAttested": True,
-            "bankTransactionId": None,
-            "documentId": None,
-            "documentStatus": "missing_accepted_warning",
+            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+            "documentId": "80000000-0000-0000-0000-000000000008",
+            "documentStatus": "attached",
         },
     )
 
@@ -482,9 +482,9 @@ def test_supported_share_sale_uses_investments_http_contract() -> None:
             "evidenceMode": "manual_fallback",
             "evidenceReference": "broker-note-example-sale",
             "ownerAttested": True,
-            "bankTransactionId": None,
-            "documentId": None,
-            "documentStatus": "missing_accepted_warning",
+            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+            "documentId": "80000000-0000-0000-0000-000000000008",
+            "documentStatus": "attached",
         },
     )
 
@@ -529,9 +529,9 @@ def test_supported_received_dividend_uses_investments_http_contract() -> None:
             "evidenceMode": "manual_fallback",
             "evidenceReference": "dividend-advice-example",
             "ownerAttested": True,
-            "bankTransactionId": None,
-            "documentId": None,
-            "documentStatus": "missing_accepted_warning",
+            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+            "documentId": "80000000-0000-0000-0000-000000000008",
+            "documentStatus": "attached",
         },
     )
 
@@ -573,9 +573,9 @@ def test_supported_fund_distribution_uses_investments_http_contract() -> None:
             "evidenceMode": "manual_fallback",
             "evidenceReference": "fund-distribution-advice-example",
             "ownerAttested": True,
-            "bankTransactionId": None,
-            "documentId": None,
-            "documentStatus": "missing_accepted_warning",
+            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+            "documentId": "80000000-0000-0000-0000-000000000008",
+            "documentStatus": "attached",
         },
     )
 
@@ -614,9 +614,9 @@ def test_supported_correction_uses_linked_reversal_replacement_http_contract() -
             "evidenceMode": "manual_fallback",
             "evidenceReference": "correction-owner-evidence",
             "ownerAttested": True,
-            "bankTransactionId": None,
-            "documentId": None,
-            "documentStatus": "missing_accepted_warning",
+            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+            "documentId": "80000000-0000-0000-0000-000000000008",
+            "documentStatus": "attached",
             "replacement": {
                 "companyId": "10000000-0000-0000-0000-000000000001",
                 "incomeYear": 2026,
@@ -635,9 +635,9 @@ def test_supported_correction_uses_linked_reversal_replacement_http_contract() -
                 "evidenceMode": "manual_fallback",
                 "evidenceReference": "corrected-dividend-advice",
                 "ownerAttested": True,
-                "bankTransactionId": None,
-                "documentId": None,
-                "documentStatus": "missing_accepted_warning",
+                "bankTransactionId": "70000000-0000-0000-0000-000000000007",
+                "documentId": "80000000-0000-0000-0000-000000000008",
+                "documentStatus": "attached",
             },
         },
     )
