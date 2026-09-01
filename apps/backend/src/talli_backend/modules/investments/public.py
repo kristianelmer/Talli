@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
+from hashlib import sha256
+import json
 from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
 from uuid import UUID
@@ -239,7 +241,7 @@ class InvestmentEvidence:
         if not reference or len(reference) > 500:
             raise InvestmentsError.invalid_input()
         facts = (*self.document_facts, *((self.bank_fact,) if self.bank_fact else ()))
-        if not facts:
+        if not facts or len(facts) > 50:
             raise InvestmentsError.invalid_input()
         identities = {
             (fact.capability, fact.record_id.value, fact.revision) for fact in facts
@@ -263,6 +265,38 @@ class InvestmentEvidence:
         ):
             raise InvestmentsError.invalid_input()
         object.__setattr__(self, "reference", reference)
+
+    def digest(self) -> str:
+        return sha256(
+            json.dumps(
+                {
+                    "bankFact": (
+                        {
+                            "capability": self.bank_fact.capability.value,
+                            "recordId": str(self.bank_fact.record_id),
+                            "revision": self.bank_fact.revision,
+                            "factSha256": self.bank_fact.fact_sha256,
+                        }
+                        if self.bank_fact is not None
+                        else None
+                    ),
+                    "documentFacts": [
+                        {
+                            "capability": fact.capability.value,
+                            "recordId": str(fact.record_id),
+                            "revision": fact.revision,
+                            "factSha256": fact.fact_sha256,
+                        }
+                        for fact in self.document_facts
+                    ],
+                    "evidenceMode": self.mode.value,
+                    "evidenceReference": self.reference,
+                    "ownerAttested": self.owner_attested,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
 
 
 def _require_recognition_evidence(evidence: InvestmentEvidence) -> None:
@@ -298,6 +332,11 @@ class InvestmentActivityKind(StrEnum):
     SHARE_SALE = "share_sale"
     DIVIDEND_RECEIVED = "dividend_received"
     FUND_DISTRIBUTION_RECEIVED = "fund_distribution_received"
+
+
+class InvestmentCorrectionTargetKind(StrEnum):
+    ECONOMIC_EVENT = "economic_event"
+    CASH_SETTLEMENT = "cash_settlement"
 
 
 class InvestmentsErrorCode(StrEnum):
@@ -518,27 +557,36 @@ class RecordReceivedFundDistributionCommand(InvestmentsCommand):
 
 
 InvestmentReplacementCommand = (
-    RecordSharePurchaseCommand
-    | RecordShareSaleCommand
-    | RecordReceivedDividendCommand
-    | RecordReceivedFundDistributionCommand
+    RecognizeSharePurchaseCommand
+    | RecognizeShareSaleCommand
+    | RecognizeReceivedDividendCommand
+    | RecognizeReceivedFundDistributionCommand
+    | SettleInvestmentCashCommand
 )
 
 
 @dataclass(frozen=True, slots=True)
 class CorrectInvestmentCommand(InvestmentsCommand):
     correction_id: InvestmentCorrectionId
-    original_action_id: InvestmentActionId
+    target_kind: InvestmentCorrectionTargetKind
+    original_record_id: InvestmentEconomicEventId | InvestmentSettlementId
     original_activity_kind: InvestmentActivityKind
     correction_date: LocalDate
     reason: str
-    evidence_mode: InvestmentEvidenceMode
-    evidence_reference: str
-    owner_attested: bool
-    bank_transaction_id: InvestmentSourceReference | None
-    document_id: InvestmentSourceReference | None
-    document_status: InvestmentDocumentStatus
+    evidence: InvestmentEvidence
     replacement: InvestmentReplacementCommand
+
+    def __post_init__(self) -> None:
+        _require_2026_recognition(self.income_year, self.correction_date)
+        _require_recognition_evidence(self.evidence)
+        if (
+            self.target_kind is InvestmentCorrectionTargetKind.ECONOMIC_EVENT
+            and not isinstance(self.original_record_id, InvestmentEconomicEventId)
+        ) or (
+            self.target_kind is InvestmentCorrectionTargetKind.CASH_SETTLEMENT
+            and not isinstance(self.original_record_id, InvestmentSettlementId)
+        ):
+            raise InvestmentsError.invalid_input()
 
 
 @dataclass(frozen=True, slots=True)
@@ -674,10 +722,29 @@ class PreparedReceivedFundDistribution:
 
 
 @dataclass(frozen=True, slots=True)
-class PreparedInvestmentCorrection:
+class PreparedEconomicEventCorrection:
     original_accounting_entry_id: AccountingEntryReference
     original_position_id: InvestmentPositionId
     evidence_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedCashSettlementCorrection:
+    original_accounting_entry_id: AccountingEntryReference
+    original_settlement_id: InvestmentSettlementId
+    event_id: InvestmentEconomicEventId
+    recognition_accounting_entry_id: AccountingEntryReference
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    amount: Money
+    event_fact_sha256: str
+    replacement_evidence_digest: str
+    evidence_digest: str
+    original_activity_kind: InvestmentActivityKind
+
+
+PreparedInvestmentCorrection = (
+    PreparedEconomicEventCorrection | PreparedCashSettlementCorrection
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -740,8 +807,9 @@ class RecordedReceivedFundDistribution:
 @dataclass(frozen=True, slots=True)
 class RecordedInvestmentCorrection:
     correction_id: InvestmentCorrectionId
-    original_action_id: InvestmentActionId
-    replacement_action_id: InvestmentActionId
+    target_kind: InvestmentCorrectionTargetKind
+    original_record_id: InvestmentEconomicEventId | InvestmentSettlementId
+    replacement_record_id: InvestmentEconomicEventId | InvestmentSettlementId
     reversal_accounting_entry_id: AccountingEntryReference
     replacement_accounting_entry_id: AccountingEntryReference
     replayed: bool
@@ -894,16 +962,19 @@ class InvestmentCorrectionView:
     correction_id: InvestmentCorrectionId
     company_id: CompanyId
     income_year: IncomeYear
-    original_action_id: InvestmentActionId
+    target_kind: InvestmentCorrectionTargetKind
+    original_record_id: InvestmentEconomicEventId | InvestmentSettlementId
     original_activity_kind: InvestmentActivityKind
     reversal_accounting_entry_id: AccountingEntryReference
-    replacement_action_id: InvestmentActionId
+    replacement_record_id: InvestmentEconomicEventId | InvestmentSettlementId
     replacement_activity_kind: InvestmentActivityKind
     replacement_accounting_entry_id: AccountingEntryReference
     reason: str
-    bank_transaction_id: InvestmentSourceReference | None
-    document_id: InvestmentSourceReference | None
-    document_status: InvestmentDocumentStatus
+    document_facts: tuple[InvestmentFactReference, ...]
+    legacy_bank_transaction_id: InvestmentSourceReference | None
+    legacy_document_id: InvestmentSourceReference | None
+    legacy_document_status: InvestmentDocumentStatus | None
+    legacy: bool
     evidence_mode: InvestmentEvidenceMode
     evidence_reference: str
     evidence_digest: str
@@ -1055,6 +1126,7 @@ class InvestmentsPersistence(Protocol):
         command: CorrectInvestmentCommand,
         *,
         evidence_digest: str,
+        replacement_evidence_digest: str,
     ) -> PreparedInvestmentCorrection: ...
 
     async def complete_investment_correction(
@@ -1062,8 +1134,7 @@ class InvestmentsPersistence(Protocol):
         command: CorrectInvestmentCommand,
         *,
         prepared: PreparedInvestmentCorrection,
-        replacement: RecordedSharePurchase | RecordedShareSale
-        | RecordedReceivedDividend | RecordedReceivedFundDistribution,
+        replacement_accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentCorrection: ...
 
     async def get_received_fund_distribution_replay(
@@ -1242,8 +1313,7 @@ class InvestmentsCommands(Protocol):
         command: CorrectInvestmentCommand,
         *,
         prepared: PreparedInvestmentCorrection,
-        replacement: RecordedSharePurchase | RecordedShareSale
-        | RecordedReceivedDividend | RecordedReceivedFundDistribution,
+        replacement: RecordedInvestmentEconomicEvent | AccountingEntryReference,
     ) -> RecordedInvestmentCorrection: ...
 
     async def get_received_fund_distribution_replay(
@@ -1394,6 +1464,7 @@ __all__ = [
     "InvestmentActivityView",
     "InvestmentCursor",
     "InvestmentCorrectionId",
+    "InvestmentCorrectionTargetKind",
     "InvestmentCorrectionPage",
     "InvestmentCorrectionView",
     "InvestmentDocumentStatus",
@@ -1430,6 +1501,8 @@ __all__ = [
     "PreparedReceivedFundDistribution",
     "PreparedReceivedFundDistributionFacts",
     "PreparedInvestmentCorrection",
+    "PreparedEconomicEventCorrection",
+    "PreparedCashSettlementCorrection",
     "PreparedInvestmentCashSettlement",
     "PreparedSharePurchaseRecognition",
     "RecognizeReceivedDividendCommand",

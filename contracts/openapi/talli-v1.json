@@ -3697,20 +3697,16 @@
         "title": "InvestmentCorrectionPageWire",
         "type": "object"
       },
+      "InvestmentCorrectionTargetKind": {
+        "enum": [
+          "economic_event",
+          "cash_settlement"
+        ],
+        "title": "InvestmentCorrectionTargetKind",
+        "type": "string"
+      },
       "InvestmentCorrectionWire": {
         "properties": {
-          "bankTransactionId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Banktransactionid"
-          },
           "companyId": {
             "format": "uuid",
             "title": "Companyid",
@@ -3726,20 +3722,12 @@
             "title": "Createdby",
             "type": "string"
           },
-          "documentId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Documentid"
-          },
-          "documentStatus": {
-            "$ref": "#/components/schemas/InvestmentDocumentStatus"
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "title": "Documentfacts",
+            "type": "array"
           },
           "evidenceDigest": {
             "pattern": "^[0-9a-f]{64}$",
@@ -3762,13 +3750,51 @@
             "title": "Incomeyear",
             "type": "integer"
           },
-          "originalActionId": {
-            "format": "uuid",
-            "title": "Originalactionid",
-            "type": "string"
+          "legacy": {
+            "title": "Legacy",
+            "type": "boolean"
+          },
+          "legacyBankTransactionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacybanktransactionid"
+          },
+          "legacyDocumentId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacydocumentid"
+          },
+          "legacyDocumentStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentDocumentStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "originalActivityKind": {
             "$ref": "#/components/schemas/InvestmentActivityKind"
+          },
+          "originalRecordId": {
+            "format": "uuid",
+            "title": "Originalrecordid",
+            "type": "string"
           },
           "ownerAttested": {
             "title": "Ownerattested",
@@ -3783,34 +3809,40 @@
             "title": "Replacementaccountingentryid",
             "type": "string"
           },
-          "replacementActionId": {
-            "format": "uuid",
-            "title": "Replacementactionid",
-            "type": "string"
-          },
           "replacementActivityKind": {
             "$ref": "#/components/schemas/InvestmentActivityKind"
+          },
+          "replacementRecordId": {
+            "format": "uuid",
+            "title": "Replacementrecordid",
+            "type": "string"
           },
           "reversalAccountingEntryId": {
             "format": "uuid",
             "title": "Reversalaccountingentryid",
             "type": "string"
+          },
+          "targetKind": {
+            "$ref": "#/components/schemas/InvestmentCorrectionTargetKind"
           }
         },
         "required": [
           "id",
           "companyId",
           "incomeYear",
-          "originalActionId",
+          "targetKind",
+          "originalRecordId",
           "originalActivityKind",
           "reversalAccountingEntryId",
-          "replacementActionId",
+          "replacementRecordId",
           "replacementActivityKind",
           "replacementAccountingEntryId",
           "reason",
-          "bankTransactionId",
-          "documentId",
-          "documentStatus",
+          "documentFacts",
+          "legacyBankTransactionId",
+          "legacyDocumentId",
+          "legacyDocumentStatus",
+          "legacy",
           "evidenceMode",
           "evidenceReference",
           "evidenceDigest",
@@ -3837,6 +3869,37 @@
         ],
         "title": "InvestmentEvidenceMode",
         "type": "string"
+      },
+      "InvestmentFactReferenceWire": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/InvestmentSourceCapability"
+          },
+          "factSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Factsha256",
+            "type": "string"
+          },
+          "recordId": {
+            "format": "uuid",
+            "title": "Recordid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "capability",
+          "recordId",
+          "revision",
+          "factSha256"
+        ],
+        "title": "InvestmentFactReferenceWire",
+        "type": "object"
       },
       "InvestmentKind": {
         "enum": [
@@ -4002,12 +4065,104 @@
         "title": "InvestmentPositionWire",
         "type": "object"
       },
+      "InvestmentSourceCapability": {
+        "enum": [
+          "BANKING",
+          "DOCUMENTS"
+        ],
+        "title": "InvestmentSourceCapability",
+        "type": "string"
+      },
       "InvestmentTaxTreatment": {
         "enum": [
           "fritaksmetoden"
         ],
         "title": "InvestmentTaxTreatment",
         "type": "string"
+      },
+      "InvestmentsCashSettlementWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "replacementKind": {
+            "const": "cash_settlement",
+            "title": "Replacementkind",
+            "type": "string"
+          },
+          "settlementDate": {
+            "format": "date",
+            "title": "Settlementdate",
+            "type": "string"
+          },
+          "settlementId": {
+            "format": "uuid",
+            "title": "Settlementid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "replacementKind",
+          "settlementId",
+          "eventId",
+          "settlementDate",
+          "amount"
+        ],
+        "title": "InvestmentsCashSettlementWire",
+        "type": "object"
       },
       "InvestmentsCorrectionResultWire": {
         "properties": {
@@ -4016,9 +4171,9 @@
             "title": "Correctionid",
             "type": "string"
           },
-          "originalActionId": {
+          "originalRecordId": {
             "format": "uuid",
-            "title": "Originalactionid",
+            "title": "Originalrecordid",
             "type": "string"
           },
           "replacementAccountingEntryId": {
@@ -4026,9 +4181,9 @@
             "title": "Replacementaccountingentryid",
             "type": "string"
           },
-          "replacementActionId": {
+          "replacementRecordId": {
             "format": "uuid",
-            "title": "Replacementactionid",
+            "title": "Replacementrecordid",
             "type": "string"
           },
           "replayed": {
@@ -4039,12 +4194,16 @@
             "format": "uuid",
             "title": "Reversalaccountingentryid",
             "type": "string"
+          },
+          "targetKind": {
+            "$ref": "#/components/schemas/InvestmentCorrectionTargetKind"
           }
         },
         "required": [
           "correctionId",
-          "originalActionId",
-          "replacementActionId",
+          "targetKind",
+          "originalRecordId",
+          "replacementRecordId",
           "reversalAccountingEntryId",
           "replacementAccountingEntryId",
           "replayed"
@@ -4055,17 +4214,15 @@
       "InvestmentsCorrectionWire": {
         "additionalProperties": false,
         "properties": {
-          "bankTransactionId": {
+          "bankFact": {
             "anyOf": [
               {
-                "format": "uuid",
-                "type": "string"
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Banktransactionid"
+            ]
           },
           "companyId": {
             "format": "uuid",
@@ -4082,26 +4239,19 @@
             "title": "Correctionid",
             "type": "string"
           },
-          "documentId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Documentid"
-          },
-          "documentStatus": {
-            "$ref": "#/components/schemas/InvestmentDocumentStatus"
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
           },
           "evidenceMode": {
             "$ref": "#/components/schemas/InvestmentEvidenceMode"
           },
           "evidenceReference": {
-            "maxLength": 255,
+            "maxLength": 500,
             "minLength": 1,
             "title": "Evidencereference",
             "type": "string"
@@ -4112,13 +4262,13 @@
             "title": "Incomeyear",
             "type": "integer"
           },
-          "originalActionId": {
-            "format": "uuid",
-            "title": "Originalactionid",
-            "type": "string"
-          },
           "originalActivityKind": {
             "$ref": "#/components/schemas/InvestmentActivityKind"
+          },
+          "originalRecordId": {
+            "format": "uuid",
+            "title": "Originalrecordid",
+            "type": "string"
           },
           "ownerAttested": {
             "title": "Ownerattested",
@@ -4131,38 +4281,299 @@
             "type": "string"
           },
           "replacement": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "cash_settlement": "#/components/schemas/InvestmentsCashSettlementWire",
+                "dividend_received": "#/components/schemas/InvestmentsDividendRecognitionWire",
+                "fund_distribution_received": "#/components/schemas/InvestmentsFundDistributionRecognitionWire",
+                "share_purchase": "#/components/schemas/InvestmentsSharePurchaseRecognitionWire",
+                "share_sale": "#/components/schemas/InvestmentsShareSaleRecognitionWire"
+              },
+              "propertyName": "replacementKind"
+            },
+            "oneOf": [
               {
-                "$ref": "#/components/schemas/InvestmentsSharePurchaseWire"
+                "$ref": "#/components/schemas/InvestmentsSharePurchaseRecognitionWire"
               },
               {
-                "$ref": "#/components/schemas/InvestmentsShareSaleWire"
+                "$ref": "#/components/schemas/InvestmentsShareSaleRecognitionWire"
               },
               {
-                "$ref": "#/components/schemas/InvestmentsReceivedDividendWire"
+                "$ref": "#/components/schemas/InvestmentsDividendRecognitionWire"
               },
               {
-                "$ref": "#/components/schemas/InvestmentsReceivedFundDistributionWire"
+                "$ref": "#/components/schemas/InvestmentsFundDistributionRecognitionWire"
+              },
+              {
+                "$ref": "#/components/schemas/InvestmentsCashSettlementWire"
               }
             ],
             "title": "Replacement"
+          },
+          "targetKind": {
+            "$ref": "#/components/schemas/InvestmentCorrectionTargetKind"
           }
         },
         "required": [
           "companyId",
           "incomeYear",
-          "correctionId",
-          "originalActionId",
-          "originalActivityKind",
-          "correctionDate",
-          "reason",
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "documentStatus",
+          "correctionId",
+          "targetKind",
+          "originalRecordId",
+          "originalActivityKind",
+          "correctionDate",
+          "reason",
           "replacement"
         ],
         "title": "InvestmentsCorrectionWire",
+        "type": "object"
+      },
+      "InvestmentsDividendRecognitionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "declaredDate": {
+            "format": "date",
+            "title": "Declareddate",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "groupEvidenceReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupevidencereference"
+          },
+          "groupExceptionClaimed": {
+            "title": "Groupexceptionclaimed",
+            "type": "boolean"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "lawfulDividendConfirmed": {
+            "title": "Lawfuldividendconfirmed",
+            "type": "boolean"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "payingCompanyName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Payingcompanyname",
+            "type": "string"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "replacementKind": {
+            "const": "dividend_received",
+            "title": "Replacementkind",
+            "type": "string"
+          },
+          "yearEndOwnershipBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendownershipbasispoints"
+          },
+          "yearEndVotingBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendvotingbasispoints"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "replacementKind",
+          "eventId",
+          "positionId",
+          "payingCompanyName",
+          "declaredDate",
+          "grossAmount",
+          "lawfulDividendConfirmed",
+          "groupExceptionClaimed"
+        ],
+        "title": "InvestmentsDividendRecognitionWire",
+        "type": "object"
+      },
+      "InvestmentsFundDistributionRecognitionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "entitlementDate": {
+            "format": "date",
+            "title": "Entitlementdate",
+            "type": "string"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Fundname",
+            "type": "string"
+          },
+          "fundTaxStatementReference": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Fundtaxstatementreference",
+            "type": "string"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "openingFundEquityRatioBasisPoints": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Openingfundequityratiobasispoints",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "replacementKind": {
+            "const": "fund_distribution_received",
+            "title": "Replacementkind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "replacementKind",
+          "eventId",
+          "positionId",
+          "fundName",
+          "entitlementDate",
+          "grossAmount",
+          "openingFundEquityRatioBasisPoints",
+          "fundTaxStatementReference"
+        ],
+        "title": "InvestmentsFundDistributionRecognitionWire",
         "type": "object"
       },
       "InvestmentsPageWire": {
@@ -4541,6 +4952,154 @@
         "title": "InvestmentsReceivedFundDistributionWire",
         "type": "object"
       },
+      "InvestmentsSharePurchaseRecognitionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingClassification": {
+            "$ref": "#/components/schemas/InvestmentAccountingClassification"
+          },
+          "acquisitionDate": {
+            "format": "date",
+            "title": "Acquisitiondate",
+            "type": "string"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundequityratiobasispoints"
+          },
+          "fundTaxStatementReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundtaxstatementreference"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "investmentKey": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Investmentkey",
+            "type": "string"
+          },
+          "investmentKind": {
+            "$ref": "#/components/schemas/InvestmentKind"
+          },
+          "investmentName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Investmentname",
+            "type": "string"
+          },
+          "orgNumber": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{9}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orgnumber"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "purchaseAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "replacementKind": {
+            "const": "share_purchase",
+            "title": "Replacementkind",
+            "type": "string"
+          },
+          "shareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+            "title": "Sharecount",
+            "type": "string"
+          },
+          "transactionCosts": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "replacementKind",
+          "eventId",
+          "investmentKey",
+          "investmentName",
+          "investmentKind",
+          "accountingClassification",
+          "acquisitionDate",
+          "shareCount",
+          "purchaseAmount",
+          "transactionCosts"
+        ],
+        "title": "InvestmentsSharePurchaseRecognitionWire",
+        "type": "object"
+      },
       "InvestmentsSharePurchaseResultWire": {
         "properties": {
           "accountingEntryId": {
@@ -4738,6 +5297,126 @@
           "documentStatus"
         ],
         "title": "InvestmentsSharePurchaseWire",
+        "type": "object"
+      },
+      "InvestmentsShareSaleRecognitionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundTaxStatementReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundtaxstatementreference"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "proceeds": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "replacementKind": {
+            "const": "share_sale",
+            "title": "Replacementkind",
+            "type": "string"
+          },
+          "saleDate": {
+            "format": "date",
+            "title": "Saledate",
+            "type": "string"
+          },
+          "saleYearFundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saleyearfundequityratiobasispoints"
+          },
+          "soldShareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+            "title": "Soldsharecount",
+            "type": "string"
+          },
+          "transactionCosts": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "replacementKind",
+          "eventId",
+          "positionId",
+          "saleDate",
+          "soldShareCount",
+          "proceeds",
+          "transactionCosts"
+        ],
+        "title": "InvestmentsShareSaleRecognitionWire",
         "type": "object"
       },
       "InvestmentsShareSaleResultWire": {

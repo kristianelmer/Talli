@@ -11,7 +11,8 @@ from talli_backend.adapters.supabase_investments import (
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
-    RecordedReceivedDividend,
+    RecordedInvestmentEconomicEvent,
+    InvestmentSettlementBalanceKind,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
@@ -40,6 +41,7 @@ from test_investments_workflow import (
     lifecycle_purchase,
     lifecycle_sale,
     lifecycle_settlement,
+    lifecycle_settlement_correction,
 )
 
 
@@ -57,8 +59,9 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
         {"reversal_entry_id": "70000000-0000-0000-0000-000000000027"},
         {"result": {
             "correctionId": str(command.correction_id),
-            "originalActionId": str(command.original_action_id),
-            "replacementActionId": str(replacement.action_id),
+            "targetKind": command.target_kind.value,
+            "originalRecordId": str(command.original_record_id),
+            "replacementRecordId": str(replacement.event_id),
             "reversalAccountingEntryId": "70000000-0000-0000-0000-000000000027",
             "replacementAccountingEntryId": "70000000-0000-0000-0000-000000000037",
             "replayed": False,
@@ -79,29 +82,100 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
     recorded = asyncio.run(transaction.complete_investment_correction(
         command,
         prepared=prepared,
-        replacement=RecordedReceivedDividend(
-            action_id=replacement.action_id,
-            position_id=replacement.position_id,
-            accounting_entry_id=AccountingEntryReference(
-                "70000000-0000-0000-0000-000000000037"
-            ),
-            taxable_add_back=Money.nok("3.90"),
-            replayed=False,
+        replacement_accounting_entry_id=AccountingEntryReference(
+            "70000000-0000-0000-0000-000000000037"
         ),
     ))
 
+    replacement_record = RecordedInvestmentEconomicEvent(
+            event_id=replacement.event_id,
+            position_id=replacement.position_id,
+            recognition_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000037"
+            ),
+            expected_settlement_amount=replacement.gross_amount,
+            settlement_balance_kind=InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE,
+            replayed=False,
+        )
+
     assert replay is None
     assert recorded.correction_id == command.correction_id
-    assert "get_correction_replay_v1" in calls[0][0]
-    assert "prepare_correction_v1" in calls[1][0]
+    assert replacement_record.position_id == prepared.original_position_id
+    assert "get_lifecycle_correction_replay_v2" in calls[0][0]
+    assert "prepare_economic_event_correction_v2" in calls[1][0]
     assert "link_investment_correction_v1" in calls[2][0]
-    assert "complete_correction_v1" in calls[3][0]
+    assert "complete_lifecycle_correction_v2" in calls[3][0]
     request = json.loads(str(calls[1][1][0]))
+    assert request["targetKind"] == "economic_event"
     assert request["originalActivityKind"] == "dividend_received"
     assert request["replacementActivityKind"] == "dividend_received"
     assert request["replacement"]["grossAmount"] == "130.00"
+    assert request["replacement"]["evidenceDigest"] == replacement.evidence.digest()
     assert request["evidenceDigest"] == prepared.evidence_digest
     assert calls[2][1][2] == str(prepared.original_accounting_entry_id)
+
+
+def test_settlement_correction_maps_prepared_facts_and_lifecycle_completion() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_settlement_correction()
+    replacement = command.replacement
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter([
+        {"result": None},
+        {"result": {
+            "originalAccountingEntryId": "70000000-0000-0000-0000-000000000017",
+            "originalSettlementId": str(command.original_record_id),
+            "eventId": str(replacement.event_id),
+            "recognitionAccountingEntryId": "70000000-0000-0000-0000-000000000018",
+            "settlementBalanceKind": "purchase_payable",
+            "amount": "125.50",
+            "eventFactSha256": "f" * 64,
+            "evidenceDigest": replacement.evidence.digest(),
+            "originalActivityKind": "share_purchase",
+        }},
+        {"reversal_entry_id": "70000000-0000-0000-0000-000000000027"},
+        {"result": {
+            "correctionId": str(command.correction_id),
+            "targetKind": "cash_settlement",
+            "originalRecordId": str(command.original_record_id),
+            "replacementRecordId": str(replacement.settlement_id),
+            "reversalAccountingEntryId": "70000000-0000-0000-0000-000000000027",
+            "replacementAccountingEntryId": "70000000-0000-0000-0000-000000000037",
+            "replayed": False,
+        }},
+    ])
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    assert asyncio.run(transaction.get_investment_correction_replay(command)) is None
+    prepared = asyncio.run(
+        InvestmentsService(transaction).prepare_investment_correction(command)
+    )
+    recorded = asyncio.run(transaction.complete_investment_correction(
+        command,
+        prepared=prepared,
+        replacement_accounting_entry_id=AccountingEntryReference(
+            "70000000-0000-0000-0000-000000000037"
+        ),
+    ))
+
+    assert prepared.amount == Money.nok("125.50")
+    assert prepared.original_activity_kind.value == "share_purchase"
+    assert recorded.replacement_record_id == replacement.settlement_id
+    assert "prepare_cash_settlement_correction_v2" in calls[1][0]
+    assert "complete_lifecycle_correction_v2" in calls[3][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["replacement"]["settlementId"] == str(
+        replacement.settlement_id
+    )
+    assert request["replacement"]["evidenceDigest"] == (
+        replacement.evidence.digest()
+    )
 
 
 def bound_transaction() -> SupabaseInvestmentsTransaction:
@@ -659,16 +733,24 @@ def test_correction_query_maps_immutable_lineage_and_evidence() -> None:
             "id": correction_id,
             "company_id": str(command.company_id),
             "income_year": 2026,
-            "original_action_id": str(command.action_id),
+            "target_kind": "economic_event",
+            "original_record_id": str(command.action_id),
             "original_activity_kind": "dividend_received",
             "reversal_accounting_entry_id": "70000000-0000-0000-0000-000000000027",
-            "replacement_action_id": "40000000-0000-0000-0000-000000000044",
+            "replacement_record_id": "40000000-0000-0000-0000-000000000044",
             "replacement_activity_kind": "dividend_received",
             "replacement_accounting_entry_id": "70000000-0000-0000-0000-000000000037",
             "reason": "Correct gross dividend amount",
-            "bank_transaction_id": None,
-            "document_id": None,
-            "document_status": "missing_accepted_warning",
+            "document_facts": [{
+                "capability": "DOCUMENTS",
+                "recordId": "80000000-0000-0000-0000-000000000018",
+                "revision": 2,
+                "factSha256": "d" * 64,
+            }],
+            "legacy_bank_transaction_id": None,
+            "legacy_document_id": None,
+            "legacy_document_status": None,
+            "legacy": False,
             "evidence_mode": "manual_fallback",
             "evidence_reference": "correction-owner-evidence",
             "evidence_digest": "e" * 64,
@@ -688,7 +770,9 @@ def test_correction_query_maps_immutable_lineage_and_evidence() -> None:
 
     assert page.items[0].correction_id.value == correction_id
     assert page.items[0].evidence_reference == "correction-owner-evidence"
-    assert "from investments.corrections" in query_text
+    assert page.items[0].document_facts[0].revision == 2
+    assert "from investments.lifecycle_corrections" in query_text
+    assert "from investments.corrections legacy" in query_text
 
 
 def test_purchase_recognition_uses_revisioned_lifecycle_rpcs() -> None:

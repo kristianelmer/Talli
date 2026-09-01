@@ -342,6 +342,42 @@ function requiredInvestmentEvidence(
   };
 }
 
+function requiredInvestmentLifecycleEvidence(
+  formData: FormData,
+  capability: "DOCUMENTS" | "BANKING",
+  prefix: InvestmentEvidencePrefix = "",
+) {
+  const field = (name: string) => investmentEvidenceField(prefix, name);
+  const evidenceMode = requiredFormChoice(
+    formData,
+    field("evidenceMode"),
+    ["linked_sources", "manual_fallback"] as const,
+  );
+  const evidenceReference = formString(formData, field("evidenceReference"));
+  const ownerAttested = formString(formData, field("ownerAttested")) === "true";
+  const sourcePrefix = capability === "DOCUMENTS" ? "document" : "bank";
+  const recordId = requiredFormUuid(
+    formData,
+    field(capability === "DOCUMENTS" ? "documentId" : "bankTransactionId"),
+  );
+  const revision = Number(formString(formData, field(`${sourcePrefix}Revision`)));
+  const factSha256 = formString(formData, field(`${sourcePrefix}FactSha256`));
+  if (!evidenceReference || !Number.isInteger(revision) || revision < 1
+    || !/^[0-9a-f]{64}$/u.test(factSha256)
+    || (evidenceMode === "linked_sources" && ownerAttested)
+    || (evidenceMode === "manual_fallback" && !ownerAttested)) {
+    throw new Error("Investeringsdokumentasjonen er ufullstendig.");
+  }
+  const fact = { capability, recordId, revision, factSha256 } as const;
+  return {
+    evidenceMode,
+    evidenceReference,
+    ownerAttested,
+    documentFacts: capability === "DOCUMENTS" ? [fact] : [],
+    bankFact: capability === "BANKING" ? fact : null,
+  };
+}
+
 function companyAccessInvitationWorkflow(input: {
   accessToken: string;
   actorId: string;
@@ -2289,11 +2325,15 @@ export async function correctInvestmentAction(formData: FormData) {
     formData,
     "originalActivityKind",
   ) as InvestmentsCorrectionWire["originalActivityKind"];
-  const correctionEvidence = requiredInvestmentEvidence(formData);
-  const replacementEvidence = requiredInvestmentEvidence(formData, "replacement");
+  const correctionEvidence = requiredInvestmentLifecycleEvidence(
+    formData, "DOCUMENTS",
+  );
+  const replacementEvidence = requiredInvestmentLifecycleEvidence(
+    formData, "DOCUMENTS", "replacement",
+  );
   const common = {
-    actionId: replacementActionId,
     companyId,
+    eventId: replacementActionId,
     incomeYear,
     ...replacementEvidence,
   };
@@ -2305,6 +2345,7 @@ export async function correctInvestmentAction(formData: FormData) {
       | "norwegian_equity_fund";
     replacement = {
       ...common,
+      replacementKind: "share_purchase",
       investmentKey: formString(formData, "investmentKey"),
       investmentName: formString(formData, "investmentName"),
       investmentKind,
@@ -2313,9 +2354,8 @@ export async function correctInvestmentAction(formData: FormData) {
         "accountingClassification",
       ) as "subsidiary" | "associate" | "other_long_term"
         | "current_listed_share" | "current_fund",
-      taxTreatment: "fritaksmetoden",
       acquisitionDate: formString(formData, "actionDate"),
-      shareCount: Number(formString(formData, "shareCount")),
+      shareCount: formString(formData, "shareCount"),
       purchaseAmount: {
         amount: formString(formData, "grossAmount"), currency: "NOK",
       },
@@ -2333,9 +2373,10 @@ export async function correctInvestmentAction(formData: FormData) {
   } else if (originalActivityKind === "share_sale") {
     replacement = {
       ...common,
+      replacementKind: "share_sale",
       positionId: formString(formData, "positionId"),
       saleDate: formString(formData, "actionDate"),
-      soldShareCount: Number(formString(formData, "shareCount")),
+      soldShareCount: formString(formData, "shareCount"),
       proceeds: { amount: formString(formData, "grossAmount"), currency: "NOK" },
       transactionCosts: {
         amount: formString(formData, "transactionCosts") || "0", currency: "NOK",
@@ -2351,12 +2392,11 @@ export async function correctInvestmentAction(formData: FormData) {
     const groupExceptionClaimed = formString(formData, "groupExceptionClaimed") === "true";
     replacement = {
       ...common,
+      replacementKind: "dividend_received",
       positionId: formString(formData, "positionId"),
       payingCompanyName: formString(formData, "investmentName"),
       declaredDate: formString(formData, "declaredDate"),
-      paidDate: formString(formData, "actionDate"),
       grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
-      taxTreatment: "fritaksmetoden",
       lawfulDividendConfirmed:
         formString(formData, "lawfulDividendConfirmed") === "true",
       groupExceptionClaimed,
@@ -2370,10 +2410,10 @@ export async function correctInvestmentAction(formData: FormData) {
   } else if (originalActivityKind === "fund_distribution_received") {
     replacement = {
       ...common,
+      replacementKind: "fund_distribution_received",
       positionId: formString(formData, "positionId"),
       fundName: formString(formData, "investmentName"),
       entitlementDate: formString(formData, "declaredDate"),
-      paidDate: formString(formData, "actionDate"),
       grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
       openingFundEquityRatioBasisPoints: Number(
         formString(formData, "fundEquityRatioBasisPoints"),
@@ -2392,7 +2432,8 @@ export async function correctInvestmentAction(formData: FormData) {
         companyId,
         incomeYear,
         correctionId,
-        originalActionId: formString(formData, "originalActionId"),
+        targetKind: "economic_event",
+        originalRecordId: formString(formData, "originalActionId"),
         originalActivityKind,
         correctionDate: formString(formData, "correctionDate"),
         reason: formString(formData, "reason"),

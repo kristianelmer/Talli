@@ -27,9 +27,11 @@ leaves only the canonical investments implementation.
 
 Consumers import only `talli_backend.modules.investments.public`.
 `RecordSharePurchaseCommand`, `RecordShareSaleCommand`,
-`RecordReceivedDividendCommand`, `RecordReceivedFundDistributionCommand`, and
-`CorrectInvestmentCommand` carry supported facts
-and only opaque bank/document source references. `InvestmentsCommands` exposes replay, prepare,
+`RecordReceivedDividendCommand`, and `RecordReceivedFundDistributionCommand`
+remain the bounded predecessor commands during stage exit. `CorrectInvestmentCommand`
+targets an economic event or cash settlement and carries a canonical recognition or
+settlement replacement with revisioned evidence. `InvestmentCorrectionTargetKind`
+closes that target vocabulary. `InvestmentsCommands` exposes replay, prepare,
 and complete operations so a named application workflow can keep the investment
 mutation and authoritative ledger posting in one short transaction.
 The lifecycle expansion introduces recognition-only
@@ -54,6 +56,12 @@ workflow; settled economic events are hard-blocked. Cash-settlement corrections
 retain the recognized amount and event, append a bank-evidenced replacement,
 and link it to the prior settlement through `supersedes_settlement_id` rather
 than mutating or deleting either fact.
+`PreparedEconomicEventCorrection` preserves the original position guard;
+`PreparedCashSettlementCorrection` carries the exact original event, amount,
+balance kind, activity kind, and replacement evidence digest needed before the
+replacement ledger entry is posted. Correction reads expose lifecycle rows and
+ordered document facts while explicitly retaining predecessor lineage during the
+bounded overlap.
 `PreparedSharePurchase` returns the canonical position/lot identifiers and the
 normalized facts needed by ledger. `RecordedSharePurchase` binds those owned
 identifiers to an opaque accounting-entry reference. `PreparedShareSale`

@@ -190,7 +190,9 @@ export default async function ActionPage({
       break;
     case "investment-correction": {
       const corrected = new Set(
-        investmentCorrections.map((correction) => correction.original_action_id),
+        investmentCorrections
+          .filter((correction) => correction.target_kind === "economic_event")
+          .map((correction) => correction.original_record_id),
       );
       const correctable = actions
         .filter((action) => action.company_id === companyId

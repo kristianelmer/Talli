@@ -14,24 +14,30 @@ from talli_backend.modules.investments.public import (
     InvestmentActionId,
     InvestmentActivityKind,
     InvestmentCorrectionId,
+    InvestmentCorrectionTargetKind,
     InvestmentDocumentStatus,
+    InvestmentEconomicEventId,
+    InvestmentEvidence,
     InvestmentEvidenceMode,
+    InvestmentFactReference,
     InvestmentKind,
     InvestmentPositionId,
     InvestmentSaleLotFact,
     InvestmentSourceReference,
+    InvestmentSourceCapability,
     InvestmentTaxTreatment,
     InvestmentUnits,
     InvestmentsError,
     InvestmentsErrorCode,
     PreparedReceivedDividendFacts,
-    PreparedInvestmentCorrection,
+    PreparedEconomicEventCorrection,
     PreparedSharePurchase,
     PreparedShareSaleFacts,
     RecordReceivedDividendCommand,
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeReceivedDividendCommand,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.shared.kernel import (
@@ -122,9 +128,10 @@ class InvestmentsPersistenceStub:
         return self.prepared
 
     async def prepare_investment_correction(
-        self, command, *, evidence_digest
+        self, command, *, evidence_digest, replacement_evidence_digest
     ):
         self.command = command
+        assert replacement_evidence_digest == command.replacement.evidence.digest()
         return replace(self.prepared, evidence_digest=evidence_digest)
 
 
@@ -235,16 +242,40 @@ def supported_received_fund_distribution() -> RecordReceivedFundDistributionComm
 
 def supported_investment_correction() -> CorrectInvestmentCommand:
     original = supported_received_dividend()
-    replacement = replace(
-        original,
-        action_id=InvestmentActionId(
-            "40000000-0000-0000-0000-000000000044"
-        ),
+    replacement = RecognizeReceivedDividendCommand(
+        company_id=original.company_id,
+        actor_id=original.actor_id,
+        correlation_id=CorrelationId("replacement-dividend-correction"),
         idempotency_key=IdempotencyKey(
             "30000000-0000-4000-8000-000000000043"
         ),
+        income_year=original.income_year,
+        event_id=InvestmentEconomicEventId(
+            "40000000-0000-0000-0000-000000000044"
+        ),
+        position_id=original.position_id,
+        paying_company_name=original.paying_company_name,
+        declared_date=original.declared_date,
         gross_amount=Money.nok("130.00"),
-        evidence_reference="corrected-dividend-advice",
+        lawful_dividend_confirmed=original.lawful_dividend_confirmed,
+        group_exception_claimed=original.group_exception_claimed,
+        year_end_ownership_basis_points=original.year_end_ownership_basis_points,
+        year_end_voting_basis_points=original.year_end_voting_basis_points,
+        group_evidence_reference=original.group_evidence_reference,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "corrected-dividend-advice",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    DOCUMENT_ID,
+                    2,
+                    "d" * 64,
+                ),
+            ),
+            None,
+        ),
     )
     return CorrectInvestmentCommand(
         company_id=original.company_id,
@@ -257,22 +288,33 @@ def supported_investment_correction() -> CorrectInvestmentCommand:
         correction_id=InvestmentCorrectionId(
             "40000000-0000-0000-0000-000000000042"
         ),
-        original_action_id=original.action_id,
+        target_kind=InvestmentCorrectionTargetKind.ECONOMIC_EVENT,
+        original_record_id=InvestmentEconomicEventId(str(original.action_id)),
         original_activity_kind=InvestmentActivityKind.DIVIDEND_RECEIVED,
         correction_date=LocalDate(date(2026, 8, 31)),
         reason="Correct gross dividend amount",
-        evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
-        evidence_reference="correction-owner-evidence",
-        owner_attested=True,
-        bank_transaction_id=BANK_ID,
-        document_id=DOCUMENT_ID,
-        document_status=InvestmentDocumentStatus.ATTACHED,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.MANUAL_FALLBACK,
+            "correction-owner-evidence",
+            True,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000018"
+                    ),
+                    1,
+                    "c" * 64,
+                ),
+            ),
+            None,
+        ),
         replacement=replacement,
     )
 
 
 def test_supported_investment_correction_is_normalized_before_state_reversal() -> None:
-    prepared = PreparedInvestmentCorrection(
+    prepared = PreparedEconomicEventCorrection(
         original_accounting_entry_id=AccountingEntryReference(
             "70000000-0000-0000-0000-000000000007"
         ),
@@ -292,7 +334,7 @@ def test_supported_investment_correction_is_normalized_before_state_reversal() -
 
 def test_correction_rejects_a_different_replacement_activity_before_mutation() -> None:
     command = supported_investment_correction()
-    prepared = PreparedInvestmentCorrection(
+    prepared = PreparedEconomicEventCorrection(
         original_accounting_entry_id=AccountingEntryReference(
             "70000000-0000-0000-0000-000000000007"
         ),
@@ -303,7 +345,10 @@ def test_correction_rejects_a_different_replacement_activity_before_mutation() -
 
     with pytest.raises(InvestmentsError) as failure:
         asyncio.run(InvestmentsService(persistence).prepare_investment_correction(
-            replace(command, replacement=supported_sale())
+            replace(
+                command,
+                original_activity_kind=InvestmentActivityKind.SHARE_SALE,
+            )
         ))
 
     assert failure.value.code == InvestmentsErrorCode.INVALID_INPUT.value

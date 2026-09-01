@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -9,7 +10,11 @@ from talli_backend.application.investments_workflow import InvestmentsSession
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     AcquisitionLotId,
+    CorrectInvestmentCommand,
+    InvestmentActivityKind,
     InvestmentAccountingClassification,
+    InvestmentCorrectionId,
+    InvestmentCorrectionTargetKind,
     InvestmentEconomicEventId,
     InvestmentEvidence,
     InvestmentEvidenceMode,
@@ -23,7 +28,8 @@ from talli_backend.modules.investments.public import (
     InvestmentSourceReference,
     InvestmentUnits,
     PreparedInvestmentCashSettlement,
-    PreparedInvestmentCorrection,
+    PreparedEconomicEventCorrection,
+    PreparedCashSettlementCorrection,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
     PreparedReceivedDividend,
@@ -54,7 +60,14 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryKind,
     PostedLedgerEntry,
 )
-from talli_backend.shared.kernel import IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp
+from talli_backend.shared.kernel import (
+    CorrelationId,
+    IdempotencyKey,
+    IncomeYear,
+    LocalDate,
+    Money,
+    Timestamp,
+)
 
 from test_investments import (
     supported_purchase,
@@ -144,6 +157,65 @@ def lifecycle_settlement(
                 "b" * 64,
             ),
         ),
+    )
+
+
+def lifecycle_settlement_correction() -> CorrectInvestmentCommand:
+    purchase = lifecycle_purchase()
+    original = lifecycle_settlement(purchase)
+    replacement = replace(
+        original,
+        settlement_id=InvestmentSettlementId(
+            "90000000-0000-0000-0000-000000000003"
+        ),
+        idempotency_key=IdempotencyKey("replacement-settlement-0001"),
+        correlation_id=CorrelationId("replacement-settlement-correlation"),
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "replacement bank transaction",
+            False,
+            (),
+            InvestmentFactReference(
+                InvestmentSourceCapability.BANKING,
+                InvestmentSourceReference(
+                    "70000000-0000-0000-0000-000000000003"
+                ),
+                2,
+                "f" * 64,
+            ),
+        ),
+    )
+    return CorrectInvestmentCommand(
+        company_id=purchase.company_id,
+        actor_id=purchase.actor_id,
+        correlation_id=CorrelationId("settlement-correction-correlation"),
+        idempotency_key=IdempotencyKey("settlement-correction-0001"),
+        income_year=purchase.income_year,
+        correction_id=InvestmentCorrectionId(
+            "90000000-0000-0000-0000-000000000004"
+        ),
+        target_kind=InvestmentCorrectionTargetKind.CASH_SETTLEMENT,
+        original_record_id=original.settlement_id,
+        original_activity_kind=InvestmentActivityKind.SHARE_PURCHASE,
+        correction_date=LocalDate(purchase.acquisition_date.value),
+        reason="Replace settlement source facts",
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "settlement correction document",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000004"
+                    ),
+                    1,
+                    "e" * 64,
+                ),
+            ),
+            None,
+        ),
+        replacement=replacement,
     )
 
 
@@ -445,30 +517,55 @@ class SessionPersistence:
         self.events.append("investments:correction-replay")
         return None
 
-    async def prepare_investment_correction(self, command, *, evidence_digest):
+    async def prepare_investment_correction(
+        self, command, *, evidence_digest, replacement_evidence_digest
+    ):
         self.events.append("investments:correction-prepare")
-        return PreparedInvestmentCorrection(
+        assert replacement_evidence_digest == command.replacement.evidence.digest()
+        if command.target_kind is InvestmentCorrectionTargetKind.CASH_SETTLEMENT:
+            return PreparedCashSettlementCorrection(
+                original_accounting_entry_id=ORIGINAL_ENTRY_ID,
+                original_settlement_id=command.original_record_id,
+                event_id=command.replacement.event_id,
+                recognition_accounting_entry_id=AccountingEntryReference(
+                    "70000000-0000-0000-0000-000000000018"
+                ),
+                settlement_balance_kind=(
+                    InvestmentSettlementBalanceKind.PURCHASE_PAYABLE
+                ),
+                amount=command.replacement.amount,
+                event_fact_sha256="f" * 64,
+                replacement_evidence_digest=replacement_evidence_digest,
+                evidence_digest=evidence_digest,
+                original_activity_kind=InvestmentActivityKind.SHARE_PURCHASE,
+            )
+        return PreparedEconomicEventCorrection(
             original_accounting_entry_id=ORIGINAL_ENTRY_ID,
             original_position_id=command.replacement.position_id,
             evidence_digest=evidence_digest,
         )
 
     async def complete_investment_correction(
-        self, command, *, prepared, replacement
+        self, command, *, prepared, replacement_accounting_entry_id
     ):
         self.events.append("investments:correction-complete")
         assert prepared.original_accounting_entry_id == ORIGINAL_ENTRY_ID
-        assert replacement.accounting_entry_id == AccountingEntryReference(
+        assert replacement_accounting_entry_id == AccountingEntryReference(
             str(ENTRY_ID)
         )
         return RecordedInvestmentCorrection(
             correction_id=command.correction_id,
-            original_action_id=command.original_action_id,
-            replacement_action_id=replacement.action_id,
+            target_kind=command.target_kind,
+            original_record_id=command.original_record_id,
+            replacement_record_id=(
+                command.replacement.settlement_id
+                if isinstance(command.replacement, SettleInvestmentCashCommand)
+                else command.replacement.event_id
+            ),
             reversal_accounting_entry_id=AccountingEntryReference(
                 "70000000-0000-0000-0000-000000000027"
             ),
-            replacement_accounting_entry_id=replacement.accounting_entry_id,
+            replacement_accounting_entry_id=replacement_accounting_entry_id,
             replayed=False,
         )
 
@@ -719,8 +816,8 @@ def test_correction_composes_reversal_and_same_policy_replacement_atomically() -
     )
 
     assert result.correction_id == command.correction_id
-    assert result.original_action_id == command.original_action_id
-    assert result.replacement_action_id == command.replacement.action_id
+    assert result.original_record_id == command.original_record_id
+    assert result.replacement_record_id == command.replacement.event_id
     assert result.replacement_accounting_entry_id == AccountingEntryReference(
         str(ENTRY_ID)
     )
@@ -728,12 +825,35 @@ def test_correction_composes_reversal_and_same_policy_replacement_atomically() -
         "transaction:begin",
         "investments:correction-replay",
         "investments:correction-prepare",
-        "investments:dividend-prepare",
-        "ledger:dividend-post",
-        "investments:dividend-complete",
+        "investments:dividend-recognition-replay",
+        "investments:dividend-recognition-prepare",
+        "ledger:recognize-dividend",
+        "investments:dividend-recognition-complete",
         "investments:correction-complete",
         "transaction:commit",
     ]
+
+
+def test_settlement_correction_posts_replacement_before_append_only_completion() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_settlement_correction()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade).correct_investment(command)
+    )
+
+    assert result.target_kind is InvestmentCorrectionTargetKind.CASH_SETTLEMENT
+    assert result.original_record_id == command.original_record_id
+    assert result.replacement_record_id == command.replacement.settlement_id
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:correction-replay",
+        "investments:correction-prepare",
+        "ledger:settle-cash",
+        "investments:correction-complete",
+        "transaction:commit",
+    ]
+    assert "investments:settlement-complete" not in persistence.events
 
 
 def test_fund_distribution_composes_split_and_ledger_atomically() -> None:

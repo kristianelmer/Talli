@@ -16,6 +16,7 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentKind,
     InvestmentActivityKind,
+    InvestmentCorrectionTargetKind,
     InvestmentPolicyVersion,
     InvestmentSaleLotCalculation,
     InvestmentTaxTreatment,
@@ -27,6 +28,8 @@ from talli_backend.modules.investments.public import (
     PreparedReceivedDividend,
     PreparedReceivedFundDistribution,
     PreparedInvestmentCorrection,
+    PreparedEconomicEventCorrection,
+    PreparedCashSettlementCorrection,
     PreparedSharePurchase,
     PreparedShareSale,
     RecordReceivedDividendCommand,
@@ -102,33 +105,7 @@ def _calculation_id(
 
 
 def _lifecycle_evidence_digest(command: object) -> str:
-    evidence = command.evidence
-    return _canonical_digest(
-        {
-            "bankFact": (
-                {
-                    "capability": evidence.bank_fact.capability.value,
-                    "recordId": str(evidence.bank_fact.record_id),
-                    "revision": evidence.bank_fact.revision,
-                    "factSha256": evidence.bank_fact.fact_sha256,
-                }
-                if evidence.bank_fact is not None
-                else None
-            ),
-            "documentFacts": [
-                {
-                    "capability": fact.capability.value,
-                    "recordId": str(fact.record_id),
-                    "revision": fact.revision,
-                    "factSha256": fact.fact_sha256,
-                }
-                for fact in evidence.document_facts
-            ],
-            "evidenceMode": evidence.mode.value,
-            "evidenceReference": evidence.reference,
-            "ownerAttested": evidence.owner_attested,
-        }
-    )
+    return command.evidence.digest()
 
 
 def _normalize_evidence(command):
@@ -212,13 +189,13 @@ def _sum_money(values: tuple[Money, ...]) -> Money:
 
 
 def _replacement_activity_kind(command) -> InvestmentActivityKind:
-    if isinstance(command, RecordSharePurchaseCommand):
+    if isinstance(command, RecognizeSharePurchaseCommand):
         return InvestmentActivityKind.SHARE_PURCHASE
-    if isinstance(command, RecordShareSaleCommand):
+    if isinstance(command, RecognizeShareSaleCommand):
         return InvestmentActivityKind.SHARE_SALE
-    if isinstance(command, RecordReceivedDividendCommand):
+    if isinstance(command, RecognizeReceivedDividendCommand):
         return InvestmentActivityKind.DIVIDEND_RECEIVED
-    if isinstance(command, RecordReceivedFundDistributionCommand):
+    if isinstance(command, RecognizeReceivedFundDistributionCommand):
         return InvestmentActivityKind.FUND_DISTRIBUTION_RECEIVED
     raise InvestmentsError.invalid_input()
 
@@ -758,47 +735,75 @@ class InvestmentsService:
     async def prepare_investment_correction(
         self, command: CorrectInvestmentCommand
     ) -> PreparedInvestmentCorrection:
-        replacement_kind = _replacement_activity_kind(command.replacement)
-        replacement_action_id = command.replacement.action_id
-        reason = command.reason.strip()
         replacement = command.replacement
+        is_settlement = isinstance(replacement, SettleInvestmentCashCommand)
+        if is_settlement:
+            replacement_record_id = replacement.settlement_id
+            replacement_kind = command.original_activity_kind
+        else:
+            replacement_record_id = replacement.event_id
+            replacement_kind = _replacement_activity_kind(replacement)
+        reason = command.reason.strip()
         if (
             replacement_kind is not command.original_activity_kind
             or replacement.company_id != command.company_id
             or replacement.actor_id != command.actor_id
             or replacement.income_year != command.income_year
-            or replacement.action_id == command.original_action_id
+            or str(replacement_record_id) == str(command.original_record_id)
             or replacement.idempotency_key == command.idempotency_key
             or command.correction_date.value.year != command.income_year.value
             or not reason
             or len(reason) > 500
+            or is_settlement is not (
+                command.target_kind
+                is InvestmentCorrectionTargetKind.CASH_SETTLEMENT
+            )
         ):
             raise InvestmentsError.invalid_input()
-        normalized, evidence_digest = _normalize_evidence(
-            replace(command, reason=reason)
-        )
+        normalized = replace(command, reason=reason)
+        evidence_digest = _lifecycle_evidence_digest(normalized)
         prepared = await self._persistence.prepare_investment_correction(
             normalized,
             evidence_digest=evidence_digest,
+            replacement_evidence_digest=_lifecycle_evidence_digest(replacement),
         )
-        if str(replacement_action_id) == str(normalized.original_action_id):
-            raise InvestmentsError.invalid_input()
-        return replace(prepared, evidence_digest=evidence_digest)
+        if (
+            isinstance(prepared, PreparedCashSettlementCorrection)
+            and prepared.original_activity_kind
+            is not normalized.original_activity_kind
+        ):
+            raise InvestmentsError.unavailable()
+        return prepared
 
     async def complete_investment_correction(
         self,
         command: CorrectInvestmentCommand,
         *,
         prepared: PreparedInvestmentCorrection,
-        replacement,
+        replacement: RecordedInvestmentEconomicEvent | AccountingEntryReference,
     ) -> RecordedInvestmentCorrection:
-        normalized, _ = _normalize_evidence(replace(command, reason=command.reason.strip()))
-        if replacement.position_id != prepared.original_position_id:
+        normalized = replace(command, reason=command.reason.strip())
+        if isinstance(prepared, PreparedEconomicEventCorrection):
+            if (
+                not isinstance(replacement, RecordedInvestmentEconomicEvent)
+                or replacement.position_id != prepared.original_position_id
+            ):
+                raise InvestmentsError.unavailable()
+            replacement_entry_id = replacement.recognition_accounting_entry_id
+        elif isinstance(prepared, PreparedCashSettlementCorrection):
+            if (
+                not isinstance(replacement, AccountingEntryReference)
+                or prepared.original_activity_kind
+                is not command.original_activity_kind
+            ):
+                raise InvestmentsError.unavailable()
+            replacement_entry_id = replacement
+        else:
             raise InvestmentsError.unavailable()
         return await self._persistence.complete_investment_correction(
             normalized,
             prepared=prepared,
-            replacement=replacement,
+            replacement_accounting_entry_id=replacement_entry_id,
         )
 
     async def get_share_purchase_replay(self, command: RecordSharePurchaseCommand) -> RecordedSharePurchase | None:

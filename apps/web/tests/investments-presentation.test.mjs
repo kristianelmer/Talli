@@ -39,6 +39,7 @@ const correctionId = "40000000-0000-0000-0000-000000000044";
 const replacementActionId = "40000000-0000-0000-0000-000000000054";
 const reversalEntryId = "60000000-0000-0000-0000-000000000016";
 const replacementEntryId = "60000000-0000-0000-0000-000000000026";
+const documentId = "80000000-0000-0000-0000-000000000008";
 
 function position(overrides = {}) {
   return {
@@ -181,25 +182,28 @@ function lot(overrides = {}) {
 
 function correction(overrides = {}) {
   return {
-    bankTransactionId: null,
     companyId,
     createdAt: "2026-08-31T12:00:00Z",
     createdBy: actorId,
-    documentId: null,
-    documentStatus: "not_required",
+    documentFacts: [],
     evidenceDigest: "f".repeat(64),
     evidenceMode: "manual_fallback",
     evidenceReference: "correction-review",
     id: correctionId,
     incomeYear: 2026,
-    originalActionId: dividendActionId,
+    legacy: false,
+    legacyBankTransactionId: null,
+    legacyDocumentId: null,
+    legacyDocumentStatus: null,
+    originalRecordId: dividendActionId,
     originalActivityKind: "dividend_received",
     ownerAttested: true,
     reason: "Rettet beløp mot utbytteoppgaven.",
     replacementAccountingEntryId: replacementEntryId,
-    replacementActionId,
+    replacementRecordId: replacementActionId,
     replacementActivityKind: "dividend_received",
     reversalAccountingEntryId: reversalEntryId,
+    targetKind: "economic_event",
     ...overrides,
   };
 }
@@ -253,11 +257,12 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
     if (path.endsWith("/corrections") && request.method === "POST") {
       return Response.json({
         correctionId,
-        originalActionId: dividendActionId,
+        originalRecordId: dividendActionId,
         replacementAccountingEntryId: replacementEntryId,
-        replacementActionId,
+        replacementRecordId: replacementActionId,
         replayed: false,
         reversalAccountingEntryId: reversalEntryId,
+        targetKind: "economic_event",
       });
     }
     if (path.includes("/corrections")) {
@@ -360,31 +365,43 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       companyId,
       correctionDate: "2026-08-31",
       correctionId,
-      documentStatus: "not_required",
+      documentFacts: [{
+        capability: "DOCUMENTS",
+        recordId: documentId,
+        revision: 1,
+        factSha256: "c".repeat(64),
+      }],
+      bankFact: null,
       evidenceMode: "manual_fallback",
       evidenceReference: "correction-review",
       incomeYear: 2026,
-      originalActionId: dividendActionId,
+      originalRecordId: dividendActionId,
       originalActivityKind: "dividend_received",
       ownerAttested: true,
       reason: "Rettet beløp mot utbytteoppgaven.",
       replacement: {
-        actionId: replacementActionId,
+        replacementKind: "dividend_received",
         companyId,
         declaredDate: "2026-08-01",
-        documentStatus: "not_required",
-        evidenceMode: "manual_fallback",
+        documentFacts: [{
+          capability: "DOCUMENTS",
+          recordId: documentId,
+          revision: 2,
+          factSha256: "d".repeat(64),
+        }],
+        bankFact: null,
+        evidenceMode: "linked_sources",
         evidenceReference: "replacement-dividend-advice",
         grossAmount: { amount: "130.00", currency: "NOK" },
         groupExceptionClaimed: false,
         incomeYear: 2026,
         lawfulDividendConfirmed: true,
-        ownerAttested: true,
-        paidDate: "2026-08-15",
+        ownerAttested: false,
         payingCompanyName: "Portfolio AS",
         positionId,
-        taxTreatment: "fritaksmetoden",
+        eventId: replacementActionId,
       },
+      targetKind: "economic_event",
     }, "correction-idempotency", "correction-request");
     const positions = await loadInvestmentPositions("session-token", [companyId], "position-request");
     const activity = await loadInvestmentActivity("session-token", [companyId], "activity-request");
@@ -547,25 +564,28 @@ test("investments presentation maps canonical wire facts without owning policy",
     taxable_gain: 0,
   });
   assert.deepEqual(presentInvestmentCorrections([correction()]), [{
-    bank_transaction_id: null,
     company_id: companyId,
     created_at: "2026-08-31T12:00:00Z",
     created_by: actorId,
-    document_id: null,
-    document_status: "not_required",
+    document_facts: [],
     evidence_digest: "f".repeat(64),
     evidence_mode: "manual_fallback",
     evidence_reference: "correction-review",
     id: correctionId,
     income_year: 2026,
-    original_action_id: dividendActionId,
+    legacy: false,
+    legacy_bank_transaction_id: null,
+    legacy_document_id: null,
+    legacy_document_status: null,
+    original_record_id: dividendActionId,
     original_activity_kind: "dividend_received",
     owner_attested: true,
     reason: "Rettet beløp mot utbytteoppgaven.",
     replacement_accounting_entry_id: replacementEntryId,
-    replacement_action_id: replacementActionId,
+    replacement_record_id: replacementActionId,
     replacement_activity_kind: "dividend_received",
     reversal_accounting_entry_id: reversalEntryId,
+    target_kind: "economic_event",
   }]);
   assert.deepEqual(
     effectiveInvestmentActivity(

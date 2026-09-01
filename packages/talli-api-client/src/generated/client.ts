@@ -1039,31 +1039,45 @@ export type TaxSettlementKind = "payable" | "payment" | "refund";
 
 export type InvestmentActivityKind = "share_purchase" | "share_sale" | "dividend_received" | "fund_distribution_received";
 
+export type InvestmentCorrectionTargetKind = "economic_event" | "cash_settlement";
+
+export interface InvestmentFactReferenceWire {
+  capability: InvestmentSourceCapability;
+  factSha256: string;
+  recordId: string;
+  revision: number;
+}
+
+export type InvestmentSourceCapability = "BANKING" | "DOCUMENTS";
+
 export interface InvestmentCorrectionPageWire {
   items: InvestmentCorrectionWire[];
   page: InvestmentsPageWire;
 }
 
 export interface InvestmentCorrectionWire {
-  bankTransactionId: string | null;
   companyId: string;
   createdAt: string;
   createdBy: string;
-  documentId: string | null;
-  documentStatus: InvestmentDocumentStatus;
+  documentFacts: InvestmentFactReferenceWire[];
   evidenceDigest: string;
   evidenceMode: InvestmentEvidenceMode;
   evidenceReference: string;
   id: string;
   incomeYear: number;
-  originalActionId: string;
+  legacy: boolean;
+  legacyBankTransactionId: string | null;
+  legacyDocumentId: string | null;
+  legacyDocumentStatus: InvestmentDocumentStatus | null;
   originalActivityKind: InvestmentActivityKind;
+  originalRecordId: string;
   ownerAttested: boolean;
   reason: string;
   replacementAccountingEntryId: string;
-  replacementActionId: string;
   replacementActivityKind: InvestmentActivityKind;
+  replacementRecordId: string;
   reversalAccountingEntryId: string;
+  targetKind: InvestmentCorrectionTargetKind;
 }
 
 export interface InvestmentActivityPageWire {
@@ -1324,28 +1338,125 @@ export interface InvestmentsReceivedFundDistributionWire {
 
 export interface InvestmentsCorrectionResultWire {
   correctionId: string;
-  originalActionId: string;
+  originalRecordId: string;
   replacementAccountingEntryId: string;
-  replacementActionId: string;
+  replacementRecordId: string;
   replayed: boolean;
   reversalAccountingEntryId: string;
+  targetKind: InvestmentCorrectionTargetKind;
 }
 
 export interface InvestmentsCorrectionWire {
-  bankTransactionId?: string | null;
+  bankFact?: InvestmentFactReferenceWire | null;
   companyId: string;
   correctionDate: string;
   correctionId: string;
-  documentId?: string | null;
-  documentStatus: InvestmentDocumentStatus;
+  documentFacts?: InvestmentFactReferenceWire[];
   evidenceMode: InvestmentEvidenceMode;
   evidenceReference: string;
   incomeYear: number;
-  originalActionId: string;
   originalActivityKind: InvestmentActivityKind;
+  originalRecordId: string;
   ownerAttested: boolean;
   reason: string;
-  replacement: InvestmentsSharePurchaseWire | InvestmentsShareSaleWire | InvestmentsReceivedDividendWire | InvestmentsReceivedFundDistributionWire;
+  replacement: InvestmentsSharePurchaseRecognitionWire | InvestmentsShareSaleRecognitionWire | InvestmentsDividendRecognitionWire | InvestmentsFundDistributionRecognitionWire | InvestmentsCashSettlementWire;
+  targetKind: InvestmentCorrectionTargetKind;
+}
+
+export interface InvestmentsSharePurchaseRecognitionWire {
+  accountingClassification: InvestmentAccountingClassification;
+  acquisitionDate: string;
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  eventId: string;
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  fundEquityRatioBasisPoints?: number | null;
+  fundTaxStatementReference?: string | null;
+  incomeYear: number;
+  investmentKey: string;
+  investmentKind: InvestmentKind;
+  investmentName: string;
+  orgNumber?: string | null;
+  ownerAttested: boolean;
+  purchaseAmount: LedgerMoneyWire;
+  replacementKind: "share_purchase";
+  shareCount: string;
+  transactionCosts: LedgerMoneyWire;
+}
+
+export interface InvestmentsShareSaleRecognitionWire {
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  eventId: string;
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  fundTaxStatementReference?: string | null;
+  incomeYear: number;
+  ownerAttested: boolean;
+  positionId: string;
+  proceeds: LedgerMoneyWire;
+  replacementKind: "share_sale";
+  saleDate: string;
+  saleYearFundEquityRatioBasisPoints?: number | null;
+  soldShareCount: string;
+  transactionCosts: LedgerMoneyWire;
+}
+
+export interface InvestmentsDividendRecognitionWire {
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  declaredDate: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  eventId: string;
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  grossAmount: LedgerMoneyWire;
+  groupEvidenceReference?: string | null;
+  groupExceptionClaimed: boolean;
+  incomeYear: number;
+  lawfulDividendConfirmed: boolean;
+  ownerAttested: boolean;
+  payingCompanyName: string;
+  positionId: string;
+  replacementKind: "dividend_received";
+  yearEndOwnershipBasisPoints?: number | null;
+  yearEndVotingBasisPoints?: number | null;
+}
+
+export interface InvestmentsFundDistributionRecognitionWire {
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  entitlementDate: string;
+  eventId: string;
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  fundName: string;
+  fundTaxStatementReference: string;
+  grossAmount: LedgerMoneyWire;
+  incomeYear: number;
+  openingFundEquityRatioBasisPoints: number;
+  ownerAttested: boolean;
+  positionId: string;
+  replacementKind: "fund_distribution_received";
+}
+
+export interface InvestmentsCashSettlementWire {
+  amount: LedgerMoneyWire;
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  eventId: string;
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  incomeYear: number;
+  ownerAttested: boolean;
+  replacementKind: "cash_settlement";
+  settlementDate: string;
+  settlementId: string;
 }
 
 export interface ShareSaleAllocationPageWire {
@@ -2951,6 +3062,25 @@ function isInvestmentActivityKind(value: unknown): value is InvestmentActivityKi
   return value === "share_purchase" || value === "share_sale" || value === "dividend_received" || value === "fund_distribution_received";
 }
 
+function isInvestmentCorrectionTargetKind(value: unknown): value is InvestmentCorrectionTargetKind {
+  return value === "economic_event" || value === "cash_settlement";
+}
+
+function isInvestmentFactReferenceWire(value: unknown): value is InvestmentFactReferenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capability","factSha256","recordId","revision"]) &&
+    isInvestmentSourceCapability(value.capability) &&
+    (typeof value.factSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.factSha256)) &&
+    isUuid(value.recordId) &&
+    (typeof value.revision === "number" && Number.isInteger(value.revision) && value.revision >= 1)
+  );
+}
+
+function isInvestmentSourceCapability(value: unknown): value is InvestmentSourceCapability {
+  return value === "BANKING" || value === "DOCUMENTS";
+}
+
 function isInvestmentCorrectionPageWire(value: unknown): value is InvestmentCorrectionPageWire {
   return (
     isRecord(value) &&
@@ -2963,26 +3093,29 @@ function isInvestmentCorrectionPageWire(value: unknown): value is InvestmentCorr
 function isInvestmentCorrectionWire(value: unknown): value is InvestmentCorrectionWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["bankTransactionId","companyId","createdAt","createdBy","documentId","documentStatus","evidenceDigest","evidenceMode","evidenceReference","id","incomeYear","originalActionId","originalActivityKind","ownerAttested","reason","replacementAccountingEntryId","replacementActionId","replacementActivityKind","reversalAccountingEntryId"]) &&
-    (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","documentFacts","evidenceDigest","evidenceMode","evidenceReference","id","incomeYear","legacy","legacyBankTransactionId","legacyDocumentId","legacyDocumentStatus","originalActivityKind","originalRecordId","ownerAttested","reason","replacementAccountingEntryId","replacementActivityKind","replacementRecordId","reversalAccountingEntryId","targetKind"]) &&
     isUuid(value.companyId) &&
     isDateTime(value.createdAt) &&
     isUuid(value.createdBy) &&
-    (isUuid(value.documentId) || value.documentId === null) &&
-    isInvestmentDocumentStatus(value.documentStatus) &&
+    Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) &&
     (typeof value.evidenceDigest === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.evidenceDigest)) &&
     isInvestmentEvidenceMode(value.evidenceMode) &&
     typeof value.evidenceReference === "string" &&
     isUuid(value.id) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
-    isUuid(value.originalActionId) &&
+    typeof value.legacy === "boolean" &&
+    (isUuid(value.legacyBankTransactionId) || value.legacyBankTransactionId === null) &&
+    (isUuid(value.legacyDocumentId) || value.legacyDocumentId === null) &&
+    (isInvestmentDocumentStatus(value.legacyDocumentStatus) || value.legacyDocumentStatus === null) &&
     isInvestmentActivityKind(value.originalActivityKind) &&
+    isUuid(value.originalRecordId) &&
     typeof value.ownerAttested === "boolean" &&
     typeof value.reason === "string" &&
     isUuid(value.replacementAccountingEntryId) &&
-    isUuid(value.replacementActionId) &&
     isInvestmentActivityKind(value.replacementActivityKind) &&
-    isUuid(value.reversalAccountingEntryId)
+    isUuid(value.replacementRecordId) &&
+    isUuid(value.reversalAccountingEntryId) &&
+    isInvestmentCorrectionTargetKind(value.targetKind)
   );
 }
 
@@ -3317,34 +3450,151 @@ function isInvestmentsReceivedFundDistributionWire(value: unknown): value is Inv
 function isInvestmentsCorrectionResultWire(value: unknown): value is InvestmentsCorrectionResultWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["correctionId","originalActionId","replacementAccountingEntryId","replacementActionId","replayed","reversalAccountingEntryId"]) &&
+    hasOnlyProperties(value, ["correctionId","originalRecordId","replacementAccountingEntryId","replacementRecordId","replayed","reversalAccountingEntryId","targetKind"]) &&
     isUuid(value.correctionId) &&
-    isUuid(value.originalActionId) &&
+    isUuid(value.originalRecordId) &&
     isUuid(value.replacementAccountingEntryId) &&
-    isUuid(value.replacementActionId) &&
+    isUuid(value.replacementRecordId) &&
     typeof value.replayed === "boolean" &&
-    isUuid(value.reversalAccountingEntryId)
+    isUuid(value.reversalAccountingEntryId) &&
+    isInvestmentCorrectionTargetKind(value.targetKind)
   );
 }
 
 function isInvestmentsCorrectionWire(value: unknown): value is InvestmentsCorrectionWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["bankTransactionId","companyId","correctionDate","correctionId","documentId","documentStatus","evidenceMode","evidenceReference","incomeYear","originalActionId","originalActivityKind","ownerAttested","reason","replacement"]) &&
-    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
+    hasOnlyProperties(value, ["bankFact","companyId","correctionDate","correctionId","documentFacts","evidenceMode","evidenceReference","incomeYear","originalActivityKind","originalRecordId","ownerAttested","reason","replacement","targetKind"]) &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
     isUuid(value.companyId) &&
     typeof value.correctionDate === "string" &&
     isUuid(value.correctionId) &&
-    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
-    isInvestmentDocumentStatus(value.documentStatus) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
     isInvestmentEvidenceMode(value.evidenceMode) &&
-    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 255) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    isUuid(value.originalActionId) &&
     isInvestmentActivityKind(value.originalActivityKind) &&
+    isUuid(value.originalRecordId) &&
     typeof value.ownerAttested === "boolean" &&
     (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 500) &&
-    (isInvestmentsSharePurchaseWire(value.replacement) || isInvestmentsShareSaleWire(value.replacement) || isInvestmentsReceivedDividendWire(value.replacement) || isInvestmentsReceivedFundDistributionWire(value.replacement))
+    (isInvestmentsSharePurchaseRecognitionWire(value.replacement) || isInvestmentsShareSaleRecognitionWire(value.replacement) || isInvestmentsDividendRecognitionWire(value.replacement) || isInvestmentsFundDistributionRecognitionWire(value.replacement) || isInvestmentsCashSettlementWire(value.replacement)) &&
+    isInvestmentCorrectionTargetKind(value.targetKind)
+  );
+}
+
+function isInvestmentsSharePurchaseRecognitionWire(value: unknown): value is InvestmentsSharePurchaseRecognitionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingClassification","acquisitionDate","bankFact","companyId","documentFacts","eventId","evidenceMode","evidenceReference","fundEquityRatioBasisPoints","fundTaxStatementReference","incomeYear","investmentKey","investmentKind","investmentName","orgNumber","ownerAttested","purchaseAmount","replacementKind","shareCount","transactionCosts"]) &&
+    isInvestmentAccountingClassification(value.accountingClassification) &&
+    typeof value.acquisitionDate === "string" &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    isUuid(value.eventId) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    (value.fundEquityRatioBasisPoints === undefined || ((typeof value.fundEquityRatioBasisPoints === "number" && Number.isInteger(value.fundEquityRatioBasisPoints) && value.fundEquityRatioBasisPoints >= 0 && value.fundEquityRatioBasisPoints <= 10000) || value.fundEquityRatioBasisPoints === null)) &&
+    (value.fundTaxStatementReference === undefined || ((typeof value.fundTaxStatementReference === "string" && value.fundTaxStatementReference.length >= 1 && value.fundTaxStatementReference.length <= 255) || value.fundTaxStatementReference === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.investmentKey === "string" && value.investmentKey.length >= 1 && value.investmentKey.length <= 255) &&
+    isInvestmentKind(value.investmentKind) &&
+    (typeof value.investmentName === "string" && value.investmentName.length >= 1 && value.investmentName.length <= 255) &&
+    (value.orgNumber === undefined || ((typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) || value.orgNumber === null)) &&
+    typeof value.ownerAttested === "boolean" &&
+    isLedgerMoneyWire(value.purchaseAmount) &&
+    value.replacementKind === "share_purchase" &&
+    (typeof value.shareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.shareCount)) &&
+    isLedgerMoneyWire(value.transactionCosts)
+  );
+}
+
+function isInvestmentsShareSaleRecognitionWire(value: unknown): value is InvestmentsShareSaleRecognitionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankFact","companyId","documentFacts","eventId","evidenceMode","evidenceReference","fundTaxStatementReference","incomeYear","ownerAttested","positionId","proceeds","replacementKind","saleDate","saleYearFundEquityRatioBasisPoints","soldShareCount","transactionCosts"]) &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    isUuid(value.eventId) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    (value.fundTaxStatementReference === undefined || ((typeof value.fundTaxStatementReference === "string" && value.fundTaxStatementReference.length >= 1 && value.fundTaxStatementReference.length <= 255) || value.fundTaxStatementReference === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.ownerAttested === "boolean" &&
+    isUuid(value.positionId) &&
+    isLedgerMoneyWire(value.proceeds) &&
+    value.replacementKind === "share_sale" &&
+    typeof value.saleDate === "string" &&
+    (value.saleYearFundEquityRatioBasisPoints === undefined || ((typeof value.saleYearFundEquityRatioBasisPoints === "number" && Number.isInteger(value.saleYearFundEquityRatioBasisPoints) && value.saleYearFundEquityRatioBasisPoints >= 0 && value.saleYearFundEquityRatioBasisPoints <= 10000) || value.saleYearFundEquityRatioBasisPoints === null)) &&
+    (typeof value.soldShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.soldShareCount)) &&
+    isLedgerMoneyWire(value.transactionCosts)
+  );
+}
+
+function isInvestmentsDividendRecognitionWire(value: unknown): value is InvestmentsDividendRecognitionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankFact","companyId","declaredDate","documentFacts","eventId","evidenceMode","evidenceReference","grossAmount","groupEvidenceReference","groupExceptionClaimed","incomeYear","lawfulDividendConfirmed","ownerAttested","payingCompanyName","positionId","replacementKind","yearEndOwnershipBasisPoints","yearEndVotingBasisPoints"]) &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    typeof value.declaredDate === "string" &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    isUuid(value.eventId) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    isLedgerMoneyWire(value.grossAmount) &&
+    (value.groupEvidenceReference === undefined || ((typeof value.groupEvidenceReference === "string" && value.groupEvidenceReference.length >= 1 && value.groupEvidenceReference.length <= 255) || value.groupEvidenceReference === null)) &&
+    typeof value.groupExceptionClaimed === "boolean" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.lawfulDividendConfirmed === "boolean" &&
+    typeof value.ownerAttested === "boolean" &&
+    (typeof value.payingCompanyName === "string" && value.payingCompanyName.length >= 1 && value.payingCompanyName.length <= 255) &&
+    isUuid(value.positionId) &&
+    value.replacementKind === "dividend_received" &&
+    (value.yearEndOwnershipBasisPoints === undefined || ((typeof value.yearEndOwnershipBasisPoints === "number" && Number.isInteger(value.yearEndOwnershipBasisPoints) && value.yearEndOwnershipBasisPoints >= 0 && value.yearEndOwnershipBasisPoints <= 10000) || value.yearEndOwnershipBasisPoints === null)) &&
+    (value.yearEndVotingBasisPoints === undefined || ((typeof value.yearEndVotingBasisPoints === "number" && Number.isInteger(value.yearEndVotingBasisPoints) && value.yearEndVotingBasisPoints >= 0 && value.yearEndVotingBasisPoints <= 10000) || value.yearEndVotingBasisPoints === null))
+  );
+}
+
+function isInvestmentsFundDistributionRecognitionWire(value: unknown): value is InvestmentsFundDistributionRecognitionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankFact","companyId","documentFacts","entitlementDate","eventId","evidenceMode","evidenceReference","fundName","fundTaxStatementReference","grossAmount","incomeYear","openingFundEquityRatioBasisPoints","ownerAttested","positionId","replacementKind"]) &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    typeof value.entitlementDate === "string" &&
+    isUuid(value.eventId) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    (typeof value.fundName === "string" && value.fundName.length >= 1 && value.fundName.length <= 255) &&
+    (typeof value.fundTaxStatementReference === "string" && value.fundTaxStatementReference.length >= 1 && value.fundTaxStatementReference.length <= 255) &&
+    isLedgerMoneyWire(value.grossAmount) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.openingFundEquityRatioBasisPoints === "number" && Number.isInteger(value.openingFundEquityRatioBasisPoints) && value.openingFundEquityRatioBasisPoints >= 0 && value.openingFundEquityRatioBasisPoints <= 10000) &&
+    typeof value.ownerAttested === "boolean" &&
+    isUuid(value.positionId) &&
+    value.replacementKind === "fund_distribution_received"
+  );
+}
+
+function isInvestmentsCashSettlementWire(value: unknown): value is InvestmentsCashSettlementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","bankFact","companyId","documentFacts","eventId","evidenceMode","evidenceReference","incomeYear","ownerAttested","replacementKind","settlementDate","settlementId"]) &&
+    isLedgerMoneyWire(value.amount) &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    isUuid(value.eventId) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.ownerAttested === "boolean" &&
+    value.replacementKind === "cash_settlement" &&
+    typeof value.settlementDate === "string" &&
+    isUuid(value.settlementId)
   );
 }
 
@@ -4484,10 +4734,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         isInvestmentsCorrectionResultWire,
       );
+      const replacementRecordId = body.replacement.replacementKind === "cash_settlement"
+        ? body.replacement.settlementId
+        : body.replacement.eventId;
       if (
         result.correctionId !== body.correctionId ||
-        result.originalActionId !== body.originalActionId ||
-        result.replacementActionId !== body.replacement.actionId
+        result.targetKind !== body.targetKind ||
+        result.originalRecordId !== body.originalRecordId ||
+        result.replacementRecordId !== replacementRecordId
       ) {
         throw new TalliApiError(502, undefined);
       }

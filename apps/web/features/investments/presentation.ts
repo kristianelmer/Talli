@@ -93,16 +93,19 @@ export type InvestmentCorrectionPresentation = {
   id: string;
   company_id: string;
   income_year: number;
-  original_action_id: string;
+  target_kind: InvestmentCorrectionWire["targetKind"];
+  original_record_id: string;
   original_activity_kind: InvestmentActivityWire["activityKind"];
   reversal_accounting_entry_id: string;
-  replacement_action_id: string;
+  replacement_record_id: string;
   replacement_activity_kind: InvestmentActivityWire["activityKind"];
   replacement_accounting_entry_id: string;
   reason: string;
-  bank_transaction_id: string | null;
-  document_id: string | null;
-  document_status: InvestmentCorrectionWire["documentStatus"];
+  document_facts: InvestmentCorrectionWire["documentFacts"];
+  legacy_bank_transaction_id: string | null;
+  legacy_document_id: string | null;
+  legacy_document_status: InvestmentCorrectionWire["legacyDocumentStatus"];
+  legacy: boolean;
   evidence_mode: InvestmentCorrectionWire["evidenceMode"];
   evidence_reference: string;
   evidence_digest: string;
@@ -118,16 +121,19 @@ export function presentInvestmentCorrections(
     id: correction.id,
     company_id: correction.companyId,
     income_year: correction.incomeYear,
-    original_action_id: correction.originalActionId,
+    target_kind: correction.targetKind,
+    original_record_id: correction.originalRecordId,
     original_activity_kind: correction.originalActivityKind,
     reversal_accounting_entry_id: correction.reversalAccountingEntryId,
-    replacement_action_id: correction.replacementActionId,
+    replacement_record_id: correction.replacementRecordId,
     replacement_activity_kind: correction.replacementActivityKind,
     replacement_accounting_entry_id: correction.replacementAccountingEntryId,
     reason: correction.reason,
-    bank_transaction_id: correction.bankTransactionId,
-    document_id: correction.documentId,
-    document_status: correction.documentStatus,
+    document_facts: correction.documentFacts,
+    legacy_bank_transaction_id: correction.legacyBankTransactionId,
+    legacy_document_id: correction.legacyDocumentId,
+    legacy_document_status: correction.legacyDocumentStatus,
+    legacy: correction.legacy,
     evidence_mode: correction.evidenceMode,
     evidence_reference: correction.evidenceReference,
     evidence_digest: correction.evidenceDigest,
@@ -142,7 +148,9 @@ export function effectiveInvestmentActivity(
   corrections: readonly InvestmentCorrectionPresentation[],
 ): InvestmentActivityPresentation[] {
   const correctedOriginals = new Set(
-    corrections.map((correction) => correction.original_action_id),
+    corrections
+      .filter((correction) => correction.target_kind === "economic_event")
+      .map((correction) => correction.original_record_id),
   );
   return activity.filter((item) => !correctedOriginals.has(item.id));
 }

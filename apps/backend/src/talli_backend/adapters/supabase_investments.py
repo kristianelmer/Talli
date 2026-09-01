@@ -44,10 +44,12 @@ from talli_backend.modules.investments.public import (
     InvestmentActivityView,
     InvestmentCursor,
     InvestmentCorrectionId,
+    InvestmentCorrectionTargetKind,
     InvestmentCorrectionPage,
     InvestmentCorrectionView,
     InvestmentDocumentStatus,
     InvestmentEconomicEventId,
+    InvestmentFactReference,
     InvestmentEvidenceMode,
     InvestmentKind,
     InvestmentLotHistoryStatus,
@@ -58,6 +60,7 @@ from talli_backend.modules.investments.public import (
     InvestmentSettlementBalanceKind,
     InvestmentSettlementId,
     InvestmentSourceReference,
+    InvestmentSourceCapability,
     InvestmentTaxTreatment,
     InvestmentUnits,
     InvestmentsError,
@@ -68,6 +71,8 @@ from talli_backend.modules.investments.public import (
     PreparedReceivedFundDistribution,
     PreparedReceivedFundDistributionFacts,
     PreparedInvestmentCorrection,
+    PreparedEconomicEventCorrection,
+    PreparedCashSettlementCorrection,
     PreparedInvestmentCashSettlement,
     PreparedSharePurchase,
     PreparedSharePurchaseRecognition,
@@ -286,40 +291,56 @@ def _lifecycle_request_payload(
     }
 def _correction_request_payload(command: CorrectInvestmentCommand) -> dict[str, object]:
     replacement = command.replacement
+    replacement_payload = {
+        **_lifecycle_request_payload(replacement),
+        "evidenceDigest": replacement.evidence.digest(),
+    }
+    if isinstance(replacement, SettleInvestmentCashCommand):
+        replacement_record_id = replacement.settlement_id
+        replacement_kind = command.original_activity_kind
+    else:
+        replacement_record_id = replacement.event_id
+        replacement_kind = _replacement_activity_kind(replacement)
     return {
         "companyId": str(command.company_id),
         "incomeYear": int(command.income_year),
         "correctionId": str(command.correction_id),
         "idempotencyKey": str(command.idempotency_key),
         "correlationId": str(command.correlation_id),
-        "originalActionId": str(command.original_action_id),
+        "targetKind": command.target_kind.value,
+        "originalRecordId": str(command.original_record_id),
         "originalActivityKind": command.original_activity_kind.value,
-        "replacementActionId": str(replacement.action_id),
-        "replacementActivityKind": _replacement_activity_kind(replacement).value,
+        "replacementRecordId": str(replacement_record_id),
+        "replacementActivityKind": replacement_kind.value,
         "correctionDate": command.correction_date.value.isoformat(),
         "reason": command.reason,
-        "bankTransactionId": (
-            str(command.bank_transaction_id) if command.bank_transaction_id else None
-        ),
-        "documentId": str(command.document_id) if command.document_id else None,
-        "documentStatus": command.document_status.value,
-        "evidenceMode": command.evidence_mode.value,
-        "evidenceReference": command.evidence_reference,
-        "ownerAttested": command.owner_attested,
-        "replacement": _request_payload(replacement),
+        "evidenceMode": command.evidence.mode.value,
+        "evidenceReference": command.evidence.reference,
+        "ownerAttested": command.evidence.owner_attested,
+        "documentFacts": [
+            _fact_payload(fact) for fact in command.evidence.document_facts
+        ],
+        "bankFact": None,
+        "replacement": replacement_payload,
     }
 
 
 def _replacement_activity_kind(command) -> InvestmentActivityKind:
-    if isinstance(command, RecordSharePurchaseCommand):
+    if isinstance(command, RecognizeSharePurchaseCommand):
         return InvestmentActivityKind.SHARE_PURCHASE
-    if isinstance(command, RecordShareSaleCommand):
+    if isinstance(command, RecognizeShareSaleCommand):
         return InvestmentActivityKind.SHARE_SALE
-    if isinstance(command, RecordReceivedDividendCommand):
+    if isinstance(command, RecognizeReceivedDividendCommand):
         return InvestmentActivityKind.DIVIDEND_RECEIVED
-    if isinstance(command, RecordReceivedFundDistributionCommand):
+    if isinstance(command, RecognizeReceivedFundDistributionCommand):
         return InvestmentActivityKind.FUND_DISTRIBUTION_RECEIVED
     raise InvestmentsError.invalid_input()
+
+
+def _replacement_record_id(command):
+    if isinstance(command, SettleInvestmentCashCommand):
+        return command.settlement_id
+    return command.event_id
 
 
 def _map_investments_database_error(message: str) -> InvestmentsError | Exception:
@@ -493,17 +514,53 @@ class SupabaseInvestmentsSession:
         )
         rows = await self._query_rows(
             """
-            select correction_id as id, company_id, income_year,
-              original_action_id, original_activity_kind,
-              reversal_accounting_entry_id, replacement_action_id,
-              replacement_activity_kind, replacement_accounting_entry_id,
-              reason, bank_transaction_id, document_id, document_status,
-              evidence_mode, evidence_reference, evidence_digest,
-              owner_attested, created_by, created_at
-            from investments.corrections
-            where company_id = any(%s::uuid[])
-              and (%s::uuid is null or correction_id > %s::uuid)
-            order by correction_id
+            select * from (
+              select correction.correction_id as id, correction.company_id,
+                correction.income_year, correction.target_kind,
+                correction.original_record_id,
+                correction.original_activity_kind,
+                correction.reversal_accounting_entry_id,
+                correction.replacement_record_id,
+                correction.original_activity_kind as replacement_activity_kind,
+                correction.replacement_accounting_entry_id,
+                correction.reason, correction.evidence_mode,
+                correction.evidence_reference, correction.evidence_digest,
+                correction.owner_attested, correction.created_by,
+                correction.created_at,
+                coalesce((
+                  select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+                    'capability', source.source_capability,
+                    'recordId', source.source_record_id,
+                    'revision', source.source_revision,
+                    'factSha256', source.fact_sha256
+                  ) order by source.ordinal)
+                  from investments.lifecycle_correction_sources source
+                  where source.correction_id = correction.correction_id
+                    and source.company_id = correction.company_id
+                ), '[]'::jsonb) as document_facts,
+                null::uuid as legacy_bank_transaction_id,
+                null::uuid as legacy_document_id,
+                null::text as legacy_document_status,
+                false as legacy
+              from investments.lifecycle_corrections correction
+              union all
+              select legacy.correction_id, legacy.company_id,
+                legacy.income_year, 'economic_event'::text,
+                legacy.original_action_id, legacy.original_activity_kind,
+                legacy.reversal_accounting_entry_id,
+                legacy.replacement_action_id,
+                legacy.replacement_activity_kind,
+                legacy.replacement_accounting_entry_id,
+                legacy.reason, legacy.evidence_mode,
+                legacy.evidence_reference, legacy.evidence_digest,
+                legacy.owner_attested, legacy.created_by, legacy.created_at,
+                '[]'::jsonb, legacy.bank_transaction_id,
+                legacy.document_id, legacy.document_status, true
+              from investments.corrections legacy
+            ) correction
+            where correction.company_id = any(%s::uuid[])
+              and (%s::uuid is null or correction.id > %s::uuid)
+            order by correction.id
             limit %s
             """,
             (
@@ -1436,7 +1493,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         self, command: CorrectInvestmentCommand
     ) -> RecordedInvestmentCorrection | None:
         result = await self._investment_result(
-            "select investments.get_correction_replay_v1(%s::jsonb, %s::text) as result",
+            "select investments.get_lifecycle_correction_replay_v2(%s::jsonb, %s::text) as result",
             command,
         )
         return _recorded_correction(result) if result is not None else None
@@ -1446,22 +1503,53 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         command: CorrectInvestmentCommand,
         *,
         evidence_digest: str,
+        replacement_evidence_digest: str,
     ) -> PreparedInvestmentCorrection:
+        if replacement_evidence_digest != command.replacement.evidence.digest():
+            raise InvestmentsError.unavailable()
+        prepare_function = (
+            "prepare_economic_event_correction_v2"
+            if command.target_kind
+            is InvestmentCorrectionTargetKind.ECONOMIC_EVENT
+            else "prepare_cash_settlement_correction_v2"
+        )
         result = await self._investment_result(
-            "select investments.prepare_correction_v1(%s::jsonb, %s::text) as result",
+            f"select investments.{prepare_function}(%s::jsonb, %s::text) as result",
             command,
             request_extra={"evidenceDigest": evidence_digest},
         )
         if result is None:
             raise InvestmentsError.unavailable()
-        return PreparedInvestmentCorrection(
-            original_accounting_entry_id=AccountingEntryReference(
-                str(result["originalAccountingEntryId"])
+        original_entry = AccountingEntryReference(
+            str(result["originalAccountingEntryId"])
+        )
+        if command.target_kind is InvestmentCorrectionTargetKind.ECONOMIC_EVENT:
+            return PreparedEconomicEventCorrection(
+                original_accounting_entry_id=original_entry,
+                original_position_id=InvestmentPositionId(
+                    str(result["originalPositionId"])
+                ),
+                evidence_digest=evidence_digest,
+            )
+        return PreparedCashSettlementCorrection(
+            original_accounting_entry_id=original_entry,
+            original_settlement_id=InvestmentSettlementId(
+                str(result["originalSettlementId"])
             ),
-            original_position_id=InvestmentPositionId(
-                str(result["originalPositionId"])
+            event_id=InvestmentEconomicEventId(str(result["eventId"])),
+            recognition_accounting_entry_id=AccountingEntryReference(
+                str(result["recognitionAccountingEntryId"])
             ),
+            settlement_balance_kind=InvestmentSettlementBalanceKind(
+                str(result["settlementBalanceKind"])
+            ),
+            amount=_money(result["amount"]),
+            event_fact_sha256=str(result["eventFactSha256"]),
+            replacement_evidence_digest=str(result["evidenceDigest"]),
             evidence_digest=evidence_digest,
+            original_activity_kind=InvestmentActivityKind(
+                str(result["originalActivityKind"])
+            ),
         )
 
     async def complete_investment_correction(
@@ -1469,8 +1557,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         command: CorrectInvestmentCommand,
         *,
         prepared: PreparedInvestmentCorrection,
-        replacement: RecordedSharePurchase | RecordedShareSale
-        | RecordedReceivedDividend | RecordedReceivedFundDistribution,
+        replacement_accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentCorrection:
         rows = await self._database_rows(
             """
@@ -1483,9 +1570,9 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
                 str(command.company_id),
                 int(command.income_year),
                 str(prepared.original_accounting_entry_id),
-                str(replacement.accounting_entry_id),
-                str(command.original_action_id),
-                str(replacement.action_id),
+                str(replacement_accounting_entry_id),
+                str(command.original_record_id),
+                str(_replacement_record_id(command.replacement)),
                 command.reason,
                 str(command.correlation_id),
                 command.correction_date.value,
@@ -1497,14 +1584,14 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         reversal_entry_id = str(rows[0]["reversal_entry_id"])
         result = await self._investment_result(
             """
-            select investments.complete_correction_v1(
+            select investments.complete_lifecycle_correction_v2(
               %s::jsonb, %s::uuid, %s::uuid, %s::uuid, %s::text
             ) as result
             """,
             command,
             (
                 str(prepared.original_accounting_entry_id),
-                str(replacement.accounting_entry_id),
+                str(replacement_accounting_entry_id),
                 reversal_entry_id,
             ),
             request_extra={"evidenceDigest": prepared.evidence_digest},
@@ -1910,12 +1997,17 @@ def _recorded_sale(value: Mapping[str, object]) -> RecordedShareSale:
 def _recorded_correction(
     value: Mapping[str, object],
 ) -> RecordedInvestmentCorrection:
+    target_kind = InvestmentCorrectionTargetKind(str(value["targetKind"]))
+    record_type = (
+        InvestmentEconomicEventId
+        if target_kind is InvestmentCorrectionTargetKind.ECONOMIC_EVENT
+        else InvestmentSettlementId
+    )
     return RecordedInvestmentCorrection(
         correction_id=InvestmentCorrectionId(str(value["correctionId"])),
-        original_action_id=InvestmentActionId(str(value["originalActionId"])),
-        replacement_action_id=InvestmentActionId(
-            str(value["replacementActionId"])
-        ),
+        target_kind=target_kind,
+        original_record_id=record_type(str(value["originalRecordId"])),
+        replacement_record_id=record_type(str(value["replacementRecordId"])),
         reversal_accounting_entry_id=AccountingEntryReference(
             str(value["reversalAccountingEntryId"])
         ),
@@ -1927,19 +2019,33 @@ def _recorded_correction(
 
 
 def _correction(value: Mapping[str, object]) -> InvestmentCorrectionView:
+    target_kind = InvestmentCorrectionTargetKind(str(value["target_kind"]))
+    record_type = (
+        InvestmentEconomicEventId
+        if target_kind is InvestmentCorrectionTargetKind.ECONOMIC_EVENT
+        else InvestmentSettlementId
+    )
+    raw_facts = value["document_facts"]
+    if isinstance(raw_facts, str):
+        raw_facts = json.loads(raw_facts)
+    if not isinstance(raw_facts, list) or any(
+        not isinstance(fact, Mapping) for fact in raw_facts
+    ):
+        raise InvestmentsError.unavailable()
     return InvestmentCorrectionView(
         correction_id=InvestmentCorrectionId(str(value["id"])),
         company_id=CompanyId(str(value["company_id"])),
         income_year=IncomeYear(int(value["income_year"])),
-        original_action_id=InvestmentActionId(str(value["original_action_id"])),
+        target_kind=target_kind,
+        original_record_id=record_type(str(value["original_record_id"])),
         original_activity_kind=InvestmentActivityKind(
             str(value["original_activity_kind"])
         ),
         reversal_accounting_entry_id=AccountingEntryReference(
             str(value["reversal_accounting_entry_id"])
         ),
-        replacement_action_id=InvestmentActionId(
-            str(value["replacement_action_id"])
+        replacement_record_id=record_type(
+            str(value["replacement_record_id"])
         ),
         replacement_activity_kind=InvestmentActivityKind(
             str(value["replacement_activity_kind"])
@@ -1948,15 +2054,28 @@ def _correction(value: Mapping[str, object]) -> InvestmentCorrectionView:
             str(value["replacement_accounting_entry_id"])
         ),
         reason=str(value["reason"]),
-        bank_transaction_id=(
-            InvestmentSourceReference(str(value["bank_transaction_id"]))
-            if value["bank_transaction_id"] else None
+        document_facts=tuple(
+            InvestmentFactReference(
+                capability=InvestmentSourceCapability(str(fact["capability"])),
+                record_id=InvestmentSourceReference(str(fact["recordId"])),
+                revision=int(fact["revision"]),
+                fact_sha256=str(fact["factSha256"]),
+            )
+            for fact in raw_facts
         ),
-        document_id=(
-            InvestmentSourceReference(str(value["document_id"]))
-            if value["document_id"] else None
+        legacy_bank_transaction_id=(
+            InvestmentSourceReference(str(value["legacy_bank_transaction_id"]))
+            if value["legacy_bank_transaction_id"] else None
         ),
-        document_status=InvestmentDocumentStatus(str(value["document_status"])),
+        legacy_document_id=(
+            InvestmentSourceReference(str(value["legacy_document_id"]))
+            if value["legacy_document_id"] else None
+        ),
+        legacy_document_status=(
+            InvestmentDocumentStatus(str(value["legacy_document_status"]))
+            if value["legacy_document_status"] else None
+        ),
+        legacy=bool(value["legacy"]),
         evidence_mode=InvestmentEvidenceMode(str(value["evidence_mode"])),
         evidence_reference=str(value["evidence_reference"]),
         evidence_digest=str(value["evidence_digest"]),

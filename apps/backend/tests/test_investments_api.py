@@ -18,6 +18,7 @@ from talli_backend.modules.investments.public import (
     InvestmentActivityPage,
     InvestmentActivityView,
     InvestmentCorrectionId,
+    InvestmentCorrectionTargetKind,
     InvestmentCorrectionPage,
     InvestmentCorrectionView,
     InvestmentDocumentStatus,
@@ -31,10 +32,13 @@ from talli_backend.modules.investments.public import (
     InvestmentUnits,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
-    PreparedInvestmentCorrection,
+    PreparedEconomicEventCorrection,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
+    RecordedInvestmentEconomicEvent,
+    InvestmentEconomicEventId,
+    InvestmentSettlementBalanceKind,
     RecordedSharePurchase,
     PreparedSharePurchase,
     PreparedShareSaleFacts,
@@ -69,9 +73,12 @@ class InvestmentsSessionStub:
     async def get_investment_correction_replay(self, command):
         return None
 
-    async def prepare_investment_correction(self, command, *, evidence_digest):
+    async def prepare_investment_correction(
+        self, command, *, evidence_digest, replacement_evidence_digest
+    ):
         self.commands.append(command)
-        return PreparedInvestmentCorrection(
+        assert replacement_evidence_digest == command.replacement.evidence.digest()
+        return PreparedEconomicEventCorrection(
             original_accounting_entry_id=AccountingEntryReference(
                 "70000000-0000-0000-0000-000000000017"
             ),
@@ -80,16 +87,44 @@ class InvestmentsSessionStub:
         )
 
     async def complete_investment_correction(
-        self, command, *, prepared, replacement
+        self, command, *, prepared, replacement_accounting_entry_id
     ):
         return RecordedInvestmentCorrection(
             correction_id=command.correction_id,
-            original_action_id=command.original_action_id,
-            replacement_action_id=replacement.action_id,
+            target_kind=command.target_kind,
+            original_record_id=command.original_record_id,
+            replacement_record_id=command.replacement.event_id,
             reversal_accounting_entry_id=AccountingEntryReference(
                 "70000000-0000-0000-0000-000000000027"
             ),
-            replacement_accounting_entry_id=replacement.accounting_entry_id,
+            replacement_accounting_entry_id=replacement_accounting_entry_id,
+            replayed=False,
+        )
+
+    async def get_received_dividend_recognition_replay(self, command):
+        return None
+
+    async def prepare_received_dividend_recognition(
+        self, command, *, evidence_digest
+    ):
+        self.commands.append(command)
+        return PreparedReceivedDividendFacts(
+            position_id=command.position_id,
+            investment_name="Example AS",
+            investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
+        )
+
+    async def complete_received_dividend_recognition(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        return RecordedInvestmentEconomicEvent(
+            event_id=command.event_id,
+            position_id=command.position_id,
+            recognition_accounting_entry_id=accounting_entry_id,
+            expected_settlement_amount=command.gross_amount,
+            settlement_balance_kind=(
+                InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE
+            ),
             replayed=False,
         )
 
@@ -122,6 +157,9 @@ class InvestmentsSessionStub:
             posted_at=Timestamp(datetime(2026, 8, 31, tzinfo=UTC)),
             replayed=False,
         )
+
+    async def record_received_dividend_decision(self, command, **facts):
+        return await self.post_entry(command, **facts)
 
     async def complete_share_purchase(
         self, command, *, prepared, accounting_entry_id
@@ -252,12 +290,15 @@ class InvestmentsSessionStub:
                     "10000000-0000-0000-0000-000000000001"
                 ),
                 income_year=IncomeYear(2026),
-                original_action_id=supported_purchase().action_id,
+                target_kind=InvestmentCorrectionTargetKind.ECONOMIC_EVENT,
+                original_record_id=InvestmentEconomicEventId(
+                    str(supported_purchase().action_id)
+                ),
                 original_activity_kind=InvestmentActivityKind.SHARE_PURCHASE,
                 reversal_accounting_entry_id=AccountingEntryReference(
                     "70000000-0000-0000-0000-000000000027"
                 ),
-                replacement_action_id=InvestmentActionId(
+                replacement_record_id=InvestmentEconomicEventId(
                     "40000000-0000-0000-0000-000000000044"
                 ),
                 replacement_activity_kind=InvestmentActivityKind.SHARE_PURCHASE,
@@ -265,9 +306,13 @@ class InvestmentsSessionStub:
                     "70000000-0000-0000-0000-000000000037"
                 ),
                 reason="Correct purchase amount",
-                bank_transaction_id=None,
-                document_id=None,
-                document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING,
+                document_facts=(),
+                legacy_bank_transaction_id=None,
+                legacy_document_id=None,
+                legacy_document_status=(
+                    InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING
+                ),
+                legacy=True,
                 evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
                 evidence_reference="correction-owner-evidence",
                 evidence_digest="c" * 64,
@@ -610,37 +655,45 @@ def test_supported_correction_uses_linked_reversal_replacement_http_contract() -
             "companyId": "10000000-0000-0000-0000-000000000001",
             "incomeYear": 2026,
             "correctionId": "40000000-0000-0000-0000-000000000042",
-            "originalActionId": "40000000-0000-0000-0000-000000000024",
+            "targetKind": "economic_event",
+            "originalRecordId": "40000000-0000-0000-0000-000000000024",
             "originalActivityKind": "dividend_received",
             "correctionDate": "2026-08-31",
             "reason": "Correct gross dividend amount",
             "evidenceMode": "manual_fallback",
             "evidenceReference": "correction-owner-evidence",
             "ownerAttested": True,
-            "bankTransactionId": "70000000-0000-0000-0000-000000000007",
-            "documentId": "80000000-0000-0000-0000-000000000008",
-            "documentStatus": "attached",
+            "documentFacts": [{
+                "capability": "DOCUMENTS",
+                "recordId": "80000000-0000-0000-0000-000000000018",
+                "revision": 1,
+                "factSha256": "c" * 64,
+            }],
+            "bankFact": None,
             "replacement": {
+                "replacementKind": "dividend_received",
                 "companyId": "10000000-0000-0000-0000-000000000001",
                 "incomeYear": 2026,
-                "actionId": "40000000-0000-0000-0000-000000000044",
+                "eventId": "40000000-0000-0000-0000-000000000044",
                 "positionId": "50000000-0000-0000-0000-000000000025",
                 "payingCompanyName": "Example AS",
                 "declaredDate": "2026-04-01",
-                "paidDate": "2026-04-15",
                 "grossAmount": {"amount": "130.00", "currency": "NOK"},
-                "taxTreatment": "fritaksmetoden",
                 "lawfulDividendConfirmed": True,
                 "groupExceptionClaimed": False,
                 "yearEndOwnershipBasisPoints": None,
                 "yearEndVotingBasisPoints": None,
                 "groupEvidenceReference": None,
-                "evidenceMode": "manual_fallback",
+                "evidenceMode": "linked_sources",
                 "evidenceReference": "corrected-dividend-advice",
-                "ownerAttested": True,
-                "bankTransactionId": "70000000-0000-0000-0000-000000000007",
-                "documentId": "80000000-0000-0000-0000-000000000008",
-                "documentStatus": "attached",
+                "ownerAttested": False,
+                "documentFacts": [{
+                    "capability": "DOCUMENTS",
+                    "recordId": "80000000-0000-0000-0000-000000000008",
+                    "revision": 2,
+                    "factSha256": "d" * 64,
+                }],
+                "bankFact": None,
             },
         },
     )
@@ -648,8 +701,9 @@ def test_supported_correction_uses_linked_reversal_replacement_http_contract() -
     assert response.status_code == 201, response.text
     assert response.json() == {
         "correctionId": "40000000-0000-0000-0000-000000000042",
-        "originalActionId": "40000000-0000-0000-0000-000000000024",
-        "replacementActionId": "40000000-0000-0000-0000-000000000044",
+        "targetKind": "economic_event",
+        "originalRecordId": "40000000-0000-0000-0000-000000000024",
+        "replacementRecordId": "40000000-0000-0000-0000-000000000044",
         "reversalAccountingEntryId": "70000000-0000-0000-0000-000000000027",
         "replacementAccountingEntryId": "70000000-0000-0000-0000-000000000007",
         "replayed": False,

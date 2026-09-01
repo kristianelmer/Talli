@@ -455,6 +455,9 @@ const ledgerSchemas = Object.fromEntries([
 ].map((name) => [name, contract.components.schemas[name]]));
 const investmentsSchemas = Object.fromEntries([
   "InvestmentActivityKind",
+  "InvestmentCorrectionTargetKind",
+  "InvestmentFactReferenceWire",
+  "InvestmentSourceCapability",
   "InvestmentCorrectionPageWire",
   "InvestmentCorrectionWire",
   "InvestmentActivityPageWire",
@@ -480,6 +483,11 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsReceivedFundDistributionWire",
   "InvestmentsCorrectionResultWire",
   "InvestmentsCorrectionWire",
+  "InvestmentsSharePurchaseRecognitionWire",
+  "InvestmentsShareSaleRecognitionWire",
+  "InvestmentsDividendRecognitionWire",
+  "InvestmentsFundDistributionRecognitionWire",
+  "InvestmentsCashSettlementWire",
   "ShareSaleAllocationPageWire",
   "ShareSaleAllocationWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -1391,10 +1399,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         isInvestmentsCorrectionResultWire,
       );
+      const replacementRecordId = body.replacement.replacementKind === "cash_settlement"
+        ? body.replacement.settlementId
+        : body.replacement.eventId;
       if (
         result.correctionId !== body.correctionId ||
-        result.originalActionId !== body.originalActionId ||
-        result.replacementActionId !== body.replacement.actionId
+        result.targetKind !== body.targetKind ||
+        result.originalRecordId !== body.originalRecordId ||
+        result.replacementRecordId !== replacementRecordId
       ) {
         throw new TalliApiError(502, undefined);
       }
