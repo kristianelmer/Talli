@@ -1,0 +1,2814 @@
+customer-ready-release-gate revision=8da241f66d987ced3812c4a1d76b69d00e075a34
+startedAt=2026-09-01T22:46:43.205Z
+
+[schema-setup] command=git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git
+Cloning into '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-customer-ready-gate-lMs7zM/skattemeldingen'...
+warning: refs/tags/v1.62.47 980e1eab4d0de1e6582adc4fde9be029d55c4694 is not a commit!
+Note: switching to '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+[schema-setup] exit=0
+[schema-setup] durationMs=23273
+
+[credential-scan] command=npm run test:credential-scan
+
+> talli-repository@0.1.0 test:credential-scan
+> node --test tests/committed_credentials.test.mjs && node scripts/check-committed-credentials.mjs
+
+✔ the credential scanner scans its own clean repository without matching itself (317.208125ms)
+✔ the credential scanner rejects a tracked source credential (235.037958ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 652.377584
+[credential-scan] exit=0
+[credential-scan] durationMs=1201
+
+[typecheck] command=npm run typecheck
+
+> talli-repository@0.1.0 typecheck
+> npm --prefix apps/web run typecheck
+
+
+> talli-web@0.1.0 typecheck
+> tsc --noEmit
+[typecheck] exit=0
+[typecheck] durationMs=5869
+
+[architecture] command=npm run check:architecture
+
+> talli-repository@0.1.0 check:architecture
+> node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json
+
+{
+  "edges": [
+    {
+      "from": "backend-system:banking-reconciliation",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:company-access-administration",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-context",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-year-eligibility-and-admission",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:ledger-posting-and-period-control",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:marketing-funnel-measurement",
+      "imports": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:marketing_measurement"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:passive-validation-observation",
+      "imports": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:validation_observation"
+    },
+    {
+      "from": "backend-system:system-boundary-tracer",
+      "imports": [
+        "talli_backend.modules.system_boundary.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:system_boundary"
+    }
+  ],
+  "generatedBy": "scripts/check-architecture.mjs",
+  "modules": [
+    "backend-system:marketing_measurement",
+    "backend-system:system_boundary",
+    "backend-system:validation_observation",
+    "backend:banking",
+    "backend:company_access",
+    "backend:investments",
+    "backend:ledger",
+    "backend:shareholder_register_filing",
+    "web:banking",
+    "web:company-access",
+    "web:investments",
+    "web:ledger",
+    "web:public-acquisition",
+    "web:system-boundary"
+  ],
+  "schemaVersion": "1.0",
+  "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_cursor_signing_keys"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_workflow_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_consent_actions"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_events"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_withdrawals"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observation_control"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_pilot_entitlements"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_reviewers"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.company_access_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.launch_signoffs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.notification_outbox"
+    }
+  ]
+}
+[architecture] exit=0
+[architecture] durationMs=9999
+
+[boundary] command=npm run test:boundary
+
+> talli-repository@0.1.0 test:boundary
+> npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract
+
+
+> talli-repository@0.1.0 test:boundary-backend
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.11, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/kristianelmer/.codex/worktrees/a17c/Holding accounting/apps/backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 569 items
+
+apps/backend/tests/test_banking.py ..........                            [  1%]
+apps/backend/tests/test_banking_api.py ....                              [  2%]
+apps/backend/tests/test_banking_connections_api.py ..                    [  2%]
+apps/backend/tests/test_banking_consent.py ....                          [  3%]
+apps/backend/tests/test_banking_file_fallback.py .....                   [  4%]
+apps/backend/tests/test_banking_file_workflow.py .                       [  4%]
+apps/backend/tests/test_banking_provider_adapters.py ....                [  5%]
+apps/backend/tests/test_banking_provider_contract.py ...                 [  5%]
+apps/backend/tests/test_banking_public_contract.py ..                    [  6%]
+apps/backend/tests/test_banking_sync.py ....                             [  6%]
+apps/backend/tests/test_banking_workflow.py .                            [  7%]
+apps/backend/tests/test_company_access.py .............................. [ 12%]
+....                                                                     [ 13%]
+apps/backend/tests/test_company_cancellation_lifecycle.py .............. [ 15%]
+...........                                                              [ 17%]
+apps/backend/tests/test_company_eligibility.py ......................... [ 21%]
+................................                                         [ 27%]
+apps/backend/tests/test_company_onboarding.py ....................       [ 30%]
+apps/backend/tests/test_company_onboarding_migration.py ...              [ 31%]
+apps/backend/tests/test_company_support_access.py .....                  [ 32%]
+apps/backend/tests/test_investments.py .......................           [ 36%]
+apps/backend/tests/test_investments_api.py .............                 [ 38%]
+apps/backend/tests/test_investments_public_contract.py ...               [ 39%]
+apps/backend/tests/test_investments_supported_patterns.py .............. [ 41%]
+.........                                                                [ 43%]
+apps/backend/tests/test_investments_workflow.py ..........               [ 44%]
+apps/backend/tests/test_ledger.py ..........................             [ 49%]
+apps/backend/tests/test_ledger_api.py .....................              [ 53%]
+apps/backend/tests/test_ledger_company_year_close.py ................... [ 56%]
+                                                                         [ 56%]
+apps/backend/tests/test_ledger_corrections.py ........                   [ 57%]
+apps/backend/tests/test_ledger_full_year_reconstruction.py ............  [ 60%]
+apps/backend/tests/test_ledger_public_contract.py ........               [ 61%]
+apps/backend/tests/test_ledger_supported_patterns.py ................... [ 64%]
+.............................................                            [ 72%]
+apps/backend/tests/test_ledger_workflow.py .......                       [ 73%]
+apps/backend/tests/test_marketing_measurement_api.py ........            [ 75%]
+apps/backend/tests/test_opening_snapshot_compatibility.py ........       [ 76%]
+apps/backend/tests/test_shareholder_register_filing_contract.py ...      [ 77%]
+apps/backend/tests/test_supabase_banking.py ............                 [ 79%]
+apps/backend/tests/test_supabase_investments.py ...............          [ 82%]
+apps/backend/tests/test_supabase_ledger.py ............................. [ 87%]
+................................................                         [ 95%]
+apps/backend/tests/test_supabase_marketing_measurement.py s              [ 95%]
+apps/backend/tests/test_supabase_validation_observation.py s             [ 95%]
+apps/backend/tests/test_system_boundary.py ......                        [ 97%]
+apps/backend/tests/test_validation_observation.py .................      [100%]
+
+======================= 567 passed, 2 skipped in 26.42s ========================
+
+> talli-repository@0.1.0 test:boundary-web
+> node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/banking-presentation.test.mjs apps/web/tests/banking-connection-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/company-eligibility.test.mjs apps/web/tests/company-year-eligibility-gate.test.mjs apps/web/tests/investments-presentation.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs apps/web/tests/ledger-audit-side-effects.test.mjs apps/web/tests/ledger-presentation.test.mjs apps/web/tests/ledger-writer-transport.test.mjs apps/web/tests/marketing-measurement.test.mjs apps/web/tests/owner-mfa-transition.test.mjs apps/web/tests/public-acquisition.test.mjs tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs
+
+✔ connection presentation exposes only masked account, coverage and freshness (0.985625ms)
+✔ recovery states give one calm next action and make missing coverage visible (0.131292ms)
+✔ banking transport follows opaque pages through the generated client (52.283292ms)
+✔ bank file transport persists a backend preview before explicit acceptance (1.006708ms)
+✔ banking presentation preserves the frozen consumer shape without recreating policy (1.063334ms)
+✔ banking error presentation preserves retry identity only for unknown outcomes (0.214959ms)
+✔ create_invitation:outbox remains reachable and recovery finishes without another command (1.512334ms)
+✔ create_invitation:audit remains reachable and recovery finishes without another command (0.155083ms)
+✔ accept_invitation:audit remains reachable and recovery finishes without another command (0.134208ms)
+✔ revoke_invitation:audit remains reachable and recovery finishes without another command (1.02825ms)
+✔ resend_invitation:outbox remains reachable and recovery finishes without another command (0.16925ms)
+✔ resend_invitation:audit remains reachable and recovery finishes without another command (0.105917ms)
+✔ recovery actor comes from the server context and cannot claim another actor's continuation (0.131666ms)
+✔ delivery persistence is owned by atomic completion, never by a browser outbox insert (0.1275ms)
+✔ company-access administration transport uses only generated client operations (82.359542ms)
+✔ generated decoders fail closed on every unknown or token-shaped invitation field (0.872416ms)
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (99.566167ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (2.919125ms)
+✔ generated review decoder enforces evidence-reference length bounds (0.395833ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.387583ms)
+✔ every concurrent archive source failure trips the completion barrier (0.233416ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.123875ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (3.367375ms)
+✔ an unknown organization keeps the specific Enhetsregisteret guidance (0.847ms)
+✔ agreement reacceptance uses an authenticated generated-client request (79.280084ms)
+✔ actions and agreement gates have no direct business-persistence facade (4.967667ms)
+✔ company-access and system-boundary transports share typed fail-closed backend configuration (1.770958ms)
+✔ both transports reject remote HTTP in every Node environment (0.336292ms)
+✔ company-access and system-boundary accept the same HTTPS and loopback origins (55.377208ms)
+✔ company-access transport sends the established session only through the generated client (2.537583ms)
+✔ the company-access app boundary owns its presentation model instead of a Supabase row DTO (12.177625ms)
+✔ owner context preserves the admitted company-year and current safety gate (1.596042ms)
+✔ company record presentation maps the generated camel-case contract to existing web registry facts (0.259833ms)
+✔ company-access transport fails closed on a partial context response (0.89375ms)
+✔ generated company-context decoder rejects lower assurance, lower scope, and non-owner roles (0.844917ms)
+✔ company records and case-bound operator access use authenticated generated-client operations (6.200875ms)
+✔ a verified user without an owner company reaches onboarding but other context failures stay closed (0.420209ms)
+✔ system-user callback resolves company authorization through its injected company-access query (1.604084ms)
+✔ every Stage 1 web consumer authorizes through company-access contracts (152.357958ms)
+✔ stale admission evidence gets a truthful restart route (13.472208ms)
+✔ precheck and definitive eligibility use public generated-client calls (65.641042ms)
+✔ company-year admission is authenticated and carries the exact immutable boundary (0.507125ms)
+✔ company-year recheck is authenticated, trigger-bound, and fail-closed decoded (0.469042ms)
+✔ the functional public journey owns no policy, direct fetch, or business persistence (4.412667ms)
+✔ the recheck helper carries future serialized triggers through the API (1.949209ms)
+✔ a blocked recheck stops the consequential operation and preserves its next step (0.43525ms)
+✔ missing admission and provider failure both fail closed (0.231166ms)
+✔ invitation login continuation accepts only same-origin absolute paths (1.068875ms)
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (122.698917ms)
+✔ investment unit reads reject lossy wire values (1.351583ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.388458ms)
+✔ investment unit presentation stays decimal-string exact (0.186834ms)
+✔ investments presentation maps canonical wire facts without owning policy (2.391042ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.130917ms)
+✔ investment actions require explicit owner and dividend attestations (11.36625ms)
+✔ side-effect identity is deterministic, actor-scoped, and purpose-scoped (1.481125ms)
+✔ two actors can reuse one operation id without losing audit evidence (1.250166ms)
+✔ same-actor retry reconciles exact rows and recovers an audit failure (0.462084ms)
+✔ foreign rows are not an oracle because actor-derived ids never trigger their lookup (0.124375ms)
+✔ ledger audit identity is deterministic and actor scoped (1.398ms)
+✔ ledger audit replay reconciles the exact immutable row (0.195834ms)
+✔ ledger audit failure cannot be reported as success (0.297334ms)
+✔ an in-progress idempotent command preserves its operation id for retry (1.073625ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.186208ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (80.996583ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (1.586834ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (1.500583ms)
+✔ ledger query transport follows opaque pages through the generated client (0.841834ms)
+✔ reconstruction readiness comes from the generated backend contract (0.54875ms)
+✔ current company-year close comes from the generated read-only backend contract (0.415958ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.128583ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.25075ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.414334ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.194584ms)
+✔ generated ledger query rejects a partial expanded source pair (0.334833ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.276958ms)
+✔ source-aware ledger queries opt into the expanded response (0.21475ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.314084ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (3.411041ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.459208ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.331208ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (0.73575ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.512834ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.299667ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.228959ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.12675ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.065166ms)
+✔ every approved ledger-coordinator form submits one operation ID (3.042375ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.114416ms)
+✔ ledger retry IDs are plumbed only to the matching page form (1.949416ms)
+✔ all relocated ledger writers use the stable operation ID at the generated boundary (1.347292ms)
+✔ share purchases and sales use the investments generated interface (0.262375ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.098125ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.374833ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.598834ms)
+✔ annual-close finalization accepts only an intentionally empty ledger result (87.463541ms)
+✔ consented anonymous funnel events accept only the bounded public vocabulary (2.80725ms)
+✔ the first-party endpoint records one consented event without caching it (49.385291ms)
+✔ the generated backend client receives only an irreversible session hash (1.164875ms)
+✔ consent withdrawal deletes the bounded anonymous session through the same origin (0.479125ms)
+✔ the beacon-compatible POST endpoint accepts only the bounded withdrawal command (26.437ms)
+✔ the first-party endpoint rejects an oversized chunked body while streaming (8.256333ms)
+✔ the browser creates no optional storage before explicit consent and expires it after thirty minutes (0.330833ms)
+✔ funnel producers emit only a bounded event from an active consent session (0.147833ms)
+✔ the operator view consumes aggregate report fields without exposing raw identifiers (20.916625ms)
+✔ consent presentation uses accurate session wording and equal choices (4.047083ms)
+✔ owner AAL2 is distinguished from other context failures without weakening the gate (8.362833ms)
+✔ owner MFA inspection chooses enrollment, challenge, or verified state and fails closed (0.238292ms)
+✔ enrollment and verification expose no provider errors and only resume after confirmed AAL2 (0.337209ms)
+✔ owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate (22.3635ms)
+✔ the public offer stays in free recruitment mode with one eligibility action (3.197667ms)
+✔ the three-step eligibility explanation keeps its visual order for assistive technology (0.160667ms)
+✔ the static homepage renders every required offer field in the approved order (0.231166ms)
+✔ the recruitment homepage presents the approved annual offer exactly (0.087208ms)
+✔ the public offer carries the approved proof links, minimum FAQ, and final eligibility invitation (0.312084ms)
+✔ the complete public company-year promise is pinned to the canonical manifest (0.104459ms)
+✔ live claims and checkout deny by default and every ad stop rule is binding (0.256917ms)
+✔ the indexable public route set carries canonical metadata and no live overclaim (1.351583ms)
+✔ presents the generated tracer response as a safe Norwegian success (1.825541ms)
+✔ presents transport failures without leaking exception details (0.0895ms)
+✔ generated client accepts the declared success shape (30.784833ms)
+✔ generated client maps the typed correlation option to the declared header (0.550833ms)
+✔ generated client fails closed on an undeclared success shape (0.421833ms)
+✔ generated client rejects an availability value outside the closed contract (0.210667ms)
+✔ missing backend configuration fails closed with a typed error (0.178958ms)
+✔ web liveness stays process-only while readiness fails invalid configuration (0.307375ms)
+✔ web readiness validates local configuration without depending on backend reachability (0.342667ms)
+✔ company-year admission validates explicit authority and every immutable document before the generated command (9.441375ms)
+✔ the customer sees and explicitly accepts the complete pinned promise (1.956167ms)
+✔ legacy AS-only creation controls are absent (7.34675ms)
+✔ owner layout replaces children with an accessible reacceptance gate (1.315333ms)
+✔ Server Action reaccepts through the authenticated generated-client boundary (0.429958ms)
+ℹ tests 132
+ℹ suites 0
+ℹ pass 132
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 802.51325
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs
+
+✔ eligibility, admission, and agreement operations are generated-client boundaries (9.306875ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.209458ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (12.5385ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.966375ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (0.807375ms)
+✔ capability owns immutable business request contracts (5.756ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (1.232375ms)
+✔ all company-access success responses declare X-Request-ID (5.253542ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (1.451167ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (1.069875ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (1.060708ms)
+✔ membership role selector has a target-specific accessible name (0.512959ms)
+✔ capability manifest attributes the latest company-access ownership migration (0.420542ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (4.529167ms)
+✔ destructive contract is a later release artifact outside the automatic runner (0.937917ms)
+✔ cutover removes every authenticated self-membership update surface (1.168ms)
+✔ command receipts are backend-system technical idempotency state (1.761584ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (0.983708ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (1.589125ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (4.488292ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (6.392875ms)
+✔ the committed contract exposes the authenticated company-context operation (4.605875ms)
+✔ the committed contract exposes company-access invitation and membership administration (3.997584ms)
+✔ the committed contract exposes only ledger-owned browser commands (4.623125ms)
+✔ the committed contract gives investments its complete activity interface (3.573334ms)
+✔ opening snapshots use the ledger compatibility authenticated read contract (3.43575ms)
+✔ the committed contract exposes the account-free banking workflow (4.6415ms)
+✔ the tracer contract declares optional request and response correlation headers (4.220042ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (970.465333ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (15.985541ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (40.53525ms)
+✔ compatibility rejects newly required parameters and request bodies (22.100209ms)
+✔ compatibility rejects narrower authentication requirements (7.155833ms)
+✔ compatibility rejects removed or changed response headers (9.669458ms)
+✔ the generated package version matches the OpenAPI contract version (9.836625ms)
+✔ the generated client is committed and carries its provenance marker (1.101375ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.272958ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1216.641125
+[boundary] exit=0
+[boundary] durationMs=29911
+
+[build-web] command=TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built
+
+> talli-repository@0.1.0 build:web
+> npm --prefix apps/web run build
+
+
+> talli-web@0.1.0 build
+> cd ../.. && node apps/web/scripts/run-next.mjs build
+
+▲ Next.js 16.2.12 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.7s
+  Running TypeScript ...
+  Finished TypeScript in 5.3s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/34) ...
+  Generating static pages using 9 workers (8/34)
+  Generating static pages using 9 workers (16/34)
+  Generating static pages using 9 workers (25/34)
+✓ Generating static pages using 9 workers (34/34) in 187ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /actions
+├ ƒ /actions/[type]
+├ ƒ /api/marketing-events
+├ ○ /apple-icon.png
+├ ƒ /archive/[companyId]/[incomeYear]/download
+├ ƒ /auth/confirm
+├ ƒ /auth/systembruker/confirm
+├ ƒ /bank/callback
+├ ƒ /billing
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/[obligation]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/review
+├ ƒ /connections
+├ ƒ /corporate-decisions/[decisionId]
+├ ƒ /dashboard
+├ ○ /databehandleravtale
+├ ƒ /documents
+├ ƒ /documents/[documentId]/download
+├ ƒ /documents/[documentId]/preview
+├ ○ /email-confirmed
+├ ƒ /filing
+├ ƒ /filing/[obligation]
+├ ƒ /health/live
+├ ƒ /health/ready
+├ ○ /hjelp
+├ ○ /icon.svg
+├ ƒ /invite/accept
+├ ƒ /login
+├ ƒ /mfa
+├ ƒ /onboarding
+├ ƒ /operator
+├ ƒ /operator/marketing
+├ ○ /passer-talli
+├ ○ /personvern
+├ ○ /pris
+├ ○ /robots.txt
+├ ƒ /selskapsgrense
+├ ƒ /signup
+├ ○ /sikkerhet
+├ ○ /sitemap.xml
+├ ○ /sjekk-selskapet
+├ ○ /status
+├ ƒ /system-boundary
+├ ƒ /transactions
+├ ○ /ui
+├ ƒ /verify-email
+├ ○ /vilkar
+├ ƒ /workspace
+└ ƒ /year-end
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> talli-repository@0.1.0 test:browser-public-acquisition:built
+> node --test tests/browser_public_acquisition.mjs
+
+✔ the production public journey is consent-silent, accessible, mobile-safe, and privacy bounded (4696.533041ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5051.221333
+[build-web] exit=0
+[build-web] durationMs=15496
+
+[build-backend] command=npm run build:backend
+
+> talli-repository@0.1.0 build:backend
+> uv build --project apps/backend
+Building source distribution...
+Building wheel from source distribution...
+Successfully built apps/backend/dist/talli_backend-0.1.0.tar.gz
+Successfully built apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl
+[build-backend] exit=0
+[build-backend] durationMs=1112
+
+[boundary-smoke] command=npm run test:boundary-smoke
+
+> talli-repository@0.1.0 test:boundary-smoke
+> node --test tests/production_boundary_smoke.mjs
+
+✔ built artifacts support both deployment orders and isolate backend failure (1662.325458ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6771.923042
+[boundary-smoke] exit=0
+[boundary-smoke] durationMs=7001
+
+[launch-rehearsal] command=TALLI_PYTHON_BIN=.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal
+
+> talli-repository@0.1.0 test:launch-rehearsal
+> npm run test:opening && npm run test:documents && npm run test:bank && npm run test:bank-suggestions && npm run test:deployed-contract && npm run test:supabase-grants && npm run test:provider-ports && npm run test:manual-journal && npm run test:share-purchase && npm run test:share-sale && npm run test:investment-lots-schema && npm run test:dividend-received && npm run test:owner-dividend && npm run test:owner-dividend-payment && npm run test:shareholder-loan && npm run test:annual-data && npm run test:annual-readiness && npm run test:annual-corporate-documents && npm run test:authority-evidence && npm run test:authority-adapters && npm run test:authority-operations && npm run test:maskinporten && npm run test:system-user-requests && npm run test:rf1086:authority-client && npm run test:rf1086:production-pilot && npm run test:python-runtime && npm run test:corporate-documents && npm run test:corporate-decision-workflow && npm run test:rf1086:persisted && npm run test:rf1086:submission && npm run test:annual-accounts && npm run test:annual-accounts-xml && npm run test:annual-accounts-authority && npm run test:annual-accounts-authority-script && npm run test:company-tax-return && npm run test:company-tax-return-xml && npm run test:company-tax-return-authority && npm run test:company-tax-return-authority-script && npm run test:review && npm run test:billing && npm run test:cancellation && npm run test:operator-support && npm run test:operator-mfa && npm run test:deadlines && npm run test:archive && npm run test:backup-restore && npm run test:security && npm run test:trusted-aal2-schema && npm run test:filing-release-gate && npm run test:production-filing-guide && npm run test:launch-copy && npm run test:launch-signoff && npm run test:validation-observation-launch-off && npm run test:legal-policy && npm run test:ci-gate
+
+
+> talli-repository@0.1.0 test:opening
+> node --experimental-strip-types --test tests/opening_balance.test.mjs
+
+✔ new-year start replaces the duplicate browser opening policy (1.016917ms)
+✔ public contract accepts only new-year business facts (0.193333ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.548084
+
+> talli-repository@0.1.0 test:documents
+> node --experimental-strip-types --test tests/documents.test.mjs tests/document_removal_schema.test.mjs tests/workspace_presentation.test.mjs
+
+✔ accidental document removal is owner-only, audited, and blocked for linked evidence (4.971041ms)
+✔ a failed object-store removal can restore only the same recent owner request (0.869541ms)
+✔ removed documents disappear from active lists and cannot receive signed download URLs (0.909667ms)
+✔ document storage key scopes object by company, year, and document id (0.8825ms)
+✔ document storage key strips unsafe filename characters (0.102625ms)
+✔ document upload accepts a bounded PDF based on signature, not only browser MIME (0.969458ms)
+✔ document upload rejects non-PDF content and oversized files (0.239375ms)
+✔ customer forms do not seed synthetic accounting facts (3.696167ms)
+✔ dashboard enters the dedicated annual workspace (0.663917ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 136.668084
+
+> talli-repository@0.1.0 test:bank
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_banking.py apps/backend/tests/test_banking_api.py -q
+
+..............                                                           [100%]
+14 passed in 0.85s
+
+> talli-repository@0.1.0 test:bank-suggestions
+> node --experimental-strip-types --test tests/bank_suggestion_schema.test.mjs tests/bank_suggestion_integration.test.mjs
+
+✔ banking coordinator revalidates the suggestion inside the atomic writer (3.657958ms)
+✔ transaction queue requires an explicit owner submit for every suggestion (0.716459ms)
+✔ bank suggestion approvals are immutable and posted atomically (3.3805ms)
+✔ database independently validates rule, version, direction, ambiguity, and period lock (0.864292ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 99.998
+
+> talli-repository@0.1.0 test:deployed-contract
+> node --test tests/deployed_schema_contract.test.mjs
+
+✔ deployed schema contract covers every post-baseline product capability (1.435041ms)
+✔ reports only missing OpenAPI paths in stable order (0.105875ms)
+✔ reports public investment compatibility paths that survived stage exit (0.078375ms)
+✔ fails closed when the response is not a PostgREST OpenAPI document (0.2155ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.137084
+
+> talli-repository@0.1.0 test:supabase-grants
+> node --test tests/supabase_explicit_grants.test.mjs
+
+✔ Supabase Data API grants fail closed for anon and explicitly enable service_role (4.136083ms)
+✔ anonymous sessions cannot invoke authenticated mutation RPCs (0.908459ms)
+✔ Systembruker request objects have explicit least-privilege grants (1.322583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.025583
+
+> talli-repository@0.1.0 test:provider-ports
+> node --experimental-strip-types --test tests/provider_ports.test.mjs
+
+✔ bank provider port fails closed until a provider is approved (1.047083ms)
+✔ bank webhook receipts are replay-safe without persisting raw provider identifiers (0.46775ms)
+✔ bank diagnostics redact bearer and credential material (0.191375ms)
+✔ document extraction port validates tenant scope and remains disabled (0.187959ms)
+✔ extraction output is always review-required and restricted to supported fields (1.338667ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 151.352167
+
+> talli-repository@0.1.0 test:manual-journal
+> uv run --project apps/backend pytest apps/backend/tests/test_ledger.py apps/backend/tests/test_ledger_api.py -k manual -q && node --test apps/web/tests/ledger-presentation.test.mjs
+
+....                                                                     [100%]
+4 passed, 43 deselected in 0.73s
+✔ an in-progress idempotent command preserves its operation id for retry (0.974584ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.177083ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (35.355083ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (1.034916ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (1.438125ms)
+✔ ledger query transport follows opaque pages through the generated client (0.714292ms)
+✔ reconstruction readiness comes from the generated backend contract (0.488833ms)
+✔ current company-year close comes from the generated read-only backend contract (0.366375ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.113708ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.230417ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.379375ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.159417ms)
+✔ generated ledger query rejects a partial expanded source pair (0.258375ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.18025ms)
+✔ source-aware ledger queries opt into the expanded response (0.167541ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.2375ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.48525ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.226083ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.198833ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (0.699041ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.46375ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.277167ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.342917ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.198125ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.068125ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.054875ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.080875ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.357958ms)
+✔ all relocated ledger writers use the stable operation ID at the generated boundary (0.605583ms)
+✔ share purchases and sales use the investments generated interface (0.214459ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.076291ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.329125ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.526541ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 216.874667
+
+> talli-repository@0.1.0 test:share-purchase
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_investments.py apps/backend/tests/test_investments_public_contract.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py -q && node --test apps/web/tests/investments-presentation.test.mjs && npm run test:investments-database-lifecycle
+
+.................................................                        [100%]
+49 passed in 1.74s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (39.6495ms)
+✔ investment unit reads reject lossy wire values (0.917625ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.196667ms)
+✔ investment unit presentation stays decimal-string exact (0.15225ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.066042ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.105792ms)
+✔ investment actions require explicit owner and dividend attestations (1.730042ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 205.259208
+
+> talli-repository@0.1.0 test:investments-database-lifecycle
+> node --test --test-concurrency=1 tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+✔ the complete local database gate includes the investments lifecycle (1.726416ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.677208ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (1.439292ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (2.31775ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (1.3485ms)
+✔ forward correction-source replay stays insert-only across rollback (0.337958ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.775792ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.619541ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.695667ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.21225ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (1.249125ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.278916ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.381125ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.1245ms)
+✔ contract reconciles live state before removing predecessor production names (0.473458ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.372042ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.447375ms)
+✔ sale rollback is non-destructive and recutover-safe (0.360833ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.612375ms)
+✔ received-dividend contract reconciles before predecessor removal (0.313834ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.216709ms)
+✔ allocation identities remain stable across the overlap window (0.257542ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (1.429708ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (0.94725ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.271084ms)
+✔ supported patterns keep writes private and publish correction lineage (2.350041ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.426958ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.611ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.510958ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.2825ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.381459ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.577125ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (25432.946375ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25666.285583
+
+> talli-repository@0.1.0 test:share-sale
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_investments.py apps/backend/tests/test_investments_public_contract.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py apps/backend/tests/test_supabase_investments.py -q && node --test apps/web/tests/investments-presentation.test.mjs apps/web/tests/ledger-presentation.test.mjs && npm run test:investments-database-lifecycle
+
+................................................................         [100%]
+64 passed in 1.92s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (48.112375ms)
+✔ investment unit reads reject lossy wire values (1.136208ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.234292ms)
+✔ investment unit presentation stays decimal-string exact (0.196041ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.157208ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.106166ms)
+✔ investment actions require explicit owner and dividend attestations (2.463625ms)
+✔ an in-progress idempotent command preserves its operation id for retry (1.108542ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.171458ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (43.056ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (0.984375ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (1.4805ms)
+✔ ledger query transport follows opaque pages through the generated client (0.830791ms)
+✔ reconstruction readiness comes from the generated backend contract (0.568417ms)
+✔ current company-year close comes from the generated read-only backend contract (0.39525ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.120625ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.25ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.397416ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.177833ms)
+✔ generated ledger query rejects a partial expanded source pair (0.2905ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.222333ms)
+✔ source-aware ledger queries opt into the expanded response (0.159459ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.253708ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.536083ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.202625ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.207042ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (1.142875ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.678042ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.278792ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.222834ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.135333ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.059458ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.046584ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.075333ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.327334ms)
+✔ all relocated ledger writers use the stable operation ID at the generated boundary (0.591917ms)
+✔ share purchases and sales use the investments generated interface (0.226542ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.077708ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.348625ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.581417ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 239.870917
+
+> talli-repository@0.1.0 test:investments-database-lifecycle
+> node --test --test-concurrency=1 tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+✔ the complete local database gate includes the investments lifecycle (1.686833ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.39725ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (0.830459ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (2.13675ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (0.957125ms)
+✔ forward correction-source replay stays insert-only across rollback (0.280958ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.739458ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.604125ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.692583ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.089167ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (0.905084ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.089667ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.243958ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.066417ms)
+✔ contract reconciles live state before removing predecessor production names (0.484ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.390917ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.544375ms)
+✔ sale rollback is non-destructive and recutover-safe (0.37975ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.617916ms)
+✔ received-dividend contract reconciles before predecessor removal (0.320875ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.218959ms)
+✔ allocation identities remain stable across the overlap window (0.248083ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (1.616458ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (0.850667ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.128833ms)
+✔ supported patterns keep writes private and publish correction lineage (2.240792ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.3865ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.652417ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.549875ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.2235ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.372542ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.566542ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (25432.521625ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25675.436708
+
+> talli-repository@0.1.0 test:investment-lots-schema
+> node --test tests/investment_lots_schema.test.mjs
+
+✔ FIFO migration owns lot history and atomic investment writes (3.688625ms)
+✔ legacy positions fail closed until lot history is reconstructed (0.817625ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.496584
+
+> talli-repository@0.1.0 test:dividend-received
+> uv run --project apps/backend pytest apps/backend/tests/test_investments.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py apps/backend/tests/test_supabase_investments.py -k 'dividend or activity' -q && node --test apps/web/tests/investments-presentation.test.mjs && node --test tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+..........                                                               [100%]
+10 passed, 51 deselected in 0.78s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (39.761708ms)
+✔ investment unit reads reject lossy wire values (1.182875ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.223834ms)
+✔ investment unit presentation stays decimal-string exact (0.168917ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.127125ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.10175ms)
+✔ investment actions require explicit owner and dividend attestations (4.423125ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 215.130042
+✔ the complete local database gate includes the investments lifecycle (1.542333ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.427292ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (1.296833ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (2.272ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (1.088084ms)
+✔ forward correction-source replay stays insert-only across rollback (0.3135ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.745709ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.607125ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.709625ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.6945ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (1.193042ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.204916ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.411709ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.219625ms)
+✔ contract reconciles live state before removing predecessor production names (0.668542ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.422584ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.519791ms)
+✔ sale rollback is non-destructive and recutover-safe (0.418292ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.695833ms)
+✔ received-dividend contract reconciles before predecessor removal (0.353959ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.245917ms)
+✔ allocation identities remain stable across the overlap window (0.282167ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (1.106166ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (1.359333ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.237417ms)
+✔ supported patterns keep writes private and publish correction lineage (2.647458ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.68825ms)
+✔ supported-pattern authority cleanup grants no runtime authority (1.091708ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.576916ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.248125ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.5365ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.6975ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (25203.935209ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25308.063125
+
+> talli-repository@0.1.0 test:owner-dividend
+> node --experimental-strip-types --test tests/owner_dividend.test.mjs
+
+✔ legacy owner-dividend accounting and placeholder helpers are gone (0.920083ms)
+✔ dividend basis is recomputed from approved persisted annual facts in integer ore (1.427583ms)
+✔ dividend basis fails closed on unapproved or blocked annual facts (0.291208ms)
+✔ server exposes only the draft action and never posts accounting directly (0.448167ms)
+✔ wizard reviews all owners and meeting facts with proportional allocation only (0.476667ms)
+✔ workspace no longer embeds the legacy posting form or placeholder copy (0.203833ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 162.028125
+
+> talli-repository@0.1.0 test:owner-dividend-payment
+> node --experimental-strip-types --test tests/owner_dividend_payment.test.mjs
+
+✔ open payable is derived only from a finalized declaration and immutable payment events (1.160292ms)
+✔ payment validation accepts one eligible outgoing NOK transaction within the open payable (0.937375ms)
+✔ server delegates policy-bound accounting atomically to the ledger coordinator (0.351833ms)
+✔ workspace presents only eligible transactions for each finalized open payable (0.162875ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.606042
+
+> talli-repository@0.1.0 test:shareholder-loan
+> node --experimental-strip-types --test tests/shareholder_loan.test.mjs
+
+✔ builds supported shareholder-to-company loan ledger lines (1.610167ms)
+✔ builds supported company-to-corporate-shareholder loan ledger lines (0.151208ms)
+✔ blocks company-to-personal-shareholder loans with machine-readable reason (0.24325ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 142.378667
+
+> talli-repository@0.1.0 test:annual-data
+> node --experimental-strip-types --test tests/annual_data.test.mjs
+
+✔ builds structured year-end answers without free text (1.821583ms)
+✔ does not mark activity years as no-activity (0.110791ms)
+✔ seeds recorded activity into an unsaved year-end interview (0.095542ms)
+✔ recorded activity cannot be hidden by a stale saved false answer (0.105625ms)
+✔ keeps user confirmations independent from registered activity (0.080459ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.834709
+
+> talli-repository@0.1.0 test:annual-readiness
+> node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs
+
+✔ evaluates ready state separately for all annual obligations (3.313042ms)
+✔ returns hard blocks for missing permission and billing (0.237167ms)
+✔ uses no-activity annual data to avoid unrelated tax-settlement clutter (0.164541ms)
+✔ keeps accepted warnings separate from open warnings (0.257792ms)
+✔ reports open warnings and obligation-specific blocks (0.1595ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.476458
+
+> talli-repository@0.1.0 test:annual-corporate-documents
+> node --experimental-strip-types --test tests/annual_corporate_documents.test.mjs
+
+✔ annual basis binds exact annual-data and annual-account payload hashes (11.30325ms)
+✔ annual decision renders exactly the two annual PDF artifacts (447.57925ms)
+✔ annual readiness becomes stale when the persisted source facts change (0.571167ms)
+✔ annual server action persists only a two-artifact immutable draft (0.475083ms)
+✔ year-end and filing UI expose the annual corporate lifecycle honestly (0.626291ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 614.234625
+
+> talli-repository@0.1.0 test:authority-evidence
+> node --experimental-strip-types --test tests/authority_test_evidence.test.mjs tests/annual_accounts_authority_evidence_import.test.mjs tests/company_tax_return_authority_evidence_import.test.mjs tests/rf1086_tt02_evidence.test.mjs tests/company_tax_return_tt02_evidence.test.mjs tests/annual_accounts_tt02_evidence.test.mjs
+
+✔ runtime imports validated RR0002 evidence as pending without enabling production (1.404875ms)
+✔ workspace offers a JSON evidence import and defaults manual evidence to pending (0.206875ms)
+✔ annual-accounts TT02 evidence is submitted, archived, test-only, and secret-free (4.916125ms)
+✔ builds accepted authority test evidence with receipt and archive refs (0.898875ms)
+✔ imports submitted annual-accounts TT02 evidence as pending runtime evidence (0.796792ms)
+✔ imports completed company-tax TT02 evidence as company- and year-bound pending evidence (0.909459ms)
+✔ company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches (0.660958ms)
+✔ annual-accounts TT02 import fails closed on company, production, and submission mismatches (0.204ms)
+✔ requires test reference and recorder (1.055542ms)
+✔ gate requires accepted evidence with receipt and archive refs (0.090541ms)
+✔ gate surfaces latest rejected, blocked, and pending evidence (8.131875ms)
+✔ migration links test-authority submissions without opening the direct-write policy (2.096542ms)
+✔ migration exposes one authenticated owner-AAL2-protected atomic import RPC (1.092917ms)
+✔ RPC evidence URLs use one canonical HTTPS grammar and reject traversal (0.253083ms)
+✔ RPC retries compare evidence content without replacing the original actors (0.185042ms)
+✔ runtime imports completed company-tax TT02 evidence through exactly one atomic RPC (0.4845ms)
+✔ workspace offers a company-tax JSON evidence import bound to the active year (0.168875ms)
+✔ company-tax TT02 evidence is submitted, receipted, archived, test-only, and secret-free (7.490084ms)
+✔ RF-1086 TT02 evidence is accepted, complete, and secret-free (4.203ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 173.638667
+
+> talli-repository@0.1.0 test:authority-adapters
+> node --experimental-strip-types --test tests/authority_adapters.test.mjs
+
+✔ RF-1086 transport is implemented but every production authority adapter remains disabled (1.904708ms)
+✔ RF-1086 plan preserves XML document, confirmation, feedback, and receipt sequence (0.093417ms)
+✔ tax return and annual accounts plans require an ID-porten person signing handoff (0.108458ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.266125
+
+> talli-repository@0.1.0 test:authority-operations
+> node --experimental-strip-types --test tests/authority_operations.test.mjs tests/authority_operations_schema.test.mjs tests/authority_operations_actions.test.mjs
+
+✔ authority operation environment fails closed and rejects test credentials (1.213333ms)
+✔ authority environment accepts the proven RSA PEM shape used by production filing (0.233416ms)
+✔ environment diagnostics expose only the invalid field (0.092625ms)
+✔ builds the one fixed RF-1086 own-system definition (1.358333ms)
+✔ requires the exact immutable operation and confirmation phrase (0.165375ms)
+✔ requires the separate exact callback operation and confirmation phrase (0.26875ms)
+✔ callback update performs a full PUT only from the exact empty-callback definition (27.40775ms)
+✔ an exact callback definition is already verified with GET only (0.258375ms)
+✔ a missing system is a definition conflict and never creates or updates (0.178208ms)
+✔ any non-callback definition drift blocks without a write (1.8985ms)
+✔ unknown or duplicate fields at every callback projection level block without a write (0.530417ms)
+✔ null and malformed callback projection values block without a write (0.649042ms)
+✔ PUT transport failures are always reconciled by GET (1.375083ms)
+✔ non-success PUT responses are always reconciled by GET (1.320583ms)
+✔ invalid successful PUT bodies are reconciled and preserve their safe failure when unchanged (0.444833ms)
+✔ every callback authority response is capped before status handling (1.30025ms)
+✔ final GET transport failures use only the fixed verification error (0.3775ms)
+✔ callback verification drift is reported as conflict after the one allowed PUT (0.454917ms)
+✔ creates a missing system then verifies it without leaking the token (0.673042ms)
+✔ returns already_verified for an exactly matching existing definition (1.741541ms)
+✔ does not overwrite a conflicting existing definition (0.195042ms)
+✔ rejects malformed authority responses with only safe errors (0.293625ms)
+✔ sanitizes network and upstream HTTP failures (0.333708ms)
+✔ authority operation is admin-only, AAL2-gated, exact, and service-audited (1.260792ms)
+✔ operator UI exposes only the immutable RF-1086 operation and redacted results (0.21675ms)
+✔ the server query is limited to recent redacted rows for active admins (0.146166ms)
+✔ callback update has a separate admin, fresh-AAL2, ops-gated audited action (0.224417ms)
+✔ operator callback UI is native, exact, and honest about its narrow effect (0.547333ms)
+✔ authority operations are constrained, RLS protected, and service-written (1.343792ms)
+✔ rollback revokes access before dropping the table (0.56875ms)
+✔ callback operation migration expands only the constrained safe audit contract (0.564625ms)
+✔ callback rollback removes callback rows before restoring the original constraints (0.433416ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.882958
+
+> talli-repository@0.1.0 test:maskinporten
+> node --experimental-strip-types --test tests/maskinporten.test.mjs
+
+✔ builds a short-lived TT02 system-user grant against the issuer audience (2.79675ms)
+✔ signs a verifiable compact RS256 JWT without exposing the private key (59.810125ms)
+✔ posts the JWT bearer grant and returns an opaque access token in memory (62.960125ms)
+✔ sanitizes authority errors and rejects malformed token responses (33.2805ms)
+✔ fails closed on invalid environment, identifiers, scope, and key material (0.399416ms)
+✔ loads one production credential set without treating an operations switch as an owner feature gate (25.955834ms)
+✔ rejects a token response that broadens or changes the requested scope (33.130625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 373.550375
+
+> talli-repository@0.1.0 test:system-user-requests
+> node --experimental-strip-types --test tests/system_user_requests.test.mjs tests/system_user_authority_client.test.mjs tests/system_user_callback_route.test.mjs
+
+✔ create sends one standard request with the exact fixed contract (29.078667ms)
+✔ lookup methods use only the standard request and system-user endpoints (0.857208ms)
+✔ the client rejects agent fields, mismatches, wrong hosts, and oversized bodies (0.907083ms)
+✔ response validation rejects unknown statuses and every fixed-field or shape mismatch (0.38175ms)
+✔ confirmation URLs use only the exact HTTPS host for their environment (0.269708ms)
+✔ query validation rejects invalid shapes, identity mismatches, and extra fields (0.766542ms)
+✔ authority errors expose only allowlisted safe codes (0.48475ms)
+✔ prototype names cannot bypass the documented authority-code allowlist (0.276ms)
+✔ invalid inputs fail before network access without reflecting sensitive values (0.332709ms)
+✔ production route import defers canonical origin validation until a callback request (178.941792ms)
+✔ callback redirects use only the fixed Talli origin, with localhost limited to non-production (0.451375ms)
+✔ callback ignores every query parameter and uses only authenticated user, cookie UUID, and company-access authorization (2.876583ms)
+✔ missing cookie redirects to fixed manual status and still deletes the exact cookie path (0.319ms)
+✔ invalid cookie, missing user, stale request, and cross-owner request all fail closed (0.670833ms)
+✔ callback errors expose no provider detail, identifiers, or reflected input (0.297708ms)
+✔ callback maps only allowlisted local states (1.2325ms)
+✔ external references are opaque and transitions are monotonic (1.389334ms)
+✔ terminal Altinn failures cannot be reopened (0.188375ms)
+✔ invalid runtime statuses use the stable transition error (0.13575ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 399.312
+
+> talli-repository@0.1.0 test:rf1086:authority-client
+> node --experimental-strip-types --test tests/rf1086_authority_client.test.mjs
+
+✔ executes the official hovedskjema, underskjema, confirmation, and archive sequence (39.184917ms)
+✔ accepts the documented lowercase main response and uses the production base only when explicit (0.347459ms)
+✔ returns structured sanitized authority errors without token or submitted field values (0.673125ms)
+✔ polls the documented forsendelseId after the observed eventual-consistency GLD_1017 (0.8035ms)
+✔ classifies authentication expiry and server failures as retryable (0.402042ms)
+✔ fails closed on missing XML, invalid years, references, idempotency keys, and bearer tokens (0.374125ms)
+✔ retrieves an individual allowlisted document with a bounded GET (0.29425ms)
+✔ individual document retrieval rejects disallowed types and streams over 10 MiB (4.104458ms)
+✔ document listing preserves inline XML and only strict UUID references (0.489166ms)
+✔ all JSON authority responses are streamed with a global 64 KiB cap (1.871708ms)
+✔ JSON authority responses reject non-JSON media types without exposing their body (0.157ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 198.270375
+
+> talli-repository@0.1.0 test:rf1086:production-pilot
+> node --experimental-strip-types --test tests/production_pilot.test.mjs tests/production_approval.test.mjs tests/production_submission.test.mjs tests/controlled_production_beta_schema.test.mjs tests/rf1086_production.test.mjs tests/rf1086_production_environment.test.mjs tests/controlled_production_beta_actions.test.mjs tests/rf1086_production_runbook.test.mjs
+
+✔ operator entitlement action is exact and database-authorized (1.567083ms)
+✔ owner approval binds persisted preview data and requires a real-filing acknowledgement (0.311541ms)
+✔ send action rechecks approval, uses production-only credentials, and journals authority calls (1.303583ms)
+✔ production release does not begin or submit when delegated-token acquisition fails (1.227792ms)
+✔ production release makes no POST when transactional begin rejects after token acquisition (0.193ms)
+✔ production release orders token, durable begin, then journaled external submission (0.123625ms)
+✔ owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration (0.380792ms)
+✔ production UI never equates receipt transport with final acceptance (1.248875ms)
+✔ a disabled production adapter tolerates an unapplied additive schema during rollout (0.171708ms)
+✔ all migrations use portable JSONB object checks (14.855834ms)
+✔ creates a separate production-only aggregate with constrained states (3.26375ms)
+✔ denies direct customer mutation and keeps authority events service-only (0.465416ms)
+✔ approval and begin RPCs enforce owner AAL2 and an exact active entitlement (0.513041ms)
+✔ acceptance requires explicit final authority evidence and events are append-only (0.191375ms)
+✔ rollback revokes RPC access before dropping additive objects (0.113958ms)
+✔ Systembruker binding preserves every existing production filing gate (0.697584ms)
+✔ builds a deterministic canonical approval manifest (10.688792ms)
+✔ approval hash changes when any legally relevant value changes (0.24175ms)
+✔ matches only the exact current manifest and rejects blocked approvals (0.285292ms)
+✔ requires an exact active company/user/year/obligation/profile entitlement (1.919959ms)
+✔ rejects absent, future, and expired entitlements (0.132916ms)
+✔ bypasses billing only for an exact billing-exempt pilot (0.551125ms)
+✔ never applies the billing exemption to an inexact or non-exempt entitlement (0.223709ms)
+✔ allows only documented production submission transitions (2.94875ms)
+✔ transport acknowledgement cannot become accepted (0.182708ms)
+✔ uses explicit authority feedback for terminal outcomes (0.0675ms)
+✔ reconciliation action rechecks the exact owner, submission, and verified request without POST (0.514709ms)
+✔ initial send performs bounded feedback polling only after the journaled confirmation path (2.515375ms)
+✔ private artifact persistence verifies receipts and cleans up only after authoritative absence (0.397625ms)
+✔ filing page auto-resumes pending reconciliation and always exposes manual retry (0.134458ms)
+✔ persists stable prepared keys before each authority mutation and reports processing (4.743833ms)
+✔ confirmation remains journaled when the first archive read is still pending (1.528791ms)
+✔ resumes succeeded mutations without sending them twice (0.274ms)
+✔ resumes a retryable mutation with its persisted idempotency key (0.185708ms)
+✔ does not retry a mutation that authority already blocked (0.3495ms)
+✔ quarantines a mutation timeout instead of retrying (0.332291ms)
+✔ records an explicit authority rejection as blocked without leaking XML (0.200208ms)
+✔ initial reconciliation polls five times without another POST (1.765ms)
+✔ later reconciliation reads once and appends only state or artifact changes (0.177167ms)
+✔ submitted XML hashes are ignored while strict references are downloaded and classified (0.417209ms)
+✔ unknown archive shapes and malformed or mismatched feedback require action (0.288166ms)
+✔ transport uncertainty is durable unknown with safe codes only (0.161583ms)
+✔ bare GLD_021 and bare GLD_1017 archive responses remain processing (0.164958ms)
+✔ a transient artifact persistence failure remains reclaimable and retries read-only (0.406583ms)
+✔ Supabase connection and pool failures remain retryable through the real persistence mapping (0.580167ms)
+✔ Supabase constraint and schema failures remain terminal through the real persistence mapping (0.394959ms)
+✔ ambiguous metadata commit preserves the receipt and the next read-only attempt verifies it (0.714375ms)
+✔ authoritative metadata absence permits cleanup of resources owned by the failed attempt (0.147625ms)
+✔ existing metadata cannot accept a missing or mismatched private receipt (0.191042ms)
+✔ production stays disabled by default (1.627083ms)
+✔ returns only strict production configuration when every gate is present (0.312958ms)
+✔ rejects file paths, test material, wrong scope, partial configuration, and loose flag values (0.329625ms)
+✔ runbook covers the hand-held first production filing and immediate rollback (1.2055ms)
+✔ release docs require callback verification before self-service activation (0.13725ms)
+✔ runbook defines the activation order, recovery matrix, and local-proof boundary (0.302125ms)
+ℹ tests 55
+ℹ suites 0
+ℹ pass 55
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 219.0855
+
+> talli-repository@0.1.0 test:python-runtime
+> node --experimental-strip-types --test tests/python_runtime.test.mjs
+
+✔ uses an explicit configured Python runtime (0.78975ms)
+✔ finds the project virtualenv for local filing-engine calls (0.081417ms)
+✔ fails closed when no dependency-complete Python runtime is configured (0.229333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.570292
+
+> talli-repository@0.1.0 test:corporate-documents
+> node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs
+
+✔ largest-remainder allocation is deterministic in integer øre (2.723166ms)
+✔ owner-dividend facts come only from persisted identity, shareholders, and approved annual totals (13.181208ms)
+✔ stale or tampered reviewed facts are rejected instead of silently replaced (1.1515ms)
+✔ annual-close input binds both annual-data and annual-account payload hashes (0.961ms)
+✔ corporate lifecycle RPCs pass a fresh PostgreSQL rehearsal (3319.073458ms)
+✔ state is derived only from current immutable artifacts, events, and finalization (1.033417ms)
+✔ readiness fails closed for stale hashes, unsigned documents, and terminal decisions (1.024875ms)
+✔ annual filing gate requires the current annual decision hash and finalization when enabled (5.823708ms)
+✔ corporate decision schema is immutable, tenant scoped, and hash bound (5.02225ms)
+✔ accounting policy accounts are server-side reviewed facts (0.887125ms)
+✔ database RPCs recompute canonical hashes and persisted accounting facts (1.397333ms)
+✔ canonical Node JSON and hash match the Python renderer (321.812958ms)
+✔ parser independently validates JSON, hashes, lengths, PDF bytes, and exact kinds (4.277583ms)
+✔ parser preserves a narrow blocked result without trusting arbitrary fields (0.249292ms)
+✔ renderer kills subprocesses that exceed bounded stdout or stderr (1.041917ms)
+✔ renderer uses no shell, a fixed argv, a timeout, and a restricted environment (6.717458ms)
+✔ storage keys are tenant scoped, content addressed, and reject path injection (0.33475ms)
+✔ uploads with upsert false and verifies an exact existing object on retry (0.797042ms)
+✔ an existing object with different bytes fails closed (0.289708ms)
+✔ a later upload failure removes only objects created by this attempt (0.296667ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3421.890292
+
+> talli-repository@0.1.0 test:corporate-decision-workflow
+> node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs
+
+✔ signed corporate upload validates PDF bytes, MIME, size, and a separate immutable key (1.724833ms)
+✔ required signer names are derived from immutable canonical input (9.446833ms)
+✔ server exposes step-up-protected immutable lifecycle actions (0.565833ms)
+✔ review, signed attestation, and preview UI use honest owner-only copy (0.438417ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 164.47375
+
+> talli-repository@0.1.0 test:rf1086:persisted
+> node --experimental-strip-types --test tests/rf1086_persisted_preview.test.mjs
+
+✔ builds RF-1086 no-activity case from persisted setup rows (1.663292ms)
+✔ renders persisted no-activity case through Python RF-1086 engine (264.547709ms)
+✔ renders persisted no-activity case without a Python runtime (0.971416ms)
+✔ serverless renderer matches the verified Python renderer for the no-activity profile (248.081167ms)
+✔ blocks persisted setup with mismatched shareholder totals in both renderers (246.797875ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 904.070833
+
+> talli-repository@0.1.0 test:rf1086:submission
+> node --experimental-strip-types --test tests/rf1086_submission_persisted.test.mjs
+
+✔ blocks simulated submission without authority confirmation (0.974375ms)
+✔ blocks simulated submission without final preview confirmation (0.076833ms)
+✔ prepares deterministic simulated submission calls and receipt from persisted preview (505.364375ms)
+✔ simulates a persisted submission without a Python runtime (10.328875ms)
+✔ serverless simulation matches the verified Python request plan (427.766541ms)
+✔ blocks production adapter even if the legacy environment flag is set (0.940833ms)
+✔ builds stable request payload hash and idempotency key (0.592667ms)
+✔ builds accepted receipt metadata and immutable submitted payload references (243.239166ms)
+✔ builds rejected feedback as structured error state (0.150542ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1345.216792
+
+> talli-repository@0.1.0 test:annual-accounts
+> node --experimental-strip-types --test tests/annual_accounts_payload.test.mjs
+
+✔ builds verified RR0002 annual accounts payload fields (1.812584ms)
+✔ includes system costs, bank interest, and share-sale losses in annual result (0.1355ms)
+✔ separates tax expense from result before tax and includes tax payable in debt (0.123083ms)
+✔ returns annual accounts feedback for missing notes and unsupported cases (0.147666ms)
+✔ persists annual accounts payload feedback into readiness gate shape (2.020375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.23725
+
+> talli-repository@0.1.0 test:annual-accounts-xml
+> node --experimental-strip-types --test tests/annual_accounts_xml.test.mjs
+
+✔ renders deterministic live-schema RR0002 main and company-accounts XML (3.433833ms)
+✔ rejects a payload with readiness blocks (0.430209ms)
+✔ rejects unbalanced or fractional whole-kroner payloads (0.402ms)
+✔ rejects a missing field or mismatched official orid (0.232ms)
+✔ rejects a calendar-invalid approval date (0.120667ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.734333
+
+> talli-repository@0.1.0 test:annual-accounts-authority
+> node --experimental-strip-types --test tests/annual_accounts_authority_client.test.mjs
+
+✔ prepares the official RR0002 instance for person signing without signing or submitting (35.200125ms)
+✔ reads completed RR0002 signature, receipt, and archive evidence without downloading documents (0.5545ms)
+✔ fails closed on authority validation errors before locking the instance (0.759417ms)
+✔ exchanges the Maskinporten token at the documented TT02 Altinn endpoint (0.209125ms)
+✔ rejects incomplete instances, invalid inputs, and production transport (0.487ms)
+✔ sanitizes remote errors and never includes submitted XML or access tokens (0.33875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.558958
+
+> talli-repository@0.1.0 test:annual-accounts-authority-script
+> node --experimental-strip-types --test tests/annual_accounts_authority_script.test.mjs
+
+✔ annual accounts authority rehearsal refuses to run without explicit test-write approval (133.304834ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 232.337542
+
+> talli-repository@0.1.0 test:company-tax-return
+> node --experimental-strip-types --test tests/company_tax_return_payload.test.mjs
+
+✔ builds 2025 schema-backed company tax return payload candidate (2.278917ms)
+✔ uses the current-draft party number for both authority documents (0.160667ms)
+✔ reconciles interest, costs, exempt gains, and non-deductible losses (8.59375ms)
+✔ renders a negative taxable basis as a positive whole-number loss (0.157042ms)
+✔ blocks unsupported tax treatment and shareholder loans (0.172375ms)
+✔ builds no-activity payload candidate without activity warnings (0.148541ms)
+✔ blocks unsupported owner dividend and blocking actions (0.170167ms)
+✔ persists tax return payload feedback into skattemelding readiness (1.724959ms)
+✔ archives pending company-tax TT02 feedback without relabeling it as a simulated receipt (0.631375ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.690375
+
+> talli-repository@0.1.0 test:company-tax-return-xml
+> node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs
+
+✔ renders deterministic 2025 XML with escaped values and schema order (3.054834ms)
+✔ rendered XML validates against the pinned official schemas when supplied (29.049417ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.141792
+
+> talli-repository@0.1.0 test:company-tax-return-authority
+> node --experimental-strip-types --test tests/company_tax_return_authority_client.test.mjs
+
+✔ renders the official v2 envelope with base64 documents and 2025 submission purpose (1.24175ms)
+✔ rendered envelope validates against the pinned official request schema when supplied (8.191292ms)
+✔ renders and posts a reference-free envelope only to the documented validertest endpoint (31.393834ms)
+✔ summarizes validation status and guidance without retaining calculated documents (9.950875ms)
+✔ exchanges a system-user Maskinporten token at the official Altinn endpoint (0.444458ms)
+✔ uses the official current-document and Altinn async-validation sequence (2.126166ms)
+✔ replaces an existing company-tax envelope data element in place (0.310292ms)
+✔ advances exactly once from data to owner confirmation and returns the documented viewer URL (0.45125ms)
+✔ owner-confirmation preparation is idempotent and blocks unknown tasks without a write (0.813584ms)
+✔ retrieves exactly one clean XML feedback receipt through read-only calls (0.595041ms)
+✔ feedback retrieval treats missing feedback as retryable and duplicate feedback as blocked (0.31775ms)
+✔ feedback retrieval blocks rejected scans, non-XML content, and byte-length mismatches (0.5465ms)
+✔ polls read-only until the company tax feedback receipt is available (0.37775ms)
+✔ fails closed before validation until the uploaded envelope is virus-scan Clean (0.152292ms)
+✔ sanitizes remote errors and rejects production-by-default shortcuts (0.329541ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 212.318083
+
+> talli-repository@0.1.0 test:company-tax-return-authority-script
+> node --test tests/company_tax_return_authority_script.test.mjs
+
+✔ company tax rehearsal refuses to run without explicit TT02 write approval (133.989708ms)
+✔ company tax rehearsal is resumable, company-bound, and keeps final submission human-controlled (0.379917ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 235.521834
+
+> talli-repository@0.1.0 test:review
+> node --experimental-strip-types --test tests/review_workflow.test.mjs
+
+✔ advisory review comments can be acknowledged (0.994667ms)
+✔ hard review comments cannot be acknowledged as advisory (0.255042ms)
+✔ hard review comments block simulated submission (0.087292ms)
+✔ workspace invitation presentation marks pending invitations expired (0.922166ms)
+✔ review checklist keeps advisory comments separate from hard system blocks (0.983708ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.910791
+
+> talli-repository@0.1.0 test:billing
+> node --experimental-strip-types --test tests/billing_persisted.test.mjs
+
+✔ builds founder and standard billing accounts with launch prices (0.891083ms)
+✔ blocks founder cohorts outside first 100 companies (0.229542ms)
+✔ filing package charge waits for subscription and readiness (0.104917ms)
+✔ unsupported cases remain no-charge and supported paid failures are refund eligible (0.071917ms)
+✔ simulated provider events persist idempotent payment and refund references (0.158292ms)
+✔ simulated provider events handle duplicate webhooks and subscription cancellation (0.160917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 141.347375
+
+> talli-repository@0.1.0 test:cancellation
+> node --experimental-strip-types --test tests/cancellation.test.mjs
+
+✔ requires archive export before cancellation can move into retention hold (0.998875ms)
+✔ keeps final deletion behind legal review and explicit deletion state (0.0795ms)
+✔ builds archive and retention evidence for launch-critical records (0.848291ms)
+✔ shows explicit export, soft-delete, retention, and final deletion lifecycle states (0.342833ms)
+✔ builds retained deletion completion update with reviewer and actor (0.251208ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 141.109167
+
+> talli-repository@0.1.0 test:operator-support
+> node --experimental-strip-types --test tests/operator_support.test.mjs
+
+✔ operator support exposes no legacy company-search seam (4.0335ms)
+✔ operator summary highlights filing, billing, refund, restore, and audit state (9.401042ms)
+✔ operator summary keeps cross-company data separated (0.123833ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.894542
+
+> talli-repository@0.1.0 test:operator-mfa
+> node --test tests/operator_mfa.test.mjs
+
+✔ operator MFA uses the signed-in browser session and official TOTP APIs (0.908334ms)
+✔ an existing AAL2 session can be re-verified after the freshness window expires (0.135ms)
+✔ the MFA surface is rendered only inside the existing admin operator boundary (0.264083ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.706
+
+> talli-repository@0.1.0 test:deadlines
+> node --experimental-strip-types --test tests/deadlines.test.mjs
+
+✔ shows upcoming deadlines before due dates (2.130625ms)
+✔ shows due on exact deadline date (0.114084ms)
+✔ shows overdue after deadline without fine guarantee language (0.224333ms)
+✔ shows simulated when RF-1086 receipt exists before deadline (0.119583ms)
+✔ shows late simulated when receipt is archived after deadline (0.155459ms)
+✔ represents RF-1086, skattemelding, and årsregnskap separately (1.38625ms)
+✔ queues configurable upcoming reminders with Norwegian no-guarantee language (0.353792ms)
+✔ prevents duplicate reminders and skips completed filings (0.129333ms)
+✔ queues overdue guidance without unsupported cases (0.160417ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.294167
+
+> talli-repository@0.1.0 test:archive
+> node --experimental-strip-types --test tests/archive_export.test.mjs
+
+✔ builds company-year archive from persisted workspace rows (3.553875ms)
+✔ archive download fetches only sanitized authority runs linked by submission id (1.428083ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (0.7745ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.164042
+
+> talli-repository@0.1.0 test:backup-restore
+> node --experimental-strip-types --test tests/backup_restore.test.mjs
+
+✔ company-tax evidence migration preserves an atomic reference-only backup boundary (1.461375ms)
+✔ backup manifest identifies launch-critical tables and object references (1.854208ms)
+✔ restore fixture preserves launch-critical accounting state in isolated workspace (0.510041ms)
+✔ company-tax submissions are counted and round-trip with generic filing submissions (0.251917ms)
+✔ restore integrity rejects missing and mismatched company-tax authority evidence pairs (0.27625ms)
+✔ restore integrity fails when corporate lifecycle rows or object metadata are incomplete (0.171166ms)
+✔ restore integrity reports missing object warning and missing critical rows (0.134916ms)
+✔ production restore launch gate requires recent passing restore test (0.88275ms)
+✔ corporate release and restore runbooks keep external gates explicitly pending (0.894792ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.939416
+
+> talli-repository@0.1.0 test:security
+> node --experimental-strip-types --test tests/security_step_up.test.mjs
+
+✔ step-up accepts fresh signed AAL2 claims for the matching actor (1.800417ms)
+✔ step-up accepts supported signed MFA method references and uses the newest one (0.124667ms)
+✔ step-up fails closed for AAL1, cross-user, missing AMR, and string-only AMR claims (0.257958ms)
+✔ step-up rejects invalid, stale, and future MFA timestamps (0.133792ms)
+✔ all protected corporate actions require fresh AAL2 user presence (0.744459ms)
+✔ server gate verifies claims, never reads legacy step-up rows, and audits allow/block (0.446791ms)
+✔ claims lookup failures are blocked and audited without leaking provider details (0.140542ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.666208
+
+> talli-repository@0.1.0 test:trusted-aal2-schema
+> node --test tests/trusted_aal2_schema.test.mjs
+
+✔ legacy step-up events are inaccessible to customer Data API roles (4.207416ms)
+✔ corporate step-up RPC trusts signed AAL2 and timestamped AMR claims only (1.23925ms)
+✔ final founder confirmation is a database-enforced launch signoff key (0.8305ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.1475
+
+> talli-repository@0.1.0 test:filing-release-gate
+> node --experimental-strip-types --test tests/filing_release_gate.test.mjs
+
+✔ release evidence keeps authority and filing switches off after local browser proof (1.114083ms)
+✔ keeps all production filing gates disabled without authority, billing, step-up, and human review (1.337667ms)
+✔ blocks production when authority evidence or filing-specific signoff is missing (0.280583ms)
+✔ marks only the exactly entitled RF obligation production ready when every release gate passes (0.977625ms)
+✔ cannot report production ready when a live adapter is unimplemented or disabled (0.190458ms)
+✔ fresh AAL2 and enabled adapters cannot replace final founder confirmation (0.138208ms)
+✔ a stale restore rehearsal blocks every production filing (0.123916ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 167.964667
+
+> talli-repository@0.1.0 test:production-filing-guide
+> node --test tests/production_filing_action_guide.test.mjs
+
+✔ checklist and guide keep the exact ordered stage sequence (1.936042ms)
+✔ both documents keep runtime signoffs in the signoff stage (0.420333ms)
+✔ both documents keep case-specific gates in their operating stages (0.245291ms)
+✔ mandatory gates stay affirmative without localized contradictions (7.341208ms)
+✔ mandatory-gate contradiction matcher rejects bypasses but allows fail-closed language (0.315166ms)
+✔ every guide stage uses only numbered checkbox action entries (0.674625ms)
+✔ mandatory gate declarations stay outside exact action checkboxes (0.290875ms)
+✔ founder go-live approval stays pending until the complete evidence set exists (0.341208ms)
+✔ production credential readiness is verified without exposing the key (0.408917ms)
+✔ unknown outcome shutdown precedes read-only reconciliation (0.224375ms)
+✔ legal-pack approval stage says professional approval is pending (0.093208ms)
+✔ guide preserves switch, evidence, and unknown-outcome stop rules (0.148292ms)
+✔ both documents state the narrow scope and forbid adjacent filing scope (0.226834ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 116.473417
+
+> talli-repository@0.1.0 test:launch-copy
+> node --experimental-strip-types --test tests/launch_copy.test.mjs
+
+✔ requires non-affiliation and pre-production gate language in public app copy (2.735125ms)
+✔ rejects launch claims that outrun authority evidence (0.327042ms)
+✔ public homepage is a truthful free recruitment entry (1.174875ms)
+✔ public company check is free, provisional, and distinguishes provider failure (0.734541ms)
+✔ public legal copy identifies the real beta operator and contains no placeholders (0.321916ms)
+✔ email signup communicates the hosted twelve-character password floor (0.334584ms)
+✔ launch validator rejects beta overclaims about review, payment, and delivery (0.125958ms)
+✔ owner Systembruker copy distinguishes approval from verified readiness (0.209167ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.925167
+
+> talli-repository@0.1.0 test:launch-signoff
+> node --experimental-strip-types --test tests/launch_signoff.test.mjs
+
+✔ blocks launch when required signoffs are missing (2.028541ms)
+✔ blocks launch when signoff is rejected or incomplete (0.955292ms)
+✔ requires fresh restore signoff (0.137334ms)
+✔ rejects future-dated launch signoffs (0.327166ms)
+✔ passes only when every launch signoff is approved with evidence (0.229334ms)
+✔ builds persisted launch signoff record and validates approved evidence (0.317709ms)
+✔ documented launch_legal_name_public_copy entry is a valid approved record (0.076333ms)
+✔ launch evidence records the final founder gate as intentionally unapproved (1.930458ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.467042
+
+> talli-repository@0.1.0 test:validation-observation-launch-off
+> node --test tests/validation_observation_launch_off.test.mjs
+
+✔ full-launch source configuration is exact off and public contracts expose no pilot authority (5.959ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.854125
+
+> talli-repository@0.1.0 test:legal-policy
+> node --test tests/legal_policy_pack.test.mjs tests/launch_human_gate_preparation.test.mjs
+
+✔ measurement decision inventories application-controlled data without hosted overclaims (1.014709ms)
+✔ consent proof remains exact-release-bound and inactive without human approval (0.114792ms)
+✔ validation plan links preparation without opening intake (0.062875ms)
+✔ founder-approved pilot observation direction stays separate and fails closed for launch (0.266334ms)
+✔ pre-intake pack stays blank, protected-store-first and fail closed (0.221791ms)
+✔ terms cover holding-first scope, unsupported cases, filing limits, refunds, and no advisory guarantee (1.199916ms)
+✔ legal pack uses one beta-to-live business agreement and explicit electronic acceptance (0.35125ms)
+✔ privacy and pack metadata identify the supplier without transfer or hosting overclaims (0.320375ms)
+✔ production evidence retains both named-company gates and production filing NO-GO (0.266334ms)
+✔ privacy policy and DPA cover launch-critical data and processor boundaries (0.189959ms)
+✔ retention/delete policy distinguishes export, retention hold, and deletion constraints (0.142709ms)
+✔ incident policy covers detection, containment, notification, filing incidents, and postmortems (0.121042ms)
+✔ incident policy names pre-incorporation roles and a customer notification approach (0.636209ms)
+✔ retention policy fixes archive responsibility and audit-id pseudonymization (0.366459ms)
+✔ founder decision records the approved AI-assisted boundary and real-data stop (0.179583ms)
+✔ legal pack uses the approved annual offer, role boundary, and measured retention (0.203333ms)
+✔ privacy policy states a GDPR art. 6 legal basis and a least-privilege operator access model (0.163458ms)
+✔ DPA covers breach notification to the controller, audit rights, and duration (0.142ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 106.636333
+
+> talli-repository@0.1.0 test:ci-gate
+> node --test tests/ci_release_gate.test.mjs
+
+✔ release gate covers pull requests and main with least privilege (1.650375ms)
+✔ release gate runs every customer-readiness check before promotion (0.491541ms)
+✔ database isolation uses the locked Python renderer environment (0.16525ms)
+✔ database isolation runs the complete ledger contract lifecycle (0.704292ms)
+✔ local immutable gate rejects tracked, staged, and untracked drift (601.0725ms)
+✔ local immutable gate normalizes terminal output before recording it (0.259792ms)
+✔ database harness restores generated drift and preserves failure semantics (1627.655542ms)
+✔ browser owner rehearsal includes executable owned-process lifecycle coverage (1.21975ms)
+✔ Vercel deploys the Next output near the owner-designated database (0.472ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2335.309917
+[launch-rehearsal] exit=0
+[launch-rehearsal] durationMs=115372
+
+[production-dependency-audit] command=npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high
+found 0 vulnerabilities
+# npm audit report
+
+postcss  <=8.5.22
+Severity: moderate
+PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset - https://github.com/advisories/GHSA-fxqj-rqcc-2cmp
+fix available via `npm audit fix --force`
+Will install next@16.3.4, which is outside the stated dependency range
+node_modules/postcss
+  next  9.3.4-canary.0 - 16.3.0-preview.10
+  Depends on vulnerable versions of postcss
+  node_modules/next
+
+2 moderate severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix --force
+[production-dependency-audit] exit=0
+[production-dependency-audit] durationMs=1609
+
+[database-isolation] command=TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local
+
+> talli-repository@0.1.0 test:supabase:local
+> bash scripts/test-supabase-local.sh
+
+
+> talli-repository@0.1.0 test:supabase-advisors
+> node scripts/assert-supabase-advisors.mjs
+
+Supabase advisors: 0 blocking security/error findings; 23 performance warnings.
+
+> talli-repository@0.1.0 test:ledger-database-lifecycle
+> node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_full_year_database_runtime.test.mjs tests/ledger_supported_patterns_database_runtime.test.mjs tests/ledger_opening_position_rebuild_schema.test.mjs tests/ledger_corrections_database_runtime.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs tests/ledger_database_runtime.test.mjs
+
+✔ ledger business data moves to its owned schema without claiming shareholder setup (1.301833ms)
+✔ legacy entry kinds are explicitly and completely normalized (0.968625ms)
+✔ target persistence is company-scoped, opening-unique, and admission-gated (0.597625ms)
+✔ technical receipts and cursor keys are immutable and non-forgeable (0.5285ms)
+✔ hosted migration authority and pgcrypto access are explicit and temporary (0.498333ms)
+✔ mixed-version facade preserves predecessor values and RLS-enforced inserts (0.691458ms)
+✔ the backend executor cannot bypass the intent facade with direct table DML (0.405959ms)
+✔ future capability SQL is not rewritten into a generic ledger dispatcher (0.6375ms)
+✔ contract removes browser posting RPCs and rollback disables target before restoring legacy (0.627541ms)
+✔ ledger cutover is an atomic expand, contract, and recutover-safe rollback (1.934834ms)
+✔ expand reacquires locked-schema authority for recutover and revokes it atomically (2.457167ms)
+✔ contract borrows only ledger ownership and returns it before commit (0.533667ms)
+✔ rollback borrows only the ownership and schema authority its reversal needs (0.85225ms)
+✔ nine exact writer coordinators are executor-only and never accept ledger lines (4.811625ms)
+✔ audit placement preserves active continuations and future atomic audits (0.795583ms)
+✔ one physical ledger store has a non-bypass owner and execute-only runtime (1.053208ms)
+✔ commands bind verified identity, closed admission, and permanent idempotency (0.962333ms)
+✔ new-year coordination is atomic, replayable, and keeps posting policy in ledger (1.339917ms)
+✔ consequential admission serializes with recheck and requires AAL2 plus current agreement (0.512291ms)
+✔ persistence enforces canonical balanced two-decimal NOK entries (0.556292ms)
+✔ entry queries retain canonical source identity for archive reconstruction (0.366917ms)
+✔ opening-snapshot compatibility query is bounded, member-scoped, and read-only (1.683958ms)
+✔ serialization and signed cursors are bounded and owner-only (0.436209ms)
+✔ migration evidence is pre-transform, reconciled, and immutable (0.619833ms)
+✔ the frozen overlap trigger can invoke private normalization helpers (0.369667ms)
+✔ contract removes legacy writers, facades, and cross-capability FKs (0.878625ms)
+✔ rollback disables target before restoring the frozen legacy writer (0.576917ms)
+✔ company-year close has one evidence-gated atomic database interface (2.309458ms)
+✔ close replay and latest query share one exact raw-command fingerprint (0.474ms)
+✔ ordinary posting is receipt-first and serialized behind statutory close (0.137417ms)
+✔ close assessments and evidence are immutable forced-RLS ledger data (0.850375ms)
+✔ every close output is bound to the reconstruction economic-fact set (0.399917ms)
+✔ database lifecycle covers close, correction staleness, rollback and recutover (1.317916ms)
+✔ correction API has the canonical immutable reversal contract (1.637667ms)
+✔ SQL coordinates persistence but contains no replacement accounting selection (0.304458ms)
+✔ lineage and provenance are forced-RLS immutable evidence (0.435834ms)
+✔ fresh database lifecycle exercises correction and recutover (0.426875ms)
+✔ ledger authority survives expand, contract, concurrency, rollback, and recutover (48175.276541ms)
+✔ reconstruction evidence is immutable, tenant-scoped, and executor-only (1.935958ms)
+✔ full-year migration temporarily restores hosted migration authority and re-hardens it (1.587958ms)
+✔ every additive ledger migration bounds hosted authority to one transaction (1.838708ms)
+✔ database revalidates the exact source-owner evidence topology (0.681791ms)
+✔ reconstruction readiness binds the complete canonical economic-fact set (1.130958ms)
+✔ reconstruction readiness binds revisioned full-interval source evidence (0.900375ms)
+✔ fresh database rehearsal executes reconstruction replay, RLS, and gap cases (1.78675ms)
+✔ opening rebuild, components, and provenance are immutable forced-RLS records (2.082917ms)
+✔ the receiver is executor-only and persists one atomic typed opening journal (1.791583ms)
+✔ SQL stores Python accounting decisions without reimplementing them (0.401417ms)
+✔ component and source tenant keys are bound to their parents (0.555292ms)
+✔ bank-loan components are an exact journal-backed payment basis (0.973625ms)
+✔ full-state digest includes opening and lifecycle facts (0.215666ms)
+✔ contract requires the receiver and rollback revokes it without deleting facts (1.486583ms)
+✔ an already-applied predecessor schema receives the uncapped source upgrade (0.735375ms)
+✔ supported entries persist immutable event and source provenance (1.470833ms)
+✔ SQL keeps accounting policy out and delegates to the canonical writer (0.290542ms)
+✔ fresh database lifecycle proves replay, RLS, provenance, and recutover (0.263708ms)
+✔ the predecessor expand remains forward-compatible during recutover (0.255625ms)
+✔ received-dividend lifecycle state is immutable, forced-RLS, and executor-only (0.891708ms)
+✔ received-dividend wrappers coordinate lifecycle around the canonical posting seam (0.367625ms)
+✔ fresh lifecycle covers received-dividend replay, failure atomicity, and cutover (0.303417ms)
+✔ bank-loan lifecycle state is immutable, forced-RLS, and executor-only (0.610834ms)
+✔ bank-loan wrappers persist derived entries without selecting accounting policy (0.505ms)
+✔ fresh lifecycle covers bank-loan replay, allocation limits, and cutover (0.44325ms)
+✔ cash-capital-increase phases are one immutable forced-RLS lifecycle (0.533ms)
+✔ cash-capital wrappers enforce exact sources without selecting accounting policy (1.242291ms)
+✔ fresh lifecycle covers cash-capital rollback revocation and recutover (0.990208ms)
+✔ loss-coverage capital reduction uses one append-only forced-RLS phase lifecycle (0.752625ms)
+✔ loss-coverage reduction wrappers enforce exact source-owned phase shapes (2.49475ms)
+✔ fresh lifecycle covers loss-coverage reduction rollback and recutover (1.2955ms)
+ℹ tests 69
+ℹ suites 0
+ℹ pass 69
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49027.437
+
+> talli-repository@0.1.0 test:banking-database-lifecycle
+> node --test --test-concurrency=1 tests/banking_capability_schema.test.mjs tests/banking_connection_schema.test.mjs tests/banking_database_runtime.test.mjs
+
+✔ the complete local database gate includes banking contract and rollback (1.134417ms)
+✔ banking expand is overlap-safe and preserves stable source identities (1.282583ms)
+✔ migration evidence proves exact count and canonical hash reconciliation (0.495417ms)
+✔ banking migrations borrow and revoke backend-system schema authority (0.453ms)
+✔ legacy transaction writes are mirrored during expand without a second policy engine (1.155041ms)
+✔ canonical banking data is forced-RLS and runtime roles cannot write tables directly (0.972084ms)
+✔ canonical acceptances store source decisions, not ledger policy copies (0.356416ms)
+✔ banking workflow locks source facts and delegates the only posting to ledger (0.468583ms)
+✔ statement import is durable-idempotent and provider data cannot select accounting (0.330125ms)
+✔ banking reads are tenant-scoped deterministic cursor pages (0.376583ms)
+✔ banking contract removes legacy storage only after live exact reconciliation (0.707917ms)
+✔ banking contract leaves one canonical writer and no SQL suggestion-policy copy (0.703541ms)
+✔ banking contract preserves only bounded future seams and archive freshness (0.541ms)
+✔ banking rollback restores the predecessor and supports deterministic recutover (0.830458ms)
+✔ #189 owns canonical connection, account, coverage, sync, and source-file state (2.550166ms)
+✔ provider identifiers, cursors, and original files are encrypted or hashed (0.521167ms)
+✔ sync persistence checkpoints each page and keeps accounting outside provider workflows (0.685625ms)
+✔ runtime roles can call checked functions but cannot mutate canonical tables (0.473542ms)
+✔ migration keeps auth references under the migration principal and drops borrowed authority (3.088958ms)
+✔ manifests declare every new table and migration (1.192708ms)
+✔ banking authority survives reconciliation, contract, rollback, security, and recutover (13643.922416ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13958.839875
+
+> talli-repository@0.1.0 test:investments-database-lifecycle
+> node --test --test-concurrency=1 tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+✔ the complete local database gate includes the investments lifecycle (1.178625ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.5225ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (1.460292ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (2.115334ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (0.989125ms)
+✔ forward correction-source replay stays insert-only across rollback (0.298667ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.75975ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.618042ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.655166ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.268917ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (1.0685ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.243834ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.3065ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.143709ms)
+✔ contract reconciles live state before removing predecessor production names (0.507542ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.392583ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.475583ms)
+✔ sale rollback is non-destructive and recutover-safe (0.387375ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.674333ms)
+✔ received-dividend contract reconciles before predecessor removal (0.330375ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.412833ms)
+✔ allocation identities remain stable across the overlap window (0.441917ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (1.707209ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (0.862166ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.201416ms)
+✔ supported patterns keep writes private and publish correction lineage (2.337042ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.382375ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.712875ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.617041ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.222667ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.557ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.750708ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (24872.323833ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25112.133292
+
+> talli-repository@0.1.0 test:marketing-measurement-database
+> node --test tests/marketing_measurement_database_runtime.test.mjs tests/marketing_consent_proof_database_runtime.test.mjs
+
+✔ marketing collection requires durable server-stamped approved notice proof and five distinct sessions (5859.122084ms)
+✔ marketing measurement is consent-bounded, private, aggregate-only, and retained briefly (7169.312ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7272.170583
+
+> talli-repository@0.1.0 test:validation-observation
+> uv run --project apps/backend pytest apps/backend/tests/test_validation_observation.py apps/backend/tests/test_supabase_validation_observation.py -q && node --test tests/validation_observation_database_runtime.test.mjs
+
+.................s                                                       [100%]
+17 passed, 1 skipped in 0.10s
+✔ pilot observation is database-authoritative, bounded, private, revocable, and launch-off provable (3992.626333ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4099.009
+
+> talli-repository@0.1.0 test:supabase
+> node --test --test-concurrency=1 tests/supabase_workspace.test.mjs tests/rf1086_feedback_schema.test.mjs tests/company_access_invitations_schema.test.mjs tests/company_access_cancellation_schema.test.mjs tests/company_year_admission_schema.test.mjs tests/current_legal_evidence_schema.test.mjs tests/current_legal_evidence_migration_lifecycle.test.mjs tests/support_access_schema.test.mjs tests/company_access_database_runtime.test.mjs tests/company_access_onboarding_database_runtime.test.mjs tests/support_access_database_runtime.test.mjs tests/support_access_migration_lifecycle.test.mjs
+
+✔ expand migration adds append-only revision-bound deletion reviews (2.231292ms)
+✔ request derives archive and source completeness inside one atomic RPC (1.089625ms)
+✔ archive route and generation triggers share one complete source inventory (3.006958ms)
+✔ expand deterministically supersedes and conceals legacy duplicates (0.625958ms)
+✔ review is admin+AAL2 only, append-only, and cannot be self-approved by an owner (0.562292ms)
+✔ finalize re-derives prerequisites and requires exact approved review (0.437542ms)
+✔ legacy export-required cancellations resume through a receipt-bound RPC (0.376042ms)
+✔ archive receipt completion is server-only, one-time, expiring, and generation-bound (0.788959ms)
+✔ direct lifecycle RPCs mirror strict request validation before receipts (0.596ms)
+✔ archive and reconciliation reject null income years explicitly (0.312ms)
+✔ review JSON is projected to the strict public response shape (0.202958ms)
+✔ lifecycle commands use durable receipts and least-privilege RLS (1.092416ms)
+✔ lifecycle mutations share operation-company-cancellation lock order (0.345666ms)
+✔ unknown command outcomes reconcile behind the exact operation lock (0.382459ms)
+✔ contract migration removes direct cancellation access only after generated-client cutover (0.515709ms)
+✔ the release Supabase suite includes cancellation schema coverage (0.313125ms)
+✔ company access RLS isolates tenants and exposes exact membership roles to owner policy (11473.015583ms)
+✔ cancellation lifecycle is atomic, review-bound, replay-safe, and tenant concealed (7383.798083ms)
+✔ invitation acceptance and membership administration use atomic bearer-scoped RPCs (5.150125ms)
+✔ invitation and membership mutations are not directly granted to authenticated web callers (1.845542ms)
+✔ invitation lookup is recipient-bound, expiry-aware, and never returns token hashes (1.133917ms)
+✔ command functions execute through a restricted RLS role instead of the migration owner (4.61125ms)
+✔ recipient table enumeration is removed and lookup requires the presented token (2.198875ms)
+✔ acceptance binds the verified Auth identity and rejects stale JWT claims atomically (1.966292ms)
+✔ consequential commands have durable replay receipts and concurrency preconditions (2.470625ms)
+✔ invitation side-effect recovery is receipt-owned, actor-derived, and proof-completed (3.092875ms)
+✔ pgcrypto hashing resolves the extension schema under an empty search path (1.115041ms)
+✔ expand and contract migrations preserve an explicit mixed-revision overlap (1.233625ms)
+✔ company-access onboarding is atomic, replay-safe, tenant-isolated, and phase-reversible (15560.9455ms)
+✔ company-year admission is one atomic executor-only evidence graph (2.6315ms)
+✔ admission validates every immutable active document and capability digest (2.094208ms)
+✔ manifest digest, durable snapshot, and change control stay one exact boundary (2.821292ms)
+✔ post-admission rechecks append a current safety gate and preserve export (1.561333ms)
+✔ admission evidence is append-only, tenant concealed, and browser inaccessible (1.286958ms)
+✔ admission command receipts are actor-bound and permit exact replay only (0.777292ms)
+✔ #196 legal evidence rollback fails closed twice, preserves evidence, and recuts over (42.195875ms)
+✔ current legal evidence is reconciled without rewriting history (1.2475ms)
+✔ rollback preserves evidence and fails closed (0.367584ms)
+✔ feedback fixture cleanup preserves primary and returned Supabase errors (2.22475ms)
+✔ creates private, constrained feedback metadata and durable reconciliation state (0.872042ms)
+✔ uses explicit least privilege grants and owner/operator read policies (1.355042ms)
+✔ recording validates exact relationships and the deterministic private key (0.473083ms)
+✔ change-only reconciliation events are serialized and expose safe diagnostics only (0.554792ms)
+✔ backfills and atomically claims only an exact valid succeeded confirmation reference (1.00875ms)
+✔ rollback revokes functions first and restores only feature-owned schema and storage policy changes (0.562041ms)
+✔ local Supabase exposes read-only RLS metadata and service-only mutation RPCs (27.4535ms)
+✔ local Supabase recovers confirmed submissions and limits feedback data to authorized readers (1650.153459ms)
+✔ Supabase authenticated workspace persists owner data and denies outsider (3865.040333ms)
+✔ #200 exposes only executor-owned support functions and exact case-bound RLS policies (62.825334ms)
+✔ #200 generated cases fail closed, read without writes, and bind deletion review to an opened case (162.523334ms)
+✔ #200 rollback fails closed, preserves evidence, is repeatable, and recuts over (60.556791ms)
+✔ support grants use generated case IDs, enums, exact scopes, and bounded windows (1.221333ms)
+✔ command receipts bind canonical SHA-256 fingerprints and reject operation reuse (0.503875ms)
+✔ authorization requires exact opened case, company, scope, operator, time, revocation, and fresh MFA (0.362458ms)
+✔ the exact support resource surface is policy-bound and malformed storage paths fail closed (1.228625ms)
+✔ support tables and RPCs are backend-executor only (0.529125ms)
+✔ grant and revoke are admin plus fresh-MFA commands while open/read are operator plus fresh-MFA (0.367375ms)
+✔ GET is a bounded read projection and only POST open creates opening/audit/receipt evidence (0.399708ms)
+✔ the generated support contract requires the exact typed 18-resource projection (1.249084ms)
+✔ deletion review and reconciliation require the exact support case (0.547292ms)
+✔ active web and backend adapters have no customer-directory support search or direct business reads (0.437375ms)
+✔ rollback disables support without restoring standing operator access or deleting evidence (0.255042ms)
+ℹ tests 62
+ℹ suites 0
+ℹ pass 62
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41849.672458
+
+> talli-repository@0.1.0 test:browser-owner
+> node --test --test-concurrency=1 tests/browser_fixture_safety.test.mjs tests/browser_process_lifecycle.test.mjs tests/browser_company_onboarding.mjs tests/browser_owner_annual_loop.mjs
+
+✔ a verified AAL1 owner completes accessible, fail-closed company onboarding through FastAPI (41434.074375ms)
+✔ Supabase browser fixtures only accept loopback URLs (0.872041ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.1145ms)
+✔ owner browser harness stops before remote fixture creation (398.056708ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (344.396208ms)
+✔ browser owner annual loop uses persisted state and survives reload (44155.769834ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (61.419208ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (43.088584ms)
+✔ readiness failure tears down a live owned process (44.256958ms)
+✔ a listener that never responds cannot outlive the readiness deadline (112.234916ms)
+✔ a ready owned process is terminated and cleanup is idempotent (92.009ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (13.348708ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.44475ms)
+✔ browser owner cleanup removes tracked sources before company and user (0.88675ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (0.6205ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (0.550917ms)
+✔ browser owner cleanup removes immutable corporate and production filing graphs (315.807333ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87974.123791
+
+> talli-repository@0.1.0 test:ledger-hosted-migration-authority
+> node --test tests/ledger_hosted_migration_authority.test.mjs
+
+✔ hosted non-super migrator rehearses contract, rollback, recutover, and failed authority cleanup (238.758833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 353.483916
+Using workdir /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T//talli-supabase-local.ag06a4
+ db Skipped - Image is already present locally
+ api Skipped - Image is already present locally
+ auth Skipped - Image is already present locally
+ storage Skipped - Image is already present locally
+ gateway Skipped - Image is already present locally
+Starting database...
+Initialising schema...
+Seeding globals from roles.sql...
+Applying migration 0001_authenticated_workspace.sql...
+NOTICE (42710): extension "pgcrypto" already exists, skipping
+NOTICE (42701): column "status_text" of relation "companies" already exists, skipping
+NOTICE (42701): column "address" of relation "companies" already exists, skipping
+NOTICE (42701): column "postal_code" of relation "companies" already exists, skipping
+NOTICE (42701): column "city" of relation "companies" already exists, skipping
+NOTICE (42701): column "source" of relation "companies" already exists, skipping
+NOTICE (42701): column "created_by" of relation "companies" already exists, skipping
+NOTICE (42701): column "identity_confirmed_at" of relation "companies" already exists, skipping
+NOTICE (42701): column "identity_locked_at" of relation "companies" already exists, skipping
+NOTICE (42701): column "created_at" of relation "companies" already exists, skipping
+NOTICE (42701): column "accepted_at" of relation "company_memberships" already exists, skipping
+NOTICE (42701): column "created_at" of relation "company_memberships" already exists, skipping
+NOTICE (42701): column "status" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "reason" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "evidence" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "requested_by" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "requested_at" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "reviewed_by" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "reviewed_at" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "deleted_by" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "deleted_at" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "updated_at" of relation "company_cancellations" already exists, skipping
+NOTICE (42701): column "risk_flags" of relation "ledger_entries" already exists, skipping
+NOTICE (42701): column "warning_accepted_by" of relation "ledger_entries" already exists, skipping
+NOTICE (42701): column "warning_accepted_at" of relation "ledger_entries" already exists, skipping
+NOTICE (42701): column "movements" of relation "investment_positions" already exists, skipping
+NOTICE (42701): column "adapter_mode" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "payload_hash" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "idempotency_key" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "submitted_by" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "feedback_items" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "receipt_metadata" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "submitted_payload_ref" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "submitted_payload" of relation "filing_submissions" already exists, skipping
+NOTICE (42701): column "refund_completed" of relation "billing_accounts" already exists, skipping
+NOTICE (42701): column "provider_customer_ref" of relation "billing_accounts" already exists, skipping
+NOTICE (42701): column "subscription_provider_ref" of relation "billing_accounts" already exists, skipping
+NOTICE (42701): column "filing_package_payment_ref" of relation "billing_accounts" already exists, skipping
+NOTICE (42701): column "refund_provider_ref" of relation "billing_accounts" already exists, skipping
+NOTICE (00000): policy "owners can create companies" for relation "public.companies" does not exist, skipping
+NOTICE (00000): policy "company members can read companies" for relation "public.companies" does not exist, skipping
+NOTICE (00000): policy "active operators can read own operator grant" for relation "public.support_operators" does not exist, skipping
+NOTICE (00000): policy "active operators can read launch signoffs" for relation "public.launch_signoffs" does not exist, skipping
+NOTICE (00000): policy "admin operators can create launch signoffs" for relation "public.launch_signoffs" does not exist, skipping
+NOTICE (00000): policy "admin operators can update launch signoffs" for relation "public.launch_signoffs" does not exist, skipping
+NOTICE (00000): policy "owners can lock their new company identity" for relation "public.companies" does not exist, skipping
+NOTICE (00000): policy "users can read their memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company creator can add owner membership" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "owners can invite company members" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "owners can update their own membership acceptance" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "invited users can accept company memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "owners and invitees can read company invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "owners can create company invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "owners and invitees can update company invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "owners can read notification outbox" for relation "public.notification_outbox" does not exist, skipping
+NOTICE (00000): policy "owners can create notification outbox rows" for relation "public.notification_outbox" does not exist, skipping
+NOTICE (00000): policy "company members can read audit events" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "support operators can read audit events" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "company members can create audit events for themselves" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "company members can read cancellation state" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "support operators can read cancellation state" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "owners can request cancellation" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "owners can update cancellation request" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "users can read their own step up events" for relation "public.step_up_events" does not exist, skipping
+NOTICE (00000): policy "users can create their own step up events" for relation "public.step_up_events" does not exist, skipping
+NOTICE (00000): policy "company members can read document metadata" for relation "public.documents" does not exist, skipping
+NOTICE (00000): policy "owners can create document metadata" for relation "public.documents" does not exist, skipping
+NOTICE (00000): policy "company members can read company document objects" for relation "storage.objects" does not exist, skipping
+NOTICE (00000): policy "owners can upload company document objects" for relation "storage.objects" does not exist, skipping
+NOTICE (00000): policy "company members can read opening balance setups" for relation "public.opening_balance_setups" does not exist, skipping
+NOTICE (00000): policy "owners can create opening balance setups" for relation "public.opening_balance_setups" does not exist, skipping
+NOTICE (00000): policy "company members can read period locks" for relation "public.period_locks" does not exist, skipping
+NOTICE (00000): policy "owners can create period locks" for relation "public.period_locks" does not exist, skipping
+NOTICE (00000): policy "company members can read annual data" for relation "public.annual_data" does not exist, skipping
+NOTICE (00000): policy "owners can create annual data" for relation "public.annual_data" does not exist, skipping
+NOTICE (00000): policy "owners can update annual data" for relation "public.annual_data" does not exist, skipping
+NOTICE (00000): policy "company members can read opening shareholders" for relation "public.opening_shareholders" does not exist, skipping
+NOTICE (00000): policy "owners can create opening shareholders" for relation "public.opening_shareholders" does not exist, skipping
+NOTICE (00000): policy "company members can read ledger entries" for relation "public.ledger_entries" does not exist, skipping
+NOTICE (00000): policy "owners can create ledger entries" for relation "public.ledger_entries" does not exist, skipping
+NOTICE (00000): policy "company members can read bank transactions" for relation "public.bank_transactions" does not exist, skipping
+NOTICE (00000): policy "owners can create bank transactions" for relation "public.bank_transactions" does not exist, skipping
+NOTICE (00000): policy "owners can update bank transactions" for relation "public.bank_transactions" does not exist, skipping
+NOTICE (00000): policy "company members can read holding actions" for relation "public.holding_actions" does not exist, skipping
+NOTICE (00000): policy "owners can create holding actions" for relation "public.holding_actions" does not exist, skipping
+NOTICE (00000): policy "company members can read investment positions" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): policy "owners can create investment positions" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): policy "owners can update investment positions" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): policy "company members can read filing previews" for relation "public.filing_previews" does not exist, skipping
+NOTICE (00000): policy "owners can create filing previews" for relation "public.filing_previews" does not exist, skipping
+NOTICE (00000): policy "company members can read filing submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): policy "support operators can read filing submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): policy "owners can create filing submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): policy "owners can update filing submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): policy "company members can read filing overrides" for relation "public.filing_overrides" does not exist, skipping
+NOTICE (00000): policy "owners can create filing overrides" for relation "public.filing_overrides" does not exist, skipping
+NOTICE (00000): policy "company members can read filing readiness snapshots" for relation "public.filing_readiness_snapshots" does not exist, skipping
+NOTICE (00000): policy "support operators can read filing readiness snapshots" for relation "public.filing_readiness_snapshots" does not exist, skipping
+NOTICE (00000): policy "owners can create filing readiness snapshots" for relation "public.filing_readiness_snapshots" does not exist, skipping
+NOTICE (00000): policy "owners can update filing readiness snapshots" for relation "public.filing_readiness_snapshots" does not exist, skipping
+NOTICE (00000): policy "company members can read filing review comments" for relation "public.filing_review_comments" does not exist, skipping
+NOTICE (00000): policy "company members can read billing accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): policy "support operators can read billing accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): policy "owners can create billing accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): policy "owners can update billing accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): policy "company members can read billing payment events" for relation "public.billing_payment_events" does not exist, skipping
+NOTICE (00000): policy "support operators can read billing payment events" for relation "public.billing_payment_events" does not exist, skipping
+NOTICE (00000): policy "owners can create billing payment events" for relation "public.billing_payment_events" does not exist, skipping
+NOTICE (00000): policy "company members can read authority permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): policy "support operators can read authority permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): policy "owners can create authority permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): policy "owners can update authority permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): policy "company members can read authority test runs" for relation "public.authority_test_runs" does not exist, skipping
+NOTICE (00000): policy "support operators can read authority test runs" for relation "public.authority_test_runs" does not exist, skipping
+NOTICE (00000): policy "owners can create authority test runs" for relation "public.authority_test_runs" does not exist, skipping
+NOTICE (00000): policy "owners and reviewers can create filing review comments" for relation "public.filing_review_comments" does not exist, skipping
+NOTICE (00000): policy "owners can acknowledge filing review comments" for relation "public.filing_review_comments" does not exist, skipping
+Applying migration 0002_fifo_investment_lots.sql...
+NOTICE (00000): constraint "investment_positions_lot_history_status_check" of relation "investment_positions" does not exist, skipping
+NOTICE (00000): policy "company members can read investment lots" for relation "public.investment_lots" does not exist, skipping
+NOTICE (00000): policy "company members can read investment lot allocations" for relation "public.investment_lot_allocations" does not exist, skipping
+NOTICE (00000): trigger "holding_actions_require_investment_rpc" for relation "public.holding_actions" does not exist, skipping
+Applying migration 0003_bank_rule_suggestions.sql...
+NOTICE (00000): policy "company members can read bank suggestion acceptances" for relation "public.bank_suggestion_acceptances" does not exist, skipping
+Applying migration 0004_corporate_document_artifacts.sql...
+NOTICE (00000): trigger "prevent_corporate_accounting_policies_mutation" for relation "public.corporate_accounting_policies" does not exist, skipping
+NOTICE (00000): trigger "prevent_corporate_decisions_mutation" for relation "public.corporate_decisions" does not exist, skipping
+NOTICE (00000): trigger "prevent_corporate_document_sets_mutation" for relation "public.corporate_document_sets" does not exist, skipping
+NOTICE (00000): trigger "prevent_corporate_document_artifacts_mutation" for relation "public.corporate_document_artifacts" does not exist, skipping
+NOTICE (00000): trigger "prevent_corporate_document_events_mutation" for relation "public.corporate_document_events" does not exist, skipping
+NOTICE (00000): trigger "prevent_corporate_decision_finalizations_mutation" for relation "public.corporate_decision_finalizations" does not exist, skipping
+NOTICE (00000): policy "company members can read corporate decisions" for relation "public.corporate_decisions" does not exist, skipping
+NOTICE (00000): policy "company members can read corporate document sets" for relation "public.corporate_document_sets" does not exist, skipping
+NOTICE (00000): policy "company members can read corporate document artifacts" for relation "public.corporate_document_artifacts" does not exist, skipping
+NOTICE (00000): policy "company members can read corporate document events" for relation "public.corporate_document_events" does not exist, skipping
+NOTICE (00000): policy "company members can read corporate decision finalizations" for relation "public.corporate_decision_finalizations" does not exist, skipping
+Applying migration 0005_company_tax_feedback_persistence.sql...
+NOTICE (00000): constraint "filing_submissions_authority_mode_shape_check" of relation "filing_submissions" does not exist, skipping
+NOTICE (00000): index "authority_test_runs_evidence_identity_key" does not exist, skipping
+Applying migration 20260714081443_explicit_data_api_grants.sql...
+Applying migration 20260715084507_trusted_aal2_boundary.sql...
+Applying migration 20260715120700_revoke_anonymous_mutation_rpcs.sql...
+Applying migration 20260715143000_retention_safe_document_removal.sql...
+NOTICE (00000): policy "owners can delete removed unlinked document objects" for relation "storage.objects" does not exist, skipping
+Applying migration 20260715180000_controlled_production_beta.sql...
+NOTICE (00000): policy "company members read production pilot entitlements" for relation "public.production_pilot_entitlements" does not exist, skipping
+NOTICE (00000): policy "company members read filing approval snapshots" for relation "public.filing_approval_snapshots" does not exist, skipping
+NOTICE (00000): policy "company members read production filing submissions" for relation "public.production_filing_submissions" does not exist, skipping
+NOTICE (00000): policy "company members read production filing events" for relation "public.production_filing_events" does not exist, skipping
+NOTICE (00000): policy "active operators read production pilot entitlements" for relation "public.production_pilot_entitlements" does not exist, skipping
+NOTICE (00000): policy "active operators read filing approval snapshots" for relation "public.filing_approval_snapshots" does not exist, skipping
+NOTICE (00000): policy "active operators read production filing submissions" for relation "public.production_filing_submissions" does not exist, skipping
+NOTICE (00000): policy "active operators read production filing events" for relation "public.production_filing_events" does not exist, skipping
+Applying migration 20260716110000_authority_operations.sql...
+NOTICE (00000): policy "active admin operators read authority operations" for relation "public.authority_operations" does not exist, skipping
+Applying migration 20260716125903_rf1086_system_user_requests.sql...
+NOTICE (00000): constraint "system_user_requests_confirm_url_check" of relation "system_user_requests" does not exist, skipping
+NOTICE (00000): constraint "system_user_requests_confirm_url_canonical" of relation "system_user_requests" does not exist, skipping
+NOTICE (00000): policy "system_user_requests_owner_read" for relation "public.system_user_requests" does not exist, skipping
+NOTICE (00000): policy "system_user_requests_operator_read" for relation "public.system_user_requests" does not exist, skipping
+NOTICE (00000): constraint "production_pilot_entitlements_verified_request_required" of relation "production_pilot_entitlements" does not exist, skipping
+Applying migration 20260716140100_rf1086_systemregister_callback_operation.sql...
+Applying migration 20260716155621_rf1086_feedback_reconciliation.sql...
+NOTICE (00000): policy "production_feedback_artifacts_owner_read" for relation "public.production_feedback_artifacts" does not exist, skipping
+NOTICE (00000): policy "production_feedback_artifacts_operator_read" for relation "public.production_feedback_artifacts" does not exist, skipping
+Applying migration 20260717110000_customer_agreement_acceptances.sql...
+NOTICE (00000): trigger "prevent_customer_agreement_acceptance_mutation" for relation "public.customer_agreement_acceptances" does not exist, skipping
+NOTICE (00000): policy "company members can read customer agreement acceptances" for relation "public.customer_agreement_acceptances" does not exist, skipping
+Applying migration 20260717113000_restrict_customer_agreement_creation.sql...
+Applying migration 20260717120000_existing_company_agreement_reacceptance.sql...
+Applying migration 20260719090000_add_annual_full_time_equivalents.sql...
+NOTICE (42701): column "annual_full_time_equivalents" of relation "annual_data" already exists, skipping
+Applying migration 20260801090000_company_access_invitations.sql...
+NOTICE (00000): policy "members and accepted owners can read company memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access commands read companies" for relation "public.companies" does not exist, skipping
+NOTICE (00000): policy "company access commands read invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "company access commands create invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "company access commands update invitations" for relation "public.company_invitations" does not exist, skipping
+NOTICE (00000): policy "company access commands read memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access commands accept memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access commands update memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access commands remove memberships" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access commands read receipts" for relation "public.company_access_command_receipts" does not exist, skipping
+NOTICE (00000): policy "company access recovery reads own receipts" for relation "public.company_access_command_receipts" does not exist, skipping
+NOTICE (00000): policy "company access recovery updates own receipts" for relation "public.company_access_command_receipts" does not exist, skipping
+NOTICE (00000): policy "company access recovery reads own membership" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access recovery reads own audit evidence" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "company access recovery reads own delivery evidence" for relation "public.notification_outbox" does not exist, skipping
+NOTICE (00000): policy "company access recovery creates own delivery evidence" for relation "public.notification_outbox" does not exist, skipping
+NOTICE (00000): policy "company access commands create receipts" for relation "public.company_access_command_receipts" does not exist, skipping
+NOTICE (00000): policy "company access commands clear receipt tokens" for relation "public.company_access_command_receipts" does not exist, skipping
+WARNING (01006): no privileges could be revoked for "company_access_create_invitation"
+WARNING (01006): no privileges could be revoked for "company_access_lookup_invitation"
+WARNING (01006): no privileges could be revoked for "company_access_accept_invitation"
+WARNING (01006): no privileges could be revoked for "company_access_revoke_invitation"
+WARNING (01006): no privileges could be revoked for "company_access_resend_invitation"
+WARNING (01006): no privileges could be revoked for "company_access_administer_membership"
+WARNING (01006): no privileges could be revoked for "company_access_pending_invitation_side_effects"
+WARNING (01006): no privileges could be revoked for "company_access_complete_invitation_side_effect"
+WARNING (01007): no privileges were granted for "company_access_create_invitation"
+WARNING (01007): no privileges were granted for "company_access_lookup_invitation"
+WARNING (01007): no privileges were granted for "company_access_accept_invitation"
+WARNING (01007): no privileges were granted for "company_access_revoke_invitation"
+WARNING (01007): no privileges were granted for "company_access_resend_invitation"
+WARNING (01007): no privileges were granted for "company_access_administer_membership"
+WARNING (01007): no privileges were granted for "company_access_pending_invitation_side_effects"
+WARNING (01007): no privileges were granted for "company_access_complete_invitation_side_effect"
+Applying migration 20260808120000_company_access_cancellation_lifecycle.sql...
+NOTICE (00000): policy "legacy cancellation hides superseded rows" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_companies" for relation "public.companies" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_opening_balance_setups" for relation "public.opening_balance_setups" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_opening_shareholders" for relation "public.opening_shareholders" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_ledger_entries" for relation "public.ledger_entries" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_documents" for relation "public.documents" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_filing_previews" for relation "public.filing_previews" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_filing_submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_holding_actions" for relation "public.holding_actions" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_billing_accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_authority_permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_authority_test_runs" for relation "public.authority_test_runs" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_filing_review_comments" for relation "public.filing_review_comments" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_audit_events" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_investment_positions" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_investment_lots" for relation "public.investment_lots" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_investment_lot_allocations" for relation "public.investment_lot_allocations" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_bank_suggestion_acceptances" for relation "public.bank_suggestion_acceptances" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_corporate_decisions" for relation "public.corporate_decisions" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_corporate_document_sets" for relation "public.corporate_document_sets" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_corporate_document_artifacts" for relation "public.corporate_document_artifacts" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_corporate_document_events" for relation "public.corporate_document_events" does not exist, skipping
+NOTICE (00000): trigger "company_archive_track_corporate_decision_finalizations" for relation "public.corporate_decision_finalizations" does not exist, skipping
+NOTICE (00000): policy "company access commands read cancellations" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "company access commands create cancellations" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "company access commands update cancellations" for relation "public.company_cancellations" does not exist, skipping
+NOTICE (00000): policy "company access members read deletion reviews" for relation "public.company_deletion_reviews" does not exist, skipping
+NOTICE (00000): policy "company access commands append deletion reviews" for relation "public.company_deletion_reviews" does not exist, skipping
+NOTICE (00000): policy "company access lifecycle reads documents" for relation "public.documents" does not exist, skipping
+NOTICE (00000): policy "company access lifecycle appends audit evidence" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "company access lifecycle updates company marker" for relation "public.companies" does not exist, skipping
+WARNING (01006): no privileges could be revoked for "company_access_request_cancellation"
+WARNING (01006): no privileges could be revoked for "company_access_resume_cancellation"
+WARNING (01006): no privileges could be revoked for "company_access_review_deletion"
+WARNING (01006): no privileges could be revoked for "company_access_finalize_deletion"
+WARNING (01006): no privileges could be revoked for "company_access_list_cancellations"
+WARNING (01006): no privileges could be revoked for "company_access_reconcile_cancellation_operation"
+WARNING (01007): no privileges were granted for "company_access_request_cancellation"
+WARNING (01007): no privileges were granted for "company_access_resume_cancellation"
+WARNING (01007): no privileges were granted for "company_access_review_deletion"
+WARNING (01007): no privileges were granted for "company_access_finalize_deletion"
+WARNING (01007): no privileges were granted for "company_access_list_cancellations"
+WARNING (01007): no privileges were granted for "company_access_reconcile_cancellation_operation"
+Applying migration 20260826095900_company_access_policy_schema.sql...
+Applying migration 20260826100000_company_access_onboarding.sql...
+NOTICE (00000): policy "company access backend reads own operator grant" for relation "public.support_operators" does not exist, skipping
+NOTICE (00000): policy "company access onboarding creates companies" for relation "public.companies" does not exist, skipping
+NOTICE (00000): policy "company access onboarding creates owner membership" for relation "public.company_memberships" does not exist, skipping
+NOTICE (00000): policy "company access reads agreement evidence" for relation "public.customer_agreement_acceptances" does not exist, skipping
+NOTICE (00000): policy "company access appends current agreement evidence" for relation "public.customer_agreement_acceptances" does not exist, skipping
+Applying migration 20260826110000_company_year_admission.sql...
+Applying migration 20260827100000_ledger_capability.sql...
+NOTICE (00000): trigger "ledger_entries_enforce_boundary" for relation "ledger.entries" does not exist, skipping
+NOTICE (00000): constraint "ledger_entries_source_capability_check" of relation "entries" does not exist, skipping
+NOTICE (00000): trigger "ledger_entries_enforce_boundary" for relation "ledger.entries" does not exist, skipping
+NOTICE (00000): role "postgres" has already been granted membership in role "company_access_executor" by role "postgres"
+WARNING (01006): no privileges could be revoked for "company_access_company_year_allows_consequential_v1"
+WARNING (01007): no privileges were granted for "company_access_company_year_allows_consequential_v1"
+WARNING (01007): no privileges were granted for "company_access_company_year_allows_consequential_v1"
+NOTICE (00000): policy "ledger workflow reads receipts" for relation "backend_system.ledger_workflow_receipts" does not exist, skipping
+NOTICE (00000): policy "ledger workflow appends receipts" for relation "backend_system.ledger_workflow_receipts" does not exist, skipping
+NOTICE (00000): policy "ledger workflow creates opening setups" for relation "public.opening_balance_setups" does not exist, skipping
+NOTICE (00000): policy "ledger workflow reads opening setups" for relation "public.opening_balance_setups" does not exist, skipping
+NOTICE (00000): policy "ledger workflow creates opening shareholders" for relation "public.opening_shareholders" does not exist, skipping
+NOTICE (00000): policy "ledger workflow reads opening shareholders" for relation "public.opening_shareholders" does not exist, skipping
+NOTICE (00000): policy "ledger store reads entries" for relation "ledger.entries" does not exist, skipping
+NOTICE (00000): policy "ledger store posts entries" for relation "ledger.entries" does not exist, skipping
+NOTICE (00000): policy "ledger store reads period locks" for relation "ledger.period_locks" does not exist, skipping
+NOTICE (00000): policy "ledger store creates period locks" for relation "ledger.period_locks" does not exist, skipping
+NOTICE (00000): policy "ledger store reads command receipts" for relation "backend_system.ledger_command_receipts" does not exist, skipping
+NOTICE (00000): policy "ledger store appends command receipts" for relation "backend_system.ledger_command_receipts" does not exist, skipping
+NOTICE (00000): trigger "ledger_command_receipts_immutable" for relation "backend_system.ledger_command_receipts" does not exist, skipping
+NOTICE (00000): trigger "ledger_workflow_receipts_immutable" for relation "backend_system.ledger_workflow_receipts" does not exist, skipping
+NOTICE (00000): trigger "ledger_cursor_signing_keys_immutable" for relation "backend_system.ledger_cursor_signing_keys" does not exist, skipping
+NOTICE (00000): trigger "ledger_migration_source_rows_immutable" for relation "backend_system.ledger_migration_source_rows" does not exist, skipping
+NOTICE (00000): trigger "ledger_migration_quarantine_immutable" for relation "backend_system.ledger_migration_quarantine" does not exist, skipping
+NOTICE (00000): trigger "ledger_migration_reconciliations_immutable" for relation "backend_system.ledger_migration_reconciliations" does not exist, skipping
+NOTICE (00000): trigger "ledger_entries_legacy_insert" for relation "public.ledger_entries" does not exist, skipping
+WARNING (01000): role "postgres" has not been granted membership in role "company_access_executor" by role "postgres"
+Applying migration 20260827100500_ledger_writer_coordinators.sql...
+Applying migration 20260827101000_ledger_full_year_reconstruction.sql...
+Applying migration 20260827102000_ledger_supported_patterns.sql...
+NOTICE (00000): policy "ledger store reads entry contexts" for relation "ledger.entry_contexts" does not exist, skipping
+NOTICE (00000): policy "ledger store records entry contexts" for relation "ledger.entry_contexts" does not exist, skipping
+NOTICE (00000): policy "ledger store reads entry sources" for relation "ledger.entry_sources" does not exist, skipping
+NOTICE (00000): policy "ledger store records entry sources" for relation "ledger.entry_sources" does not exist, skipping
+NOTICE (00000): trigger "ledger_entry_contexts_immutable" for relation "ledger.entry_contexts" does not exist, skipping
+NOTICE (00000): trigger "ledger_entry_sources_immutable" for relation "ledger.entry_sources" does not exist, skipping
+Applying migration 20260827103000_ledger_corrections.sql...
+NOTICE (00000): policy "ledger store reads entry corrections" for relation "ledger.entry_corrections" does not exist, skipping
+NOTICE (00000): policy "ledger store records entry corrections" for relation "ledger.entry_corrections" does not exist, skipping
+NOTICE (00000): trigger "ledger_entry_corrections_immutable" for relation "ledger.entry_corrections" does not exist, skipping
+Applying migration 20260827104000_ledger_company_year_close.sql...
+NOTICE (00000): constraint "reconstruction_assessments_ledger_state_digest_check" of relation "reconstruction_assessments" does not exist, skipping
+NOTICE (00000): policy "ledger store reads company year close locks" for relation "ledger.company_year_close_locks" does not exist, skipping
+NOTICE (00000): policy "ledger store records company year close locks" for relation "ledger.company_year_close_locks" does not exist, skipping
+NOTICE (00000): policy "ledger store reads company year close assessments" for relation "ledger.company_year_close_assessments" does not exist, skipping
+NOTICE (00000): policy "ledger store records company year close assessments" for relation "ledger.company_year_close_assessments" does not exist, skipping
+NOTICE (00000): policy "ledger store reads company year close evidence" for relation "ledger.company_year_close_evidence" does not exist, skipping
+NOTICE (00000): policy "ledger store records company year close evidence" for relation "ledger.company_year_close_evidence" does not exist, skipping
+NOTICE (00000): policy "ledger store reads company year close reporting outputs" for relation "ledger.company_year_close_reporting_outputs" does not exist, skipping
+NOTICE (00000): policy "ledger store records company year close reporting outputs" for relation "ledger.company_year_close_reporting_outputs" does not exist, skipping
+NOTICE (00000): trigger "reconstruction_assessments_bind_ledger_state" for relation "ledger.reconstruction_assessments" does not exist, skipping
+NOTICE (00000): trigger "ledger_company_year_close_locks_immutable" for relation "ledger.company_year_close_locks" does not exist, skipping
+NOTICE (00000): trigger "ledger_company_year_close_assessments_immutable" for relation "ledger.company_year_close_assessments" does not exist, skipping
+NOTICE (00000): trigger "ledger_company_year_close_evidence_immutable" for relation "ledger.company_year_close_evidence" does not exist, skipping
+NOTICE (00000): trigger "ledger_company_year_close_reporting_outputs_immutable" for relation "ledger.company_year_close_reporting_outputs" does not exist, skipping
+Applying migration 20260827105000_ledger_received_dividend_lifecycle.sql...
+NOTICE (00000): policy "ledger store reads received dividend decisions" for relation "ledger.received_dividend_decisions" does not exist, skipping
+NOTICE (00000): policy "ledger store records received dividend decisions" for relation "ledger.received_dividend_decisions" does not exist, skipping
+NOTICE (00000): policy "ledger store reads received dividend settlements" for relation "ledger.received_dividend_settlements" does not exist, skipping
+NOTICE (00000): policy "ledger store records received dividend settlements" for relation "ledger.received_dividend_settlements" does not exist, skipping
+NOTICE (00000): trigger "ledger_received_dividend_decisions_immutable" for relation "ledger.received_dividend_decisions" does not exist, skipping
+NOTICE (00000): trigger "ledger_received_dividend_settlements_immutable" for relation "ledger.received_dividend_settlements" does not exist, skipping
+Applying migration 20260827106000_ledger_bank_loan_lifecycle.sql...
+NOTICE (00000): policy "ledger store reads bank loan anchors" for relation "ledger.bank_loan_anchors" does not exist, skipping
+NOTICE (00000): policy "ledger store records bank loan anchors" for relation "ledger.bank_loan_anchors" does not exist, skipping
+NOTICE (00000): policy "ledger store reads bank loan payment allocations" for relation "ledger.bank_loan_payment_allocations" does not exist, skipping
+NOTICE (00000): policy "ledger store records bank loan payment allocations" for relation "ledger.bank_loan_payment_allocations" does not exist, skipping
+NOTICE (00000): trigger "ledger_bank_loan_anchors_immutable" for relation "ledger.bank_loan_anchors" does not exist, skipping
+NOTICE (00000): trigger "ledger_bank_loan_payment_allocations_immutable" for relation "ledger.bank_loan_payment_allocations" does not exist, skipping
+Applying migration 20260827107000_ledger_cash_capital_increase_lifecycle.sql...
+NOTICE (00000): policy "ledger store reads cash capital increase phases" for relation "ledger.cash_capital_increase_phases" does not exist, skipping
+NOTICE (00000): policy "ledger store records cash capital increase phases" for relation "ledger.cash_capital_increase_phases" does not exist, skipping
+NOTICE (00000): trigger "ledger_cash_capital_increase_phases_immutable" for relation "ledger.cash_capital_increase_phases" does not exist, skipping
+Applying migration 20260827108000_ledger_loss_coverage_capital_reduction_lifecycle.sql...
+NOTICE (00000): policy "ledger store reads loss coverage capital reduction phases" for relation "ledger.loss_coverage_capital_reduction_phases" does not exist, skipping
+NOTICE (00000): policy "ledger store records loss coverage capital reduction phases" for relation "ledger.loss_coverage_capital_reduction_phases" does not exist, skipping
+NOTICE (00000): trigger "ledger_loss_coverage_capital_reduction_phases_immutable" for relation "ledger.loss_coverage_capital_reduction_phases" does not exist, skipping
+Applying migration 20260827109000_ledger_opening_position_rebuild.sql...
+NOTICE (00000): policy "ledger store reads opening position rebuilds" for relation "ledger.opening_position_rebuilds" does not exist, skipping
+NOTICE (00000): policy "ledger store records opening position rebuilds" for relation "ledger.opening_position_rebuilds" does not exist, skipping
+NOTICE (00000): policy "ledger store reads opening position components" for relation "ledger.opening_position_components" does not exist, skipping
+NOTICE (00000): policy "ledger store records opening position components" for relation "ledger.opening_position_components" does not exist, skipping
+NOTICE (00000): policy "ledger store reads opening position component sources" for relation "ledger.opening_position_component_sources" does not exist, skipping
+NOTICE (00000): policy "ledger store records opening position component sources" for relation "ledger.opening_position_component_sources" does not exist, skipping
+NOTICE (00000): policy "ledger store reads opening dividend settlements" for relation "ledger.opening_received_dividend_settlements" does not exist, skipping
+NOTICE (00000): policy "ledger store records opening dividend settlements" for relation "ledger.opening_received_dividend_settlements" does not exist, skipping
+NOTICE (00000): trigger "ledger_bank_loan_basis_collision" for relation "ledger.bank_loan_anchors" does not exist, skipping
+NOTICE (00000): trigger "ledger_opening_bank_loan_basis_collision" for relation "ledger.opening_position_components" does not exist, skipping
+NOTICE (00000): trigger "ledger_bank_loan_payment_basis" for relation "ledger.bank_loan_payment_allocations" does not exist, skipping
+NOTICE (00000): trigger "ledger_opening_position_rebuilds_immutable" for relation "ledger.opening_position_rebuilds" does not exist, skipping
+NOTICE (00000): trigger "ledger_opening_position_components_immutable" for relation "ledger.opening_position_components" does not exist, skipping
+NOTICE (00000): trigger "ledger_opening_position_component_sources_immutable" for relation "ledger.opening_position_component_sources" does not exist, skipping
+NOTICE (00000): trigger "ledger_opening_received_dividend_settlements_immutable" for relation "ledger.opening_received_dividend_settlements" does not exist, skipping
+Applying migration 20260827109100_ledger_opening_position_acceptance.sql...
+Applying migration 20260827109200_ledger_reconstruction_economic_facts.sql...
+NOTICE (42701): column "fact" of relation "reconstruction_economic_facts" already exists, skipping
+NOTICE (00000): policy "ledger store reads reconstruction economic fact sets" for relation "ledger.reconstruction_economic_fact_sets" does not exist, skipping
+NOTICE (00000): policy "ledger store records reconstruction economic fact sets" for relation "ledger.reconstruction_economic_fact_sets" does not exist, skipping
+NOTICE (00000): policy "ledger store reads reconstruction economic facts" for relation "ledger.reconstruction_economic_facts" does not exist, skipping
+NOTICE (00000): policy "ledger store records reconstruction economic facts" for relation "ledger.reconstruction_economic_facts" does not exist, skipping
+NOTICE (00000): trigger "reconstruction_economic_fact_sets_immutable" for relation "ledger.reconstruction_economic_fact_sets" does not exist, skipping
+NOTICE (00000): trigger "reconstruction_economic_facts_immutable" for relation "ledger.reconstruction_economic_facts" does not exist, skipping
+Applying migration 20260827109300_ledger_close_output_economic_facts.sql...
+NOTICE (00000): constraint "ledger_close_output_economic_facts_digest_valid" of relation "company_year_close_reporting_outputs" does not exist, skipping
+NOTICE (00000): trigger "ledger_company_year_close_output_bind_economic_facts" for relation "ledger.company_year_close_reporting_outputs" does not exist, skipping
+Applying migration 20260827109400_ledger_reconstruction_source_evidence.sql...
+NOTICE (00000): policy "ledger store reads reconstruction source evidence sets" for relation "ledger.reconstruction_source_evidence_sets" does not exist, skipping
+NOTICE (00000): policy "ledger store records reconstruction source evidence sets" for relation "ledger.reconstruction_source_evidence_sets" does not exist, skipping
+NOTICE (00000): policy "ledger store reads reconstruction source evidence bindings" for relation "ledger.reconstruction_source_evidence_bindings" does not exist, skipping
+NOTICE (00000): policy "ledger store records reconstruction source evidence bindings" for relation "ledger.reconstruction_source_evidence_bindings" does not exist, skipping
+NOTICE (00000): trigger "reconstruction_source_evidence_sets_immutable" for relation "ledger.reconstruction_source_evidence_sets" does not exist, skipping
+NOTICE (00000): trigger "reconstruction_source_evidence_bindings_immutable" for relation "ledger.reconstruction_source_evidence_bindings" does not exist, skipping
+Applying migration 20260828100000_banking_capability.sql...
+NOTICE (42P06): schema "backend_system" already exists, skipping
+NOTICE (00000): trigger "banking_migration_runs_immutable" for relation "backend_system.banking_migration_runs" does not exist, skipping
+NOTICE (00000): trigger "banking_migration_source_rows_immutable" for relation "backend_system.banking_migration_source_rows" does not exist, skipping
+NOTICE (00000): trigger "banking_migration_reconciliations_immutable" for relation "backend_system.banking_migration_reconciliations" does not exist, skipping
+NOTICE (00000): trigger "bank_transactions_sync_to_banking" for relation "public.bank_transactions" does not exist, skipping
+NOTICE (00000): trigger "banking_transactions_sync_to_legacy" for relation "banking.transactions" does not exist, skipping
+NOTICE (00000): trigger "bank_acceptances_sync_to_banking" for relation "public.bank_suggestion_acceptances" does not exist, skipping
+NOTICE (00000): trigger "banking_migration_runs_immutable" for relation "backend_system.banking_migration_runs" does not exist, skipping
+NOTICE (00000): trigger "banking_migration_source_rows_immutable" for relation "backend_system.banking_migration_source_rows" does not exist, skipping
+NOTICE (00000): trigger "banking_migration_reconciliations_immutable" for relation "backend_system.banking_migration_reconciliations" does not exist, skipping
+NOTICE (00000): policy "banking store reads transactions" for relation "banking.transactions" does not exist, skipping
+NOTICE (00000): policy "banking store creates transactions" for relation "banking.transactions" does not exist, skipping
+NOTICE (00000): policy "banking store updates transactions" for relation "banking.transactions" does not exist, skipping
+NOTICE (00000): policy "banking store reads acceptances" for relation "banking.suggestion_acceptances" does not exist, skipping
+NOTICE (00000): policy "banking store creates acceptances" for relation "banking.suggestion_acceptances" does not exist, skipping
+Applying migration 20260828100500_banking_workflows.sql...
+NOTICE (00000): policy "banking store reads command receipts" for relation "backend_system.banking_command_receipts" does not exist, skipping
+NOTICE (00000): policy "banking store appends command receipts" for relation "backend_system.banking_command_receipts" does not exist, skipping
+NOTICE (00000): trigger "banking_command_receipts_immutable" for relation "backend_system.banking_command_receipts" does not exist, skipping
+WARNING (01007): no privileges were granted for "company_access_company_year_allows_consequential_v1"
+Applying migration 20260828100600_banking_overlap_trigger_policy.sql...
+NOTICE (00000): policy "banking overlap mirrors legacy transactions" for relation "banking.transactions" does not exist, skipping
+NOTICE (00000): policy "banking overlap mirrors legacy acceptances" for relation "banking.suggestion_acceptances" does not exist, skipping
+NOTICE (00000): policy "banking overlap mirrors canonical transactions" for relation "public.bank_transactions" does not exist, skipping
+NOTICE (00000): policy "banking overlap mirrors canonical acceptances" for relation "public.bank_suggestion_acceptances" does not exist, skipping
+NOTICE (00000): trigger "banking_acceptances_sync_to_legacy" for relation "banking.suggestion_acceptances" does not exist, skipping
+NOTICE (00000): policy "banking workflow appends audit events" for relation "public.audit_events" does not exist, skipping
+Applying migration 20260828102000_banking_connections.sql...
+Applying migration 20260828103000_marketing_funnel_measurement.sql...
+NOTICE (42P06): schema "backend_system" already exists, skipping
+Applying migration 20260829070411_marketing_measurement_small_cell_threshold.sql...
+Applying migration 20260829074916_validation_observation_authority.sql...
+NOTICE (42P06): schema "backend_system" already exists, skipping
+Applying migration 20260829080345_marketing_measurement_consent_proof.sql...
+Applying migration 20260830091341_case_bound_support_access.sql...
+NOTICE (42701): column "request_fingerprint" of relation "support_access_operation_receipts" already exists, skipping
+NOTICE (00000): policy "support_access_grants_executor_select" for relation "public.support_access_grants" does not exist, skipping
+NOTICE (00000): policy "support_access_grants_executor_insert" for relation "public.support_access_grants" does not exist, skipping
+NOTICE (00000): policy "support_access_grants_executor_update" for relation "public.support_access_grants" does not exist, skipping
+NOTICE (00000): policy "support_access_receipts_executor" for relation "public.support_access_operation_receipts" does not exist, skipping
+NOTICE (00000): policy "support_case_openings_executor" for relation "public.support_case_openings" does not exist, skipping
+NOTICE (00000): policy "support_case_read_audit_events" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): policy "support_case_read_filing_submissions" for relation "public.filing_submissions" does not exist, skipping
+NOTICE (00000): policy "support_case_read_filing_readiness" for relation "public.filing_readiness_snapshots" does not exist, skipping
+NOTICE (00000): policy "support_case_read_billing_accounts" for relation "public.billing_accounts" does not exist, skipping
+NOTICE (00000): policy "support_case_read_billing_events" for relation "public.billing_payment_events" does not exist, skipping
+NOTICE (00000): policy "support_case_read_authority_permissions" for relation "public.authority_permissions" does not exist, skipping
+NOTICE (00000): policy "support_case_read_authority_runs" for relation "public.authority_test_runs" does not exist, skipping
+NOTICE (00000): policy "support_case_read_system_user_requests" for relation "public.system_user_requests" does not exist, skipping
+NOTICE (00000): policy "support_case_read_pilot_entitlements" for relation "public.production_pilot_entitlements" does not exist, skipping
+NOTICE (00000): policy "support_case_read_approval_snapshots" for relation "public.filing_approval_snapshots" does not exist, skipping
+NOTICE (00000): policy "support_case_read_production_submissions" for relation "public.production_filing_submissions" does not exist, skipping
+NOTICE (00000): policy "support_case_read_production_events" for relation "public.production_filing_events" does not exist, skipping
+NOTICE (00000): policy "support_case_read_feedback_artifacts" for relation "public.production_feedback_artifacts" does not exist, skipping
+NOTICE (00000): policy "support_case_read_documents" for relation "public.documents" does not exist, skipping
+NOTICE (00000): policy "support_case_read_storage_objects" for relation "storage.objects" does not exist, skipping
+NOTICE (00000): trigger "company_access_bind_deletion_review_case" for relation "public.company_access_command_receipts" does not exist, skipping
+NOTICE (00000): trigger "company_access_copy_review_case" for relation "public.company_deletion_reviews" does not exist, skipping
+Applying migration 20260830093000_current_legal_evidence.sql...
+Applying migration 20260831124939_investments_capability.sql...
+Applying migration 20260831131203_investments_share_purchase_workflow.sql...
+NOTICE (00000): policy "investments successor mirrors positions" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): policy "investments successor mirrors lots" for relation "public.investment_lots" does not exist, skipping
+NOTICE (00000): policy "investments successor mirrors actions" for relation "public.holding_actions" does not exist, skipping
+NOTICE (00000): policy "investments successor appends audit" for relation "public.audit_events" does not exist, skipping
+NOTICE (00000): trigger "investment_positions_sync_to_investments" for relation "public.investment_positions" does not exist, skipping
+NOTICE (00000): trigger "investment_lots_sync_to_investments" for relation "public.investment_lots" does not exist, skipping
+NOTICE (00000): trigger "share_purchases_sync_to_investments" for relation "public.holding_actions" does not exist, skipping
+Applying migration 20260831162145_investments_share_sale_workflow.sql...
+NOTICE (00000): policy "investments successor mirrors sale allocations" for relation "public.investment_lot_allocations" does not exist, skipping
+NOTICE (00000): trigger "share_sales_sync_to_investments" for relation "public.holding_actions" does not exist, skipping
+NOTICE (00000): trigger "share_sale_allocations_sync_to_investments" for relation "public.investment_lot_allocations" does not exist, skipping
+Applying migration 20260831180000_investments_allocation_identity.sql...
+NOTICE (00000): trigger "align_legacy_share_sale_allocation_id" for relation "public.investment_lot_allocations" does not exist, skipping
+Applying migration 20260831182000_investments_received_dividend_workflow.sql...
+NOTICE (00000): trigger "received_dividends_sync_to_investments" for relation "public.holding_actions" does not exist, skipping
+Applying migration 20260901100000_investments_supported_patterns.sql...
+Applying migration 20260901103000_investments_supported_patterns_authority_cleanup.sql...
+WARNING (01000): role "postgres" has not been granted membership in role "investments_store_owner" by role "postgres"
+WARNING (01000): role "postgres" has not been granted membership in role "investments_executor" by role "postgres"
+WARNING (01000): role "postgres" has not been granted membership in role "investments_workflow_executor" by role "postgres"
+WARNING (01000): role "postgres" has not been granted membership in role "company_access_executor" by role "postgres"
+WARNING (01000): role "postgres" has not been granted membership in role "ledger_store_owner" by role "postgres"
+WARNING (01000): role "postgres" has not been granted membership in role "company_archive_projection_executor" by role "postgres"
+Applying migration 20260901110000_investments_complete_manual_evidence.sql...
+Applying migration 20260901112000_investments_lifecycle_measurement_expand.sql...
+Applying migration 20260901113000_investments_lifecycle_workflow.sql...
+Applying migration 20260901114000_investments_share_sale_lifecycle.sql...
+Applying migration 20260901115000_investments_income_lifecycle.sql...
+Applying migration 20260901116000_investments_lifecycle_corrections.sql...
+Applying migration 20260901117000_investments_bank_fact_claim.sql...
+Applying migration 20260901118000_investments_year_end_measurement_workflow.sql...
+Applying migration 20260901203025_investments_measurement_reversals.sql...
+Applying migration 20260901204052_investments_boundary_confirmations.sql...
+Applying migration 20260901205331_investments_settled_event_corrections.sql...
+Applying migration 20260901222630_investments_lifecycle_correction_source_idempotence.sql...
+Starting containers...
+Waiting for health checks...
+Started supabase local development setup.
+
+Local dev security notice
+All services bind to 0.0.0.0 (network-accessible, not just localhost)
+API keys and JWT secrets are shared defaults. Do not use in production
+Studio, pgMeta (/pg/*), and analytics have no authentication
+
+A new version of Supabase CLI is available: v2.116.0 (currently installed v2.109.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+Using workdir /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T//talli-supabase-local.ag06a4
+Stopped services: [supabase_inbucket_tallig98497 supabase_realtime_tallig98497 supabase_imgproxy_tallig98497 supabase_pg_meta_tallig98497 supabase_studio_tallig98497 supabase_edge_runtime_tallig98497 supabase_analytics_tallig98497 supabase_vector_tallig98497 supabase_pooler_tallig98497]
+A new version of Supabase CLI is available: v2.116.0 (currently installed v2.109.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+Using workdir /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T//talli-supabase-local.ag06a4
+Stopped services: [supabase_inbucket_tallig98497 supabase_realtime_tallig98497 supabase_imgproxy_tallig98497 supabase_pg_meta_tallig98497 supabase_studio_tallig98497 supabase_edge_runtime_tallig98497 supabase_analytics_tallig98497 supabase_vector_tallig98497 supabase_pooler_tallig98497]
+A new version of Supabase CLI is available: v2.116.0 (currently installed v2.109.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+Using workdir /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T//talli-supabase-local.ag06a4
+A new version of Supabase CLI is available: v2.116.0 (currently installed v2.109.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+[database-isolation] exit=0
+[database-isolation] durationMs=288281
+
+[whitespace] command=bash scripts/check-clean-worktree.sh
+[whitespace] exit=0
+[whitespace] durationMs=96
+
+executedAt=2026-09-01T22:55:02.426Z
+verdict=pass
