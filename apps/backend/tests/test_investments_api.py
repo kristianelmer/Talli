@@ -266,12 +266,16 @@ class InvestmentsSessionStub:
                 tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
                 org_number="123456789", fund_equity_ratio_basis_points=None,
                 fund_tax_statement_reference=None,
-                share_count=10,
+                share_count=InvestmentUnits.of("10.125"),
                 cost_basis=Money.nok("125.50"),
                 tax_basis=Money.nok("125.50"),
                 lot_history_status=InvestmentLotHistoryStatus.COMPLETE,
                 movement_count=1,
-                movements=({"movement_type": "purchase"},),
+                movements=({
+                    "movement_type": "purchase_recognition",
+                    "movement_date": "2026-04-15",
+                    "share_delta": "10.125000000000",
+                },),
                 created_by=self.actor_id,
                 created_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
                 updated_at=Timestamp(datetime(2026, 4, 15, tzinfo=UTC)),
@@ -342,16 +346,16 @@ class InvestmentsSessionStub:
                 fund_equity_ratio_basis_points=None,
                 fund_tax_statement_reference=None,
                 acquisition_lot_id=None,
-                share_count=None,
+                share_count=InvestmentUnits.of("10.125"),
                 purchase_amount=None,
                 transaction_costs=None,
                 capitalized_cost=None,
-                sold_share_count=None,
+                sold_share_count=InvestmentUnits.of("4.0625"),
                 proceeds=None,
                 net_proceeds=None,
                 fifo_cost_basis_reduction=None,
                 fifo_tax_basis_reduction=None,
-                remaining_share_count=None,
+                remaining_share_count=InvestmentUnits.of("6.0625"),
                 remaining_cost_basis=None,
                 remaining_tax_basis=None,
                 paying_company_name="Example AS",
@@ -403,7 +407,8 @@ class InvestmentsSessionStub:
                 position_id=InvestmentPositionId("50000000-0000-0000-0000-000000000005"),
                 acquisition_action_id=supported_purchase().action_id,
                 acquisition_date=LocalDate(datetime(2026, 4, 15, tzinfo=UTC).date()),
-                original_share_count=10, remaining_share_count=10,
+                original_share_count=InvestmentUnits.of("10.125"),
+                remaining_share_count=InvestmentUnits.of("6.0625"),
                 original_cost_basis=Money.nok("125.50"),
                 remaining_cost_basis=Money.nok("125.50"),
                 original_tax_basis=Money.nok("125.50"),
@@ -435,7 +440,7 @@ class InvestmentsSessionStub:
                 acquisition_date=LocalDate(
                     datetime(2026, 4, 15, tzinfo=UTC).date()
                 ),
-                allocated_share_count=4,
+                allocated_share_count=InvestmentUnits.of("4.0625"),
                 allocated_cost_basis=Money.nok("50.20"),
                 allocated_book_cost_basis=Money.nok("50.20"),
                 allocated_tax_basis=Money.nok("50.20"),
@@ -743,14 +748,23 @@ def test_positions_and_lots_use_investments_query_contract() -> None:
     assert positions.json()["items"][0]["costBasis"] == {
         "amount": "125.50", "currency": "NOK"
     }
+    assert positions.json()["items"][0]["shareCount"] == "10.125000000000"
+    assert positions.json()["items"][0]["movements"][0]["share_delta"] == (
+        "10.125000000000"
+    )
     assert lots.status_code == 200, lots.text
     assert lots.json()["items"][0]["acquisitionActionId"] == str(
         supported_purchase().action_id
     )
+    assert lots.json()["items"][0]["originalShareCount"] == "10.125000000000"
+    assert lots.json()["items"][0]["remainingShareCount"] == "6.062500000000"
     assert allocations.status_code == 200, allocations.text
     assert allocations.json()["items"][0]["allocatedCostBasis"] == {
         "amount": "50.20", "currency": "NOK"
     }
+    assert allocations.json()["items"][0]["allocatedShareCount"] == (
+        "4.062500000000"
+    )
     assert corrections.status_code == 200, corrections.text
     assert corrections.json()["items"][0]["originalActivityKind"] == (
         "share_purchase"
@@ -767,3 +781,8 @@ def test_positions_and_lots_use_investments_query_contract() -> None:
     assert activity.json()["items"][0]["taxableAddBack"] == {
         "amount": "3.77", "currency": "NOK"
     }
+    assert activity.json()["items"][0]["shareCount"] == "10.125000000000"
+    assert activity.json()["items"][0]["soldShareCount"] == "4.062500000000"
+    assert activity.json()["items"][0]["remainingShareCount"] == (
+        "6.062500000000"
+    )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from talli_backend.adapters.supabase_investments import (
     SupabaseInvestmentsSession,
@@ -600,16 +601,16 @@ def test_canonical_activity_and_allocations_map_every_archive_fact() -> None:
             "fund_equity_ratio_basis_points": None,
             "fund_tax_statement_reference": None,
             "acquisition_lot_id": None,
-            "share_count": None,
+            "share_count": Decimal("10.125"),
             "purchase_amount": None,
             "transaction_costs": None,
             "capitalized_cost": None,
-            "sold_share_count": None,
+            "sold_share_count": Decimal("4.0625"),
             "proceeds": None,
             "net_proceeds": None,
             "fifo_cost_basis_reduction": None,
             "fifo_tax_basis_reduction": None,
-            "remaining_share_count": None,
+            "remaining_share_count": Decimal("6.0625"),
             "remaining_cost_basis": None,
             "remaining_tax_basis": None,
             "paying_company_name": "Example AS",
@@ -660,6 +661,12 @@ def test_canonical_activity_and_allocations_map_every_archive_fact() -> None:
     assert item.activity_id.value == activity_id
     assert item.gross_amount == Money.nok("125.50")
     assert item.taxable_add_back == Money.nok("3.77")
+    assert item.share_count is not None
+    assert item.share_count.amount == Decimal("10.125000000000")
+    assert item.sold_share_count is not None
+    assert item.sold_share_count.amount == Decimal("4.062500000000")
+    assert item.remaining_share_count is not None
+    assert item.remaining_share_count.amount == Decimal("6.062500000000")
     assert str(item.bank_transaction_id) == "80000000-0000-0000-0000-000000000008"
     assert "investments.received_dividends" in queries[0]
     assert "holding_actions" not in queries[0]
@@ -676,7 +683,7 @@ def test_canonical_activity_and_allocations_map_every_archive_fact() -> None:
             "sale_action_id": activity_id,
             "allocation_order": 1,
             "acquisition_date": date(2026, 1, 5),
-            "allocated_share_count": 4,
+            "allocated_share_count": Decimal("4.0625"),
             "allocated_cost_basis": "50.20",
             "allocated_book_cost_basis": "50.20",
             "allocated_tax_basis": "50.20",
@@ -703,10 +710,101 @@ def test_canonical_activity_and_allocations_map_every_archive_fact() -> None:
     assert allocation.allocation_id.value == allocation_id
     assert allocation.lot_id.value == lot_id
     assert allocation.allocation_order == 1
+    assert allocation.allocated_share_count.amount == Decimal("4.062500000000")
     assert allocation.allocated_cost_basis == Money.nok("50.20")
     assert allocation.allocated_tax_basis == Money.nok("50.20")
     assert allocation.exempt_gain == Money.nok("9.80")
     assert "acquisition_lot_id as lot_id" in queries[1]
+
+
+def test_fractional_position_and_lot_units_survive_database_mapping() -> None:
+    command = supported_received_dividend()
+    session = SupabaseInvestmentsSession(
+        "postgresql://unused",
+        _VerifiedActor(
+            actor_id=command.actor_id,
+            claims_json=(
+                '{"sub":"20000000-0000-0000-0000-000000000002",'
+                '"role":"authenticated","aal":"aal2"}'
+            ),
+        ),
+    )
+    position_id = str(command.position_id)
+    action_id = "30000000-0000-0000-0000-000000000003"
+    lot_id = "50000000-0000-0000-0000-000000000005"
+    created_at = datetime(2026, 4, 15, 12, tzinfo=UTC)
+    responses = iter([
+        [{
+            "id": position_id,
+            "company_id": str(command.company_id),
+            "investment_key": "org:123456789",
+            "name": "Example AS",
+            "kind": "norwegian_private_company",
+            "accounting_classification": "other_long_term",
+            "tax_treatment": "fritaksmetoden",
+            "org_number": "123456789",
+            "fund_equity_ratio_basis_points": None,
+            "fund_tax_statement_reference": None,
+            "share_count": Decimal("10.125"),
+            "cost_basis": "125.50",
+            "tax_basis": "125.50",
+            "lot_history_status": "complete",
+            "movement_count": 1,
+            "movements": [{
+                "movement_type": "purchase_recognition",
+                "movement_date": "2026-04-15",
+                "share_delta": Decimal("10.125"),
+            }],
+            "created_by": str(command.actor_id.subject),
+            "created_at": created_at,
+            "updated_at": created_at,
+        }],
+        [{
+            "id": lot_id,
+            "company_id": str(command.company_id),
+            "position_id": position_id,
+            "acquisition_action_id": action_id,
+            "acquisition_date": date(2026, 4, 15),
+            "original_share_count": Decimal("10.125"),
+            "remaining_share_count": Decimal("6.0625"),
+            "original_cost_basis": "125.50",
+            "remaining_cost_basis": "75.10",
+            "original_tax_basis": "125.50",
+            "remaining_tax_basis": "75.10",
+            "acquisition_year_fund_equity_ratio_basis_points": None,
+            "fund_tax_statement_reference": None,
+            "created_by": str(command.actor_id.subject),
+            "created_at": created_at,
+        }],
+    ])
+
+    async def rows(
+        _query: str, _parameters: tuple[object, ...]
+    ) -> list[dict[str, object]]:
+        return next(responses)
+
+    session._query_rows = rows  # type: ignore[method-assign]
+    positions = asyncio.run(session.list_positions(
+        actor_id=command.actor_id,
+        company_ids=(command.company_id,),
+        correlation_id=command.correlation_id,
+        cursor=None,
+        limit=100,
+    ))
+    lots = asyncio.run(session.list_acquisition_lots(
+        actor_id=command.actor_id,
+        company_ids=(command.company_id,),
+        correlation_id=command.correlation_id,
+        cursor=None,
+        limit=100,
+    ))
+
+    assert positions.items[0].share_count.amount == Decimal("10.125000000000")
+    assert positions.items[0].movements[0]["share_delta"] == (
+        "10.125000000000"
+    )
+    assert lots.items[0].original_share_count.amount == Decimal("10.125000000000")
+    assert lots.items[0].remaining_share_count.amount == Decimal("6.062500000000")
 
 
 def test_correction_query_maps_immutable_lineage_and_evidence() -> None:

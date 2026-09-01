@@ -1135,10 +1135,10 @@ export interface InvestmentActivityWire {
   proceeds: LedgerMoneyWire | null;
   purchaseAmount: LedgerMoneyWire | null;
   remainingCostBasis: LedgerMoneyWire | null;
-  remainingShareCount: number | null;
+  remainingShareCount: string | null;
   remainingTaxBasis: LedgerMoneyWire | null;
-  shareCount: number | null;
-  soldShareCount: number | null;
+  shareCount: string | null;
+  soldShareCount: string | null;
   taxGainOrLoss: LedgerMoneyWire | null;
   taxTreatment: InvestmentTaxTreatment;
   taxableAddBack: LedgerMoneyWire | null;
@@ -1164,11 +1164,11 @@ export interface AcquisitionLotWire {
   fundTaxStatementReference: string | null;
   id: string;
   originalCostBasis: LedgerMoneyWire;
-  originalShareCount: number;
+  originalShareCount: string;
   originalTaxBasis: LedgerMoneyWire;
   positionId: string;
   remainingCostBasis: LedgerMoneyWire;
-  remainingShareCount: number;
+  remainingShareCount: string;
   remainingTaxBasis: LedgerMoneyWire;
 }
 
@@ -1189,6 +1189,12 @@ export interface InvestmentPositionPageWire {
   page: InvestmentsPageWire;
 }
 
+export interface InvestmentPositionMovementWire {
+  movement_date: string;
+  movement_type: string;
+  share_delta: string;
+}
+
 export interface InvestmentPositionWire {
   accountingClassification: InvestmentAccountingClassification;
   companyId: string;
@@ -1202,10 +1208,10 @@ export interface InvestmentPositionWire {
   kind: InvestmentKind;
   lotHistoryStatus: InvestmentLotHistoryStatus;
   movementCount: number;
-  movements: Record<string, unknown>[];
+  movements: InvestmentPositionMovementWire[];
   name: string;
   orgNumber: string | null;
-  shareCount: number;
+  shareCount: string;
   taxBasis: LedgerMoneyWire;
   taxTreatment: InvestmentTaxTreatment;
   updatedAt: string;
@@ -1469,7 +1475,7 @@ export interface ShareSaleAllocationWire {
   allocatedBookCostBasis: LedgerMoneyWire;
   allocatedCostBasis: LedgerMoneyWire;
   allocatedNetProceeds: LedgerMoneyWire;
-  allocatedShareCount: number;
+  allocatedShareCount: string;
   allocatedTaxBasis: LedgerMoneyWire;
   allocationOrder: number;
   averageFundEquityRatioBasisPoints: string | null;
@@ -3181,10 +3187,10 @@ function isInvestmentActivityWire(value: unknown): value is InvestmentActivityWi
     (isLedgerMoneyWire(value.proceeds) || value.proceeds === null) &&
     (isLedgerMoneyWire(value.purchaseAmount) || value.purchaseAmount === null) &&
     (isLedgerMoneyWire(value.remainingCostBasis) || value.remainingCostBasis === null) &&
-    (typeof value.remainingShareCount === "number" && Number.isInteger(value.remainingShareCount) || value.remainingShareCount === null) &&
+    ((typeof value.remainingShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.remainingShareCount)) || value.remainingShareCount === null) &&
     (isLedgerMoneyWire(value.remainingTaxBasis) || value.remainingTaxBasis === null) &&
-    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) || value.shareCount === null) &&
-    (typeof value.soldShareCount === "number" && Number.isInteger(value.soldShareCount) || value.soldShareCount === null) &&
+    ((typeof value.shareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.shareCount)) || value.shareCount === null) &&
+    ((typeof value.soldShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.soldShareCount)) || value.soldShareCount === null) &&
     (isLedgerMoneyWire(value.taxGainOrLoss) || value.taxGainOrLoss === null) &&
     isInvestmentTaxTreatment(value.taxTreatment) &&
     (isLedgerMoneyWire(value.taxableAddBack) || value.taxableAddBack === null) &&
@@ -3218,11 +3224,11 @@ function isAcquisitionLotWire(value: unknown): value is AcquisitionLotWire {
     (typeof value.fundTaxStatementReference === "string" || value.fundTaxStatementReference === null) &&
     isUuid(value.id) &&
     isLedgerMoneyWire(value.originalCostBasis) &&
-    typeof value.originalShareCount === "number" && Number.isInteger(value.originalShareCount) &&
+    (typeof value.originalShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.originalShareCount)) &&
     isLedgerMoneyWire(value.originalTaxBasis) &&
     isUuid(value.positionId) &&
     isLedgerMoneyWire(value.remainingCostBasis) &&
-    typeof value.remainingShareCount === "number" && Number.isInteger(value.remainingShareCount) &&
+    (typeof value.remainingShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.remainingShareCount)) &&
     isLedgerMoneyWire(value.remainingTaxBasis)
   );
 }
@@ -3260,6 +3266,16 @@ function isInvestmentPositionPageWire(value: unknown): value is InvestmentPositi
   );
 }
 
+function isInvestmentPositionMovementWire(value: unknown): value is InvestmentPositionMovementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["movement_date","movement_type","share_delta"]) &&
+    typeof value.movement_date === "string" &&
+    typeof value.movement_type === "string" &&
+    (typeof value.share_delta === "string" && new RegExp("^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.share_delta))
+  );
+}
+
 function isInvestmentPositionWire(value: unknown): value is InvestmentPositionWire {
   return (
     isRecord(value) &&
@@ -3276,10 +3292,10 @@ function isInvestmentPositionWire(value: unknown): value is InvestmentPositionWi
     isInvestmentKind(value.kind) &&
     isInvestmentLotHistoryStatus(value.lotHistoryStatus) &&
     typeof value.movementCount === "number" && Number.isInteger(value.movementCount) &&
-    Array.isArray(value.movements) && value.movements.every((item) => isRecord(item)) &&
+    Array.isArray(value.movements) && value.movements.every((item) => isInvestmentPositionMovementWire(item)) &&
     typeof value.name === "string" &&
     (typeof value.orgNumber === "string" || value.orgNumber === null) &&
-    typeof value.shareCount === "number" && Number.isInteger(value.shareCount) &&
+    (typeof value.shareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.shareCount)) &&
     isLedgerMoneyWire(value.taxBasis) &&
     isInvestmentTaxTreatment(value.taxTreatment) &&
     isDateTime(value.updatedAt)
@@ -3615,7 +3631,7 @@ function isShareSaleAllocationWire(value: unknown): value is ShareSaleAllocation
     isLedgerMoneyWire(value.allocatedBookCostBasis) &&
     isLedgerMoneyWire(value.allocatedCostBasis) &&
     isLedgerMoneyWire(value.allocatedNetProceeds) &&
-    typeof value.allocatedShareCount === "number" && Number.isInteger(value.allocatedShareCount) &&
+    (typeof value.allocatedShareCount === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.allocatedShareCount)) &&
     isLedgerMoneyWire(value.allocatedTaxBasis) &&
     typeof value.allocationOrder === "number" && Number.isInteger(value.allocationOrder) &&
     (typeof value.averageFundEquityRatioBasisPoints === "string" || value.averageFundEquityRatioBasisPoints === null) &&

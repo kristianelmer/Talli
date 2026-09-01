@@ -13,6 +13,9 @@ export {
 export {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+  investmentUnitFact,
   effectiveInvestmentActivity,
   presentAcquisitionLots,
   presentInvestmentPositions,

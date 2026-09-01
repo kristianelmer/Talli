@@ -13,6 +13,23 @@ function nok(value: { amount: string; currency: "NOK" }): number {
   return amount;
 }
 
+export function hasPositiveInvestmentUnits(value: string): boolean {
+  return /[1-9]/u.test(value);
+}
+
+export function formatInvestmentUnits(value: string): string {
+  const [whole, fraction] = value.split(".");
+  const trimmedFraction = fraction?.replace(/0+$/u, "") ?? "";
+  return trimmedFraction === "" ? whole : `${whole}.${trimmedFraction}`;
+}
+
+export function investmentUnitFact(
+  payload: Readonly<Record<string, unknown>>,
+  key: string,
+): string | null {
+  return typeof payload[key] === "string" ? payload[key] : null;
+}
+
 export type InvestmentPositionPresentation = {
   id: string;
   company_id: string;
@@ -24,7 +41,7 @@ export type InvestmentPositionPresentation = {
   org_number: string | null;
   fund_equity_ratio_basis_points: number | null;
   fund_tax_statement_reference: string | null;
-  share_count: number;
+  share_count: string;
   cost_basis: number;
   tax_basis: number;
   lot_history_status: "complete" | "needs_reconstruction";
@@ -40,8 +57,8 @@ export type AcquisitionLotPresentation = {
   position_id: string;
   acquisition_action_id: string;
   acquisition_date: string;
-  original_share_count: number;
-  remaining_share_count: number;
+  original_share_count: string;
+  remaining_share_count: string;
   original_cost_basis: number;
   remaining_cost_basis: number;
   original_tax_basis: number;
@@ -74,7 +91,7 @@ export type ShareSaleAllocationPresentation = {
   position_id: string;
   lot_id: string;
   sale_action_id: string;
-  allocated_share_count: number;
+  allocated_share_count: string;
   allocated_cost_basis: number;
   allocated_book_cost_basis: number;
   allocated_tax_basis: number;

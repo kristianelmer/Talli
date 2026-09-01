@@ -838,7 +838,7 @@ class InvestmentPositionView:
     org_number: str | None
     fund_equity_ratio_basis_points: int | None
     fund_tax_statement_reference: str | None
-    share_count: int
+    share_count: InvestmentUnits
     cost_basis: Money
     tax_basis: Money
     lot_history_status: InvestmentLotHistoryStatus
@@ -856,8 +856,8 @@ class AcquisitionLotView:
     position_id: InvestmentPositionId
     acquisition_action_id: InvestmentActionId
     acquisition_date: LocalDate
-    original_share_count: int
-    remaining_share_count: int
+    original_share_count: InvestmentUnits
+    remaining_share_count: InvestmentUnits
     original_cost_basis: Money
     remaining_cost_basis: Money
     original_tax_basis: Money
@@ -885,16 +885,16 @@ class InvestmentActivityView:
     fund_equity_ratio_basis_points: int | None
     fund_tax_statement_reference: str | None
     acquisition_lot_id: AcquisitionLotId | None
-    share_count: int | None
+    share_count: InvestmentUnits | None
     purchase_amount: Money | None
     transaction_costs: Money | None
     capitalized_cost: Money | None
-    sold_share_count: int | None
+    sold_share_count: InvestmentUnits | None
     proceeds: Money | None
     net_proceeds: Money | None
     fifo_cost_basis_reduction: Money | None
     fifo_tax_basis_reduction: Money | None
-    remaining_share_count: int | None
+    remaining_share_count: InvestmentUnits | None
     remaining_cost_basis: Money | None
     remaining_tax_basis: Money | None
     paying_company_name: str | None
@@ -942,7 +942,7 @@ class ShareSaleAllocationView:
     sale_action_id: InvestmentActionId
     allocation_order: int
     acquisition_date: LocalDate
-    allocated_share_count: int
+    allocated_share_count: InvestmentUnits
     allocated_cost_basis: Money
     allocated_book_cost_basis: Money
     allocated_tax_basis: Money

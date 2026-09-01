@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import {
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+} from "../../../features/investments";
+
+import {
   acknowledgeFilingReviewComment,
   activateBillingSubscription,
   addFilingOverride,
@@ -1887,7 +1892,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <div className="readinessItem" key={position.id}>
                       <span>{position.investment_key}</span>
                       <strong data-status="ready">{position.name}</strong>
-                      <p>{Number(position.share_count).toFixed(2)} aksjer</p>
+                      <p>{formatInvestmentUnits(position.share_count)} aksjer</p>
                       <p>Kostpris: {Number(position.cost_basis).toFixed(2)} kr</p>
                       <p>Bevegelser: {position.movements.length}</p>
                     </div>
@@ -1923,10 +1928,10 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <select name="positionId" required>
                       <option value="">Velg posisjon</option>
                       {positions
-                        .filter((position) => Number(position.share_count) > 0)
+                        .filter((position) => hasPositiveInvestmentUnits(position.share_count))
                         .map((position) => (
                           <option key={position.id} value={position.id}>
-                            {position.name} ({Number(position.share_count).toFixed(2)} aksjer)
+                            {position.name} ({formatInvestmentUnits(position.share_count)} aksjer)
                           </option>
                         ))}
                     </select>

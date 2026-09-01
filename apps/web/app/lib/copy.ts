@@ -918,7 +918,7 @@ export const ownerCopy = {
       proceedsLabel: "Salgsproveny (kr)",
       fifoNote:
         "Talli fordeler salget på de eldste anskaffelsespostene (FIFO) og beregner kostpris, gevinst eller tap når du bekrefter.",
-      ofShares: (count: number) => `${count} aksjer tilgjengelig`,
+      ofShares: (count: string) => `${count} aksjer tilgjengelig`,
     },
     dividendReceived: {
       title: "Mottatt utbytte",

@@ -471,6 +471,7 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentLotHistoryStatus",
   "InvestmentTaxTreatment",
   "InvestmentPositionPageWire",
+  "InvestmentPositionMovementWire",
   "InvestmentPositionWire",
   "InvestmentsPageWire",
   "InvestmentsSharePurchaseResultWire",

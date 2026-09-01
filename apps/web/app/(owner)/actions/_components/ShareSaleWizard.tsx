@@ -6,6 +6,10 @@ import { recordShareSale } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import {
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+} from "../../../../features/investments";
+import {
   InvestmentEvidenceFields,
   investmentEvidenceComplete,
   type InvestmentEvidenceOption,
@@ -16,7 +20,7 @@ import { SelectField, TextField } from "./fields";
 export type SalePosition = {
   id: string;
   name: string;
-  share_count: number;
+  share_count: string;
   lot_history_status: "complete" | "needs_reconstruction";
   kind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
 };
@@ -41,7 +45,8 @@ export function ShareSaleWizard({
   const a = ownerCopy.actions;
   const c = a.shareSale;
   const sellable = positions.filter(
-    (position) => position.share_count > 0 && position.lot_history_status === "complete",
+    (position) => hasPositiveInvestmentUnits(position.share_count)
+      && position.lot_history_status === "complete",
   );
 
   const [positionId, setPositionId] = useState("");
@@ -94,7 +99,7 @@ export function ShareSaleWizard({
         </option>
         {sellable.map((position) => (
           <option key={position.id} value={position.id}>
-            {position.name} — {c.ofShares(position.share_count)}
+            {position.name} — {c.ofShares(formatInvestmentUnits(position.share_count))}
           </option>
         ))}
       </SelectField>

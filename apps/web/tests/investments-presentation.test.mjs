@@ -8,6 +8,9 @@ import {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
   effectiveInvestmentActivity,
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+  investmentUnitFact,
   correctInvestment,
   loadInvestmentAcquisitionLots,
   loadInvestmentCorrections,
@@ -55,10 +58,14 @@ function position(overrides = {}) {
     kind: "norwegian_private_company",
     lotHistoryStatus: "complete",
     movementCount: 1,
-    movements: [{ movement_type: "purchase" }],
+    movements: [{
+      movement_date: "2026-05-01",
+      movement_type: "purchase_recognition",
+      share_delta: "100.125000000000",
+    }],
     name: "Portfolio AS",
     orgNumber: "999888777",
-    shareCount: 100,
+    shareCount: "100.125000000000",
     taxBasis: { amount: "50000.00", currency: "NOK" },
     taxTreatment: "fritaksmetoden",
     updatedAt: "2026-08-31T10:00:01Z",
@@ -117,10 +124,10 @@ function dividendActivity(overrides = {}) {
     proceeds: null,
     purchaseAmount: null,
     remainingCostBasis: null,
-    remainingShareCount: null,
+    remainingShareCount: "6.062500000000",
     remainingTaxBasis: null,
-    shareCount: null,
-    soldShareCount: null,
+    shareCount: "10.125000000000",
+    soldShareCount: "4.062500000000",
     taxGainOrLoss: null,
     taxableAddBack: { amount: "3.77", currency: "NOK" },
     taxableGain: null,
@@ -139,7 +146,7 @@ function allocation(overrides = {}) {
     allocatedBookCostBasis: { amount: "20000.00", currency: "NOK" },
     allocatedCostBasis: { amount: "20000.00", currency: "NOK" },
     allocatedNetProceeds: { amount: "25000.00", currency: "NOK" },
-    allocatedShareCount: 40,
+    allocatedShareCount: "40.062500000000",
     allocatedTaxBasis: { amount: "20000.00", currency: "NOK" },
     allocationOrder: 1,
     averageFundEquityRatioBasisPoints: null,
@@ -170,11 +177,11 @@ function lot(overrides = {}) {
     fundTaxStatementReference: null,
     id: lotId,
     originalCostBasis: { amount: "50000.00", currency: "NOK" },
-    originalShareCount: 100,
+    originalShareCount: "100.125000000000",
     originalTaxBasis: { amount: "50000.00", currency: "NOK" },
     positionId,
     remainingCostBasis: { amount: "50000.00", currency: "NOK" },
-    remainingShareCount: 100,
+    remainingShareCount: "60.062500000000",
     remainingTaxBasis: { amount: "50000.00", currency: "NOK" },
     ...overrides,
   };
@@ -455,6 +462,63 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
   }
 });
 
+test("investment unit reads reject lossy wire values", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  try {
+    for (const invalid of [
+      100.125,
+      "1e3",
+      "0.0000000000001",
+      "100000000000000000000000000.0",
+    ]) {
+      globalThis.fetch = async () => Response.json({
+        items: [position({ shareCount: invalid })],
+        page: { hasMore: false, nextCursor: null },
+      });
+      await assert.rejects(
+        loadInvestmentPositions("session-token", [companyId], "invalid-units"),
+        (error) => error instanceof TalliApiError && error.status === 502,
+      );
+    }
+    globalThis.fetch = async () => Response.json({
+      items: [position({ movements: [{
+        movement_date: "2026-05-01",
+        movement_type: "purchase_recognition",
+        share_delta: 100.125,
+      }] })],
+      page: { hasMore: false, nextCursor: null },
+    });
+    await assert.rejects(
+      loadInvestmentPositions("session-token", [companyId], "invalid-movement-units"),
+      (error) => error instanceof TalliApiError && error.status === 502,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("investment unit presentation stays decimal-string exact", () => {
+  assert.equal(hasPositiveInvestmentUnits("0"), false);
+  assert.equal(hasPositiveInvestmentUnits("0.000000000000"), false);
+  assert.equal(hasPositiveInvestmentUnits("0.000000000001"), true);
+  assert.equal(hasPositiveInvestmentUnits("100.125000000000"), true);
+  assert.equal(
+    formatInvestmentUnits("99999999999999999999999999.123456789012"),
+    "99999999999999999999999999.123456789012",
+  );
+  assert.equal(formatInvestmentUnits("100.125000000000"), "100.125");
+  assert.equal(formatInvestmentUnits("100.000000000000"), "100");
+  assert.equal(
+    investmentUnitFact({ share_count: "100.125000000000" }, "share_count"),
+    "100.125000000000",
+  );
+  assert.equal(investmentUnitFact({ share_count: 100.125 }, "share_count"), null);
+});
+
 test("investments presentation maps canonical wire facts without owning policy", () => {
   assert.deepEqual(presentInvestmentPositions([position()]), [{
     accounting_classification: "other_long_term",
@@ -468,10 +532,14 @@ test("investments presentation maps canonical wire facts without owning policy",
     investment_key: "portfolio-as",
     kind: "norwegian_private_company",
     lot_history_status: "complete",
-    movements: [{ movement_type: "purchase" }],
+    movements: [{
+      movement_date: "2026-05-01",
+      movement_type: "purchase_recognition",
+      share_delta: "100.125000000000",
+    }],
     name: "Portfolio AS",
     org_number: "999888777",
-    share_count: 100,
+    share_count: "100.125000000000",
     tax_basis: 50000,
     tax_treatment: "fritaksmetoden",
     updated_at: "2026-08-31T10:00:01Z",
@@ -486,11 +554,11 @@ test("investments presentation maps canonical wire facts without owning policy",
     fund_tax_statement_reference: null,
     id: lotId,
     original_cost_basis: 50000,
-    original_share_count: 100,
+    original_share_count: "100.125000000000",
     original_tax_basis: 50000,
     position_id: positionId,
     remaining_cost_basis: 50000,
-    remaining_share_count: 100,
+    remaining_share_count: "60.062500000000",
     remaining_tax_basis: 50000,
   }]);
   const presentedDividendActivity = presentInvestmentActivity([dividendActivity()]);
@@ -543,11 +611,28 @@ test("investments presentation maps canonical wire facts without owning policy",
     dividendIncome: 125.5,
     fritaksmetodenAddBack: 3.77,
   });
+  const [purchaseActivity] = presentInvestmentActivity([dividendActivity({
+    activityKind: "share_purchase",
+    shareCount: "10.125000000000",
+    purchaseAmount: { amount: "125.50", currency: "NOK" },
+    transactionCosts: { amount: "2.50", currency: "NOK" },
+    capitalizedCost: { amount: "128.00", currency: "NOK" },
+  })]);
+  assert.equal(purchaseActivity.payload.share_count, "10.125000000000");
+  const [saleActivity] = presentInvestmentActivity([dividendActivity({
+    activityKind: "share_sale",
+    soldShareCount: "4.062500000000",
+    remainingShareCount: "6.062500000000",
+    proceeds: { amount: "60.00", currency: "NOK" },
+    transactionCosts: { amount: "1.00", currency: "NOK" },
+  })]);
+  assert.equal(saleActivity.payload.sold_share_count, "4.062500000000");
+  assert.equal(saleActivity.payload.remaining_share_count, "6.062500000000");
   assert.deepEqual(presentShareSaleAllocations([allocation()])[0], {
     allocated_book_cost_basis: 20000,
     allocated_cost_basis: 20000,
     allocated_net_proceeds: 25000,
-    allocated_share_count: 40,
+    allocated_share_count: "40.062500000000",
     allocated_tax_basis: 20000,
     average_fund_equity_ratio_basis_points: null,
     company_id: companyId,

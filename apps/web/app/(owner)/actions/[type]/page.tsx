@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
+import { investmentUnitFact } from "../../../../features/investments";
+
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
 import { buildAnnualAccountsPayload } from "../../../lib/annual-accounts";
 import { ownerCopy } from "../../../lib/copy";
@@ -241,9 +243,9 @@ export default async function ActionPage({
               | "current_listed_share" | "current_fund",
             orgNumber: stringFact("org_number") || null,
             shareCount: action.action_type === "share_purchase"
-              ? nullableNumberFact("share_count")
+              ? investmentUnitFact(payload, "share_count")
               : action.action_type === "share_sale"
-                ? nullableNumberFact("sold_share_count")
+                ? investmentUnitFact(payload, "sold_share_count")
                 : null,
             grossAmount,
             transactionCosts: numberFact("transaction_costs"),

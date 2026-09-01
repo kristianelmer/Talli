@@ -219,8 +219,9 @@
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
           "originalShareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Originalsharecount",
-            "type": "integer"
+            "type": "string"
           },
           "originalTaxBasis": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
@@ -234,8 +235,9 @@
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
           "remainingShareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Remainingsharecount",
-            "type": "integer"
+            "type": "string"
           },
           "remainingTaxBasis": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
@@ -3484,7 +3486,8 @@
           "remainingShareCount": {
             "anyOf": [
               {
-                "type": "integer"
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3505,7 +3508,8 @@
           "shareCount": {
             "anyOf": [
               {
-                "type": "integer"
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3516,7 +3520,8 @@
           "soldShareCount": {
             "anyOf": [
               {
-                "type": "integer"
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3918,6 +3923,32 @@
         "title": "InvestmentLotHistoryStatus",
         "type": "string"
       },
+      "InvestmentPositionMovementWire": {
+        "additionalProperties": true,
+        "properties": {
+          "movement_date": {
+            "format": "date",
+            "title": "Movement Date",
+            "type": "string"
+          },
+          "movement_type": {
+            "title": "Movement Type",
+            "type": "string"
+          },
+          "share_delta": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+            "title": "Share Delta",
+            "type": "string"
+          }
+        },
+        "required": [
+          "movement_type",
+          "movement_date",
+          "share_delta"
+        ],
+        "title": "InvestmentPositionMovementWire",
+        "type": "object"
+      },
       "InvestmentPositionPageWire": {
         "properties": {
           "items": {
@@ -4004,8 +4035,7 @@
           },
           "movements": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/InvestmentPositionMovementWire"
             },
             "title": "Movements",
             "type": "array"
@@ -4026,8 +4056,9 @@
             "title": "Orgnumber"
           },
           "shareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Sharecount",
-            "type": "integer"
+            "type": "string"
           },
           "taxBasis": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
@@ -8241,8 +8272,9 @@
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
           "allocatedShareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Allocatedsharecount",
-            "type": "integer"
+            "type": "string"
           },
           "allocatedTaxBasis": {
             "$ref": "#/components/schemas/LedgerMoneyWire"

@@ -29,7 +29,7 @@ export type CorrectableInvestmentActivity = {
   investmentKind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
   accountingClassification: "subsidiary" | "associate" | "other_long_term" | "current_listed_share" | "current_fund";
   orgNumber: string | null;
-  shareCount: number | null;
+  shareCount: string | null;
   grossAmount: number;
   transactionCosts: number;
   declaredDate: string | null;
@@ -44,7 +44,7 @@ export type CorrectableInvestmentActivity = {
 function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivity }) {
   const [actionDate, setActionDate] = useState(activity.actionDate);
   const [investmentName, setInvestmentName] = useState(activity.investmentName);
-  const [shareCount, setShareCount] = useState(String(activity.shareCount ?? ""));
+  const [shareCount, setShareCount] = useState(activity.shareCount ?? "");
   const [grossAmount, setGrossAmount] = useState(String(activity.grossAmount));
   const [transactionCosts, setTransactionCosts] = useState(
     String(activity.transactionCosts),
@@ -131,7 +131,7 @@ function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivit
           name="shareCount"
           value={shareCount}
           onChange={setShareCount}
-          inputMode="numeric"
+          inputMode="decimal"
           required
         />
       ) : null}

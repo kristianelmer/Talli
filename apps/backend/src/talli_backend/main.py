@@ -259,6 +259,14 @@ REQUEST_ID_HEADER = {
     "description": "Correlation identifier for the request and response.",
     "schema": {"type": "string"},
 }
+InvestmentUnitsWireValue = Annotated[
+    str,
+    Field(pattern=r"^(?:0|[1-9][0-9]{0,25})(?:\.[0-9]{1,12})?$"),
+]
+SignedInvestmentUnitsWireValue = Annotated[
+    str,
+    Field(pattern=r"^-?(?:0|[1-9][0-9]{0,25})(?:\.[0-9]{1,12})?$"),
+]
 REQUEST_ID_PARAMETER = {
     "description": "Optional caller-provided correlation identifier.",
     "in": "header",
@@ -1131,6 +1139,14 @@ class InvestmentCorrectionPageWire(TransportModel):
     page: InvestmentsPageWire
 
 
+class InvestmentPositionMovementWire(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    movement_type: str
+    movement_date: date
+    share_delta: SignedInvestmentUnitsWireValue
+
+
 class InvestmentPositionWire(TransportModel):
     id: UUID
     company_id: UUID
@@ -1142,12 +1158,12 @@ class InvestmentPositionWire(TransportModel):
     org_number: str | None
     fund_equity_ratio_basis_points: int | None
     fund_tax_statement_reference: str | None
-    share_count: int
+    share_count: InvestmentUnitsWireValue
     cost_basis: LedgerMoneyWire
     tax_basis: LedgerMoneyWire
     lot_history_status: InvestmentLotHistoryStatus
     movement_count: int
-    movements: list[dict[str, Any]]
+    movements: list[InvestmentPositionMovementWire]
     created_by: UUID
     created_at: datetime
     updated_at: datetime
@@ -1164,8 +1180,8 @@ class AcquisitionLotWire(TransportModel):
     position_id: UUID
     acquisition_action_id: UUID
     acquisition_date: date
-    original_share_count: int
-    remaining_share_count: int
+    original_share_count: InvestmentUnitsWireValue
+    remaining_share_count: InvestmentUnitsWireValue
     original_cost_basis: LedgerMoneyWire
     remaining_cost_basis: LedgerMoneyWire
     original_tax_basis: LedgerMoneyWire
@@ -1197,16 +1213,16 @@ class InvestmentActivityWire(TransportModel):
     fund_equity_ratio_basis_points: int | None
     fund_tax_statement_reference: str | None
     acquisition_lot_id: UUID | None
-    share_count: int | None
+    share_count: InvestmentUnitsWireValue | None
     purchase_amount: LedgerMoneyWire | None
     transaction_costs: LedgerMoneyWire | None
     capitalized_cost: LedgerMoneyWire | None
-    sold_share_count: int | None
+    sold_share_count: InvestmentUnitsWireValue | None
     proceeds: LedgerMoneyWire | None
     net_proceeds: LedgerMoneyWire | None
     fifo_cost_basis_reduction: LedgerMoneyWire | None
     fifo_tax_basis_reduction: LedgerMoneyWire | None
-    remaining_share_count: int | None
+    remaining_share_count: InvestmentUnitsWireValue | None
     remaining_cost_basis: LedgerMoneyWire | None
     remaining_tax_basis: LedgerMoneyWire | None
     paying_company_name: str | None
@@ -1258,7 +1274,7 @@ class ShareSaleAllocationWire(TransportModel):
     sale_action_id: UUID
     allocation_order: int
     acquisition_date: date
-    allocated_share_count: int
+    allocated_share_count: InvestmentUnitsWireValue
     allocated_cost_basis: LedgerMoneyWire
     allocated_book_cost_basis: LedgerMoneyWire
     allocated_tax_basis: LedgerMoneyWire
@@ -2976,12 +2992,15 @@ def create_app(
             org_number=value.org_number,
             fund_equity_ratio_basis_points=value.fund_equity_ratio_basis_points,
             fund_tax_statement_reference=value.fund_tax_statement_reference,
-            share_count=value.share_count,
+            share_count=format(value.share_count.amount, ".12f"),
             cost_basis=_money_wire(value.cost_basis),
             tax_basis=_money_wire(value.tax_basis),
             lot_history_status=value.lot_history_status,
             movement_count=value.movement_count,
-            movements=[dict(movement) for movement in value.movements],
+            movements=[
+                InvestmentPositionMovementWire.model_validate(dict(movement))
+                for movement in value.movements
+            ],
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
             updated_at=value.updated_at.value,
@@ -2994,8 +3013,8 @@ def create_app(
             position_id=UUID(str(value.position_id)),
             acquisition_action_id=UUID(str(value.acquisition_action_id)),
             acquisition_date=value.acquisition_date.value,
-            original_share_count=value.original_share_count,
-            remaining_share_count=value.remaining_share_count,
+            original_share_count=format(value.original_share_count.amount, ".12f"),
+            remaining_share_count=format(value.remaining_share_count.amount, ".12f"),
             original_cost_basis=_money_wire(value.original_cost_basis),
             remaining_cost_basis=_money_wire(value.remaining_cost_basis),
             original_tax_basis=_money_wire(value.original_tax_basis),
@@ -3028,7 +3047,10 @@ def create_app(
                 UUID(str(value.acquisition_lot_id))
                 if value.acquisition_lot_id else None
             ),
-            share_count=value.share_count,
+            share_count=(
+                format(value.share_count.amount, ".12f")
+                if value.share_count is not None else None
+            ),
             purchase_amount=(
                 _money_wire(value.purchase_amount) if value.purchase_amount else None
             ),
@@ -3040,7 +3062,10 @@ def create_app(
                 _money_wire(value.capitalized_cost)
                 if value.capitalized_cost else None
             ),
-            sold_share_count=value.sold_share_count,
+            sold_share_count=(
+                format(value.sold_share_count.amount, ".12f")
+                if value.sold_share_count is not None else None
+            ),
             proceeds=_money_wire(value.proceeds) if value.proceeds else None,
             net_proceeds=(
                 _money_wire(value.net_proceeds) if value.net_proceeds else None
@@ -3053,7 +3078,10 @@ def create_app(
                 _money_wire(value.fifo_tax_basis_reduction)
                 if value.fifo_tax_basis_reduction else None
             ),
-            remaining_share_count=value.remaining_share_count,
+            remaining_share_count=(
+                format(value.remaining_share_count.amount, ".12f")
+                if value.remaining_share_count is not None else None
+            ),
             remaining_cost_basis=(
                 _money_wire(value.remaining_cost_basis)
                 if value.remaining_cost_basis else None
@@ -3150,7 +3178,9 @@ def create_app(
             sale_action_id=UUID(str(value.sale_action_id)),
             allocation_order=value.allocation_order,
             acquisition_date=value.acquisition_date.value,
-            allocated_share_count=value.allocated_share_count,
+            allocated_share_count=format(
+                value.allocated_share_count.amount, ".12f"
+            ),
             allocated_cost_basis=_money_wire(value.allocated_cost_basis),
             allocated_book_cost_basis=_money_wire(
                 value.allocated_book_cost_basis

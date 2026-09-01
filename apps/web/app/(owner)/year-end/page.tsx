@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { hasPositiveInvestmentUnits } from "../../../features/investments";
+
 import { EmptyState, LinkButton } from "../../components/ui";
 import { buildAnnualAccountsPayload } from "../../lib/annual-accounts";
 import {
@@ -69,7 +71,8 @@ export default async function YearEndPage() {
 
   const registered = {
     shares_owned_at_year_end: positions.some(
-      (position) => position.company_id === companyId && Number(position.share_count) > 0,
+      (position) => position.company_id === companyId
+        && hasPositiveInvestmentUnits(position.share_count),
     ),
     bought_or_sold_shares: hasActionType("share_purchase", "share_sale"),
     received_dividends: hasActionType("dividend_received", "fund_distribution_received"),

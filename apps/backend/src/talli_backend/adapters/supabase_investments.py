@@ -2107,18 +2107,27 @@ def _position(value: Mapping[str, object]) -> InvestmentPositionView:
             if value["fund_tax_statement_reference"] is not None
             else None
         ),
-        share_count=int(value["share_count"]),
+        share_count=InvestmentUnits.of(str(value["share_count"])),
         cost_basis=_money(value["cost_basis"]),
         tax_basis=_money(value["tax_basis"]),
         lot_history_status=InvestmentLotHistoryStatus(
             str(value["lot_history_status"])
         ),
         movement_count=int(value["movement_count"]),
-        movements=tuple(value["movements"]),
+        movements=tuple(_movement(movement) for movement in value["movements"]),
         created_by=_actor(value["created_by"]),
         created_at=_timestamp(value["created_at"]),
         updated_at=_timestamp(value["updated_at"]),
     )
+
+
+def _movement(value: Mapping[str, object]) -> dict[str, object]:
+    movement = dict(value)
+    amount = Decimal(str(value["share_delta"]))
+    magnitude = InvestmentUnits.of(abs(amount))
+    sign = "-" if amount < 0 else ""
+    movement["share_delta"] = f"{sign}{magnitude.amount:.12f}"
+    return movement
 
 
 def _lot(value: Mapping[str, object]) -> AcquisitionLotView:
@@ -2130,8 +2139,8 @@ def _lot(value: Mapping[str, object]) -> AcquisitionLotView:
             str(value["acquisition_action_id"])
         ),
         acquisition_date=LocalDate(value["acquisition_date"]),
-        original_share_count=int(value["original_share_count"]),
-        remaining_share_count=int(value["remaining_share_count"]),
+        original_share_count=InvestmentUnits.of(str(value["original_share_count"])),
+        remaining_share_count=InvestmentUnits.of(str(value["remaining_share_count"])),
         original_cost_basis=_money(value["original_cost_basis"]),
         remaining_cost_basis=_money(value["remaining_cost_basis"]),
         original_tax_basis=_money(value["original_tax_basis"]),
@@ -2182,7 +2191,10 @@ def _activity(value: Mapping[str, object]) -> InvestmentActivityView:
             if value["acquisition_lot_id"] is not None
             else None
         ),
-        share_count=int(value["share_count"]) if value["share_count"] is not None else None,
+        share_count=(
+            InvestmentUnits.of(str(value["share_count"]))
+            if value["share_count"] is not None else None
+        ),
         purchase_amount=(
             _money(value["purchase_amount"])
             if value["purchase_amount"] is not None
@@ -2199,7 +2211,7 @@ def _activity(value: Mapping[str, object]) -> InvestmentActivityView:
             else None
         ),
         sold_share_count=(
-            int(value["sold_share_count"])
+            InvestmentUnits.of(str(value["sold_share_count"]))
             if value["sold_share_count"] is not None
             else None
         ),
@@ -2220,7 +2232,7 @@ def _activity(value: Mapping[str, object]) -> InvestmentActivityView:
             else None
         ),
         remaining_share_count=(
-            int(value["remaining_share_count"])
+            InvestmentUnits.of(str(value["remaining_share_count"]))
             if value["remaining_share_count"] is not None
             else None
         ),
@@ -2356,7 +2368,9 @@ def _allocation(value: Mapping[str, object]) -> ShareSaleAllocationView:
         sale_action_id=InvestmentActionId(str(value["sale_action_id"])),
         allocation_order=int(value["allocation_order"]),
         acquisition_date=LocalDate(value["acquisition_date"]),
-        allocated_share_count=int(value["allocated_share_count"]),
+        allocated_share_count=InvestmentUnits.of(
+            str(value["allocated_share_count"])
+        ),
         allocated_cost_basis=_money(value["allocated_cost_basis"]),
         allocated_book_cost_basis=_money(value["allocated_book_cost_basis"]),
         allocated_tax_basis=_money(value["allocated_tax_basis"]),
